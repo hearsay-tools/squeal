@@ -1,0 +1,3 @@
+fswatch ["rename b","rename b/sub","rename b/sub/f.ts","rename a","rename b/sub/new.ts","change b/sub/f.ts","change b/sub/f.ts"]
+chokidar ["unlinkDir a/sub","unlinkDir a","addDir b","addDir b/sub","add b/sub/f.ts","unlink a/sub/f.ts","change b/sub/f.ts","add b/sub/new.ts"]
+parcel ["delete a","create b"]

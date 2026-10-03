@@ -1,0 +1,5 @@
+{"test":"race 5 daemons","exitCodes":[3,3,0,3,3],"log":["2591642 serving","2591641 lost lock: database is locked","2591640 lost lock: database is locked","2591643 lost lock: database is locked","2591644 lost lock: database is locked"]}
+{"test":"crash recovery","before":{"reply":{"pid":2591709,"failures":[]},"ms":2.43},"staleSocketFile":true,"afterKill":{"err":"ECONNREFUSED","ms":1.69},"replacement":{"reply":{"pid":2591736,"failures":[]},"ms":2.73,"sinceSpawnMs":76}}
+{"test":"hook spawns detached daemon","hookMs":68.5,"daemonAliveAfterHookGroupKilled":true,"client":{"reply":{"pid":2591822,"failures":[]},"ms":2.62},"stderr":"[1]+  Done                    /home/agent/.nvm/versions/node/v24.21.0/bin/node -e \"\n    const {spawn"}
+{"test":"unix socket path length (Linux sun_path is 108 incl NUL; macOS 104)","out":{"100":"ok, bound as 100 chars","107":"ok, bound as 107 chars","108":"ok, bound as 108 chars","120":"EINVAL"}}
+{"test":"warm round trip median ms","unix":0.205,"httpFetch":0.463}

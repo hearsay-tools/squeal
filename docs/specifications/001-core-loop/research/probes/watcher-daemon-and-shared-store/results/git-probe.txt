@@ -1,0 +1,37 @@
+== from /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo
+rev-parse --git-common-dir (default):  .git
+rev-parse --path-format=absolute --git-common-dir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.git
+rev-parse --show-toplevel: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo
+rev-parse --is-bare-repository: false
+worktree list --porcelain, first entry: worktree /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo HEAD b50f58dfc82a1da588e0f113635234082aace513 branch refs/heads/main 
+== from /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/src/deep
+rev-parse --git-common-dir (default):  ../../.git
+rev-parse --path-format=absolute --git-common-dir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.git
+rev-parse --show-toplevel: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo
+rev-parse --is-bare-repository: false
+worktree list --porcelain, first entry: worktree /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo HEAD b50f58dfc82a1da588e0f113635234082aace513 branch refs/heads/main 
+== from /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.ai/worktrees/wt1
+rev-parse --git-common-dir (default):  /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.git
+rev-parse --path-format=absolute --git-common-dir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.git
+rev-parse --show-toplevel: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.ai/worktrees/wt1
+rev-parse --is-bare-repository: false
+worktree list --porcelain, first entry: worktree /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo HEAD b50f58dfc82a1da588e0f113635234082aace513 branch refs/heads/main 
+.git file: gitdir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/repo/.git/worktrees/wt1; commondir file: ../..
+== from /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare-main
+rev-parse --git-common-dir (default):  /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git
+rev-parse --path-format=absolute --git-common-dir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git
+rev-parse --show-toplevel: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare-main
+rev-parse --is-bare-repository: false
+worktree list --porcelain, first entry: worktree /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git bare  
+.git file: gitdir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git/worktrees/bare-main; commondir file: ../..
+== from /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git
+rev-parse --git-common-dir (default):  .
+rev-parse --path-format=absolute --git-common-dir: /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git
+rev-parse --show-toplevel: fatal: this operation must be run in a work tree
+rev-parse --is-bare-repository: true
+worktree list --porcelain, first entry: worktree /home/agent/projects/squeal/.ai/cezar/worktrees/b938eccd-c5b6-4d33-b5e2-2b454988e827/docs/specifications/001-core-loop/research/probes/watcher-daemon-and-shared-store/tmp/git/bare.git bare  
+== main checkout HEAD vs nested worktree HEAD: b50f58d vs ad9bcc4
+== git status in main lists the nested worktree as one opaque entry:
+?? .ai/worktrees/wt1/
+== timing: 50x git rev-parse --path-format=absolute --git-common-dir
+avg 1921 us

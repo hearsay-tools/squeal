@@ -1,0 +1,12 @@
+{
+  "name": "squeal-probe-watcher-daemon-and-shared-store",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway research probes. Not product code.",
+  "dependencies": {
+    "@parcel/watcher": "^2.6.0",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^5.0.0",
+    "ignore": "^7.0.12"
+  }
+}

@@ -1,0 +1,16 @@
+== ignored entries at startup (collapsed to directories):
+a.log
+dist/
+node_modules/
+secret.txt
+sub/local.ts
+took 5 ms
+== batch check of an event batch (nested .gitignore, info/exclude, nested worktree path):
+::	src/m1/f1.ts
+sub/.gitignore:1:local.ts	sub/local.ts
+::	sub/kept.ts
+.git/info/exclude:1:secret.txt	secret.txt
+.gitignore:1:node_modules/	node_modules/p1/m1/i.js
+.gitignore:3:*.log	a.log
+::	.ai/worktrees/wt/a
+took 2 ms

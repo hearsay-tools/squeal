@@ -1,0 +1,26 @@
+{
+ "node": "v24.21.0",
+ "runs": 60,
+ "res": {
+  "baseline": {
+   "medianMs": 48.6,
+   "p95Ms": 54.3,
+   "out": "{\"n\":0}"
+  },
+  "node-sqlite": {
+   "medianMs": 57.5,
+   "p95Ms": 64.4,
+   "out": "{\"n\":52}"
+  },
+  "better-sqlite3": {
+   "medianMs": 65.8,
+   "p95Ms": 76.5,
+   "out": "{\"n\":52}"
+  },
+  "json": {
+   "medianMs": 65,
+   "p95Ms": 72.8,
+   "out": "{\"n\":52}"
+  }
+ }
+}
