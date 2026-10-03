@@ -1,0 +1,8 @@
+# Raw run output can contain account details. Only sanitized derivatives are committed.
+logs/*.debug.log
+logs/*.stream.jsonl
+logs/*.stderr
+logs/*.hooks.log
+logs/*.sid
+logs/*.count
+logs/latest

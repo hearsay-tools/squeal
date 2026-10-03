@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "\"$PROBE_HOOKS/deny-json.sh\"" }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "\"$PROBE_HOOKS/deny-exit2.sh\"" }]
+      }
+    ]
+  }
+}

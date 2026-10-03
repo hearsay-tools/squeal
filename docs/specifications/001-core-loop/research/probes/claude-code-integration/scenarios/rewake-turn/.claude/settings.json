@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "if": "Bash(echo arm-mid*)", "command": "\"$PROBE_HOOKS/rewake.sh\" mid 3", "asyncRewake": true },
+          { "type": "command", "if": "Bash(echo arm-long*)", "command": "\"$PROBE_HOOKS/rewake.sh\" long 3", "asyncRewake": true }
+        ]
+      }
+    ]
+  }
+}

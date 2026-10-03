@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [
+        { "type": "command", "command": "\"$PROBE_HOOKS/rewake.sh\" ok 10", "asyncRewake": true },
+        { "type": "command", "command": "\"$PROBE_HOOKS/rewake.sh\" timedout 15", "asyncRewake": true, "timeout": 5 }
+      ] }
+    ]
+  }
+}
