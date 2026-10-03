@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "if": "Bash(echo arm*)", "command": "\"$PROBE_HOOKS/slowctx.sh\" async 3", "async": true }
+        ]
+      }
+    ]
+  }
+}

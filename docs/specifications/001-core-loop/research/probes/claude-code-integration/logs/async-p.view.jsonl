@@ -1,0 +1,27 @@
+{"init":{"model":"claude-sonnet-5-5","cc":"2.1.286","tools":["Task","Bash","CronCreate","CronDelete","CronList","DesignSync","Edit","EnterWorktree","ExitWorktree","ListAgents","Monitor","NotebookEdit","PushNotification","Read","RemoteTrigger","ReportFindings","ScheduleWakeup","SendMessage","ShareOnboardingGuide","Skill","TaskStop","ToolSearch","WebFetch","WebSearch","Workflow","Write"]}}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo arm\",\"description\":\"Print arm\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"user":[{"tool_result":"arm","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal status note after `arm`."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-a\",\"description\":\"Print step-a\"}"}]}
+{"user":[{"tool_result":"step-a","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal status note after `step-a`."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-b\",\"description\":\"Print step-b\"}"}]}
+{"user":[{"tool_result":"step-b","is_error":false}]}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Squeal status note: async async-b6418d41 at 1791016095166 ms.\"}}\n","exit":0,"outcome":"success"}
+{"asst":[{"text":"Squeal status note: `async async-b6418d41 at 1791016095166 ms`."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-c\",\"description\":\"Print step-c\"}"}]}
+{"user":[{"tool_result":"step-c","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal status note after `step-c`."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-d\",\"description\":\"Print step-d\"}"}]}
+{"user":[{"tool_result":"step-d","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal status note after `step-d`."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"sleep 6; echo slept\",\"description\":\"Sleep 6 seconds then print slept\"}"}]}
+{"sys":"task_started","hook":null,"out":"","exit":null,"outcome":null}
+{"sys":"task_notification","hook":null,"out":"","exit":null,"outcome":null}
+{"user":[{"tool_result":"slept","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal status note after `sleep 6; echo slept`."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-e\",\"description\":\"Print step-e\"}"}]}
+{"user":[{"tool_result":"step-e","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal status note after `step-e`.\n\n**Summary:** I ran all 7 commands one at a time, in order. Each printed the expected output. Squeal attached one status note, after `step-b`: `async async-b6418d41 at 1791016095166 ms`. The other six commands had none."}]}
+{"result":"Note: no new Squeal status note after `step-e`.\n\n**Summary:** I ran all 7 commands one at a time, in order. Each printed the expected output. Squeal attached one status note, after `step-b`: `async async-b6418d41 at 1791016095166 ms`. The other six commands had none.","turns":8,"ms":22640}

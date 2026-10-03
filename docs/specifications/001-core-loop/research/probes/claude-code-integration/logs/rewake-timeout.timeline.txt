@@ -1,0 +1,13 @@
+2026-10-03T08:35:09.564Z [DEBUG] [API REQUEST] /v1/messages source=quota_check
+2026-10-03T08:35:09.587Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2608864
+2026-10-03T08:35:09.593Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2608866
+2026-10-03T08:35:14.589Z [ERROR] Hook SessionStart:startup (SessionStart) error: status code 143
+2026-10-03T08:35:19.636Z [ERROR] "Hook SessionStart:startup (SessionStart) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake ok-48d888b9 at 1791016519634 ms)."
+2026-10-03T08:35:20.031Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:35:23.446Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=301
+2026-10-03T08:35:24.757Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=1311
+2026-10-03T08:35:24.822Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:35:27.855Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=659
+2026-10-03T08:35:27.904Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=49
+2026-10-03T08:35:27.955Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:35:31.190Z [DEBUG] [API REQUEST] /v1/messages source=prompt_suggestion

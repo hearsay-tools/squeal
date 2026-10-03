@@ -1,0 +1,29 @@
+{"init":{"model":"claude-sonnet-5-5","cc":"2.1.286","tools":["Task","Bash","CronCreate","CronDelete","CronList","DesignSync","Edit","EnterWorktree","ExitWorktree","ListAgents","Monitor","NotebookEdit","PushNotification","Read","RemoteTrigger","ReportFindings","ScheduleWakeup","SendMessage","ShareOnboardingGuide","Skill","TaskStop","ToolSearch","WebFetch","WebSearch","Workflow","Write"]}}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo arm-fast\",\"description\":\"Print arm-fast\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"Squeal status note: check tests/auth.test.ts went PASS -> FAIL (rewake fast-10517cc3 at 1791016026668 ms).\n","exit":2,"outcome":"error"}
+{"user":[{"tool_result":"arm-fast","is_error":false}]}
+{"asst":[{"text":"Note 1: after `echo arm-fast`, Squeal reported that `tests/auth.test.ts` went PASS -> FAIL (rewake fast-10517cc3)."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-a\",\"description\":\"Print step-a\"}"}]}
+{"user":[{"tool_result":"step-a","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal note after step-a."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-b\",\"description\":\"Print step-b\"}"}]}
+{"user":[{"tool_result":"step-b","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal note after step-b."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-c\",\"description\":\"Print step-c\"}"}]}
+{"user":[{"tool_result":"step-c","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal note after step-c."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-d\",\"description\":\"Print step-d\"}"}]}
+{"user":[{"tool_result":"step-d","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal note after step-d."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo arm-slow\",\"description\":\"Print arm-slow\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"Squeal status note: check tests/auth.test.ts went PASS -> FAIL (rewake slow-4cfc6ea4 at 1791016042074 ms).\n","exit":2,"outcome":"error"}
+{"user":[{"tool_result":"arm-slow","is_error":false}]}
+{"asst":[{"text":"Note 2: after `echo arm-slow`, Squeal reported `tests/auth.test.ts` went PASS -> FAIL (rewake slow-4cfc6ea4)."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"sleep 15; echo slept\",\"description\":\"Sleep 15 seconds then print slept\"}"}]}
+{"sys":"task_started","hook":null,"out":"","exit":null,"outcome":null}
+{"sys":"task_notification","hook":null,"out":"","exit":null,"outcome":null}
+{"user":[{"tool_result":"slept","is_error":false}]}
+{"asst":[{"text":"Note: no new Squeal note after the sleep.\n\n**Summary of Squeal notes**\n1. After (1) `echo arm-fast`: `tests/auth.test.ts` went PASS -> FAIL (rewake fast-10517cc3, 1791016026668 ms).\n2. After (6) `echo arm-slow`: `tests/auth.test.ts` went PASS -> FAIL (rewake slow-4cfc6ea4, 1791016042074 ms).\n\nNo notes arrived after steps a, b, c and d, or after the 15-second sleep. I didn't run the tests, so I hav"}]}
+{"result":"Note: no new Squeal note after the sleep.\n\n**Summary of Squeal notes**\n1. After (1) `echo arm-fast`: `tests/auth.test.ts` went PASS -> FAIL (rewake fast-10517cc3, 1791016026668 ms).\n2. After (6) `echo arm-slow`: `tests/auth.test.ts` went PASS -> FAIL (rewake slow-4cfc6ea4, 1791016042074 ms).\n\nNo notes arrived after steps a, b, c and d, or after the 15-second sleep. I didn't run the tests, so I haven't checked whether `auth.test.ts` actually fails.","turns":8,"ms":42759}

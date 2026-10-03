@@ -1,0 +1,26 @@
+2026-10-03T08:27:00.299Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:02.409Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=16
+2026-10-03T08:27:03.595Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=1187
+2026-10-03T08:27:06.675Z [ERROR] "Hook PostToolUse:Bash (PostToolUse) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake fast-10517cc3 at 1791016026668 ms)."
+2026-10-03T08:27:06.694Z [INFO] Slow PostToolUse hooks: 3097ms for Bash (0 hooks)
+2026-10-03T08:27:07.170Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:10.101Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=9
+2026-10-03T08:27:10.244Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=144
+2026-10-03T08:27:10.375Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:12.038Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=19
+2026-10-03T08:27:12.140Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=102
+2026-10-03T08:27:12.252Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:13.783Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=6
+2026-10-03T08:27:13.856Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=73
+2026-10-03T08:27:13.970Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:15.898Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=9
+2026-10-03T08:27:16.017Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=119
+2026-10-03T08:27:16.184Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:17.922Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:27:18.018Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=96
+2026-10-03T08:27:22.085Z [ERROR] "Hook PostToolUse:Bash (PostToolUse) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake slow-4cfc6ea4 at 1791016042074 ms)."
+2026-10-03T08:27:22.093Z [INFO] Slow PostToolUse hooks: 4074ms for Bash (0 hooks)
+2026-10-03T08:27:22.202Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:27:24.137Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=4
+2026-10-03T08:27:39.240Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=15103
+2026-10-03T08:27:39.309Z [DEBUG] [API REQUEST] /v1/messages source=sdk

@@ -1,0 +1,23 @@
+{"init":{"model":"claude-sonnet-5-5","cc":"2.1.286","tools":["Task","Bash","CronCreate","CronDelete","CronList","DesignSync","Edit","EnterWorktree","ExitWorktree","ListAgents","Monitor","NotebookEdit","PushNotification","Read","RemoteTrigger","ReportFindings","ScheduleWakeup","SendMessage","ShareOnboardingGuide","Skill","TaskStop","ToolSearch","WebFetch","WebSearch","Workflow","Write"]}}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo end_ms=$(date +%s%3N)\",\"description\":\"Print current time in ms\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Squeal status note: nonce PostToolUse-cc5e7401 issued at 1791015961175 ms.\"}}\n","exit":0,"outcome":"success"}
+{"user":[{"tool_result":"end_ms=1791015961093","is_error":false}]}
+{"sys":"hook_started","hook":"PostToolBatch","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolBatch","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolBatch\",\"additionalContext\":\"Squeal status note: nonce PostToolBatch-ff8e4c70 issued at 1791015961284 ms.\"}}\n","exit":0,"outcome":"success"}
+{"asst":[{"text":"Newest Squeal notes: PostToolUse-cc5e7401 and PostToolBatch-ff8e4c70."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo end_ms=$(date +%s%3N)\",\"description\":\"Print current time in ms\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Squeal status note: nonce PostToolUse-5008b46e issued at 1791015964155 ms.\"}}\n","exit":0,"outcome":"success"}
+{"user":[{"tool_result":"end_ms=1791015964097","is_error":false}]}
+{"sys":"hook_started","hook":"PostToolBatch","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolBatch","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolBatch\",\"additionalContext\":\"Squeal status note: nonce PostToolBatch-af2733ff issued at 1791015964250 ms.\"}}\n","exit":0,"outcome":"success"}
+{"asst":[{"text":"Newest Squeal notes: PostToolUse-5008b46e and PostToolBatch-af2733ff."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo end_ms=$(date +%s%3N)\",\"description\":\"Print current time in ms\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Squeal status note: nonce PostToolUse-1a8851de issued at 1791015966478 ms.\"}}\n","exit":0,"outcome":"success"}
+{"user":[{"tool_result":"end_ms=1791015966410","is_error":false}]}
+{"sys":"hook_started","hook":"PostToolBatch","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolBatch","out":"{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolBatch\",\"additionalContext\":\"Squeal status note: nonce PostToolBatch-7ff34aea issued at 1791015966565 ms.\"}}\n","exit":0,"outcome":"success"}
+{"asst":[{"text":"Newest Squeal notes: PostToolUse-1a8851de and PostToolBatch-7ff34aea.\n\nSummary: I ran all three commands one at a time. The timestamps were 1791015961093, 1791015964097 and 1791015966410 ms. After each run, the hooks attached a PostToolUse note and a PostToolBatch note, each with its own nonce.\n\n| Run | PostToolUse nonce | PostToolBatch nonce |\n|---|---|---|\n| 1 | PostToolUse-cc5e7401 | PostToolBa"}]}
+{"result":"Newest Squeal notes: PostToolUse-1a8851de and PostToolBatch-7ff34aea.\n\nSummary: I ran all three commands one at a time. The timestamps were 1791015961093, 1791015964097 and 1791015966410 ms. After each run, the hooks attached a PostToolUse note and a PostToolBatch note, each with its own nonce.\n\n| Run | PostToolUse nonce | PostToolBatch nonce |\n|---|---|---|\n| 1 | PostToolUse-cc5e7401 | PostToolBatch-ff8e4c70 |\n| 2 | PostToolUse-5008b46e | PostToolBatch-af2733ff |\n| 3 | PostToolUse-1a8851de | PostToolBatch-7ff34aea |\n\nEach note's issue time came a little after the matching `end_ms`. For run 1 that was 82 ms for PostToolUse and 191 ms for PostToolBatch.","turns":4,"ms":12806}

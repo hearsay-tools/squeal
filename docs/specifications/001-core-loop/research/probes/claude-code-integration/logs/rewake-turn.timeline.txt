@@ -1,0 +1,32 @@
+2026-10-03T08:31:12.719Z [DEBUG] [API REQUEST] /v1/messages source=quota_check
+2026-10-03T08:31:13.068Z [DEBUG] [API REQUEST] /v1/messages source=generate_session_title
+2026-10-03T08:31:13.832Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:16.208Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=380
+2026-10-03T08:31:16.563Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=354
+2026-10-03T08:31:16.570Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2593221
+2026-10-03T08:31:16.629Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:18.824Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=292
+2026-10-03T08:31:18.859Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=36
+2026-10-03T08:31:18.907Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:19.600Z [ERROR] "Hook PostToolUse:Bash (PostToolUse) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake mid-a744d984 at 1791016279598 ms)."
+2026-10-03T08:31:20.813Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=310
+2026-10-03T08:31:20.847Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=34
+2026-10-03T08:31:20.894Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:23.715Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=297
+2026-10-03T08:31:23.750Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=34
+2026-10-03T08:31:23.794Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:25.548Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=299
+2026-10-03T08:31:25.581Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=33
+2026-10-03T08:31:25.623Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:27.544Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=283
+2026-10-03T08:31:27.579Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=35
+2026-10-03T08:31:27.584Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2593487
+2026-10-03T08:31:27.631Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:29.941Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=299
+2026-10-03T08:31:30.605Z [ERROR] "Hook PostToolUse:Bash (PostToolUse) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake long-0d7a0d8f at 1791016290604 ms)."
+2026-10-03T08:31:49.980Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=20038
+2026-10-03T08:31:50.034Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:52.439Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=312
+2026-10-03T08:31:52.477Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=38
+2026-10-03T08:31:52.518Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:31:54.953Z [DEBUG] [API REQUEST] /v1/messages source=prompt_suggestion

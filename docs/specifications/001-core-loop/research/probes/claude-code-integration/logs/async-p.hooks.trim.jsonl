@@ -1,0 +1,1 @@
+{"t_ms":1791016092158,"argv":"slowctx-async","ev":"PostToolUse","session_id":"44ef40f4-8708-45f7-b661-7596f103a9d6","agent_id":null,"agent_type":null,"tool":"Bash","cmd":"echo arm","source":null,"keys":["cwd","duration_ms","effort","hook_event_name","permission_mode","prompt_id","session_id","tool_input","tool_name","tool_response","tool_use_id","transcript_path"]}

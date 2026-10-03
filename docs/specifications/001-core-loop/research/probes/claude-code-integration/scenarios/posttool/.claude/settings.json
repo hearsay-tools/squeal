@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "\"$PROBE_HOOKS/ctx.sh\" PostToolUse" }] }
+    ],
+    "PostToolBatch": [
+      { "hooks": [{ "type": "command", "command": "\"$PROBE_HOOKS/ctx.sh\" PostToolBatch" }] }
+    ]
+  }
+}

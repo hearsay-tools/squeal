@@ -1,0 +1,23 @@
+{"init":{"model":"claude-sonnet-5-5","cc":"2.1.288","tools":["Task","Bash","CronCreate","CronDelete","CronList","DesignSync","Edit","EnterWorktree","ExitWorktree","ListAgents","Monitor","NotebookEdit","PushNotification","Read","RemoteTrigger","ReportFindings","ScheduleWakeup","SendMessage","ShareOnboardingGuide","Skill","TaskStop","ToolSearch","WebFetch","WebSearch","Workflow","Write"]}}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo arm-fast\",\"description\":\"Echo arm-fast\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"Squeal status note: check tests/auth.test.ts went PASS -> FAIL (rewake fast-4220bcc6 at 1791016469996 ms).\n","exit":2,"outcome":"error"}
+{"user":[{"tool_result":"arm-fast","is_error":false}]}
+{"asst":[{"text":"Note 1: Squeal status note says tests/auth.test.ts went PASS -> FAIL (rewake fast-4220bcc6). It's synthetic probe data."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-a\",\"description\":\"Echo step-a\"}"}]}
+{"user":[{"tool_result":"step-a","is_error":false}]}
+{"asst":[{"text":"Note 2: no new Squeal status note after step-a."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo step-b\",\"description\":\"Echo step-b\"}"}]}
+{"user":[{"tool_result":"step-b","is_error":false}]}
+{"asst":[{"text":"Note 3: no new Squeal status note after step-b."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo arm-slow\",\"description\":\"Echo arm-slow\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"Squeal status note: check tests/auth.test.ts went PASS -> FAIL (rewake slow-e209fdf0 at 1791016480763 ms).\n","exit":2,"outcome":"error"}
+{"user":[{"tool_result":"arm-slow","is_error":false}]}
+{"asst":[{"text":"Note 4: Squeal status note says tests/auth.test.ts went PASS -> FAIL (rewake slow-e209fdf0). It's synthetic probe data."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"sleep 10; echo slept\",\"description\":\"Sleep 10 seconds then echo\",\"timeout\":30000}"}]}
+{"sys":"task_started","hook":null,"out":"","exit":null,"outcome":null}
+{"sys":"task_notification","hook":null,"out":"","exit":null,"outcome":null}
+{"user":[{"tool_result":"slept","is_error":false}]}
+{"asst":[{"text":"Note 5: no new Squeal status note after the sleep.\n\n**Summary**\n\n| # | Command | New Squeal note |\n|---|---|---|\n| 1 | `echo arm-fast` | Yes: tests/auth.test.ts PASS -> FAIL (rewake `fast-4220bcc6`, 1791016469996 ms) |\n| 2 | `echo step-a` | None |\n| 3 | `echo step-b` | None |\n| 4 | `echo arm-slow` | Yes: tests/auth.test.ts PASS -> FAIL (rewake `slow-e209fdf0`, 1791016480763 ms) |\n| 5 | `sleep 10; "}]}
+{"result":"Note 5: no new Squeal status note after the sleep.\n\n**Summary**\n\n| # | Command | New Squeal note |\n|---|---|---|\n| 1 | `echo arm-fast` | Yes: tests/auth.test.ts PASS -> FAIL (rewake `fast-4220bcc6`, 1791016469996 ms) |\n| 2 | `echo step-a` | None |\n| 3 | `echo step-b` | None |\n| 4 | `echo arm-slow` | Yes: tests/auth.test.ts PASS -> FAIL (rewake `slow-e209fdf0`, 1791016480763 ms) |\n| 5 | `sleep 10; echo slept` | None |\n\n- The commands ran one at a time, as you asked.\n- Both notes arrived as hook output on the same command that armed them (`rewake.sh fast 3` and `rewake.sh slow 4`). They did not arrive later during the intervening steps or the sleep.\n- The two notes are about the same event, tests/auth.test.ts going PASS -> FAIL, and differ only in rewake ID and timestamp.\n- The timestamps ar","turns":6,"ms":33996}

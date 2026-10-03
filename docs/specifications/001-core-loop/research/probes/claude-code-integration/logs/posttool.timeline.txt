@@ -1,0 +1,18 @@
+2026-10-03T08:25:44.036Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:25:45.613Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:25:58.175Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:25:59.930Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=12
+2026-10-03T08:26:01.111Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=1176
+2026-10-03T08:26:01.205Z [DEBUG] Hook PostToolUse ("$PROBE_HOOKS/ctx.sh" PostToolUse) provided additionalContext (74 chars)
+2026-10-03T08:26:01.308Z [DEBUG] Hook PostToolBatch ("$PROBE_HOOKS/ctx.sh" PostToolBatch) provided additionalContext (76 chars)
+2026-10-03T08:26:01.931Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:26:04.002Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=3
+2026-10-03T08:26:04.103Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=111
+2026-10-03T08:26:04.185Z [DEBUG] Hook PostToolUse ("$PROBE_HOOKS/ctx.sh" PostToolUse) provided additionalContext (74 chars)
+2026-10-03T08:26:04.271Z [DEBUG] Hook PostToolBatch ("$PROBE_HOOKS/ctx.sh" PostToolBatch) provided additionalContext (76 chars)
+2026-10-03T08:26:04.363Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:26:06.260Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=10
+2026-10-03T08:26:06.420Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=161
+2026-10-03T08:26:06.507Z [DEBUG] Hook PostToolUse ("$PROBE_HOOKS/ctx.sh" PostToolUse) provided additionalContext (74 chars)
+2026-10-03T08:26:06.588Z [DEBUG] Hook PostToolBatch ("$PROBE_HOOKS/ctx.sh" PostToolBatch) provided additionalContext (76 chars)
+2026-10-03T08:26:06.667Z [DEBUG] [API REQUEST] /v1/messages source=sdk

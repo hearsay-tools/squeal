@@ -1,0 +1,18 @@
+2026-10-03T08:29:14.207Z [DEBUG] [API REQUEST] /v1/messages source=quota_check
+2026-10-03T08:29:14.234Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2586182
+2026-10-03T08:29:39.279Z [ERROR] "Hook SessionStart:startup (SessionStart) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake sessionstart-9ebc8f25 at 1791016179277 ms)."
+2026-10-03T08:29:39.815Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:29:43.323Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=899
+2026-10-03T08:29:45.315Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=1993
+2026-10-03T08:29:45.391Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=60
+2026-10-03T08:29:45.447Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=56
+2026-10-03T08:29:45.549Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:29:50.006Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2590363
+2026-10-03T08:30:02.029Z [ERROR] "Hook Stop (Stop) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake stop1-efe9970a at 1791016202027 ms)."
+2026-10-03T08:30:02.083Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:30:04.860Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2590929
+2026-10-03T08:30:04.887Z [DEBUG] [API REQUEST] /v1/messages source=prompt_suggestion
+2026-10-03T08:30:16.879Z [ERROR] "Hook Stop (Stop) error: status code 2\nstderr:\nSqueal status note: check tests/auth.test.ts went PASS -> FAIL (rewake stop2-a4918aad at 1791016216878 ms)."
+2026-10-03T08:30:16.921Z [DEBUG] [API REQUEST] /v1/messages source=repl_main_thread
+2026-10-03T08:30:19.440Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2591362
+2026-10-03T08:30:19.471Z [DEBUG] [API REQUEST] /v1/messages source=prompt_suggestion

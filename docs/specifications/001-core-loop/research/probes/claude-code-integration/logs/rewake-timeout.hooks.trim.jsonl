@@ -1,0 +1,2 @@
+{"t_ms":1791016509610,"argv":"rewake-ok","ev":"SessionStart","session_id":"02c95813-063d-41ce-8fde-8da09a46e5bf","agent_id":null,"agent_type":null,"tool":null,"cmd":null,"source":"startup","keys":["cwd","hook_event_name","model","scratchpad_dir","session_id","source","transcript_path"]}
+{"t_ms":1791016509616,"argv":"rewake-timedout","ev":"SessionStart","session_id":"02c95813-063d-41ce-8fde-8da09a46e5bf","agent_id":null,"agent_type":null,"tool":null,"cmd":null,"source":"startup","keys":["cwd","hook_event_name","model","scratchpad_dir","session_id","source","transcript_path"]}

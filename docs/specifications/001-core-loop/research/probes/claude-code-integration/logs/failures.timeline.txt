@@ -1,0 +1,21 @@
+2026-10-03T08:33:41.332Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:33:45.946Z [DEBUG] Hook PreToolUse:Bash ["$PROBE_HOOKS/hang.sh"] timed out after 3000ms
+2026-10-03T08:33:45.946Z [DEBUG] Hook PreToolUse:Bash (PreToolUse) cancelled:
+2026-10-03T08:33:45.956Z [INFO] Slow PreToolUse hooks: 3031ms for Bash (1 hooks)
+2026-10-03T08:33:45.962Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=6
+2026-10-03T08:33:46.316Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=354
+2026-10-03T08:33:46.373Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:33:48.340Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=3
+2026-10-03T08:33:48.366Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=26
+2026-10-03T08:33:48.372Z [ERROR] "Hook PostToolUse:Bash (PostToolUse) error: status code 127\nstderr:\n/bin/sh: 1: ~/projects/squeal/.ai/cezar/worktrees/5e9d2868-32f1-4d87-b05f-b6afcf08dc59/docs/specifications/001-core-loop/research/probes/claude-cod
+2026-10-03T08:33:48.403Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:33:49.684Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:33:49.708Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=24
+2026-10-03T08:33:49.721Z [ERROR] "Hook PostToolUse:Bash (PostToolUse) error: status code 1\nstderr:\nsqueal: daemon socket refused connection"
+2026-10-03T08:33:49.744Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:33:51.130Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:33:51.153Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=23
+2026-10-03T08:33:51.740Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:33:53.124Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:33:53.147Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=23
+2026-10-03T08:33:53.186Z [DEBUG] [API REQUEST] /v1/messages source=sdk

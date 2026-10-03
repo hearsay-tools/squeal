@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": [ { "hooks": [ { "type": "command", "command": "\"$PROBE_HOOKS/ctx.sh\" SessionStart" } ] } ],
+    "SubagentStart": [ { "hooks": [ { "type": "command", "command": "\"$PROBE_HOOKS/ctx.sh\" SubagentStart" } ] } ],
+    "SubagentStop": [ { "hooks": [ { "type": "command", "command": "\"$PROBE_HOOKS/log.sh\" SubagentStop >/dev/null" } ] } ],
+    "PostToolUse": [ { "matcher": "Bash", "hooks": [ { "type": "command", "command": "\"$PROBE_HOOKS/ctx.sh\" PostToolUse" } ] } ],
+    "PostToolBatch": [ { "hooks": [ { "type": "command", "command": "\"$PROBE_HOOKS/ctx.sh\" PostToolBatch" } ] } ],
+    "Stop": [ { "hooks": [ { "type": "command", "command": "\"$PROBE_HOOKS/log.sh\" Stop >/dev/null" } ] } ]
+  }
+}

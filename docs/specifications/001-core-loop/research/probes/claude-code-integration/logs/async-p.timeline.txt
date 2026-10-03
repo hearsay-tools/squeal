@@ -1,0 +1,25 @@
+2026-10-03T08:28:09.299Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:11.541Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=3
+2026-10-03T08:28:11.934Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=392
+2026-10-03T08:28:11.955Z [DEBUG] Hooks: Config-based async hook, backgrounding process async_hook_2580505
+2026-10-03T08:28:12.158Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:13.791Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:28:13.816Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=26
+2026-10-03T08:28:13.840Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:15.540Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:28:15.565Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=25
+2026-10-03T08:28:15.575Z [DEBUG] Hooks: Found sync response from async_hook_2580505: {"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"Squeal status note: async async-b6418d41 at 1791016095166 ms."}}
+2026-10-03T08:28:15.577Z [DEBUG] Hooks: Creating attachment for async_hook_2580505 (PostToolUse:Bash): {"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"Squeal status note: async async-b6418d41 at 1791016095166 ms."}}
+2026-10-03T08:28:15.591Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:18.633Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:28:18.666Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=33
+2026-10-03T08:28:18.713Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:20.273Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:28:20.298Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=25
+2026-10-03T08:28:20.321Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:22.138Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=4
+2026-10-03T08:28:28.191Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=6052
+2026-10-03T08:28:28.218Z [DEBUG] [API REQUEST] /v1/messages source=sdk
+2026-10-03T08:28:29.941Z [INFO] [Stall] tool_dispatch_start tool=Bash  permissionDecisionMs=2
+2026-10-03T08:28:29.965Z [INFO] [Stall] tool_dispatch_end tool=Bash  outcome=ok durationMs=24
+2026-10-03T08:28:29.988Z [DEBUG] [API REQUEST] /v1/messages source=sdk

@@ -1,0 +1,27 @@
+{"ts":"2026-10-03T08:31:13.037Z","type":"user","queued":null,"msg":"This scratch folder is a probe for Squeal, a test-status tool whose hooks may attach synthetic status notes; they are test data, do not investigate them. Run these Bash commands one at a time, never in parallel: (1) echo arm-mid (2) echo step-a (3) echo step-b (4) echo step-c (5) echo step-d (6) echo arm-long (7) sleep 20; echo slept (8) echo step-e. After each command, write a one-line note of any new Squeal status note you received, then continue. Finish with a short summary."}
+{"ts":"2026-10-03T08:31:15.820Z","type":"assistant","queued":null,"msg":["TOOL_USE echo arm-mid"]}
+{"ts":"2026-10-03T08:31:16.572Z","type":"user","queued":null,"msg":["RESULT arm-mid"]}
+{"ts":"2026-10-03T08:31:18.333Z","type":"assistant","queued":null,"msg":["Note: no new Squeal status note after command 1 (only a tool-availability update, not a Squeal note)."]}
+{"ts":"2026-10-03T08:31:18.526Z","type":"assistant","queued":null,"msg":["TOOL_USE echo step-a"]}
+{"ts":"2026-10-03T08:31:18.863Z","type":"user","queued":null,"msg":["RESULT step-a"]}
+{"ts":"2026-10-03T08:31:20.237Z","type":"assistant","queued":null,"msg":["Note: no new Squeal status note after step-a."]}
+{"ts":"2026-10-03T08:31:20.496Z","type":"assistant","queued":null,"msg":["TOOL_USE echo step-b"]}
+{"ts":"2026-10-03T08:31:20.850Z","type":"user","queued":null,"msg":["RESULT step-b"]}
+{"ts":"2026-10-03T08:31:19.600Z","type":"attachment","queued":"<task-notification>\n<summary>Stop hook feedback</summary>\n</task-notification>\n<system-reminder>\nStop hook blocking error from command \"PostToolUse:Bash\": Squeal status note: check tests/auth.test.ts went PASS -> FAIL (rewake mid-a744d984 at 1791016279598 ms).\n\n</system-reminder>","msg":null}
+{"ts":"2026-10-03T08:31:23.202Z","type":"assistant","queued":null,"msg":["Note: Squeal status note: tests/auth.test.ts went PASS -> FAIL (rewake mid-a744d984). It's test data, so I'm not investigating."]}
+{"ts":"2026-10-03T08:31:23.414Z","type":"assistant","queued":null,"msg":["TOOL_USE echo step-c"]}
+{"ts":"2026-10-03T08:31:23.753Z","type":"user","queued":null,"msg":["RESULT step-c"]}
+{"ts":"2026-10-03T08:31:24.961Z","type":"assistant","queued":null,"msg":["Note: no new Squeal status note after step-c."]}
+{"ts":"2026-10-03T08:31:25.245Z","type":"assistant","queued":null,"msg":["TOOL_USE echo step-d"]}
+{"ts":"2026-10-03T08:31:25.584Z","type":"user","queued":null,"msg":["RESULT step-d"]}
+{"ts":"2026-10-03T08:31:26.971Z","type":"assistant","queued":null,"msg":["Note: no new Squeal status note after step-d."]}
+{"ts":"2026-10-03T08:31:27.257Z","type":"assistant","queued":null,"msg":["TOOL_USE echo arm-long"]}
+{"ts":"2026-10-03T08:31:27.585Z","type":"user","queued":null,"msg":["RESULT arm-long"]}
+{"ts":"2026-10-03T08:31:29.198Z","type":"assistant","queued":null,"msg":["Note: no new Squeal status note after arm-long."]}
+{"ts":"2026-10-03T08:31:29.637Z","type":"assistant","queued":null,"msg":["TOOL_USE sleep 20; echo slept"]}
+{"ts":"2026-10-03T08:31:49.984Z","type":"user","queued":null,"msg":["RESULT slept"]}
+{"ts":"2026-10-03T08:31:30.605Z","type":"attachment","queued":"<task-notification>\n<summary>Stop hook feedback</summary>\n</task-notification>\n<system-reminder>\nStop hook blocking error from command \"PostToolUse:Bash\": Squeal status note: check tests/auth.test.ts went PASS -> FAIL (rewake long-0d7a0d8f at 1791016290604 ms).\n\n</system-reminder>","msg":null}
+{"ts":"2026-10-03T08:31:51.927Z","type":"assistant","queued":null,"msg":["Note: Squeal status note: tests/auth.test.ts went PASS -> FAIL (rewake long-0d7a0d8f). It's test data, so I'm not investigating."]}
+{"ts":"2026-10-03T08:31:52.121Z","type":"assistant","queued":null,"msg":["TOOL_USE echo step-e"]}
+{"ts":"2026-10-03T08:31:52.481Z","type":"user","queued":null,"msg":["RESULT step-e"]}
+{"ts":"2026-10-03T08:31:54.880Z","type":"assistant","queued":null,"msg":["Note: no new Squeal status note after step-e.\n\n**Summary:** I ran all eight commands one at a time, in order. Each one finished with the expected output: arm-mi"]}

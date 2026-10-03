@@ -1,0 +1,27 @@
+{"init":{"model":"claude-sonnet-5-5","cc":"2.1.288","tools":["Task","Bash","CronCreate","CronDelete","CronList","DesignSync","Edit","EnterWorktree","ExitWorktree","ListAgents","Monitor","NotebookEdit","PushNotification","Read","RemoteTrigger","ReportFindings","ScheduleWakeup","SendMessage","ShareOnboardingGuide","Skill","TaskStop","ToolSearch","WebFetch","WebSearch","Workflow","Write"]}}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo hang\",\"description\":\"Print \\\"hang\\\"\"}"}]}
+{"sys":"hook_started","hook":"PreToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PreToolUse:Bash","out":"","exit":1,"outcome":"cancelled"}
+{"user":[{"tool_result":"hang","is_error":false}]}
+{"asst":[{"text":"(1) `echo hang` ran and printed \"hang\". I saw no hook message."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo missing\",\"description\":\"Print \\\"missing\\\"\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"/bin/sh: 1: <probe>/hooks/does-not-exist.sh: not found\n","exit":127,"outcome":"error"}
+{"user":[{"tool_result":"missing","is_error":false}]}
+{"asst":[{"text":"(2) `echo missing` ran and printed \"missing\". I saw no hook message."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo exit1\",\"description\":\"Print \\\"exit1\\\"\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"squeal: daemon socket refused connection\n","exit":1,"outcome":"error"}
+{"user":[{"tool_result":"exit1","is_error":false}]}
+{"asst":[{"text":"(3) `echo exit1` ran and printed \"exit1\". I saw no hook message."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo leaky\",\"description\":\"Print \\\"leaky\\\"\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"","exit":0,"outcome":"success"}
+{"user":[{"tool_result":"leaky","is_error":false}]}
+{"asst":[{"text":"(4) `echo leaky` ran and printed \"leaky\". I saw no hook message."}]}
+{"asst":[{"tool_use":"Bash","input":"{\"command\":\"echo clean\",\"description\":\"Print \\\"clean\\\"\"}"}]}
+{"sys":"hook_started","hook":"PostToolUse:Bash","out":"","exit":null,"outcome":null}
+{"sys":"hook_response","hook":"PostToolUse:Bash","out":"","exit":0,"outcome":"success"}
+{"user":[{"tool_result":"clean","is_error":false}]}
+{"asst":[{"text":"(5) `echo clean` ran and printed \"clean\". I saw no hook message.\n\n**Summary**\n- All five commands ran one at a time, in order, and each printed its own name.\n- I saw no hook output on any of them: no blocking, no error, and no extra text.\n- Hooks may be configured and silent in this session, but nothing visible shows that any fired. The scenario names (hang, missing, exit1, leaky) suggest hook fai"}]}
+{"result":"(5) `echo clean` ran and printed \"clean\". I saw no hook message.\n\n**Summary**\n- All five commands ran one at a time, in order, and each printed its own name.\n- I saw no hook output on any of them: no blocking, no error, and no extra text.\n- Hooks may be configured and silent in this session, but nothing visible shows that any fired. The scenario names (hang, missing, exit1, leaky) suggest hook failure modes. Here they all behaved like the clean case.","turns":6,"ms":14401}

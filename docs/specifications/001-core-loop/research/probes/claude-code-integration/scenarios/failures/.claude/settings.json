@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [ { "type": "command", "if": "Bash(echo hang*)", "command": "\"$PROBE_HOOKS/hang.sh\"", "timeout": 3 } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Bash", "hooks": [
+        { "type": "command", "if": "Bash(echo missing*)", "command": "\"$PROBE_HOOKS/does-not-exist.sh\"" },
+        { "type": "command", "if": "Bash(echo exit1*)", "command": "\"$PROBE_HOOKS/exit1.sh\"" },
+        { "type": "command", "if": "Bash(echo leaky*)", "command": "\"$PROBE_HOOKS/leaky-spawn.sh\"" },
+        { "type": "command", "if": "Bash(echo clean*)", "command": "\"$PROBE_HOOKS/clean-spawn.sh\"" }
+      ] }
+    ]
+  }
+}
