@@ -1,0 +1,6 @@
+{"backend":"fswatch","copiedFilesReportedOf300":300,"laterWriteReported":true,"laterEvents":[["change","copied/m7/x/f7.ts"],["change","copied/m7/x/f7.ts"]]}
+{"backend":"chokidar","copiedFilesReportedOf300":300,"laterWriteReported":true,"laterEvents":[["change","copied/m7/x/f7.ts"]]}
+{"backend":"parcel","copiedFilesReportedOf300":290,"laterWriteReported":true,"laterEvents":[["update","copied/m7/x/f7.ts"]]}
+{"backend":"fswatch","copiedFilesReportedOf300":300,"laterWriteReported":true,"laterEvents":[["change","copied/m7/x/f7.ts"],["change","copied/m7/x/f7.ts"]]}
+{"backend":"chokidar","copiedFilesReportedOf300":300,"laterWriteReported":true,"laterEvents":[["change","copied/m7/x/f7.ts"]]}
+{"backend":"parcel","copiedFilesReportedOf300":280,"laterWriteReported":true,"laterEvents":[["update","copied/m7/x/f7.ts"]]}

@@ -1,0 +1,3 @@
+fswatch  ["change a/f.ts","change a/f.ts","change a/f.ts","--- plain write after atomic save ---"]
+chokidar ["change a/f.ts","--- plain write after atomic save ---","change a/f.ts"]
+parcel   ["create a/.f.ts.tmp","delete a/.f.ts.tmp","create a/f.ts","--- plain write after atomic save ---","update a/f.ts"]

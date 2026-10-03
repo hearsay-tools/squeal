@@ -1,0 +1,3 @@
+{"kind":"sqlite","writers":4,"readers":4,"expectedRows":40000,"finalRows":40000,"writerTxP50":0.19,"writerTxP99":7.34,"writerErrors":0,"reads":16916,"readP50":0.45,"readP99":19.09,"readErrors":0}
+{"kind":"json-lock","writers":4,"readers":4,"expectedRows":40000,"finalRows":40000,"writerTxP50":94.37,"writerTxP99":730.1,"writerErrors":0,"reads":875,"readP50":15.53,"readP99":53.54,"readErrors":0}
+{"kind":"json-nolock","writers":4,"readers":4,"expectedRows":40000,"finalRows":10000,"writerTxP50":27.04,"writerTxP99":65.42,"writerErrors":0,"reads":1042,"readP50":14.41,"readP99":35.02,"readErrors":0}

@@ -1,0 +1,3 @@
+{"backend":"fswatch","a":{"nestedWorktreeEvents":333,"totalEvents":345,"gitFileSeen":true},"b":{"rootGoneEvents":["rename"],"errors":[],"total":2,"existsAfter":false}}
+{"backend":"chokidar","a":{"nestedWorktreeEvents":332,"totalEvents":334,"gitFileSeen":false},"b":{"rootGoneEvents":["unlinkDir"],"errors":[],"total":332,"existsAfter":false}}
+{"backend":"parcel","a":{"nestedWorktreeEvents":0,"totalEvents":1,"gitFileSeen":false},"b":{"rootGoneEvents":["delete"],"errors":[],"total":332,"existsAfter":false}}

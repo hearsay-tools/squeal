@@ -1,0 +1,111 @@
+{
+ "backend": "parcel",
+ "node": "v24.21.0",
+ "platform": "linux",
+ "SRC_DIRS": 500,
+ "IGNORED_DIRS": 3000,
+ "readyMs": 69.6,
+ "inotifyWatches": 553,
+ "rssMB": 72,
+ "scenarios": [
+  {
+   "name": "single write",
+   "events": 2,
+   "firstEventMs": 23.9,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "update src/d1/s1/f.ts",
+    "update src/d1/s1/f.ts"
+   ]
+  },
+  {
+   "name": "atomic save (write tmp + rename over)",
+   "events": 3,
+   "firstEventMs": 2.9,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "create src/d2/s2/.f.ts.swp",
+    "delete src/d2/s2/.f.ts.swp",
+    "create src/d2/s2/f.ts"
+   ]
+  },
+  {
+   "name": "mkdir -p then write immediately",
+   "events": 5,
+   "firstEventMs": 0.6,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "create src/new",
+    "create src/new/a",
+    "create src/new/a/b",
+    "create src/new/a/b/c"
+   ]
+  },
+  {
+   "name": "1000-file rewrite storm (checkout-like)",
+   "events": 507,
+   "firstEventMs": 297.8,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "update src/d0/s0/f.ts",
+    "update src/d1/s1/f.ts",
+    "update src/d2/s2/f.ts",
+    "update src/d3/s3/f.ts"
+   ]
+  },
+  {
+   "name": "rename dir with files, then write inside new name",
+   "events": 2,
+   "firstEventMs": 3.5,
+   "missingCount": 1,
+   "missingSample": [
+    "src/d3-moved/s3/f.ts"
+   ],
+   "sample": [
+    "delete src/d3",
+    "create src/d3-moved"
+   ]
+  },
+  {
+   "name": "rm -rf dir",
+   "events": 22,
+   "firstEventMs": 58.1,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "update src/d3/s3/f.ts",
+    "delete src/d4",
+    "delete src/d4/s104",
+    "delete src/d4/s104/f.ts"
+   ]
+  },
+  {
+   "name": "write in ignored node_modules (expect 0)",
+   "events": 0,
+   "firstEventMs": null,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": []
+  },
+  {
+   "name": "write in nested worktree (expect 0)",
+   "events": 0,
+   "firstEventMs": null,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": []
+  },
+  {
+   "name": "write in .git (expect 0)",
+   "events": 0,
+   "firstEventMs": null,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": []
+  }
+ ]
+}

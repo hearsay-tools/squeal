@@ -1,0 +1,114 @@
+{
+ "backend": "fswatch",
+ "node": "v24.21.0",
+ "platform": "linux",
+ "SRC_DIRS": 5000,
+ "IGNORED_DIRS": 20000,
+ "readyMs": 1447.3,
+ "inotifyWatches": 50359,
+ "rssMB": 295,
+ "scenarios": [
+  {
+   "name": "single write",
+   "events": 2,
+   "firstEventMs": 0.8,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "change src/d1/s1/f.ts",
+    "change src/d1/s1/f.ts"
+   ]
+  },
+  {
+   "name": "atomic save (write tmp + rename over)",
+   "events": 6,
+   "firstEventMs": 0.4,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "rename src/d2/s2/.f.ts.swp",
+    "change src/d2/s2/.f.ts.swp",
+    "change src/d2/s2/f.ts",
+    "rename src/d2/s2/.f.ts.swp"
+   ]
+  },
+  {
+   "name": "mkdir -p then write immediately",
+   "events": 6,
+   "firstEventMs": 1,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "rename src/new",
+    "rename src/new/a",
+    "rename src/new/a/b",
+    "rename src/new/a/b/c"
+   ]
+  },
+  {
+   "name": "1000-file rewrite storm (checkout-like)",
+   "events": 1998,
+   "firstEventMs": 65,
+   "missingCount": 1,
+   "missingSample": [
+    "src/d2/s2/f.ts"
+   ],
+   "sample": [
+    "change src/d0/s0/f.ts",
+    "change src/d0/s0/f.ts",
+    "change src/d1/s1/f.ts",
+    "change src/d1/s1/f.ts"
+   ]
+  },
+  {
+   "name": "rename dir with files, then write inside new name",
+   "events": 204,
+   "firstEventMs": 0.5,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "rename src/d3-moved",
+    "rename src/d3-moved/s1003",
+    "rename src/d3-moved/s1003/f.ts",
+    "rename src/d3-moved/s103"
+   ]
+  },
+  {
+   "name": "rm -rf dir",
+   "events": 201,
+   "firstEventMs": 5.9,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": [
+    "rename src/d4/s104/f.ts",
+    "rename src/d4/s104",
+    "rename src/d4/s1104/f.ts",
+    "rename src/d4/s1104"
+   ]
+  },
+  {
+   "name": "write in ignored node_modules (expect 0)",
+   "events": 0,
+   "firstEventMs": null,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": []
+  },
+  {
+   "name": "write in nested worktree (expect 0)",
+   "events": 0,
+   "firstEventMs": null,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": []
+  },
+  {
+   "name": "write in .git (expect 0)",
+   "events": 0,
+   "firstEventMs": null,
+   "missingCount": 0,
+   "missingSample": [],
+   "sample": []
+  }
+ ]
+}
