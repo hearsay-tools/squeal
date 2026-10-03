@@ -1,0 +1,199 @@
+# 001 Core validation loop
+
+Stage: draft for review. Evidence: the four documents under `research/`. Decisions that span specs: ADR 0001, 0002, 0003.
+
+## Problem
+
+Coding agents validate synchronously or not at all. They forget to run tests, run the wrong command, miss failures that were already there, and discover at the end of a task that an early edit broke something a later edit built on. Watch-mode tools exist for humans but not in a form an agent harness can consume: event-driven, revision-aware, machine-readable, and honest about what has and has not been checked.
+
+Squeal v1 proves the interaction model from `docs/vision.md`: push transitions, pull state. One test ecosystem (Vitest), one harness (Claude Code), one repository with any number of git worktrees.
+
+## Goals
+
+Each goal is testable.
+
+1. An agent editing a Vitest project learns about a `PASS -> FAIL` transition within one tool call of the result being known, inside the same turn, without running tests itself.
+2. The matching `FAIL -> PASS` arrives the same way. Nothing arrives for `PASS -> PASS` or for a failure that is still failing with the same diagnostic.
+3. Everything the agent is told is true at the moment it is told: a delivered state is the current known state, labelled with the revision it was validated at and whether the current revision is still pending for that check.
+4. A new worktree of a repository that already has a baseline inherits every result whose inputs are byte-identical, without running them, and reports them as inherited.
+5. `squeal status` answers, for the current worktree and revision: known failures, counts of checks current, pending, stale and unknown, whether a full-suite run exists for this revision, and whether the daemon is alive.
+6. No Squeal hook ever blocks the agent for more than its configured timeout (2 s default), and a dead or hung daemon degrades to "status unavailable", never to a stall.
+7. One shared store per repository serves several worktrees and several agents at once without lost writes or corruption.
+
+## Non-goals
+
+- Per-test closures from runtime coverage. V1 closures are per test file and static.
+- Runtime file reads, environment variables and network as dependency inputs. The closure is declared incomplete by construction.
+- Any check type other than Vitest tests. pytest is the second runner, in a later spec.
+- Any harness other than Claude Code. The adapter interface is kept harness-neutral; other adapters are later specs.
+- Background re-verification of inherited passes. Recorded as an open question.
+- Dashboards, remote or networked stores, distributed workers.
+- Idle wake-up in Claude Code `-p` mode. Not possible without blocking the agent (research, claude-code-integration §4).
+- macOS verification. The design accounts for macOS findings from source and docs, but nothing in v1 was run there.
+
+## Design
+
+### D1. Workspace, repository, store
+
+A **worktree** is one git working tree: the nearest ancestor of a path that is a git top level. Every worktree has its own daemon, revision counter, Vitest instance and file hash cache. A directory below a worktree root that contains its own `.git` entry is another worktree, or a clone or submodule, and is opaque to the parent: never watched, never validated.
+
+A **repository** is the set of worktrees sharing one git common directory. The **store** is `<git-common-dir>/squeal/`. In a normal repository that is `<main worktree>/.git/squeal/`, so it lives in the main worktree, is never watched, and cannot be committed. Layout:
+
+- `store.sqlite`: the shared database (D8).
+- `locks/<worktree-hash>.sqlite`: one exclusive-lock database per worktree, the daemon singleton (D10).
+- `runs/<run-id>/`: full runner output per run, referenced from results, pruned with them.
+
+Hook scripts resolve the common directory without spawning git: if `<root>/.git` is a directory, that is it; if it is a file, follow its `gitdir:` entry and then `<gitdir>/commondir`. The daemon uses `git rev-parse --path-format=absolute --git-common-dir` and records the result.
+
+The unix socket for liveness is `<runtime dir>/squeal-<worktree-hash>.sock`, never under the worktree, because socket paths are limited to 104 bytes on macOS and nested worktree paths exceed that.
+
+### D2. Watcher and revisions
+
+The watcher sits behind one internal interface with two backends: chokidar 5 on Linux, @parcel/watcher on macOS. The Linux choice is the only backend that passed every correctness scenario in research; the macOS choice avoids per-file descriptors and reports dropped events. Node's recursive `fs.watch` is excluded: it loses writes after an atomic save.
+
+Watcher events are hints. Each debounced batch (100 ms quiet, 500 ms maximum) is reconciled: every reported path is re-stat'ed and, if `mtime`, `size` or inode changed, re-hashed with the git blob hash. Paths whose hash is unchanged are dropped. If anything remains, the worktree's **revision** increments by one and the revision records the changed paths with old and new hashes, the time, `HEAD`, and whether the tree is dirty. A revision is never created by a touch or a no-op save.
+
+Ignore rules come from git, in three layers: at watch time, exclude `.git`, nested worktree roots, and the output of `git ls-files --others --ignored --exclude-standard --directory`; at batch time, run the paths through one `git check-ignore --stdin`; recompute the watch-time list when any `.gitignore` changes or a `.git` entry appears under the root. Gitignored files that appear in a known closure (generated code) are added to the stat cache and watched individually, so a change to them creates a revision like any other input, even though the ignored tree around them is not watched.
+
+A reconciliation pass runs every 30 s when idle and on daemon start: `git status --porcelain` plus a re-stat of every file in the hash cache. Anything the watcher missed becomes a revision then. This bounds the damage of a lost event to latency, never to a false "current".
+
+### D3. Fingerprints: file hashes, environment hash, check keys
+
+Results are keyed by what produced them, never by where or when. The commit SHA, revision and worktree are provenance, stored beside each result and shown to agents, never part of the key. (ADR 0002; research, result-fingerprinting-prior-art R1 to R4.)
+
+- **File hash**: the git blob id of the bytes on disk, `sha1("blob <len>\0" + bytes)` (SHA-256 in `objectFormat=sha256` repositories). It is read from the git index only when git reports the file clean and no `eol`, `text` or `filter` attribute applies to it; otherwise the bytes are hashed. One definition everywhere.
+- **Environment hash**, per Vitest project per worktree: Squeal version and runner-adapter version, Vitest and Node versions, platform and arch, the resolved Vitest config, the contents of the config file and its `configFileDependencies`, the closure of every `setupFiles` and `globalSetup` entry, the installed-dependency fingerprint (installed lockfile metadata under `node_modules` plus `patches/`), allow-listed environment variables, and extra inputs declared in policy.
+- **Check key**, per test file: `sha256(envHash, projectName, relative test path, sorted (path, fileHash) over the closure)`. All tests in a file share its key.
+- **Closure** of a test file: the test file, its transitive static and dynamic project imports from Vitest's transform graph (D4), its snapshot file(s), and any policy-declared `inputs` globs that match. `node_modules` is excluded from the closure and covered by the environment hash. Every closure carries `complete: false` in v1; status reports the closure method as "static imports plus declared inputs".
+
+Incremental maintenance follows Bazel, Nx and the git index: a stat cache `path -> (mtime, ctime, size, inode, hash)`, a reverse index `path -> test files`, and re-computation only of the keys that reference a changed path. Adding or deleting a file re-resolves closures of test files that import from the affected directory, because module resolution can change without any closure file's content changing.
+
+### D4. Vitest runner adapter
+
+One `createVitest('test', { root, watch: false, reporters: [squealReporter], update: 'none', includeTaskLocation: true })` per worktree, then `standalone()`. Vitest's own watcher is never used. The adapter exposes, through the runner interface that later adapters will implement:
+
+- `invalidate(paths)`: calls `invalidateFile` for each path; calls `clearSpecificationsCache()` when a path matching a test glob was added or removed; recreates the instance when the config file or one of its dependencies changed (about 50 to 200 ms).
+- `affected(changedPaths) -> test files`: the `related` walk (`config.related` plus `getRelevantTestSpecifications()`), which transforms without executing and costs about 100 ms cold and 2 ms warm on 50 files. Squeal adds what Vitest's walk misses: all test files of a project when a setup file, its closure, `globalSetup`, or the config changed; the owning test file when a `.snap` changed.
+- `closure(testFile) -> paths`: from the same transform graph, plus the additions in D3.
+- `enumerate(testFile) -> check ids`: `parseSpecifications`, static, about 35 ms for 50 files. `test.each` appears as one templated entry until the file has run.
+- `run(testFiles) -> results`: `runTestSpecifications`. Results come only from the reporter hooks `onTestCaseResult`, `onTestModuleEnd` and `onTestRunEnd`, never from the cumulative `TestRunResult`, which includes stale modules. File-level errors (import or syntax failures) become a `fail` for every check previously known in that file plus one file-level check. `process.exitCode` is reset after each run.
+
+Check identity is `(project name, relative test path, fullName)`. Vitest's positional ids are used only within one run. Stack paths are relativized before storage. Per-run floor is 110 to 350 ms even for one file, so changes are batched per revision and runs are issued in tiers (D5).
+
+### D5. Scheduler and result validity
+
+Validity is per check, not per run. A stored result is **current** for a check in a worktree at a revision when its key equals the key computed for that check at that revision. Otherwise the check is **stale** (an older result exists under another key) or **unknown** (no result at all). **Pending** means a run that will produce a result for the current key is queued or running.
+
+On each new revision the daemon:
+
+1. invalidates changed paths in the runner and updates the stat cache and reverse index;
+2. computes the affected test files and recomputes their keys;
+3. looks each new key up in the store. A hit is promoted to current for this worktree with its provenance intact. No run is needed. This is the inheritance path for new worktrees and the de-duplication path between worktrees that have identical files;
+4. orders the misses: checks whose last known state is `fail` (including inherited failures), then test files directly importing a changed path, then transitively affected files, then never-run files;
+5. runs them in tiers of a configurable size (default 4 test files). Between tiers it re-plans against the latest revision. A tier in flight is never cancelled by a new revision.
+
+After each tier, every closure path of the tier's test files is re-stat'ed. If any hash differs from the inputs of the key the tier ran under, that file's results are discarded as unreliable and the file is re-queued. A result is stored only under a key whose inputs were stable for the whole run.
+
+Explicit checkpoints: `squeal run --all` queues every test file whose key has no result, or every test file when `--force` is given. On daemon start in a worktree, the baseline is a lookup (step 3 for all test files) followed by a run of the misses, or lookup only, per policy.
+
+### D6. State, transitions and delivery views
+
+The store holds the latest result per `(check id, key)` and the history needed for provenance. For each worktree and check the daemon derives the **known state**: `pass`, `fail`, `unknown`, with `current | stale | pending` validity, the revision and commit it was observed at, its origin (`own` or `inherited from <worktree> at <commit>`), duration, location, a concise failure summary, and a **diagnostic fingerprint** (normalized first error line plus source location).
+
+A **transition** is recorded, per worktree, whenever a new result changes a check's known state in the ways the vision lists: first-seen fail, `pass -> fail`, `fail -> pass`, `fail -> fail` with a changed fingerprint, runner-crash to `unknown`. Transitions are the audit log. Agents never read them directly.
+
+Delivery is a diff against a **consumer view**. A consumer is `(worktree, session id, agent id or "main")`. Its view is the state and fingerprint last told to it for each check. On registration the view is seeded with the current known state of every check, so pre-existing and inherited failures are reported once in the registration header as known failures, not later as transitions. Failures first observed by the baseline run after registration are delivered once, in a batch labelled as baseline findings. At delivery time the daemon or hook computes the delta between the view and the current known states, keeps only notable differences (the transition kinds above, evaluated between what was told and what is known now), writes the result into the view, and returns the delta. A pass never told to anyone is written into the view silently. A check that broke and recovered between two deliveries produces nothing.
+
+Every delivered message carries a header: the worktree's current revision, how many checks are current, pending, stale and unknown at that revision, and whether a full-suite result exists for it. Failures come first. The message is capped at 10,000 characters; overflow is summarized by count with a pointer to `squeal status`. Wording is factual, never imperative: hooks carry no user authority and models do not follow instructions in them (research, claude-code-integration §2).
+
+### D7. Status
+
+`squeal status` and `squeal status --json` read the store directly and need no daemon. The snapshot contains: worktree root, revision, `HEAD` and dirty flag, daemon liveness and last heartbeat, known failures with fingerprint and location, counts of current / pending / stale / unknown checks, how many current results are inherited and from where, whether a full-suite result exists for this revision and at which revision the last one completed, the closure method, and store schema version. The human rendering is a separate formatter that reproduces the vision's example. `squeal why <check>` prints the full history and provenance of one check and the path to its last run log.
+
+### D8. Shared store
+
+SQLite through `node:sqlite` (Node 22.13 or later; `--disable-warning=ExperimentalWarning` until Node 24 is the floor). WAL mode, `synchronous=NORMAL`, a busy timeout on every connection, short `BEGIN IMMEDIATE` write transactions, schema version in `user_version` with transactional migrations. Research measured 0 lost writes and 0 corruptions under 4 writers, 4 readers and 20 hard kills, with 0.45 ms median reads; JSON lost 75% of updates without a lock and was about 500 times slower with one.
+
+Tables: `worktrees`, `revisions`, `file_hashes`, `test_files` (with the newest closure path list, stored once per test file), `checks`, `results` (keyed by check and key), `runs`, `transitions`, `consumers` and `consumer_views`, `meta`. Failure text is deduplicated by fingerprint.
+
+Pruning: keep every result whose key is current in any live worktree plus the newest result per check on the main worktree; drop other keys after 7 days and everything owned by removed worktrees; a size cap with LRU eviction as a backstop. Expected steady state for 5,000 tests at 50 revisions a day is about 40 MB.
+
+A daemon that finds a `user_version` newer than it understands exits and leaves a status entry saying so. Hooks reading a newer schema report "status unavailable, store version newer than this Squeal".
+
+### D9. Claude Code adapter
+
+Shipped as a Claude Code plugin in this repository (ADR 0003). `squeal init` adds the marketplace and the `enabledPlugins` entry to project settings and writes `squeal.config.json` if absent. It never writes raw hook commands into user-owned settings.
+
+Plugin contents:
+
+- `hooks/hooks.json` with every hook `timeout: 2` and scripts under `${CLAUDE_PLUGIN_ROOT}`:
+  - `SessionStart`: ensure the daemon (D10), register the consumer, inject the status header. If interactive (`CLAUDE_CODE_SESSION_ATTENDED=1`, undocumented, guarded), arm the idle waiter.
+  - `PostToolBatch`: deliver the delta for this consumer. Primary push channel. Verified to reach the model before its next step in the same turn; budget 80 ms p95 (about 50 ms Node start plus a store read).
+  - `PreToolUse` on `Edit|Write|NotebookEdit`: when policy `interrupt.onRegression` is on and the consumer's delta contains an undelivered regression (first-seen fail or `pass -> fail`), deny once with the delta as `permissionDecisionReason`, phrased as facts plus one sentence stating that the edit was not applied and can be re-issued. The delta is marked delivered so the same regression never denies twice. Recoveries never deny. Default on; the model reads the reason and continues in the same turn, but treats it as an obstacle rather than advice, so wording is a dogfooding item.
+  - `Stop`: deliver the status header plus delta, optionally after waiting up to `stop.waitMs` for pending checks of the current revision; apply `stop.blockOnKnownFailures` and `stop.requireFullSuite`; re-arm the idle waiter if interactive.
+  - `SubagentStart` and `SubagentStop`: same as SessionStart and Stop for the consumer `(session id, agent id)`. Subagent context is isolated from the parent's in both directions, so each gets its own view.
+  - `SessionEnd`: unregister the consumer.
+- Idle waiter: one `asyncRewake` hook per session, started by SessionStart and Stop, with a per-consumer lock so only one runs. It blocks on the daemon until the consumer's delta is non-empty, prints it to stderr and exits 2, which wakes an idle agent in about 40 ms and lands mid-turn at the next tool boundary. It is never armed in `-p` mode, where `asyncRewake` blocks the agent. Its `timeout` is explicit and long; expiry is silent and the next Stop re-arms it.
+- `skills/squeal/SKILL.md`: teaches the agent to pull `squeal status` before claiming completion, `squeal why <check>` to see history, `squeal run --all` for an explicit checkpoint, and how to read the header's pending and inherited counts.
+- `bin/squeal` so the CLI is on the Bash tool's path.
+
+Every hook script: dependency-free Node using `node:sqlite` and `node:net`; reads the store directly for deltas and status; uses the socket only for liveness and nudges with a 100 ms timeout; exits 0 with no output on any internal error; enabled plugins fire in every repository, so in a repository without `squeal.config.json` and without a store the script exits in a few milliseconds.
+
+The adapter interface implied by Claude Code, Codex, Pi and OpenCode is three operations: `onToolBoundary(consumer) -> delta | none`, `waitForDelta(consumer) -> delta` where the harness can wake an idle agent, and `status()`. Nothing in the core depends on Claude Code.
+
+### D10. Daemon lifecycle
+
+A hook that finds no live socket spawns `squeal daemon <root>` detached (`detached: true`, `stdio: 'ignore'`, `unref()`), about 70 ms, and returns without waiting. The daemon takes `BEGIN EXCLUSIVE` with `locking_mode=EXCLUSIVE` on `locks/<worktree-hash>.sqlite` and holds it for life. Losers exit. The lock is released by the OS on any death, so no pid file exists and pid reuse cannot fool it. The winner unlinks a stale socket, binds its own, records the path and a heartbeat in the store, then: opens the runner, runs reconciliation, performs the baseline lookup, starts the watcher.
+
+The daemon exits when its root is deleted, when `<common-dir>/worktrees/<name>` disappears, when the store schema is newer than it understands, or after a configurable idle period with no registered consumers (default 60 minutes). A consumer that has not been delivered to or heard from for 12 hours is expired, so a session that died without `SessionEnd` cannot keep a daemon alive. Status reports "no daemon running since <time>" when the heartbeat is older than its interval.
+
+### D11. Policy
+
+`squeal.config.json` at the repository root, committed, all keys optional:
+
+- `interrupt.onRegression` (default `true`), `stop.blockOnKnownFailures` (`false`), `stop.requireFullSuite` (`false`), `stop.waitMs` (`0`).
+- `baseline.onStart`: `"lookup-then-run-missing"` (default) or `"lookup-only"`.
+- `inputs`: extra closure globs, for fixtures read at runtime.
+- `env.allowlist`: environment variables included in the environment hash.
+- `runner.tierSize` (`4`), `runner.timeoutMs` per run, `runner.maxConcurrentRuns` (`1` in v1).
+- `daemon.idleExitMinutes` (`60`), `store.retentionDays` (`7`), `store.maxSizeMb`.
+
+Squeal runs only the project's own Vitest configuration inside the worktree. It never runs arbitrary commands, never writes to the worktree beyond what Vitest itself writes (`update: 'none'` prevents snapshot writes), and inherits the environment of the hook that started it with no additions.
+
+### D12. Error handling
+
+- Runner crash or run timeout: every check in the tier becomes `unknown` at this revision, one transition is recorded, one factual line is delivered.
+- Config change: instance recreated; all checks of the project re-keyed through the environment hash.
+- Watcher backend error or dropped-events signal: full reconciliation pass; a note in status.
+- Store unreadable or corrupt: `integrity_check` on daemon start; on failure the file is moved aside, a fresh store is created, status says the baseline was lost.
+- Dead daemon: hooks still serve status and deltas from the store; status says the daemon is down and since when.
+- Hook internal error: exit 0, no output, one line in the daemon log if reachable.
+- Several Squeal versions on one store: newer schema wins; older daemons exit (D8).
+
+## Testing
+
+- **Core, pure functions, Vitest**: blob hashing including the attribute rule, environment and check key derivation, closure assembly, revision batching and reconciliation, validity classification, transition rules, consumer view diffing including the break-and-recover case, message formatting and the 10,000-character cap, status derivation.
+- **Runner adapter, fixture projects**: affected-set computation including setup-file and snapshot additions, invalidation cases (import change, test file add and delete, config change), result extraction including file-level errors, the post-tier stability check.
+- **Store**: concurrent writers and readers, kill-during-write, migration from an older `user_version`, pruning.
+- **Hook scripts**: recorded hook JSON in, JSON out, for every event; a latency test asserting the p95 budget; behaviour with no store, with a newer schema, and with a dead daemon.
+- **End to end, fixture repository with two worktrees**: edit a source file and assert exactly one `PASS -> FAIL` delivery, then exactly one `FAIL -> PASS`; break and recover between deliveries and assert silence; create a second worktree and assert its baseline is a lookup with zero runs and inherited provenance; modify one file in the second worktree and assert only its affected checks run.
+- **Manual**: dogfood on this repository with Claude Code interactive and `-p`, recording delivery latency, duplicate rate, and how the model reacts to a PreToolUse denial.
+
+## Open questions
+
+Owner is the coordinator unless noted.
+
+1. Inherited passes: current at once, or `stale` until confirmed in the background as Wallaby does? Trades latency against stale-result escape rate. Decide after first dogfooding data.
+2. Node version granularity in the environment hash: full version or major.minor.
+3. PreToolUse denial wording and whether default-on survives dogfooding.
+4. Whether `config.related` plus `getRelevantTestSpecifications()` is stable public Vitest API; a thin wrapper isolates it.
+5. Reconciliation interval and whether events are lost across machine sleep.
+6. Long tool calls delay delivery until they end (19 s observed). Whether to ship a plugin `monitor` is deferred to the dogfooding report.
+7. macOS: fd usage of chokidar, parcel rename behaviour, socket limit, lock release. Needs a macOS run before any release.
+8. Vitest writes its own cache under `node_modules/.vite` in the worktree. Accept or redirect `cacheDir`.
+
+## References
+
+- `docs/vision.md`, `docs/styleguide.md`
+- ADR 0001 stack; ADR 0002 content-keyed shared store; ADR 0003 delivery model
+- `research/vitest-internals.md`, `research/claude-code-integration.md`, `research/result-fingerprinting-prior-art.md`, `research/watcher-daemon-and-shared-store.md`
