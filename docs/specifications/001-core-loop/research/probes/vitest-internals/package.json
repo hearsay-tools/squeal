@@ -1,0 +1,10 @@
+{
+  "name": "vitest-internals",
+  "version": "1.0.0",
+  "description": "THROWAWAY probes for vitest-internals research",
+  "type": "commonjs",
+  "devDependencies": {
+    "vitest": "5.0.3"
+  },
+  "private": true
+}
