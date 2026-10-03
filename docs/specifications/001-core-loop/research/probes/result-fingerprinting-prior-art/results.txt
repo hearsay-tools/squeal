@@ -1,0 +1,52 @@
+## hash-cost.mjs on nx@23.2.1 clone (816ceee), Node v24.21.0, git 2.43.0, 24 cores, Linux, warm page cache
+git ls-files -s -z (index oids): 24.3 ms
+git status --porcelain -z: 63.8 ms
+lstat every tracked file: 53.7 ms
+read + git-blob-sha1 every tracked file in node: 296.7 ms
+files=10719 symlinks_skipped=0 node_hash_vs_index_mismatch=2
+git worktree add --detach (checkout): 768.2 ms
+new worktree: git status --porcelain -z: 234.5 ms
+new worktree: git ls-files -s -z: 19.8 ms
+new worktree oids identical to main: 10719/10719
+recompute 5000 closure hashes (~300 files each): 589.4 ms
+
+## hash-cost.mjs on vitest@5.0.3 clone
+git ls-files -s -z (index oids): 9.2 ms
+git status --porcelain -z: 16.3 ms
+lstat every tracked file: 18.2 ms
+read + git-blob-sha1 every tracked file in node: 106.5 ms
+files=3146 symlinks_skipped=1 node_hash_vs_index_mismatch=1
+git worktree add --detach (checkout): 214.8 ms
+new worktree: git status --porcelain -z: 206.4 ms
+new worktree: git ls-files -s -z: 12.3 ms
+new worktree oids identical to main: 3146/3146
+recompute 5000 closure hashes (~300 files each): 514.6 ms
+
+## testmon-fsha.py, pytest-testmon 2.2.0, Python 3.12.3
+ascii_lf.py    git=7d4290a117 testmon=7d4290a117 equal=True
+utf8_lf.py     git=76f6d36ae6 testmon=f0f5e489f3 equal=False
+ascii_crlf.py  git=8d73ae86b8 testmon=2c1854573a equal=False
+formfeed.py    git=bd516b29a8 testmon=c297c8453e equal=False
+
+## store-size.mjs 30 per-key, Node v24.21.0, node:sqlite
+baseline (1 full run): 12.5 MB, results=5000, closures=500, closure_members=150000
+after 1 day(s), mode=per-key: 72.3 MB, results=30000, closures=3000, closure_members=900000
+after 30 day(s), mode=per-key: 1806.1 MB, results=755000, closures=75500, closure_members=22650000
+after pruning to newest key per test file: 10.4 MB, results=5000, closures=500, closure_members=150000
+
+## store-size.mjs 30 latest, Node v24.21.0, node:sqlite
+baseline (1 full run): 9.1 MB, results=5000, closures=500, closure_members=150000
+after 1 day(s), mode=latest: 14.2 MB, results=30000, closures=3000, closure_members=150000
+after 30 day(s), mode=latest: 147.6 MB, results=755000, closures=75500, closure_members=150000
+after pruning to newest key per test file: 7.5 MB, results=5000, closures=500, closure_members=150000
+
+## vitest-related-gaps.sh (vitest 5.0.3, Node v24.21.0)
+related src/a.ts                         -> dynamic.test.ts, static.test.ts
+related fixtures/data.json               -> (none)
+related src/dyn.ts                       -> dynamic.test.ts
+related test/__snapshots__/snap.test.ts.snap -> (none)
+related src/setup-helper.ts              -> dynamic.test.ts
+related test/setup.ts                    -> dynamic.test.ts, fsread.test.ts, snap.test.ts, static.test.ts
+related package.json                     -> dynamic.test.ts, fsread.test.ts, snap.test.ts, static.test.ts
+results cache: node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json
+{"version":"5.0.3","results":[[":test/dynamic.test.ts",{"duration":5.225867999999991,"failed":false}],[":test/fsread.test.ts",{"duration":2.8117670000000032,"failed":false}],[":test/static.test.ts",{"duration":2.3719600000000014,"failed":false}],[":test/snap.test.ts",{"duration":4.149728999999979,"failed":false}]]}
