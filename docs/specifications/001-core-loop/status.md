@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: research
+Stage: draft (spec written from research, awaiting human review)
 Started: 2026-10-02
 
 ## Decisions so far
@@ -12,11 +12,16 @@ Started: 2026-10-02
 - Result validity is per check, not per run. No cancel-and-restart on new changes.
 - Delivery must reach the agent mid-turn, at tool boundaries, not only at the end of a turn.
 
-## Open questions (research phase)
+## Research
 
-See `research/README.md`.
+Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
+
+## Open questions
+
+See `spec.md`, section Open questions.
 
 ## Links
 
 - Vision: `../../vision.md`
-- ADR: `../../decisions/0001-typescript-vitest-claude-code.md`
+- ADRs: `../../decisions/0001-typescript-vitest-claude-code.md`, `0002-content-keyed-shared-store.md`, `0003-delivery-model.md`
+- Spec: `spec.md`
