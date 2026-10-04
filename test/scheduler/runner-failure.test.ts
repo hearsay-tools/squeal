@@ -68,7 +68,9 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     const delta = await delivery.onToolBoundary(consumer);
     expect(delta?.entries).toHaveLength(known);
     expect(new Set(delta?.entries.map((e) => e.kind))).toEqual(new Set(["to-unknown"]));
-    const reasons = new Set(delta?.entries.map((e) => e.summary));
+    const reasons = new Set(
+      delta?.entries.map((e) => (e.kind === "fail-retired" ? null : e.summary)),
+    );
     expect(reasons.size).toBe(1);
     expect([...reasons][0]).toMatch(/\S/);
 

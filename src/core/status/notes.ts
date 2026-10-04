@@ -1,9 +1,13 @@
-import type { StatusSnapshot, Store, WorktreeId } from "../types/index.js";
+import {
+  type DaemonNote,
+  MAX_PERSISTED_NOTES,
+  notesMetaKey,
+  type Store,
+  type WorktreeId,
+} from "../types/index.js";
 
 /** Most daemon notes status shows; the scheduler keeps the list bounded the same way. */
-const MAX_NOTES = 20;
-
-type DaemonNote = StatusSnapshot["daemonNotes"][number];
+const MAX_NOTES = MAX_PERSISTED_NOTES;
 
 /**
  * Spec 001 D7: "the latest persisted daemon notes (runner failures, dropped
@@ -12,7 +16,7 @@ type DaemonNote = StatusSnapshot["daemonNotes"][number];
  * missing or malformed value is no notes; a malformed item is skipped.
  */
 export function readDaemonNotes(store: Store, worktreeId: WorktreeId): readonly DaemonNote[] {
-  const raw = store.meta.get(`notes.${worktreeId}`);
+  const raw = store.meta.get(notesMetaKey(worktreeId));
   if (raw === null) return [];
   let parsed: unknown;
   try {
