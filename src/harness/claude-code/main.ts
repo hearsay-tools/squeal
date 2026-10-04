@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { Handler } from "./hook.js";
 import { runHandler } from "./run.js";
 
@@ -16,6 +17,8 @@ export async function runMain(name: string, handler: Handler): Promise<void> {
   }
   const result = await runHandler(name, handler, stdin, {
     env: process.env,
+    // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs (review wave 3, B1).
+    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url)),
     ...waiterTimeout(process.env.SQUEAL_WAITER_TIMEOUT_MS),
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);

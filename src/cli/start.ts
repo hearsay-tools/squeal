@@ -17,7 +17,9 @@ export async function startCommand(args: readonly string[], io: CliIo): Promise<
   }
   const root = worktreeRoot(args[0], io);
   if (root === null) return 1;
-  const result = await ensureDaemon(root);
+  // This CLI's own script is the daemon to spawn (review wave 3, B1); `SQUEAL_CLI` overrides it.
+  const cli = process.argv[1];
+  const result = await ensureDaemon(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}\n`);
     return 1;

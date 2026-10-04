@@ -1,12 +1,13 @@
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureDaemon, socketPathFor } from "../../src/core/daemon/index.js";
+import { ensureDaemon, probeDaemon, socketPathFor } from "../../src/core/daemon/index.js";
 import { worktreeIdFor } from "../../src/core/store/index.js";
 import { fakeRepo } from "../status/helpers.js";
 import { tempDir } from "../store/helpers.js";
+import { squealRepo } from "./helpers.js";
 
 const saved = { ...process.env };
 let runtimeDir: string;
@@ -109,10 +110,85 @@ describe("ensureDaemon", () => {
     expect(existsSync(argsFile)).toBe(true);
   });
 
+  it("spawns the CLI the caller ships when SQUEAL_CLI is not set (B1)", async () => {
+    const repo = fakeRepo();
+    const { cli, argsFile } = recordingCli();
+    delete process.env.SQUEAL_CLI;
+
+    expect(await ensureDaemon(repo.main, { cli, socketTimeoutMs: 100 })).toBe("spawned");
+    await waitFor(argsFile);
+    expect(JSON.parse(readFileSync(argsFile, "utf8"))).toEqual(["daemon", repo.main]);
+  });
+
+  it("lets SQUEAL_CLI override the CLI the caller ships, for tests", async () => {
+    const repo = fakeRepo();
+    const shipped = recordingCli();
+    const override = recordingCli();
+    process.env.SQUEAL_CLI = override.cli;
+
+    expect(await ensureDaemon(repo.main, { cli: shipped.cli, socketTimeoutMs: 100 })).toBe(
+      "spawned",
+    );
+    await waitFor(override.argsFile);
+    expect(existsSync(override.argsFile)).toBe(true);
+    expect(existsSync(shipped.argsFile)).toBe(false);
+  });
+
+  it("is unavailable with neither a CLI from the caller nor SQUEAL_CLI", async () => {
+    const repo = fakeRepo();
+    delete process.env.SQUEAL_CLI;
+    expect(await ensureDaemon(repo.main, { socketTimeoutMs: 100 })).toBe("unavailable");
+  });
+
   it("is unavailable when no CLI entry point can be found", async () => {
     const repo = fakeRepo();
     process.env.SQUEAL_CLI = join(tempDir(), "missing.mjs");
 
     expect(await ensureDaemon(repo.main, { socketTimeoutMs: 100 })).toBe("unavailable");
+  });
+});
+
+describe("probeDaemon and the recorded socket (review wave 3, S8)", () => {
+  function record(r: ReturnType<typeof squealRepo>, socketPath: string, heartbeatAt: number) {
+    r.store.worktrees.setDaemon(r.worktreeId, {
+      socketPath,
+      startedAt: heartbeatAt,
+      heartbeatAt,
+      heartbeatIntervalMs: 5_000,
+      squealVersion: "0.0.0-test",
+    });
+  }
+
+  it("asks the socket the daemon recorded first while its heartbeat is fresh", async () => {
+    const r = squealRepo();
+    // A daemon started from a shell with another runtime dir records where it really listens.
+    const elsewhere = join(mkdtempSync("/tmp/sq-"), "other.sock");
+    await listen(elsewhere);
+    record(r, elsewhere, Date.now());
+
+    expect(await probeDaemon(r.root, 100)).toMatchObject({ state: "alive" });
+    const { cli, argsFile } = recordingCli();
+    expect(await ensureDaemon(r.root, { cli, socketTimeoutMs: 100 })).toBe("alive");
+    await sleep(100);
+    expect(existsSync(argsFile)).toBe(false);
+    rmSync(dirname(elsewhere), { recursive: true, force: true });
+  });
+
+  it("ignores a recorded socket whose heartbeat is stale and probes the computed path", async () => {
+    const r = squealRepo();
+    const elsewhere = join(mkdtempSync("/tmp/sq-"), "other.sock");
+    await listen(elsewhere);
+    record(r, elsewhere, Date.now() - 60_000);
+
+    expect(await probeDaemon(r.root, 100)).toEqual({ state: "absent", code: "ENOENT" });
+    rmSync(dirname(elsewhere), { recursive: true, force: true });
+  });
+
+  it("falls back to the computed path when the recorded socket is gone", async () => {
+    const r = squealRepo();
+    record(r, join(runtimeDir, "gone.sock"), Date.now());
+    await listen(socketPathFor(r.worktreeId));
+
+    expect(await probeDaemon(r.root, 100)).toMatchObject({ state: "alive" });
   });
 });
