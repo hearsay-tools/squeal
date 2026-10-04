@@ -1,7 +1,9 @@
+import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   statSync,
@@ -150,4 +152,63 @@ describe("squeal daemon: socket directory without XDG_RUNTIME_DIR (review S8)", 
       withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon ?? null),
     ).toBeNull();
   });
+});
+
+describe("squeal daemon: signals (review N8)", SLOW, () => {
+  /** Live child processes of `pid` running Vitest's worker pool. */
+  function vitestWorkers(pid: number): number[] {
+    let out = "";
+    try {
+      out = execFileSync("pgrep", ["-P", String(pid)], { encoding: "utf8" });
+    } catch {
+      return [];
+    }
+    return out
+      .split("\n")
+      .filter((line) => line !== "")
+      .map(Number)
+      .filter((child) => alive(child) && cmdline(child).includes("vitest"));
+  }
+
+  function cmdline(pid: number): string {
+    try {
+      return readFileSync(`/proc/${pid}/cmdline`, "utf8");
+    } catch {
+      return "";
+    }
+  }
+
+  /** Exists and is not a zombie waiting for its reaper. */
+  function alive(pid: number): boolean {
+    try {
+      return !/^\d+ \(.*\) Z/.test(readFileSync(`/proc/${pid}/stat`, "utf8"));
+    } catch {
+      return false;
+    }
+  }
+
+  it.runIf(process.platform === "linux")(
+    "SIGTERM during a tier stops Vitest's worker pool under ownSignals",
+    async () => {
+      const repo = fixture({
+        "test/slow.test.ts":
+          'import { it } from "vitest";\nit("is slow", async () => {\n  await new Promise((done) => setTimeout(done, 3_000));\n});\n',
+      });
+      const spawned = daemon(repo);
+      await waitReady(repo, spawned);
+      const pid = spawned.child.pid ?? 0;
+      const workers = await waitFor(
+        () => {
+          const found = vitestWorkers(pid);
+          return found.length > 0 ? found : null;
+        },
+        60_000,
+        "a Vitest worker process",
+      );
+      spawned.child.kill("SIGTERM");
+      expect(await spawned.exited).toEqual({ code: 0, signal: null });
+      expect(withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon)).toBeNull();
+      await waitFor(() => workers.every((worker) => !alive(worker)), 10_000, "workers gone");
+    },
+  );
 });
