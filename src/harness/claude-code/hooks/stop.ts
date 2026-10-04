@@ -1,10 +1,16 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { formatDelta, formatRegistration, readHeader } from "../../../core/delivery/index.js";
+import {
+  formatDelta,
+  formatRegistration,
+  readHeader,
+  readLiveHeader,
+} from "../../../core/delivery/index.js";
 import { toKnownFailure } from "../../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../../core/status/index.js";
 import { storePaths } from "../../../core/store/index.js";
 import type { KnownFailure } from "../../../core/types/index.js";
 import type { HookContext } from "../context.js";
+import { ensureIfStale } from "../ensure.js";
 import {
   additionalContext,
   type Handler,
@@ -65,12 +71,13 @@ export const stop: Handler = (input, location, deps) => {
     location,
     deps,
     async (context) => {
+      await ensureIfStale(context, deps);
       if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
 
       const { store, consumer } = context;
       const news = await newsText(context);
       const states = store.knownStates.list(consumer.worktreeId);
-      const header = readHeader(store, consumer.worktreeId, states);
+      const header = readLiveHeader(store, consumer.worktreeId, (deps.now ?? Date.now)(), states);
       const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
       const current = failures.filter((f) => f.validity === "current");
 

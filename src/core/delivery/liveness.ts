@@ -1,5 +1,15 @@
+import { readHeader } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
-import type { DaemonLiveness, DaemonRecord, EpochMs } from "../types/index.js";
+import type {
+  Consumer,
+  DaemonLiveness,
+  DaemonRecord,
+  EpochMs,
+  KnownState,
+  StatusHeader,
+  Store,
+  WorktreeId,
+} from "../types/index.js";
 
 /**
  * Daemon liveness from the heartbeat the daemon records in `worktrees`,
@@ -13,4 +23,74 @@ export function daemonLiveness(record: DaemonRecord | null, now: EpochMs): Daemo
     return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
   }
   return { state: "down", since: record.heartbeatAt };
+}
+
+/** The shared header (D6) with the worktree's daemon liveness. */
+export function readLiveHeader(
+  store: Store,
+  worktreeId: WorktreeId,
+  now: EpochMs,
+  states?: readonly KnownState[],
+): StatusHeader {
+  return {
+    ...readHeader(store, worktreeId, states),
+    daemon: daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, now),
+  };
+}
+
+/*
+ * What each consumer was last told about liveness, the liveness part of its
+ * view. `consumer_views` is keyed by check, so this lives in `meta`, one row
+ * per worktree: `{ "<session>\n<agent>": "alive" | "down" }`. Written in the
+ * delivery's transaction; consumers no longer registered are dropped on
+ * every write.
+ */
+
+/** `meta` key of a worktree's told liveness. */
+export function livenessMetaKey(worktreeId: WorktreeId): string {
+  return `liveness-told:${worktreeId}`;
+}
+
+type Told = Record<string, DaemonLiveness["state"]>;
+
+const slot = (consumer: Consumer) => `${consumer.sessionId}\n${consumer.agentId}`;
+
+function readAll(store: Store, worktreeId: WorktreeId): Told {
+  const raw = store.meta.get(livenessMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value: unknown = JSON.parse(raw);
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Told)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Liveness last told to `consumer`. A consumer registered before liveness
+ * was tracked was told nothing, which read as a validating daemon: `alive`.
+ */
+export function toldLiveness(store: Store, consumer: Consumer): DaemonLiveness["state"] {
+  const told = readAll(store, consumer.worktreeId)[slot(consumer)];
+  return told === "down" ? "down" : "alive";
+}
+
+/** Records what `consumer` was told; `null` forgets it. Call inside a transaction. */
+export function tellLiveness(
+  store: Store,
+  consumer: Consumer,
+  state: DaemonLiveness["state"] | null,
+): void {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer)),
+  );
+  const next: Told = {};
+  for (const [key, value] of Object.entries(readAll(store, consumer.worktreeId))) {
+    if (registered.has(key)) next[key] = value;
+  }
+  if (state === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = state;
+  store.meta.set(livenessMetaKey(consumer.worktreeId), JSON.stringify(next));
 }

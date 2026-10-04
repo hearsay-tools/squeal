@@ -208,14 +208,24 @@ describe("bundled hooks with a dead daemon", () => {
       SQUEAL_CLI: cli,
     });
     r.apply(r.fail());
-    const batch = await runBundle("post-tool-batch", recorded("post-tool-batch", r.root), env);
+    const again = quietCli();
+    const batch = await runBundle("post-tool-batch", recorded("post-tool-batch", r.root), {
+      ...env,
+      SQUEAL_CLI: again.cli,
+    });
 
     expect(start).toMatchObject({ stderr: "", code: 0 });
     expect(start.stdout).toContain("registered at revision 1");
-    expect(start.ms).toBeLessThan(1_000);
+    expect(start.stdout).toContain(
+      "No daemon has validated since 1970-01-01T00:00:00.001Z; results are as of revision 1.",
+    );
+    expect(start.ms).toBeLessThan(1_500);
     expect(batch).toMatchObject({ stderr: "", code: 0 });
     expect(batch.stdout).toContain("PASS -> FAIL");
+    expect(batch.stdout).toContain("No daemon has validated since");
     await sleep(200);
     expect(() => readFileSync(ran)).not.toThrow();
+    // Review wave 3, S2: PostToolBatch restarts a daemon whose heartbeat is stale.
+    expect(() => readFileSync(again.ran)).not.toThrow();
   });
 });

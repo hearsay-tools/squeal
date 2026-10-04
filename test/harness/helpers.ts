@@ -39,6 +39,11 @@ export interface SquealRepo {
   pass(c?: typeof ADDS): ResultRecord;
   fail(c?: typeof ADDS, message?: string): ResultRecord;
   policy(policy: PolicyFile): void;
+  /**
+   * The daemon record hooks judge liveness by: `alive` (the default, a heartbeat
+   * now with an hour's interval), `stale` (heartbeat at `staleSince`), `none`.
+   */
+  daemon(state: "alive" | "stale" | "none", staleSince?: number): void;
 }
 
 export function squealRepo(): SquealRepo {
@@ -54,6 +59,21 @@ export function squealRepo(): SquealRepo {
     daemon: null,
   });
   setKey(store, "k1", { file: FILE, worktreeId });
+  const daemon: SquealRepo["daemon"] = (state, staleSince = 1) =>
+    store.worktrees.setDaemon(
+      worktreeId,
+      state === "none"
+        ? null
+        : {
+            // Nobody listens here; the hooks' socket probe falls back to the runtime dir.
+            socketPath: `/tmp/squeal-test-${worktreeId}.sock`,
+            startedAt: 1,
+            heartbeatAt: state === "alive" ? Date.now() : staleSince,
+            heartbeatIntervalMs: state === "alive" ? 3_600_000 : 5_000,
+            squealVersion: "0.0.0-test",
+          },
+    );
+  daemon("alive");
   const sink = createStateSink(store);
   let revision = 0;
   const options = () => ({ key: "k1", worktreeId, revision });
@@ -86,5 +106,6 @@ export function squealRepo(): SquealRepo {
     policy(policy) {
       writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));
     },
+    daemon,
   };
 }

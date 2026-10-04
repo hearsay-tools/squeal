@@ -354,6 +354,7 @@ describe("register", () => {
       counts: { current: 1, pending: 0, stale: 1, unknown: 0 },
       testFilesWithoutChecks: { pending: 0, unknown: 0 },
       fullSuite: { atCurrentRevision: true, lastCompletedRevision: 1 },
+      daemon: { state: "down", since: null },
     });
   });
 
@@ -364,6 +365,7 @@ describe("register", () => {
       counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 0, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
+      daemon: { state: "down", since: null },
     });
     expect(knownFailures).toEqual([]);
   });

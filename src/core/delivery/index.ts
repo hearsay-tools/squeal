@@ -10,3 +10,4 @@ export {
 } from "./delivery.js";
 export { type DeltaPlan, type PlanInput, planDelta } from "./delta.js";
 export { formatDelta, formatRegistration, MESSAGE_CAP_CHARS } from "./format.js";
+export { daemonLiveness, livenessMetaKey, readLiveHeader } from "./liveness.js";

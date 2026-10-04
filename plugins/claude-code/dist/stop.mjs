@@ -115,6 +115,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+
 // src/core/types/delivery.ts
 var MAIN_AGENT = "main";
 
@@ -205,243 +208,6 @@ function planDelta(input) {
   const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
-
-// src/core/delivery/delivery.ts
-var DEFAULT_POLL_INTERVAL_MS = 250;
-var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
-function createDelivery(store, options) {
-  const now = options.now ?? Date.now;
-  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-  function plan(consumer, states, toldAt, kinds) {
-    const full = planDelta({
-      view: store.views.list(consumer),
-      states,
-      isBaselineFinding: baselineFindings(store, consumer.worktreeId),
-      toldAt,
-      rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0
-    });
-    return kinds === null ? full : restrictPlan(full, kinds);
-  }
-  function deliver(consumer, heardFrom, kinds = null) {
-    if (!heardFrom) {
-      if (store.consumers.get(consumer) === null) return null;
-      const states = store.knownStates.list(consumer.worktreeId);
-      if (isEmpty(plan(consumer, states, now(), kinds))) return null;
-    }
-    return store.transaction(() => {
-      if (store.consumers.get(consumer) === null) return null;
-      const at2 = now();
-      const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at2, kinds);
-      store.views.removeMany(consumer, delta.removals);
-      store.views.writeMany(consumer, delta.writes);
-      const delivered = delta.entries.length > 0;
-      if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
-      if (!delivered) return null;
-      return {
-        schemaVersion: PAYLOAD_SCHEMA_VERSION,
-        consumer,
-        header: readHeader(store, consumer.worktreeId, states),
-        label: delta.entries.every(isBaselineEntry) ? "baseline" : "transitions",
-        entries: delta.entries
-      };
-    });
-  }
-  return {
-    register: async (consumer) => store.transaction(() => {
-      const at2 = now();
-      store.consumers.register(consumer, at2);
-      const states = store.knownStates.list(consumer.worktreeId);
-      store.views.writeMany(
-        consumer,
-        states.map((s) => toView(s, at2))
-      );
-      const header = readHeader(store, consumer.worktreeId, states);
-      return {
-        schemaVersion: PAYLOAD_SCHEMA_VERSION,
-        consumer,
-        header,
-        knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? [])
-      };
-    }),
-    unregister: async (consumer) => {
-      store.transaction(() => store.consumers.unregister(consumer));
-    },
-    onToolBoundary: async (consumer) => deliver(consumer, true),
-    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
-    waitForDelta: async (consumer, { timeoutMs, signal }) => {
-      const deadline = performance.now() + timeoutMs;
-      for (; ; ) {
-        if (signal?.aborted) return null;
-        const delta = deliver(consumer, false);
-        if (delta !== null) return delta;
-        const left = deadline - performance.now();
-        if (left <= 0) return null;
-        try {
-          await sleep(Math.min(pollIntervalMs, left), void 0, signal ? { signal } : {});
-        } catch (error) {
-          if (signal?.aborted) return null;
-          throw error;
-        }
-      }
-    },
-    status: async (worktreeId) => options.status.build(worktreeId)
-  };
-}
-
-// src/core/delivery/format.ts
-var MESSAGE_CAP_CHARS = 1e4;
-var OVERFLOW_RESERVE = 200;
-var INDENT = "      ";
-var STATUS_POINTER = "`squeal status` lists every known failure.";
-var upper = (outcome) => outcome.toUpperCase();
-var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-function cap(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
-}
-function checkName(check) {
-  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
-}
-function at(location2) {
-  return `at ${location2.path}:${location2.line}:${location2.column}`;
-}
-function headerLine(header) {
-  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
-  const suite = fullSuite.atCurrentRevision ? `completed at revision ${revision}` : fullSuite.lastCompletedRevision === null ? "not completed at any revision" : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
-  const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
-  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.`;
-}
-function change(entry2) {
-  switch (entry2.kind) {
-    case "first-seen-fail": {
-      const line = entry2.from === null ? "first observed: FAIL" : `${upper(entry2.from)} -> FAIL`;
-      return entry2.baseline === true ? `baseline finding, ${line}` : line;
-    }
-    case "fail-changed":
-      return "FAIL -> FAIL, failure changed";
-    default:
-      return `${entry2.from === null ? "NONE" : upper(entry2.from)} -> ${upper(entry2.to)}`;
-  }
-}
-function provenance(entry2, revision) {
-  const parts = [];
-  if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
-  if (entry2.validity === "pending") {
-    parts.push(`observed at revision ${entry2.observedAt}, revision ${revision} pending`);
-  }
-  if (entry2.origin.kind === "inherited") {
-    const commit = entry2.origin.commit === null ? "no commit" : `commit ${entry2.origin.commit.slice(0, 12)}`;
-    const from = entry2.originRoot ?? `worktree ${entry2.origin.worktreeId}`;
-    parts.push(`inherited from ${from} at ${commit}`);
-  }
-  return parts.length === 0 ? null : parts.join("; ");
-}
-function block(head, lines, outcomes) {
-  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
-  return { text: [head, ...body].join("\n"), outcomes };
-}
-function entryBlock(entry2, revision) {
-  return block(
-    `${upper(entry2.to)}  ${checkName(entry2.check)}`,
-    [
-      change(entry2),
-      entry2.summary === null ? null : cap(entry2.summary, SUMMARY_MAX_CHARS),
-      entry2.location === null ? null : at(entry2.location),
-      provenance(entry2, revision)
-    ],
-    [entry2.to]
-  );
-}
-function retiredBlock(entry2) {
-  return block(
-    `RESOLVED  ${checkName(entry2.check)}`,
-    ["FAIL -> no longer reported by the runner"],
-    ["resolved"]
-  );
-}
-function unknownBlocks(entries) {
-  const byReason = /* @__PURE__ */ new Map();
-  for (const e of entries) {
-    const reason = e.summary ?? "no trusted result";
-    byReason.set(reason, [...byReason.get(reason) ?? [], e]);
-  }
-  return [...byReason].map(([reason, group]) => {
-    const files = [...new Set(group.map((e) => e.check.testPath))];
-    const from = (outcome) => group.filter((e) => e.from === outcome).length;
-    const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper(o)} -> UNKNOWN (${from(o)})`);
-    const listed = files.slice(0, 5).join(", ");
-    const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
-    return block(
-      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files.length, "test file")}`,
-      [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
-      group.map(() => "unknown")
-    );
-  });
-}
-function assemble(head, blocks, overflow) {
-  let out = head;
-  for (const [i, b] of blocks.entries()) {
-    const next = `${out}
-
-${b.text}`;
-    const last = i === blocks.length - 1;
-    if (next.length <= MESSAGE_CAP_CHARS - (last ? 0 : OVERFLOW_RESERVE)) {
-      out = next;
-      continue;
-    }
-    return cap(`${out}
-
-${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
-  }
-  return out;
-}
-function formatDelta(delta) {
-  const { header, entries } = delta;
-  const changed = entries.filter((e) => e.kind !== "fail-retired");
-  const retired = entries.filter((e) => e.kind === "fail-retired");
-  const title = delta.label === "baseline" ? `SQUEAL \xB7 baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
-  const blocks = [
-    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
-    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
-    ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
-    ...retired.map(retiredBlock)
-  ];
-  return assemble(`${title}
-${headerLine(header)}`, blocks, (left) => {
-    const outcomes = left.flatMap((b) => b.outcomes);
-    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper(o)}`);
-    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
-  });
-}
-function formatRegistration(registration) {
-  const { header, knownFailures } = registration;
-  const head = [
-    `SQUEAL \xB7 registered at revision ${header.revision}`,
-    headerLine(header),
-    `Known failures: ${knownFailures.length}`
-  ].join("\n");
-  const blocks = knownFailures.map(
-    (f) => block(
-      `FAIL  ${checkName(f.check)}`,
-      [
-        f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
-        f.location === null ? null : at(f.location),
-        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
-      ],
-      ["fail"]
-    )
-  );
-  return assemble(
-    head,
-    blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`
-  );
-}
-
-// src/core/status/open.ts
-import { existsSync as existsSync3, realpathSync as realpathSync2 } from "node:fs";
-import { dirname, join as join4, resolve as resolve3 } from "node:path";
 
 // src/core/store/open.ts
 import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
@@ -1862,47 +1628,26 @@ function moveAside(database, at2) {
   return movedTo;
 }
 
-// src/core/status/open.ts
-var STATUS_BUSY_TIMEOUT_MS = 1e3;
-function findWorktreeRoot(path) {
-  let dir = resolve3(path);
-  if (existsSync3(dir)) dir = realpathSync2(dir);
-  for (; ; ) {
-    if (existsSync3(join4(dir, ".git"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function unavailable(reason, detail) {
-  return {
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    available: false,
-    reason,
-    message: `status unavailable, ${detail}`
-  };
-}
-
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync2, statSync } from "node:fs";
-import { join as join5, resolve as resolve4 } from "node:path";
+import { join as join4, resolve as resolve3 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = worktreeGitDir(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join5(gitDir, "HEAD"));
+  let value = read2(join4(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join5(gitDir, ref)) ?? read2(join5(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join4(gitDir, ref)) ?? read2(join4(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function worktreeGitDir(root) {
-  const dotGit = join5(root, ".git");
+  const dotGit = join4(root, ".git");
   try {
     if (statSync(dotGit).isDirectory()) return dotGit;
   } catch (error) {
@@ -1910,10 +1655,10 @@ function worktreeGitDir(root) {
     throw error;
   }
   const line = /^gitdir:\s*(.+?)\s*$/m.exec(read2(dotGit) ?? "");
-  return line?.[1] === void 0 ? null : resolve4(root, line[1]);
+  return line?.[1] === void 0 ? null : resolve3(root, line[1]);
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join4(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -1948,6 +1693,29 @@ function toNote(item) {
   if (typeof at2 !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
   return [{ at: at2, revision, text }];
+}
+
+// src/core/status/open.ts
+import { existsSync as existsSync3, realpathSync as realpathSync2 } from "node:fs";
+import { dirname, join as join5, resolve as resolve4 } from "node:path";
+var STATUS_BUSY_TIMEOUT_MS = 1e3;
+function findWorktreeRoot(path) {
+  let dir = resolve4(path);
+  if (existsSync3(dir)) dir = realpathSync2(dir);
+  for (; ; ) {
+    if (existsSync3(join5(dir, ".git"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function unavailable(reason, detail) {
+  return {
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    available: false,
+    reason,
+    message: `status unavailable, ${detail}`
+  };
 }
 
 // src/core/status/snapshot.ts
@@ -2060,6 +1828,457 @@ function recoveryNote(raw) {
   }
 }
 
+// src/core/delivery/liveness.ts
+function daemonLiveness(record, now) {
+  if (record === null) return { state: "down", since: null };
+  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
+    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
+  }
+  return { state: "down", since: record.heartbeatAt };
+}
+function readLiveHeader(store, worktreeId, now, states) {
+  return {
+    ...readHeader(store, worktreeId, states),
+    daemon: daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, now)
+  };
+}
+function livenessMetaKey(worktreeId) {
+  return `liveness-told:${worktreeId}`;
+}
+var slot = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll(store, worktreeId) {
+  const raw = store.meta.get(livenessMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function toldLiveness(store, consumer) {
+  const told = readAll(store, consumer.worktreeId)[slot(consumer)];
+  return told === "down" ? "down" : "alive";
+}
+function tellLiveness(store, consumer, state) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
+  );
+  const next = {};
+  for (const [key, value] of Object.entries(readAll(store, consumer.worktreeId))) {
+    if (registered.has(key)) next[key] = value;
+  }
+  if (state === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = state;
+  store.meta.set(livenessMetaKey(consumer.worktreeId), JSON.stringify(next));
+}
+
+// src/core/delivery/delivery.ts
+var DEFAULT_POLL_INTERVAL_MS = 250;
+var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
+function createDelivery(store, options) {
+  const now = options.now ?? Date.now;
+  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  function plan(consumer, states, toldAt, kinds) {
+    const full = planDelta({
+      view: store.views.list(consumer),
+      states,
+      isBaselineFinding: baselineFindings(store, consumer.worktreeId),
+      toldAt,
+      rootOf: (id) => store.worktrees.get(id)?.root ?? null,
+      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0
+    });
+    return kinds === null ? full : restrictPlan(full, kinds);
+  }
+  function livenessChange(consumer, at2) {
+    const live = daemonLiveness(store.worktrees.get(consumer.worktreeId)?.daemon ?? null, at2);
+    return live.state === toldLiveness(store, consumer) ? null : live;
+  }
+  function deliver(consumer, heardFrom, kinds = null, liveness2 = false) {
+    if (!heardFrom) {
+      if (store.consumers.get(consumer) === null) return null;
+      const states = store.knownStates.list(consumer.worktreeId);
+      const quiet = !liveness2 || livenessChange(consumer, now()) === null;
+      if (quiet && isEmpty(plan(consumer, states, now(), kinds))) return null;
+    }
+    return store.transaction(() => {
+      if (store.consumers.get(consumer) === null) return null;
+      const at2 = now();
+      const states = store.knownStates.list(consumer.worktreeId);
+      const delta = plan(consumer, states, at2, kinds);
+      store.views.removeMany(consumer, delta.removals);
+      store.views.writeMany(consumer, delta.writes);
+      const changed = liveness2 ? livenessChange(consumer, at2) : null;
+      if (changed !== null) tellLiveness(store, consumer, changed.state);
+      const delivered = delta.entries.length > 0 || changed !== null;
+      if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
+      if (!delivered) return null;
+      const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        consumer,
+        header: readLiveHeader(store, consumer.worktreeId, at2, states),
+        label,
+        entries: delta.entries,
+        ...changed === null ? {} : { liveness: changed }
+      };
+    });
+  }
+  return {
+    register: async (consumer) => store.transaction(() => {
+      const at2 = now();
+      store.consumers.register(consumer, at2);
+      const states = store.knownStates.list(consumer.worktreeId);
+      store.views.writeMany(
+        consumer,
+        states.map((s) => toView(s, at2))
+      );
+      const header = readLiveHeader(store, consumer.worktreeId, at2, states);
+      tellLiveness(store, consumer, header.daemon?.state ?? null);
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        consumer,
+        header,
+        knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? [])
+      };
+    }),
+    unregister: async (consumer) => {
+      store.transaction(() => {
+        store.consumers.unregister(consumer);
+        tellLiveness(store, consumer, null);
+      });
+    },
+    onToolBoundary: async (consumer) => deliver(consumer, true, null, true),
+    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
+    waitForDelta: async (consumer, { timeoutMs, signal }) => {
+      const deadline = performance.now() + timeoutMs;
+      for (; ; ) {
+        if (signal?.aborted) return null;
+        const delta = deliver(consumer, false);
+        if (delta !== null) return delta;
+        const left = deadline - performance.now();
+        if (left <= 0) return null;
+        try {
+          await sleep(Math.min(pollIntervalMs, left), void 0, signal ? { signal } : {});
+        } catch (error) {
+          if (signal?.aborted) return null;
+          throw error;
+        }
+      }
+    },
+    status: async (worktreeId) => options.status.build(worktreeId)
+  };
+}
+
+// src/core/delivery/format.ts
+var MESSAGE_CAP_CHARS = 1e4;
+var OVERFLOW_RESERVE = 200;
+var INDENT = "      ";
+var STATUS_POINTER = "`squeal status` lists every known failure.";
+var upper = (outcome) => outcome.toUpperCase();
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+function checkName(check) {
+  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
+}
+function at(location2) {
+  return `at ${location2.path}:${location2.line}:${location2.column}`;
+}
+function headerLine(header) {
+  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
+  const suite = fullSuite.atCurrentRevision ? `completed at revision ${revision}` : fullSuite.lastCompletedRevision === null ? "not completed at any revision" : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
+  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.` + livenessSentence(header.daemon, revision);
+}
+function livenessSentence(daemon, revision) {
+  if (daemon === void 0 || daemon.state === "alive") return "";
+  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  return ` ${since}; results are as of revision ${revision}.`;
+}
+function change(entry2) {
+  switch (entry2.kind) {
+    case "first-seen-fail": {
+      const line = entry2.from === null ? "first observed: FAIL" : `${upper(entry2.from)} -> FAIL`;
+      return entry2.baseline === true ? `baseline finding, ${line}` : line;
+    }
+    case "fail-changed":
+      return "FAIL -> FAIL, failure changed";
+    default:
+      return `${entry2.from === null ? "NONE" : upper(entry2.from)} -> ${upper(entry2.to)}`;
+  }
+}
+function provenance(entry2, revision) {
+  const parts = [];
+  if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
+  if (entry2.validity === "pending") {
+    parts.push(`observed at revision ${entry2.observedAt}, revision ${revision} pending`);
+  }
+  if (entry2.origin.kind === "inherited") {
+    const commit = entry2.origin.commit === null ? "no commit" : `commit ${entry2.origin.commit.slice(0, 12)}`;
+    const from = entry2.originRoot ?? `worktree ${entry2.origin.worktreeId}`;
+    parts.push(`inherited from ${from} at ${commit}`);
+  }
+  return parts.length === 0 ? null : parts.join("; ");
+}
+function block(head, lines, outcomes) {
+  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
+  return { text: [head, ...body].join("\n"), outcomes };
+}
+function entryBlock(entry2, revision) {
+  return block(
+    `${upper(entry2.to)}  ${checkName(entry2.check)}`,
+    [
+      change(entry2),
+      entry2.summary === null ? null : cap(entry2.summary, SUMMARY_MAX_CHARS),
+      entry2.location === null ? null : at(entry2.location),
+      provenance(entry2, revision)
+    ],
+    [entry2.to]
+  );
+}
+function retiredBlock(entry2) {
+  return block(
+    `RESOLVED  ${checkName(entry2.check)}`,
+    ["FAIL -> no longer reported by the runner"],
+    ["resolved"]
+  );
+}
+function unknownBlocks(entries) {
+  const byReason = /* @__PURE__ */ new Map();
+  for (const e of entries) {
+    const reason = e.summary ?? "no trusted result";
+    byReason.set(reason, [...byReason.get(reason) ?? [], e]);
+  }
+  return [...byReason].map(([reason, group]) => {
+    const files = [...new Set(group.map((e) => e.check.testPath))];
+    const from = (outcome) => group.filter((e) => e.from === outcome).length;
+    const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper(o)} -> UNKNOWN (${from(o)})`);
+    const listed = files.slice(0, 5).join(", ");
+    const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
+    return block(
+      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files.length, "test file")}`,
+      [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
+      group.map(() => "unknown")
+    );
+  });
+}
+function assemble(head, blocks, overflow) {
+  let out = head;
+  for (const [i, b] of blocks.entries()) {
+    const next = `${out}
+
+${b.text}`;
+    const last = i === blocks.length - 1;
+    if (next.length <= MESSAGE_CAP_CHARS - (last ? 0 : OVERFLOW_RESERVE)) {
+      out = next;
+      continue;
+    }
+    return cap(`${out}
+
+${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
+  }
+  return out;
+}
+function formatDelta(delta) {
+  const { header, entries } = delta;
+  const changed = entries.filter((e) => e.kind !== "fail-retired");
+  const retired = entries.filter((e) => e.kind === "fail-retired");
+  const title = entries.length === 0 ? livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+  const blocks = [
+    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
+    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
+    ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
+    ...retired.map(retiredBlock)
+  ];
+  return assemble(`${title}
+${headerLine(header)}`, blocks, (left) => {
+    const outcomes = left.flatMap((b) => b.outcomes);
+    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper(o)}`);
+    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
+  });
+}
+function livenessTitle(liveness2, revision) {
+  return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
+}
+function formatRegistration(registration) {
+  const { header, knownFailures } = registration;
+  const head = [
+    `SQUEAL \xB7 registered at revision ${header.revision}`,
+    headerLine(header),
+    `Known failures: ${knownFailures.length}`
+  ].join("\n");
+  const blocks = knownFailures.map(
+    (f) => block(
+      `FAIL  ${checkName(f.check)}`,
+      [
+        f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
+        f.location === null ? null : at(f.location),
+        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
+      ],
+      ["fail"]
+    )
+  );
+  return assemble(
+    head,
+    blocks,
+    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`
+  );
+}
+
+// src/core/daemon/ensure.ts
+import { spawn } from "node:child_process";
+import { existsSync as existsSync4 } from "node:fs";
+
+// src/core/daemon/client.ts
+import { createConnection } from "node:net";
+function requestDaemon(socketPath, request, timeoutMs) {
+  return new Promise((resolve6, reject) => {
+    const socket = createConnection(socketPath);
+    let buffer = "";
+    let settled = false;
+    const settle = (error, response) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve6(response);
+    };
+    const timer = setTimeout(
+      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      timeoutMs
+    );
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
+`));
+    socket.on("data", (chunk) => {
+      buffer += chunk;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
+      try {
+        settle(null, JSON.parse(buffer.slice(0, end)));
+      } catch {
+        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
+      }
+    });
+    socket.on(
+      "error",
+      (error) => settle(failure(error.code ?? "EIO", error.message))
+    );
+    socket.on(
+      "close",
+      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
+    );
+  });
+}
+function failure(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+// src/core/daemon/paths.ts
+import { tmpdir } from "node:os";
+import { isAbsolute as isAbsolute2, join as join6, resolve as resolve5 } from "node:path";
+function runtimeDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : tmpdir();
+}
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name = `squeal-${worktreeId}.sock`;
+  const path = join6(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join6("/tmp", name);
+}
+
+// src/core/daemon/ensure.ts
+async function probeDaemon(root, timeoutMs, options = {}) {
+  let socketPath;
+  try {
+    socketPath = socketPathFor(worktreeIdFor(root), options.env);
+  } catch (error) {
+    return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
+  }
+  const record = options.record === void 0 ? recordedDaemon(root) : options.record;
+  const now = options.now ?? Date.now;
+  if (record !== null && record.socketPath !== socketPath && daemonLiveness(record, now()).state === "alive") {
+    const recorded = await ping(record.socketPath, timeoutMs);
+    if (recorded.state !== "absent") return recorded;
+  }
+  return ping(socketPath, timeoutMs);
+}
+async function ping(socketPath, timeoutMs) {
+  try {
+    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    if (response.ok && response.type === "ping") return { state: "alive", ping: response };
+    return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ECONNREFUSED") return { state: "absent", code };
+    return { state: "unresponsive", reason: error.message };
+  }
+}
+function recordedDaemon(root) {
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return null;
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    if (isStoreOpenFailure(store)) return null;
+    try {
+      return store.worktrees.get(worktreeIdFor(root))?.daemon ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return null;
+  }
+}
+async function ensureDaemon(root, options = {}) {
+  const probe = await probeDaemon(
+    root,
+    options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS,
+    options
+  );
+  if (probe.state === "alive") return "alive";
+  if (probe.state === "unresponsive") return "unavailable";
+  const cli = daemonCliEntry(options.cli, options.env);
+  if (cli === null || !existsSync4(cli)) return "unavailable";
+  try {
+    const child = spawn(process.execPath, [cli, "daemon", root], {
+      cwd: root,
+      detached: true,
+      stdio: "ignore"
+    });
+    child.on("error", () => {
+    });
+    child.unref();
+    return "spawned";
+  } catch {
+    return "unavailable";
+  }
+}
+function daemonCliEntry(cli, env = process.env) {
+  const override = env.SQUEAL_CLI;
+  if (override !== void 0 && override !== "") return override;
+  return cli ?? null;
+}
+
+// src/harness/claude-code/ensure.ts
+var SOCKET_TIMEOUT_MS = 100;
+function ensure(location2, deps, record) {
+  return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
+    socketTimeoutMs: SOCKET_TIMEOUT_MS,
+    ...deps.cli === void 0 ? {} : { cli: deps.cli },
+    ...record === void 0 ? {} : { record }
+  });
+}
+async function ensureIfStale(context, deps) {
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return;
+  await ensure(context, deps, record);
+}
+
 // src/harness/claude-code/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
@@ -2121,11 +2340,11 @@ function isRegistered(context) {
 
 // src/harness/claude-code/policy.ts
 import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 function readHookPolicy(root) {
   let text;
   try {
-    text = readFileSync3(join6(root, "squeal.config.json"), "utf8");
+    text = readFileSync3(join7(root, "squeal.config.json"), "utf8");
   } catch (error) {
     if (isMissing(error)) return DEFAULT_POLICY;
     throw error;
@@ -2207,16 +2426,16 @@ function fullSuiteReason(header) {
 
 // src/harness/claude-code/waiter-lock.ts
 import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
+import { join as join8 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
   const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join7(locksDir, `waiter-${id}.sqlite`);
+  return join8(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync4(path)) return;
+  if (!existsSync5(path)) return;
   const db = lock(path);
   if (db === null) return;
   try {
@@ -2253,11 +2472,12 @@ var stop = (input, location2, deps) => {
     location2,
     deps,
     async (context) => {
+      await ensureIfStale(context, deps);
       if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
       const { store, consumer } = context;
       const news = await newsText(context);
       const states = store.knownStates.list(consumer.worktreeId);
-      const header = readHeader(store, consumer.worktreeId, states);
+      const header = readLiveHeader(store, consumer.worktreeId, (deps.now ?? Date.now)(), states);
       const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
       const current = failures.filter((f) => f.validity === "current");
       const reasons = [];

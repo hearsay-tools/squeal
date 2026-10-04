@@ -1,6 +1,7 @@
 import { formatCheck, SUMMARY_MAX_CHARS } from "../state/index.js";
 import type {
   CheckId,
+  DaemonLiveness,
   Delta,
   KnownFailure,
   KnownOutcome,
@@ -60,8 +61,23 @@ function headerLine(header: StatusHeader): string {
       : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   return (
     `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ` +
-    `${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.`
+    `${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.` +
+    livenessSentence(header.daemon, revision)
   );
+}
+
+/**
+ * Spec 001 D12, review wave 3 S2: "Dead daemon: hooks still serve status and
+ * deltas from the store; status says the daemon is down and since when." A
+ * validating daemon adds nothing.
+ */
+function livenessSentence(daemon: DaemonLiveness | undefined, revision: number): string {
+  if (daemon === undefined || daemon.state === "alive") return "";
+  const since =
+    daemon.since === null
+      ? "No daemon is running"
+      : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  return ` ${since}; results are as of revision ${revision}.`;
 }
 
 function change(entry: TransitionEntry): string {
@@ -172,9 +188,11 @@ export function formatDelta(delta: Delta): string {
   const changed = entries.filter((e): e is TransitionEntry => e.kind !== "fail-retired");
   const retired = entries.filter((e): e is RetiredEntry => e.kind === "fail-retired");
   const title =
-    delta.label === "baseline"
-      ? `SQUEAL · baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}`
-      : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+    entries.length === 0
+      ? livenessTitle(delta.liveness, header.revision)
+      : delta.label === "baseline"
+        ? `SQUEAL · baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}`
+        : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
@@ -189,6 +207,13 @@ export function formatDelta(delta: Delta): string {
       .map(([o, n]) => `${n} ${upper(o)}`);
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
   });
+}
+
+/** The title of a delta that carries only a change of daemon liveness. */
+function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): string {
+  return liveness?.state === "alive"
+    ? `SQUEAL · a daemon is validating again at revision ${revision}`
+    : `SQUEAL · no daemon is validating at revision ${revision}`;
 }
 
 /** Renders a registration: header and every known failure, which are never delivered again. */
