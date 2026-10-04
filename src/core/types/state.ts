@@ -150,7 +150,9 @@ export interface StateSink {
    * Applies results produced by a run of this worktree or found by key
    * lookup (D5 step 3). Origin is `own` when `provenance.worktreeId` of a
    * result is this worktree, else `inherited`. `fingerprint` and `summary` of
-   * a `fail` should come from `describeFailure` (src/core/state).
+   * a `fail` should come from `describeFailure` (src/core/state). Known
+   * checks of a test file that are missing from `results` keep their state;
+   * the scheduler retires checks that left the file with `retire`.
    */
   applyResults(
     worktreeId: WorktreeId,
