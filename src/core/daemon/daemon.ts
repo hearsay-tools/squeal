@@ -278,6 +278,9 @@ class Daemon {
       });
       this.#loop = loop;
       await loop.start();
+      // Idle counts from ready: the baseline is work, and the hook that spawned
+      // this daemon registers its consumer while it runs.
+      this.#lastActive = this.#now();
       if (this.#phase === "starting") this.#setPhase("ready");
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
