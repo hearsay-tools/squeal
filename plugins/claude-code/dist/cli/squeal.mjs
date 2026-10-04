@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/cli/main.ts
-import { readFileSync as readFileSync3 } from "node:fs";
+import { readFileSync as readFileSync4 } from "node:fs";
 
 // src/core/fs/errors.ts
 function isMissing(error) {
@@ -1692,6 +1692,18 @@ function moveAside(database, at) {
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  env: { allowlist: [] },
+  runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
 // src/core/types/scheduler.ts
 var MAX_PERSISTED_NOTES = 20;
 function notesMetaKey(worktreeId) {
@@ -1994,6 +2006,98 @@ function report(store, root, check) {
   };
 }
 
+// src/cli/init.ts
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync3, writeFileSync } from "node:fs";
+import { join as join6 } from "node:path";
+var MARKETPLACE_NAME = "squeal";
+var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
+var MARKETPLACE_SOURCE = {
+  source: { source: "github", repo: "hearsay-tools/squeal", path: "plugins/claude-code" }
+};
+var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function init(args, io) {
+  if (args.length > 0) {
+    io.stderr("squeal init: takes no arguments\n\nUsage: squeal init\n");
+    return 2;
+  }
+  const cwd = io.cwd ?? process.cwd();
+  const root = findWorktreeRoot(cwd);
+  if (root === null) {
+    io.stderr(`squeal init: ${cwd} is not inside a git worktree
+`);
+    return 1;
+  }
+  const settingsPath = join6(root, ".claude", "settings.json");
+  const settings = readSettings(settingsPath);
+  if (typeof settings === "string") {
+    io.stderr(`squeal init: ${settings}; nothing changed
+`);
+    return 1;
+  }
+  const marketplaces = settings.value.extraKnownMarketplaces ?? {};
+  const plugins = settings.value.enabledPlugins ?? {};
+  for (const [key, value] of [
+    ["extraKnownMarketplaces", marketplaces],
+    ["enabledPlugins", plugins]
+  ]) {
+    if (!isObject(value)) {
+      io.stderr(`squeal init: ${key} in ${settingsPath} is not an object; nothing changed
+`);
+      return 1;
+    }
+  }
+  const lines = [];
+  const configPath = join6(root, "squeal.config.json");
+  if (existsSync4(configPath)) {
+    lines.push("kept squeal.config.json");
+  } else {
+    writeFileSync(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}
+`);
+    lines.push("wrote squeal.config.json with every default policy key");
+  }
+  const next = { ...settings.value };
+  const marketplaceEntries = marketplaces;
+  if (MARKETPLACE_NAME in marketplaceEntries) {
+    lines.push("kept the squeal marketplace entry in .claude/settings.json");
+  } else {
+    next.extraKnownMarketplaces = { ...marketplaceEntries, [MARKETPLACE_NAME]: MARKETPLACE_SOURCE };
+    lines.push("added the squeal marketplace to .claude/settings.json");
+  }
+  const pluginEntries = plugins;
+  if (pluginEntries[PLUGIN_ID] === true) {
+    lines.push(`.claude/settings.json already enables ${PLUGIN_ID}`);
+  } else {
+    next.enabledPlugins = { ...pluginEntries, [PLUGIN_ID]: true };
+    lines.push(`enabled ${PLUGIN_ID} in .claude/settings.json`);
+  }
+  const text = `${JSON.stringify(next, null, settings.indent)}
+`;
+  if (text !== settings.text) {
+    mkdirSync2(join6(root, ".claude"), { recursive: true });
+    writeFileSync(settingsPath, text);
+  }
+  io.stdout(
+    [
+      ...lines.map((line) => `squeal init: ${line}`),
+      `Each collaborator installs the plugin once: claude plugin install ${PLUGIN_ID} --scope project`,
+      ""
+    ].join("\n")
+  );
+  return 0;
+}
+function readSettings(path) {
+  if (!existsSync4(path)) return { value: {}, text: null, indent: 2 };
+  const text = readFileSync3(path, "utf8");
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    value = null;
+  }
+  if (!isObject(value)) return `${path} is not a JSON object`;
+  return { value, text, indent: /^([ \t]+)"/m.exec(text)?.[1] ?? 2 };
+}
+
 // src/cli/main.ts
 var HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
@@ -2010,7 +2114,7 @@ Commands from spec 001 still to come: run, daemon, start, init.
 `;
 function readVersion() {
   const manifest = new URL("../../package.json", import.meta.url);
-  const parsed = JSON.parse(readFileSync3(manifest, "utf8"));
+  const parsed = JSON.parse(readFileSync4(manifest, "utf8"));
   if (typeof parsed === "object" && parsed !== null && "version" in parsed) {
     return String(parsed.version);
   }
@@ -2029,6 +2133,7 @@ function main(argv, io) {
   }
   if (first === "status") return status(rest, io);
   if (first === "why") return why(rest, io);
+  if (first === "init") return init(rest, io);
   io.stderr(`squeal: unknown command "${first}"
 
 ${HELP}`);

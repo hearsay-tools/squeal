@@ -54,6 +54,14 @@ export function runtimeDir(): string {
   return dir;
 }
 
+/**
+ * A directory outside any git worktree. The test temp dir can sit inside a
+ * checkout, so this one is made under /tmp.
+ */
+export function outsideGit(): string {
+  return runtimeDir();
+}
+
 /** A unix socket that accepts connections, standing in for a live daemon. */
 export function liveSocket(path: string): Promise<Server> {
   return new Promise((resolve) => {

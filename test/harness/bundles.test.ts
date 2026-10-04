@@ -5,7 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/index.js";
 import { tempDir } from "../store/helpers.js";
-import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
+import { liveSocket, outsideGit, runBundle, runtimeDir } from "./bundle-helpers.js";
 import { recorded, SUBTRACTS, squealRepo } from "./helpers.js";
 
 const HOOKS = ["session-start", "post-tool-batch", "pre-tool-use", "stop", "session-end", "waiter"];
@@ -135,7 +135,7 @@ describe("bundled waiter", () => {
 
 describe("bundled hooks without a usable store", () => {
   it.each(HOOKS)("%s exits 0 silently outside any git worktree", async (name) => {
-    const out = await runBundle(name, recorded(EVENT_OF[name] ?? name, tempDir()), INTERACTIVE);
+    const out = await runBundle(name, recorded(EVENT_OF[name] ?? name, outsideGit()), INTERACTIVE);
     expect(out).toMatchObject({ stdout: "", stderr: "", code: 0 });
   });
 
