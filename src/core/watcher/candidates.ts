@@ -1,6 +1,7 @@
 import type { Dirent, Stats } from "node:fs";
 import { lstat, readdir } from "node:fs/promises";
 import type { AbsolutePath, CandidatePath, FileStat, RelativePath } from "../types/index.js";
+import { mapConcurrent } from "./concurrency.js";
 import type { Exclusions } from "./exclusions.js";
 import { checkIgnored } from "./git.js";
 import {
@@ -116,10 +117,14 @@ export async function candidatesForReconcile(
 ): Promise<CandidatePath[]> {
   const nested = new NestedRepoProbe(ctx.root);
   const all = new Set<RelativePath>([...statusPaths, ...ctx.trackedPaths(), ...ctx.extraFiles]);
+  const stats = await mapConcurrent(all, async (rel) =>
+    isGitMetadata(rel) || (await nested.isInside(rel)) ? undefined : statOrNull(ctx.root, rel),
+  );
   const out = new Map<RelativePath, FileStat | null>();
+  let i = 0;
   for (const rel of all) {
-    if (isGitMetadata(rel) || (await nested.isInside(rel))) continue;
-    out.set(rel, await statOrNull(ctx.root, rel));
+    const stat = stats[i++];
+    if (stat !== undefined) out.set(rel, stat);
   }
   return sortCandidates(out);
 }
