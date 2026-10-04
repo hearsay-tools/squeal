@@ -1,6 +1,6 @@
 import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
 import type { FileChange, InvalidatedPath, Revision, TestFileRef } from "../types/index.js";
-import { type SchedulerContext, tryRunner } from "./context.js";
+import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import type { Ledger } from "./ledger.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
@@ -95,6 +95,23 @@ export async function applyRevision(
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved);
   ledger.settle(touched.values(), changed);
+}
+
+/**
+ * After a reconciliation pass that created no revision: recomputes the
+ * environments when the installed lockfile appeared, vanished or moved
+ * (review S8), and settles the test files whose keys changed.
+ */
+export async function checkLockfile(context: SchedulerContext, ledger: Ledger): Promise<boolean> {
+  if (!(await context.keys.lockfileMoved())) return false;
+  const environments = await tryRunner(context, "environment", () => context.runner.environment());
+  if (environments === null) return false;
+  const changes = await context.keys.setEnvironments(environments);
+  ledger.settle(
+    changes.map((c) => c.testFile),
+    NOTHING_CHANGED,
+  );
+  return true;
 }
 
 /** Fetches a test file's closure from the runner and sets it. `null` when the runner failed. */

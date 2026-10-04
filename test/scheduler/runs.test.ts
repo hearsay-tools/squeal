@@ -196,4 +196,22 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     expect(h.keyOf("test/plain.test.ts")).not.toBe(before);
     expect(h.runner.runs.map((r) => r.files.length)).toEqual([5, 5]);
   });
+
+  it("notices an installed lockfile that appears after start at the next reconciliation pass", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 5 });
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const before = h.keyOf("test/plain.test.ts");
+
+    // First npm install: an ignored file in an ignored directory, so no watch batch names it.
+    h.write("node_modules/.package-lock.json", '{"packages":{}}\n');
+    await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await h.scheduler.idle();
+
+    expect(h.keyOf("test/plain.test.ts")).not.toBe(before);
+    expect(h.scheduler.extraFiles()).toContain("node_modules/.package-lock.json");
+    expect(h.runner.runs.map((r) => r.files.length)).toEqual([5, 5]);
+  });
 });
