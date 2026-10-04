@@ -22,7 +22,10 @@ export interface FileState {
    * explicit `run --all`, queues it again.
    */
   unknownKey: CheckKey | null;
-  /** Consecutive tiers whose results the stability check discarded. */
+  /**
+   * Consecutive tiers whose results the stability check discarded at a key
+   * that did not move (review S5).
+   */
   discards: number;
 }
 
