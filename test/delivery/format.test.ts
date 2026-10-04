@@ -17,6 +17,7 @@ const consumer = { worktreeId: "wt-a", sessionId: "s1", agentId: "main" };
 const header: StatusHeader = {
   revision: 184,
   counts: { current: 47, pending: 3, stale: 0, unknown: 12 },
+  testFilesWithoutChecks: { pending: 0, unknown: 0 },
   fullSuite: { atCurrentRevision: false, lastCompletedRevision: 170 },
 };
 
@@ -182,6 +183,19 @@ describe("formatDelta", () => {
     );
     expect(at({ atCurrentRevision: false, lastCompletedRevision: null })).toContain(
       "Full suite: not completed at any revision.",
+    );
+  });
+
+  it("states test files without checks by class, only when there are any", () => {
+    const line = (testFilesWithoutChecks: StatusHeader["testFilesWithoutChecks"]) =>
+      formatDelta({ ...delta([regression]), header: { ...header, testFilesWithoutChecks } }).split(
+        "\n",
+      )[1];
+    expect(line({ pending: 0, unknown: 0 })).toBe(
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full suite: not completed at revision 184, last completed at revision 170.",
+    );
+    expect(line({ pending: 2, unknown: 1 })).toBe(
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Test files without checks: 2 pending, 1 unknown. Full suite: not completed at revision 184, last completed at revision 170.",
     );
   });
 

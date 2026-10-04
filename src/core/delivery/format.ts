@@ -44,15 +44,19 @@ function at(location: SourceLocation): string {
 }
 
 function headerLine(header: StatusHeader): string {
-  const { revision, counts, fullSuite } = header;
+  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
   const suite = fullSuite.atCurrentRevision
     ? `completed at revision ${revision}`
     : fullSuite.lastCompletedRevision === null
       ? "not completed at any revision"
       : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const withoutChecks =
+    files.pending + files.unknown === 0
+      ? ""
+      : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   return (
     `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ` +
-    `${counts.stale} stale, ${counts.unknown} unknown. Full suite: ${suite}.`
+    `${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.`
   );
 }
 

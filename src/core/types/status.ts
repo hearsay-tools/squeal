@@ -34,15 +34,27 @@ export interface FullSuiteState {
 }
 
 /**
+ * Test files of this worktree that have produced no check yet, by class. Their
+ * checks are in no `ValidityCounts`.
+ *
+ * Spec 001 D6: "how many test files have produced no check yet and in which
+ * class they are (a never-run or unkeyed file counts as unknown, a queued one
+ * as pending)". A running one counts as pending too.
+ */
+export type TestFileCounts = Readonly<Record<Extract<Validity, "pending" | "unknown">, number>>;
+
+/**
  * Header carried by every delivered message and by status.
  *
  * Spec 001 D6: "Every delivered message carries a header: the worktree's
  * current revision, how many checks are current, pending, stale and unknown at
- * that revision, and whether a full-suite result exists for it."
+ * that revision, how many test files have produced no check yet and in which
+ * class they are [...], and whether a full-suite checkpoint completed for it."
  */
 export interface StatusHeader {
   readonly revision: RevisionNumber;
   readonly counts: ValidityCounts;
+  readonly testFilesWithoutChecks: TestFileCounts;
   readonly fullSuite: FullSuiteState;
 }
 
@@ -88,7 +100,10 @@ export interface CheckBreakdown {
   readonly pendingByPhase: Readonly<Record<PendingPhase, number>>;
   /** Test files with a key in this worktree (`test_file_keys`). */
   readonly testFiles: number;
-  /** Test files with a key but no known check yet: their checks are not in any count. */
+  /**
+   * Test files with a `test_file_keys` row but no known check yet: their
+   * checks are not in any count. The sum of `StatusHeader.testFilesWithoutChecks`.
+   */
   readonly testFilesWithoutChecks: number;
 }
 

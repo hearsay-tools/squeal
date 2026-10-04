@@ -45,7 +45,7 @@ export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): S
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
-  const header = readHeader(store, worktreeId, states);
+  const header = readHeader(store, worktreeId, states, keys);
 
   const notes: string[] = [];
   if (worktree === null) {
