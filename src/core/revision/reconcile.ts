@@ -1,33 +1,77 @@
-import { type Hasher, isRacy, mapConcurrent, type StatCache, sameStat } from "../hash/index.js";
+import {
+  type CacheUpdate,
+  type Hasher,
+  isRacy,
+  mapConcurrent,
+  type StatCache,
+  sameStat,
+} from "../hash/index.js";
 import { compare } from "../keys/closure.js";
 import type {
+  CandidateBatch,
+  CandidatePath,
   CommitSha,
   EpochMs,
   FileChange,
   FileHashRecord,
+  FileHashRepo,
+  FileStat,
   RelativePath,
   Revision,
   RevisionRepo,
   RevisionTrigger,
+  Store,
   WorktreeId,
 } from "../types/index.js";
 
-/** What `reconcile` needs to turn changes into a stored revision. */
+/** `HEAD` and the dirty flag recorded with a revision. */
+export interface HeadState {
+  readonly head: CommitSha;
+  readonly dirty: boolean;
+}
+
+/** What one candidate batch changed, computed by `diffBatch` and not yet stored. */
+export interface BatchDiff {
+  readonly trigger: RevisionTrigger;
+  /** Sorted by path, each path once. Empty when nothing changed content. */
+  readonly changes: readonly FileChange[];
+  /** Stat cache updates, written with the revision by `commitBatch`. */
+  readonly updates: readonly CacheUpdate[];
+}
+
+/** What `commitBatch` writes to. Pass the repos of the store whose transaction it runs in. */
+export interface CommitContext {
+  readonly worktreeId: WorktreeId;
+  /** Required when the diff has changes; read it between `diffBatch` and the transaction. */
+  readonly head: HeadState | null;
+  readonly revisions: RevisionRepo;
+  readonly fileHashes: FileHashRepo;
+  /** Clock for `createdAt`. Defaults to `Date.now`. */
+  readonly now?: () => EpochMs;
+}
+
+/** What `reconcile` needs to turn a batch into a stored revision. */
 export interface ReconcileContext {
   readonly worktreeId: WorktreeId;
-  readonly trigger: RevisionTrigger;
-  /** Assigns the revision number. */
-  readonly revisions: RevisionRepo;
+  readonly store: Pick<Store, "transaction" | "revisions" | "fileHashes">;
   /** `HEAD` and the dirty flag. Called only when a revision is created. */
-  head(): Promise<{ readonly head: CommitSha; readonly dirty: boolean }>;
+  head(): Promise<HeadState>;
   /** Clock for `createdAt`. Defaults to `Date.now`. */
   now?(): EpochMs;
 }
 
-/** The stat cache updates of one reconciliation, applied once its revision is stored. */
-export type CacheUpdate =
-  | { readonly kind: "set"; readonly record: FileHashRecord; readonly racy: boolean }
-  | { readonly kind: "delete"; readonly path: RelativePath };
+/**
+ * `lstat`s `paths` once each, for callers with paths and no watcher batch,
+ * such as the stability check after a run. Sorted, unique.
+ */
+export async function statCandidates(
+  paths: Iterable<RelativePath>,
+  hasher: Hasher,
+): Promise<CandidatePath[]> {
+  const sorted = [...new Set(paths)].sort(compare);
+  const stats = await mapConcurrent(sorted, (path) => hasher.stat(path));
+  return sorted.map((path, i) => ({ path, stat: stats[i] ?? null }));
+}
 
 /**
  * The content changes among `candidates`, and the stat cache updates that go
@@ -35,23 +79,29 @@ export type CacheUpdate =
  *
  * Spec 001 D2: "every reported path is re-stat'ed and, if `mtime`, `size` or
  * inode changed, re-hashed with the git blob hash. Paths whose hash is
- * unchanged are dropped." ctime is compared too (D3 stat cache). A racy entry
- * is re-hashed even with an equal stat. Changes are sorted by path, each path
- * once. A path that is not a regular file counts as absent.
+ * unchanged are dropped." The re-stat is the candidate's `stat`, taken by the
+ * watcher (or `statCandidates`) with the one stat definition of `FileStat`;
+ * no path is stat'ed again. ctime is compared too (D3 stat cache). A racy
+ * entry is re-hashed even with an equal stat. A path with no file is marked
+ * known absent in the cache, even when it was never cached. Changes are
+ * sorted by path, each path once; a repeated path keeps its last stat.
  */
 export async function diffCandidates(
-  candidates: Iterable<RelativePath>,
+  candidates: Iterable<CandidatePath>,
   cache: StatCache,
   hasher: Hasher,
 ): Promise<{ changes: FileChange[]; updates: CacheUpdate[] }> {
-  const paths = [...new Set(candidates)].sort(compare);
+  const statOf = new Map<RelativePath, FileStat | null>();
+  for (const candidate of candidates) statOf.set(candidate.path, candidate.stat);
+  const paths = [...statOf.keys()].sort(compare);
   const observed = await mapConcurrent(paths, async (path) => {
+    const stat = statOf.get(path) ?? null;
     const cached = cache.get(path);
-    const stat = await hasher.stat(path);
     if (stat && cached && sameStat(cached, stat) && !cache.isRacy(path)) return null;
     const hashedAt = hasher.now();
+    // The file can vanish between the watcher's stat and this read: then it is absent.
     const hash = stat ? await hasher.hash(path) : null;
-    return { path, cached, stat: hash === null ? null : stat, hash, hashedAt };
+    return { path, cached, stat, hash, hashedAt };
   });
 
   const changes: FileChange[] = [];
@@ -60,9 +110,8 @@ export async function diffCandidates(
     if (!entry) continue;
     const { path, cached, stat, hash, hashedAt } = entry;
     if (!stat || hash === null) {
-      if (!cached) continue;
-      changes.push({ path, oldHash: cached.hash, newHash: null });
-      updates.push({ kind: "delete", path });
+      if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
+      if (cache.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
     const record: FileHashRecord = {
@@ -79,41 +128,83 @@ export async function diffCandidates(
   return { changes, updates };
 }
 
+/** Step 1 of reconciliation: reads and hashes, stores nothing. See `reconcile`. */
+export async function diffBatch(
+  batch: CandidateBatch,
+  cache: StatCache,
+  hasher: Hasher,
+): Promise<BatchDiff> {
+  return { trigger: batch.trigger, ...(await diffCandidates(batch.paths, cache, hasher)) };
+}
+
 /**
- * Reconciles watcher hints into at most one revision.
+ * Step 2 of reconciliation: appends the revision, if any, and writes the stat
+ * cache. Synchronous; call it inside `store.transaction` and make it the last
+ * write there. The in-memory cache changes only after every write succeeded,
+ * so a throw leaves it as it was, and the rolled-back change is detected
+ * again by the next reconciliation. Returns `null` when nothing changed.
+ */
+export function commitBatch(
+  diff: BatchDiff,
+  cache: StatCache,
+  context: CommitContext,
+): Revision | null {
+  let revision: Revision | null = null;
+  if (diff.changes.length > 0) {
+    if (!context.head) {
+      throw new Error(
+        `squeal: ${diff.changes.length} changes in worktree ${context.worktreeId} need HEAD to create a revision`,
+      );
+    }
+    revision = context.revisions.append({
+      worktreeId: context.worktreeId,
+      createdAt: context.now?.() ?? Date.now(),
+      head: context.head.head,
+      dirty: context.head.dirty,
+      trigger: diff.trigger,
+      changes: diff.changes,
+    });
+  }
+  cache.flush(context.fileHashes, context.worktreeId, diff.updates);
+  return revision;
+}
+
+/**
+ * Reconciles one candidate batch into at most one revision.
  *
  * Spec 001 D2: "If anything remains, the worktree's **revision** increments
  * by one and the revision records the changed paths with old and new hashes,
  * the time, `HEAD`, and whether the tree is dirty. A revision is never created
  * by a touch or a no-op save." Returns `null` when no content changed.
  *
- * The stat cache is updated only after the revision is stored, so a failed
- * append is detected again by the next reconciliation. Persisting the cache
- * (`StatCache.flush`) is the caller's, ideally in the transaction that appends
- * the revision. Calls on one cache must not overlap.
+ * Three steps, so the async work happens before the synchronous transaction:
+ *
+ * 1. `diffBatch`: hash what the batch's stats say may have changed.
+ * 2. `context.head()`, only when there are changes.
+ * 3. `store.transaction(() => commitBatch(...))`: append the revision and
+ *    flush the stat cache together. A crash cannot store one without the
+ *    other, so a restart never reports the same change as a second revision.
+ *
+ * Callers that need more writes in the same transaction run the steps
+ * themselves. Calls on one cache must not overlap, and nothing else may
+ * change the cache between steps 1 and 3.
  */
 export async function reconcile(
-  candidates: Iterable<RelativePath>,
+  batch: CandidateBatch,
   cache: StatCache,
   hasher: Hasher,
   context: ReconcileContext,
 ): Promise<Revision | null> {
-  const { changes, updates } = await diffCandidates(candidates, cache, hasher);
-  let revision: Revision | null = null;
-  if (changes.length > 0) {
-    const { head, dirty } = await context.head();
-    revision = context.revisions.append({
+  const diff = await diffBatch(batch, cache, hasher);
+  const head = diff.changes.length > 0 ? await context.head() : null;
+  const { store } = context;
+  return store.transaction(() =>
+    commitBatch(diff, cache, {
       worktreeId: context.worktreeId,
-      createdAt: context.now?.() ?? Date.now(),
       head,
-      dirty,
-      trigger: context.trigger,
-      changes,
-    });
-  }
-  for (const update of updates) {
-    if (update.kind === "delete") cache.delete(update.path);
-    else cache.set(update.record, { racy: update.racy });
-  }
-  return revision;
+      revisions: store.revisions,
+      fileHashes: store.fileHashes,
+      now: () => context.now?.() ?? Date.now(),
+    }),
+  );
 }

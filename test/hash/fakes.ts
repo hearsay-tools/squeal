@@ -55,3 +55,27 @@ export class FakeRevisionRepo implements RevisionRepo {
     return this.rows.find((r) => r.worktreeId === worktreeId && r.number === number) ?? null;
   }
 }
+
+/**
+ * The parts of `Store` reconciliation writes to, over in-memory repos. A
+ * transaction that throws rolls both tables back, like `BEGIN IMMEDIATE`.
+ */
+export class FakeStore {
+  readonly revisions = new FakeRevisionRepo();
+  readonly fileHashes = new FakeFileHashRepo();
+  transactions = 0;
+
+  transaction<T>(fn: () => T): T {
+    this.transactions++;
+    const revisions = [...this.revisions.rows];
+    const fileHashes = new Map([...this.fileHashes.rows].map(([id, rows]) => [id, new Map(rows)]));
+    try {
+      return fn();
+    } catch (error) {
+      this.revisions.rows.splice(0, Infinity, ...revisions);
+      this.fileHashes.rows.clear();
+      for (const [id, rows] of fileHashes) this.fileHashes.rows.set(id, rows);
+      throw error;
+    }
+  }
+}

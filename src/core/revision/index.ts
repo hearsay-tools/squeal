@@ -1,1 +1,12 @@
-export { type CacheUpdate, diffCandidates, type ReconcileContext, reconcile } from "./reconcile.js";
+export type { CacheUpdate } from "../hash/index.js";
+export {
+  type BatchDiff,
+  type CommitContext,
+  commitBatch,
+  diffBatch,
+  diffCandidates,
+  type HeadState,
+  type ReconcileContext,
+  reconcile,
+  statCandidates,
+} from "./reconcile.js";
