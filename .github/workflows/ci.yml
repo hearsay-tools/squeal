@@ -30,3 +30,6 @@ jobs:
         run: npx vitest run
       - name: Build
         run: npm run build
+      - name: Bundles match the build
+        # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
+        run: git diff --exit-code -- plugins/claude-code/dist
