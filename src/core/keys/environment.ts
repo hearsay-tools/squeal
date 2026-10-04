@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
-import { isMissing } from "../fs/index.js";
+import { dirname, join, sep } from "node:path";
+import { isMissing, toRelative } from "../fs/index.js";
 import type {
   AbsolutePath,
   CoreEnvironmentInputs,
@@ -143,13 +143,8 @@ export async function installedDependenciesFingerprint(
       }
       return hash.digest("hex");
     }
-    if (
-      dir === worktreeRoot ||
-      dirname(dir) === dir ||
-      relative(worktreeRoot, dir).startsWith("..")
-    ) {
-      return "none";
-    }
+    // `null` for the worktree root itself and anything outside it.
+    if (dirname(dir) === dir || toRelative(worktreeRoot, dir) === null) return "none";
   }
 }
 

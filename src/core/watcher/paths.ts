@@ -1,18 +1,7 @@
 import { lstat } from "node:fs/promises";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { join } from "node:path";
 import { isMissing } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
-
-/** `abs` relative to `root` with `/` separators, or `null` when it is the root or outside it. */
-export function toRelative(root: AbsolutePath, abs: AbsolutePath): RelativePath | null {
-  const rel = relative(root, abs);
-  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) return null;
-  return sep === "/" ? rel : rel.split(sep).join("/");
-}
-
-export function toAbsolute(root: AbsolutePath, rel: RelativePath): AbsolutePath {
-  return join(root, ...rel.split("/"));
-}
 
 /** `path` and each of its ancestors, deepest first, root excluded: `a/b/c`, `a/b`, `a`. */
 export function* selfAndAncestors(path: RelativePath): Generator<RelativePath> {

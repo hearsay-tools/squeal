@@ -1,6 +1,7 @@
+import { toAbsolute } from "../fs/index.js";
 import type { AbsolutePath, RelativePath, WatchSpec } from "../types/index.js";
 import { checkIgnored, type GitStatus, gitStatus, listIgnored, listSubmodules } from "./git.js";
-import { hasGitEntry, toAbsolute } from "./paths.js";
+import { hasGitEntry } from "./paths.js";
 
 /**
  * Builds the watch-time exclusions from git.
