@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
@@ -6,9 +6,13 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { fakeRepo } from "../status/helpers.js";
 import { outsideGit } from "./bundle-helpers.js";
 
-const MARKETPLACE = {
-  source: { source: "github", repo: "hearsay-tools/squeal", path: "plugins/claude-code" },
-};
+/*
+ * Review wave 3, S4: for a `github` or `git` source, Claude Code 2.1.288
+ * resolves plugin sources against the clone root, so the marketplace lives at
+ * the repository root (`.claude-plugin/marketplace.json`, the default `path`)
+ * and lists the plugin as `./plugins/claude-code`.
+ */
+const MARKETPLACE = { source: { source: "github", repo: "hearsay-tools/squeal" } };
 
 function run(cwd: string) {
   let stdout = "";
@@ -132,6 +136,42 @@ describe("squeal init", () => {
     expect(readFileSync(settingsPath(root), "utf8")).toBe("{ not json");
   });
 
+  it("leaves no squeal.config.json behind when settings.json cannot be written", () => {
+    const { main: root } = fakeRepo();
+    mkdirSync(join(root, ".claude"));
+    symlinkSync(join(root, "missing", "settings.json"), settingsPath(root));
+
+    const out = run(root);
+
+    expect(out.code).toBe(1);
+    expect(out.stderr).toMatch(
+      /^squeal init: could not write .*settings\.json: .*; nothing changed\n$/,
+    );
+    expect(existsSync(join(root, "squeal.config.json"))).toBe(false);
+  });
+
+  it("restores settings.json when squeal.config.json cannot be written (N2)", () => {
+    const { main: root } = fakeRepo();
+    writeSettings(root, '{ "env": { "FOO": "1" } }\n');
+    symlinkSync(join(root, "missing", "squeal.config.json"), join(root, "squeal.config.json"));
+
+    const out = run(root);
+
+    expect(out.code).toBe(1);
+    expect(out.stderr).toMatch(
+      /^squeal init: could not write .*squeal\.config\.json: .*; nothing changed\n$/,
+    );
+    expect(readFileSync(settingsPath(root), "utf8")).toBe('{ "env": { "FOO": "1" } }\n');
+  });
+
+  it("removes a settings.json it created when squeal.config.json cannot be written", () => {
+    const { main: root } = fakeRepo();
+    symlinkSync(join(root, "missing", "squeal.config.json"), join(root, "squeal.config.json"));
+
+    expect(run(root).code).toBe(1);
+    expect(existsSync(settingsPath(root))).toBe(false);
+  });
+
   it("refuses outside a git worktree", () => {
     const dir = outsideGit();
     const out = run(dir);
@@ -151,5 +191,14 @@ describe("squeal init", () => {
     });
     expect(code).toBe(2);
     expect(stderr).toMatch(/^squeal init: takes no arguments/);
+  });
+});
+
+describe("squeal --help", () => {
+  it("lists init and nothing as still to come (N1)", () => {
+    let stdout = "";
+    main(["--help"], { stdout: (t) => (stdout += t), stderr: () => {} });
+    expect(stdout).toMatch(/^ {2}squeal init {2,}\S/m);
+    expect(stdout).not.toContain("still to come");
   });
 });

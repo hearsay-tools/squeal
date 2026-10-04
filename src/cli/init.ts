@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { findWorktreeRoot } from "../core/status/index.js";
 import { DEFAULT_POLICY } from "../core/types/index.js";
@@ -14,9 +14,15 @@ import type { CliIo } from "./main.js";
 export const MARKETPLACE_NAME = "squeal";
 export const PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 
-/** This repository, whose plugins/claude-code is the marketplace root. */
+/**
+ * This repository. Its `.claude-plugin/marketplace.json` is at the root, the
+ * default `path`, and lists the plugin as `./plugins/claude-code`: Claude
+ * Code 2.1.288 resolves plugin sources of a `github` marketplace against the
+ * clone root, not against the directory holding the manifest (review wave 3,
+ * S4).
+ */
 export const MARKETPLACE_SOURCE = {
-  source: { source: "github", repo: "hearsay-tools/squeal", path: "plugins/claude-code" },
+  source: { source: "github", repo: "hearsay-tools/squeal" },
 } as const;
 
 type JsonObject = Record<string, unknown>;
@@ -26,8 +32,9 @@ const isObject = (value: unknown): value is JsonObject =>
 
 /**
  * Exit 0 when the repository is set up (including when nothing changed), 1
- * when settings cannot be read or the directory is not in a git worktree, 2 on
- * a usage error. Nothing is written unless every file can be.
+ * when settings cannot be read or written or the directory is not in a git
+ * worktree, 2 on a usage error. Settings are written first and restored when
+ * the config cannot be written, so a failure changes nothing.
  */
 export function init(args: readonly string[], io: CliIo): number {
   if (args.length > 0) {
@@ -61,12 +68,12 @@ export function init(args: readonly string[], io: CliIo): number {
 
   const lines: string[] = [];
   const configPath = join(root, "squeal.config.json");
-  if (existsSync(configPath)) {
-    lines.push("kept squeal.config.json");
-  } else {
-    writeFileSync(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}\n`);
-    lines.push("wrote squeal.config.json with every default policy key");
-  }
+  const writeConfig = !existsSync(configPath);
+  lines.push(
+    writeConfig
+      ? "wrote squeal.config.json with every default policy key"
+      : "kept squeal.config.json",
+  );
 
   const next: JsonObject = { ...settings.value };
   const marketplaceEntries = marketplaces as JsonObject;
@@ -85,9 +92,23 @@ export function init(args: readonly string[], io: CliIo): number {
   }
 
   const text = `${JSON.stringify(next, null, settings.indent)}\n`;
-  if (text !== settings.text) {
-    mkdirSync(join(root, ".claude"), { recursive: true });
-    writeFileSync(settingsPath, text);
+  const restore = text === settings.text ? () => {} : restorer(settingsPath, settings.text);
+  try {
+    if (text !== settings.text) {
+      mkdirSync(join(root, ".claude"), { recursive: true });
+      writeFileSync(settingsPath, text);
+    }
+  } catch (error) {
+    restore();
+    io.stderr(`squeal init: could not write ${settingsPath}: ${reason(error)}; nothing changed\n`);
+    return 1;
+  }
+  try {
+    if (writeConfig) writeFileSync(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}\n`);
+  } catch (error) {
+    restore();
+    io.stderr(`squeal init: could not write ${configPath}: ${reason(error)}; nothing changed\n`);
+    return 1;
   }
   io.stdout(
     [
@@ -97,6 +118,22 @@ export function init(args: readonly string[], io: CliIo): number {
     ].join("\n"),
   );
   return 0;
+}
+
+/** Puts settings.json back as it was read: the old text, or no file. */
+function restorer(path: string, text: string | null): () => void {
+  return () => {
+    try {
+      if (text === null) rmSync(path, { force: true });
+      else writeFileSync(path, text);
+    } catch {
+      // The write that failed first is the error reported; this one adds nothing.
+    }
+  };
+}
+
+function reason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 interface Settings {
