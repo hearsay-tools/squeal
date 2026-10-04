@@ -22,12 +22,15 @@ export interface TierFile {
   readonly key: CheckKey;
   /** Closure, environment files and lockfile: what must hold still during the run. */
   readonly inputs: readonly RelativePath[];
+  /** The checkpoint that requested this file, when it was selected (review S9). */
+  readonly checkpointId: string | null;
 }
 
 export interface Tier {
   readonly runId: string;
   readonly logDir: string;
   readonly revision: RevisionState;
+  /** `RunRecord.checkpointId`: the open checkpoint when it requested any file of the tier. */
   readonly checkpointId: string | null;
   readonly files: readonly TierFile[];
   /** The stat cache entries of every input when the tier was selected. */
@@ -64,17 +67,15 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
       }
     }
     ledger.queue.remove(ref);
-    picked.push({ file, key, inputs: keys.stabilityPaths(ref) });
+    const checkpointId = ledger.checkpoints.idFor(ref);
+    picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId });
   }
   if (picked.length === 0) {
     ledger.commit();
     return null;
   }
 
-  const checkpoint = ledger.checkpoints.active?.record.id ?? null;
-  const checkpointId = picked.some((p) => ledger.checkpoints.idFor(p.file.ref) !== null)
-    ? checkpoint
-    : null;
+  const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
   const runId = randomUUID();
   const tier: Tier = {
     runId,
@@ -171,7 +172,7 @@ export function recordTier(
   const unknown: { file: FileState; key: CheckKey }[] = [];
   store.transaction(() => {
     store.runs.finish(tier.runId, report.end, context.now());
-    for (const { file, key, inputs } of tier.files) {
+    for (const { file, key, inputs, checkpointId } of tier.files) {
       ledger.setRunning(file, null);
       if (!ledger.files.has(file.id)) continue;
       if (!completed.has(file.id)) {
@@ -192,7 +193,7 @@ export function recordTier(
         describe: context.describe,
       });
       if (records.length > 0) store.results.putMany(records);
-      if (file.key === key) ledger.applyResults(file, key, records, tier.checkpointId);
+      if (file.key === key) ledger.applyResults(file, key, records, checkpointId);
     }
     const reason = report.failure ?? `run ${report.end}`;
     ledger.markUnknown(unknown, reason);

@@ -236,13 +236,23 @@ export class Ledger {
         sink.markUnknown(worktreeId, revision, testFiles, reason);
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
-      if (rows.length > 0) {
-        // Only rows that changed: no other file's key, phase or validity moved.
-        const checkpointId = this.checkpoints.active?.record.id ?? null;
-        const testFiles = rows.map((row) => row.testFile);
+      // Only rows that changed: no other file's key, phase or validity moved.
+      // Each file is attributed to the checkpoint that requested it (review S9).
+      for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
         sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
       }
     });
+  }
+
+  #byCheckpoint(rows: readonly TestFileKeyRecord[]): Map<string | null, TestFileRef[]> {
+    const groups = new Map<string | null, TestFileRef[]>();
+    for (const { testFile } of rows) {
+      const id = this.checkpoints.idFor(testFile);
+      const group = groups.get(id);
+      if (group) group.push(testFile);
+      else groups.set(id, [testFile]);
+    }
+    return groups;
   }
 
   /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
