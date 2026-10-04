@@ -9,6 +9,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { ClosureMethod } from "./keys.js";
+import type { DaemonNote } from "./scheduler.js";
 import type {
   DiagnosticFingerprint,
   KnownOutcome,
@@ -148,11 +149,7 @@ export interface StatusSnapshot extends StatusHeader {
    * latest persisted daemon notes [...], kept bounded per worktree in `meta`".
    * `revision` is `null` when the note belongs to no revision.
    */
-  readonly daemonNotes: readonly {
-    readonly at: EpochMs;
-    readonly revision: RevisionNumber | null;
-    readonly text: string;
-  }[];
+  readonly daemonNotes: readonly DaemonNote[];
 }
 
 /**
