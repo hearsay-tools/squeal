@@ -187,15 +187,15 @@ Squeal loads Vitest from the project under validation, resolved from the worktre
 
 Owner is the coordinator unless noted.
 
-1. Inherited passes: current at once, or `stale` until confirmed in the background as Wallaby does? Trades latency against stale-result escape rate. Decide after first dogfooding data.
+1. Inherited passes: current at once, or `stale` until confirmed in the background as Wallaby does? Trades latency against stale-result escape rate. Decide after first dogfooding data. Dogfooding (`lessons.md`): a second worktree of this repository inherited 760 of 760 results with 0 runs, baseline 1.1 s instead of 138 s. The only stale-result escape seen was an own result under a closure that cannot see a runtime file read; inheritance would copy such an escape but does not cause it. Proposed: keep inherited results current, and spend the effort on closure completeness (per-test-file `inputs`).
 2. Node version granularity in the environment hash: full version or major.minor.
-3. PreToolUse denial wording and whether default-on survives dogfooding.
+3. PreToolUse denial wording and whether default-on survives dogfooding. Dogfooding (`lessons.md`): 4 denials in 2 of 18 editing sessions; the model re-issued the denied edit every time, never stalled or looped, and read the failure from the denial text, once reading the failing test in the same step as the re-issue and then fixing it. Cost: one extra tool call per denial. 2 of the 4 were transient mid-refactor failures. Claude Code prefixes the reason with "PreToolUse:Edit hook error:" without misleading the model. Proposed: keep default on and the current wording.
 4. Whether `config.related` plus `getRelevantTestSpecifications()` is stable public Vitest API; a thin wrapper isolates it.
 5. Reconciliation interval and whether events are lost across machine sleep.
-6. Long tool calls delay delivery until they end (19 s observed). Whether to ship a plugin `monitor` is deferred to the dogfooding report.
+6. Long tool calls delay delivery until they end (19 s observed). Whether to ship a plugin `monitor` is deferred to the dogfooding report. Dogfooding (`lessons.md`): during a 15 s Bash call the idle waiter took the delta 246 ms after the result and Claude Code queued it as a task notification until the call returned, 8.5 s later; a monitor's output would wait at the same boundary (inferred, not tested). The longest tool calls agents made were their own waits for pending checks (`sleep 20; squeal status`). Proposed: no monitor in v1; consider a blocking `squeal status --wait`.
 7. macOS: fd usage of chokidar, parcel rename behaviour, socket limit, lock release, and whether the prebuilt @parcel/watcher binary loads with install scripts disabled. Needs a macOS run before any release.
 8. Vitest writes its own cache under `node_modules/.vite` in the worktree. Accept or redirect `cacheDir`.
-9. Recovery from `unknown` is silent and the fingerprint includes line and column, so a line inserted above a failing assertion reads as a changed failure. Both are spec-conformant; measure how agents react during dogfooding.
+9. Recovery from `unknown` is silent and the fingerprint includes line and column, so a line inserted above a failing assertion reads as a changed failure. Both are spec-conformant; measure how agents react during dogfooding. Dogfooding (`lessons.md`): after a broken Vitest config was fixed, 18 recoveries from `unknown` were silent, the header's counts carried them, and the agent pulled status anyway; one `UNKNOWN -> FAIL` was delivered. A line shift was delivered as a changed failure and the agent called it a line shift and did nothing. The noisy case was a random temp path in the first error line, a changed failure on every re-run. Proposed: keep both behaviours; normalize UUIDs and temp paths in the fingerprint.
 
 ## References
 
