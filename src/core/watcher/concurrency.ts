@@ -1,4 +1,4 @@
-/** How many paths are stat'ed at once. Bounds open handles on a 10k-file worktree. */
+/** How many paths are stat'ed at once, so a 10k-file pass does not queue 10k filesystem calls. */
 export const STAT_CONCURRENCY = 64;
 
 /** `Promise.all` over `items` with at most `limit` calls in flight. Results keep input order. */
