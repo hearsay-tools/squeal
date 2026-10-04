@@ -112,3 +112,11 @@ export interface StatusUnavailable {
 }
 
 export type StatusResult = StatusSnapshot | StatusUnavailable;
+
+/**
+ * Builds the full status of one worktree. Task 001-22 owns the
+ * implementation; `HarnessDelivery.status` delegates to it (D9 `status()`).
+ */
+export interface StatusBuilder {
+  build(worktreeId: WorktreeId): StatusResult | Promise<StatusResult>;
+}
