@@ -39,7 +39,8 @@ function recordingCli(): { cli: string; argsFile: string } {
   const cli = join(dir, "cli.mjs");
   writeFileSync(
     cli,
-    `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(argsFile)}, JSON.stringify(process.argv.slice(2)));\n`,
+    // Written whole and renamed into place, so a reader never sees a half-written file.
+    `import { renameSync, writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(`${argsFile}.tmp`)}, JSON.stringify(process.argv.slice(2)));\nrenameSync(${JSON.stringify(`${argsFile}.tmp`)}, ${JSON.stringify(argsFile)});\n`,
   );
   chmodSync(cli, 0o755);
   return { cli, argsFile };
