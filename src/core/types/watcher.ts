@@ -1,0 +1,78 @@
+import type { AbsolutePath } from "./common.js";
+
+/**
+ * Debounce and reconciliation timings.
+ *
+ * Spec 001 D2: "Each debounced batch (100 ms quiet, 500 ms maximum) is
+ * reconciled" and "A reconciliation pass runs every 30 s when idle and on
+ * daemon start".
+ */
+export const WATCHER_TIMINGS = {
+  quietMs: 100,
+  maxBatchMs: 500,
+  reconcileIntervalMs: 30_000,
+} as const;
+
+/**
+ * A path the backend reports. A hint only; the kind is advisory.
+ *
+ * Spec 001 D2: "Watcher events are hints. Each debounced batch [...] is
+ * reconciled: every reported path is re-stat'ed and, if `mtime`, `size` or
+ * inode changed, re-hashed with the git blob hash."
+ */
+export interface WatchHint {
+  readonly path: AbsolutePath;
+  readonly kind: "add" | "change" | "unlink" | "unknown";
+}
+
+/**
+ * What to watch. The daemon builds this from git and rebuilds it when ignore
+ * inputs change.
+ *
+ * Spec 001 D2: "at watch time, exclude `.git`, nested worktree roots, and the
+ * output of `git ls-files --others --ignored --exclude-standard --directory`
+ * [...] recompute the watch-time list when any `.gitignore` changes or a
+ * `.git` entry appears under the root." And: "Gitignored files that appear in
+ * a known closure (generated code) are added to the stat cache and watched
+ * individually".
+ */
+export interface WatchSpec {
+  readonly root: AbsolutePath;
+  /** Directories and files never watched: `.git`, nested worktrees, ignored output. */
+  readonly excluded: readonly AbsolutePath[];
+  /** Ignored files watched anyway because a closure references them. */
+  readonly extraFiles: readonly AbsolutePath[];
+}
+
+/**
+ * Callbacks from a backend. Called from the backend's event loop; must not
+ * throw.
+ */
+export interface WatchListener {
+  onHints(hints: readonly WatchHint[]): void;
+  /**
+   * The backend lost events (overflow, dropped-events signal from
+   * @parcel/watcher). Spec 001 D12: "Watcher backend error or dropped-events
+   * signal: full reconciliation pass; a note in status."
+   */
+  onDropped(reason: string): void;
+  onError(error: Error): void;
+}
+
+/** A live watch. `update` replaces the spec without losing events where the backend allows it. */
+export interface WatchSubscription {
+  update(spec: WatchSpec): Promise<void>;
+  close(): Promise<void>;
+}
+
+/**
+ * One filesystem watcher implementation.
+ *
+ * Spec 001 D2: "The watcher sits behind one internal interface with two
+ * backends: chokidar 5 on Linux, @parcel/watcher on macOS." Node's recursive
+ * `fs.watch` is excluded.
+ */
+export interface WatcherBackend {
+  readonly name: "chokidar" | "parcel";
+  watch(spec: WatchSpec, listener: WatchListener): Promise<WatchSubscription>;
+}
