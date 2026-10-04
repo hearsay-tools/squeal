@@ -9,7 +9,15 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { ClosureMethod } from "./keys.js";
-import type { DiagnosticFingerprint, KnownOutcome, Validity } from "./state.js";
+import type {
+  DiagnosticFingerprint,
+  KnownOutcome,
+  KnownState,
+  PendingPhase,
+  Transition,
+  Validity,
+} from "./state.js";
+import type { ResultRecord } from "./store-records.js";
 
 /** Tally of checks by validity class at the current revision (D5). */
 export type ValidityCounts = Readonly<Record<Validity, number>>;
@@ -68,6 +76,23 @@ export interface InheritedSource {
 }
 
 /**
+ * Counts behind the human line "Affected checks: 47 passed, 3 running, 12
+ * queued" (vision, "The desired experience"). `ValidityCounts` says how many
+ * checks are current or pending; this says what the current ones are and
+ * where the pending ones are.
+ */
+export interface CheckBreakdown {
+  /** Checks with `current` validity, by known outcome. */
+  readonly currentByOutcome: Readonly<Record<KnownOutcome, number>>;
+  /** Checks with `pending` validity, by phase. A pending check with no phase counts as `queued`. */
+  readonly pendingByPhase: Readonly<Record<PendingPhase, number>>;
+  /** Test files with a key in this worktree (`test_file_keys`). */
+  readonly testFiles: number;
+  /** Test files with a key but no known check yet: their checks are not in any count. */
+  readonly testFilesWithoutChecks: number;
+}
+
+/**
  * Full status of one worktree, read from the store with no daemon needed.
  *
  * Spec 001 D7: "The snapshot contains: worktree root, revision, `HEAD` and
@@ -91,6 +116,7 @@ export interface StatusSnapshot extends StatusHeader {
     readonly count: number;
     readonly sources: readonly InheritedSource[];
   };
+  readonly breakdown: CheckBreakdown;
   readonly closureMethod: ClosureMethod;
   readonly storeSchemaVersion: number;
   /** Factual notes: dropped watcher events, baseline lost after corruption (D12). */
@@ -120,3 +146,50 @@ export type StatusResult = StatusSnapshot | StatusUnavailable;
 export interface StatusBuilder {
   build(worktreeId: WorktreeId): StatusResult | Promise<StatusResult>;
 }
+
+/** One stored result of a check, with where to find its full output. */
+export interface WhyResultEntry {
+  readonly result: ResultRecord;
+  /** Root of the worktree that produced it; `null` when that worktree is gone from the store. */
+  readonly worktreeRoot: AbsolutePath | null;
+  /** `runs/<run-id>/` of the producing run; `null` when the run record was pruned. */
+  readonly logDir: AbsolutePath | null;
+}
+
+/**
+ * History and provenance of one check, read from the store with no daemon.
+ *
+ * Spec 001 D7: "`squeal why <check>` prints the full history and provenance
+ * of one check and the path to its last run log."
+ */
+export interface WhyReport {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly available: true;
+  readonly found: true;
+  readonly worktreeId: WorktreeId;
+  readonly worktreeRoot: AbsolutePath;
+  /** Current revision of the worktree; `null` when none is recorded. */
+  readonly revision: RevisionNumber | null;
+  readonly check: CheckId;
+  /** Known state in this worktree; `null` when it has none. */
+  readonly knownState: KnownState | null;
+  /** Transitions of the check in this worktree, oldest first. */
+  readonly history: readonly Transition[];
+  /**
+   * Stored results of the check from every worktree, newest first, at most
+   * `WHY_RESULT_LIMIT`. The first entry's `logDir` is the last run log.
+   */
+  readonly results: readonly WhyResultEntry[];
+}
+
+/** No check, or more than one, matched the name given to `squeal why`. */
+export interface WhyNoMatch {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly available: true;
+  readonly found: false;
+  readonly query: string;
+  /** Checks of this worktree whose name contains the query; empty when none does. */
+  readonly candidates: readonly CheckId[];
+}
+
+export type WhyResult = WhyReport | WhyNoMatch | StatusUnavailable;
