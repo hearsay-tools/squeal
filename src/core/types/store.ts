@@ -77,8 +77,12 @@ export interface ResultRepo {
    * Every result stored under a key. Spec 001 D5: "looks each new key up in
    * the store. A hit is promoted to current for this worktree with its
    * provenance intact."
+   *
+   * Every hit advances the results' last-used time to `usedAt`, never back.
+   * Spec 001 D8: "with a last-used time advanced on every lookup hit"; the
+   * size cap evicts by it.
    */
-  byKey(key: CheckKey): readonly ResultRecord[];
+  byKey(key: CheckKey, usedAt?: EpochMs): readonly ResultRecord[];
   /**
    * The checks with a result under a key, sorted. Spec 001 D8: "the
    * file-level error expansion uses the checks of the file's previous key,
@@ -86,7 +90,11 @@ export interface ResultRepo {
    */
   checksForKey(key: CheckKey): readonly CheckId[];
   latestForCheck(check: CheckId): ResultRecord | null;
-  /** Spec 001 D5: "A result is stored only under a key whose inputs were stable for the whole run." */
+  /**
+   * Spec 001 D5: "A result is stored only under a key whose inputs were
+   * stable for the whole run." A stored result's last-used time starts at
+   * `provenance.recordedAt`.
+   */
   putMany(records: readonly ResultRecord[]): void;
 }
 

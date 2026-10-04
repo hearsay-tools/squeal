@@ -116,7 +116,7 @@ export function prune(
 }
 
 /**
- * The size-cap backstop. Evicts least recently recorded results first: those
+ * The size-cap backstop. Evicts least recently used results first: those
  * no rule keeps, then the newest main-worktree results that no live worktree
  * uses. Results under a live key are never evicted, because known states
  * rest on them. Returns how many results it removed.
@@ -132,7 +132,7 @@ function evictToCap(conn: Connection, capBytes: number): number {
       const batch = conn.transaction(() => {
         const n = conn.run(
           `DELETE FROM results WHERE rowid IN (
-             SELECT rowid FROM results WHERE ${tier} ORDER BY recorded_at, rowid LIMIT ?)`,
+             SELECT rowid FROM results WHERE ${tier} ORDER BY last_used_at, rowid LIMIT ?)`,
           EVICTION_BATCH,
         );
         dropOrphanFailureTexts(conn);
