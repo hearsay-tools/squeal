@@ -2,6 +2,7 @@ import { stat as fsStat } from "node:fs/promises";
 import { join } from "node:path";
 import type { AbsolutePath, EpochMs, FileHash, RelativePath } from "../types/index.js";
 import { hashFile, isMissing, type ObjectFormat } from "./blob.js";
+import { mapConcurrent } from "./concurrency.js";
 import { readCleanIndexHashes } from "./git-index.js";
 import { type FileStat, isRacy, type StatCache, sameStat } from "./stat-cache.js";
 
@@ -71,32 +72,30 @@ export async function seedStatCache(
   options: SeedOptions,
 ): Promise<SeedReport> {
   const hasher = options.hasher ?? createFsHasher(root, options.objectFormat);
-  const before = await Promise.all(paths.map((path) => hasher.stat(path)));
+  const before = await mapConcurrent(paths, (path) => hasher.stat(path));
   const index = await readCleanIndexHashes(root);
   let fromIndex = 0;
   let fromBytes = 0;
   let missing = 0;
 
-  await Promise.all(
-    paths.map(async (path, i) => {
-      const stat = await hasher.stat(path);
-      const earlier = before[i];
-      const indexHash = index.get(path);
-      if (stat && earlier && indexHash !== undefined && sameStat(stat, earlier)) {
-        cache.set({ path, ...stat, hash: indexHash }, { racy: isRacy(stat, hasher.now()) });
-        fromIndex++;
-        return;
-      }
-      const hashedAt = hasher.now();
-      const hash = stat ? await hasher.hash(path) : null;
-      if (!stat || hash === null) {
-        cache.delete(path);
-        missing++;
-        return;
-      }
-      cache.set({ path, ...stat, hash }, { racy: isRacy(stat, hashedAt) });
-      fromBytes++;
-    }),
-  );
+  await mapConcurrent(paths, async (path, i) => {
+    const stat = await hasher.stat(path);
+    const earlier = before[i];
+    const indexHash = index.get(path);
+    if (stat && earlier && indexHash !== undefined && sameStat(stat, earlier)) {
+      cache.set({ path, ...stat, hash: indexHash }, { racy: isRacy(stat, hasher.now()) });
+      fromIndex++;
+      return;
+    }
+    const hashedAt = hasher.now();
+    const hash = stat ? await hasher.hash(path) : null;
+    if (!stat || hash === null) {
+      cache.delete(path);
+      missing++;
+      return;
+    }
+    cache.set({ path, ...stat, hash }, { racy: isRacy(stat, hashedAt) });
+    fromBytes++;
+  });
   return { fromIndex, fromBytes, missing };
 }
