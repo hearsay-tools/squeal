@@ -18,13 +18,24 @@ export function runBundle(
   stdin: string,
   env: Readonly<Record<string, string>> = {},
 ): Promise<BundleRun> {
+  return runNode(
+    ["--disable-warning=ExperimentalWarning", join(PLUGIN_DIST, `${name}.mjs`)],
+    stdin,
+    env,
+  );
+}
+
+/** Runs `node <args>` with a minimal environment plus `env`, stdin piped, timed. */
+export function runNode(
+  args: readonly string[],
+  stdin: string,
+  env: Readonly<Record<string, string>> = {},
+): Promise<BundleRun> {
   return new Promise((resolve, reject) => {
     const started = performance.now();
-    const child = spawn(
-      process.execPath,
-      ["--disable-warning=ExperimentalWarning", join(PLUGIN_DIST, `${name}.mjs`)],
-      { env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env } },
-    );
+    const child = spawn(process.execPath, args, {
+      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
+    });
     const out: Buffer[] = [];
     const err: Buffer[] = [];
     child.stdout.on("data", (b: Buffer) => out.push(b));
