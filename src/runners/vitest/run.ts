@@ -139,8 +139,10 @@ export function buildReport(
   // An unhandled error carrying `VITEST_TEST_PATH` belongs to that file.
   for (const error of collector.unhandledErrors) {
     const rel = owner(error, collector);
-    const ref = completed.find((r) => r.path === rel);
-    if (ref) addErrors(ref, [toCheckError(error, collector.paths)]);
+    // Every project that ran the file: the error carries no project name.
+    for (const ref of completed.filter((r) => r.path === rel)) {
+      addErrors(ref, [toCheckError(error, collector.paths)]);
+    }
   }
 
   return {
