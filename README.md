@@ -8,6 +8,7 @@ Part of the Hearsay product family.
 
 - Vision: [docs/vision.md](docs/vision.md)
 - Styleguide: [docs/styleguide.md](docs/styleguide.md)
+- Board: [docs/board.md](docs/board.md)
 - Specifications: [docs/specifications/](docs/specifications/)
 - Decisions: [docs/decisions/](docs/decisions/)
 
