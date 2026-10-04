@@ -2252,12 +2252,16 @@ function additionalContext(input, text) {
 // src/harness/claude-code/hooks/session-start.ts
 var sessionStart = async (input, location2, deps) => {
   if (!usesSqueal(location2)) return null;
-  const ensured = await ensure(location2, deps);
-  return withContext(input, location2, deps, async (context) => {
-    if (ensured === "spawned") await settle(context, deps);
+  let ensured = false;
+  const outcome = await withContext(input, location2, deps, async (context) => {
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    ensured = true;
+    if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     const registration = await context.delivery.register(context.consumer);
     return additionalContext(input, formatRegistration(registration));
   });
+  if (!ensured) await ensure(location2, deps);
+  return outcome;
 };
 
 // src/harness/claude-code/main.ts
