@@ -1,13 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  blobHash,
-  createFsHasher,
-  type FileStat,
-  type Hasher,
-  StatCache,
-} from "../../src/core/hash/index.js";
+import { blobHash, createFsHasher, type Hasher, StatCache } from "../../src/core/hash/index.js";
 import {
   commitBatch,
   diffBatch,
@@ -18,6 +12,7 @@ import {
 import type {
   CandidateBatch,
   FileHash,
+  FileStat,
   RelativePath,
   RevisionTrigger,
 } from "../../src/core/types/index.js";
