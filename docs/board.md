@@ -66,7 +66,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 001-40 end to end | running | Per the "Inputs for wave 4" section of `reviews/wave-3.md` (plugin copy via git archive, no `SQUEAL_CLI`, recorded hook JSON driving the bundles, real spawned daemons, fresh content per edit). Fixture repository with two worktrees: PASS to FAIL, FAIL to PASS, silence on break-and-recover, inheritance with zero runs, isolation of edits between worktrees. | All scenarios in spec Testing pass in CI. |
+| 001-40 end to end | done | Per the "Inputs for wave 4" section of `reviews/wave-3.md` (plugin copy via git archive, no `SQUEAL_CLI`, recorded hook JSON driving the bundles, real spawned daemons, fresh content per edit). Fixture repository with two worktrees: PASS to FAIL, FAIL to PASS, silence on break-and-recover, inheritance with zero runs, isolation of edits between worktrees. | All scenarios in spec Testing pass in CI. |
 | 001-41 dogfooding report | running | Per the "Inputs for wave 4" section of `reviews/wave-3.md` (plugin-dir load and one real marketplace install, latency and duplicate measurements on this repository's store, PreToolUse and Stop reactions, interactive waiter, liveness). Run Squeal on this repository with Claude Code interactive and `-p`. Record delivery latency, duplicate rate, PreToolUse reactions. Write `specifications/001-core-loop/lessons.md` and resolve open questions 1, 3 and 6. | Report committed; open questions updated in spec. |
 
 ## Later
