@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { squealVersion } from "../core/daemon/version.js";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import { daemonCommand } from "./daemon.js";
@@ -12,6 +12,8 @@ const HELP = `squeal: continuous validation for coding agents. Push transitions,
 Usage:
   squeal status [--json]        Current validation state of this worktree
   squeal why <check> [--json]   History and provenance of one check
+  squeal init                   Set up this repository: squeal.config.json and the
+                                plugin entries in .claude/settings.json
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
@@ -22,19 +24,7 @@ Usage:
 
 A check is named as in status output: "path > describe > test", or any
 unique part of that name. Status reads the store directly; no daemon needed.
-
-Commands from spec 001 still to come: init.
 `;
-
-/** Reads `version` from the package manifest two levels up from `src/cli` or `dist/cli`. */
-function readVersion(): string {
-  const manifest = new URL("../../package.json", import.meta.url);
-  const parsed: unknown = JSON.parse(readFileSync(manifest, "utf8"));
-  if (typeof parsed === "object" && parsed !== null && "version" in parsed) {
-    return String(parsed.version);
-  }
-  throw new Error(`squeal: no version in ${manifest.pathname}`);
-}
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -54,7 +44,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
 export function main(argv: readonly string[], io: CliIo): number | Promise<number> {
   const [first, ...rest] = argv;
   if (first === "--version" || first === "-v") {
-    io.stdout(`${readVersion()}\n`);
+    io.stdout(`${squealVersion()}\n`);
     return 0;
   }
   if (first === undefined || first === "--help" || first === "-h" || first === "help") {
