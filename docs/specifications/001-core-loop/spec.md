@@ -45,7 +45,7 @@ A **repository** is the set of worktrees sharing one git common directory. The *
 
 Hook scripts resolve the common directory without spawning git: if `<root>/.git` is a directory, that is it; if it is a file, follow its `gitdir:` entry and then `<gitdir>/commondir`. The daemon uses `git rev-parse --path-format=absolute --git-common-dir` and records the result.
 
-The unix socket for liveness is `<runtime dir>/squeal-<worktree-hash>.sock`, never under the worktree, because socket paths are limited to 104 bytes on macOS and nested worktree paths exceed that.
+The unix socket for liveness is `<runtime dir>/squeal-<worktree-hash>.sock`, never under the worktree, because socket paths are limited to 104 bytes on macOS and nested worktree paths exceed that. Without a runtime directory it lives in a per-user directory under the temp dir, created mode 0700 and checked for owner and mode, never a fixed name in a shared directory. Probing tries the socket recorded in the store first when its heartbeat is fresh.
 
 ### D2. Watcher and revisions
 
@@ -108,7 +108,7 @@ A **transition** is recorded, per worktree, whenever a new result changes a chec
 
 Delivery is a diff against a **consumer view**. A consumer is `(worktree, session id, agent id or "main")`. Its view is the state and fingerprint last told to it for each check. On registration the view is seeded with the current known state of every check, so pre-existing and inherited failures are reported once in the registration header as known failures, not later as transitions. Failures first observed by the baseline run after registration are delivered once, in a batch labelled as baseline findings. At delivery time the daemon or hook computes the delta between the view and the current known states, keeps only notable differences (the transition kinds above, evaluated between what was told and what is known now), writes the result into the view, and returns the delta. A pass never told to anyone is written into the view silently. A check that broke and recovered between two deliveries produces nothing.
 
-Every delivered message carries a header: the worktree's current revision, how many checks are current, pending, stale and unknown at that revision, how many test files have produced no check yet and in which class they are (a never-run or unkeyed file counts as unknown, a queued one as pending), and whether a full-suite checkpoint completed for it. Delivery and status derive these from one shared header reader; check names are printed and parsed by one shared formatter so that a name an agent was told round-trips into `squeal why`. Failures come first. The message is capped at 10,000 characters; overflow is summarized by count with a pointer to `squeal status`. Wording is factual, never imperative: hooks carry no user authority and models do not follow instructions in them (research, claude-code-integration §2).
+Every delivered message carries a header: daemon liveness when no daemon is validating (since when, and that results are as of the last revision it reached), delivered once per consumer when liveness changes; the worktree's current revision, how many checks are current, pending, stale and unknown at that revision, how many test files have produced no check yet and in which class they are (a never-run or unkeyed file counts as unknown, a queued one as pending), and whether a full-suite checkpoint completed for it. Delivery and status derive these from one shared header reader; check names are printed and parsed by one shared formatter so that a name an agent was told round-trips into `squeal why`. Failures come first. The message is capped at 10,000 characters; overflow is summarized by count with a pointer to `squeal status`. Wording is factual, never imperative: hooks carry no user authority and models do not follow instructions in them (research, claude-code-integration §2).
 
 ### D7. Status
 
@@ -131,29 +131,29 @@ Shipped as a Claude Code plugin in this repository (ADR 0003). `squeal init` add
 Plugin contents:
 
 - `hooks/hooks.json` with every hook `timeout: 2` and scripts under `${CLAUDE_PLUGIN_ROOT}`:
-  - `SessionStart`: ensure the daemon (D10), register the consumer, inject the status header. If interactive (`CLAUDE_CODE_SESSION_ATTENDED=1`, undocumented, guarded), arm the idle waiter.
-  - `PostToolBatch`: deliver the delta for this consumer. Primary push channel. Verified to reach the model before its next step in the same turn; budget 80 ms p95 (about 50 ms Node start plus a store read).
+  - `SessionStart`: ensure the daemon (D10), register the consumer, inject the status header. In a repository that has no store yet, SessionStart only spawns the daemon and the first PostToolBatch registers and injects the header. If interactive (`CLAUDE_CODE_SESSION_ATTENDED=1`, undocumented, guarded), arm the idle waiter.
+  - `PostToolBatch`: deliver the delta for this consumer. Primary push channel. PostToolBatch and Stop also ensure the daemon when the recorded heartbeat is older than two intervals, a store read with no socket cost on the hot path. Verified to reach the model before its next step in the same turn; budget 80 ms p95 (about 50 ms Node start plus a store read).
   - `PreToolUse` on `Edit|Write|NotebookEdit`: when policy `interrupt.onRegression` is on and the consumer's delta contains an undelivered regression (first-seen fail or `pass -> fail`), deny once with the regression entries as `permissionDecisionReason`, phrased as facts plus one sentence stating that the edit was not applied and can be re-issued. The hook reads regressions through a peek that marks only those entries delivered, so recoveries are not consumed by a denial and the same regression never denies twice. Recoveries never deny. Default on; the model reads the reason and continues in the same turn, but treats it as an obstacle rather than advice, so wording is a dogfooding item.
-  - `Stop`: deliver the status header plus delta, optionally after waiting up to `stop.waitMs` for pending checks of the current revision; apply `stop.blockOnKnownFailures` and `stop.requireFullSuite`; re-arm the idle waiter if interactive.
-  - `SubagentStart` and `SubagentStop`: same as SessionStart and Stop for the consumer `(session id, agent id)`. Subagent context is isolated from the parent's in both directions, so each gets its own view.
+  - `Stop`: speak only with news, because any Stop context starts another model turn: a delta, a first registration that carries known failures, or a policy block. Optionally wait up to `stop.waitMs` (capped at 1,500 ms by the 2 s hook budget) for pending checks of the current revision. `stop.blockOnKnownFailures` blocks only on failures that are current at this revision; failures whose re-run is pending are named as pending, never as existing. `stop.requireFullSuite` reads the checkpoint state. Re-arm the idle waiter if interactive.
+  - `SubagentStart` and `SubagentStop`: same as SessionStart and Stop for the consumer `(session id, agent id)`, and SubagentStop unregisters that consumer afterwards, since a finished subagent can receive nothing more. Subagent context is isolated from the parent's in both directions, so each gets its own view.
   - `SessionEnd`: unregister the consumer.
 - Idle waiter: one `asyncRewake` hook per session, started by SessionStart and Stop, with a per-consumer lock so only one runs. It blocks on the daemon until the consumer's delta is non-empty, prints it to stderr and exits 2, which wakes an idle agent in about 40 ms and lands mid-turn at the next tool boundary. It is never armed in `-p` mode, where `asyncRewake` blocks the agent. Its `timeout` is explicit and long; expiry is silent and the next Stop re-arms it.
 - `skills/squeal/SKILL.md`: teaches the agent to pull `squeal status` before claiming completion, `squeal why <check>` to see history, `squeal run --all` for an explicit checkpoint, and how to read the header's pending and inherited counts.
 - `bin/squeal` so the CLI is on the Bash tool's path.
 
-Every hook script: dependency-free Node using `node:sqlite` and `node:net`; reads the store directly for deltas and status; uses the socket only for liveness and nudges with a 100 ms timeout; exits 0 with no output on any internal error; enabled plugins fire in every repository, so in a repository without `squeal.config.json` and without a store the script exits in a few milliseconds.
+Every hook script: dependency-free Node using `node:sqlite` and `node:net`; passes the CLI bundle it ships to the daemon-ensuring helper, so a plugin-only install can start a daemon; reads the store directly for deltas and status; uses the socket only for liveness and nudges with a 100 ms timeout; exits 0 with no output on any internal error; enabled plugins fire in every repository, so in a repository without `squeal.config.json` and without a store the script exits in a few milliseconds.
 
 The adapter interface implied by Claude Code, Codex, Pi and OpenCode is three operations: `onToolBoundary(consumer) -> delta | none`, `waitForDelta(consumer) -> delta` where the harness can wake an idle agent, and `status()`. Nothing in the core depends on Claude Code.
 
 ### D10. Daemon lifecycle
 
-A hook that finds no live socket spawns `squeal daemon <root>` detached (`detached: true`, `stdio: 'ignore'`, `unref()`), about 70 ms, and returns without waiting. The daemon takes `BEGIN EXCLUSIVE` with `locking_mode=EXCLUSIVE` on `locks/<worktree-hash>.sqlite` and holds it for life. Losers exit. The lock is released by the OS on any death, so no pid file exists and pid reuse cannot fool it. The winner unlinks a stale socket, binds its own, records the path and a heartbeat in the store, then: opens the runner, runs reconciliation, performs the baseline lookup, starts the watcher.
+A hook that finds no live socket spawns `squeal daemon <root>` detached (`detached: true`, `stdio: 'ignore'`, `unref()`), about 70 ms, and returns without waiting. The daemon takes `BEGIN EXCLUSIVE` with `locking_mode=EXCLUSIVE` on `locks/<worktree-hash>.sqlite` before opening the store, so losers never run the integrity check, and holds it for life. Losers exit. The lock is released by the OS on any death, so no pid file exists and pid reuse cannot fool it. The winner unlinks a stale socket, binds its own, records the path and a heartbeat in the store, then: opens the runner, runs reconciliation, performs the baseline lookup, starts the watcher.
 
 The daemon exits when its root is deleted, when `<common-dir>/worktrees/<name>` disappears, when the store schema is newer than it understands, or after a configurable idle period with no registered consumers (default 60 minutes). A consumer that has not been delivered to or heard from for 12 hours is expired, so a session that died without `SessionEnd` cannot keep a daemon alive. Status reports "no daemon running since <time>" when the heartbeat is older than its interval.
 
 ### D11. Policy
 
-`squeal.config.json` at the repository root, committed, all keys optional:
+`squeal.config.json` at the repository root, committed, all keys optional. One loader serves daemon and hooks and never throws: unknown keys and wrong types are reported as problems, the defaults apply for those keys, the daemon persists one note and keeps running, and a revision that changes the file reloads it and re-keys what `inputs` and `env.allowlist` touch. Keys:
 
 - `interrupt.onRegression` (default `true`), `stop.blockOnKnownFailures` (`false`), `stop.requireFullSuite` (`false`), `stop.waitMs` (`0`).
 - `baseline.onStart`: `"lookup-then-run-missing"` (default) or `"lookup-only"`.
@@ -162,7 +162,7 @@ The daemon exits when its root is deleted, when `<common-dir>/worktrees/<name>` 
 - `runner.tierSize` (`4`), `runner.timeoutMs` per run (`600000`, because a synchronous loop in a test worker cannot be stopped by the runner's own test timeout), `runner.maxConcurrentRuns` (`1` in v1).
 - `daemon.idleExitMinutes` (`60`), `store.retentionDays` (`7`), `store.maxSizeMb`.
 
-Squeal runs only the project's own Vitest configuration inside the worktree. It never runs arbitrary commands, never writes to the worktree beyond what Vitest itself writes (`update: 'none'` prevents snapshot writes), and inherits the environment of the hook that started it with no additions.
+Squeal loads Vitest from the project under validation, resolved from the worktree root and imported lazily by the runner adapter, never from its own installation; a project without Vitest is a runner failure state, not a crash. Squeal runs only the project's own Vitest configuration inside the worktree. It never runs arbitrary commands, never writes to the worktree beyond what Vitest itself writes (`update: 'none'` prevents snapshot writes), and inherits the environment of the hook that started it with no additions.
 
 ### D12. Error handling
 
@@ -171,7 +171,7 @@ Squeal runs only the project's own Vitest configuration inside the worktree. It 
 - Watcher backend error or dropped-events signal: full reconciliation pass; a note in status.
 - Store unreadable or corrupt: `integrity_check` on daemon start; on failure the file is moved aside, a fresh store is created, status says the baseline was lost.
 - Dead daemon: hooks still serve status and deltas from the store; status says the daemon is down and since when.
-- Hook internal error: exit 0, no output, one line in the daemon log if reachable.
+- Hook internal error: exit 0, no output. The daemon has no log file in v1; persisted notes in the store are the record, and a daemon that dies during start writes a note before any step that can throw after the store opens.
 - Several Squeal versions on one store: newer schema wins; older daemons exit (D8).
 
 ## Testing
