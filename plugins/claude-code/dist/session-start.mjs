@@ -1,14 +1,512 @@
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync3 } from "node:fs";
-import { connect as connect2 } from "node:net";
-import { tmpdir } from "node:os";
-import { join as join4 } from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+// src/core/store/paths.ts
+import { createHash } from "node:crypto";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
+
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
+
+// src/core/store/paths.ts
+function worktreeIdFor(root) {
+  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+}
+function resolveCommonDir(root) {
+  const dotGit = join(root, ".git");
+  const stat = lstatOrNull(dotGit);
+  if (stat === null) return null;
+  if (stat.isDirectory()) return realpathSync(dotGit);
+  if (!stat.isFile()) return null;
+  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
+  if (!match?.[1]) return null;
+  const gitdir = resolve(root, match[1]);
+  if (lstatOrNull(gitdir) === null) return null;
+  const commondirFile = join(gitdir, "commondir");
+  if (lstatOrNull(commondirFile) === null) return realpathSync(gitdir);
+  const commondir = readFileSync(commondirFile, "utf8").trim();
+  const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
+  return lstatOrNull(common) === null ? null : realpathSync(common);
+}
+function storePaths(commonDir) {
+  const dir = join(commonDir, "squeal");
+  return {
+    dir,
+    database: join(dir, "store.sqlite"),
+    runsDir: join(dir, "runs"),
+    locksDir: join(dir, "locks")
+  };
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+
+// src/core/daemon/client.ts
+import { createConnection } from "node:net";
+function requestDaemon(socketPath, request, timeoutMs) {
+  return new Promise((resolve6, reject) => {
+    const socket = createConnection(socketPath);
+    let buffer = "";
+    let settled = false;
+    const settle = (error, response) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve6(response);
+    };
+    const timer = setTimeout(
+      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      timeoutMs
+    );
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
+`));
+    socket.on("data", (chunk) => {
+      buffer += chunk;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
+      try {
+        settle(null, JSON.parse(buffer.slice(0, end)));
+      } catch {
+        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
+      }
+    });
+    socket.on(
+      "error",
+      (error) => settle(failure(error.code ?? "EIO", error.message))
+    );
+    socket.on(
+      "close",
+      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
+    );
+  });
+}
+function failure(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+// src/core/daemon/paths.ts
+import { tmpdir } from "node:os";
+import { isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
+function runtimeDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : tmpdir();
+}
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name = `squeal-${worktreeId}.sock`;
+  const path = join2(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join2("/tmp", name);
+}
+
+// src/core/daemon/ensure.ts
+async function probeDaemon(root, timeoutMs) {
+  let socketPath;
+  try {
+    socketPath = socketPathFor(worktreeIdFor(root));
+  } catch (error) {
+    return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
+  }
+  try {
+    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    if (response.ok && response.type === "ping") return { state: "alive", ping: response };
+    return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ECONNREFUSED") return { state: "absent", code };
+    return { state: "unresponsive", reason: error.message };
+  }
+}
+async function ensureDaemon(root, options) {
+  const probe = await probeDaemon(root, options?.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS);
+  if (probe.state === "alive") return "alive";
+  if (probe.state === "unresponsive") return "unavailable";
+  const cli = daemonCliEntry();
+  if (!existsSync(cli)) return "unavailable";
+  try {
+    const child = spawn(process.execPath, [cli, "daemon", root], {
+      cwd: root,
+      detached: true,
+      stdio: "ignore"
+    });
+    child.on("error", () => {
+    });
+    child.unref();
+    return "spawned";
+  } catch {
+    return "unavailable";
+  }
+}
+function daemonCliEntry(env = process.env) {
+  const override = env.SQUEAL_CLI;
+  if (override !== void 0 && override !== "") return override;
+  return fileURLToPath(new URL("../../cli/index.js", import.meta.url));
+}
+
+// src/core/keys/closure.ts
+var CLOSURE_METHOD = "static imports plus declared inputs";
+
+// src/core/keys/reverse-index.ts
+function testFileId(ref) {
+  return `${ref.project}\0${ref.path}`;
+}
+
+// src/core/state/fingerprint.ts
+var SUMMARY_MAX_CHARS = 300;
+
+// src/core/state/derive.ts
+function checkIdentity(check) {
+  const name = check.kind === "test" ? check.fullName : "";
+  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
+function testFileKeyOf(check) {
+  return testFileId(testFileOf(check));
+}
+function testFileOf(check) {
+  return { project: check.project, path: check.testPath };
+}
+
+// src/core/state/baseline.ts
+var metaKey = (worktreeId) => `state.baseline-findings.${worktreeId}`;
+function entry(check, fingerprint) {
+  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
+}
+function read(store, worktreeId) {
+  const raw = store.meta.get(metaKey(worktreeId));
+  return raw === null ? null : JSON.parse(raw);
+}
+function baselineFindings(store, worktreeId) {
+  const entries = new Set(read(store, worktreeId)?.entries);
+  return (check, fingerprint) => entries.has(entry(check, fingerprint));
+}
+
+// src/core/state/check-name.ts
+var FILE_LEVEL = " (file-level)";
+function formatCheck(check) {
+  const project = check.project === "" ? "" : `[${check.project}] `;
+  return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
+}
+
+// src/core/state/header.ts
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  for (const state of states) counts[state.validity]++;
+  const last = store.checkpoints.lastCompleted(worktreeId);
+  return {
+    revision,
+    counts,
+    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
+    fullSuite: {
+      atCurrentRevision: last !== null && last.revision === revision,
+      lastCompletedRevision: last?.revision ?? null
+    }
+  };
+}
+function countFilesWithoutChecks(states, keys) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const counts = { pending: 0, unknown: 0 };
+  for (const row of keys) {
+    if (withChecks.has(testFileId(row.testFile))) continue;
+    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
+  }
+  return counts;
+}
+function hasKey(row) {
+  return row.key !== null;
+}
+function toKnownFailure(state, revision) {
+  if (state.outcome !== "fail") return null;
+  return {
+    check: state.check,
+    outcome: "fail",
+    validity: state.validity,
+    observedAt: state.observedAt ?? revision,
+    summary: state.summary ?? "",
+    fingerprint: state.fingerprint ?? "",
+    location: state.location
+  };
+}
+
+// src/core/state/transitions.ts
+function transitionKind(from, to) {
+  const before = from?.outcome ?? null;
+  switch (to.outcome) {
+    case "fail":
+      if (before === "pass") return "pass-to-fail";
+      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
+      return "first-seen-fail";
+    case "pass":
+      return before === "fail" ? "fail-to-pass" : null;
+    case "unknown":
+      return before === "pass" || before === "fail" ? "to-unknown" : null;
+    case "skip":
+      return null;
+  }
+}
+
+// src/core/delivery/delivery.ts
+import { setTimeout as sleep } from "node:timers/promises";
+
+// src/core/delivery/delta.ts
+var RANK = {
+  "pass-to-fail": 0,
+  "first-seen-fail": 0,
+  "fail-changed": 1,
+  "to-unknown": 3,
+  "fail-to-pass": 4,
+  "fail-retired": 5
+};
+var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
+function isBaselineEntry(e) {
+  return e.kind !== "fail-retired" && e.baseline === true;
+}
+function restrictPlan(plan, kinds) {
+  const entries = plan.entries.filter((e) => kinds.has(e.kind));
+  const ids = new Set(entries.map((e) => checkIdentity(e.check)));
+  return {
+    entries,
+    writes: plan.writes.filter((w) => ids.has(checkIdentity(w.check))),
+    removals: plan.removals.filter((c) => ids.has(checkIdentity(c)))
+  };
+}
+function toView(state, toldAt) {
+  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
+}
+function planDelta(input) {
+  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
+  const entries = [];
+  const writes = [];
+  for (const state of input.states) {
+    const id = checkIdentity(state.check);
+    const before = told.get(id) ?? null;
+    told.delete(id);
+    const kind = transitionKind(before, state);
+    if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
+    if (kind === null) continue;
+    const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
+    const originRoot = state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
+    entries.push({
+      check: state.check,
+      kind,
+      from: before?.outcome ?? null,
+      to: state.outcome,
+      validity: state.validity,
+      observedAt: state.observedAt ?? input.revision,
+      origin: state.origin ?? { kind: "own" },
+      ...originRoot === null ? {} : { originRoot },
+      summary: state.summary,
+      location: state.location,
+      ...baseline ? { baseline } : {}
+    });
+  }
+  for (const view of told.values()) {
+    if (view.outcome !== "fail") continue;
+    entries.push({
+      check: view.check,
+      kind: "fail-retired",
+      from: "fail",
+      to: null,
+      fingerprint: view.fingerprint,
+      observedAt: input.revision
+    });
+  }
+  const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
+  return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
+}
+
+// src/core/delivery/delivery.ts
+var DEFAULT_POLL_INTERVAL_MS = 250;
+var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
+function createDelivery(store, options) {
+  const now = options.now ?? Date.now;
+  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  function plan(consumer, states, toldAt, kinds) {
+    const full = planDelta({
+      view: store.views.list(consumer),
+      states,
+      isBaselineFinding: baselineFindings(store, consumer.worktreeId),
+      toldAt,
+      rootOf: (id) => store.worktrees.get(id)?.root ?? null,
+      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0
+    });
+    return kinds === null ? full : restrictPlan(full, kinds);
+  }
+  function deliver(consumer, heardFrom, kinds = null) {
+    if (!heardFrom) {
+      if (store.consumers.get(consumer) === null) return null;
+      const states = store.knownStates.list(consumer.worktreeId);
+      if (isEmpty(plan(consumer, states, now(), kinds))) return null;
+    }
+    return store.transaction(() => {
+      if (store.consumers.get(consumer) === null) return null;
+      const at2 = now();
+      const states = store.knownStates.list(consumer.worktreeId);
+      const delta = plan(consumer, states, at2, kinds);
+      store.views.removeMany(consumer, delta.removals);
+      store.views.writeMany(consumer, delta.writes);
+      const delivered = delta.entries.length > 0;
+      if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
+      if (!delivered) return null;
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        consumer,
+        header: readHeader(store, consumer.worktreeId, states),
+        label: delta.entries.every(isBaselineEntry) ? "baseline" : "transitions",
+        entries: delta.entries
+      };
+    });
+  }
+  return {
+    register: async (consumer) => store.transaction(() => {
+      const at2 = now();
+      store.consumers.register(consumer, at2);
+      const states = store.knownStates.list(consumer.worktreeId);
+      store.views.writeMany(
+        consumer,
+        states.map((s) => toView(s, at2))
+      );
+      const header = readHeader(store, consumer.worktreeId, states);
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        consumer,
+        header,
+        knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? [])
+      };
+    }),
+    unregister: async (consumer) => {
+      store.transaction(() => store.consumers.unregister(consumer));
+    },
+    onToolBoundary: async (consumer) => deliver(consumer, true),
+    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
+    waitForDelta: async (consumer, { timeoutMs, signal }) => {
+      const deadline = performance.now() + timeoutMs;
+      for (; ; ) {
+        if (signal?.aborted) return null;
+        const delta = deliver(consumer, false);
+        if (delta !== null) return delta;
+        const left = deadline - performance.now();
+        if (left <= 0) return null;
+        try {
+          await sleep(Math.min(pollIntervalMs, left), void 0, signal ? { signal } : {});
+        } catch (error) {
+          if (signal?.aborted) return null;
+          throw error;
+        }
+      }
+    },
+    status: async (worktreeId) => options.status.build(worktreeId)
+  };
+}
+
+// src/core/delivery/format.ts
+var MESSAGE_CAP_CHARS = 1e4;
+var OVERFLOW_RESERVE = 200;
+var INDENT = "      ";
+var STATUS_POINTER = "`squeal status` lists every known failure.";
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+function checkName(check) {
+  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
+}
+function at(location2) {
+  return `at ${location2.path}:${location2.line}:${location2.column}`;
+}
+function headerLine(header) {
+  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
+  const suite = fullSuite.atCurrentRevision ? `completed at revision ${revision}` : fullSuite.lastCompletedRevision === null ? "not completed at any revision" : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
+  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.`;
+}
+function block(head, lines, outcomes) {
+  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
+  return { text: [head, ...body].join("\n"), outcomes };
+}
+function assemble(head, blocks, overflow) {
+  let out = head;
+  for (const [i, b] of blocks.entries()) {
+    const next = `${out}
+
+${b.text}`;
+    const last = i === blocks.length - 1;
+    if (next.length <= MESSAGE_CAP_CHARS - (last ? 0 : OVERFLOW_RESERVE)) {
+      out = next;
+      continue;
+    }
+    return cap(`${out}
+
+${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
+  }
+  return out;
+}
+function formatRegistration(registration) {
+  const { header, knownFailures } = registration;
+  const head = [
+    `SQUEAL \xB7 registered at revision ${header.revision}`,
+    headerLine(header),
+    `Known failures: ${knownFailures.length}`
+  ].join("\n");
+  const blocks = knownFailures.map(
+    (f) => block(
+      `FAIL  ${checkName(f.check)}`,
+      [
+        f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
+        f.location === null ? null : at(f.location),
+        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
+      ],
+      ["fail"]
+    )
+  );
+  return assemble(
+    head,
+    blocks,
+    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`
+  );
+}
+
+// src/harness/claude-code/context.ts
+import { existsSync as existsSync5 } from "node:fs";
+import { join as join7 } from "node:path";
+
+// src/core/status/open.ts
+import { existsSync as existsSync4, realpathSync as realpathSync2 } from "node:fs";
+import { dirname, join as join5, resolve as resolve4 } from "node:path";
+
 // src/core/store/open.ts
-import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync3, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
+import { join as join4 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/connection.ts
@@ -73,55 +571,6 @@ function rollback(db) {
     db.exec("ROLLBACK");
   } catch (error) {
     if (!/no transaction is active/.test(String(error))) throw error;
-  }
-}
-
-// src/core/store/paths.ts
-import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, realpathSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
-
-// src/core/fs/errors.ts
-function isMissing(error) {
-  const code = error?.code;
-  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
-}
-
-// src/core/store/paths.ts
-function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
-}
-function resolveCommonDir(root) {
-  const dotGit = join(root, ".git");
-  const stat = lstatOrNull(dotGit);
-  if (stat === null) return null;
-  if (stat.isDirectory()) return realpathSync(dotGit);
-  if (!stat.isFile()) return null;
-  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
-  if (!match?.[1]) return null;
-  const gitdir = resolve(root, match[1]);
-  if (lstatOrNull(gitdir) === null) return null;
-  const commondirFile = join(gitdir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync(gitdir);
-  const commondir = readFileSync(commondirFile, "utf8").trim();
-  const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync(common);
-}
-function storePaths(commonDir) {
-  const dir = join(commonDir, "squeal");
-  return {
-    dir,
-    database: join(dir, "store.sqlite"),
-    runsDir: join(dir, "runs"),
-    locksDir: join(dir, "locks")
-  };
-}
-function lstatOrNull(path) {
-  try {
-    return lstatSync(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
   }
 }
 
@@ -417,8 +866,8 @@ function flag(value) {
 }
 
 // src/core/store/prune.ts
-import { existsSync, rmSync } from "node:fs";
-import { join as join2, resolve as resolve2, sep } from "node:path";
+import { existsSync as existsSync2, rmSync } from "node:fs";
+import { join as join3, resolve as resolve3, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -440,7 +889,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync(join2(worktree.root, ".git"))) continue;
+    if (existsSync2(join3(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -535,8 +984,8 @@ function pragmaNumber(conn, name) {
   return num(row, name);
 }
 function removeRunLog(paths, logDir) {
-  const runsDir = resolve2(paths.runsDir);
-  const target = resolve2(logDir);
+  const runsDir = resolve3(paths.runsDir);
+  const target = resolve3(logDir);
   if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
 }
 
@@ -623,7 +1072,7 @@ function createViewRepo(conn) {
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       ...consumerParams(consumer)
-    ).map(toView),
+    ).map(toView2),
     writeMany: (consumer, entries) => conn.transaction(() => {
       for (const e of entries) {
         conn.run(
@@ -651,7 +1100,7 @@ function createViewRepo(conn) {
     })
   };
 }
-function toView(row) {
+function toView2(row) {
   return {
     check: checkFrom(row),
     outcome: oneOf(row, "outcome", OUTCOMES),
@@ -1349,7 +1798,7 @@ function isStoreOpenFailure(value) {
 }
 function openStore(commonDir, options = {}) {
   const paths = storePaths(commonDir);
-  if (!existsSync2(paths.database)) {
+  if (!existsSync3(paths.database)) {
     if (options.create === false) return { reason: "missing" };
     mkdirSync(paths.dir, { recursive: true });
   }
@@ -1403,7 +1852,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  const lock = new DatabaseSync(join4(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock.exec("BEGIN EXCLUSIVE");
@@ -1426,410 +1875,17 @@ function recover(paths, options) {
 }
 function moveAside(database, at2) {
   let movedTo = `${database}.corrupt-${at2}`;
-  for (let n = 1; existsSync2(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
+  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
   renameSync(database, movedTo);
-  if (existsSync2(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
+  if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync2(`${database}-shm`, { force: true });
   return movedTo;
 }
 
-// src/core/daemon/ensure.ts
-function socketPathFor(worktreeId) {
-  return join4(process.env.XDG_RUNTIME_DIR || tmpdir(), `squeal-${worktreeId}.sock`);
-}
-async function ensureDaemon(root, options) {
-  const probe = await probeSocket(socketPathFor(worktreeIdFor(root)), options.socketTimeoutMs);
-  if (probe === "alive") return "alive";
-  if (probe === "unavailable") return "unavailable";
-  const cli = findCli();
-  if (cli === null) return "unavailable";
-  try {
-    const child = spawn(
-      process.execPath,
-      ["--disable-warning=ExperimentalWarning", cli, "daemon", root],
-      { cwd: root, detached: true, stdio: "ignore" }
-    );
-    child.on("error", () => {
-    });
-    child.unref();
-    return "spawned";
-  } catch {
-    return "unavailable";
-  }
-}
-function probeSocket(path, timeoutMs) {
-  return new Promise((resolve5) => {
-    const socket = connect2(path);
-    const done = (probe) => {
-      clearTimeout(timer);
-      socket.destroy();
-      resolve5(probe);
-    };
-    const timer = setTimeout(() => done("unavailable"), timeoutMs);
-    socket.on("connect", () => done("alive"));
-    socket.on("error", (error) => {
-      done(error.code === "ENOENT" || error.code === "ECONNREFUSED" ? "dead" : "unavailable");
-    });
-  });
-}
-function findCli() {
-  const override = process.env.SQUEAL_CLI;
-  if (override) return existsSync3(override) ? override : null;
-  const candidates = ["../../cli/index.js", "./cli/squeal.mjs"];
-  for (const candidate of candidates) {
-    const path = fileURLToPath(new URL(candidate, import.meta.url));
-    if (existsSync3(path)) return path;
-  }
-  return null;
-}
-
-// src/core/keys/closure.ts
-var CLOSURE_METHOD = "static imports plus declared inputs";
-
-// src/core/keys/reverse-index.ts
-function testFileId(ref) {
-  return `${ref.project}\0${ref.path}`;
-}
-
-// src/core/state/fingerprint.ts
-var SUMMARY_MAX_CHARS = 300;
-
-// src/core/state/derive.ts
-function checkIdentity(check) {
-  const name = check.kind === "test" ? check.fullName : "";
-  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
-}
-function testFileKeyOf(check) {
-  return testFileId(testFileOf(check));
-}
-function testFileOf(check) {
-  return { project: check.project, path: check.testPath };
-}
-
-// src/core/state/baseline.ts
-var metaKey = (worktreeId) => `state.baseline-findings.${worktreeId}`;
-function entry(check, fingerprint) {
-  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
-}
-function read(store, worktreeId) {
-  const raw = store.meta.get(metaKey(worktreeId));
-  return raw === null ? null : JSON.parse(raw);
-}
-function baselineFindings(store, worktreeId) {
-  const entries = new Set(read(store, worktreeId)?.entries);
-  return (check, fingerprint) => entries.has(entry(check, fingerprint));
-}
-
-// src/core/state/check-name.ts
-var FILE_LEVEL = " (file-level)";
-function formatCheck(check) {
-  const project = check.project === "" ? "" : `[${check.project}] `;
-  return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
-}
-
-// src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
-  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
-  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const state of states) counts[state.validity]++;
-  const last = store.checkpoints.lastCompleted(worktreeId);
-  return {
-    revision,
-    counts,
-    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    fullSuite: {
-      atCurrentRevision: last !== null && last.revision === revision,
-      lastCompletedRevision: last?.revision ?? null
-    }
-  };
-}
-function countFilesWithoutChecks(states, keys) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts = { pending: 0, unknown: 0 };
-  for (const row of keys) {
-    if (withChecks.has(testFileId(row.testFile))) continue;
-    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
-  }
-  return counts;
-}
-function hasKey(row) {
-  return row.key !== null;
-}
-function toKnownFailure(state, revision) {
-  if (state.outcome !== "fail") return null;
-  return {
-    check: state.check,
-    outcome: "fail",
-    validity: state.validity,
-    observedAt: state.observedAt ?? revision,
-    summary: state.summary ?? "",
-    fingerprint: state.fingerprint ?? "",
-    location: state.location
-  };
-}
-
-// src/core/state/transitions.ts
-function transitionKind(from, to) {
-  const before = from?.outcome ?? null;
-  switch (to.outcome) {
-    case "fail":
-      if (before === "pass") return "pass-to-fail";
-      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
-      return "first-seen-fail";
-    case "pass":
-      return before === "fail" ? "fail-to-pass" : null;
-    case "unknown":
-      return before === "pass" || before === "fail" ? "to-unknown" : null;
-    case "skip":
-      return null;
-  }
-}
-
-// src/core/delivery/delivery.ts
-import { setTimeout as sleep } from "node:timers/promises";
-
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-
-// src/core/delivery/delta.ts
-var RANK = {
-  "pass-to-fail": 0,
-  "first-seen-fail": 0,
-  "fail-changed": 1,
-  "to-unknown": 3,
-  "fail-to-pass": 4,
-  "fail-retired": 5
-};
-var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
-function isBaselineEntry(e) {
-  return e.kind !== "fail-retired" && e.baseline === true;
-}
-function restrictPlan(plan, kinds) {
-  const entries = plan.entries.filter((e) => kinds.has(e.kind));
-  const ids = new Set(entries.map((e) => checkIdentity(e.check)));
-  return {
-    entries,
-    writes: plan.writes.filter((w) => ids.has(checkIdentity(w.check))),
-    removals: plan.removals.filter((c) => ids.has(checkIdentity(c)))
-  };
-}
-function toView2(state, toldAt) {
-  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
-}
-function planDelta(input) {
-  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
-  const entries = [];
-  const writes = [];
-  for (const state of input.states) {
-    const id = checkIdentity(state.check);
-    const before = told.get(id) ?? null;
-    told.delete(id);
-    const kind = transitionKind(before, state);
-    if (before === null || kind !== null) writes.push(toView2(state, input.toldAt));
-    if (kind === null) continue;
-    const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
-    const originRoot = state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
-    entries.push({
-      check: state.check,
-      kind,
-      from: before?.outcome ?? null,
-      to: state.outcome,
-      validity: state.validity,
-      observedAt: state.observedAt ?? input.revision,
-      origin: state.origin ?? { kind: "own" },
-      ...originRoot === null ? {} : { originRoot },
-      summary: state.summary,
-      location: state.location,
-      ...baseline ? { baseline } : {}
-    });
-  }
-  for (const view of told.values()) {
-    if (view.outcome !== "fail") continue;
-    entries.push({
-      check: view.check,
-      kind: "fail-retired",
-      from: "fail",
-      to: null,
-      fingerprint: view.fingerprint,
-      observedAt: input.revision
-    });
-  }
-  const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
-  return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
-}
-
-// src/core/delivery/delivery.ts
-var DEFAULT_POLL_INTERVAL_MS = 250;
-var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
-function createDelivery(store, options) {
-  const now = options.now ?? Date.now;
-  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-  function plan(consumer, states, toldAt, kinds) {
-    const full = planDelta({
-      view: store.views.list(consumer),
-      states,
-      isBaselineFinding: baselineFindings(store, consumer.worktreeId),
-      toldAt,
-      rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0
-    });
-    return kinds === null ? full : restrictPlan(full, kinds);
-  }
-  function deliver(consumer, heardFrom, kinds = null) {
-    if (!heardFrom) {
-      if (store.consumers.get(consumer) === null) return null;
-      const states = store.knownStates.list(consumer.worktreeId);
-      if (isEmpty(plan(consumer, states, now(), kinds))) return null;
-    }
-    return store.transaction(() => {
-      if (store.consumers.get(consumer) === null) return null;
-      const at2 = now();
-      const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at2, kinds);
-      store.views.removeMany(consumer, delta.removals);
-      store.views.writeMany(consumer, delta.writes);
-      const delivered = delta.entries.length > 0;
-      if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
-      if (!delivered) return null;
-      return {
-        schemaVersion: PAYLOAD_SCHEMA_VERSION,
-        consumer,
-        header: readHeader(store, consumer.worktreeId, states),
-        label: delta.entries.every(isBaselineEntry) ? "baseline" : "transitions",
-        entries: delta.entries
-      };
-    });
-  }
-  return {
-    register: async (consumer) => store.transaction(() => {
-      const at2 = now();
-      store.consumers.register(consumer, at2);
-      const states = store.knownStates.list(consumer.worktreeId);
-      store.views.writeMany(
-        consumer,
-        states.map((s) => toView2(s, at2))
-      );
-      const header = readHeader(store, consumer.worktreeId, states);
-      return {
-        schemaVersion: PAYLOAD_SCHEMA_VERSION,
-        consumer,
-        header,
-        knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? [])
-      };
-    }),
-    unregister: async (consumer) => {
-      store.transaction(() => store.consumers.unregister(consumer));
-    },
-    onToolBoundary: async (consumer) => deliver(consumer, true),
-    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
-    waitForDelta: async (consumer, { timeoutMs, signal }) => {
-      const deadline = performance.now() + timeoutMs;
-      for (; ; ) {
-        if (signal?.aborted) return null;
-        const delta = deliver(consumer, false);
-        if (delta !== null) return delta;
-        const left = deadline - performance.now();
-        if (left <= 0) return null;
-        try {
-          await sleep(Math.min(pollIntervalMs, left), void 0, signal ? { signal } : {});
-        } catch (error) {
-          if (signal?.aborted) return null;
-          throw error;
-        }
-      }
-    },
-    status: async (worktreeId) => options.status.build(worktreeId)
-  };
-}
-
-// src/core/delivery/format.ts
-var MESSAGE_CAP_CHARS = 1e4;
-var OVERFLOW_RESERVE = 200;
-var INDENT = "      ";
-var STATUS_POINTER = "`squeal status` lists every known failure.";
-function cap(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
-}
-function checkName(check) {
-  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
-}
-function at(location2) {
-  return `at ${location2.path}:${location2.line}:${location2.column}`;
-}
-function headerLine(header) {
-  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
-  const suite = fullSuite.atCurrentRevision ? `completed at revision ${revision}` : fullSuite.lastCompletedRevision === null ? "not completed at any revision" : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
-  const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
-  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.`;
-}
-function block(head, lines, outcomes) {
-  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
-  return { text: [head, ...body].join("\n"), outcomes };
-}
-function assemble(head, blocks, overflow) {
-  let out = head;
-  for (const [i, b] of blocks.entries()) {
-    const next = `${out}
-
-${b.text}`;
-    const last = i === blocks.length - 1;
-    if (next.length <= MESSAGE_CAP_CHARS - (last ? 0 : OVERFLOW_RESERVE)) {
-      out = next;
-      continue;
-    }
-    return cap(`${out}
-
-${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
-  }
-  return out;
-}
-function formatRegistration(registration) {
-  const { header, knownFailures } = registration;
-  const head = [
-    `SQUEAL \xB7 registered at revision ${header.revision}`,
-    headerLine(header),
-    `Known failures: ${knownFailures.length}`
-  ].join("\n");
-  const blocks = knownFailures.map(
-    (f) => block(
-      `FAIL  ${checkName(f.check)}`,
-      [
-        f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
-        f.location === null ? null : at(f.location),
-        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
-      ],
-      ["fail"]
-    )
-  );
-  return assemble(
-    head,
-    blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`
-  );
-}
-
-// src/harness/claude-code/context.ts
-import { existsSync as existsSync5 } from "node:fs";
-import { join as join7 } from "node:path";
-
 // src/core/status/open.ts
-import { existsSync as existsSync4, realpathSync as realpathSync2 } from "node:fs";
-import { dirname, join as join5, resolve as resolve3 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function findWorktreeRoot(path) {
-  let dir = resolve3(path);
+  let dir = resolve4(path);
   if (existsSync4(dir)) dir = realpathSync2(dir);
   for (; ; ) {
     if (existsSync4(join5(dir, ".git"))) return dir;
@@ -1849,7 +1905,7 @@ function unavailable(reason, detail) {
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync2, statSync } from "node:fs";
-import { join as join6, resolve as resolve4 } from "node:path";
+import { join as join6, resolve as resolve5 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
@@ -1874,7 +1930,7 @@ function worktreeGitDir(root) {
     throw error;
   }
   const line = /^gitdir:\s*(.+?)\s*$/m.exec(read2(dotGit) ?? "");
-  return line?.[1] === void 0 ? null : resolve4(root, line[1]);
+  return line?.[1] === void 0 ? null : resolve5(root, line[1]);
 }
 function packed(commonDir, ref) {
   for (const line of (read2(join6(commonDir, "packed-refs")) ?? "").split("\n")) {

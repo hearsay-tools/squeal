@@ -1,5 +1,4 @@
-import type { EnsureDaemonResult } from "../../core/daemon/ensure.js";
-import type { AbsolutePath, EpochMs } from "../../core/types/index.js";
+import type { AbsolutePath, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
 import {
   type ContextOptions,
   type HookContext,

@@ -1,32 +1,808 @@
 #!/usr/bin/env node
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 
-// src/cli/main.ts
-import { readFileSync as readFileSync4 } from "node:fs";
+// src/core/keys/check-key.ts
+import { createHash } from "node:crypto";
+function encodeSegment(path, hash) {
+  return Buffer.from(`${path}\0${hash ?? MISSING}\0`).toString();
+}
+function keyFromSegments(envHash, testFile, segments) {
+  return createHash("sha256").update(JSON.stringify([KEY_ENCODING, envHash, testFile.project, testFile.path])).update("\0").update(segments.join("")).digest("hex");
+}
+var KEY_ENCODING, MISSING;
+var init_check_key = __esm({
+  "src/core/keys/check-key.ts"() {
+    "use strict";
+    KEY_ENCODING = "squeal-check-key/1";
+    MISSING = "-";
+  }
+});
+
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+var init_compare = __esm({
+  "src/core/fs/compare.ts"() {
+    "use strict";
+  }
+});
 
 // src/core/fs/errors.ts
 function isMissing(error) {
   const code = error?.code;
   return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
 }
+var init_errors = __esm({
+  "src/core/fs/errors.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/fs/git.ts
+import { spawn } from "node:child_process";
+function runGit(cwd, args, options = {}) {
+  const okCodes = options.okCodes ?? [0];
+  const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
+  for (const name of REPOSITORY_VARIABLES) delete env[name];
+  return new Promise((resolve10, reject) => {
+    const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const stdout = [];
+    const stderr = [];
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", (error) => {
+      reject(new Error(`squeal: git ${args.join(" ")} failed in ${cwd}: ${error.message}`));
+    });
+    child.on("close", (code) => {
+      if (code !== null && okCodes.includes(code)) {
+        resolve10(Buffer.concat(stdout).toString("utf8"));
+        return;
+      }
+      const message2 = Buffer.concat(stderr).toString("utf8").trim();
+      reject(new Error(`squeal: git ${args.join(" ")} exited ${code} in ${cwd}: ${message2}`));
+    });
+    child.stdin.on("error", () => {
+    });
+    child.stdin.end(options.input ?? "");
+  });
+}
+function splitNul(output) {
+  const fields = output.split("\0");
+  if (fields.at(-1) === "") fields.pop();
+  return fields;
+}
+var REPOSITORY_VARIABLES;
+var init_git = __esm({
+  "src/core/fs/git.ts"() {
+    "use strict";
+    REPOSITORY_VARIABLES = [
+      "GIT_DIR",
+      "GIT_WORK_TREE",
+      "GIT_INDEX_FILE",
+      "GIT_COMMON_DIR",
+      "GIT_OBJECT_DIRECTORY"
+    ];
+  }
+});
+
+// src/core/fs/paths.ts
+import { isAbsolute, join, relative, sep } from "node:path";
+function toRelative(root, abs) {
+  const rel = relative(root, abs);
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
+  return sep === "/" ? rel : rel.split(sep).join("/");
+}
+function toAbsolute(root, rel) {
+  return join(root, ...rel.split("/"));
+}
+var init_paths = __esm({
+  "src/core/fs/paths.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/fs/index.ts
+var init_fs = __esm({
+  "src/core/fs/index.ts"() {
+    "use strict";
+    init_compare();
+    init_errors();
+    init_git();
+    init_paths();
+  }
+});
+
+// src/core/keys/glob.ts
+function globToRegExp(glob) {
+  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
+  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function createInputMatcher(globs) {
+  if (globs.length === 0) return () => false;
+  const patterns = globs.map(globToRegExp);
+  return (path) => patterns.some((pattern) => pattern.test(path));
+}
+function compile(glob, original) {
+  let out = "";
+  let i = 0;
+  while (i < glob.length) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        const atStart = i === 0 || glob[i - 1] === "/";
+        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+        if (atStart && atEnd) {
+          if (i + 2 === glob.length) out += ".+";
+          else out += "(?:.+/)?";
+          i += 3;
+          continue;
+        }
+      }
+      out += "[^/]*";
+      i += glob[i + 1] === "*" ? 2 : 1;
+    } else if (char === "?") {
+      out += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
+      const negated = body.startsWith("!");
+      if (negated) body = body.slice(1);
+      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
+      i = end + 1;
+    } else if (char === "{") {
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
+      i = end + 1;
+    } else {
+      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
+      i++;
+    }
+  }
+  return out;
+}
+function matchingBrace(glob, open3, original) {
+  let depth = 0;
+  for (let i = open3; i < glob.length; i++) {
+    if (glob[i] === "{") depth++;
+    else if (glob[i] === "}" && --depth === 0) return i;
+  }
+  throw new Error(`squeal: unclosed { in input glob: ${original}`);
+}
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}") depth--;
+    else if (body[i] === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+var init_glob = __esm({
+  "src/core/keys/glob.ts"() {
+    "use strict";
+  }
+});
 
 // src/core/keys/closure.ts
-var CLOSURE_METHOD = "static imports plus declared inputs";
+import { posix } from "node:path";
+function normalizeRelativePath(path) {
+  if (ALREADY_NORMAL.test(path)) return path;
+  const slashed = path.replaceAll("\\", "/");
+  if (slashed === "" || slashed.startsWith("/") || /^[A-Za-z]:\//.test(slashed)) {
+    throw new Error(`squeal: expected a worktree-relative path, got "${path}"`);
+  }
+  const normalized = posix.normalize(slashed).replace(/\/$/, "");
+  if (normalized === "." || normalized === ".." || normalized.startsWith("../")) {
+    throw new Error(`squeal: path leaves the worktree: "${path}"`);
+  }
+  return normalized;
+}
+function selectDeclaredInputs(globs, files) {
+  const matches = createInputMatcher(globs);
+  const selected = [];
+  for (const file of files) if (matches(file)) selected.push(file);
+  return selected.sort(compare);
+}
+function assembleClosure(runner, declaredInputs) {
+  const paths = /* @__PURE__ */ new Set();
+  const include = (path) => {
+    let normalized;
+    try {
+      normalized = normalizeRelativePath(path);
+    } catch (error) {
+      const { project, path: testPath } = runner.testFile;
+      throw new Error(`squeal: closure of ${project}:${testPath}: ${error.message}`);
+    }
+    if (!isNodeModules(normalized)) paths.add(normalized);
+  };
+  include(runner.testFile.path);
+  for (const path of runner.paths) include(path);
+  for (const path of declaredInputs) include(path);
+  return {
+    testFile: runner.testFile,
+    paths: [...paths].sort(compare),
+    complete: false,
+    method: CLOSURE_METHOD
+  };
+}
+function isNodeModules(path) {
+  return path.startsWith("node_modules/") || path.includes("/node_modules/");
+}
+var CLOSURE_METHOD, ALREADY_NORMAL;
+var init_closure = __esm({
+  "src/core/keys/closure.ts"() {
+    "use strict";
+    init_fs();
+    init_glob();
+    CLOSURE_METHOD = "static imports plus declared inputs";
+    ALREADY_NORMAL = /^(?![A-Za-z]:)(?!\.\.?(?:\/|$))[^/\\]+(?:\/(?!\.\.?(?:\/|$))[^/\\]+)*$/;
+  }
+});
+
+// src/core/keys/environment.ts
+import { createHash as createHash2 } from "node:crypto";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { dirname, join as join2, sep as sep2 } from "node:path";
+function environmentHash(core, runner, hashOf) {
+  const files = [...new Set(runner.files)].sort(compare).map((path) => {
+    const hash = hashOf(path);
+    if (hash === void 0) {
+      throw new Error(
+        `squeal: environment of project "${runner.project}": runner file "${path}" has not been hashed`
+      );
+    }
+    return [path, hash];
+  });
+  const encoded = JSON.stringify([
+    ENVIRONMENT_ENCODING,
+    core.squealVersion,
+    core.nodeVersion,
+    core.platform,
+    core.arch,
+    core.installedDependencies,
+    Object.entries(core.env).sort(([a], [b]) => compare(a, b)),
+    runner.project,
+    runner.runnerName,
+    runner.runnerVersion,
+    runner.adapterVersion,
+    runner.resolvedConfig,
+    files
+  ]);
+  return createHash2("sha256").update(encoded).digest("hex");
+}
+function coreEnvironmentInputs(options) {
+  const source = options.env ?? process.env;
+  const env = {};
+  for (const name of [...options.allowlist].sort(compare)) {
+    const value = source[name];
+    if (value !== void 0) env[name] = value;
+  }
+  return {
+    squealVersion: options.squealVersion,
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    installedDependencies: options.installedDependencies,
+    env
+  };
+}
+async function findInstalledLockfile(projectRoot, worktreeRoot2) {
+  const found = await locateLockfile(projectRoot, worktreeRoot2);
+  if (found === null) return null;
+  const { dir, format } = found;
+  return {
+    path: join2(dir, format.path),
+    patches: format.patches === null ? null : join2(dir, format.patches)
+  };
+}
+async function installedDependenciesFingerprint(projectRoot, worktreeRoot2) {
+  const found = await locateLockfile(projectRoot, worktreeRoot2);
+  if (found === null) return "none";
+  const { dir, format, content } = found;
+  const hash = createHash2("sha256").update(`${format.path}\0`).update(content);
+  if (format.patches !== null) {
+    const patchesDir = join2(dir, format.patches);
+    for (const path of await listEntries(patchesDir)) {
+      const bytes = await readIfFile(join2(patchesDir, path));
+      if (bytes !== null) hash.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
+    }
+  }
+  return hash.digest("hex");
+}
+async function locateLockfile(projectRoot, worktreeRoot2) {
+  for (let dir = projectRoot; ; dir = dirname(dir)) {
+    for (const format of LOCKFILES) {
+      const content = await readIfFile(join2(dir, format.path));
+      if (content !== null) return { dir, format, content };
+    }
+    if (dirname(dir) === dir || toRelative(worktreeRoot2, dir) === null) return null;
+  }
+}
+async function readIfFile(path) {
+  try {
+    if (!(await stat(path)).isFile()) return null;
+    return await readFile(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+async function listEntries(dir) {
+  try {
+    const entries = await readdir(dir, { recursive: true });
+    return entries.map((entry2) => entry2.split(sep2).join("/")).sort(compare);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+}
+var ENVIRONMENT_ENCODING, LOCKFILES;
+var init_environment = __esm({
+  "src/core/keys/environment.ts"() {
+    "use strict";
+    init_fs();
+    ENVIRONMENT_ENCODING = "squeal-environment/1";
+    LOCKFILES = [
+      { path: "node_modules/.package-lock.json", patches: "patches" },
+      { path: "node_modules/.yarn-state.yml", patches: null },
+      { path: ".pnp.cjs", patches: ".yarn/patches" },
+      { path: ".pnp.js", patches: ".yarn/patches" },
+      { path: "node_modules/.yarn-integrity", patches: "patches" },
+      { path: "node_modules/.pnpm/lock.yaml", patches: null },
+      { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
+      { path: "bun.lock", patches: "patches" },
+      { path: "bun.lockb", patches: "patches" }
+    ];
+  }
+});
 
 // src/core/keys/reverse-index.ts
+import { posix as posix2 } from "node:path";
 function testFileId(ref) {
   return `${ref.project}\0${ref.path}`;
 }
+function directoryOf(path) {
+  const dir = posix2.dirname(path);
+  return dir === "." ? "" : dir;
+}
+var ReverseIndex;
+var init_reverse_index = __esm({
+  "src/core/keys/reverse-index.ts"() {
+    "use strict";
+    init_fs();
+    ReverseIndex = class {
+      refs = /* @__PURE__ */ new Map();
+      pathsOf = /* @__PURE__ */ new Map();
+      byPath = /* @__PURE__ */ new Map();
+      byDirectory = /* @__PURE__ */ new Map();
+      get size() {
+        return this.refs.size;
+      }
+      /** Replaces the closure paths of `testFile`. */
+      set(testFile, paths) {
+        const id = testFileId(testFile);
+        this.unlink(id);
+        this.refs.set(id, testFile);
+        this.pathsOf.set(id, paths);
+        for (const path of paths) {
+          let ids = this.byPath.get(path);
+          if (!ids) {
+            ids = /* @__PURE__ */ new Set();
+            this.byPath.set(path, ids);
+            const dir = directoryOf(path);
+            let members = this.byDirectory.get(dir);
+            if (!members) {
+              members = /* @__PURE__ */ new Set();
+              this.byDirectory.set(dir, members);
+            }
+            members.add(path);
+          }
+          ids.add(id);
+        }
+      }
+      remove(testFile) {
+        const id = testFileId(testFile);
+        this.unlink(id);
+        this.refs.delete(id);
+      }
+      testFiles() {
+        return this.sorted(this.refs.keys());
+      }
+      /** Test files whose closure contains any of `paths`. */
+      referencing(paths) {
+        const ids = /* @__PURE__ */ new Set();
+        for (const path of paths) {
+          for (const id of this.byPath.get(path) ?? []) ids.add(id);
+        }
+        return this.sorted(ids);
+      }
+      /** Test files with a closure path directly in `dir` (`""` is the root). */
+      inDirectory(dir) {
+        return this.referencing(this.byDirectory.get(dir) ?? []);
+      }
+      /** Test files with a closure path anywhere below `dir`. */
+      below(dir) {
+        const prefix = `${dir}/`;
+        const paths = [];
+        for (const [directory, members] of this.byDirectory) {
+          if (directory === dir || directory.startsWith(prefix)) paths.push(...members);
+        }
+        return this.referencing(paths);
+      }
+      unlink(id) {
+        for (const path of this.pathsOf.get(id) ?? []) {
+          const ids = this.byPath.get(path);
+          if (!ids) continue;
+          ids.delete(id);
+          if (ids.size > 0) continue;
+          this.byPath.delete(path);
+          const dir = directoryOf(path);
+          const members = this.byDirectory.get(dir);
+          members?.delete(path);
+          if (members?.size === 0) this.byDirectory.delete(dir);
+        }
+        this.pathsOf.delete(id);
+      }
+      sorted(ids) {
+        return [...ids].sort(compare).map((id) => this.refs.get(id)).filter((ref) => ref !== void 0);
+      }
+    };
+  }
+});
+
+// src/core/keys/key-index.ts
+var KeyIndex;
+var init_key_index = __esm({
+  "src/core/keys/key-index.ts"() {
+    "use strict";
+    init_check_key();
+    init_reverse_index();
+    KeyIndex = class {
+      constructor(hashOf) {
+        this.hashOf = hashOf;
+      }
+      hashOf;
+      reverse = new ReverseIndex();
+      keyed = /* @__PURE__ */ new Map();
+      paths = /* @__PURE__ */ new Map();
+      environments = /* @__PURE__ */ new Map();
+      key(testFile) {
+        return this.keyed.get(testFileId(testFile))?.key ?? null;
+      }
+      closure(testFile) {
+        return this.keyed.get(testFileId(testFile))?.closure;
+      }
+      environment(project) {
+        return this.environments.get(project);
+      }
+      /** Sets a project's environment hash and re-keys its test files. */
+      setEnvironment(project, envHash) {
+        if (this.environments.get(project) === envHash) return [];
+        this.environments.set(project, envHash);
+        return this.recompute(this.reverse.testFiles().filter((ref) => ref.project === project));
+      }
+      /**
+       * Sets or replaces a test file's closure and keys it. Every path's hash is
+       * read again; a path whose hash changed without a `rekey` also re-keys the
+       * other test files that reference it. While any path is untracked the test
+       * file has no key, and a key it had is dropped (a change to `null`).
+       */
+      setClosure(closure) {
+        const id = testFileId(closure.testFile);
+        const previous = this.keyed.get(id);
+        const stale = [];
+        const entries = closure.paths.map((path) => {
+          const entry2 = this.acquire(path);
+          if (entry2.references > 1 && this.refresh(path, entry2)) stale.push(path);
+          return entry2;
+        });
+        if (previous) this.release(previous.closure.paths);
+        this.keyed.set(id, { closure, entries, key: previous?.key ?? null });
+        this.reverse.set(closure.testFile, closure.paths);
+        const affected2 = this.reverse.referencing(stale).filter((ref) => testFileId(ref) !== id);
+        const untracked = closure.paths.filter((_, i) => entries[i]?.hash === void 0);
+        return { changes: this.recompute([closure.testFile, ...affected2]), untracked };
+      }
+      /** Forgets a deleted test file. Returns whether it was known. */
+      removeTestFile(testFile) {
+        const id = testFileId(testFile);
+        const keyed = this.keyed.get(id);
+        if (!keyed) return false;
+        this.keyed.delete(id);
+        this.reverse.remove(testFile);
+        this.release(keyed.closure.paths);
+        return true;
+      }
+      /** Re-reads the hashes of `changedPaths` and re-keys only the test files that reference one. */
+      rekey(changedPaths) {
+        const changed = [];
+        for (const path of new Set(changedPaths)) {
+          const entry2 = this.paths.get(path);
+          if (entry2 && this.refresh(path, entry2)) changed.push(path);
+        }
+        return this.recompute(this.reverse.referencing(changed));
+      }
+      recompute(testFiles) {
+        const changes = [];
+        for (const testFile of testFiles) {
+          const keyed = this.keyed.get(testFileId(testFile));
+          const envHash = this.environments.get(testFile.project);
+          if (!keyed || envHash === void 0) continue;
+          const key = this.keyOf(keyed, envHash);
+          if (key === keyed.key) continue;
+          changes.push({ testFile, previous: keyed.key, key });
+          keyed.key = key;
+        }
+        return changes;
+      }
+      /** `null` while any closure path is untracked. */
+      keyOf(keyed, envHash) {
+        const segments = [];
+        for (const entry2 of keyed.entries) {
+          if (entry2.hash === void 0) return null;
+          segments.push(entry2.segment);
+        }
+        return keyFromSegments(envHash, keyed.closure.testFile, segments);
+      }
+      /** The entry of `path` with one more reference; a new entry reads the hash. */
+      acquire(path) {
+        let entry2 = this.paths.get(path);
+        if (!entry2) {
+          const hash = this.hashOf(path);
+          entry2 = { hash, segment: encodeSegment(path, hash ?? null), references: 0 };
+          this.paths.set(path, entry2);
+        }
+        entry2.references++;
+        return entry2;
+      }
+      release(paths) {
+        for (const path of paths) {
+          const entry2 = this.paths.get(path);
+          if (entry2 && --entry2.references === 0) this.paths.delete(path);
+        }
+      }
+      /** Reads the hash of `path` again. True when it changed. */
+      refresh(path, entry2) {
+        const hash = this.hashOf(path);
+        if (hash === entry2.hash) return false;
+        entry2.hash = hash;
+        entry2.segment = encodeSegment(path, hash ?? null);
+        return true;
+      }
+    };
+  }
+});
+
+// src/core/keys/resolution.ts
+import { posix as posix3 } from "node:path";
+function closuresToReresolve(changes, index, isDeclaredInput) {
+  const picked = /* @__PURE__ */ new Map();
+  const pick = (refs) => {
+    for (const ref of refs) picked.set(testFileId(ref), ref);
+  };
+  for (const change of changes) {
+    if (change.oldHash !== null && change.newHash !== null) continue;
+    if (isDeclaredInput(change.path)) return index.testFiles();
+    const dir = directoryOf(change.path);
+    const base = posix3.basename(change.path);
+    const dot = base.lastIndexOf(".");
+    const name = dot > 0 ? base.slice(0, dot) : base;
+    pick(index.inDirectory(dir));
+    pick(index.below(dir === "" ? name : `${dir}/${name}`));
+    if (name === "index" && dir !== "") pick(index.inDirectory(directoryOf(dir)));
+  }
+  return [...picked.keys()].sort(compare).map((id) => picked.get(id));
+}
+var init_resolution = __esm({
+  "src/core/keys/resolution.ts"() {
+    "use strict";
+    init_fs();
+    init_reverse_index();
+  }
+});
+
+// src/core/keys/index.ts
+var init_keys = __esm({
+  "src/core/keys/index.ts"() {
+    "use strict";
+    init_check_key();
+    init_closure();
+    init_environment();
+    init_glob();
+    init_key_index();
+    init_resolution();
+    init_reverse_index();
+  }
+});
+
+// src/core/state/fingerprint.ts
+function firstLine(text) {
+  const line = text.replace(ANSI, "").split(/\r?\n/).find((l) => l.trim() !== "");
+  return (line ?? "").trim().replace(/\s+/g, " ");
+}
+function normalize(line) {
+  return VOLATILE.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    line
+  );
+}
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+function where(location2) {
+  return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
+}
+function describeFailure(errors, fallback) {
+  const first = errors[0];
+  if (first === void 0) {
+    return { fingerprint: `fail @ ${where(fallback)}`, summary: "failed without an error message" };
+  }
+  const line = firstLine(first.message);
+  const location2 = first.location ?? fallback;
+  const more = errors.length - 1;
+  const text = line === "" ? first.name : line;
+  const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;
+  return {
+    fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
+    summary: cap(summary, SUMMARY_MAX_CHARS)
+  };
+}
+var SUMMARY_MAX_CHARS, ANSI, VOLATILE;
+var init_fingerprint = __esm({
+  "src/core/state/fingerprint.ts"() {
+    "use strict";
+    SUMMARY_MAX_CHARS = 300;
+    ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
+    VOLATILE = [
+      [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
+      [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
+      [/\b0x[0-9a-f]+\b/gi, "0x<addr>"]
+    ];
+  }
+});
 
 // src/core/state/derive.ts
+function checkIdentity(check) {
+  const name = check.kind === "test" ? check.fullName : "";
+  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
 function testFileKeyOf(check) {
   return testFileId(testFileOf(check));
 }
 function testFileOf(check) {
   return { project: check.project, path: check.testPath };
 }
+function classify(outcome, resultKey, key) {
+  if (key !== void 0 && resultKey !== null && resultKey === key.key) {
+    return { validity: "current", pendingPhase: null };
+  }
+  if (key?.pending) return { validity: "pending", pendingPhase: key.pending };
+  return { validity: outcome === "unknown" ? "unknown" : "stale", pendingPhase: null };
+}
+function originOf(worktreeId, result) {
+  const p = result.provenance;
+  return p.worktreeId === worktreeId ? { kind: "own" } : { kind: "inherited", worktreeId: p.worktreeId, commit: p.commit };
+}
+function sameOrigin(a, b) {
+  if (a === null || a.kind !== b.kind) return false;
+  return a.kind === "own" || b.kind === "inherited" && a.worktreeId === b.worktreeId && a.commit === b.commit;
+}
+function stateFromResult(worktreeId, revision, result, key, previous) {
+  const origin = originOf(worktreeId, result);
+  const failed2 = result.outcome === "fail";
+  const described = failed2 && (result.fingerprint === null || result.summary === null);
+  const fallback = described ? describeFailure(result.errors, result.location) : null;
+  const fingerprint = failed2 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
+  const unchanged = previous !== null && previous.outcome === result.outcome && previous.fingerprint === fingerprint && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
+  const observedAt = origin.kind === "own" ? result.provenance.revision : unchanged && previous.observedAt !== null ? previous.observedAt : revision;
+  return {
+    worktreeId,
+    check: result.check,
+    outcome: result.outcome,
+    ...classify(result.outcome, result.key, key),
+    observedAt,
+    commit: result.provenance.commit,
+    origin,
+    durationMs: result.durationMs,
+    location: failed2 ? result.errors[0]?.location ?? result.location : result.location,
+    summary: failed2 ? result.summary ?? fallback?.summary ?? null : null,
+    fingerprint
+  };
+}
+function stateWithoutResult(previous, key) {
+  return { ...previous, ...classify(previous.outcome, null, key) };
+}
+function unknownState(previous, revision, key, reason) {
+  return {
+    ...previous,
+    outcome: "unknown",
+    ...classify("unknown", null, key),
+    observedAt: revision,
+    durationMs: null,
+    summary: reason,
+    fingerprint: null
+  };
+}
+function sameLocation(a, b) {
+  if (a === null || b === null) return a === b;
+  return a.path === b.path && a.line === b.line && a.column === b.column;
+}
+function sameState(a, b) {
+  return a.worktreeId === b.worktreeId && checkIdentity(a.check) === checkIdentity(b.check) && a.outcome === b.outcome && a.validity === b.validity && a.pendingPhase === b.pendingPhase && a.observedAt === b.observedAt && a.commit === b.commit && (a.origin === null || b.origin === null ? a.origin === b.origin : sameOrigin(a.origin, b.origin)) && a.durationMs === b.durationMs && sameLocation(a.location, b.location) && a.summary === b.summary && a.fingerprint === b.fingerprint;
+}
+var init_derive = __esm({
+  "src/core/state/derive.ts"() {
+    "use strict";
+    init_keys();
+    init_fingerprint();
+  }
+});
+
+// src/core/state/baseline.ts
+function entry(check, fingerprint) {
+  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
+}
+function read(store, worktreeId) {
+  const raw = store.meta.get(metaKey(worktreeId));
+  return raw === null ? null : JSON.parse(raw);
+}
+function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
+  if (transitions.length === 0) return;
+  const baseline = checkpointId !== null && store.checkpoints.get(checkpointId)?.kind === "baseline";
+  const current = read(store, worktreeId);
+  if (!baseline && current === null) return;
+  const fresh = baseline && current?.checkpointId !== checkpointId;
+  const entries = new Set(fresh ? [] : current?.entries);
+  const touched = new Set(transitions.map((t) => checkIdentity(t.check)));
+  for (const e of entries) if (touched.has(e.slice(0, e.lastIndexOf("\0")))) entries.delete(e);
+  if (baseline) {
+    for (const t of transitions) {
+      if (t.kind === "first-seen-fail") entries.add(entry(t.check, t.toFingerprint));
+    }
+  }
+  const id = baseline ? checkpointId : current?.checkpointId ?? "";
+  const next = { checkpointId: id, entries: [...entries] };
+  store.meta.set(metaKey(worktreeId), JSON.stringify(next));
+}
+function baselineFindings(store, worktreeId) {
+  const entries = new Set(read(store, worktreeId)?.entries);
+  return (check, fingerprint) => entries.has(entry(check, fingerprint));
+}
+var metaKey;
+var init_baseline = __esm({
+  "src/core/state/baseline.ts"() {
+    "use strict";
+    init_derive();
+    metaKey = (worktreeId) => `state.baseline-findings.${worktreeId}`;
+  }
+});
 
 // src/core/state/check-name.ts
-var FILE_LEVEL = " (file-level)";
 function formatCheck(check) {
   const project = check.project === "" ? "" : `[${check.project}] `;
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
@@ -48,16 +824,23 @@ function parseCheck(name) {
     fullName: rest.slice(split + 3)
   };
 }
+var FILE_LEVEL;
+var init_check_name = __esm({
+  "src/core/state/check-name.ts"() {
+    "use strict";
+    FILE_LEVEL = " (file-level)";
+  }
+});
 
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
-  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const state of states) counts[state.validity]++;
+  const counts2 = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  for (const state of states) counts2[state.validity]++;
   const last = store.checkpoints.lastCompleted(worktreeId);
   return {
     revision,
-    counts,
+    counts: counts2,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
       atCurrentRevision: last !== null && last.revision === revision,
@@ -67,12 +850,12 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts = { pending: 0, unknown: 0 };
+  const counts2 = { pending: 0, unknown: 0 };
   for (const row of keys) {
     if (withChecks.has(testFileId(row.testFile))) continue;
-    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
+    counts2[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
   }
-  return counts;
+  return counts2;
 }
 function hasKey(row) {
   return row.key !== null;
@@ -89,249 +872,165 @@ function toKnownFailure(state, revision) {
     location: state.location
   };
 }
+var init_header = __esm({
+  "src/core/state/header.ts"() {
+    "use strict";
+    init_keys();
+    init_derive();
+  }
+});
 
-// src/core/status/format-status.ts
-function formatStatus(result, now) {
-  if (!result.available) return formatUnavailable(result);
-  const lines = [
-    `Revision: ${result.revision}`,
-    `Known failures: ${result.knownFailures.length}`,
-    ...result.knownFailures.flatMap((f) => [
-      `  FAIL  ${formatCheck(f.check)}`,
-      ...f.summary === "" ? [] : [`        ${f.summary}`],
-      `        ${[
-        ...f.location === null ? [] : [`at ${f.location.path}:${f.location.line}:${f.location.column}`],
-        `observed at revision ${f.observedAt}`,
-        f.validity
-      ].join(", ")}`
-    ]),
-    `Affected checks: ${affected(result)}`,
-    result.fullSuite.lastCompletedRevision === null ? "Last full suite: none recorded" : `Last full suite: completed at revision ${result.fullSuite.lastCompletedRevision}`,
-    result.fullSuite.atCurrentRevision ? "Current revision has completed a full-suite run" : "Current revision has not completed a full-suite run",
-    "",
-    worktreeLine(result),
-    daemonLine(result, now),
-    `Inherited: ${result.inherited.count} current ${plural(result.inherited.count, "result")}`,
-    ...result.inherited.sources.map(
-      (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`
-    ),
-    ...result.breakdown.testFilesWithoutChecks === 0 ? [] : [
-      `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`
-    ],
-    `Closure method: ${result.closureMethod}`,
-    `Store schema: ${result.storeSchemaVersion}`,
-    ...notes(result)
-  ];
-  return `${lines.join("\n")}
-`;
-}
-function notes(s) {
-  const daemon = s.daemonNotes.map((n) => {
-    const at = new Date(n.at).toISOString();
-    return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
-  });
-  const all = [...s.notes, ...daemon];
-  return all.length === 0 ? [] : ["Notes:", ...all.map((note) => `  ${note}`)];
-}
-function formatUnavailable(result) {
-  return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}
-`;
-}
-function affected(s) {
-  const { currentByOutcome, pendingByPhase } = s.breakdown;
-  const parts = [
-    `${currentByOutcome.pass} passed`,
-    `${pendingByPhase.running} running`,
-    `${pendingByPhase.queued} queued`
-  ];
-  const optional = [
-    [currentByOutcome.skip, "skipped"],
-    [s.counts.stale, "stale"],
-    [s.counts.unknown + currentByOutcome.unknown, "unknown"]
-  ];
-  for (const [count, label] of optional) if (count > 0) parts.push(`${count} ${label}`);
-  return parts.join(", ");
-}
-function worktreeLine(s) {
-  const dirty = s.dirty === null ? "dirty state unknown" : s.dirty ? "dirty" : "clean";
-  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirty})`;
-}
-function daemonLine(s, now) {
-  if (s.daemon.state === "alive") {
-    return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
+// src/core/state/transitions.ts
+function transitionKind(from, to) {
+  const before = from?.outcome ?? null;
+  switch (to.outcome) {
+    case "fail":
+      if (before === "pass") return "pass-to-fail";
+      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
+      return "first-seen-fail";
+    case "pass":
+      return before === "fail" ? "fail-to-pass" : null;
+    case "unknown":
+      return before === "pass" || before === "fail" ? "to-unknown" : null;
+    case "skip":
+      return null;
   }
-  if (s.daemon.since === null) return "Daemon: no daemon running";
-  return `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
 }
-function shortCommit(commit) {
-  return commit === null ? "no commit" : commit.slice(0, 7);
-}
-function plural(count, word) {
-  return count === 1 ? word : `${word}s`;
-}
-function age(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
-}
+var init_transitions = __esm({
+  "src/core/state/transitions.ts"() {
+    "use strict";
+  }
+});
 
-// src/core/status/format-why.ts
-var INDENT = "        ";
-function formatWhy(why2) {
-  if (!why2.available) return formatUnavailable(why2);
-  if (!why2.found) {
-    if (why2.candidates.length === 0) return `No check matches "${why2.query}" in this worktree.
-`;
-    return `${[
-      `"${why2.query}" matches ${why2.candidates.length} checks in this worktree:`,
-      ...why2.candidates.map((c) => `  ${formatCheck(c)}`)
-    ].join("\n")}
-`;
+// src/core/state/sink.ts
+function createStateSink(store, options = {}) {
+  const now = options.now ?? Date.now;
+  function begin(worktreeId) {
+    const previous = new Map(
+      store.knownStates.list(worktreeId).map((s) => [checkIdentity(s.check), s])
+    );
+    const keys = new Map(
+      store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k])
+    );
+    const keyOf = (state) => keys.get(testFileKeyOf(state.check));
+    const prior = (state) => previous.get(checkIdentity(state.check)) ?? null;
+    const commit = (revision, next, checkpointId) => {
+      const at = now();
+      const changed = [];
+      const recorded2 = [];
+      for (const state of next) {
+        const before = prior(state);
+        if (before !== null && sameState(before, state)) continue;
+        changed.push(state);
+        const kind = transitionKind(before, state);
+        if (kind === null) continue;
+        recorded2.push({
+          worktreeId,
+          check: state.check,
+          kind,
+          from: before?.outcome ?? null,
+          to: state.outcome,
+          fromFingerprint: before?.fingerprint ?? null,
+          toFingerprint: state.fingerprint,
+          revision,
+          at
+        });
+      }
+      store.knownStates.upsertMany(changed);
+      store.transitions.append(recorded2);
+      recordBaselineFindings(store, worktreeId, checkpointId, recorded2);
+      return recorded2;
+    };
+    return { previous, keys, keyOf, prior, commit };
   }
-  const lines = [
-    `Check: ${formatCheck(why2.check)}`,
-    `Worktree: ${why2.worktreeRoot}`,
-    `Revision: ${why2.revision ?? "none recorded"}`,
-    "",
-    ...knownState(why2, why2.knownState),
-    "",
-    ...history(why2.history),
-    "",
-    ...results(why2),
-    "",
-    `Last run log: ${why2.results[0]?.logDir ?? "none"}`
-  ];
-  return `${lines.join("\n")}
-`;
+  return {
+    applyResults: (worktreeId, revision, results2, provenance) => store.transaction(() => {
+      const { keyOf, prior, commit } = begin(worktreeId);
+      const next = results2.map(
+        (r) => stateFromResult(worktreeId, revision, r, keyOf(r), prior(r))
+      );
+      return commit(revision, next, provenance.checkpointId);
+    }),
+    markUnknown: (worktreeId, revision, testFiles, reason) => store.transaction(() => {
+      const { previous, keyOf, commit } = begin(worktreeId);
+      const files = new Set(testFiles.map(testFileId));
+      const next = [...previous.values()].filter((s) => files.has(testFileKeyOf(s.check))).map((s) => unknownState(s, revision, keyOf(s), reason));
+      return commit(revision, next, null);
+    }),
+    refresh: (worktreeId, revision, provenance, testFiles) => store.transaction(() => {
+      const { previous, keys, keyOf, prior, commit } = begin(worktreeId);
+      const only = testFiles === void 0 ? null : new Set(testFiles.map(testFileId));
+      const included = (file) => only === null || only.has(file);
+      const at = now();
+      const next = /* @__PURE__ */ new Map();
+      for (const [file, key] of keys) {
+        if (!included(file)) continue;
+        for (const r of store.results.byKey(key.key, at)) {
+          next.set(
+            checkIdentity(r.check),
+            stateFromResult(worktreeId, revision, r, key, prior(r))
+          );
+        }
+      }
+      for (const [id, state] of previous) {
+        const key = keyOf(state);
+        if (key === void 0 || next.has(id)) continue;
+        if (included(testFileId(key.testFile))) next.set(id, stateWithoutResult(state, key));
+      }
+      return commit(revision, [...next.values()], provenance.checkpointId);
+    }),
+    // A told failure stays in the view: delivery reports it once as no longer reported (D6).
+    retire: (worktreeId, checks) => store.transaction(() => {
+      store.knownStates.removeMany(worktreeId, checks);
+      const retired = new Set(checks.map(checkIdentity));
+      for (const { consumer } of store.consumers.list(worktreeId)) {
+        const silent = store.views.list(consumer).filter((v) => v.outcome !== "fail" && retired.has(checkIdentity(v.check))).map((v) => v.check);
+        store.views.removeMany(consumer, silent);
+      }
+    })
+  };
 }
-function knownState(why2, s) {
-  if (s === null) return ["Known state: none in this worktree"];
-  const head = [
-    upper(s.outcome),
-    s.pendingPhase === null ? s.validity : `${s.validity} (${s.pendingPhase})`,
-    ...s.observedAt === null ? [] : [`observed at revision ${s.observedAt}`],
-    ...s.commit === null ? [] : [`commit ${shortCommit(s.commit)}`]
-  ];
-  const lines = [`Known state: ${head.join(", ")}`];
-  if (s.origin?.kind === "inherited") {
-    const source = why2.worktreeRoots[s.origin.worktreeId] ?? `removed worktree ${s.origin.worktreeId}`;
-    lines.push(`  Origin: inherited from ${source} at ${shortCommit(s.origin.commit)}`);
+var init_sink = __esm({
+  "src/core/state/sink.ts"() {
+    "use strict";
+    init_keys();
+    init_baseline();
+    init_derive();
+    init_transitions();
   }
-  if (s.summary !== null) lines.push(`  Summary: ${s.summary}`);
-  if (s.location !== null) {
-    lines.push(`  Location: ${s.location.path}:${s.location.line}:${s.location.column}`);
-  }
-  if (s.fingerprint !== null) lines.push(`  Fingerprint: ${s.fingerprint}`);
-  return lines;
-}
-function history(transitions) {
-  if (transitions.length === 0) return ["History: no transitions in this worktree"];
-  return [
-    `History (${transitions.length} ${plural(transitions.length, "transition")}, oldest first):`,
-    ...transitions.map(
-      (t) => `  revision ${t.revision}  ${new Date(t.at).toISOString()}  ${transitionText(t)}`
-    )
-  ];
-}
-function transitionText(t) {
-  if (t.kind === "first-seen-fail") return "first seen FAIL";
-  const change = `${t.from === null ? "NONE" : upper(t.from)} -> ${upper(t.to)}`;
-  return t.kind === "fail-changed" ? `${change}, failure changed` : change;
-}
-function results(why2) {
-  if (why2.results.length === 0) return ["Results: none stored"];
-  return [
-    `Results (${why2.results.length}, newest first):`,
-    ...why2.results.flatMap((entry) => resultLines(why2, entry))
-  ];
-}
-function resultLines(why2, { result, worktreeRoot, logDir }) {
-  const p = result.provenance;
-  const where = p.worktreeId === why2.worktreeId ? `${worktreeRoot ?? why2.worktreeRoot} (this worktree)` : worktreeRoot ?? `removed worktree ${p.worktreeId}`;
-  const lines = [
-    `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}`,
-    `${INDENT}log: ${logDir ?? "run record pruned"}`
-  ];
-  if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
-  for (const error of result.errors) {
-    const text = [error.stack ?? `${error.name}: ${error.message}`, error.diff].filter((part) => part !== null).join("\n");
-    for (const line of text.split("\n")) lines.push(`${INDENT}${line}`);
-  }
-  return lines;
-}
-function upper(outcome) {
-  return outcome.toUpperCase();
-}
+});
 
-// src/core/status/open.ts
-import { existsSync as existsSync3, realpathSync as realpathSync2 } from "node:fs";
-import { dirname, join as join4, resolve as resolve3 } from "node:path";
-
-// src/core/store/open.ts
-import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
-import { join as join3 } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+// src/core/state/index.ts
+var state_exports = {};
+__export(state_exports, {
+  SUMMARY_MAX_CHARS: () => SUMMARY_MAX_CHARS,
+  baselineFindings: () => baselineFindings,
+  checkIdentity: () => checkIdentity,
+  classify: () => classify,
+  createStateSink: () => createStateSink,
+  describeFailure: () => describeFailure,
+  formatCheck: () => formatCheck,
+  parseCheck: () => parseCheck,
+  readHeader: () => readHeader,
+  testFileKeyOf: () => testFileKeyOf,
+  testFileOf: () => testFileOf,
+  toKnownFailure: () => toKnownFailure,
+  transitionKind: () => transitionKind
+});
+var init_state = __esm({
+  "src/core/state/index.ts"() {
+    "use strict";
+    init_baseline();
+    init_check_name();
+    init_derive();
+    init_fingerprint();
+    init_header();
+    init_sink();
+    init_transitions();
+  }
+});
 
 // src/core/store/connection.ts
-var Connection = class {
-  #statements = /* @__PURE__ */ new Map();
-  #depth = 0;
-  #closed = false;
-  db;
-  constructor(db) {
-    this.db = db;
-  }
-  /** Runs a statement; returns the number of rows it changed. */
-  run(sql, ...params) {
-    return Number(this.#statement(sql).run(...params).changes);
-  }
-  get(sql, ...params) {
-    return this.#statement(sql).get(...params) ?? null;
-  }
-  all(sql, ...params) {
-    return this.#statement(sql).all(...params);
-  }
-  /**
-   * Runs `fn` in a `BEGIN IMMEDIATE` transaction, or in a savepoint when one
-   * is already open. Spec 001 D8: "short `BEGIN IMMEDIATE` write
-   * transactions": the write lock is taken up front, so a writer waits on the
-   * busy timeout instead of failing to upgrade a read snapshot.
-   */
-  transaction(fn) {
-    const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-    this.db.exec(savepoint === null ? "BEGIN IMMEDIATE" : `SAVEPOINT ${savepoint}`);
-    this.#depth++;
-    try {
-      const result = fn();
-      this.db.exec(savepoint === null ? "COMMIT" : `RELEASE ${savepoint}`);
-      return result;
-    } catch (error) {
-      if (savepoint === null) rollback(this.db);
-      else this.db.exec(`ROLLBACK TO ${savepoint}; RELEASE ${savepoint}`);
-      throw error;
-    } finally {
-      this.#depth--;
-    }
-  }
-  /** Idempotent. */
-  close() {
-    if (this.#closed) return;
-    this.#closed = true;
-    this.#statements.clear();
-    this.db.close();
-  }
-  #statement(sql) {
-    let statement = this.#statements.get(sql);
-    if (statement === void 0) {
-      statement = this.db.prepare(sql);
-      this.#statements.set(sql, statement);
-    }
-    return statement;
-  }
-};
 function rollback(db) {
   try {
     db.exec("ROLLBACK");
@@ -339,38 +1038,103 @@ function rollback(db) {
     if (!/no transaction is active/.test(String(error))) throw error;
   }
 }
+var Connection;
+var init_connection = __esm({
+  "src/core/store/connection.ts"() {
+    "use strict";
+    Connection = class {
+      #statements = /* @__PURE__ */ new Map();
+      #depth = 0;
+      #closed = false;
+      db;
+      constructor(db) {
+        this.db = db;
+      }
+      /** Runs a statement; returns the number of rows it changed. */
+      run(sql, ...params) {
+        return Number(this.#statement(sql).run(...params).changes);
+      }
+      get(sql, ...params) {
+        return this.#statement(sql).get(...params) ?? null;
+      }
+      all(sql, ...params) {
+        return this.#statement(sql).all(...params);
+      }
+      /**
+       * Runs `fn` in a `BEGIN IMMEDIATE` transaction, or in a savepoint when one
+       * is already open. Spec 001 D8: "short `BEGIN IMMEDIATE` write
+       * transactions": the write lock is taken up front, so a writer waits on the
+       * busy timeout instead of failing to upgrade a read snapshot.
+       */
+      transaction(fn) {
+        const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
+        this.db.exec(savepoint === null ? "BEGIN IMMEDIATE" : `SAVEPOINT ${savepoint}`);
+        this.#depth++;
+        try {
+          const result = fn();
+          this.db.exec(savepoint === null ? "COMMIT" : `RELEASE ${savepoint}`);
+          return result;
+        } catch (error) {
+          if (savepoint === null) rollback(this.db);
+          else this.db.exec(`ROLLBACK TO ${savepoint}; RELEASE ${savepoint}`);
+          throw error;
+        } finally {
+          this.#depth--;
+        }
+      }
+      /** Idempotent. */
+      close() {
+        if (this.#closed) return;
+        this.#closed = true;
+        this.#statements.clear();
+        this.db.close();
+      }
+      #statement(sql) {
+        let statement = this.#statements.get(sql);
+        if (statement === void 0) {
+          statement = this.db.prepare(sql);
+          this.#statements.set(sql, statement);
+        }
+        return statement;
+      }
+    };
+  }
+});
 
 // src/core/store/paths.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute as isAbsolute2, join as join3, resolve } from "node:path";
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return createHash3("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
 }
 function resolveCommonDir(root) {
-  const dotGit = join(root, ".git");
-  const stat = lstatOrNull(dotGit);
-  if (stat === null) return null;
-  if (stat.isDirectory()) return realpathSync(dotGit);
-  if (!stat.isFile()) return null;
+  const dotGit = join3(root, ".git");
+  const stat5 = lstatOrNull(dotGit);
+  if (stat5 === null) return null;
+  if (stat5.isDirectory()) return realpathSync(dotGit);
+  if (!stat5.isFile()) return null;
   const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
   if (!match?.[1]) return null;
   const gitdir = resolve(root, match[1]);
   if (lstatOrNull(gitdir) === null) return null;
-  const commondirFile = join(gitdir, "commondir");
+  const commondirFile = join3(gitdir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync(gitdir);
   const commondir = readFileSync(commondirFile, "utf8").trim();
-  const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
+  const common = isAbsolute2(commondir) ? commondir : resolve(gitdir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync(common);
 }
 function storePaths(commonDir) {
-  const dir = join(commonDir, "squeal");
+  const dir = join3(commonDir, "squeal");
   return {
     dir,
-    database: join(dir, "store.sqlite"),
-    runsDir: join(dir, "runs"),
-    locksDir: join(dir, "locks")
+    database: join3(dir, "store.sqlite"),
+    runsDir: join3(dir, "runs"),
+    locksDir: join3(dir, "locks")
   };
+}
+function lockFileFor(commonDir, worktreeId) {
+  return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 function lstatOrNull(path) {
   try {
@@ -380,9 +1144,39 @@ function lstatOrNull(path) {
     throw error;
   }
 }
+var init_paths2 = __esm({
+  "src/core/store/paths.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
 
 // src/core/store/schema.ts
-var V1 = `
+function userVersion(db) {
+  return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
+}
+function migrate(db, migrations = MIGRATIONS) {
+  if (userVersion(db) >= migrations.length) return userVersion(db);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const from = userVersion(db);
+    for (let version2 = from; version2 < migrations.length; version2++) {
+      migrations[version2]?.(db);
+    }
+    if (from < migrations.length) db.exec(`PRAGMA user_version = ${migrations.length}`);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
+    throw error;
+  }
+  return userVersion(db);
+}
+var V1, MIGRATIONS, SCHEMA_VERSION;
+var init_schema = __esm({
+  "src/core/store/schema.ts"() {
+    "use strict";
+    init_connection();
+    V1 = `
 CREATE TABLE meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -572,27 +1366,10 @@ CREATE TABLE consumer_views (
   PRIMARY KEY (worktree_id, session_id, agent_id, check_id)
 ) STRICT;
 `;
-var MIGRATIONS = [(db) => db.exec(V1)];
-var SCHEMA_VERSION = MIGRATIONS.length;
-function userVersion(db) {
-  return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
-}
-function migrate(db, migrations = MIGRATIONS) {
-  if (userVersion(db) >= migrations.length) return userVersion(db);
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const from = userVersion(db);
-    for (let version = from; version < migrations.length; version++) {
-      migrations[version]?.(db);
-    }
-    if (from < migrations.length) db.exec(`PRAGMA user_version = ${migrations.length}`);
-    db.exec("COMMIT");
-  } catch (error) {
-    rollback(db);
-    throw error;
+    MIGRATIONS = [(db) => db.exec(V1)];
+    SCHEMA_VERSION = MIGRATIONS.length;
   }
-  return userVersion(db);
-}
+});
 
 // src/core/store/codec.ts
 function str(row, column) {
@@ -651,8 +1428,6 @@ function checkFrom(row) {
   }
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
-var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
-var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
 function findCheckId(conn, check) {
   const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
   return row === null ? null : num(row, "id");
@@ -671,32 +1446,23 @@ function ensureCheckId(conn, check, seenAt) {
 function flag(value) {
   return value ? 1 : 0;
 }
+var CHECK_WHERE, CHECK_COLUMNS;
+var init_codec = __esm({
+  "src/core/store/codec.ts"() {
+    "use strict";
+    CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
+    CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+  }
+});
 
 // src/core/store/prune.ts
 import { existsSync, rmSync } from "node:fs";
-import { join as join2, resolve as resolve2, sep } from "node:path";
-var DAY_MS = 24 * 60 * 60 * 1e3;
-var EVICTION_BATCH = 32;
-var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
-  WHERE k.key IS NOT NULL`;
-var MAIN_NEWEST = `
-  SELECT id FROM (
-    SELECT rowid AS id,
-      row_number() OVER (PARTITION BY check_id ORDER BY recorded_at DESC, rowid DESC) AS n
-    FROM results WHERE worktree_id IN (SELECT id FROM worktrees WHERE is_main = 1)
-  ) WHERE n = 1`;
-var LAST_COMPLETED_CHECKPOINTS = `
-  SELECT id FROM (
-    SELECT (SELECT x.id FROM checkpoints x
-            WHERE x.worktree_id = w.id AND x.end_state = 'completed'
-            ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1) AS id
-    FROM worktrees w
-  ) WHERE id IS NOT NULL`;
+import { join as join4, resolve as resolve2, sep as sep3 } from "node:path";
 function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync(join2(worktree.root, ".git"))) continue;
+    if (existsSync(join4(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -793,12 +1559,34 @@ function pragmaNumber(conn, name) {
 function removeRunLog(paths, logDir) {
   const runsDir = resolve2(paths.runsDir);
   const target = resolve2(logDir);
-  if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
+  if (target.startsWith(runsDir + sep3)) rmSync(target, { recursive: true, force: true });
 }
+var DAY_MS, EVICTION_BATCH, LIVE_KEYS, MAIN_NEWEST, LAST_COMPLETED_CHECKPOINTS;
+var init_prune = __esm({
+  "src/core/store/prune.ts"() {
+    "use strict";
+    init_codec();
+    DAY_MS = 24 * 60 * 60 * 1e3;
+    EVICTION_BATCH = 32;
+    LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+  WHERE k.key IS NOT NULL`;
+    MAIN_NEWEST = `
+  SELECT id FROM (
+    SELECT rowid AS id,
+      row_number() OVER (PARTITION BY check_id ORDER BY recorded_at DESC, rowid DESC) AS n
+    FROM results WHERE worktree_id IN (SELECT id FROM worktrees WHERE is_main = 1)
+  ) WHERE n = 1`;
+    LAST_COMPLETED_CHECKPOINTS = `
+  SELECT id FROM (
+    SELECT (SELECT x.id FROM checkpoints x
+            WHERE x.worktree_id = w.id AND x.end_state = 'completed'
+            ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1) AS id
+    FROM worktrees w
+  ) WHERE id IS NOT NULL`;
+  }
+});
 
 // src/core/store/repos/consumers.ts
-var OUTCOMES = ["pass", "fail", "skip", "unknown"];
-var WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 function consumerParams(c) {
   return [c.worktreeId, c.sessionId, c.agentId];
 }
@@ -915,15 +1703,18 @@ function toView(row) {
     toldAt: num(row, "told_at")
   };
 }
+var OUTCOMES, WHERE_CONSUMER;
+var init_consumers = __esm({
+  "src/core/store/repos/consumers.ts"() {
+    "use strict";
+    init_codec();
+    OUTCOMES = ["pass", "fail", "skip", "unknown"];
+    WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
+  }
+});
 
 // src/core/store/repos/results.ts
-import { createHash as createHash2 } from "node:crypto";
-var OUTCOMES2 = ["pass", "fail", "skip"];
-var SELECT_RESULTS = `
-  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
-  FROM results r
-  JOIN checks c ON c.id = r.check_id
-  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+import { createHash as createHash4 } from "node:crypto";
 function createResultRepo(conn) {
   return {
     byKey: (key, usedAt = Date.now()) => {
@@ -992,7 +1783,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text = JSON.stringify(errors);
-  const id = createHash2("sha256").update(JSON.stringify([summary, text])).digest("hex");
+  const id = createHash4("sha256").update(JSON.stringify([summary, text])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -1021,11 +1812,21 @@ function toResult(row) {
     }
   };
 }
+var OUTCOMES2, SELECT_RESULTS;
+var init_results = __esm({
+  "src/core/store/repos/results.ts"() {
+    "use strict";
+    init_codec();
+    OUTCOMES2 = ["pass", "fail", "skip"];
+    SELECT_RESULTS = `
+  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
+  FROM results r
+  JOIN checks c ON c.id = r.check_id
+  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+  }
+});
 
 // src/core/store/repos/runs.ts
-var RUN_ENDS = ["completed", "crashed", "timed-out"];
-var CHECKPOINT_KINDS = ["run-all", "baseline"];
-var CHECKPOINT_ENDS = ["completed", "abandoned"];
 function createRunRepo(conn) {
   return {
     start: (record) => {
@@ -1108,19 +1909,18 @@ function toCheckpoint(row) {
     end: oneOfOrNull(row, "end_state", CHECKPOINT_ENDS)
   };
 }
+var RUN_ENDS, CHECKPOINT_KINDS, CHECKPOINT_ENDS;
+var init_runs = __esm({
+  "src/core/store/repos/runs.ts"() {
+    "use strict";
+    init_codec();
+    RUN_ENDS = ["completed", "crashed", "timed-out"];
+    CHECKPOINT_KINDS = ["run-all", "baseline"];
+    CHECKPOINT_ENDS = ["completed", "abandoned"];
+  }
+});
 
 // src/core/store/repos/states.ts
-var OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
-var VALIDITIES = ["current", "pending", "stale", "unknown"];
-var PENDING = ["queued", "running"];
-var KINDS = [
-  "first-seen-fail",
-  "pass-to-fail",
-  "fail-to-pass",
-  "fail-changed",
-  "to-unknown"
-];
-var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
 function createKnownStateRepo(conn) {
   return {
     list: (worktreeId) => conn.all(
@@ -1249,10 +2049,26 @@ function toTransition(row) {
     at: num(row, "at")
   };
 }
+var OUTCOMES3, VALIDITIES, PENDING, KINDS, SELECT_STATES;
+var init_states = __esm({
+  "src/core/store/repos/states.ts"() {
+    "use strict";
+    init_codec();
+    OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
+    VALIDITIES = ["current", "pending", "stale", "unknown"];
+    PENDING = ["queued", "running"];
+    KINDS = [
+      "first-seen-fail",
+      "pass-to-fail",
+      "fail-to-pass",
+      "fail-changed",
+      "to-unknown"
+    ];
+    SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+  }
+});
 
 // src/core/store/repos/test-files.ts
-var METHODS = ["static imports plus declared inputs"];
-var PENDING2 = ["queued", "running"];
 function createTestFileRepo(conn) {
   return {
     get: (testFile) => {
@@ -1373,9 +2189,17 @@ function toCheck(row) {
     firstSeenAt: num(row, "first_seen_at")
   };
 }
+var METHODS, PENDING2;
+var init_test_files = __esm({
+  "src/core/store/repos/test-files.ts"() {
+    "use strict";
+    init_codec();
+    METHODS = ["static imports plus declared inputs"];
+    PENDING2 = ["queued", "running"];
+  }
+});
 
 // src/core/store/repos/workspace.ts
-var TRIGGERS = ["watch", "interval", "start", "dropped-events"];
 function createRevisionRepo(conn) {
   return {
     append: (revision) => conn.transaction(() => {
@@ -1469,17 +2293,16 @@ function toFileHash(row) {
     hash: str(row, "hash")
   };
 }
+var TRIGGERS;
+var init_workspace = __esm({
+  "src/core/store/repos/workspace.ts"() {
+    "use strict";
+    init_codec();
+    TRIGGERS = ["watch", "interval", "start", "dropped-events"];
+  }
+});
 
 // src/core/store/repos/worktrees.ts
-var WORKTREE_SCOPED_TABLES = [
-  "revisions",
-  "file_hashes",
-  "test_file_keys",
-  "known_states",
-  "transitions",
-  "consumer_views",
-  "consumers"
-];
 function createWorktreeRepo(conn) {
   return {
     get: (id) => {
@@ -1557,9 +2380,24 @@ function toRecord(row) {
     }
   };
 }
+var WORKTREE_SCOPED_TABLES;
+var init_worktrees = __esm({
+  "src/core/store/repos/worktrees.ts"() {
+    "use strict";
+    init_codec();
+    WORKTREE_SCOPED_TABLES = [
+      "revisions",
+      "file_hashes",
+      "test_file_keys",
+      "known_states",
+      "transitions",
+      "consumer_views",
+      "consumers"
+    ];
+  }
+});
 
 // src/core/store/store.ts
-var connections = /* @__PURE__ */ new WeakMap();
 function createStore(conn, schemaVersion, paths) {
   const worktrees = createWorktreeRepo(conn);
   const store = {
@@ -1596,10 +2434,27 @@ function createMetaRepo(conn) {
     }
   };
 }
+var connections;
+var init_store = __esm({
+  "src/core/store/store.ts"() {
+    "use strict";
+    init_codec();
+    init_prune();
+    init_consumers();
+    init_results();
+    init_runs();
+    init_states();
+    init_test_files();
+    init_workspace();
+    init_worktrees();
+    connections = /* @__PURE__ */ new WeakMap();
+  }
+});
 
 // src/core/store/open.ts
-var DEFAULT_BUSY_TIMEOUT_MS = 1e3;
-var META_STORE_RECOVERED = "store.recovered";
+import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
+import { join as join5 } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 function isStoreOpenFailure(value) {
   return "reason" in value;
 }
@@ -1635,8 +2490,8 @@ function connect(paths, options) {
     const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
     if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
     db.exec("PRAGMA synchronous = NORMAL");
-    const version = migrate(db);
-    return createStore(new Connection(db), version, paths);
+    const version2 = migrate(db);
+    return createStore(new Connection(db), version2, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
@@ -1659,7 +2514,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  const lock = new DatabaseSync(join5(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock.exec("BEGIN EXCLUSIVE");
@@ -1688,39 +2543,5761 @@ function moveAside(database, at) {
   rmSync2(`${database}-shm`, { force: true });
   return movedTo;
 }
+var DEFAULT_BUSY_TIMEOUT_MS, META_STORE_RECOVERED;
+var init_open = __esm({
+  "src/core/store/open.ts"() {
+    "use strict";
+    init_connection();
+    init_paths2();
+    init_schema();
+    init_store();
+    DEFAULT_BUSY_TIMEOUT_MS = 1e3;
+    META_STORE_RECOVERED = "store.recovered";
+  }
+});
+
+// src/core/store/index.ts
+var store_exports = {};
+__export(store_exports, {
+  DEFAULT_BUSY_TIMEOUT_MS: () => DEFAULT_BUSY_TIMEOUT_MS,
+  META_STORE_RECOVERED: () => META_STORE_RECOVERED,
+  SCHEMA_VERSION: () => SCHEMA_VERSION,
+  isStoreOpenFailure: () => isStoreOpenFailure,
+  lockFileFor: () => lockFileFor,
+  openStore: () => openStore,
+  resolveCommonDir: () => resolveCommonDir,
+  storePaths: () => storePaths,
+  worktreeIdFor: () => worktreeIdFor
+});
+var init_store2 = __esm({
+  "src/core/store/index.ts"() {
+    "use strict";
+    init_open();
+    init_paths2();
+    init_schema();
+  }
+});
 
 // src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
+var PAYLOAD_SCHEMA_VERSION;
+var init_common = __esm({
+  "src/core/types/common.ts"() {
+    "use strict";
+    PAYLOAD_SCHEMA_VERSION = 1;
+  }
+});
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS;
+var init_daemon = __esm({
+  "src/core/types/daemon.ts"() {
+    "use strict";
+    DAEMON_SOCKET_TIMEOUT_MS = 100;
+  }
+});
+
+// src/core/types/delivery.ts
+var init_delivery = __esm({
+  "src/core/types/delivery.ts"() {
+    "use strict";
+  }
+});
 
 // src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
+var DEFAULT_POLICY;
+var init_policy = __esm({
+  "src/core/types/policy.ts"() {
+    "use strict";
+    DEFAULT_POLICY = {
+      interrupt: { onRegression: true },
+      stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+      baseline: { onStart: "lookup-then-run-missing" },
+      inputs: [],
+      env: { allowlist: [] },
+      runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
+      daemon: { idleExitMinutes: 60 },
+      store: { retentionDays: 7, maxSizeMb: null }
+    };
+  }
+});
 
 // src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
 function notesMetaKey(worktreeId) {
   return `notes.${worktreeId}`;
 }
+var MAX_PERSISTED_NOTES;
+var init_scheduler = __esm({
+  "src/core/types/scheduler.ts"() {
+    "use strict";
+    MAX_PERSISTED_NOTES = 20;
+  }
+});
+
+// src/core/types/state.ts
+var init_state2 = __esm({
+  "src/core/types/state.ts"() {
+    "use strict";
+  }
+});
 
 // src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var CONSUMER_EXPIRY_MS;
+var init_store_records = __esm({
+  "src/core/types/store-records.ts"() {
+    "use strict";
+    CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+  }
+});
+
+// src/core/types/watcher.ts
+var WATCHER_TIMINGS;
+var init_watcher = __esm({
+  "src/core/types/watcher.ts"() {
+    "use strict";
+    WATCHER_TIMINGS = {
+      quietMs: 100,
+      maxBatchMs: 500,
+      reconcileIntervalMs: 3e4
+    };
+  }
+});
+
+// src/core/types/index.ts
+var init_types = __esm({
+  "src/core/types/index.ts"() {
+    "use strict";
+    init_common();
+    init_daemon();
+    init_delivery();
+    init_policy();
+    init_scheduler();
+    init_state2();
+    init_store_records();
+    init_watcher();
+  }
+});
+
+// src/core/scheduler/notes.ts
+function appendNote(store, worktreeId, note) {
+  const key = notesMetaKey(worktreeId);
+  store.transaction(() => {
+    const notes2 = [...parse(store.meta.get(key)), note].slice(-MAX_PERSISTED_NOTES);
+    store.meta.set(key, JSON.stringify(notes2));
+  });
+}
+function parse(raw) {
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function listPaths(paths, max = 5) {
+  const shown = paths.slice(0, max).join(", ");
+  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
+}
+var init_notes = __esm({
+  "src/core/scheduler/notes.ts"() {
+    "use strict";
+    init_types();
+  }
+});
+
+// src/core/scheduler/files.ts
+function newFileState(ref) {
+  return {
+    ref,
+    id: testFileId(ref),
+    key: null,
+    resultKey: null,
+    checks: [],
+    failing: false,
+    phase: null,
+    runningKey: null,
+    unknownKey: null,
+    discards: 0,
+    blocked: null
+  };
+}
+function classify2(file) {
+  if (file.phase !== null) return "pending";
+  if (file.key === null || file.blocked !== null) return "unknown";
+  if (file.unknownKey === file.key) return "unknown";
+  if (file.resultKey === file.key) return "current";
+  return file.resultKey === null ? "unknown" : "stale";
+}
+function checkId(check) {
+  const name = check.kind === "test" ? check.fullName : "";
+  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
+var init_files = __esm({
+  "src/core/scheduler/files.ts"() {
+    "use strict";
+    init_keys();
+  }
+});
+
+// src/core/scheduler/context.ts
+async function tryRunner(context, subject, call, onFailure) {
+  try {
+    return await call();
+  } catch (error) {
+    const reason = `runner ${subject} failed: ${error instanceof Error ? error.message : String(error)}`;
+    context.note(reason);
+    onFailure?.(reason);
+    return null;
+  }
+}
+var NOTHING_CHANGED;
+var init_context = __esm({
+  "src/core/scheduler/context.ts"() {
+    "use strict";
+    NOTHING_CHANGED = /* @__PURE__ */ new Set();
+  }
+});
+
+// src/core/scheduler/failures.ts
+function failed(failures, project, reason) {
+  if (!failures.has(project)) failures.set(project, reason);
+}
+function settleFailures(ledger, failures, retrying, changed) {
+  if (failures.size > 0) block(ledger, failures);
+  else if (retrying) ledger.settle(unblock(ledger), changed);
+}
+function block(ledger, failures) {
+  const every = failures.get(null);
+  const byReason = /* @__PURE__ */ new Map();
+  for (const file of ledger.files.values()) {
+    const reason = every ?? failures.get(file.ref.project);
+    if (reason === void 0 || file.blocked !== null) continue;
+    file.blocked = reason;
+    if (!ledger.queue.isForced(file.ref)) ledger.queue.remove(file.ref);
+    const files = byReason.get(reason);
+    if (files) files.push(file);
+    else byReason.set(reason, [file]);
+  }
+  for (const [reason, files] of byReason) {
+    ledger.markUnknown(
+      files.map((file) => ({ file, key: file.key })),
+      reason
+    );
+  }
+  ledger.broken = true;
+}
+function unblock(ledger) {
+  const refs = [];
+  for (const file of ledger.files.values()) {
+    if (file.blocked === null) continue;
+    file.blocked = null;
+    file.unknownKey = null;
+    ledger.touch(file);
+    refs.push(file.ref);
+  }
+  ledger.broken = false;
+  return refs;
+}
+var init_failures = __esm({
+  "src/core/scheduler/failures.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/scheduler/revision.ts
+function toInvalidatedPath(change) {
+  const kind = change.oldHash === null ? "add" : change.newHash === null ? "delete" : "change";
+  return { path: change.path, kind };
+}
+function rekeyContent(context, ledger, revision) {
+  const { keys } = context;
+  const changes = revision.changes;
+  const touched = [];
+  const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
+  touched.push(...rekeyed);
+  const declared = keys.updateDeclaredInputs(changes);
+  if (declared !== null) touched.push(...declared.map((c) => c.testFile));
+  const environment = changes.some((c) => keys.isEnvironmentInput(c.path));
+  if (environment) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
+  ledger.settle(touched, new Set(changes.map((c) => c.path)));
+  return { rekeyed, environment };
+}
+async function applyRevision(context, ledger, revision, content) {
+  const { keys, runner } = context;
+  const changes = revision.changes;
+  const paths = changes.map((c) => c.path);
+  const changed = new Set(paths);
+  const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
+  const failures = /* @__PURE__ */ new Map();
+  const touched = /* @__PURE__ */ new Map();
+  const touch = (refs) => {
+    for (const ref of refs) touched.set(testFileId(ref), ref);
+  };
+  const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
+  const retrying = ledger.broken;
+  const invalidated = await tryRunner(
+    context,
+    `invalidate (${listPaths(paths)})`,
+    () => runner.invalidate(changes.map(toInvalidatedPath)),
+    (reason) => failed(failures, null, reason)
+  );
+  const recreated = new Set(invalidated?.recreatedProjects ?? []);
+  if (recreated.size > 0 || content.environment || retrying) {
+    touchKeys(await readEnvironments(context, failures));
+  }
+  const reresolve = /* @__PURE__ */ new Map();
+  const pick = (refs) => {
+    for (const ref of refs) if (ledger.file(ref)) reresolve.set(testFileId(ref), ref);
+  };
+  if (structural || recreated.size > 0 || ledger.listingFailed) {
+    pick(await listTestFiles(context, ledger));
+  }
+  for (const file of ledger.files.values()) {
+    if (recreated.has(file.ref.project) || file.blocked !== null) reresolve.set(file.id, file.ref);
+  }
+  pick(content.rekeyed);
+  const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
+  pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
+  pick(
+    await tryRunner(context, `affected (${listPaths(paths)})`, () => runner.affected(paths)) ?? []
+  );
+  touchKeys(await resolveClosures(context, [...reresolve.values()], failures));
+  touch(reresolve.values());
+  ledger.settle(touched.values(), changed);
+  settleFailures(ledger, failures, retrying, changed);
+}
+async function retryRunner(context, ledger) {
+  if (!ledger.broken) return;
+  const failures = /* @__PURE__ */ new Map();
+  const touched = (await readEnvironments(context, failures)).map((c) => c.testFile);
+  const listed = await listTestFiles(context, ledger);
+  const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
+  const refs = [...listed, ...blocked];
+  touched.push(...(await resolveClosures(context, refs, failures)).map((c) => c.testFile), ...refs);
+  ledger.settle(touched, NOTHING_CHANGED);
+  settleFailures(ledger, failures, true, NOTHING_CHANGED);
+}
+async function readEnvironments(context, failures) {
+  const environments = await tryRunner(
+    context,
+    "environment",
+    () => context.runner.environment(),
+    (reason) => failed(failures, null, reason)
+  );
+  return environments === null ? [] : context.keys.setEnvironments(environments);
+}
+async function listTestFiles(context, ledger) {
+  const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
+  ledger.listingFailed = listed === null;
+  if (listed === null) return [];
+  const ids = new Set(listed.map(testFileId));
+  for (const file of [...ledger.files.values()]) {
+    if (!ids.has(file.id)) ledger.removeFile(file);
+  }
+  for (const ref of listed) {
+    if (!ledger.file(ref)) ledger.addFile(ref);
+  }
+  return listed.filter((ref) => !context.keys.index.closure(ref));
+}
+async function resolveClosures(context, refs, failures) {
+  const changes = [];
+  const resolved = [];
+  for (const ref of refs) {
+    const keyChanges = await resolveClosure(
+      context,
+      ref,
+      (reason) => failed(failures, ref.project, reason)
+    );
+    if (keyChanges === null) continue;
+    changes.push(...keyChanges);
+    resolved.push(ref);
+  }
+  changes.push(...await context.keys.trackUntracked());
+  storeClosures(context, resolved);
+  return changes;
+}
+async function resolveClosure(context, ref, onFailure) {
+  const closure = await tryRunner(
+    context,
+    `closure of ${ref.path}`,
+    () => context.runner.closure(ref),
+    onFailure
+  );
+  return closure === null ? null : context.keys.setClosure(closure);
+}
+function storeClosures(context, refs) {
+  const { store, keys } = context;
+  store.transaction(() => {
+    for (const ref of refs) {
+      const closure = keys.index.closure(ref);
+      if (!closure) continue;
+      store.testFiles.put({
+        testFile: ref,
+        closure,
+        updatedAt: context.now(),
+        updatedBy: context.worktreeId
+      });
+    }
+  });
+}
+var init_revision = __esm({
+  "src/core/scheduler/revision.ts"() {
+    "use strict";
+    init_keys();
+    init_context();
+    init_failures();
+    init_notes();
+  }
+});
+
+// src/core/hash/blob.ts
+import { createHash as createHash5 } from "node:crypto";
+import { constants } from "node:fs";
+import { open, readlink } from "node:fs/promises";
+function blobHash(bytes, format) {
+  return createHash5(format).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
+}
+async function hashFile(path, format) {
+  for (let attempt = 0; ; attempt++) {
+    let handle;
+    try {
+      handle = await open(path, OPEN_FLAGS);
+    } catch (error) {
+      if (isMissing(error)) return null;
+      if (errorCode(error) !== "ELOOP") throw error;
+      const target = await readlinkOrNull(path, attempt > 0);
+      if (target === void 0) continue;
+      return target === null ? null : blobHash(target, format);
+    }
+    try {
+      if (!(await handle.stat()).isFile()) return null;
+      return blobHash(await handle.readFile(), format);
+    } finally {
+      await handle.close();
+    }
+  }
+}
+async function readlinkOrNull(path, last) {
+  try {
+    return await readlink(path, { encoding: "buffer" });
+  } catch (error) {
+    if (isMissing(error)) return null;
+    if (errorCode(error) === "EINVAL" && !last) return void 0;
+    throw error;
+  }
+}
+function errorCode(error) {
+  return error?.code;
+}
+var OPEN_FLAGS;
+var init_blob = __esm({
+  "src/core/hash/blob.ts"() {
+    "use strict";
+    init_fs();
+    OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+  }
+});
+
+// src/core/hash/concurrency.ts
+async function mapConcurrent(items, fn, limit = FILE_CONCURRENCY) {
+  const results2 = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results2[index] = await fn(items[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results2;
+}
+var FILE_CONCURRENCY;
+var init_concurrency = __esm({
+  "src/core/hash/concurrency.ts"() {
+    "use strict";
+    FILE_CONCURRENCY = 64;
+  }
+});
+
+// src/core/hash/git-index.ts
+async function readObjectFormat(root) {
+  const format = (await runGit(root, ["rev-parse", "--show-object-format"])).trim();
+  if (format !== "sha1" && format !== "sha256") {
+    throw new Error(`squeal: unsupported git object format "${format}" in ${root}`);
+  }
+  return format;
+}
+async function readCleanIndexHashes(root) {
+  const [autocrlf, entries, status2] = await Promise.all([
+    // `git config --get` exits 1 when the key is unset.
+    runGit(root, ["config", "--get", "core.autocrlf"], { okCodes: [0, 1] }),
+    runGit(root, ["ls-files", "--stage", "-v", "-z"]),
+    runGit(root, [
+      "status",
+      "--porcelain=v1",
+      "-z",
+      "--untracked-files=no",
+      "--ignore-submodules=all",
+      "--no-renames"
+    ])
+  ]);
+  if (AUTOCRLF_ON.has(autocrlf.trim().toLowerCase())) return /* @__PURE__ */ new Map();
+  const listed = new Set(splitNul(status2).map((line) => line.slice(3)));
+  const candidates = /* @__PURE__ */ new Map();
+  for (const line of splitNul(entries)) {
+    const tab = line.indexOf("	");
+    const [tag, mode, oid, stage] = line.slice(0, tab).split(" ");
+    const path = line.slice(tab + 1);
+    if (tag !== "H" || stage !== "0" || !FILE_MODES.has(mode ?? "") || oid === void 0) continue;
+    if (listed.has(path)) continue;
+    candidates.set(path, oid);
+  }
+  if (candidates.size === 0) return candidates;
+  const attributes = await runGit(root, ["check-attr", "-z", "--stdin", ...CONVERTING_ATTRIBUTES], {
+    input: `${[...candidates.keys()].join("\0")}\0`
+  });
+  const fields = splitNul(attributes);
+  for (let i = 0; i + 2 < fields.length; i += 3) {
+    if (fields[i + 2] !== "unspecified") candidates.delete(fields[i]);
+  }
+  return candidates;
+}
+var CONVERTING_ATTRIBUTES, FILE_MODES, AUTOCRLF_ON;
+var init_git_index = __esm({
+  "src/core/hash/git-index.ts"() {
+    "use strict";
+    init_fs();
+    CONVERTING_ATTRIBUTES = ["eol", "text", "crlf", "filter", "ident", "working-tree-encoding"];
+    FILE_MODES = /* @__PURE__ */ new Set(["100644", "100755", "120000"]);
+    AUTOCRLF_ON = /* @__PURE__ */ new Set(["true", "input", "yes", "on", "1"]);
+  }
+});
+
+// src/core/hash/stat-cache.ts
+function sameStat(a, b) {
+  return a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs && a.size === b.size && a.inode === b.inode;
+}
+function isRacy(stat5, hashedAt) {
+  return hashedAt - stat5.mtimeMs < RACY_WINDOW_MS;
+}
+var RACY_WINDOW_MS, StatCache;
+var init_stat_cache = __esm({
+  "src/core/hash/stat-cache.ts"() {
+    "use strict";
+    RACY_WINDOW_MS = 2e3;
+    StatCache = class _StatCache {
+      entries = /* @__PURE__ */ new Map();
+      absent = /* @__PURE__ */ new Set();
+      racy = /* @__PURE__ */ new Set();
+      upserted = /* @__PURE__ */ new Set();
+      removed = /* @__PURE__ */ new Set();
+      constructor(records = []) {
+        for (const record of records) this.entries.set(record.path, record);
+      }
+      static load(repo, worktreeId) {
+        return new _StatCache(repo.list(worktreeId));
+      }
+      get size() {
+        return this.entries.size;
+      }
+      get(path) {
+        return this.entries.get(path);
+      }
+      /** The file's hash, `null` when it is known to be absent, `undefined` when untracked. */
+      hashOf(path) {
+        const entry2 = this.entries.get(path);
+        if (entry2) return entry2.hash;
+        return this.absent.has(path) ? null : void 0;
+      }
+      isRacy(path) {
+        return this.racy.has(path);
+      }
+      /** Paths with a file. Known-absent paths are not listed. */
+      paths() {
+        return this.entries.keys();
+      }
+      set(record, options = {}) {
+        this.entries.set(record.path, record);
+        this.absent.delete(record.path);
+        if (options.racy) this.racy.add(record.path);
+        else this.racy.delete(record.path);
+        this.upserted.add(record.path);
+        this.removed.delete(record.path);
+      }
+      /** Records that `path` has no file: drops its entry and marks it known absent. */
+      delete(path) {
+        this.absent.add(path);
+        if (!this.entries.delete(path)) return;
+        this.racy.delete(path);
+        this.upserted.delete(path);
+        this.removed.add(path);
+      }
+      /**
+       * Writes the entries changed since the last flush or load, plus `updates`,
+       * then applies `updates` in memory. If a write throws, memory and the
+       * pending changes are as before, so a rolled-back transaction leaves the
+       * cache matching the store and the next reconciliation sees the same
+       * changes again.
+       */
+      flush(repo, worktreeId, updates = []) {
+        const upserts = /* @__PURE__ */ new Map();
+        const removals = new Set(this.removed);
+        for (const path of this.upserted) upserts.set(path, this.entries.get(path));
+        for (const update of updates) {
+          if (update.kind === "set") {
+            upserts.set(update.record.path, update.record);
+            removals.delete(update.record.path);
+          } else {
+            upserts.delete(update.path);
+            if (this.entries.has(update.path)) removals.add(update.path);
+          }
+        }
+        if (upserts.size > 0) repo.upsertMany(worktreeId, [...upserts.values()]);
+        if (removals.size > 0) repo.removeMany(worktreeId, [...removals]);
+        for (const update of updates) {
+          if (update.kind === "set") this.set(update.record, { racy: update.racy });
+          else this.delete(update.path);
+        }
+        this.upserted.clear();
+        this.removed.clear();
+      }
+    };
+  }
+});
+
+// src/core/hash/hasher.ts
+import { lstat } from "node:fs/promises";
+import { join as join11 } from "node:path";
+function createFsHasher(root, format) {
+  return {
+    async stat(path) {
+      try {
+        const stats = await lstat(join11(root, path));
+        if (!stats.isFile() && !stats.isSymbolicLink()) return null;
+        return {
+          mtimeMs: stats.mtimeMs,
+          ctimeMs: stats.ctimeMs,
+          size: stats.size,
+          inode: stats.ino
+        };
+      } catch (error) {
+        if (isMissing(error)) return null;
+        throw new Error(`squeal: cannot stat ${path} in ${root}: ${error.message}`);
+      }
+    },
+    hash: (path) => hashFile(join11(root, path), format),
+    now: () => Date.now()
+  };
+}
+async function seedStatCache(cache, root, paths, options) {
+  const hasher = options.hasher ?? createFsHasher(root, options.objectFormat);
+  const before = await mapConcurrent(paths, (path) => hasher.stat(path));
+  const index = await readCleanIndexHashes(root);
+  let fromIndex = 0;
+  let fromBytes = 0;
+  let missing = 0;
+  await mapConcurrent(paths, async (path, i) => {
+    const stat5 = await hasher.stat(path);
+    const earlier = before[i];
+    const indexHash = index.get(path);
+    if (stat5 && earlier && indexHash !== void 0 && sameStat(stat5, earlier)) {
+      cache.set({ path, ...stat5, hash: indexHash }, { racy: isRacy(stat5, hasher.now()) });
+      fromIndex++;
+      return;
+    }
+    const hashedAt = hasher.now();
+    const hash = stat5 ? await hasher.hash(path) : null;
+    if (!stat5 || hash === null) {
+      cache.delete(path);
+      missing++;
+      return;
+    }
+    cache.set({ path, ...stat5, hash }, { racy: isRacy(stat5, hashedAt) });
+    fromBytes++;
+  });
+  return { fromIndex, fromBytes, missing };
+}
+var init_hasher = __esm({
+  "src/core/hash/hasher.ts"() {
+    "use strict";
+    init_fs();
+    init_blob();
+    init_concurrency();
+    init_git_index();
+    init_stat_cache();
+  }
+});
+
+// src/core/hash/index.ts
+var init_hash = __esm({
+  "src/core/hash/index.ts"() {
+    "use strict";
+    init_blob();
+    init_concurrency();
+    init_git_index();
+    init_hasher();
+    init_stat_cache();
+  }
+});
+
+// src/core/revision/reconcile.ts
+async function statCandidates(paths, hasher) {
+  const sorted = [...new Set(paths)].sort(compare);
+  const stats = await mapConcurrent(sorted, (path) => hasher.stat(path));
+  return sorted.map((path, i) => ({ path, stat: stats[i] ?? null }));
+}
+async function diffCandidates(candidates, cache, hasher) {
+  const statOf = /* @__PURE__ */ new Map();
+  for (const candidate of candidates) statOf.set(candidate.path, candidate.stat);
+  const paths = [...statOf.keys()].sort(compare);
+  const observed = await mapConcurrent(paths, async (path) => {
+    const stat5 = statOf.get(path) ?? null;
+    const cached = cache.get(path);
+    if (stat5 && cached && sameStat(cached, stat5) && !cache.isRacy(path)) return null;
+    const hashedAt = hasher.now();
+    const hash = stat5 ? await hasher.hash(path) : null;
+    return { path, cached, stat: stat5, hash, hashedAt };
+  });
+  const changes = [];
+  const updates = [];
+  for (const entry2 of observed) {
+    if (!entry2) continue;
+    const { path, cached, stat: stat5, hash, hashedAt } = entry2;
+    if (!stat5 || hash === null) {
+      if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
+      if (cache.hashOf(path) !== null) updates.push({ kind: "delete", path });
+      continue;
+    }
+    const record = {
+      path,
+      mtimeMs: stat5.mtimeMs,
+      ctimeMs: stat5.ctimeMs,
+      size: stat5.size,
+      inode: stat5.inode,
+      hash
+    };
+    updates.push({ kind: "set", record, racy: isRacy(stat5, hashedAt) });
+    if (cached?.hash !== hash) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash });
+  }
+  return { changes, updates };
+}
+async function diffBatch(batch, cache, hasher) {
+  return { trigger: batch.trigger, ...await diffCandidates(batch.paths, cache, hasher) };
+}
+function commitBatch(diff, cache, context) {
+  let revision = null;
+  if (diff.changes.length > 0) {
+    if (!context.head) {
+      throw new Error(
+        `squeal: ${diff.changes.length} changes in worktree ${context.worktreeId} need HEAD to create a revision`
+      );
+    }
+    revision = context.revisions.append({
+      worktreeId: context.worktreeId,
+      createdAt: context.now?.() ?? Date.now(),
+      head: context.head.head,
+      dirty: context.head.dirty,
+      trigger: diff.trigger,
+      changes: diff.changes
+    });
+  }
+  cache.flush(context.fileHashes, context.worktreeId, diff.updates);
+  return revision;
+}
+async function reconcile(batch, cache, hasher, context) {
+  const diff = await diffBatch(batch, cache, hasher);
+  const head = diff.changes.length > 0 ? await context.head() : null;
+  const { store } = context;
+  return store.transaction(
+    () => commitBatch(diff, cache, {
+      worktreeId: context.worktreeId,
+      head,
+      revisions: store.revisions,
+      fileHashes: store.fileHashes,
+      now: () => context.now?.() ?? Date.now()
+    })
+  );
+}
+var init_reconcile = __esm({
+  "src/core/revision/reconcile.ts"() {
+    "use strict";
+    init_fs();
+    init_hash();
+  }
+});
+
+// src/core/revision/index.ts
+var init_revision2 = __esm({
+  "src/core/revision/index.ts"() {
+    "use strict";
+    init_reconcile();
+  }
+});
+
+// src/core/scheduler/batch.ts
+async function reconcileBatch(context, ledger, batch) {
+  const { keys, hasher, store, worktreeId } = context;
+  let diff = await diffBatch(batch, keys.cache, hasher);
+  if (diff.changes.length === 0 && batch.trigger !== "watch") {
+    const moved = await keys.lockfileCandidates();
+    if (moved.length > 0) {
+      const paths = await statCandidates(moved, hasher);
+      const lockfiles = await diffBatch({ trigger: batch.trigger, paths }, keys.cache, hasher);
+      diff = { ...lockfiles, updates: [...diff.updates, ...lockfiles.updates] };
+    }
+  }
+  const head = diff.changes.length > 0 ? await context.head() : null;
+  return store.transaction(() => {
+    const revision = commitBatch(diff, keys.cache, {
+      worktreeId,
+      head,
+      revisions: store.revisions,
+      fileHashes: store.fileHashes,
+      now: context.now
+    });
+    if (revision === null) return null;
+    ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
+    for (const change of revision.changes) ledger.tierChanges?.add(change.path);
+    const content = rekeyContent(context, ledger, revision);
+    ledger.commit();
+    return { revision, content };
+  });
+}
+var init_batch = __esm({
+  "src/core/scheduler/batch.ts"() {
+    "use strict";
+    init_revision2();
+    init_revision();
+  }
+});
+
+// src/core/scheduler/queue.ts
+function priorityOf(file, changed) {
+  if (file.failing) return Priority.failing;
+  if (changed.has(file.ref.path)) return Priority.direct;
+  return file.resultKey === null ? Priority.neverRun : Priority.affected;
+}
+var Priority, RunQueue;
+var init_queue = __esm({
+  "src/core/scheduler/queue.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    Priority = { failing: 0, direct: 1, affected: 2, neverRun: 3 };
+    RunQueue = class {
+      #entries = /* @__PURE__ */ new Map();
+      #seq = 0;
+      get size() {
+        return this.#entries.size;
+      }
+      has(ref) {
+        return this.#entries.has(testFileId(ref));
+      }
+      /**
+       * Queues a test file, or raises the priority of its entry. A `forced` entry
+       * (`run --all --force`) runs even when its key has a result.
+       */
+      add(ref, priority, forced = false) {
+        const id = testFileId(ref);
+        const entry2 = this.#entries.get(id);
+        if (entry2) {
+          entry2.priority = Math.min(entry2.priority, priority);
+          entry2.forced ||= forced;
+          return;
+        }
+        this.#entries.set(id, { ref, priority, seq: this.#seq++, forced });
+      }
+      remove(ref) {
+        return this.#entries.delete(testFileId(ref));
+      }
+      isForced(ref) {
+        return this.#entries.get(testFileId(ref))?.forced ?? false;
+      }
+      /** Priority, then first queued, then project and path. */
+      ordered() {
+        return [...this.#entries.values()].sort(
+          (a, b) => a.priority - b.priority || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
+        ).map((entry2) => entry2.ref);
+      }
+    };
+  }
+});
+
+// src/core/scheduler/bootstrap.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+async function bootstrap(context, ledger) {
+  const { store, keys, runner, worktreeId, policy } = context;
+  const latest = store.revisions.latest(worktreeId);
+  const revision = await keys.bootstrap(context.head) ?? latest;
+  ledger.revision = revision === null ? { number: 0, ...await context.head() } : { number: revision.number, head: revision.head, dirty: revision.dirty };
+  const failures = /* @__PURE__ */ new Map();
+  await readEnvironments(context, failures);
+  const listed = await tryRunner(context, "testFiles", () => runner.testFiles());
+  ledger.listingFailed = listed === null;
+  const previousKeys = new Map(
+    store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row])
+  );
+  const refs = listed ?? [...previousKeys.values()].map((row) => row.testFile);
+  const known2 = knownChecks(context);
+  const fromStore = /* @__PURE__ */ new Set();
+  const unresolved = [];
+  for (const ref of refs) {
+    const file = ledger.addFile(ref);
+    restore(file, known2.get(file.id));
+    const record = store.testFiles.get(ref);
+    if (record !== null) {
+      keys.setClosure({ testFile: ref, paths: record.closure.paths });
+      fromStore.add(file.id);
+    } else {
+      unresolved.push(ref);
+    }
+  }
+  await resolveClosures(context, unresolved, failures);
+  if (listed !== null) {
+    for (const row of previousKeys.values()) {
+      if (ledger.file(row.testFile)) continue;
+      const gone = ledger.addFile(row.testFile);
+      restore(gone, known2.get(gone.id));
+      ledger.removeFile(gone);
+    }
+  }
+  const checkpointId = randomUUID2();
+  const lookup = (files) => ledger.settle(files, NOTHING_CHANGED, { checkpointId, queueMisses: false });
+  const first = lookup(refs);
+  const recheck = first.filter((file) => fromStore.has(file.id));
+  await resolveClosures(
+    context,
+    recheck.map((file) => file.ref),
+    failures
+  );
+  ledger.counters.misses -= recheck.length;
+  const misses = [
+    ...first.filter((file) => !fromStore.has(file.id)),
+    ...lookup(recheck.map((file) => file.ref))
+  ];
+  for (const file of misses) {
+    const previous = previousKeys.get(file.id)?.key ?? null;
+    if (previous !== null && hasResults(context, previous)) file.resultKey = previous;
+  }
+  const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
+  ledger.checkpoints.start(
+    checkpointId,
+    "baseline",
+    ledger.revision.number,
+    [...misses, ...unkeyed].map((file) => file.ref)
+  );
+  if (policy.baseline.onStart === "lookup-only") {
+    ledger.checkpoints.finish("abandoned");
+  } else {
+    for (const file of misses) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+  }
+  for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
+  if (failures.size > 0) block(ledger, failures);
+  ledger.commit();
+}
+function knownChecks(context) {
+  const byFile = /* @__PURE__ */ new Map();
+  for (const state of context.store.knownStates.list(context.worktreeId)) {
+    const id = testFileId({ project: state.check.project, path: state.check.testPath });
+    let known2 = byFile.get(id);
+    if (!known2) {
+      known2 = { checks: [], failing: false };
+      byFile.set(id, known2);
+    }
+    known2.checks.push(state.check);
+    known2.failing ||= state.outcome === "fail";
+  }
+  return byFile;
+}
+function restore(file, known2) {
+  if (!known2) return;
+  file.checks = [...known2.checks];
+  file.failing = known2.failing;
+}
+function hasResults(context, key) {
+  return context.store.results.checksForKey(key).length > 0;
+}
+var init_bootstrap = __esm({
+  "src/core/scheduler/bootstrap.ts"() {
+    "use strict";
+    init_keys();
+    init_context();
+    init_failures();
+    init_queue();
+    init_revision();
+  }
+});
+
+// src/core/watcher/git.ts
+async function checkIgnored(root, paths) {
+  if (paths.length === 0) return /* @__PURE__ */ new Set();
+  const input = `${paths.join("\0")}\0`;
+  const out = await runGit(root, ["check-ignore", "-z", "--stdin"], { input, okCodes: [0, 1] });
+  return new Set(splitNul(out));
+}
+async function listIgnored(root) {
+  const out = await runGit(root, [
+    "ls-files",
+    "-z",
+    "--others",
+    "--ignored",
+    "--exclude-standard",
+    "--directory",
+    "--no-empty-directory"
+  ]);
+  return splitNul(out);
+}
+async function gitStatus(root) {
+  const out = await runGit(root, [
+    "--no-optional-locks",
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=all",
+    "--no-renames",
+    "--ignore-submodules=all"
+  ]);
+  const paths = /* @__PURE__ */ new Set();
+  const nestedRepos = /* @__PURE__ */ new Set();
+  for (const entry2 of splitNul(out)) {
+    const path = entry2.slice(3);
+    if (path.endsWith("/")) nestedRepos.add(path.slice(0, -1));
+    else paths.add(path);
+  }
+  return { paths: [...paths].sort(), nestedRepos: [...nestedRepos].sort() };
+}
+async function listSubmodules(root) {
+  const out = await runGit(
+    root,
+    ["config", "-z", "--file", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$"],
+    // 1: no match or no such file.
+    { okCodes: [0, 1] }
+  );
+  return splitNul(out).flatMap((entry2) => {
+    const value = entry2.slice(entry2.indexOf("\n") + 1);
+    return value === "" ? [] : [value];
+  });
+}
+var init_git2 = __esm({
+  "src/core/watcher/git.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
+
+// src/core/scheduler/lockfiles.ts
+import { join as join12 } from "node:path";
+var Lockfiles;
+var init_lockfiles = __esm({
+  "src/core/scheduler/lockfiles.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    Lockfiles = class {
+      constructor(root) {
+        this.root = root;
+      }
+      root;
+      #projects = /* @__PURE__ */ new Map();
+      /** Lockfile paths `moved` found, and the projects that read them. */
+      #moved = /* @__PURE__ */ new Map();
+      /** Finds each project's lockfile. Returns each project's installed-dependency fingerprint. */
+      async set(environments) {
+        this.#projects.clear();
+        this.#moved.clear();
+        const fingerprints = /* @__PURE__ */ new Map();
+        for (const environment of environments) {
+          const root = environment.root === void 0 || environment.root === "" ? this.root : join12(this.root, environment.root);
+          this.#projects.set(environment.project, { root, lockfile: await this.#find(root) });
+          fingerprints.set(
+            environment.project,
+            await installedDependenciesFingerprint(root, this.root)
+          );
+        }
+        return fingerprints;
+      }
+      /** Every project's lockfile path, once each. */
+      paths() {
+        const paths = /* @__PURE__ */ new Set();
+        for (const { lockfile } of this.#projects.values()) if (lockfile) paths.add(lockfile.path);
+        return [...paths];
+      }
+      /** The lockfile path of one project, or `null`. */
+      of(project) {
+        return this.#projects.get(project)?.lockfile?.path ?? null;
+      }
+      /** Projects whose fingerprint reads `path`: their lockfile, a file under its patches, or a moved lockfile. */
+      projectsReading(path) {
+        const projects = new Set(this.#moved.get(path));
+        for (const [project, { lockfile }] of this.#projects) {
+          if (!lockfile) continue;
+          if (path === lockfile.path) projects.add(project);
+          if (lockfile.patches !== null && path.startsWith(`${lockfile.patches}/`))
+            projects.add(project);
+        }
+        return [...projects];
+      }
+      /**
+       * Lockfiles that are not the ones the fingerprints were taken from: a first
+       * install created one, or another package manager's replaced it. Returns
+       * the old and new paths, sorted.
+       */
+      async moved() {
+        this.#moved.clear();
+        for (const [project, { root, lockfile }] of this.#projects) {
+          const found = await this.#find(root);
+          if (found?.path === lockfile?.path) continue;
+          for (const path of [lockfile?.path, found?.path]) {
+            if (path === void 0) continue;
+            this.#moved.set(path, [...this.#moved.get(path) ?? [], project]);
+          }
+        }
+        return [...this.#moved.keys()].sort();
+      }
+      async #find(projectRoot) {
+        const found = await findInstalledLockfile(projectRoot, this.root);
+        if (found === null) return null;
+        const path = toRelative(this.root, found.path);
+        if (path === null) return null;
+        return { path, patches: found.patches === null ? null : toRelative(this.root, found.patches) };
+      }
+    };
+  }
+});
+
+// src/core/scheduler/keying.ts
+import { createHash as createHash6 } from "node:crypto";
+var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
+var init_keying = __esm({
+  "src/core/scheduler/keying.ts"() {
+    "use strict";
+    init_fs();
+    init_hash();
+    init_keys();
+    init_revision2();
+    init_git2();
+    init_lockfiles();
+    PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
+    WorktreeKeys = class {
+      constructor(options) {
+        this.options = options;
+        this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
+        this.#lockfiles = new Lockfiles(options.root);
+        this.index = new KeyIndex((path) => this.cache.hashOf(path));
+        this.isDeclaredInput = createInputMatcher(options.policy.inputs);
+      }
+      options;
+      cache;
+      index;
+      isDeclaredInput;
+      #runnerClosures = /* @__PURE__ */ new Map();
+      #environments = /* @__PURE__ */ new Map();
+      #environmentFiles = /* @__PURE__ */ new Set();
+      #extra = /* @__PURE__ */ new Set();
+      #untracked = /* @__PURE__ */ new Set();
+      #lockfiles;
+      /** Lockfile paths already checked against `.gitignore`. */
+      #ignoreChecked = /* @__PURE__ */ new Set();
+      #declared = [];
+      /**
+       * Brings the stat cache up to date at daemon start. Cached paths are
+       * reconciled, so what changed while no daemon ran becomes a revision.
+       * Tracked and untracked files git knows and the cache does not are hashed
+       * without a revision: there is nothing earlier to compare them with.
+       * Cached paths git ignores entered the cache because a closure or an
+       * environment named them, so they are watched again as extra files.
+       */
+      async bootstrap(head) {
+        let revision = null;
+        if (this.cache.size > 0) {
+          const paths = await statCandidates(this.cache.paths(), this.options.hasher);
+          revision = await this.reconcile({ trigger: "start", paths }, head);
+        }
+        const listed = splitNul(
+          await runGit(this.options.root, [
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard"
+          ])
+        );
+        const known2 = new Set(listed);
+        const unlisted = [...this.cache.paths()].filter((path) => !known2.has(path));
+        for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
+        await this.#seed(listed.filter((path) => this.cache.hashOf(path) === void 0));
+        this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
+        return revision;
+      }
+      /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
+      async reconcile(batch, head) {
+        const { worktreeId, store, hasher } = this.options;
+        return reconcile(batch, this.cache, hasher, { worktreeId, store, head });
+      }
+      /**
+       * Sets the environment hash of every project from runner output (D3). The
+       * runner files and each project's installed lockfile are hashed first; the
+       * lockfile is looked up from the project's root (review N8).
+       */
+      async setEnvironments(environments) {
+        const { policy, squealVersion: squealVersion2, env } = this.options;
+        this.#environments.clear();
+        this.#environmentFiles.clear();
+        for (const environment of environments) {
+          this.#environments.set(environment.project, environment);
+          for (const path of environment.files) this.#environmentFiles.add(path);
+        }
+        const fingerprints = await this.#lockfiles.set(environments);
+        const lockPaths = this.#lockfiles.paths();
+        await this.track([...this.#environmentFiles, ...lockPaths]);
+        await this.#watchIgnored(lockPaths);
+        const hashOf = (path) => this.cache.hashOf(path);
+        return environments.flatMap((environment) => {
+          const core = coreEnvironmentInputs({
+            squealVersion: squealVersion2,
+            installedDependencies: fingerprints.get(environment.project) ?? "none",
+            allowlist: policy.env.allowlist,
+            ...env === void 0 ? {} : { env }
+          });
+          return this.index.setEnvironment(
+            environment.project,
+            environmentHash(core, environment, hashOf)
+          );
+        });
+      }
+      /**
+       * Moves the environment hash of every project whose environment inputs are
+       * among `changes`, without the runner, so their keys move in the same
+       * transaction as the revision (review B2). The provisional hash never
+       * equals a real one, so its keys find no stored result; `setEnvironments`
+       * replaces it once the runner answers.
+       */
+      provisionalEnvironments(changes) {
+        const inputs = /* @__PURE__ */ new Map();
+        for (const change of changes) {
+          for (const project of this.#projectsReading(change.path)) {
+            inputs.set(project, [...inputs.get(project) ?? [], [change.path, change.newHash]]);
+          }
+        }
+        return [...inputs].flatMap(([project, changed]) => {
+          const previous = this.index.environment(project);
+          if (previous === void 0) return [];
+          const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
+          return this.index.setEnvironment(project, createHash6("sha256").update(encoded).digest("hex"));
+        });
+      }
+      /**
+       * True when a change to `path` can change an environment hash: a runner
+       * file (config, setup files and their closures), an installed lockfile, or
+       * a file under its patches directory.
+       */
+      isEnvironmentInput(path) {
+        return this.#projectsReading(path).length > 0;
+      }
+      /**
+       * Installed lockfiles that are not the ones the environment was last hashed
+       * with: a first install created one, or another package manager's replaced
+       * it. Returns the old and new paths, so a reconciliation of them records
+       * the move as a revision (review N3). Their old paths are watched; a new
+       * one is in an ignored directory no watch batch reports, so reconciliation
+       * passes ask here.
+       */
+      lockfileCandidates() {
+        return this.#lockfiles.moved();
+      }
+      /** Sets a test file's closure: the runner's paths plus this worktree's declared inputs (D3). */
+      setClosure(runner) {
+        this.#runnerClosures.set(testFileId(runner.testFile), runner);
+        const update = this.index.setClosure(assembleClosure(runner, this.#declared));
+        for (const path of update.untracked) this.#untracked.add(path);
+        return update.changes;
+      }
+      removeTestFile(ref) {
+        this.#runnerClosures.delete(testFileId(ref));
+        this.index.removeTestFile(ref);
+      }
+      /**
+       * Re-selects declared inputs when one was added or deleted, and re-assembles
+       * every closure with them. Returns the key changes, or `null` when no
+       * declared input was added or deleted.
+       */
+      updateDeclaredInputs(changes) {
+        const structural = changes.some(
+          (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path)
+        );
+        if (!structural) return null;
+        this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
+        return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
+      }
+      /** Hashes the closure paths the stat cache did not track, then re-keys with them. */
+      async trackUntracked() {
+        const paths = [...this.#untracked];
+        this.#untracked.clear();
+        if (paths.length === 0) return [];
+        await this.track(paths);
+        return this.index.rekey(paths);
+      }
+      /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
+      async track(paths) {
+        const untracked = [...new Set(paths)].filter((path) => this.cache.hashOf(path) === void 0);
+        if (untracked.length === 0) return;
+        await this.#seed(untracked);
+        const ignored = await checkIgnored(this.options.root, untracked);
+        const before = this.#extra.size;
+        for (const path of ignored) this.#extra.add(path);
+        if (this.#extra.size > before) this.options.onExtraFiles(this.extraFiles());
+      }
+      /** Gitignored paths watched anyway (D2), sorted. */
+      extraFiles() {
+        return [...this.#extra].sort();
+      }
+      /** What the stability check compares for a test file: its closure, its project's environment files, its lockfile. */
+      stabilityPaths(ref) {
+        const paths = new Set(this.index.closure(ref)?.paths ?? []);
+        for (const path of this.#environments.get(ref.project)?.files ?? []) paths.add(path);
+        const lockfile = this.#lockfiles.of(ref.project);
+        if (lockfile !== null) paths.add(lockfile);
+        return [...paths];
+      }
+      /** Projects whose environment hash reads `path`. */
+      #projectsReading(path) {
+        const projects = new Set(this.#lockfiles.projectsReading(path));
+        for (const [project, environment] of this.#environments) {
+          if (environment.files.includes(path)) projects.add(project);
+        }
+        return [...projects];
+      }
+      /** Lockfiles tracked by a reconciliation, not by `track`, are watched too when gitignored (D2). */
+      async #watchIgnored(paths) {
+        const unchecked = paths.filter(
+          (path) => !this.#extra.has(path) && !this.#ignoreChecked.has(path)
+        );
+        if (unchecked.length === 0) return;
+        for (const path of unchecked) this.#ignoreChecked.add(path);
+        const ignored = await checkIgnored(this.options.root, unchecked);
+        const before = this.#extra.size;
+        for (const path of ignored) this.#extra.add(path);
+        if (this.#extra.size > before) this.options.onExtraFiles(this.extraFiles());
+      }
+      async #seed(paths) {
+        if (paths.length === 0) return;
+        const { root, objectFormat, hasher, store, worktreeId } = this.options;
+        await seedStatCache(this.cache, root, paths, { objectFormat, hasher });
+        store.transaction(() => this.cache.flush(store.fileHashes, worktreeId));
+      }
+      #knownFiles() {
+        return [...this.cache.paths(), ...this.#extra];
+      }
+    };
+  }
+});
+
+// src/core/scheduler/checkpoints.ts
+var Checkpoints;
+var init_checkpoints = __esm({
+  "src/core/scheduler/checkpoints.ts"() {
+    "use strict";
+    init_keys();
+    Checkpoints = class {
+      constructor(store, worktreeId, now) {
+        this.store = store;
+        this.worktreeId = worktreeId;
+        this.now = now;
+      }
+      store;
+      worktreeId;
+      now;
+      #active = null;
+      get active() {
+        const active = this.#active;
+        return active === null ? null : { record: active.record, remaining: active.remaining.size };
+      }
+      /** Id of the open checkpoint when it requested `ref`, else `null`. */
+      idFor(ref) {
+        const active = this.#active;
+        return active?.remaining.has(testFileId(ref)) ? active.record.id : null;
+      }
+      /** Records a new checkpoint, abandoning the open one. With no files it completes at once. */
+      start(id, kind, revision, testFiles, strict = false) {
+        this.finish("abandoned");
+        const record = this.store.checkpoints.start({
+          id,
+          worktreeId: this.worktreeId,
+          revision,
+          kind,
+          testFiles,
+          startedAt: this.now()
+        });
+        this.#active = { record, remaining: new Set(testFiles.map(testFileId)), strict, failed: false };
+        this.#settle();
+        return record;
+      }
+      /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
+      done(ref, by) {
+        const active = this.#active;
+        if (active === null || active.strict && by !== active.record.id) return;
+        active.remaining.delete(testFileId(ref));
+        this.#settle();
+      }
+      /** `ref` crashed or timed out: the checkpoint cannot complete. */
+      failed(ref) {
+        const active = this.#active;
+        if (!active?.remaining.delete(testFileId(ref))) return;
+        active.failed = true;
+        this.#settle();
+      }
+      /** Ends the open checkpoint, if any. */
+      finish(end) {
+        const active = this.#active;
+        if (active === null) return;
+        this.#active = null;
+        this.store.checkpoints.finish(active.record.id, end, this.now());
+      }
+      #settle() {
+        const active = this.#active;
+        if (active !== null && active.remaining.size === 0) {
+          this.finish(active.failed ? "abandoned" : "completed");
+        }
+      }
+    };
+  }
+});
+
+// src/core/scheduler/ledger.ts
+var MAX_DISCARDS, Ledger;
+var init_ledger = __esm({
+  "src/core/scheduler/ledger.ts"() {
+    "use strict";
+    init_keys();
+    init_checkpoints();
+    init_context();
+    init_files();
+    init_queue();
+    MAX_DISCARDS = 3;
+    Ledger = class {
+      constructor(context) {
+        this.context = context;
+        this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+      }
+      context;
+      files = /* @__PURE__ */ new Map();
+      queue = new RunQueue();
+      checkpoints;
+      revision = { number: 0, head: null, dirty: false };
+      /** Paths changed by revisions since the tier in flight was selected; `null` with no tier in flight. */
+      tierChanges = null;
+      /** Some files are blocked by a runner failure; the next revision or `run --all` retries the runner. */
+      broken = false;
+      /** The last test file listing failed; the next revision lists again. */
+      listingFailed = false;
+      counters = {
+        hits: 0,
+        misses: 0,
+        discarded: 0,
+        started: 0,
+        completed: 0,
+        crashed: 0,
+        timedOut: 0
+      };
+      #dirty = /* @__PURE__ */ new Set();
+      #removed = [];
+      #applied = [];
+      #unknown = [];
+      #retired = [];
+      file(ref) {
+        return this.files.get(testFileId(ref));
+      }
+      addFile(ref) {
+        const file = newFileState(ref);
+        this.files.set(file.id, file);
+        this.#dirty.add(file.id);
+        return file;
+      }
+      /** Forgets a test file that no longer exists and retires its checks. */
+      removeFile(file) {
+        this.context.keys.removeTestFile(file.ref);
+        this.queue.remove(file.ref);
+        this.files.delete(file.id);
+        this.#retired.push(...file.checks);
+        this.#removed.push(file.ref);
+        this.checkpoints.done(file.ref, this.checkpoints.idFor(file.ref));
+      }
+      /**
+       * Takes each file's key from the key index and decides what it needs.
+       *
+       * Spec 001 D5 step 3: "looks each new key up in the store. A hit is promoted
+       * to current for this worktree with its provenance intact. No run is
+       * needed." A key that already has this worktree's results, that the tier in
+       * flight runs, or that crashed (D12) needs nothing. Forced entries stay
+       * queued. Returns the misses.
+       */
+      settle(refs, changed, options = {}) {
+        const misses = [];
+        const seen = /* @__PURE__ */ new Set();
+        for (const ref of refs) {
+          const file = this.file(ref);
+          if (!file || seen.has(file.id)) continue;
+          seen.add(file.id);
+          const key = this.context.keys.index.key(ref);
+          if (key !== file.key) {
+            file.key = key;
+            this.#dirty.add(file.id);
+          }
+          if (this.queue.isForced(ref)) continue;
+          if (key === null || key === file.runningKey || key === file.unknownKey || key === file.resultKey) {
+            this.queue.remove(ref);
+            this.#syncPhase(file);
+            continue;
+          }
+          const hits = this.context.store.results.byKey(key, this.context.now());
+          if (hits.length > 0) {
+            this.counters.hits++;
+            const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
+            this.applyResults(file, key, hits, checkpointId);
+            continue;
+          }
+          this.counters.misses++;
+          misses.push(file);
+          if (file.blocked !== null) {
+            this.queue.remove(ref);
+            this.#syncPhase(file);
+          } else if (options.queueMisses !== false) {
+            this.enqueue(file, priorityOf(file, changed));
+          }
+        }
+        return misses;
+      }
+      /**
+       * Makes `results` the current results of `file` under `key`: from a run of
+       * this worktree or a lookup hit. Checks of the previous results that are
+       * not among them are retired (D8).
+       */
+      applyResults(file, key, results2, checkpointId) {
+        if (results2.length > 0) this.#applied.push({ results: results2, checkpointId });
+        const next = results2.map((r) => r.check);
+        const kept = new Set(next.map(checkId));
+        this.#retired.push(...file.checks.filter((check) => !kept.has(checkId(check))));
+        file.resultKey = key;
+        file.checks = next;
+        file.failing = results2.some((r) => r.outcome === "fail");
+        file.unknownKey = null;
+        file.discards = 0;
+        file.blocked = null;
+        if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
+        this.#syncPhase(file);
+        this.checkpoints.done(file.ref, checkpointId);
+      }
+      enqueue(file, priority, forced = false) {
+        this.queue.add(file.ref, priority, forced);
+        this.#syncPhase(file);
+      }
+      /** The tier holding these files starts or ends. */
+      setRunning(file, key) {
+        file.runningKey = key;
+        this.#syncPhase(file);
+      }
+      /**
+       * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
+       * is stored under a key; the files' checks become `unknown` at this revision.
+       * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
+       */
+      markUnknown(entries, reason) {
+        if (entries.length === 0) return;
+        for (const { file, key } of entries) {
+          file.unknownKey = key;
+          if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
+          this.#syncPhase(file);
+          this.checkpoints.failed(file.ref);
+        }
+        this.#unknown.push({ testFiles: entries.map((e) => e.file.ref), reason });
+      }
+      /**
+       * Spec 001 D5: "that file's results are discarded as unreliable and the file
+       * is re-queued". After `MAX_DISCARDS` in a row at a key that did not move the
+       * file is `unknown` until its key changes: something rewrites its inputs
+       * during every run. A discard whose key moved is an edit the agent made
+       * while the file ran; it is not counted (review S5).
+       */
+      discard(file, key) {
+        this.counters.discarded++;
+        file.discards = file.key === key ? file.discards + 1 : 0;
+        if (file.discards >= MAX_DISCARDS) {
+          this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
+        } else if (file.key !== null && file.blocked === null) {
+          this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+        }
+      }
+      /** Writes what this round of work owes the store and the sink, in one transaction. */
+      commit() {
+        const { store, sink, worktreeId } = this.context;
+        const revision = this.revision.number;
+        const rows = [];
+        const removed = this.#removed.splice(0);
+        for (const id of this.#dirty) {
+          const file = this.files.get(id);
+          if (!file) continue;
+          const pending = file.key === null ? null : file.phase;
+          rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
+        }
+        this.#dirty.clear();
+        const applied = this.#applied;
+        const unknown = this.#unknown;
+        const retired = this.#retired;
+        this.#applied = [];
+        this.#unknown = [];
+        this.#retired = [];
+        store.transaction(() => {
+          if (rows.length > 0) store.testFileKeys.upsertMany(rows);
+          if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
+          for (const { results: results2, checkpointId } of applied) {
+            sink.applyResults(worktreeId, revision, results2, { checkpointId });
+          }
+          for (const { testFiles, reason } of unknown) {
+            sink.markUnknown(worktreeId, revision, testFiles, reason);
+          }
+          if (retired.length > 0) sink.retire(worktreeId, retired);
+          for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
+            sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
+          }
+        });
+      }
+      #byCheckpoint(rows) {
+        const groups = /* @__PURE__ */ new Map();
+        for (const { testFile } of rows) {
+          const id = this.checkpoints.idFor(testFile);
+          const group = groups.get(id);
+          if (group) group.push(testFile);
+          else groups.set(id, [testFile]);
+        }
+        return groups;
+      }
+      /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
+      #syncPhase(file) {
+        const phase = file.runningKey !== null ? "running" : this.queue.has(file.ref) ? "queued" : null;
+        if (phase === file.phase) return;
+        file.phase = phase;
+        this.#dirty.add(file.id);
+      }
+      /** Marks a file's key row as owed, for callers that change a file directly. */
+      touch(file) {
+        this.#dirty.add(file.id);
+      }
+    };
+  }
+});
+
+// src/core/scheduler/mutex.ts
+var Mutex;
+var init_mutex = __esm({
+  "src/core/scheduler/mutex.ts"() {
+    "use strict";
+    Mutex = class {
+      #tail = Promise.resolve();
+      run(task) {
+        const next = this.#tail.then(task);
+        this.#tail = next.catch(() => {
+        });
+        return next;
+      }
+    };
+  }
+});
+
+// src/core/scheduler/status.ts
+function statusOf(ledger, notes2) {
+  const testFiles = counts();
+  const checks = counts();
+  let running = 0;
+  for (const file of ledger?.files.values() ?? []) {
+    const validity = classify2(file);
+    testFiles[validity]++;
+    checks[validity] += file.checks.length;
+    if (file.phase === "running") running++;
+  }
+  const c = ledger?.counters;
+  const active = ledger?.checkpoints.active ?? null;
+  return {
+    revision: ledger?.revision.number ?? 0,
+    testFiles,
+    checks,
+    queued: ledger?.queue.size ?? 0,
+    running,
+    runs: {
+      started: c?.started ?? 0,
+      completed: c?.completed ?? 0,
+      crashed: c?.crashed ?? 0,
+      timedOut: c?.timedOut ?? 0
+    },
+    lookups: { hits: c?.hits ?? 0, misses: c?.misses ?? 0 },
+    discarded: c?.discarded ?? 0,
+    checkpoint: active === null ? null : { id: active.record.id, kind: active.record.kind, remaining: active.remaining },
+    notes: [...notes2]
+  };
+}
+function counts() {
+  return { current: 0, pending: 0, stale: 0, unknown: 0 };
+}
+var init_status = __esm({
+  "src/core/scheduler/status.ts"() {
+    "use strict";
+    init_files();
+  }
+});
+
+// src/core/scheduler/records.ts
+function fileCheck(ref) {
+  return { kind: "file", project: ref.project, testPath: ref.path };
+}
+function recordsForFile(input) {
+  const { ref, key, report: report2, provenance, describe } = input;
+  const inFile = (check) => check.project === ref.project && check.testPath === ref.path;
+  const records = [];
+  const ran = /* @__PURE__ */ new Set();
+  for (const result of report2.results) {
+    if (!inFile(result.check)) continue;
+    ran.add(checkId(result.check));
+    const failure3 = result.outcome === "fail" ? describe(result.errors, result.location) : { summary: null, fingerprint: null };
+    records.push({
+      check: result.check,
+      key,
+      outcome: result.outcome,
+      durationMs: result.durationMs,
+      location: result.location,
+      ...failure3,
+      errors: result.errors,
+      provenance
+    });
+  }
+  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path).flatMap((e) => e.errors);
+  if (errors.length === 0) {
+    records.push({
+      check: fileCheck(ref),
+      key,
+      outcome: "pass",
+      durationMs: 0,
+      location: null,
+      summary: null,
+      fingerprint: null,
+      errors: [],
+      provenance
+    });
+    return records;
+  }
+  const location2 = errors[0]?.location ?? null;
+  const failure2 = describe(errors, location2);
+  const failed2 = (check) => ({
+    check,
+    key,
+    outcome: "fail",
+    durationMs: 0,
+    location: location2,
+    ...failure2,
+    errors,
+    provenance
+  });
+  for (const check of input.previousChecks) {
+    if (check.kind === "test" && inFile(check) && !ran.has(checkId(check))) {
+      records.push(failed2(check));
+    }
+  }
+  records.push(failed2(fileCheck(ref)));
+  return records;
+}
+var init_records = __esm({
+  "src/core/scheduler/records.ts"() {
+    "use strict";
+    init_files();
+  }
+});
+
+// src/core/scheduler/stability.ts
+function snapshotInputs(cache, paths) {
+  const snapshot2 = new StatCache();
+  for (const path of paths) {
+    const record = cache.get(path);
+    if (record) snapshot2.set(record, { racy: cache.isRacy(path) });
+    else if (cache.hashOf(path) === null) snapshot2.delete(path);
+  }
+  return snapshot2;
+}
+async function changedSince(snapshot2, paths, hasher) {
+  const candidates = await statCandidates(paths, hasher);
+  const { changes } = await diffCandidates(candidates, snapshot2, hasher);
+  return new Set(changes.map((change) => change.path));
+}
+var init_stability = __esm({
+  "src/core/scheduler/stability.ts"() {
+    "use strict";
+    init_hash();
+    init_revision2();
+  }
+});
+
+// src/core/scheduler/tiers.ts
+import { randomUUID as randomUUID3 } from "node:crypto";
+import { join as join13 } from "node:path";
+function selectTier(context, ledger) {
+  const { store, keys, policy } = context;
+  const picked = [];
+  for (const ref of ledger.queue.ordered()) {
+    if (picked.length >= policy.runner.tierSize) break;
+    const file = ledger.file(ref);
+    const key = file?.key ?? null;
+    if (!file || key === null || file.blocked !== null) {
+      ledger.queue.remove(ref);
+      if (file) ledger.touch(file);
+      continue;
+    }
+    if (!ledger.queue.isForced(ref)) {
+      const hits = store.results.byKey(key, context.now());
+      if (hits.length > 0) {
+        ledger.counters.hits++;
+        ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
+        continue;
+      }
+    }
+    ledger.queue.remove(ref);
+    const checkpointId2 = ledger.checkpoints.idFor(ref);
+    picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId: checkpointId2 });
+  }
+  if (picked.length === 0) {
+    ledger.commit();
+    return null;
+  }
+  const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
+  const runId = randomUUID3();
+  const tier = {
+    runId,
+    logDir: join13(context.runsDir, runId),
+    revision: ledger.revision,
+    checkpointId,
+    files: picked,
+    snapshot: snapshotInputs(
+      keys.cache,
+      picked.flatMap((p) => p.inputs)
+    )
+  };
+  for (const { file, key } of picked) ledger.setRunning(file, key);
+  ledger.tierChanges = /* @__PURE__ */ new Set();
+  ledger.counters.started++;
+  store.transaction(() => {
+    store.runs.start({
+      id: runId,
+      worktreeId: context.worktreeId,
+      revision: tier.revision.number,
+      testFiles: picked.map((p) => p.file.ref),
+      checkpointId,
+      logDir: tier.logDir,
+      startedAt: context.now()
+    });
+    ledger.commit();
+  });
+  return tier;
+}
+async function executeTier(context, tier) {
+  const started = context.now();
+  try {
+    return await context.runner.run(
+      tier.files.map((f) => f.file.ref),
+      { runId: tier.runId, logDir: tier.logDir, timeoutMs: context.policy.runner.timeoutMs }
+    );
+  } catch (error) {
+    return {
+      end: "crashed",
+      durationMs: context.now() - started,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+function unstableInputs(context, tier) {
+  const inputs = new Set(tier.files.flatMap((f) => f.inputs));
+  return changedSince(tier.snapshot, inputs, context.hasher);
+}
+function recordTier(context, ledger, tier, report2, changedOnDisk) {
+  const { store, worktreeId } = context;
+  const duringRun = ledger.tierChanges ?? /* @__PURE__ */ new Set();
+  ledger.tierChanges = null;
+  const completed = new Set(report2.completedFiles.map(testFileId));
+  const counters = ledger.counters;
+  if (report2.end === "completed") counters.completed++;
+  else if (report2.end === "crashed") counters.crashed++;
+  else counters.timedOut++;
+  const provenance = {
+    worktreeId,
+    revision: tier.revision.number,
+    commit: tier.revision.head,
+    dirty: tier.revision.dirty,
+    runId: tier.runId,
+    recordedAt: context.now()
+  };
+  const unknown = [];
+  store.transaction(() => {
+    store.runs.finish(tier.runId, report2.end, context.now());
+    for (const { file, key, inputs, checkpointId } of tier.files) {
+      ledger.setRunning(file, null);
+      if (!ledger.files.has(file.id)) continue;
+      if (!completed.has(file.id)) {
+        unknown.push({ file, key });
+        continue;
+      }
+      if (inputs.some((path) => changedOnDisk.has(path) || duringRun.has(path))) {
+        ledger.discard(file, key);
+        continue;
+      }
+      const previous = file.resultKey;
+      const records = recordsForFile({
+        ref: file.ref,
+        key,
+        report: report2,
+        previousChecks: previous === null ? [] : store.results.checksForKey(previous),
+        provenance,
+        describe: context.describe
+      });
+      if (records.length > 0) store.results.putMany(records);
+      if (file.key === key) ledger.applyResults(file, key, records, checkpointId);
+    }
+    const reason = report2.failure ?? `run ${report2.end}`;
+    ledger.markUnknown(unknown, reason);
+    ledger.commit();
+  });
+  return [...changedOnDisk];
+}
+function queueFullSuite(ledger, force) {
+  const id = randomUUID3();
+  const files = [...ledger.files.values()];
+  const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
+  const runnable = files.filter((file) => file.key !== null && file.blocked === null);
+  let requested;
+  if (force) {
+    requested = runnable;
+    for (const file of runnable) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  } else {
+    const open3 = runnable.filter((file) => classify2(file) !== "current");
+    for (const file of open3) file.unknownKey = null;
+    const pending = open3.filter((file) => file.phase !== null);
+    const misses = ledger.settle(
+      open3.filter((file) => file.phase === null).map((file) => file.ref),
+      NOTHING_CHANGED,
+      { checkpointId: id }
+    );
+    requested = [...pending, ...misses];
+  }
+  const record = ledger.checkpoints.start(
+    id,
+    "run-all",
+    ledger.revision.number,
+    [...requested, ...unrunnable].map((file) => file.ref),
+    force
+  );
+  for (const file of unrunnable) ledger.checkpoints.failed(file.ref);
+  ledger.commit();
+  return record;
+}
+var init_tiers = __esm({
+  "src/core/scheduler/tiers.ts"() {
+    "use strict";
+    init_keys();
+    init_context();
+    init_files();
+    init_queue();
+    init_records();
+    init_stability();
+  }
+});
+
+// src/core/scheduler/scheduler.ts
+function createScheduler(options) {
+  return new TierScheduler(options);
+}
+var MAX_NOTES2, TierScheduler;
+var init_scheduler2 = __esm({
+  "src/core/scheduler/scheduler.ts"() {
+    "use strict";
+    init_hash();
+    init_revision2();
+    init_state();
+    init_batch();
+    init_bootstrap();
+    init_context();
+    init_keying();
+    init_ledger();
+    init_mutex();
+    init_notes();
+    init_queue();
+    init_revision();
+    init_status();
+    init_tiers();
+    MAX_NOTES2 = 20;
+    TierScheduler = class {
+      constructor(options) {
+        this.options = options;
+      }
+      options;
+      #lock = new Mutex();
+      #notes = [];
+      #idle = [];
+      #context = null;
+      #ledger = null;
+      #pumping = null;
+      #closed = false;
+      /** The pump stopped on an error; idle until the next batch or request. */
+      #stalled = false;
+      async start() {
+        await this.#lock.run(async () => {
+          if (this.#context) throw new Error("squeal scheduler: started twice");
+          const { options } = this;
+          const objectFormat = await readObjectFormat(options.root);
+          const hasher = options.hasher ?? createFsHasher(options.root, objectFormat);
+          const keys = new WorktreeKeys({
+            root: options.root,
+            worktreeId: options.worktreeId,
+            store: options.store,
+            hasher,
+            objectFormat,
+            policy: options.policy,
+            squealVersion: options.squealVersion,
+            onExtraFiles: (paths) => options.onExtraFiles?.(paths),
+            ...options.env === void 0 ? {} : { env: options.env }
+          });
+          const context = {
+            root: options.root,
+            worktreeId: options.worktreeId,
+            store: options.store,
+            runner: options.runner,
+            sink: options.sink,
+            policy: options.policy,
+            keys,
+            hasher,
+            runsDir: options.runsDir,
+            describe: options.describeFailure ?? describeFailure,
+            head: options.head,
+            now: options.now ?? Date.now,
+            note: (message2) => this.#note(message2)
+          };
+          const ledger = new Ledger(context);
+          this.#ledger = ledger;
+          await bootstrap(context, ledger);
+          this.#context = context;
+        });
+        this.#pump();
+      }
+      async handleBatch(batch) {
+        if (this.#closed) return;
+        await this.#lock.run(async () => {
+          const { context, ledger } = this.#started();
+          const applied = await reconcileBatch(context, ledger, batch);
+          if (applied === null) return;
+          await applyRevision(context, ledger, applied.revision, applied.content);
+          ledger.commit();
+        });
+        this.#pump();
+      }
+      async requestFullSuite(request = {}) {
+        const record = await this.#lock.run(async () => {
+          const { context, ledger } = this.#started();
+          await retryRunner(context, ledger);
+          return queueFullSuite(ledger, request.force === true);
+        });
+        this.#pump();
+        return record;
+      }
+      status() {
+        return statusOf(this.#ledger, this.#notes);
+      }
+      idle() {
+        if (this.#isIdle()) return Promise.resolve();
+        return new Promise((resolve10) => this.#idle.push(resolve10));
+      }
+      trackedPaths() {
+        return this.#context?.keys.cache.paths() ?? [];
+      }
+      extraFiles() {
+        return this.#context?.keys.extraFiles() ?? [];
+      }
+      async close() {
+        if (this.#closed) return;
+        this.#closed = true;
+        await this.#pumping;
+        await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
+        for (const resolve10 of this.#idle.splice(0)) resolve10();
+      }
+      /**
+       * Runs tiers one after another until the queue is empty. Selection and
+       * recording hold the lock; the run and the stability re-stat do not, so
+       * batches are reconciled while a tier is in flight. Spec 001 D5: "A tier in
+       * flight is never cancelled by a new revision."
+       *
+       * An error stops the pump with a note; the tier's files go back to the
+       * queue, and the next batch or request starts the pump again.
+       */
+      #pump() {
+        if (this.#pumping || this.#closed || !this.#ledger) return;
+        this.#stalled = false;
+        this.#pumping = (async () => {
+          let tier = null;
+          try {
+            while (!this.#closed) {
+              tier = await this.#lock.run(() => {
+                const { context: context2, ledger: ledger2 } = this.#started();
+                return selectTier(context2, ledger2);
+              });
+              if (tier === null) break;
+              const { context, ledger } = this.#started();
+              const selected = tier;
+              const report2 = await executeTier(context, selected);
+              const changed = await unstableInputs(context, selected);
+              const moved = await this.#lock.run(
+                () => recordTier(context, ledger, selected, report2, changed)
+              );
+              tier = null;
+              if (moved.length > 0) await this.#reconcilePaths(moved);
+            }
+          } catch (error) {
+            this.#stalled = true;
+            this.#note(`scheduler stopped running tiers: ${String(error)}`);
+            this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
+            if (tier !== null) await this.#requeue(tier);
+          } finally {
+            this.#pumping = null;
+            if (!this.#closed && !this.#stalled && (this.#ledger?.queue.size ?? 0) > 0) this.#pump();
+            else if (this.#isIdle()) for (const resolve10 of this.#idle.splice(0)) resolve10();
+          }
+        })();
+      }
+      /** Puts the files of a tier that never got recorded back into the queue. */
+      async #requeue(tier) {
+        await this.#lock.run(() => {
+          const { ledger } = this.#started();
+          for (const { file } of tier.files) {
+            ledger.setRunning(file, null);
+            if (ledger.files.has(file.id)) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+          }
+          try {
+            ledger.commit();
+          } catch (error) {
+            this.#note(`could not record the re-queued tier: ${String(error)}`);
+          }
+        });
+      }
+      async #reconcilePaths(paths) {
+        const { context } = this.#started();
+        const candidates = await statCandidates(paths, context.hasher);
+        await this.handleBatch({ trigger: "watch", paths: candidates });
+      }
+      #isIdle() {
+        if (this.#closed) return true;
+        return this.#pumping === null && (this.#stalled || (this.#ledger?.queue.size ?? 0) === 0);
+      }
+      #started() {
+        if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
+        return { context: this.#context, ledger: this.#ledger };
+      }
+      /** Keeps a note for `status()` and persists it for `squeal status` (D7, review S6). */
+      #note(message2) {
+        this.#notes.push(message2);
+        if (this.#notes.length > MAX_NOTES2) this.#notes.shift();
+        const { store, worktreeId, now } = this.options;
+        const revision = this.#ledger?.revision.number ?? null;
+        try {
+          appendNote(store, worktreeId, { at: (now ?? Date.now)(), revision, text: message2 });
+        } catch (error) {
+          this.options.onError?.(
+            new Error(`squeal scheduler: could not persist a note (${message2}): ${String(error)}`)
+          );
+        }
+      }
+    };
+  }
+});
+
+// src/core/scheduler/index.ts
+var init_scheduler3 = __esm({
+  "src/core/scheduler/index.ts"() {
+    "use strict";
+    init_files();
+    init_notes();
+    init_revision();
+    init_scheduler2();
+  }
+});
+
+// node_modules/readdirp/index.js
+import { lstat as lstat2, readdir as readdir2, realpath, stat as stat2 } from "node:fs/promises";
+import { join as pjoin, resolve as presolve, sep as psep } from "node:path";
+import { Readable } from "node:stream";
+function readdirp(root, options = {}) {
+  let type = options.entryType || options.type;
+  if (type === "both")
+    type = EntryTypes.FILE_DIR_TYPE;
+  if (!root) {
+    throw new Error("readdirp: root argument is required. Usage: readdirp(root, options)");
+  } else if (typeof root !== "string") {
+    throw new TypeError("readdirp: root argument must be a string. Usage: readdirp(root, options)");
+  } else if (type && !ALL_TYPES.includes(type)) {
+    throw new Error(`readdirp: Invalid type passed. Use one of ${ALL_TYPES.join(", ")}`);
+  }
+  const opts = { ...options, root };
+  if (type)
+    opts.type = type;
+  return new ReaddirpStream(opts);
+}
+var EntryTypes, defaultOptions, RECURSIVE_ERROR_CODE, NORMAL_FLOW_ERRORS, ALL_TYPES, DIR_TYPES, FILE_TYPES, isNormalFlowError, wantBigintFsStats, emptyFn, normalizeFilter, ReaddirpStream;
+var init_readdirp = __esm({
+  "node_modules/readdirp/index.js"() {
+    EntryTypes = {
+      FILE_TYPE: "files",
+      DIR_TYPE: "directories",
+      FILE_DIR_TYPE: "files_directories",
+      EVERYTHING_TYPE: "all"
+    };
+    defaultOptions = {
+      root: ".",
+      fileFilter: (_entryInfo) => true,
+      directoryFilter: (_entryInfo) => true,
+      type: EntryTypes.FILE_TYPE,
+      lstat: false,
+      depth: 2147483648,
+      alwaysStat: false,
+      // Throughput is flat from 16 to 65536 (traversal is I/O-bound), but
+      // batches of 1024+ entries survive young-gen GC and bloat RSS ~20-60%.
+      highWaterMark: 256
+    };
+    Object.freeze(defaultOptions);
+    RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
+    NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
+    ALL_TYPES = [
+      EntryTypes.DIR_TYPE,
+      EntryTypes.EVERYTHING_TYPE,
+      EntryTypes.FILE_DIR_TYPE,
+      EntryTypes.FILE_TYPE
+    ];
+    DIR_TYPES = /* @__PURE__ */ new Set([
+      EntryTypes.DIR_TYPE,
+      EntryTypes.EVERYTHING_TYPE,
+      EntryTypes.FILE_DIR_TYPE
+    ]);
+    FILE_TYPES = /* @__PURE__ */ new Set([
+      EntryTypes.EVERYTHING_TYPE,
+      EntryTypes.FILE_DIR_TYPE,
+      EntryTypes.FILE_TYPE
+    ]);
+    isNormalFlowError = (error) => NORMAL_FLOW_ERRORS.has(error.code);
+    wantBigintFsStats = process.platform === "win32";
+    emptyFn = (_entryInfo) => true;
+    normalizeFilter = (filter) => {
+      if (filter === void 0)
+        return emptyFn;
+      if (typeof filter === "function")
+        return filter;
+      if (typeof filter === "string") {
+        const fl = filter.trim();
+        return (entry2) => entry2.basename === fl;
+      }
+      if (Array.isArray(filter)) {
+        const trItems = filter.map((item) => item.trim());
+        return (entry2) => trItems.some((f) => entry2.basename === f);
+      }
+      return emptyFn;
+    };
+    ReaddirpStream = class extends Readable {
+      /**
+       * Directories discovered but not yet emitted from. Listings are read
+       * lazily (on pop, plus one prefetch) instead of eagerly on discovery:
+       * keeping whole listings for every queued dir balloons RAM on wide trees.
+       */
+      parents;
+      reading;
+      parent;
+      _stat;
+      _maxDepth;
+      _wantsDir;
+      _wantsFile;
+      _wantsEverything;
+      _root;
+      _isDirent;
+      _statsProp;
+      _rdOptions;
+      _fileFilter;
+      _directoryFilter;
+      _relStart;
+      constructor(options = {}) {
+        super({
+          objectMode: true,
+          autoDestroy: true,
+          highWaterMark: options.highWaterMark ?? defaultOptions.highWaterMark
+        });
+        const opts = { ...defaultOptions, ...options };
+        const root = opts.root ?? defaultOptions.root;
+        const type = opts.type ?? defaultOptions.type;
+        this._fileFilter = normalizeFilter(opts.fileFilter);
+        this._directoryFilter = normalizeFilter(opts.directoryFilter);
+        const statMethod = opts.lstat ? lstat2 : stat2;
+        if (wantBigintFsStats) {
+          this._stat = (path) => statMethod(path, { bigint: true });
+        } else {
+          this._stat = statMethod;
+        }
+        this._maxDepth = opts.depth != null && Number.isSafeInteger(opts.depth) ? opts.depth : defaultOptions.depth;
+        this._wantsDir = DIR_TYPES.has(type);
+        this._wantsFile = FILE_TYPES.has(type);
+        this._wantsEverything = type === EntryTypes.EVERYTHING_TYPE;
+        this._root = presolve(root);
+        this._relStart = this._root.endsWith(psep) ? this._root.length : this._root.length + 1;
+        this._isDirent = !opts.alwaysStat;
+        this._statsProp = this._isDirent ? "dirent" : "stats";
+        this._rdOptions = { encoding: "utf8", withFileTypes: this._isDirent };
+        const rootDir = { path: this._root, depth: 1 };
+        rootDir.pending = this._exploreDir(this._root, 1);
+        this.parents = [rootDir];
+        this.reading = false;
+        this.parent = void 0;
+      }
+      async _read(batch) {
+        if (this.reading)
+          return;
+        this.reading = true;
+        try {
+          while (!this.destroyed && batch > 0) {
+            const par = this.parent;
+            const fil = par && par.files;
+            if (fil && fil.length > 0) {
+              const { path, depth } = par;
+              const slice = fil.splice(0, batch).map((dirent) => this._formatEntry(dirent, path));
+              const awaited = this._isDirent ? slice : await Promise.all(slice);
+              for (const entry2 of awaited) {
+                if (!entry2)
+                  continue;
+                if (this.destroyed)
+                  return;
+                let entryType = this._getEntryType(entry2);
+                if (typeof entryType !== "string")
+                  entryType = await entryType;
+                if (entryType === "directory" && this._directoryFilter(entry2)) {
+                  if (depth <= this._maxDepth) {
+                    this.parents.push({ path: entry2.fullPath, depth: depth + 1 });
+                  }
+                  if (this._wantsDir) {
+                    this.push(entry2);
+                    batch--;
+                  }
+                } else if ((entryType === "file" || this._includeAsFile(entry2)) && this._fileFilter(entry2)) {
+                  if (this._wantsFile) {
+                    this.push(entry2);
+                    batch--;
+                  }
+                }
+              }
+            } else {
+              const parent = this.parents.pop();
+              if (!parent) {
+                this.push(null);
+                break;
+              }
+              const dir = parent.pending ?? this._exploreDir(parent.path, parent.depth);
+              const next = this.parents[this.parents.length - 1];
+              if (next && !next.pending) {
+                next.pending = this._exploreDir(next.path, next.depth);
+              }
+              this.parent = await dir;
+              if (this.destroyed)
+                return;
+            }
+          }
+        } catch (error) {
+          this.destroy(error);
+        } finally {
+          this.reading = false;
+        }
+      }
+      // NOTE: native `readdir(path, { recursive: true })` was evaluated as a
+      // replacement for this per-directory traversal and rejected:
+      // - Not faster: node implements it in JS, walking directories sequentially
+      //   just like this loop, but with extra path bookkeeping. Benchmarks
+      //   (node 24): ~10% slower on wide trees, ~40% slower on small ones,
+      //   parity on deep ones.
+      // - Much more RAM: it buffers the entire subtree listing in one array,
+      //   instead of one directory at a time, defeating streaming.
+      // - Semantics diverge: it can't limit depth, can't skip directories a
+      //   directoryFilter rejects, doesn't follow symlinked dirs, and fails
+      //   wholesale (all entries lost) if anything in the subtree is unreadable,
+      //   instead of emitting a 'warn' and continuing.
+      async _exploreDir(path, depth) {
+        let files;
+        try {
+          files = await readdir2(path, this._rdOptions);
+        } catch (error) {
+          this._onError(error);
+        }
+        return { files, depth, path };
+      }
+      // Synchronous in dirent mode; returns a promise only when stats are needed.
+      _formatEntry(dirent, path) {
+        const basename5 = this._isDirent ? dirent.name : dirent;
+        const fullPath = pjoin(path, basename5);
+        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename5 };
+        if (this._isDirent) {
+          entry2.dirent = dirent;
+          return entry2;
+        }
+        return this._stat(fullPath).then((stats) => {
+          entry2.stats = stats;
+          return entry2;
+        }, (err) => {
+          this._onError(err);
+          return void 0;
+        });
+      }
+      _onError(err) {
+        if (isNormalFlowError(err) && !this.destroyed) {
+          this.emit("warn", err);
+        } else {
+          this.destroy(err);
+        }
+      }
+      // Synchronous for regular files and directories; returns a promise only for
+      // symlinks, which need realpath() to be classified.
+      _getEntryType(entry2) {
+        if (!entry2 || !(this._statsProp in entry2)) {
+          return "";
+        }
+        const stats = entry2[this._statsProp];
+        if (stats.isFile())
+          return "file";
+        if (stats.isDirectory())
+          return "directory";
+        if (stats.isSymbolicLink())
+          return this._getSymlinkEntryType(entry2);
+        return "";
+      }
+      async _getSymlinkEntryType(entry2) {
+        const full = entry2.fullPath;
+        try {
+          const entryRealPath = await realpath(full);
+          const entryRealPathStats = await lstat2(entryRealPath);
+          if (entryRealPathStats.isFile()) {
+            return "file";
+          }
+          if (entryRealPathStats.isDirectory()) {
+            const len = entryRealPath.length;
+            if (full.startsWith(entryRealPath) && full[len] === psep) {
+              const recursiveError = new Error(`Circular symlink detected: "${full}" points to "${entryRealPath}"`);
+              recursiveError.code = RECURSIVE_ERROR_CODE;
+              this._onError(recursiveError);
+              return "";
+            }
+            return "directory";
+          }
+        } catch (error) {
+          this._onError(error);
+        }
+        return "";
+      }
+      _includeAsFile(entry2) {
+        const stats = entry2 && entry2[this._statsProp];
+        return stats && this._wantsEverything && !stats.isDirectory();
+      }
+    };
+  }
+});
+
+// node_modules/chokidar/handler.js
+import { watch as fs_watch, unwatchFile, watchFile } from "node:fs";
+import { realpath as fsrealpath, lstat as lstat3, open as open2, stat as stat3 } from "node:fs/promises";
+import { type as osType } from "node:os";
+import * as sp from "node:path";
+function createFsWatchInstance(path, options, listener, errHandler, emitRaw) {
+  const handleEvent = (rawEvent, evPath) => {
+    listener(path);
+    emitRaw(rawEvent, evPath, { watchedPath: path });
+    if (evPath && path !== evPath) {
+      fsWatchBroadcast(sp.resolve(path, evPath), KEY_LISTENERS, sp.join(path, evPath));
+    }
+  };
+  try {
+    return fs_watch(path, {
+      persistent: options.persistent
+    }, handleEvent);
+  } catch (error) {
+    errHandler(error);
+    return void 0;
+  }
+}
+var STR_DATA, STR_END, STR_CLOSE, EMPTY_FN, pl, isWindows, isMacos, isLinux, isFreeBSD, isIBMi, EVENTS, EV, THROTTLE_MODE_WATCH, statMethods, KEY_LISTENERS, KEY_ERR, KEY_RAW, HANDLER_KEYS, binaryExtensions, isBinaryPath, foreach, addAndConvert, clearItem, delFromSet, isEmptySet, FsWatchInstances, fsWatchBroadcast, setFsWatchListener, FsWatchFileInstances, setFsWatchFileListener, NodeFsHandler;
+var init_handler = __esm({
+  "node_modules/chokidar/handler.js"() {
+    STR_DATA = "data";
+    STR_END = "end";
+    STR_CLOSE = "close";
+    EMPTY_FN = () => {
+    };
+    pl = process.platform;
+    isWindows = pl === "win32";
+    isMacos = pl === "darwin";
+    isLinux = pl === "linux";
+    isFreeBSD = pl === "freebsd";
+    isIBMi = osType() === "OS400";
+    EVENTS = {
+      ALL: "all",
+      READY: "ready",
+      ADD: "add",
+      CHANGE: "change",
+      ADD_DIR: "addDir",
+      UNLINK: "unlink",
+      UNLINK_DIR: "unlinkDir",
+      RAW: "raw",
+      ERROR: "error"
+    };
+    EV = EVENTS;
+    THROTTLE_MODE_WATCH = "watch";
+    statMethods = { lstat: lstat3, stat: stat3 };
+    KEY_LISTENERS = "listeners";
+    KEY_ERR = "errHandlers";
+    KEY_RAW = "rawEmitters";
+    HANDLER_KEYS = [KEY_LISTENERS, KEY_ERR, KEY_RAW];
+    binaryExtensions = /* @__PURE__ */ new Set([
+      "3dm",
+      "3ds",
+      "3g2",
+      "3gp",
+      "7z",
+      "a",
+      "aac",
+      "adp",
+      "afdesign",
+      "afphoto",
+      "afpub",
+      "ai",
+      "aif",
+      "aiff",
+      "alz",
+      "ape",
+      "apk",
+      "appimage",
+      "ar",
+      "arj",
+      "asf",
+      "au",
+      "avi",
+      "bak",
+      "baml",
+      "bh",
+      "bin",
+      "bk",
+      "bmp",
+      "btif",
+      "bz2",
+      "bzip2",
+      "cab",
+      "caf",
+      "cgm",
+      "class",
+      "cmx",
+      "cpio",
+      "cr2",
+      "cur",
+      "dat",
+      "dcm",
+      "deb",
+      "dex",
+      "djvu",
+      "dll",
+      "dmg",
+      "dng",
+      "doc",
+      "docm",
+      "docx",
+      "dot",
+      "dotm",
+      "dra",
+      "DS_Store",
+      "dsk",
+      "dts",
+      "dtshd",
+      "dvb",
+      "dwg",
+      "dxf",
+      "ecelp4800",
+      "ecelp7470",
+      "ecelp9600",
+      "egg",
+      "eol",
+      "eot",
+      "epub",
+      "exe",
+      "f4v",
+      "fbs",
+      "fh",
+      "fla",
+      "flac",
+      "flatpak",
+      "fli",
+      "flv",
+      "fpx",
+      "fst",
+      "fvt",
+      "g3",
+      "gh",
+      "gif",
+      "graffle",
+      "gz",
+      "gzip",
+      "h261",
+      "h263",
+      "h264",
+      "icns",
+      "ico",
+      "ief",
+      "img",
+      "ipa",
+      "iso",
+      "jar",
+      "jpeg",
+      "jpg",
+      "jpgv",
+      "jpm",
+      "jxr",
+      "key",
+      "ktx",
+      "lha",
+      "lib",
+      "lvp",
+      "lz",
+      "lzh",
+      "lzma",
+      "lzo",
+      "m3u",
+      "m4a",
+      "m4v",
+      "mar",
+      "mdi",
+      "mht",
+      "mid",
+      "midi",
+      "mj2",
+      "mka",
+      "mkv",
+      "mmr",
+      "mng",
+      "mobi",
+      "mov",
+      "movie",
+      "mp3",
+      "mp4",
+      "mp4a",
+      "mpeg",
+      "mpg",
+      "mpga",
+      "mxu",
+      "nef",
+      "npx",
+      "numbers",
+      "nupkg",
+      "o",
+      "odp",
+      "ods",
+      "odt",
+      "oga",
+      "ogg",
+      "ogv",
+      "otf",
+      "ott",
+      "pages",
+      "pbm",
+      "pcx",
+      "pdb",
+      "pdf",
+      "pea",
+      "pgm",
+      "pic",
+      "png",
+      "pnm",
+      "pot",
+      "potm",
+      "potx",
+      "ppa",
+      "ppam",
+      "ppm",
+      "pps",
+      "ppsm",
+      "ppsx",
+      "ppt",
+      "pptm",
+      "pptx",
+      "psd",
+      "pya",
+      "pyc",
+      "pyo",
+      "pyv",
+      "qt",
+      "rar",
+      "ras",
+      "raw",
+      "resources",
+      "rgb",
+      "rip",
+      "rlc",
+      "rmf",
+      "rmvb",
+      "rpm",
+      "rtf",
+      "rz",
+      "s3m",
+      "s7z",
+      "scpt",
+      "sgi",
+      "shar",
+      "snap",
+      "sil",
+      "sketch",
+      "slk",
+      "smv",
+      "snk",
+      "so",
+      "stl",
+      "suo",
+      "sub",
+      "swf",
+      "tar",
+      "tbz",
+      "tbz2",
+      "tga",
+      "tgz",
+      "thmx",
+      "tif",
+      "tiff",
+      "tlz",
+      "ttc",
+      "ttf",
+      "txz",
+      "udf",
+      "uvh",
+      "uvi",
+      "uvm",
+      "uvp",
+      "uvs",
+      "uvu",
+      "viv",
+      "vob",
+      "war",
+      "wav",
+      "wax",
+      "wbmp",
+      "wdp",
+      "weba",
+      "webm",
+      "webp",
+      "whl",
+      "wim",
+      "wm",
+      "wma",
+      "wmv",
+      "wmx",
+      "woff",
+      "woff2",
+      "wrm",
+      "wvx",
+      "xbm",
+      "xif",
+      "xla",
+      "xlam",
+      "xls",
+      "xlsb",
+      "xlsm",
+      "xlsx",
+      "xlt",
+      "xltm",
+      "xltx",
+      "xm",
+      "xmind",
+      "xpi",
+      "xpm",
+      "xwd",
+      "xz",
+      "z",
+      "zip",
+      "zipx"
+    ]);
+    isBinaryPath = (filePath) => binaryExtensions.has(sp.extname(filePath).slice(1).toLowerCase());
+    foreach = (val, fn) => {
+      if (val instanceof Set) {
+        val.forEach(fn);
+      } else {
+        fn(val);
+      }
+    };
+    addAndConvert = (main2, prop, item) => {
+      let container = main2[prop];
+      if (!(container instanceof Set)) {
+        main2[prop] = container = /* @__PURE__ */ new Set([container]);
+      }
+      container.add(item);
+    };
+    clearItem = (cont) => (key) => {
+      const set = cont[key];
+      if (set instanceof Set) {
+        set.clear();
+      } else {
+        delete cont[key];
+      }
+    };
+    delFromSet = (main2, prop, item) => {
+      const container = main2[prop];
+      if (container instanceof Set) {
+        container.delete(item);
+      } else if (container === item) {
+        delete main2[prop];
+      }
+    };
+    isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
+    FsWatchInstances = /* @__PURE__ */ new Map();
+    fsWatchBroadcast = (fullPath, listenerType, val1, val2, val3) => {
+      const cont = FsWatchInstances.get(fullPath);
+      if (!cont)
+        return;
+      foreach(cont[listenerType], (listener) => {
+        listener(val1, val2, val3);
+      });
+    };
+    setFsWatchListener = (path, fullPath, options, handlers) => {
+      const { listener, errHandler, rawEmitter } = handlers;
+      let cont = FsWatchInstances.get(fullPath);
+      let watcher;
+      if (!options.persistent) {
+        watcher = createFsWatchInstance(path, options, listener, errHandler, rawEmitter);
+        if (!watcher)
+          return;
+        return watcher.close.bind(watcher);
+      }
+      if (cont) {
+        addAndConvert(cont, KEY_LISTENERS, listener);
+        addAndConvert(cont, KEY_ERR, errHandler);
+        addAndConvert(cont, KEY_RAW, rawEmitter);
+      } else {
+        watcher = createFsWatchInstance(
+          path,
+          options,
+          fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
+          errHandler,
+          // no need to use broadcast here
+          fsWatchBroadcast.bind(null, fullPath, KEY_RAW)
+        );
+        if (!watcher)
+          return;
+        watcher.on(EV.ERROR, async (error) => {
+          const broadcastErr = fsWatchBroadcast.bind(null, fullPath, KEY_ERR);
+          if (cont)
+            cont.watcherUnusable = true;
+          if (isWindows && error.code === "EPERM") {
+            try {
+              const fd = await open2(path, "r");
+              await fd.close();
+              broadcastErr(error);
+            } catch (err) {
+            }
+          } else {
+            broadcastErr(error);
+          }
+        });
+        cont = {
+          listeners: listener,
+          errHandlers: errHandler,
+          rawEmitters: rawEmitter,
+          watcher
+        };
+        FsWatchInstances.set(fullPath, cont);
+      }
+      return () => {
+        delFromSet(cont, KEY_LISTENERS, listener);
+        delFromSet(cont, KEY_ERR, errHandler);
+        delFromSet(cont, KEY_RAW, rawEmitter);
+        if (isEmptySet(cont.listeners)) {
+          cont.watcher.close();
+          FsWatchInstances.delete(fullPath);
+          HANDLER_KEYS.forEach(clearItem(cont));
+          cont.watcher = void 0;
+          Object.freeze(cont);
+        }
+      };
+    };
+    FsWatchFileInstances = /* @__PURE__ */ new Map();
+    setFsWatchFileListener = (path, fullPath, options, handlers) => {
+      const { listener, rawEmitter } = handlers;
+      let cont = FsWatchFileInstances.get(fullPath);
+      const copts = cont && cont.options;
+      if (copts && (copts.persistent < options.persistent || copts.interval > options.interval)) {
+        unwatchFile(fullPath);
+        cont = void 0;
+      }
+      if (cont) {
+        addAndConvert(cont, KEY_LISTENERS, listener);
+        addAndConvert(cont, KEY_RAW, rawEmitter);
+      } else {
+        cont = {
+          listeners: listener,
+          rawEmitters: rawEmitter,
+          options,
+          watcher: watchFile(fullPath, options, (curr, prev) => {
+            foreach(cont.rawEmitters, (rawEmitter2) => {
+              rawEmitter2(EV.CHANGE, fullPath, { curr, prev });
+            });
+            const currmtime = curr.mtimeMs;
+            if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
+              foreach(cont.listeners, (listener2) => listener2(path, curr));
+            }
+          })
+        };
+        FsWatchFileInstances.set(fullPath, cont);
+      }
+      return () => {
+        delFromSet(cont, KEY_LISTENERS, listener);
+        delFromSet(cont, KEY_RAW, rawEmitter);
+        if (isEmptySet(cont.listeners)) {
+          FsWatchFileInstances.delete(fullPath);
+          unwatchFile(fullPath);
+          cont.options = cont.watcher = void 0;
+          Object.freeze(cont);
+        }
+      };
+    };
+    NodeFsHandler = class {
+      fsw;
+      _boundHandleError;
+      constructor(fsW) {
+        this.fsw = fsW;
+        this._boundHandleError = (error) => fsW._handleError(error);
+      }
+      /**
+       * Watch file for changes with fs_watchFile or fs_watch.
+       * @param path to file or dir
+       * @param listener on fs change
+       * @returns closer for the watcher instance
+       */
+      _watchWithNodeFs(path, listener) {
+        const opts = this.fsw.options;
+        const directory = sp.dirname(path);
+        const basename5 = sp.basename(path);
+        const parent = this.fsw._getWatchedDir(directory);
+        parent.add(basename5);
+        const absolutePath = sp.resolve(path);
+        const options = {
+          persistent: opts.persistent
+        };
+        if (!listener)
+          listener = EMPTY_FN;
+        let closer;
+        if (opts.usePolling) {
+          const enableBin = opts.interval !== opts.binaryInterval;
+          options.interval = enableBin && isBinaryPath(basename5) ? opts.binaryInterval : opts.interval;
+          closer = setFsWatchFileListener(path, absolutePath, options, {
+            listener,
+            rawEmitter: this.fsw._emitRaw
+          });
+        } else {
+          closer = setFsWatchListener(path, absolutePath, options, {
+            listener,
+            errHandler: this._boundHandleError,
+            rawEmitter: this.fsw._emitRaw
+          });
+        }
+        return closer;
+      }
+      /**
+       * Watch a file and emit add event if warranted.
+       * @returns closer for the watcher instance
+       */
+      _handleFile(file, stats, initialAdd) {
+        if (this.fsw.closed) {
+          return;
+        }
+        const dirname11 = sp.dirname(file);
+        const basename5 = sp.basename(file);
+        const parent = this.fsw._getWatchedDir(dirname11);
+        let prevStats = stats;
+        if (parent.has(basename5))
+          return;
+        const listener = async (path, newStats) => {
+          if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
+            return;
+          if (!newStats || newStats.mtimeMs === 0) {
+            try {
+              const newStats2 = await stat3(file);
+              if (this.fsw.closed)
+                return;
+              const at = newStats2.atimeMs;
+              const mt = newStats2.mtimeMs;
+              if (!at || at <= mt || mt !== prevStats.mtimeMs) {
+                this.fsw._emit(EV.CHANGE, file, newStats2);
+              }
+              if ((isMacos || isLinux || isFreeBSD) && prevStats.ino !== newStats2.ino) {
+                this.fsw._closeFile(path);
+                prevStats = newStats2;
+                const closer2 = this._watchWithNodeFs(file, listener);
+                if (closer2)
+                  this.fsw._addPathCloser(path, closer2);
+              } else {
+                prevStats = newStats2;
+              }
+            } catch (error) {
+              this.fsw._remove(dirname11, basename5);
+            }
+          } else if (parent.has(basename5)) {
+            const at = newStats.atimeMs;
+            const mt = newStats.mtimeMs;
+            if (!at || at <= mt || mt !== prevStats.mtimeMs) {
+              this.fsw._emit(EV.CHANGE, file, newStats);
+            }
+            prevStats = newStats;
+          }
+        };
+        const closer = this._watchWithNodeFs(file, listener);
+        if (!(initialAdd && this.fsw.options.ignoreInitial) && this.fsw._isntIgnored(file)) {
+          if (!this.fsw._throttle(EV.ADD, file, 0))
+            return;
+          this.fsw._emit(EV.ADD, file, stats);
+        }
+        return closer;
+      }
+      /**
+       * Handle symlinks encountered while reading a dir.
+       * @param entry returned by readdirp
+       * @param directory path of dir being read
+       * @param path of this item
+       * @param item basename of this item
+       * @returns true if no more processing is needed for this entry.
+       */
+      async _handleSymlink(entry2, directory, path, item) {
+        if (this.fsw.closed) {
+          return;
+        }
+        const full = entry2.fullPath;
+        const dir = this.fsw._getWatchedDir(directory);
+        if (!this.fsw.options.followSymlinks) {
+          this.fsw._incrReadyCount();
+          let linkPath;
+          try {
+            linkPath = await fsrealpath(path);
+          } catch (e) {
+            this.fsw._emitReady();
+            return true;
+          }
+          if (this.fsw.closed)
+            return;
+          if (dir.has(item)) {
+            if (this.fsw._symlinkPaths.get(full) !== linkPath) {
+              this.fsw._symlinkPaths.set(full, linkPath);
+              this.fsw._emit(EV.CHANGE, path, entry2.stats);
+            }
+          } else {
+            dir.add(item);
+            this.fsw._symlinkPaths.set(full, linkPath);
+            this.fsw._emit(EV.ADD, path, entry2.stats);
+          }
+          this.fsw._emitReady();
+          return true;
+        }
+        if (this.fsw._symlinkPaths.has(full)) {
+          return true;
+        }
+        this.fsw._symlinkPaths.set(full, true);
+      }
+      _handleRead(directory, initialAdd, wh, target, dir, depth, throttler) {
+        directory = sp.join(directory, "");
+        const throttleKey = target ? `${directory}:${target}` : directory;
+        throttler = this.fsw._throttle("readdir", throttleKey, 1e3);
+        if (!throttler)
+          return;
+        const previous = this.fsw._getWatchedDir(wh.path);
+        const current = /* @__PURE__ */ new Set();
+        let stream = this.fsw._readdirp(directory, {
+          fileFilter: (entry2) => wh.filterPath(entry2),
+          directoryFilter: (entry2) => wh.filterDir(entry2)
+        });
+        if (!stream)
+          return;
+        stream.on(STR_DATA, async (entry2) => {
+          if (this.fsw.closed) {
+            stream = void 0;
+            return;
+          }
+          const item = entry2.path;
+          let path = sp.join(directory, item);
+          current.add(item);
+          if (entry2.stats.isSymbolicLink() && await this._handleSymlink(entry2, directory, path, item)) {
+            return;
+          }
+          if (this.fsw.closed) {
+            stream = void 0;
+            return;
+          }
+          if (item === target || !target && !previous.has(item)) {
+            this.fsw._incrReadyCount();
+            path = sp.join(dir, sp.relative(dir, path));
+            this._addToNodeFs(path, initialAdd, wh, depth + 1);
+          }
+        }).on(EV.ERROR, this._boundHandleError);
+        return new Promise((resolve10, reject) => {
+          if (!stream)
+            return reject();
+          stream.once(STR_END, () => {
+            if (this.fsw.closed) {
+              stream = void 0;
+              return;
+            }
+            const wasThrottled = throttler ? throttler.clear() : false;
+            resolve10(void 0);
+            previous.getChildren().filter((item) => {
+              return item !== directory && !current.has(item);
+            }).forEach((item) => {
+              this.fsw._remove(directory, item);
+            });
+            stream = void 0;
+            if (wasThrottled)
+              this._handleRead(directory, false, wh, target, dir, depth, throttler);
+          });
+        });
+      }
+      /**
+       * Read directory to add / remove files from `@watched` list and re-read it on change.
+       * @param dir fs path
+       * @param stats
+       * @param initialAdd
+       * @param depth relative to user-supplied path
+       * @param target child path targeted for watch
+       * @param wh Common watch helpers for this path
+       * @param realpath
+       * @returns closer for the watcher instance.
+       */
+      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath3) {
+        const parentDir2 = this.fsw._getWatchedDir(sp.dirname(dir));
+        const tracked = parentDir2.has(sp.basename(dir));
+        if (!(initialAdd && this.fsw.options.ignoreInitial) && !target && !tracked) {
+          this.fsw._emit(EV.ADD_DIR, dir, stats);
+        }
+        parentDir2.add(sp.basename(dir));
+        this.fsw._getWatchedDir(dir);
+        let throttler;
+        let closer;
+        const oDepth = this.fsw.options.depth;
+        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath3)) {
+          if (!target) {
+            await this._handleRead(dir, initialAdd, wh, target, dir, depth, throttler);
+            if (this.fsw.closed)
+              return;
+          }
+          closer = this._watchWithNodeFs(dir, (dirPath, stats2) => {
+            if (stats2 && stats2.mtimeMs === 0)
+              return;
+            this._handleRead(dirPath, false, wh, target, dir, depth, throttler);
+          });
+        }
+        return closer;
+      }
+      /**
+       * Handle added file, directory, or glob pattern.
+       * Delegates call to _handleFile / _handleDir after checks.
+       * @param path to file or ir
+       * @param initialAdd was the file added at watch instantiation?
+       * @param priorWh depth relative to user-supplied path
+       * @param depth Child path actually targeted for watch
+       * @param target Child path actually targeted for watch
+       */
+      async _addToNodeFs(path, initialAdd, priorWh, depth, target) {
+        const ready = this.fsw._emitReady;
+        if (this.fsw._isIgnored(path) || this.fsw.closed) {
+          ready();
+          return false;
+        }
+        const wh = this.fsw._getWatchHelpers(path);
+        if (priorWh) {
+          wh.filterPath = (entry2) => priorWh.filterPath(entry2);
+          wh.filterDir = (entry2) => priorWh.filterDir(entry2);
+        }
+        try {
+          const stats = await statMethods[wh.statMethod](wh.watchPath);
+          if (this.fsw.closed)
+            return;
+          if (this.fsw._isIgnored(wh.watchPath, stats)) {
+            ready();
+            return false;
+          }
+          const follow = this.fsw.options.followSymlinks;
+          let closer;
+          if (stats.isDirectory()) {
+            const absPath = sp.resolve(path);
+            const targetPath = follow ? await fsrealpath(path) : path;
+            if (this.fsw.closed)
+              return;
+            closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
+            if (this.fsw.closed)
+              return;
+            if (absPath !== targetPath && targetPath !== void 0) {
+              this.fsw._symlinkPaths.set(absPath, targetPath);
+            }
+          } else if (stats.isSymbolicLink()) {
+            const targetPath = follow ? await fsrealpath(path) : path;
+            if (this.fsw.closed)
+              return;
+            const parent = sp.dirname(wh.watchPath);
+            this.fsw._getWatchedDir(parent).add(wh.watchPath);
+            this.fsw._emit(EV.ADD, wh.watchPath, stats);
+            closer = await this._handleDir(parent, stats, initialAdd, depth, path, wh, targetPath);
+            if (this.fsw.closed)
+              return;
+            if (targetPath !== void 0) {
+              this.fsw._symlinkPaths.set(sp.resolve(path), targetPath);
+            }
+          } else {
+            closer = this._handleFile(wh.watchPath, stats, initialAdd);
+          }
+          ready();
+          if (closer)
+            this.fsw._addPathCloser(path, closer);
+          return false;
+        } catch (error) {
+          if (this.fsw._handleError(error)) {
+            ready();
+            return path;
+          }
+        }
+      }
+    };
+  }
+});
+
+// node_modules/chokidar/index.js
+import { EventEmitter } from "node:events";
+import { stat as statcb, Stats } from "node:fs";
+import { readdir as readdir3, stat as stat4 } from "node:fs/promises";
+import * as sp2 from "node:path";
+function arrify(item) {
+  return Array.isArray(item) ? item : [item];
+}
+function createPattern(matcher) {
+  if (typeof matcher === "function")
+    return matcher;
+  if (typeof matcher === "string")
+    return (string) => matcher === string;
+  if (matcher instanceof RegExp)
+    return (string) => matcher.test(string);
+  if (typeof matcher === "object" && matcher !== null) {
+    return (string) => {
+      if (matcher.path === string)
+        return true;
+      if (matcher.recursive) {
+        const relative4 = sp2.relative(matcher.path, string);
+        if (!relative4) {
+          return false;
+        }
+        return !relative4.startsWith("..") && !sp2.isAbsolute(relative4);
+      }
+      return false;
+    };
+  }
+  return () => false;
+}
+function normalizePath(path) {
+  if (typeof path !== "string")
+    throw new Error("string expected");
+  path = sp2.normalize(path);
+  path = path.replace(/\\/g, "/");
+  let prepend = false;
+  if (path.startsWith("//"))
+    prepend = true;
+  path = path.replace(DOUBLE_SLASH_RE, "/");
+  if (prepend)
+    path = "/" + path;
+  return path;
+}
+function matchPatterns(patterns, testString, stats) {
+  const path = normalizePath(testString);
+  for (let index = 0; index < patterns.length; index++) {
+    const pattern = patterns[index];
+    if (pattern(path, stats)) {
+      return true;
+    }
+  }
+  return false;
+}
+function anymatch(matchers, testString) {
+  if (matchers == null) {
+    throw new TypeError("anymatch: specify first argument");
+  }
+  const matchersArray = arrify(matchers);
+  const patterns = matchersArray.map((matcher) => createPattern(matcher));
+  if (testString == null) {
+    return (testString2, stats) => {
+      return matchPatterns(patterns, testString2, stats);
+    };
+  }
+  return matchPatterns(patterns, testString);
+}
+function watch(paths, options = {}) {
+  const watcher = new FSWatcher(options);
+  watcher.add(paths);
+  return watcher;
+}
+var SLASH, SLASH_SLASH, ONE_DOT, TWO_DOTS, STRING_TYPE, BACK_SLASH_RE, DOUBLE_SLASH_RE, DOT_RE, REPLACER_RE, isMatcherObject, unifyPaths, toUnix, normalizePathToUnix, normalizeIgnored, getAbsolutePath, EMPTY_SET, DirEntry, STAT_METHOD_F, STAT_METHOD_L, WatchHelper, FSWatcher;
+var init_chokidar = __esm({
+  "node_modules/chokidar/index.js"() {
+    init_readdirp();
+    init_handler();
+    SLASH = "/";
+    SLASH_SLASH = "//";
+    ONE_DOT = ".";
+    TWO_DOTS = "..";
+    STRING_TYPE = "string";
+    BACK_SLASH_RE = /\\/g;
+    DOUBLE_SLASH_RE = /\/\//g;
+    DOT_RE = /\..*\.(sw[px])$|~$|\.subl.*\.tmp/;
+    REPLACER_RE = /^\.[/\\]/;
+    isMatcherObject = (matcher) => typeof matcher === "object" && matcher !== null && !(matcher instanceof RegExp);
+    unifyPaths = (paths_) => {
+      const paths = arrify(paths_).flat();
+      if (!paths.every((p) => typeof p === STRING_TYPE)) {
+        throw new TypeError(`Non-string provided as watch path: ${paths}`);
+      }
+      return paths.map(normalizePathToUnix);
+    };
+    toUnix = (string) => {
+      let str2 = string.replace(BACK_SLASH_RE, SLASH);
+      let prepend = false;
+      if (str2.startsWith(SLASH_SLASH)) {
+        prepend = true;
+      }
+      str2 = str2.replace(DOUBLE_SLASH_RE, SLASH);
+      if (prepend) {
+        str2 = SLASH + str2;
+      }
+      return str2;
+    };
+    normalizePathToUnix = (path) => toUnix(sp2.normalize(toUnix(path)));
+    normalizeIgnored = (cwd = "") => (path) => {
+      if (typeof path === "string") {
+        return normalizePathToUnix(sp2.isAbsolute(path) ? path : sp2.join(cwd, path));
+      } else {
+        return path;
+      }
+    };
+    getAbsolutePath = (path, cwd) => {
+      if (sp2.isAbsolute(path)) {
+        return path;
+      }
+      return sp2.join(cwd, path);
+    };
+    EMPTY_SET = Object.freeze(/* @__PURE__ */ new Set());
+    DirEntry = class {
+      path;
+      _removeWatcher;
+      items;
+      constructor(dir, removeWatcher) {
+        this.path = dir;
+        this._removeWatcher = removeWatcher;
+        this.items = /* @__PURE__ */ new Set();
+      }
+      add(item) {
+        const { items } = this;
+        if (!items)
+          return;
+        if (item !== ONE_DOT && item !== TWO_DOTS)
+          items.add(item);
+      }
+      async remove(item) {
+        const { items } = this;
+        if (!items)
+          return;
+        items.delete(item);
+        if (items.size > 0)
+          return;
+        const dir = this.path;
+        try {
+          await readdir3(dir);
+        } catch (err) {
+          if (this._removeWatcher) {
+            this._removeWatcher(sp2.dirname(dir), sp2.basename(dir));
+          }
+        }
+      }
+      has(item) {
+        const { items } = this;
+        if (!items)
+          return;
+        return items.has(item);
+      }
+      getChildren() {
+        const { items } = this;
+        if (!items)
+          return [];
+        return [...items.values()];
+      }
+      dispose() {
+        this.items.clear();
+        this.path = "";
+        this._removeWatcher = EMPTY_FN;
+        this.items = EMPTY_SET;
+        Object.freeze(this);
+      }
+    };
+    STAT_METHOD_F = "stat";
+    STAT_METHOD_L = "lstat";
+    WatchHelper = class {
+      fsw;
+      path;
+      watchPath;
+      fullWatchPath;
+      dirParts;
+      followSymlinks;
+      statMethod;
+      constructor(path, follow, fsw) {
+        this.fsw = fsw;
+        const watchPath = path;
+        this.path = path = path.replace(REPLACER_RE, "");
+        this.watchPath = watchPath;
+        this.fullWatchPath = sp2.resolve(watchPath);
+        this.dirParts = [];
+        this.dirParts.forEach((parts) => {
+          if (parts.length > 1)
+            parts.pop();
+        });
+        this.followSymlinks = follow;
+        this.statMethod = follow ? STAT_METHOD_F : STAT_METHOD_L;
+      }
+      entryPath(entry2) {
+        return sp2.join(this.watchPath, sp2.relative(this.watchPath, entry2.fullPath));
+      }
+      filterPath(entry2) {
+        const { stats } = entry2;
+        if (stats && stats.isSymbolicLink())
+          return this.filterDir(entry2);
+        const resolvedPath = this.entryPath(entry2);
+        return this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
+      }
+      filterDir(entry2) {
+        return this.fsw._isntIgnored(this.entryPath(entry2), entry2.stats);
+      }
+    };
+    FSWatcher = class extends EventEmitter {
+      closed;
+      options;
+      _closers;
+      _ignoredPaths;
+      _throttled;
+      _streams;
+      _symlinkPaths;
+      _watched;
+      _pendingWrites;
+      _pendingUnlinks;
+      _readyCount;
+      _emitReady;
+      _closePromise;
+      _userIgnored;
+      _readyEmitted;
+      _emitRaw;
+      _boundRemove;
+      _nodeFsHandler;
+      // Not indenting methods for history sake; for now.
+      constructor(_opts = {}) {
+        super();
+        this.closed = false;
+        this._closers = /* @__PURE__ */ new Map();
+        this._ignoredPaths = /* @__PURE__ */ new Set();
+        this._throttled = /* @__PURE__ */ new Map();
+        this._streams = /* @__PURE__ */ new Set();
+        this._symlinkPaths = /* @__PURE__ */ new Map();
+        this._watched = /* @__PURE__ */ new Map();
+        this._pendingWrites = /* @__PURE__ */ new Map();
+        this._pendingUnlinks = /* @__PURE__ */ new Map();
+        this._readyCount = 0;
+        this._readyEmitted = false;
+        const awf = _opts.awaitWriteFinish;
+        const DEF_AWF = { stabilityThreshold: 2e3, pollInterval: 100 };
+        const opts = {
+          // Defaults
+          persistent: true,
+          ignoreInitial: false,
+          ignorePermissionErrors: false,
+          interval: 100,
+          binaryInterval: 300,
+          followSymlinks: true,
+          usePolling: false,
+          // useAsync: false,
+          atomic: true,
+          // NOTE: overwritten later (depends on usePolling)
+          ..._opts,
+          // Change format
+          ignored: _opts.ignored ? arrify(_opts.ignored) : arrify([]),
+          awaitWriteFinish: awf === true ? DEF_AWF : typeof awf === "object" ? { ...DEF_AWF, ...awf } : false
+        };
+        if (isIBMi)
+          opts.usePolling = true;
+        if (opts.atomic === void 0)
+          opts.atomic = !opts.usePolling;
+        const envPoll = process.env.CHOKIDAR_USEPOLLING;
+        if (envPoll !== void 0) {
+          const envLower = envPoll.toLowerCase();
+          if (envLower === "false" || envLower === "0")
+            opts.usePolling = false;
+          else if (envLower === "true" || envLower === "1")
+            opts.usePolling = true;
+          else
+            opts.usePolling = !!envLower;
+        }
+        const envInterval = process.env.CHOKIDAR_INTERVAL;
+        if (envInterval)
+          opts.interval = Number.parseInt(envInterval, 10);
+        let readyCalls = 0;
+        this._emitReady = () => {
+          readyCalls++;
+          if (readyCalls >= this._readyCount) {
+            this._emitReady = EMPTY_FN;
+            this._readyEmitted = true;
+            process.nextTick(() => this.emit(EVENTS.READY));
+          }
+        };
+        this._emitRaw = (...args) => this.emit(EVENTS.RAW, ...args);
+        this._boundRemove = this._remove.bind(this);
+        this.options = opts;
+        this._nodeFsHandler = new NodeFsHandler(this);
+        Object.freeze(opts);
+      }
+      _addIgnoredPath(matcher) {
+        if (isMatcherObject(matcher)) {
+          for (const ignored of this._ignoredPaths) {
+            if (isMatcherObject(ignored) && ignored.path === matcher.path && ignored.recursive === matcher.recursive) {
+              return;
+            }
+          }
+        }
+        this._ignoredPaths.add(matcher);
+      }
+      _removeIgnoredPath(matcher) {
+        this._ignoredPaths.delete(matcher);
+        if (typeof matcher === "string") {
+          for (const ignored of this._ignoredPaths) {
+            if (isMatcherObject(ignored) && ignored.path === matcher) {
+              this._ignoredPaths.delete(ignored);
+            }
+          }
+        }
+      }
+      // Public methods
+      /**
+       * Adds paths to be watched on an existing FSWatcher instance.
+       * @param paths_ file or file list. Other arguments are unused
+       */
+      add(paths_, _origAdd, _internal) {
+        const { cwd } = this.options;
+        this.closed = false;
+        this._closePromise = void 0;
+        let paths = unifyPaths(paths_);
+        if (cwd) {
+          paths = paths.map((path) => {
+            const absPath = getAbsolutePath(path, cwd);
+            return absPath;
+          });
+        }
+        paths.forEach((path) => {
+          this._removeIgnoredPath(path);
+        });
+        this._userIgnored = void 0;
+        if (!this._readyCount)
+          this._readyCount = 0;
+        this._readyCount += paths.length;
+        Promise.all(paths.map(async (path) => {
+          const res = await this._nodeFsHandler._addToNodeFs(path, !_internal, void 0, 0, _origAdd);
+          if (res)
+            this._emitReady();
+          return res;
+        })).then((results2) => {
+          if (this.closed)
+            return;
+          results2.forEach((item) => {
+            if (item)
+              this.add(sp2.dirname(item), sp2.basename(_origAdd || item));
+          });
+        });
+        return this;
+      }
+      /**
+       * Close watchers or start ignoring events from specified paths.
+       */
+      unwatch(paths_) {
+        if (this.closed)
+          return this;
+        const paths = unifyPaths(paths_);
+        const { cwd } = this.options;
+        paths.forEach((path) => {
+          if (!sp2.isAbsolute(path) && !this._closers.has(path)) {
+            if (cwd)
+              path = sp2.join(cwd, path);
+            path = sp2.resolve(path);
+          }
+          this._closePath(path);
+          this._addIgnoredPath(path);
+          if (this._watched.has(path)) {
+            this._addIgnoredPath({
+              path,
+              recursive: true
+            });
+          }
+          this._userIgnored = void 0;
+        });
+        return this;
+      }
+      /**
+       * Close watchers and remove all listeners from watched paths.
+       */
+      close() {
+        if (this._closePromise) {
+          return this._closePromise;
+        }
+        this.closed = true;
+        this.removeAllListeners();
+        const closers = [];
+        this._closers.forEach((closerList) => closerList.forEach((closer) => {
+          const promise = closer();
+          if (promise instanceof Promise)
+            closers.push(promise);
+        }));
+        this._streams.forEach((stream) => stream.destroy());
+        this._userIgnored = void 0;
+        this._readyCount = 0;
+        this._readyEmitted = false;
+        this._watched.forEach((dirent) => dirent.dispose());
+        this._closers.clear();
+        this._watched.clear();
+        this._streams.clear();
+        this._symlinkPaths.clear();
+        this._throttled.clear();
+        this._closePromise = closers.length ? Promise.all(closers).then(() => void 0) : Promise.resolve();
+        return this._closePromise;
+      }
+      /**
+       * Expose list of watched paths
+       * @returns for chaining
+       */
+      getWatched() {
+        const watchList = {};
+        this._watched.forEach((entry2, dir) => {
+          const key = this.options.cwd ? sp2.relative(this.options.cwd, dir) : dir;
+          const index = key || ONE_DOT;
+          watchList[index] = entry2.getChildren().sort();
+        });
+        return watchList;
+      }
+      emitWithAll(event, args) {
+        this.emit(event, ...args);
+        if (event !== EVENTS.ERROR)
+          this.emit(EVENTS.ALL, event, ...args);
+      }
+      // Common helpers
+      // --------------
+      /**
+       * Normalize and emit events.
+       * Calling _emit DOES NOT MEAN emit() would be called!
+       * @param event Type of event
+       * @param path File or directory path
+       * @param stats arguments to be passed with event
+       * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
+       */
+      async _emit(event, path, stats) {
+        if (this.closed)
+          return;
+        const opts = this.options;
+        if (isWindows)
+          path = sp2.normalize(path);
+        if (opts.cwd)
+          path = sp2.relative(opts.cwd, path);
+        const args = [path];
+        if (stats != null)
+          args.push(stats);
+        const awf = opts.awaitWriteFinish;
+        let pw;
+        if (awf && (pw = this._pendingWrites.get(path))) {
+          pw.lastChange = /* @__PURE__ */ new Date();
+          return this;
+        }
+        if (opts.atomic) {
+          if (event === EVENTS.UNLINK) {
+            this._pendingUnlinks.set(path, [event, ...args]);
+            setTimeout(() => {
+              this._pendingUnlinks.forEach((entry2, path2) => {
+                this.emit(...entry2);
+                this.emit(EVENTS.ALL, ...entry2);
+                this._pendingUnlinks.delete(path2);
+              });
+            }, typeof opts.atomic === "number" ? opts.atomic : 100);
+            return this;
+          }
+          if (event === EVENTS.ADD && this._pendingUnlinks.has(path)) {
+            event = EVENTS.CHANGE;
+            this._pendingUnlinks.delete(path);
+          }
+        }
+        if (awf && (event === EVENTS.ADD || event === EVENTS.CHANGE) && this._readyEmitted) {
+          const awfEmit = (err, stats2) => {
+            if (err) {
+              event = EVENTS.ERROR;
+              args[0] = err;
+              this.emitWithAll(event, args);
+            } else if (stats2) {
+              if (args.length > 1) {
+                args[1] = stats2;
+              } else {
+                args.push(stats2);
+              }
+              this.emitWithAll(event, args);
+            }
+          };
+          this._awaitWriteFinish(path, awf.stabilityThreshold, event, awfEmit);
+          return this;
+        }
+        if (event === EVENTS.CHANGE) {
+          const isThrottled = !this._throttle(EVENTS.CHANGE, path, 50);
+          if (isThrottled)
+            return this;
+        }
+        if (opts.alwaysStat && stats === void 0 && (event === EVENTS.ADD || event === EVENTS.ADD_DIR || event === EVENTS.CHANGE)) {
+          const fullPath = opts.cwd ? sp2.join(opts.cwd, path) : path;
+          let stats2;
+          try {
+            stats2 = await stat4(fullPath);
+          } catch (err) {
+          }
+          if (!stats2 || this.closed)
+            return;
+          args.push(stats2);
+        }
+        this.emitWithAll(event, args);
+        return this;
+      }
+      /**
+       * Common handler for errors
+       * @returns The error if defined, otherwise the value of the FSWatcher instance's `closed` flag
+       */
+      _handleError(error) {
+        const code = error && error.code;
+        if (error && code !== "ENOENT" && code !== "ENOTDIR" && (!this.options.ignorePermissionErrors || code !== "EPERM" && code !== "EACCES")) {
+          this.emit(EVENTS.ERROR, error);
+        }
+        return error || this.closed;
+      }
+      /**
+       * Helper utility for throttling
+       * @param actionType type being throttled
+       * @param path being acted upon
+       * @param timeout duration of time to suppress duplicate actions
+       * @returns tracking object or false if action should be suppressed
+       */
+      _throttle(actionType, path, timeout) {
+        if (!this._throttled.has(actionType)) {
+          this._throttled.set(actionType, /* @__PURE__ */ new Map());
+        }
+        const action = this._throttled.get(actionType);
+        if (!action)
+          throw new Error("invalid throttle");
+        const actionPath = action.get(path);
+        if (actionPath) {
+          actionPath.count++;
+          return false;
+        }
+        let timeoutObject;
+        const clear = () => {
+          const item = action.get(path);
+          const count = item ? item.count : 0;
+          action.delete(path);
+          clearTimeout(timeoutObject);
+          if (item)
+            clearTimeout(item.timeoutObject);
+          return count;
+        };
+        timeoutObject = setTimeout(clear, timeout);
+        const thr = { timeoutObject, clear, count: 0 };
+        action.set(path, thr);
+        return thr;
+      }
+      _incrReadyCount() {
+        return this._readyCount++;
+      }
+      /**
+       * Awaits write operation to finish.
+       * Polls a newly created file for size variations. When files size does not change for 'threshold' milliseconds calls callback.
+       * @param path being acted upon
+       * @param threshold Time in milliseconds a file size must be fixed before acknowledging write OP is finished
+       * @param event
+       * @param awfEmit Callback to be called when ready for event to be emitted.
+       */
+      _awaitWriteFinish(path, threshold, event, awfEmit) {
+        const awf = this.options.awaitWriteFinish;
+        if (typeof awf !== "object")
+          return;
+        const pollInterval = awf.pollInterval;
+        let timeoutHandler;
+        let fullPath = path;
+        if (this.options.cwd && !sp2.isAbsolute(path)) {
+          fullPath = sp2.join(this.options.cwd, path);
+        }
+        const now = /* @__PURE__ */ new Date();
+        const writes = this._pendingWrites;
+        function awaitWriteFinishFn(prevStat) {
+          statcb(fullPath, (err, curStat) => {
+            if (err || !writes.has(path)) {
+              if (err && err.code !== "ENOENT")
+                awfEmit(err);
+              return;
+            }
+            const now2 = Number(/* @__PURE__ */ new Date());
+            if (prevStat && curStat.size !== prevStat.size) {
+              writes.get(path).lastChange = now2;
+            }
+            const pw = writes.get(path);
+            const df = now2 - pw.lastChange;
+            if (df >= threshold) {
+              writes.delete(path);
+              awfEmit(void 0, curStat);
+            } else {
+              timeoutHandler = setTimeout(awaitWriteFinishFn, pollInterval, curStat);
+            }
+          });
+        }
+        if (!writes.has(path)) {
+          writes.set(path, {
+            lastChange: now,
+            cancelWait: () => {
+              writes.delete(path);
+              clearTimeout(timeoutHandler);
+              return event;
+            }
+          });
+          timeoutHandler = setTimeout(awaitWriteFinishFn, pollInterval);
+        }
+      }
+      /**
+       * Determines whether user has asked to ignore this path.
+       */
+      _isIgnored(path, stats) {
+        if (this.options.atomic && DOT_RE.test(path))
+          return true;
+        if (!this._userIgnored) {
+          const { cwd } = this.options;
+          const ign = this.options.ignored;
+          const ignored = (ign || []).map(normalizeIgnored(cwd));
+          const ignoredPaths = [...this._ignoredPaths];
+          const list = [...ignoredPaths.map(normalizeIgnored(cwd)), ...ignored];
+          this._userIgnored = anymatch(list, void 0);
+        }
+        return this._userIgnored(path, stats);
+      }
+      _isntIgnored(path, stat5) {
+        return !this._isIgnored(path, stat5);
+      }
+      /**
+       * Provides a set of common helpers and properties relating to symlink handling.
+       * @param path file or directory pattern being watched
+       */
+      _getWatchHelpers(path) {
+        return new WatchHelper(path, this.options.followSymlinks, this);
+      }
+      // Directory helpers
+      // -----------------
+      /**
+       * Provides directory tracking objects
+       * @param directory path of the directory
+       */
+      _getWatchedDir(directory) {
+        const dir = sp2.resolve(directory);
+        if (!this._watched.has(dir))
+          this._watched.set(dir, new DirEntry(dir, this._boundRemove));
+        return this._watched.get(dir);
+      }
+      // File helpers
+      // ------------
+      /**
+       * Check for read permissions: https://stackoverflow.com/a/11781404/1358405
+       */
+      _hasReadPermissions(stats) {
+        if (this.options.ignorePermissionErrors)
+          return true;
+        return Boolean(Number(stats.mode) & 256);
+      }
+      /**
+       * Handles emitting unlink events for
+       * files and directories, and via recursion, for
+       * files and directories within directories that are unlinked
+       * @param directory within which the following item is located
+       * @param item      base path of item/directory
+       */
+      _remove(directory, item, isDirectory) {
+        const path = sp2.join(directory, item);
+        const fullPath = sp2.resolve(path);
+        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path) || this._watched.has(fullPath);
+        if (!this._throttle("remove", path, 100))
+          return;
+        if (!isDirectory && this._watched.size === 1) {
+          this.add(directory, item, true);
+        }
+        const wp = this._getWatchedDir(path);
+        const nestedDirectoryChildren = wp.getChildren();
+        nestedDirectoryChildren.forEach((nested) => this._remove(path, nested));
+        const parent = this._getWatchedDir(directory);
+        const wasTracked = parent.has(item);
+        parent.remove(item);
+        if (this._symlinkPaths.has(fullPath)) {
+          this._symlinkPaths.delete(fullPath);
+        }
+        let relPath = path;
+        if (this.options.cwd)
+          relPath = sp2.relative(this.options.cwd, path);
+        if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
+          const event = this._pendingWrites.get(relPath).cancelWait();
+          if (event === EVENTS.ADD)
+            return;
+        }
+        this._watched.delete(path);
+        this._watched.delete(fullPath);
+        const eventName = isDirectory ? EVENTS.UNLINK_DIR : EVENTS.UNLINK;
+        if (wasTracked && !this._isIgnored(path))
+          this._emit(eventName, path);
+        this._closePath(path);
+      }
+      /**
+       * Closes all watchers for a path
+       */
+      _closePath(path) {
+        this._closeFile(path);
+        const dir = sp2.dirname(path);
+        this._getWatchedDir(dir).remove(sp2.basename(path));
+      }
+      /**
+       * Closes only file-specific watchers
+       */
+      _closeFile(path) {
+        const closers = this._closers.get(path);
+        if (!closers)
+          return;
+        closers.forEach((closer) => closer());
+        this._closers.delete(path);
+      }
+      _addPathCloser(path, closer) {
+        if (!closer)
+          return;
+        let list = this._closers.get(path);
+        if (!list) {
+          list = [];
+          this._closers.set(path, list);
+        }
+        list.push(closer);
+      }
+      _readdirp(root, opts) {
+        if (this.closed)
+          return;
+        const options = { type: EVENTS.ALL, alwaysStat: true, lstat: true, ...opts, depth: 0 };
+        let stream = readdirp(root, options);
+        this._streams.add(stream);
+        stream.once(STR_CLOSE, () => {
+          stream = void 0;
+        });
+        stream.once(STR_END, () => {
+          if (stream) {
+            this._streams.delete(stream);
+            stream = void 0;
+          }
+        });
+        return stream;
+      }
+    };
+  }
+});
+
+// src/core/watcher/exclusions.ts
+import { dirname as dirname7 } from "node:path";
+var Exclusions;
+var init_exclusions = __esm({
+  "src/core/watcher/exclusions.ts"() {
+    "use strict";
+    Exclusions = class {
+      constructor(spec) {
+        this.spec = spec;
+        this.excluded = new Set(spec.excluded);
+        this.extra = new Set(spec.extraFiles);
+      }
+      spec;
+      excluded;
+      extra;
+      excludes(path) {
+        if (this.extra.has(path)) return false;
+        const { root } = this.spec;
+        let current = path;
+        while (current.length > root.length) {
+          if (this.excluded.has(current)) return true;
+          const parent = dirname7(current);
+          if (parent === current) break;
+          current = parent;
+        }
+        return false;
+      }
+    };
+  }
+});
+
+// src/core/watcher/chokidar-backend.ts
+var KINDS2, chokidarBackend;
+var init_chokidar_backend = __esm({
+  "src/core/watcher/chokidar-backend.ts"() {
+    "use strict";
+    init_chokidar();
+    init_exclusions();
+    KINDS2 = {
+      add: "add",
+      addDir: "add",
+      change: "change",
+      unlink: "unlink",
+      unlinkDir: "unlink"
+    };
+    chokidarBackend = {
+      name: "chokidar",
+      async watch(spec, listener) {
+        let current = spec;
+        let exclusions = new Exclusions(spec);
+        const watcher = watch([spec.root, ...spec.extraFiles], {
+          ignored: (path) => exclusions.excludes(path),
+          ignoreInitial: true,
+          persistent: true,
+          followSymlinks: false,
+          atomic: false
+        });
+        watcher.on("all", (event, path) => {
+          const kind = KINDS2[event];
+          if (kind) listener.onHints([{ path, kind }]);
+        });
+        watcher.on("error", (error) => {
+          listener.onError(error instanceof Error ? error : new Error(String(error)));
+        });
+        await new Promise((resolve10) => watcher.once("ready", () => resolve10()));
+        return {
+          async update(next) {
+            const before = current;
+            current = next;
+            exclusions = new Exclusions(next);
+            const nowExcluded = next.excluded.filter((p) => !before.excluded.includes(p));
+            const noLongerExcluded = before.excluded.filter((p) => !next.excluded.includes(p));
+            const newExtra = next.extraFiles.filter((p) => !before.extraFiles.includes(p));
+            if (nowExcluded.length > 0) watcher.unwatch(nowExcluded);
+            if (noLongerExcluded.length > 0 || newExtra.length > 0) {
+              watcher.add([...noLongerExcluded, ...newExtra]);
+            }
+          },
+          close: () => watcher.close()
+        };
+      }
+    };
+  }
+});
+
+// src/core/watcher/parcel-backend.ts
+import { dirname as dirname8 } from "node:path";
+async function loadParcel() {
+  try {
+    return (await import("@parcel/watcher")).default;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `squeal: @parcel/watcher, the macOS watcher backend, could not be loaded. It is an optional dependency; reinstall with optional dependencies enabled. ${reason}`
+    );
+  }
+}
+async function subscribeAll(parcel, spec, listener) {
+  const exclusions = new Exclusions(spec);
+  const main2 = await parcel.subscribe(
+    spec.root,
+    callback(listener, (path) => !exclusions.excludes(path)),
+    { ignore: [...spec.excluded] }
+  );
+  const subs = [main2];
+  const withoutExtras = new Exclusions({ ...spec, extraFiles: [] });
+  const hidden = /* @__PURE__ */ new Map();
+  for (const file of spec.extraFiles) {
+    if (!withoutExtras.excludes(file)) continue;
+    const parent = dirname8(file);
+    hidden.set(parent, (hidden.get(parent) ?? /* @__PURE__ */ new Set()).add(file));
+  }
+  for (const [parent, files] of hidden) {
+    try {
+      subs.push(
+        await parcel.subscribe(
+          parent,
+          callback(listener, (path) => files.has(path))
+        )
+      );
+    } catch (error) {
+      listener.onError(
+        new Error(`squeal: cannot watch extra files in ${parent}: ${error.message}`)
+      );
+    }
+  }
+  return subs;
+}
+function callback(listener, keep) {
+  return (error, events) => {
+    if (error) {
+      if (DROPPED.test(error.message)) listener.onDropped(error.message);
+      else listener.onError(error);
+      return;
+    }
+    const hints = [];
+    for (const event of events) {
+      if (keep(event.path)) hints.push({ path: event.path, kind: KINDS3[event.type] });
+    }
+    if (hints.length > 0) listener.onHints(hints);
+  };
+}
+var KINDS3, DROPPED, parcelBackend;
+var init_parcel_backend = __esm({
+  "src/core/watcher/parcel-backend.ts"() {
+    "use strict";
+    init_exclusions();
+    KINDS3 = { create: "add", update: "change", delete: "unlink" };
+    DROPPED = /re-?scanned|dropped/i;
+    parcelBackend = {
+      name: "parcel",
+      async watch(spec, listener) {
+        const parcel = await loadParcel();
+        let subs = await subscribeAll(parcel, spec, listener);
+        return {
+          async update(next) {
+            const old = subs;
+            subs = await subscribeAll(parcel, next, listener);
+            await Promise.all(old.map((s) => s.unsubscribe()));
+          },
+          async close() {
+            await Promise.all(subs.map((s) => s.unsubscribe()));
+            subs = [];
+          }
+        };
+      }
+    };
+  }
+});
+
+// src/core/watcher/backend.ts
+function createWatcherBackend(platform) {
+  return platform === "darwin" ? parcelBackend : chokidarBackend;
+}
+var init_backend = __esm({
+  "src/core/watcher/backend.ts"() {
+    "use strict";
+    init_chokidar_backend();
+    init_parcel_backend();
+  }
+});
+
+// src/core/watcher/concurrency.ts
+async function mapConcurrent2(items, fn, limit = STAT_CONCURRENCY) {
+  const list = [...items];
+  const results2 = new Array(list.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < list.length) {
+      const index = next++;
+      results2[index] = await fn(list[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+  return results2;
+}
+var STAT_CONCURRENCY;
+var init_concurrency2 = __esm({
+  "src/core/watcher/concurrency.ts"() {
+    "use strict";
+    STAT_CONCURRENCY = 64;
+  }
+});
+
+// src/core/watcher/paths.ts
+import { lstat as lstat4 } from "node:fs/promises";
+import { join as join16 } from "node:path";
+function* selfAndAncestors(path) {
+  let current = path;
+  while (true) {
+    yield current;
+    const slash = current.lastIndexOf("/");
+    if (slash < 0) return;
+    current = current.slice(0, slash);
+  }
+}
+function isGitMetadata(path) {
+  return path === ".git" || path.startsWith(".git/") || path.includes("/.git/") || path.endsWith("/.git");
+}
+async function hasGitEntry(dir) {
+  try {
+    await lstat4(join16(dir, ".git"));
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+var init_paths3 = __esm({
+  "src/core/watcher/paths.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
+
+// src/core/watcher/candidates.ts
+import { lstat as lstat5, readdir as readdir4 } from "node:fs/promises";
+async function candidatesFromHints(ctx, absPaths) {
+  const nested = new NestedRepoProbe(ctx.root);
+  const relPaths = /* @__PURE__ */ new Set();
+  for (const abs of absPaths) {
+    const rel = toRelative(ctx.root, abs);
+    if (rel === null || isGitMetadata(rel) || ctx.exclusions.excludes(abs)) continue;
+    relPaths.add(rel);
+  }
+  const kept = [];
+  for (const rel of relPaths) {
+    if (!await nested.isInside(rel)) kept.push(rel);
+  }
+  const ignored = await checkIgnored(
+    ctx.root,
+    kept.filter((p) => !ctx.extraFiles.has(p))
+  );
+  const out = /* @__PURE__ */ new Map();
+  const ignoredDirs = [];
+  const walked = [];
+  let tracked = null;
+  const trackedSet = () => {
+    tracked ??= new Set(ctx.trackedPaths());
+    return tracked;
+  };
+  for (const rel of kept) {
+    const stats = await lstatOrNull2(toAbsolute(ctx.root, rel));
+    if (stats?.isDirectory()) {
+      if (ignored.has(rel)) ignoredDirs.push(rel);
+      else {
+        if (trackedSet().has(rel)) out.set(rel, null);
+        walked.push(...await walkFiles(ctx, nested, rel));
+      }
+      continue;
+    }
+    if (ignored.has(rel)) continue;
+    out.set(rel, stats ? toFileStat(stats) : null);
+    if (!stats) {
+      for (const path of trackedSet()) {
+        if (path.startsWith(`${rel}/`)) out.set(path, null);
+      }
+    }
+  }
+  const walkedIgnored = await checkIgnored(
+    ctx.root,
+    walked.filter((p) => !ctx.extraFiles.has(p))
+  );
+  for (const rel of walked) {
+    if (!walkedIgnored.has(rel)) out.set(rel, await statOrNull(ctx.root, rel));
+  }
+  for (const [rel, stat5] of out) {
+    if (stat5 === null) out.set(rel, await statOrNull(ctx.root, rel));
+  }
+  return { paths: sortCandidates(out), ignoredDirs };
+}
+async function candidatesForReconcile(ctx, statusPaths) {
+  const nested = new NestedRepoProbe(ctx.root);
+  const all = /* @__PURE__ */ new Set([...statusPaths, ...ctx.trackedPaths(), ...ctx.extraFiles]);
+  const paths = [...all].filter((rel) => !isGitMetadata(rel));
+  const stats = await mapConcurrent2(paths, async (rel) => {
+    const stats2 = await lstatOrNull2(toAbsolute(ctx.root, rel));
+    const probe = stats2?.isDirectory() ? rel : parentDir(rel);
+    if (probe !== null && await nested.isInside(probe)) return void 0;
+    return stats2 && !stats2.isDirectory() ? toFileStat(stats2) : null;
+  });
+  const out = /* @__PURE__ */ new Map();
+  paths.forEach((rel, i) => {
+    const stat5 = stats[i];
+    if (stat5 !== void 0) out.set(rel, stat5);
+  });
+  return sortCandidates(out);
+}
+async function walkFiles(ctx, nested, dir) {
+  const files = [];
+  const pending = [dir];
+  for (let next = pending.pop(); next !== void 0; next = pending.pop()) {
+    let entries;
+    try {
+      entries = await readdir4(toAbsolute(ctx.root, next), { withFileTypes: true });
+    } catch (error) {
+      if (isMissing(error)) continue;
+      throw error;
+    }
+    for (const entry2 of entries) {
+      if (entry2.name === ".git") continue;
+      const rel = `${next}/${entry2.name}`;
+      if (ctx.exclusions.excludes(toAbsolute(ctx.root, rel))) continue;
+      if (entry2.isDirectory()) {
+        if (!await nested.isInside(rel)) pending.push(rel);
+      } else {
+        files.push(rel);
+      }
+    }
+  }
+  return files;
+}
+async function lstatOrNull2(abs) {
+  try {
+    return await lstat5(abs);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+async function statOrNull(root, rel) {
+  const stats = await lstatOrNull2(toAbsolute(root, rel));
+  return stats && !stats.isDirectory() ? toFileStat(stats) : null;
+}
+function parentDir(rel) {
+  const slash = rel.lastIndexOf("/");
+  return slash < 0 ? null : rel.slice(0, slash);
+}
+function toFileStat(stats) {
+  return { mtimeMs: stats.mtimeMs, ctimeMs: stats.ctimeMs, size: stats.size, inode: stats.ino };
+}
+function sortCandidates(map) {
+  return [...map.keys()].sort().map((path) => ({ path, stat: map.get(path) ?? null }));
+}
+var NestedRepoProbe;
+var init_candidates = __esm({
+  "src/core/watcher/candidates.ts"() {
+    "use strict";
+    init_fs();
+    init_concurrency2();
+    init_git2();
+    init_paths3();
+    NestedRepoProbe = class {
+      constructor(root) {
+        this.root = root;
+      }
+      root;
+      cache = /* @__PURE__ */ new Map();
+      /** True when `rel`, or a directory above it below the root, holds a `.git` entry. */
+      async isInside(rel) {
+        for (const dir of selfAndAncestors(rel)) {
+          let hit = this.cache.get(dir);
+          if (!hit) {
+            hit = hasGitEntry(toAbsolute(this.root, dir));
+            this.cache.set(dir, hit);
+          }
+          if (await hit) return true;
+        }
+        return false;
+      }
+    };
+  }
+});
+
+// src/core/watcher/debounce.ts
+var Debouncer;
+var init_debounce = __esm({
+  "src/core/watcher/debounce.ts"() {
+    "use strict";
+    Debouncer = class {
+      constructor(onFlush, timings) {
+        this.onFlush = onFlush;
+        this.timings = timings;
+      }
+      onFlush;
+      timings;
+      items = [];
+      quietTimer = null;
+      maxTimer = null;
+      get pending() {
+        return this.items.length > 0;
+      }
+      push(items) {
+        const before = this.items.length;
+        for (const item of items) this.items.push(item);
+        if (this.items.length === before) return;
+        if (this.quietTimer) clearTimeout(this.quietTimer);
+        this.quietTimer = setTimeout(() => this.flush(), this.timings.quietMs);
+        this.maxTimer ??= setTimeout(() => this.flush(), this.timings.maxBatchMs);
+      }
+      flush() {
+        const items = this.items;
+        this.cancel();
+        if (items.length > 0) this.onFlush(items);
+      }
+      cancel() {
+        if (this.quietTimer) clearTimeout(this.quietTimer);
+        if (this.maxTimer) clearTimeout(this.maxTimer);
+        this.quietTimer = null;
+        this.maxTimer = null;
+        this.items = [];
+      }
+    };
+  }
+});
+
+// src/core/watcher/watch-spec.ts
+async function buildWatchSpec(root, extraFiles = [], status2) {
+  const [ignoredEntries, gitState, submodules] = await Promise.all([
+    listIgnored(root),
+    status2 ?? gitStatus(root),
+    listSubmodules(root)
+  ]);
+  const dirs = ignoredEntries.filter((e) => e.endsWith("/")).map((e) => e.slice(0, -1));
+  const ignoredDirs = await checkIgnored(root, dirs);
+  const excluded = /* @__PURE__ */ new Set([".git"]);
+  for (const entry2 of ignoredEntries) {
+    if (!entry2.endsWith("/")) excluded.add(entry2);
+  }
+  for (const dir of dirs) {
+    if (ignoredDirs.has(dir)) excluded.add(dir);
+  }
+  for (const dir of gitState.nestedRepos) excluded.add(dir);
+  for (const dir of submodules) {
+    if (await hasGitEntry(toAbsolute(root, dir))) excluded.add(dir);
+  }
+  return {
+    root,
+    excluded: [...excluded].sort().map((p) => toAbsolute(root, p)),
+    extraFiles: [...new Set(extraFiles)].sort().map((p) => toAbsolute(root, p))
+  };
+}
+function sameWatchSpec(a, b) {
+  return a.root === b.root && sameList(a.excluded, b.excluded) && sameList(a.extraFiles, b.extraFiles);
+}
+function sameList(a, b) {
+  return a.length === b.length && a.every((value, i) => value === b[i]);
+}
+var init_watch_spec = __esm({
+  "src/core/watcher/watch-spec.ts"() {
+    "use strict";
+    init_fs();
+    init_git2();
+    init_paths3();
+  }
+});
+
+// src/core/watcher/change-feed.ts
+import { realpath as realpath2 } from "node:fs/promises";
+import { basename as basename3 } from "node:path";
+function createChangeFeed(options) {
+  return new Feed(options);
+}
+var SPEC_INPUTS, Feed;
+var init_change_feed = __esm({
+  "src/core/watcher/change-feed.ts"() {
+    "use strict";
+    init_types();
+    init_backend();
+    init_candidates();
+    init_debounce();
+    init_exclusions();
+    init_git2();
+    init_watch_spec();
+    SPEC_INPUTS = /* @__PURE__ */ new Set([".gitignore", ".git"]);
+    Feed = class {
+      constructor(options) {
+        this.options = options;
+        this.root = options.root;
+        this.backend = options.backend ?? createWatcherBackend(process.platform);
+        this.timings = { ...WATCHER_TIMINGS, ...options.timings };
+        this.extraFiles = [...options.extraFiles ?? []];
+        this.debouncer = new Debouncer((paths) => this.onDebounced(paths), this.timings);
+      }
+      options;
+      spec = null;
+      root;
+      backend;
+      timings;
+      debouncer;
+      extraFiles;
+      sub = null;
+      queue = Promise.resolve();
+      idleTimer = null;
+      closed = false;
+      async start() {
+        this.root = await realpath2(this.root);
+        const status2 = await gitStatus(this.root);
+        this.spec = await buildWatchSpec(this.root, this.extraFiles, status2);
+        this.sub = await this.backend.watch(this.spec, {
+          onHints: (hints) => this.onHints(hints),
+          onDropped: (reason) => this.onLost(() => this.options.onDropped?.(reason)),
+          onError: (error) => this.onLost(() => this.options.onError(error))
+        });
+        await this.reconcile("start");
+      }
+      reconcile(trigger) {
+        return this.enqueue(() => this.reconcileNow(trigger));
+      }
+      setExtraFiles(paths) {
+        this.extraFiles = [...paths];
+        return this.enqueue(async () => {
+          await this.rebuildSpec();
+        });
+      }
+      async close() {
+        this.closed = true;
+        this.debouncer.cancel();
+        if (this.idleTimer) clearTimeout(this.idleTimer);
+        await this.sub?.close();
+        await this.queue;
+      }
+      onHints(hints) {
+        if (this.closed) return;
+        this.debouncer.push(hints.map((h) => h.path));
+        this.armIdle();
+      }
+      /** Backend errors are treated like dropped events: events may be missing. */
+      onLost(report2) {
+        if (this.closed) return;
+        report2();
+        void this.reconcile("dropped-events");
+      }
+      onDebounced(paths) {
+        void this.enqueue(async () => {
+          const specChanged = paths.some((p) => SPEC_INPUTS.has(basename3(p)));
+          let widened = specChanged ? await this.rebuildSpec() : false;
+          const { paths: candidates, ignoredDirs } = await candidatesFromHints(this.context(), paths);
+          if (ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
+          if (candidates.length > 0) await this.emit({ trigger: "watch", paths: candidates });
+          if (widened) await this.reconcileNow("watch");
+        });
+      }
+      async reconcileNow(trigger) {
+        const status2 = await gitStatus(this.root);
+        await this.rebuildSpec(status2);
+        const paths = await candidatesForReconcile(this.context(), status2.paths);
+        await this.emit({ trigger, paths });
+      }
+      /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
+      async rebuildSpec(status2) {
+        const current = this.spec;
+        if (!current || !this.sub) return false;
+        const next = await buildWatchSpec(this.root, this.extraFiles, status2);
+        if (sameWatchSpec(current, next)) return false;
+        await this.sub.update(next);
+        this.spec = next;
+        return current.excluded.some((p) => !next.excluded.includes(p));
+      }
+      context() {
+        const spec = this.spec ?? { root: this.root, excluded: [], extraFiles: [] };
+        return {
+          root: this.root,
+          exclusions: new Exclusions(spec),
+          extraFiles: new Set(this.extraFiles),
+          trackedPaths: this.options.trackedPaths ?? (() => [])
+        };
+      }
+      async emit(batch) {
+        if (this.closed) return;
+        await this.options.onBatch(batch);
+      }
+      /** Runs tasks one at a time. A failed task is reported and does not stop the queue. */
+      enqueue(task) {
+        const run = this.queue.then(async () => {
+          if (this.closed) return;
+          try {
+            await task();
+          } catch (error) {
+            this.options.onError(error instanceof Error ? error : new Error(String(error)));
+          } finally {
+            this.armIdle();
+          }
+        });
+        this.queue = run;
+        return run;
+      }
+      /** Schedules the idle reconciliation; any hint or batch pushes it back. */
+      armIdle() {
+        if (this.idleTimer) clearTimeout(this.idleTimer);
+        if (this.closed) return;
+        this.idleTimer = setTimeout(() => {
+          if (this.debouncer.pending) this.armIdle();
+          else void this.reconcile("interval");
+        }, this.timings.reconcileIntervalMs);
+        this.idleTimer.unref();
+      }
+    };
+  }
+});
+
+// src/core/watcher/index.ts
+var init_watcher2 = __esm({
+  "src/core/watcher/index.ts"() {
+    "use strict";
+    init_backend();
+    init_change_feed();
+    init_watch_spec();
+  }
+});
+
+// src/core/daemon-loop/head.ts
+async function readHead(root) {
+  const [sha, status2] = await Promise.all([
+    // Exit 1: unborn `HEAD`, no commit yet.
+    runGit(root, ["rev-parse", "--verify", "-q", "HEAD"], { okCodes: [0, 1] }),
+    runGit(root, [
+      "--no-optional-locks",
+      "status",
+      "--porcelain=v1",
+      "-z",
+      "--untracked-files=normal",
+      "--ignore-submodules=all"
+    ])
+  ]);
+  const head = sha.trim();
+  return { head: head === "" ? null : head, dirty: splitNul(status2).length > 0 };
+}
+var init_head = __esm({
+  "src/core/daemon-loop/head.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
+
+// src/core/daemon-loop/index.ts
+var daemon_loop_exports = {};
+__export(daemon_loop_exports, {
+  createDaemonLoop: () => createDaemonLoop,
+  readHead: () => readHead
+});
+function createDaemonLoop(options) {
+  const { onDropped, backend, timings, ...rest } = options;
+  let feed = null;
+  const scheduler = createScheduler({
+    ...rest,
+    head: () => readHead(options.root),
+    onExtraFiles: (paths) => {
+      feed?.setExtraFiles(paths).catch((error) => options.onError(toError(error)));
+    }
+  });
+  return {
+    scheduler,
+    async start() {
+      await scheduler.start();
+      feed = createChangeFeed({
+        root: options.root,
+        onBatch: (batch) => scheduler.handleBatch(batch),
+        onError: options.onError,
+        ...onDropped === void 0 ? {} : { onDropped },
+        ...backend === void 0 ? {} : { backend },
+        ...timings === void 0 ? {} : { timings },
+        trackedPaths: () => scheduler.trackedPaths(),
+        extraFiles: scheduler.extraFiles()
+      });
+      await feed.start();
+    },
+    async close() {
+      await feed?.close();
+      await scheduler.close();
+    }
+  };
+}
+function toError(error) {
+  return error instanceof Error ? error : new Error(String(error));
+}
+var init_daemon_loop = __esm({
+  "src/core/daemon-loop/index.ts"() {
+    "use strict";
+    init_scheduler3();
+    init_watcher2();
+    init_head();
+    init_head();
+  }
+});
+
+// src/runners/vitest/graph.ts
+import { existsSync as existsSync7 } from "node:fs";
+import { dirname as dirname9, extname as extname2, join as join17, resolve as resolve9 } from "node:path";
+async function importClosure(project, entries) {
+  const environment = project.vite.environments.ssr;
+  if (!environment) {
+    throw new Error(`vitest adapter: project "${project.name}" has no ssr environment`);
+  }
+  const files = /* @__PURE__ */ new Set();
+  const missing = /* @__PURE__ */ new Set();
+  const visit = async (file) => {
+    if (files.has(file) || missing.has(file)) return;
+    if (!existsSync7(file)) {
+      missing.add(file);
+      return;
+    }
+    files.add(file);
+    if (file.includes("node_modules")) return;
+    let transformed;
+    try {
+      transformed = environment.moduleGraph.getModuleById(file)?.transformResult ?? await environment.transformRequest(file);
+    } catch {
+      return;
+    }
+    if (!transformed) return;
+    const deps = [...transformed.deps ?? [], ...transformed.dynamicDeps ?? []];
+    await Promise.all(
+      deps.map((dep) => {
+        const target = depToPath(dep, file, project.config.root);
+        return target === null ? void 0 : visit(target);
+      })
+    );
+  };
+  await Promise.all(entries.map(visit));
+  return { files, missing };
+}
+function depToPath(dep, importer, root) {
+  if (dep.startsWith("/@fs/")) return dep.slice("/@fs".length);
+  if (dep.startsWith("/@") || dep.startsWith("\0") || dep.includes(":")) return null;
+  if (dep.startsWith("/")) return join17(root, dep.split("?")[0] ?? dep);
+  if (dep.startsWith("./") || dep.startsWith("../")) return resolve9(dirname9(importer), dep);
+  return null;
+}
+function resolutionCandidates(target, extensions) {
+  const ext = extname2(target);
+  const twins = (TYPESCRIPT_TWINS[ext] ?? []).map((twin) => target.slice(0, -ext.length) + twin);
+  return [
+    target,
+    ...extensions.map((e) => `${target}${e}`),
+    ...extensions.map((e) => join17(target, `index${e}`)),
+    ...twins
+  ];
+}
+function isMissingTarget(closure, path) {
+  if (closure.missing.has(path)) return true;
+  const ext = extname2(path);
+  return ext !== "" && closure.missing.has(path.slice(0, -ext.length));
+}
+var TYPESCRIPT_TWINS;
+var init_graph = __esm({
+  "src/runners/vitest/graph.ts"() {
+    "use strict";
+    TYPESCRIPT_TWINS = {
+      ".js": [".ts", ".tsx"],
+      ".jsx": [".tsx"],
+      ".mjs": [".mts"],
+      ".cjs": [".cts"]
+    };
+  }
+});
+
+// src/runners/vitest/project.ts
+import { basename as basename4, dirname as dirname10, join as join18 } from "node:path";
+function configFiles(vitest) {
+  const files = /* @__PURE__ */ new Set();
+  for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
+    if (config.configFile) files.add(config.configFile);
+    for (const dep of config.configFileDependencies) files.add(dep);
+  }
+  return files;
+}
+async function projectInputs(vitest, project) {
+  const [setup, globalSetup] = await Promise.all([
+    importClosure(project, project.config.setupFiles),
+    importClosure(project, globalSetupFiles(project))
+  ]);
+  return { configFiles: configFiles(vitest), setup, globalSetup };
+}
+function isProjectInput(inputs, path) {
+  return inputs.configFiles.has(path) || inputs.setup.files.has(path) || inputs.setup.missing.has(path) || inputs.globalSetup.files.has(path) || inputs.globalSetup.missing.has(path);
+}
+async function recreateTriggers(vitest) {
+  const triggers = configFiles(vitest);
+  for (const project of vitest.projects) {
+    const closure = await importClosure(project, globalSetupFiles(project));
+    for (const file of [...closure.files, ...closure.missing]) triggers.add(file);
+  }
+  return triggers;
+}
+function globalSetupFiles(project) {
+  const entries = project.config.globalSetup;
+  return typeof entries === "string" ? [entries] : [...entries];
+}
+function snapshotPath(project, testFile) {
+  const resolveSnapshotPath = project.config.snapshotOptions.resolveSnapshotPath;
+  if (resolveSnapshotPath) {
+    return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
+  }
+  return join18(dirname10(testFile), "__snapshots__", `${basename4(testFile)}.snap`);
+}
+function resolveExtensions(project) {
+  return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
+}
+function findProject(vitest, testFile) {
+  const project = vitest.projects.find((p) => p.name === testFile.project);
+  if (!project) {
+    throw new Error(
+      `vitest adapter: project "${testFile.project}" not found for ${testFile.path}; known: ${vitest.projects.map((p) => JSON.stringify(p.name)).join(", ")}`
+    );
+  }
+  return project;
+}
+var init_project = __esm({
+  "src/runners/vitest/project.ts"() {
+    "use strict";
+    init_graph();
+  }
+});
+
+// src/runners/vitest/related.ts
+async function relatedSpecifications(vitest, changed) {
+  if (changed.length === 0) return [];
+  vitest.config.related = [...changed];
+  try {
+    return await vitest.getRelevantTestSpecifications();
+  } finally {
+    delete vitest.config.related;
+  }
+}
+var init_related = __esm({
+  "src/runners/vitest/related.ts"() {
+    "use strict";
+  }
+});
+
+// src/runners/vitest/affected.ts
+import { existsSync as existsSync8 } from "node:fs";
+async function affectedTestFiles(vitest, specs, changed) {
+  if (changed.length === 0) return [];
+  const known2 = new Map(specs.map((s) => [specKey(s), s]));
+  const affected2 = /* @__PURE__ */ new Map();
+  const add = (spec) => {
+    const current = known2.get(specKey(spec));
+    if (current) affected2.set(specKey(spec), current);
+  };
+  let related;
+  try {
+    related = await relatedSpecifications(vitest, changed);
+  } catch {
+    related = await walkRelated(specs, changed);
+  }
+  related.forEach(add);
+  const gone = changed.filter((p) => !existsSync8(p));
+  const snapshots = changed.filter((p) => p.endsWith(".snap"));
+  for (const project of vitest.projects) {
+    const projectSpecs = specs.filter((s) => s.project === project);
+    const inputs = await projectInputs(vitest, project);
+    if (changed.some((p) => isProjectInput(inputs, p))) {
+      projectSpecs.forEach(add);
+      continue;
+    }
+    for (const spec of projectSpecs) {
+      if (snapshots.includes(snapshotPath(project, spec.moduleId))) add(spec);
+    }
+    if (gone.length === 0) continue;
+    for (const spec of projectSpecs) {
+      const closure = await importClosure(project, [spec.moduleId]);
+      if (gone.some((p) => isMissingTarget(closure, p))) add(spec);
+    }
+  }
+  return [...affected2.values()];
+}
+async function walkRelated(specs, changed) {
+  const hits = [];
+  for (const spec of specs) {
+    const closure = await importClosure(spec.project, [spec.moduleId]);
+    if (changed.some((p) => closure.files.has(p) || isMissingTarget(closure, p))) hits.push(spec);
+  }
+  return hits;
+}
+var specKey;
+var init_affected = __esm({
+  "src/runners/vitest/affected.ts"() {
+    "use strict";
+    init_graph();
+    init_project();
+    init_related();
+    specKey = (spec) => `${spec.project.name}\0${spec.moduleId}`;
+  }
+});
+
+// src/runners/vitest/environment.ts
+function projectEnvironment(project, inputs, context) {
+  const { paths } = context;
+  const files = /* @__PURE__ */ new Set();
+  for (const file of [...inputs.configFiles, ...inputs.setup.files, ...inputs.globalSetup.files]) {
+    const rel = paths.toRelative(file);
+    if (rel !== null && paths.isProjectFile(file)) files.add(rel);
+  }
+  return {
+    project: project.name,
+    runnerName: "vitest",
+    runnerVersion: context.runnerVersion,
+    adapterVersion: context.adapterVersion,
+    resolvedConfig: canonicalConfig(project, paths),
+    files: [...files].sort(compare)
+  };
+}
+function canonicalConfig(project, paths) {
+  const { sequence, ...config } = project.serializedConfig;
+  const { seed: _seed, ...stableSequence } = sequence;
+  return JSON.stringify(
+    canonicalize(
+      { ...config, sequence: stableSequence, globalSetup: globalSetupFiles(project) },
+      paths
+    )
+  );
+}
+function canonicalize(value, paths) {
+  if (typeof value === "string") return paths.relativizeText(value);
+  if (value instanceof RegExp) return value.toString();
+  if (Array.isArray(value)) return value.map((v) => canonicalize(v, paths));
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value).filter(([, v]) => v !== void 0 && typeof v !== "function").sort(([a], [b]) => compare(a, b)).map(([k, v]) => [k, canonicalize(v, paths)]);
+    return Object.fromEntries(entries);
+  }
+  return value;
+}
+var init_environment2 = __esm({
+  "src/runners/vitest/environment.ts"() {
+    "use strict";
+    init_fs();
+    init_project();
+  }
+});
+
+// src/runners/vitest/results.ts
+function toCheckError(error, paths) {
+  const frame = error.stacks?.find((f) => paths.isProjectFile(f.file));
+  const diff = typeof error.diff === "string" ? error.diff : null;
+  return {
+    name: error.name ?? "Error",
+    message: paths.relativizeText(error.message ?? ""),
+    stack: error.stack ? paths.relativizeText(error.stack) : null,
+    location: frame ? paths.location(frame.file, frame.line, frame.column) : null,
+    diff: diff === null ? null : paths.relativizeText(diff)
+  };
+}
+function checkNames(tests) {
+  const names = /* @__PURE__ */ new Map();
+  const used = /* @__PURE__ */ new Set();
+  for (const test of tests) {
+    let name = test.fullName;
+    if (used.has(name)) {
+      const line = test.location ? `line ${test.location.line}` : "line ?";
+      name = `${test.fullName} (${line})`;
+      for (let n = 2; used.has(name); n++) name = `${test.fullName} (${line}, ${n})`;
+    }
+    used.add(name);
+    names.set(test.id, name);
+  }
+  return names;
+}
+function toCheckRunResult(testCase, testFile, paths, fullName) {
+  const result = testCase.result();
+  const outcome = OUTCOMES4[result.state];
+  if (!outcome) return null;
+  const location2 = testCase.location;
+  return {
+    check: {
+      kind: "test",
+      project: testFile.project,
+      testPath: testFile.path,
+      fullName
+    },
+    outcome,
+    durationMs: testCase.diagnostic()?.duration ?? 0,
+    location: location2 ? { path: testFile.path, line: location2.line, column: location2.column } : null,
+    errors: outcome === "fail" ? (result.errors ?? []).map((e) => toCheckError(e, paths)) : []
+  };
+}
+function compareRefs(a, b) {
+  return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
+}
+var OUTCOMES4, refKey;
+var init_results2 = __esm({
+  "src/runners/vitest/results.ts"() {
+    "use strict";
+    init_fs();
+    OUTCOMES4 = {
+      passed: "pass",
+      failed: "fail",
+      skipped: "skip"
+    };
+    refKey = (ref) => `${ref.project}\0${ref.path}`;
+  }
+});
+
+// src/runners/vitest/reporter.ts
+import { appendFileSync } from "node:fs";
+function createSquealReporter(current) {
+  return {
+    onTestCaseResult: (testCase) => current()?.testCase(testCase),
+    onTestModuleEnd: (module) => current()?.moduleEnd(module),
+    onTestRunEnd: (_modules, unhandledErrors, reason) => current()?.runEnd(unhandledErrors, reason),
+    onUserConsoleLog: (log) => current()?.console(log.type, log.content)
+  };
+}
+function errorText(error) {
+  const diff = typeof error.diff === "string" ? `
+${error.diff}` : "";
+  return `${error.stack ?? `${error.name ?? "Error"}: ${error.message}`}${diff}`;
+}
+var RunCollector, label, indent;
+var init_reporter = __esm({
+  "src/runners/vitest/reporter.ts"() {
+    "use strict";
+    init_results2();
+    RunCollector = class {
+      constructor(requested, paths) {
+        this.paths = paths;
+        this.#requested = new Map(requested.map((r) => [refKey(r), r]));
+      }
+      paths;
+      results = [];
+      modules = /* @__PURE__ */ new Map();
+      unhandledErrors = [];
+      /** Raw output for the run log, absolute paths kept. */
+      log = [];
+      reason = null;
+      cancelRequested = false;
+      /** Set once `vitest.log` is written; later notes are appended to it. */
+      logFile = null;
+      #requested;
+      #names = /* @__PURE__ */ new WeakMap();
+      #ref(project, moduleId) {
+        const path = this.paths.toRelative(moduleId);
+        return path === null ? null : this.#requested.get(refKey({ project, path })) ?? null;
+      }
+      testCase(testCase) {
+        const ref = this.#ref(testCase.project.name, testCase.module.moduleId);
+        if (!ref) return;
+        const result = toCheckRunResult(testCase, ref, this.paths, this.#name(testCase));
+        if (!result) return;
+        this.results.push({ ref, result });
+        this.log.push(
+          `${result.outcome.toUpperCase()} ${label(ref)} > ${result.check.fullName} (${Math.round(result.durationMs)} ms)`
+        );
+        for (const error of testCase.result().errors ?? []) this.log.push(indent(errorText(error)));
+      }
+      /** The check name of a test; modules are fully collected before their tests report. */
+      #name(testCase) {
+        let names = this.#names.get(testCase.module);
+        if (!names) {
+          names = checkNames(testCase.module.children.allTests());
+          this.#names.set(testCase.module, names);
+        }
+        return names.get(testCase.id) ?? testCase.fullName;
+      }
+      moduleEnd(module) {
+        const ref = this.#ref(module.project.name, module.moduleId);
+        if (!ref) return;
+        const errors = module.errors();
+        this.modules.set(refKey(ref), {
+          ref,
+          state: module.state(),
+          errors,
+          afterCancel: this.cancelRequested
+        });
+        this.log.push(`MODULE ${module.state()} ${label(ref)}`);
+        for (const error of errors) this.log.push(indent(`file-level error: ${errorText(error)}`));
+      }
+      runEnd(unhandledErrors, reason) {
+        this.unhandledErrors.push(...unhandledErrors);
+        this.reason = reason;
+        this.log.push(`RUN END ${reason}, ${unhandledErrors.length} unhandled error(s)`);
+        for (const error of unhandledErrors) this.log.push(indent(`unhandled: ${errorText(error)}`));
+      }
+      /**
+       * An adapter event for the run log, such as an error from cancelling the
+       * run or closing an instance. The styleguide: "Never swallow an error
+       * silently" (review N3).
+       */
+      note(text) {
+        const line = `squeal: ${text}`;
+        if (this.logFile === null) {
+          this.log.push(line);
+          return;
+        }
+        try {
+          appendFileSync(this.logFile, `${line}
+`);
+        } catch (error) {
+          process.emitWarning(`${line} (run log ${this.logFile} not writable: ${String(error)})`);
+        }
+      }
+      console(type, content) {
+        this.log.push(`[${type}] ${content.replace(/\n$/, "")}`);
+      }
+    };
+    label = (ref) => ref.project ? `[${ref.project}] ${ref.path}` : ref.path;
+    indent = (text) => text.replace(/^/gm, "    ");
+  }
+});
+
+// src/runners/vitest/run.ts
+import { mkdirSync as mkdirSync4, writeFileSync } from "node:fs";
+import { join as join19 } from "node:path";
+async function execute(vitest, specs, timeoutMs, collector) {
+  const run = vitest.runTestSpecifications([...specs]).then(
+    () => ({ end: "completed", failure: null, hung: false }),
+    (error) => ({
+      end: "crashed",
+      failure: describeError(error),
+      hung: false
+    })
+  );
+  if (timeoutMs === null) return run;
+  const first = await settleWithin(run, timeoutMs);
+  if (first) return first;
+  collector.cancelRequested = true;
+  const failure2 = `run exceeded timeoutMs (${timeoutMs} ms)`;
+  cancel(vitest, collector);
+  if (await settleWithin(run, GRACE_BEFORE_FORCE_MS))
+    return { end: "timed-out", failure: failure2, hung: false };
+  cancel(vitest, collector);
+  if (await settleWithin(run, GRACE_AFTER_FORCE_MS))
+    return { end: "timed-out", failure: failure2, hung: false };
+  return { end: "timed-out", failure: `${failure2}; workers did not stop`, hung: true };
+}
+function cancel(vitest, collector) {
+  vitest.cancelCurrentRun(CANCEL_REASON).catch((error) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
+}
+function abandon(vitest, collector) {
+  vitest.close().catch(
+    (error) => collector.note(`close() of an abandoned instance failed: ${describeError(error)}`)
+  );
+}
+async function settleWithin(promise, ms) {
+  let timer;
+  const timeout = new Promise((resolve10) => {
+    timer = setTimeout(() => resolve10(null), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function buildReport(collector, execution, durationMs) {
+  const unattributed = collector.unhandledErrors.filter((e) => owner(e, collector) === null);
+  const end = unattributed.length > 0 ? "crashed" : execution.end;
+  const failure2 = [
+    ...execution.failure === null ? [] : [execution.failure],
+    ...unattributed.map((e) => `unhandled error outside any test file: ${errorText(e)}`)
+  ].join("\n");
+  const completed = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => !m.afterCancel && m.state !== "pending" && m.state !== "queued").map((m) => m.ref).sort(compareRefs);
+  const completedKeys = new Set(completed.map(refKey));
+  const errors = /* @__PURE__ */ new Map();
+  const addErrors = (ref, list) => {
+    if (list.length === 0) return;
+    const existing = errors.get(refKey(ref))?.errors ?? [];
+    errors.set(refKey(ref), { testFile: ref, errors: [...existing, ...list] });
+  };
+  for (const module of collector.modules.values()) {
+    if (completedKeys.has(refKey(module.ref))) {
+      addErrors(
+        module.ref,
+        module.errors.map((e) => toCheckError(e, collector.paths))
+      );
+    }
+  }
+  for (const error of collector.unhandledErrors) {
+    const rel = owner(error, collector);
+    for (const ref of completed.filter((r) => r.path === rel)) {
+      addErrors(ref, [toCheckError(error, collector.paths)]);
+    }
+  }
+  return {
+    end,
+    durationMs,
+    completedFiles: completed,
+    results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs(a.ref, b.ref)).map((r) => r.result),
+    fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
+    failure: failure2 === "" ? null : collector.paths.relativizeText(failure2)
+  };
+}
+function owner(error, collector) {
+  const path = typeof error.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null;
+  return path === null ? null : collector.paths.toRelative(path);
+}
+function writeRunLog(options, collector, report2) {
+  mkdirSync4(options.logDir, { recursive: true });
+  const header = [
+    `squeal vitest run ${options.runId}`,
+    `end: ${report2.end}${report2.failure ? ` (${report2.failure})` : ""}, ${report2.durationMs} ms`,
+    ""
+  ];
+  const logFile = join19(options.logDir, "vitest.log");
+  writeFileSync(logFile, `${[...header, ...collector.log].join("\n")}
+`);
+  collector.logFile = logFile;
+  writeFileSync(
+    join19(options.logDir, "report.json"),
+    `${JSON.stringify({ runId: options.runId, report: report2 }, null, 2)}
+`
+  );
+}
+function describeError(error) {
+  return error instanceof Error ? error.stack ?? error.message : String(error);
+}
+var GRACE_BEFORE_FORCE_MS, GRACE_AFTER_FORCE_MS, CANCEL_REASON;
+var init_run = __esm({
+  "src/runners/vitest/run.ts"() {
+    "use strict";
+    init_reporter();
+    init_results2();
+    GRACE_BEFORE_FORCE_MS = 1e3;
+    GRACE_AFTER_FORCE_MS = 5e3;
+    CANCEL_REASON = "squeal-timeout";
+  }
+});
+
+// src/runners/vitest/adapter.ts
+import { createVitest, version } from "vitest/node";
+async function testSpecifications(vitest) {
+  return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
+}
+function invalidateAll(vitest) {
+  const files = /* @__PURE__ */ new Set();
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
+    }
+  }
+  for (const file of files) vitest.invalidateFile(file);
+}
+var VITEST_ADAPTER_VERSION, VitestAdapter;
+var init_adapter = __esm({
+  "src/runners/vitest/adapter.ts"() {
+    "use strict";
+    init_affected();
+    init_environment2();
+    init_graph();
+    init_project();
+    init_reporter();
+    init_results2();
+    init_run();
+    VITEST_ADAPTER_VERSION = "2";
+    VitestAdapter = class {
+      constructor(paths) {
+        this.paths = paths;
+      }
+      paths;
+      name = "vitest";
+      adapterVersion = VITEST_ADAPTER_VERSION;
+      #vitest = null;
+      #collector = null;
+      /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
+      #generation = 0;
+      #queue = Promise.resolve();
+      #closed = false;
+      /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
+      async #start() {
+        const generation = ++this.#generation;
+        const current = () => generation === this.#generation ? this.#collector : null;
+        const vitest = await createVitest("test", {
+          root: this.paths.root,
+          watch: false,
+          reporters: [createSquealReporter(current)],
+          update: "none",
+          includeTaskLocation: true
+        });
+        try {
+          await vitest.standalone();
+        } catch (error) {
+          await vitest.close();
+          throw error;
+        }
+        return vitest;
+      }
+      async open() {
+        this.#vitest = await this.#start();
+      }
+      #serial(fn) {
+        const next = this.#queue.then(async () => {
+          if (this.#closed) throw new Error("vitest adapter: closed");
+          this.#vitest ??= await this.#start();
+          return fn(this.#vitest);
+        });
+        this.#queue = next.catch(() => {
+        });
+        return next;
+      }
+      async #recreate(old) {
+        this.#vitest = null;
+        await old.close();
+        this.#vitest = await this.#start();
+        return this.#vitest;
+      }
+      invalidate(paths) {
+        return this.#serial(async (vitest) => {
+          const abs = paths.map((p) => ({ ...p, abs: this.paths.toAbsolute(p.path) }));
+          const triggers = await recreateTriggers(vitest);
+          if (abs.some((p) => triggers.has(p.abs))) {
+            const before = vitest.projects.map((p) => p.name);
+            const fresh = await this.#recreate(vitest);
+            const names = /* @__PURE__ */ new Set([...before, ...fresh.projects.map((p) => p.name)]);
+            return { recreatedProjects: [...names].sort() };
+          }
+          for (const p of abs) vitest.invalidateFile(p.abs);
+          const structural = abs.filter((p) => p.kind !== "change");
+          if (structural.length > 0) {
+            invalidateAll(vitest);
+            const testGlob = structural.some(
+              (p) => vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => ""))
+            );
+            if (testGlob) vitest.clearSpecificationsCache();
+          }
+          return { recreatedProjects: [] };
+        });
+      }
+      affected(changedPaths) {
+        return this.#serial(async (vitest) => {
+          const specs = await testSpecifications(vitest);
+          const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
+          const refs = await affectedTestFiles(vitest, specs, changed);
+          return refs.map((r) => this.#ref(r)).sort(compareRefs);
+        });
+      }
+      closure(testFile) {
+        return this.#serial(async (vitest) => {
+          const project = findProject(vitest, testFile);
+          const abs = this.paths.toAbsolute(testFile.path);
+          const graph = await importClosure(project, [abs]);
+          const files = new Set(graph.files);
+          files.add(snapshotPath(project, abs));
+          const extensions = resolveExtensions(project);
+          for (const target of graph.missing) {
+            for (const candidate of resolutionCandidates(target, extensions)) files.add(candidate);
+          }
+          const paths = [...files].filter((f) => this.paths.isProjectFile(f)).map((f) => this.paths.toRelative(f)).filter((p) => p !== null).sort();
+          return { testFile, paths };
+        });
+      }
+      enumerate(testFile) {
+        return this.#serial(async (vitest) => {
+          const project = findProject(vitest, testFile);
+          const spec = project.createSpecification(this.paths.toAbsolute(testFile.path));
+          const [module] = await vitest.parseSpecifications([spec]);
+          if (!module) return [];
+          const names = checkNames(module.children.allTests());
+          return [...module.children.allTests()].map((test) => ({
+            check: {
+              kind: "test",
+              project: testFile.project,
+              testPath: testFile.path,
+              fullName: names.get(test.id) ?? test.fullName
+            },
+            // Research Q2: `test.each` parses to one entry with a `-dynamic` id.
+            templated: test.options.each === true || test.id.endsWith("-dynamic"),
+            location: test.location ? { path: testFile.path, line: test.location.line, column: test.location.column } : null
+          }));
+        });
+      }
+      testFiles() {
+        return this.#serial(
+          async (vitest) => (await testSpecifications(vitest)).map((s) => this.#ref(s)).sort(compareRefs)
+        );
+      }
+      environment() {
+        return this.#serial(async (vitest) => {
+          const context = {
+            paths: this.paths,
+            runnerVersion: version,
+            adapterVersion: this.adapterVersion
+          };
+          const envs = [];
+          for (const project of vitest.projects) {
+            envs.push(projectEnvironment(project, await projectInputs(vitest, project), context));
+          }
+          return envs.sort((a, b) => a.project < b.project ? -1 : a.project > b.project ? 1 : 0);
+        });
+      }
+      run(testFiles, options) {
+        return this.#serial(async (vitest) => {
+          const specs = testFiles.map(
+            (ref) => findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path))
+          );
+          const collector = new RunCollector(testFiles, this.paths);
+          if (specs.length === 0) {
+            const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
+            writeRunLog(options, collector, empty);
+            return empty;
+          }
+          const exitCode = process.exitCode;
+          const started = performance.now();
+          this.#collector = collector;
+          try {
+            const execution = await execute(vitest, specs, options.timeoutMs, collector);
+            if (execution.hung) {
+              this.#vitest = null;
+              abandon(vitest, collector);
+            }
+            const report2 = buildReport(collector, execution, Math.round(performance.now() - started));
+            writeRunLog(options, collector, report2);
+            return report2;
+          } finally {
+            this.#collector = null;
+            process.exitCode = exitCode;
+          }
+        });
+      }
+      close() {
+        const closing = this.#queue.then(async () => {
+          if (this.#closed) return;
+          this.#closed = true;
+          const vitest = this.#vitest;
+          this.#vitest = null;
+          await vitest?.close();
+        });
+        this.#queue = closing.catch(() => {
+        });
+        return closing;
+      }
+      #ref(spec) {
+        const path = this.paths.toRelative(spec.moduleId);
+        if (path === null) {
+          throw new Error(`vitest adapter: test file outside the worktree: ${spec.moduleId}`);
+        }
+        return { project: spec.project.name, path };
+      }
+    };
+  }
+});
+
+// src/runners/vitest/paths.ts
+import { sep as sep4 } from "node:path";
+import { stripVTControlCharacters } from "node:util";
+var WorktreePaths;
+var init_paths4 = __esm({
+  "src/runners/vitest/paths.ts"() {
+    "use strict";
+    init_fs();
+    WorktreePaths = class {
+      constructor(root) {
+        this.root = root;
+      }
+      root;
+      toAbsolute(path) {
+        return toAbsolute(this.root, path);
+      }
+      /** `null` when the path is the root itself or outside it. */
+      toRelative(path) {
+        return toRelative(this.root, path);
+      }
+      isProjectFile(path) {
+        return this.toRelative(path) !== null && !path.split(sep4).includes("node_modules");
+      }
+      /** Spec 001 D4: "Stack paths are relativized before storage." Also strips ANSI colours. */
+      relativizeText(text) {
+        return stripVTControlCharacters(text).replaceAll(`file://${this.root}/`, "").replaceAll(`${this.root}/`, "").replaceAll(this.root, ".");
+      }
+      location(file, line, column) {
+        const path = this.toRelative(file);
+        return path === null ? null : { path, line, column };
+      }
+    };
+  }
+});
+
+// src/runners/vitest/index.ts
+var vitest_exports = {};
+__export(vitest_exports, {
+  VITEST_ADAPTER_VERSION: () => VITEST_ADAPTER_VERSION,
+  createVitestAdapter: () => createVitestAdapter
+});
+import { realpathSync as realpathSync4 } from "node:fs";
+async function createVitestAdapter(options) {
+  const adapter = new VitestAdapter(new WorktreePaths(realpathSync4(options.root)));
+  await adapter.open();
+  return adapter;
+}
+var init_vitest = __esm({
+  "src/runners/vitest/index.ts"() {
+    "use strict";
+    init_adapter();
+    init_paths4();
+    init_adapter();
+  }
+});
+
+// src/core/daemon/runner.ts
+var runner_exports = {};
+__export(runner_exports, {
+  createRecoveringRunner: () => createRecoveringRunner
+});
+function createRecoveringRunner(options) {
+  let inner = null;
+  let error = null;
+  let reported = null;
+  let retry = false;
+  let creating = null;
+  let closed = false;
+  const attempt = () => {
+    retry = false;
+    creating ??= (async () => {
+      try {
+        const created = await options.create();
+        if (closed) {
+          await created.close();
+          throw new Error(`${options.name} adapter: closed`);
+        }
+        inner = created;
+        if (error !== null) options.onRecovered?.();
+        error = null;
+        reported = null;
+        return created;
+      } catch (cause) {
+        error = new Error(`Vitest could not start: ${messageOf(cause)}`, { cause });
+        if (error.message !== reported && !closed) {
+          reported = error.message;
+          options.onFailure(error.message);
+        }
+        throw error;
+      } finally {
+        creating = null;
+      }
+    })();
+    return creating;
+  };
+  const adapter = async () => {
+    if (closed) throw new Error(`${options.name} adapter: closed`);
+    if (inner !== null) return inner;
+    if (creating !== null || retry || error === null) return attempt();
+    throw error;
+  };
+  return {
+    name: options.name,
+    adapterVersion: options.adapterVersion,
+    async open() {
+      try {
+        await adapter();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    retry() {
+      retry = true;
+    },
+    async invalidate(paths) {
+      if (inner !== null || closed) return (await adapter()).invalidate(paths);
+      retry = true;
+      const fresh = await adapter();
+      const projects = new Set((await fresh.environment()).map((e) => e.project));
+      return { recreatedProjects: [...projects].sort() };
+    },
+    affected: async (changedPaths) => (await adapter()).affected(changedPaths),
+    closure: async (testFile) => (await adapter()).closure(testFile),
+    enumerate: async (testFile) => (await adapter()).enumerate(testFile),
+    testFiles: async () => (await adapter()).testFiles(),
+    environment: async () => (await adapter()).environment(),
+    run: async (testFiles, runOptions) => (await adapter()).run(testFiles, runOptions),
+    async close() {
+      if (closed) return;
+      closed = true;
+      await creating?.catch(() => {
+      });
+      await inner?.close();
+    }
+  };
+}
+function messageOf(error) {
+  const text = error instanceof Error ? error.message : String(error);
+  return text.replace(ANSI_COLOUR, "").trim();
+}
+var ANSI_COLOUR;
+var init_runner = __esm({
+  "src/core/daemon/runner.ts"() {
+    "use strict";
+    ANSI_COLOUR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+  }
+});
+
+// src/cli/main.ts
+import { readFileSync as readFileSync7 } from "node:fs";
+
+// src/core/status/index.ts
+init_state();
+
+// src/core/status/format-status.ts
+init_state();
+function formatStatus(result, now) {
+  if (!result.available) return formatUnavailable(result);
+  const lines = [
+    `Revision: ${result.revision}`,
+    `Known failures: ${result.knownFailures.length}`,
+    ...result.knownFailures.flatMap((f) => [
+      `  FAIL  ${formatCheck(f.check)}`,
+      ...f.summary === "" ? [] : [`        ${f.summary}`],
+      `        ${[
+        ...f.location === null ? [] : [`at ${f.location.path}:${f.location.line}:${f.location.column}`],
+        `observed at revision ${f.observedAt}`,
+        f.validity
+      ].join(", ")}`
+    ]),
+    `Affected checks: ${affected(result)}`,
+    result.fullSuite.lastCompletedRevision === null ? "Last full suite: none recorded" : `Last full suite: completed at revision ${result.fullSuite.lastCompletedRevision}`,
+    result.fullSuite.atCurrentRevision ? "Current revision has completed a full-suite run" : "Current revision has not completed a full-suite run",
+    "",
+    worktreeLine(result),
+    daemonLine(result, now),
+    `Inherited: ${result.inherited.count} current ${plural(result.inherited.count, "result")}`,
+    ...result.inherited.sources.map(
+      (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`
+    ),
+    ...result.breakdown.testFilesWithoutChecks === 0 ? [] : [
+      `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`
+    ],
+    `Closure method: ${result.closureMethod}`,
+    `Store schema: ${result.storeSchemaVersion}`,
+    ...notes(result)
+  ];
+  return `${lines.join("\n")}
+`;
+}
+function notes(s) {
+  const daemon = s.daemonNotes.map((n) => {
+    const at = new Date(n.at).toISOString();
+    return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
+  });
+  const all = [...s.notes, ...daemon];
+  return all.length === 0 ? [] : ["Notes:", ...all.map((note) => `  ${note}`)];
+}
+function formatUnavailable(result) {
+  return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}
+`;
+}
+function affected(s) {
+  const { currentByOutcome, pendingByPhase } = s.breakdown;
+  const parts = [
+    `${currentByOutcome.pass} passed`,
+    `${pendingByPhase.running} running`,
+    `${pendingByPhase.queued} queued`
+  ];
+  const optional = [
+    [currentByOutcome.skip, "skipped"],
+    [s.counts.stale, "stale"],
+    [s.counts.unknown + currentByOutcome.unknown, "unknown"]
+  ];
+  for (const [count, label2] of optional) if (count > 0) parts.push(`${count} ${label2}`);
+  return parts.join(", ");
+}
+function worktreeLine(s) {
+  const dirty = s.dirty === null ? "dirty state unknown" : s.dirty ? "dirty" : "clean";
+  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirty})`;
+}
+function daemonLine(s, now) {
+  if (s.daemon.state === "alive") {
+    return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
+  }
+  if (s.daemon.since === null) return "Daemon: no daemon running";
+  return `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
+}
+function shortCommit(commit) {
+  return commit === null ? "no commit" : commit.slice(0, 7);
+}
+function plural(count, word) {
+  return count === 1 ? word : `${word}s`;
+}
+function age(ms) {
+  const seconds = Math.max(0, Math.round(ms / 1e3));
+  if (seconds < 120) return `${seconds} s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 120) return `${minutes} min`;
+  return `${Math.round(minutes / 60)} h`;
+}
+
+// src/core/status/format-why.ts
+init_state();
+var INDENT = "        ";
+function formatWhy(why2) {
+  if (!why2.available) return formatUnavailable(why2);
+  if (!why2.found) {
+    if (why2.candidates.length === 0) return `No check matches "${why2.query}" in this worktree.
+`;
+    return `${[
+      `"${why2.query}" matches ${why2.candidates.length} checks in this worktree:`,
+      ...why2.candidates.map((c) => `  ${formatCheck(c)}`)
+    ].join("\n")}
+`;
+  }
+  const lines = [
+    `Check: ${formatCheck(why2.check)}`,
+    `Worktree: ${why2.worktreeRoot}`,
+    `Revision: ${why2.revision ?? "none recorded"}`,
+    "",
+    ...knownState(why2, why2.knownState),
+    "",
+    ...history(why2.history),
+    "",
+    ...results(why2),
+    "",
+    `Last run log: ${why2.results[0]?.logDir ?? "none"}`
+  ];
+  return `${lines.join("\n")}
+`;
+}
+function knownState(why2, s) {
+  if (s === null) return ["Known state: none in this worktree"];
+  const head = [
+    upper(s.outcome),
+    s.pendingPhase === null ? s.validity : `${s.validity} (${s.pendingPhase})`,
+    ...s.observedAt === null ? [] : [`observed at revision ${s.observedAt}`],
+    ...s.commit === null ? [] : [`commit ${shortCommit(s.commit)}`]
+  ];
+  const lines = [`Known state: ${head.join(", ")}`];
+  if (s.origin?.kind === "inherited") {
+    const source = why2.worktreeRoots[s.origin.worktreeId] ?? `removed worktree ${s.origin.worktreeId}`;
+    lines.push(`  Origin: inherited from ${source} at ${shortCommit(s.origin.commit)}`);
+  }
+  if (s.summary !== null) lines.push(`  Summary: ${s.summary}`);
+  if (s.location !== null) {
+    lines.push(`  Location: ${s.location.path}:${s.location.line}:${s.location.column}`);
+  }
+  if (s.fingerprint !== null) lines.push(`  Fingerprint: ${s.fingerprint}`);
+  return lines;
+}
+function history(transitions) {
+  if (transitions.length === 0) return ["History: no transitions in this worktree"];
+  return [
+    `History (${transitions.length} ${plural(transitions.length, "transition")}, oldest first):`,
+    ...transitions.map(
+      (t) => `  revision ${t.revision}  ${new Date(t.at).toISOString()}  ${transitionText(t)}`
+    )
+  ];
+}
+function transitionText(t) {
+  if (t.kind === "first-seen-fail") return "first seen FAIL";
+  const change = `${t.from === null ? "NONE" : upper(t.from)} -> ${upper(t.to)}`;
+  return t.kind === "fail-changed" ? `${change}, failure changed` : change;
+}
+function results(why2) {
+  if (why2.results.length === 0) return ["Results: none stored"];
+  return [
+    `Results (${why2.results.length}, newest first):`,
+    ...why2.results.flatMap((entry2) => resultLines(why2, entry2))
+  ];
+}
+function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
+  const p = result.provenance;
+  const where2 = p.worktreeId === why2.worktreeId ? `${worktreeRoot2 ?? why2.worktreeRoot} (this worktree)` : worktreeRoot2 ?? `removed worktree ${p.worktreeId}`;
+  const lines = [
+    `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where2}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
+    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}`,
+    `${INDENT}log: ${logDir ?? "run record pruned"}`
+  ];
+  if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
+  for (const error of result.errors) {
+    const text = [error.stack ?? `${error.name}: ${error.message}`, error.diff].filter((part) => part !== null).join("\n");
+    for (const line of text.split("\n")) lines.push(`${INDENT}${line}`);
+  }
+  return lines;
+}
+function upper(outcome) {
+  return outcome.toUpperCase();
+}
 
 // src/core/status/open.ts
+init_store2();
+init_types();
+import { existsSync as existsSync3, realpathSync as realpathSync2 } from "node:fs";
+import { dirname as dirname2, join as join6, resolve as resolve3 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function findWorktreeRoot(path) {
   let dir = resolve3(path);
   if (existsSync3(dir)) dir = realpathSync2(dir);
   for (; ; ) {
-    if (existsSync3(join4(dir, ".git"))) return dir;
-    const parent = dirname(dir);
+    if (existsSync3(join6(dir, ".git"))) return dir;
+    const parent = dirname2(dir);
     if (parent === dir) return null;
     dir = parent;
   }
@@ -1775,43 +8352,51 @@ function isBusy(error) {
   return typeof code === "number" && [5, 6].includes(code & 255);
 }
 
+// src/core/status/snapshot.ts
+init_keys();
+init_state();
+init_store2();
+init_types();
+
 // src/core/status/git-head.ts
+init_fs();
+init_store2();
 import { readFileSync as readFileSync2, statSync } from "node:fs";
-import { join as join5, resolve as resolve4 } from "node:path";
+import { join as join7, resolve as resolve4 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = worktreeGitDir(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read(join5(gitDir, "HEAD"));
+  let value = read2(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read(join5(gitDir, ref)) ?? read(join5(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function worktreeGitDir(root) {
-  const dotGit = join5(root, ".git");
+  const dotGit = join7(root, ".git");
   try {
     if (statSync(dotGit).isDirectory()) return dotGit;
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  const line = /^gitdir:\s*(.+?)\s*$/m.exec(read(dotGit) ?? "");
+  const line = /^gitdir:\s*(.+?)\s*$/m.exec(read2(dotGit) ?? "");
   return line?.[1] === void 0 ? null : resolve4(root, line[1]);
 }
 function packed(commonDir, ref) {
-  for (const line of (read(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
-function read(path) {
+function read2(path) {
   try {
     return readFileSync2(path, "utf8").trim();
   } catch (error) {
@@ -1821,6 +8406,7 @@ function read(path) {
 }
 
 // src/core/status/notes.ts
+init_types();
 var MAX_NOTES = MAX_PERSISTED_NOTES;
 function readDaemonNotes(store, worktreeId) {
   const raw = store.meta.get(notesMetaKey(worktreeId));
@@ -1907,9 +8493,9 @@ function inheritedSources(store, states) {
   }
   const sources = [...groups.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
-  ).map(({ worktreeId, worktreeRoot, commit, count: count2 }) => ({
+  ).map(({ worktreeId, worktreeRoot: worktreeRoot2, commit, count: count2 }) => ({
     worktreeId,
-    worktreeRoot,
+    worktreeRoot: worktreeRoot2,
     commit,
     count: count2
   }));
@@ -1937,14 +8523,17 @@ function recoveryNote(raw) {
   try {
     const { at, movedTo } = JSON.parse(raw);
     const when = typeof at === "number" ? ` at ${new Date(at).toISOString()}` : "";
-    const where = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}; the baseline was lost${where}`;
+    const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
+    return `store was recovered from corruption${when}; the baseline was lost${where2}`;
   } catch {
     return `store was recovered from corruption; the baseline was lost (${raw})`;
   }
 }
 
 // src/core/status/why.ts
+init_state();
+init_store2();
+init_types();
 var WHY_RESULT_LIMIT = 20;
 var WHY_CANDIDATE_LIMIT = 20;
 function readWhy(cwd, query, options = {}) {
@@ -2006,15 +8595,942 @@ function report(store, root, check) {
   };
 }
 
+// src/core/daemon/desk.ts
+import { existsSync as existsSync4 } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
+
+// src/core/daemon/handlers.ts
+init_types();
+import { randomUUID } from "node:crypto";
+
+// src/core/daemon/protocol.ts
+init_types();
+var MAX_LINE_BYTES = 64 * 1024;
+function parseRequest(line) {
+  let value;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return "request is not valid JSON";
+  }
+  if (typeof value !== "object" || value === null) return "request is not a JSON object";
+  const request = value;
+  switch (request.type) {
+    case "ping":
+    case "nudge":
+    case "stop":
+      return { type: request.type };
+    case "run-all":
+      if (request.force !== void 0 && typeof request.force !== "boolean") {
+        return '"force" must be true or false';
+      }
+      return { type: "run-all", force: request.force === true };
+    case "run-all-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "run-all-status", requestId: request.requestId };
+    default:
+      return `unknown request type ${JSON.stringify(request.type)}`;
+  }
+}
+function errorResponse(error) {
+  return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
+}
+
+// src/core/daemon/handlers.ts
+var MAX_REQUESTS = 32;
+function createHandlers(context) {
+  const requests = /* @__PURE__ */ new Map();
+  const runAll = (requestId, state) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "run-all",
+    requestId,
+    checkpoint: state.checkpoint,
+    error: state.error
+  });
+  return (request) => {
+    switch (request.type) {
+      case "ping":
+        return {
+          schemaVersion: PAYLOAD_SCHEMA_VERSION,
+          ok: true,
+          type: "ping",
+          pid: process.pid,
+          worktreeId: context.worktreeId,
+          root: context.root,
+          squealVersion: context.squealVersion,
+          phase: context.phase(),
+          startedAt: context.startedAt
+        };
+      case "nudge":
+        context.onActivity();
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "nudge" };
+      case "run-all": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        const requestId = randomUUID();
+        const state = { checkpoint: null, error: null };
+        requests.set(requestId, state);
+        for (const old of requests.keys()) {
+          if (requests.size <= MAX_REQUESTS) break;
+          requests.delete(old);
+        }
+        context.requestFullSuite(request.force === true).then(
+          (checkpoint) => {
+            state.checkpoint = checkpoint;
+          },
+          (error) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          }
+        );
+        return runAll(requestId, state);
+      }
+      case "run-all-status": {
+        const state = requests.get(request.requestId);
+        if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+        return runAll(request.requestId, state);
+      }
+      case "stop":
+        context.onStop();
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
+    }
+  };
+}
+
+// src/core/daemon/server.ts
+import { chmodSync, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
+import { createServer } from "node:net";
+import { dirname as dirname3 } from "node:path";
+var IDLE_CONNECTION_MS = 2e3;
+async function createDaemonServer(socketPath, handle) {
+  mkdirSync2(dirname3(socketPath), { recursive: true, mode: 448 });
+  rmSync3(socketPath, { force: true });
+  const connections2 = /* @__PURE__ */ new Set();
+  const server = createServer((socket) => {
+    connections2.add(socket);
+    socket.on("close", () => connections2.delete(socket));
+    serve(socket, handle);
+  });
+  await new Promise((resolve10, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, () => {
+      server.off("error", reject);
+      resolve10();
+    });
+  });
+  chmodSync(socketPath, 384);
+  let closing = null;
+  return {
+    socketPath,
+    close() {
+      closing ??= new Promise((resolve10) => {
+        server.close(() => resolve10());
+        for (const socket of connections2) socket.destroy();
+      });
+      return closing;
+    }
+  };
+}
+function serve(socket, handle) {
+  let buffer = "";
+  socket.setEncoding("utf8");
+  socket.setTimeout(IDLE_CONNECTION_MS, () => socket.destroy());
+  socket.on("error", () => socket.destroy());
+  socket.on("data", (chunk) => {
+    buffer += chunk;
+    const end = buffer.indexOf("\n");
+    if (end < 0) {
+      if (buffer.length > MAX_LINE_BYTES) answer(socket, errorResponse("request too long"));
+      return;
+    }
+    const request = parseRequest(buffer.slice(0, end));
+    buffer = "";
+    if (typeof request === "string") {
+      answer(socket, errorResponse(request));
+      return;
+    }
+    let response;
+    try {
+      response = handle(request);
+    } catch (error) {
+      response = errorResponse(`daemon error: ${String(error)}`);
+    }
+    answer(socket, response);
+  });
+}
+function answer(socket, response) {
+  socket.removeAllListeners("data");
+  socket.end(`${JSON.stringify(response)}
+`);
+}
+
+// src/core/daemon/desk.ts
+function prepareFrontDesk() {
+  const script = fileURLToPath(new URL("./front-desk.js", import.meta.url));
+  if (!existsSync4(script)) {
+    return { open: (identity, events) => inThread(identity, events), discard: () => {
+    } };
+  }
+  const worker = new Worker(script);
+  const early = [];
+  const onError = (error) => early.push(error);
+  const onExit = (code) => early.push(new Error(`socket worker exited with code ${code}`));
+  worker.on("error", onError);
+  worker.on("exit", onExit);
+  return {
+    open: (identity, events) => {
+      worker.off("error", onError);
+      worker.off("exit", onExit);
+      if (early[0] !== void 0) return Promise.reject(early[0]);
+      return inWorker(worker, identity, events);
+    },
+    discard: () => void worker.terminate()
+  };
+}
+async function inWorker(worker, identity, events) {
+  const post = (message2) => worker.postMessage(message2);
+  let listening = false;
+  let closing = false;
+  let closed = null;
+  const listen = new Promise((resolve10, reject) => {
+    worker.on("message", (message2) => {
+      switch (message2.type) {
+        case "listening":
+          listening = true;
+          resolve10();
+          return;
+        case "failed":
+          reject(new Error(message2.error));
+          return;
+        case "activity":
+          events.onActivity();
+          return;
+        case "run-all":
+          events.requestFullSuite(message2.force).then(
+            (checkpoint) => post({ type: "run-all-result", id: message2.id, checkpoint, error: null }),
+            (error) => post({
+              type: "run-all-result",
+              id: message2.id,
+              checkpoint: null,
+              error: String(error)
+            })
+          );
+          return;
+        case "stop":
+          events.onStop();
+          return;
+        case "closed":
+          closed?.();
+          return;
+      }
+    });
+    const died = (error) => {
+      if (!listening) reject(error);
+      else if (!closing) events.onFailure(error);
+      closed?.();
+    };
+    worker.on("error", died);
+    worker.on("exit", (code) => died(new Error(`socket worker exited with code ${code}`)));
+    post({ type: "bind", identity });
+  });
+  try {
+    await listen;
+  } catch (error) {
+    closing = true;
+    await worker.terminate();
+    throw error;
+  }
+  return {
+    setPhase: (phase) => post({ type: "phase", phase }),
+    async close() {
+      if (closing) return;
+      closing = true;
+      await new Promise((resolve10) => {
+        closed = resolve10;
+        post({ type: "close" });
+      });
+      await worker.terminate();
+    }
+  };
+}
+async function inThread(identity, events) {
+  let phase = "starting";
+  const server = await createDaemonServer(
+    identity.socketPath,
+    createHandlers({
+      worktreeId: identity.worktreeId,
+      root: identity.root,
+      squealVersion: identity.squealVersion,
+      startedAt: identity.startedAt,
+      phase: () => phase,
+      requestFullSuite: events.requestFullSuite,
+      onActivity: events.onActivity,
+      onStop: events.onStop
+    })
+  );
+  return {
+    setPhase: (next) => {
+      phase = next;
+    },
+    close: () => server.close()
+  };
+}
+
+// src/core/daemon/lifecycle.ts
+import { existsSync as existsSync5 } from "node:fs";
+
+// src/core/delivery/index.ts
+init_state();
+
+// src/core/delivery/delivery.ts
+init_state();
+init_types();
+
+// src/core/delivery/delta.ts
+init_state();
+
+// src/core/delivery/delivery.ts
+function expireConsumers(store, now = Date.now()) {
+  return store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS));
+}
+
+// src/core/delivery/format.ts
+init_state();
+
+// src/core/daemon/lifecycle.ts
+function startTimers(context) {
+  const { store, worktreeId, now, timings } = context;
+  const idleMs = context.policy.daemon.idleExitMinutes * 6e4;
+  const checkMs = timings.checkMs ?? Math.min(5e3, Math.max(50, idleMs / 10));
+  const expireMs = timings.expireMs ?? 6e4;
+  const pruneMs = timings.pruneMs ?? 60 * 6e4;
+  let lastExpire = Number.NEGATIVE_INFINITY;
+  const attempt = (what, fn) => {
+    try {
+      fn();
+    } catch (error) {
+      context.log(`${what} failed: ${String(error)}`);
+    }
+  };
+  const check = () => {
+    if (!existsSync5(context.root)) {
+      context.shutdown("root-removed", `daemon stopped: worktree root ${context.root} was deleted`);
+      return;
+    }
+    if (context.linkedDir !== null && !existsSync5(context.linkedDir)) {
+      context.shutdown(
+        "worktree-removed",
+        `daemon stopped: worktree entry ${context.linkedDir} was removed`
+      );
+      return;
+    }
+    const at = now();
+    if (at - lastExpire >= expireMs) {
+      lastExpire = at;
+      attempt("consumer expiry", () => expireConsumers(store, at));
+    }
+    attempt("idle check", () => {
+      if (store.consumers.list(worktreeId).length > 0) context.active(at);
+      else if (at - context.lastActive() >= idleMs) {
+        context.shutdown(
+          "idle",
+          `daemon stopped: idle for ${duration(idleMs)} with no registered consumers`
+        );
+      }
+    });
+  };
+  const prune2 = () => attempt("prune", () => {
+    store.prune({
+      now: now(),
+      retentionDays: context.policy.store.retentionDays,
+      maxSizeMb: context.policy.store.maxSizeMb
+    });
+  });
+  const timers = [
+    setInterval(
+      () => attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now())),
+      context.heartbeatMs
+    ),
+    setInterval(check, checkMs),
+    setInterval(prune2, pruneMs)
+  ];
+  const first = setTimeout(prune2, timings.firstPruneMs ?? 6e4);
+  for (const timer of [...timers, first]) timer.unref();
+  return () => {
+    for (const timer of timers) clearInterval(timer);
+    clearTimeout(first);
+  };
+}
+function duration(ms) {
+  return ms < 6e4 ? `${Number((ms / 1e3).toFixed(1))} s` : `${Number((ms / 6e4).toFixed(1))} min`;
+}
+
+// src/core/daemon/notes.ts
+init_notes();
+init_store2();
+init_types();
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+function writeNote(store, worktreeId, note, log) {
+  try {
+    appendNote(store, worktreeId, note);
+  } catch (error) {
+    log(`could not persist a note (${note.text}): ${String(error)}`);
+  }
+}
+function noteInNewerStore(commonDir, worktreeId, note) {
+  let db;
+  try {
+    db = new DatabaseSync2(storePaths(commonDir).database);
+    db.exec("PRAGMA busy_timeout = 2000");
+    const columns = db.prepare("SELECT name FROM pragma_table_info('meta')").all();
+    const names = new Set(columns.map((c) => String(c.name)));
+    if (!names.has("key") || !names.has("value")) return false;
+    const key = notesMetaKey(worktreeId);
+    db.exec("BEGIN IMMEDIATE");
+    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key);
+    const notes2 = [...parseNotes(row?.value), note].slice(-MAX_PERSISTED_NOTES);
+    db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(
+      key,
+      JSON.stringify(notes2)
+    );
+    db.exec("COMMIT");
+    return true;
+  } catch {
+    return false;
+  } finally {
+    db?.close();
+  }
+}
+function parseNotes(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+// src/core/daemon/open.ts
+init_fs();
+init_store2();
+import { existsSync as existsSync6, realpathSync as realpathSync3 } from "node:fs";
+import { join as join8 } from "node:path";
+
+// src/core/daemon/lock.ts
+import { mkdirSync as mkdirSync3 } from "node:fs";
+import { dirname as dirname4 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+function acquireDaemonLock(path) {
+  mkdirSync3(dirname4(path), { recursive: true });
+  const db = new DatabaseSync3(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    if (isBusy2(error)) return null;
+    throw error;
+  }
+  let held = true;
+  return {
+    release() {
+      if (!held) return;
+      held = false;
+      try {
+        db.exec("ROLLBACK");
+      } finally {
+        db.close();
+      }
+    }
+  };
+}
+function isBusy2(error) {
+  const code = error?.errcode;
+  return typeof code === "number" && [5, 6].includes(code & 255);
+}
+
+// src/core/daemon/open.ts
+var DAEMON_BUSY_TIMEOUT_MS = 5e3;
+async function openDaemon(rootArgument, now) {
+  let root;
+  let commonDir;
+  try {
+    root = realpathSync3(rootArgument);
+    if (!existsSync6(join8(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    const out = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+    commonDir = realpathSync3(out.trim());
+  } catch (error) {
+    return exit(
+      "not-a-worktree",
+      1,
+      `${rootArgument} is not a git worktree root: ${message(error)}`
+    );
+  }
+  const worktreeId = worktreeIdFor(root);
+  let store;
+  try {
+    const opened = openStore(commonDir, {
+      checkIntegrity: true,
+      busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS,
+      now
+    });
+    if (isStoreOpenFailure(opened)) {
+      if (opened.reason === "newer-schema") {
+        const text = `daemon exited: store schema ${opened.found} is newer than this Squeal (supports ${opened.supported})`;
+        noteInNewerStore(commonDir, worktreeId, { at: now(), revision: null, text });
+        return exit("store-newer", 1, text);
+      }
+      return exit("store-unusable", 1, `store unusable: ${JSON.stringify(opened)}`);
+    }
+    store = opened;
+  } catch (error) {
+    return exit("store-unusable", 1, `store unusable: ${message(error)}`);
+  }
+  let lock;
+  try {
+    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
+  } catch (error) {
+    store.close();
+    return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
+  }
+  if (lock === null) {
+    store.close();
+    return exit("lost-lock", 0, `another daemon serves ${root}`);
+  }
+  return { root, commonDir, worktreeId, store, lock };
+}
+function exit(reason, code, text) {
+  return { reason, code, message: text };
+}
+function message(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+// src/core/daemon/paths.ts
+init_fs();
+import { lstatSync as lstatSync2, readFileSync as readFileSync3 } from "node:fs";
+import { tmpdir } from "node:os";
+import { isAbsolute as isAbsolute3, join as join9, resolve as resolve6 } from "node:path";
+function runtimeDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : tmpdir();
+}
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name = `squeal-${worktreeId}.sock`;
+  const path = join9(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join9("/tmp", name);
+}
+function linkedWorktreeDir(root) {
+  const dotGit = join9(root, ".git");
+  try {
+    if (!lstatSync2(dotGit).isFile()) return null;
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync3(dotGit, "utf8"));
+  return match?.[1] ? resolve6(root, match[1]) : null;
+}
+
+// src/core/daemon/policy.ts
+init_fs();
+init_types();
+import { readFileSync as readFileSync4 } from "node:fs";
+import { join as join10 } from "node:path";
+var POLICY_FILE = "squeal.config.json";
+var PolicyError = class extends Error {
+  constructor(path, problems) {
+    super(`${path}: ${problems.join("; ")}`);
+    this.path = path;
+    this.problems = problems;
+  }
+  path;
+  problems;
+  name = "PolicyError";
+};
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null ? null : `${expected}, or null`;
+};
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean },
+  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+  inputs: strings,
+  env: { allowlist: strings },
+  runner: {
+    tierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger),
+    maxConcurrentRuns: positiveInteger
+  },
+  daemon: { idleExitMinutes: aboveZero },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+};
+function loadPolicy(root) {
+  const path = join10(root, POLICY_FILE);
+  let text;
+  try {
+    text = readFileSync4(path, "utf8");
+  } catch (error) {
+    if (isMissing(error)) return DEFAULT_POLICY;
+    throw error;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new PolicyError(path, [`not valid JSON (${error.message})`]);
+  }
+  if (!isObject(parsed)) throw new PolicyError(path, ["must be a JSON object"]);
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  if (problems.length > 0) throw new PolicyError(path, problems);
+  return merged;
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isObject(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
+  }
+  return result;
+}
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+// src/core/daemon/version.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+function squealVersion() {
+  const manifest = new URL("../../../package.json", import.meta.url);
+  const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
+  if (typeof parsed === "object" && parsed !== null && "version" in parsed) {
+    return String(parsed.version);
+  }
+  throw new Error(`squeal: no version in ${manifest.pathname}`);
+}
+
+// src/core/daemon/daemon.ts
+async function startDaemon(options) {
+  const now = options.now ?? Date.now;
+  const desk = prepareFrontDesk();
+  const opened = await openDaemon(options.root, now);
+  if ("reason" in opened) {
+    desk.discard();
+    return opened;
+  }
+  return new Daemon(opened, options).start(desk);
+}
+var Daemon = class {
+  constructor(opened, options) {
+    this.opened = opened;
+    this.options = options;
+    this.#log = options.log ?? (() => {
+    });
+    this.#now = options.now ?? Date.now;
+    this.#socketPath = socketPathFor(opened.worktreeId, options.env);
+    this.#startedAt = this.#now();
+    this.#lastActive = this.#startedAt;
+  }
+  opened;
+  options;
+  #log;
+  #now;
+  #socketPath;
+  #startedAt;
+  #version = squealVersion();
+  #phase = "starting";
+  #desk = null;
+  #runner = null;
+  #loop = null;
+  #starting = Promise.resolve();
+  #stopTimers = () => {
+  };
+  #lastActive;
+  #exit = null;
+  #resolveExit = () => {
+  };
+  #exited = new Promise((resolve10) => {
+    this.#resolveExit = resolve10;
+  });
+  async start(desk) {
+    const { root, worktreeId } = this.opened;
+    try {
+      this.#desk = await this.#openDesk(desk);
+      this.#register();
+    } catch (error) {
+      return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
+    }
+    let policy;
+    try {
+      policy = loadPolicy(root);
+    } catch (error) {
+      this.#shutdown("bad-policy", 1, `daemon exited: ${message(error)}`);
+      return this.#exited;
+    }
+    this.#stopTimers = startTimers({
+      ...this.opened,
+      policy,
+      now: this.#now,
+      linkedDir: linkedWorktreeDir(root),
+      timings: this.options.timings ?? {},
+      heartbeatMs: this.#heartbeatMs(),
+      lastActive: () => this.#lastActive,
+      active: (at) => {
+        this.#lastActive = at;
+      },
+      note: (text) => this.#note(text),
+      log: this.#log,
+      shutdown: (reason, text) => void this.#shutdown(reason, 0, text)
+    });
+    this.#starting = this.#run(policy);
+    const ready = this.#starting.catch(() => {
+    });
+    return {
+      root,
+      worktreeId,
+      socketPath: this.#socketPath,
+      ready,
+      exited: this.#exited,
+      stop: (reason) => this.#shutdown(reason, 0, `daemon stopped: ${reason}`)
+    };
+  }
+  #heartbeatMs() {
+    return this.options.timings?.heartbeatMs ?? 5e3;
+  }
+  /** Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the socket and a heartbeat. */
+  #register() {
+    const { store, worktreeId: id, root, commonDir } = this.opened;
+    store.transaction(() => {
+      const existing = store.worktrees.get(id);
+      store.worktrees.upsert({
+        id,
+        root,
+        commonDir,
+        isMain: linkedWorktreeDir(root) === null,
+        registeredAt: existing?.registeredAt ?? this.#startedAt,
+        daemon: null
+      });
+      store.worktrees.setDaemon(id, {
+        socketPath: this.#socketPath,
+        startedAt: this.#startedAt,
+        heartbeatAt: this.#now(),
+        heartbeatIntervalMs: this.#heartbeatMs(),
+        squealVersion: this.#version
+      });
+    });
+  }
+  /** Runner, sink and loop. The heavy modules load here, after the socket is up. */
+  async #run(policy) {
+    const { root, worktreeId, store, commonDir } = this.opened;
+    try {
+      const [{ createDaemonLoop: createDaemonLoop2 }, { createStateSink: createStateSink2, describeFailure: describeFailure2 }, vitest, runnerModule] = await Promise.all([
+        Promise.resolve().then(() => (init_daemon_loop(), daemon_loop_exports)),
+        Promise.resolve().then(() => (init_state(), state_exports)),
+        Promise.resolve().then(() => (init_vitest(), vitest_exports)),
+        Promise.resolve().then(() => (init_runner(), runner_exports))
+      ]);
+      const { storePaths: storePaths2 } = await Promise.resolve().then(() => (init_store2(), store_exports));
+      const runner = runnerModule.createRecoveringRunner({
+        name: "vitest",
+        adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+        create: () => vitest.createVitestAdapter({ root }),
+        onFailure: (text) => this.#note(`${text}; every check of this worktree is unknown until the config loads`),
+        onRecovered: () => this.#note("Vitest started after the config changed")
+      });
+      this.#runner = runner;
+      await runner.open();
+      if (this.#phase === "stopping") return;
+      const loop = createDaemonLoop2({
+        root,
+        worktreeId,
+        store,
+        runner,
+        sink: createStateSink2(store, { now: this.#now }),
+        policy,
+        squealVersion: this.#version,
+        runsDir: storePaths2(commonDir).runsDir,
+        describeFailure: describeFailure2,
+        now: this.#now,
+        onError: (error) => this.#note(`daemon error: ${error.message}`),
+        onDropped: (reason) => this.#note(`watcher dropped events (${reason}); a full reconciliation follows`)
+      });
+      this.#loop = loop;
+      await loop.start();
+      if (this.#phase === "starting") this.#setPhase("ready");
+      this.#log(`serving ${root} on ${this.#socketPath}`);
+    } catch (error) {
+      void this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
+      throw error;
+    }
+  }
+  #openDesk(desk) {
+    return desk.open(
+      {
+        socketPath: this.#socketPath,
+        worktreeId: this.opened.worktreeId,
+        root: this.opened.root,
+        squealVersion: this.#version,
+        startedAt: this.#startedAt
+      },
+      {
+        requestFullSuite: (force) => this.#requestFullSuite(force),
+        onActivity: () => {
+          this.#lastActive = this.#now();
+        },
+        // After the answer is written.
+        onStop: () => setImmediate(
+          () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop")
+        ),
+        onFailure: (error) => void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`)
+      }
+    );
+  }
+  #setPhase(phase) {
+    this.#phase = phase;
+    this.#desk?.setPhase(phase);
+  }
+  async #requestFullSuite(force) {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") {
+      throw new Error("the daemon is not running a scheduler");
+    }
+    this.#runner?.retry();
+    return this.#loop.scheduler.requestFullSuite({ force });
+  }
+  #note(text) {
+    this.#log(text);
+    const revision = this.#loop?.scheduler.status().revision ?? null;
+    writeNote(
+      this.opened.store,
+      this.opened.worktreeId,
+      { at: this.#now(), revision, text },
+      () => {
+      }
+    );
+  }
+  /**
+   * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
+   * the tier in flight, abandons the open checkpoint), `runner.close()`,
+   * `setDaemon(null)`, `store.close()`. Then the socket, which closing
+   * unlinks, and last the lock, so a successor never sees this daemon's
+   * socket go away after binding its own.
+   */
+  #shutdown(reason, code, text) {
+    this.#exit ??= (async () => {
+      this.#setPhase("stopping");
+      this.#stopTimers();
+      this.#note(text);
+      await this.#starting.catch(() => {
+      });
+      const { store, worktreeId, lock } = this.opened;
+      await this.#step("loop.close", () => this.#loop?.close());
+      await this.#step("runner.close", () => this.#runner?.close());
+      await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
+      await this.#step("store.close", () => store.close());
+      await this.#step("socket close", () => this.#desk?.close());
+      await this.#step("lock release", () => lock.release());
+      const result = exit(reason, code, text);
+      this.#resolveExit(result);
+      return result;
+    })();
+    return this.#exit;
+  }
+  async #step(name, fn) {
+    try {
+      await fn();
+    } catch (error) {
+      this.#log(`shutdown: ${name} failed: ${message(error)}`);
+    }
+  }
+};
+
+// src/core/daemon/signals.ts
+var OWNED = /* @__PURE__ */ new Set(["SIGINT", "SIGTERM", "SIGHUP"]);
+var METHODS2 = ["on", "once", "addListener", "prependListener", "prependOnceListener"];
+function ownSignals(onSignal) {
+  const originals = METHODS2.map((name) => [name, process[name]]);
+  for (const signal of OWNED) process.on(signal, onSignal);
+  for (const [name, original] of originals) {
+    const guarded = function(event, ...rest) {
+      if (OWNED.has(event)) return process;
+      return Reflect.apply(original, this, [event, ...rest]);
+    };
+    process[name] = guarded;
+  }
+  return () => {
+    for (const [name, original] of originals) process[name] = original;
+    for (const signal of OWNED) process.off(signal, onSignal);
+  };
+}
+
+// src/cli/daemon.ts
+var USAGE = "usage: squeal daemon <root>\n";
+async function daemonCommand(args, io) {
+  const [root, ...extra] = args;
+  if (root === void 0 || root.startsWith("-") || extra.length > 0) {
+    io.stderr(USAGE);
+    return 2;
+  }
+  const log = (line) => io.stderr(`squeal daemon: ${line}
+`);
+  let signalled = false;
+  let stop = () => {
+    signalled = true;
+  };
+  const restore2 = ownSignals(() => stop());
+  try {
+    const daemon = await startDaemon({ root, log });
+    if ("reason" in daemon) {
+      log(daemon.message);
+      return daemon.code;
+    }
+    stop = () => void daemon.stop("signal");
+    if (signalled) stop();
+    const exit2 = await daemon.exited;
+    log(exit2.message);
+    setTimeout(() => process.exit(exit2.code), 2e3).unref();
+    return exit2.code;
+  } finally {
+    restore2();
+  }
+}
+
 // src/cli/init.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync3, writeFileSync } from "node:fs";
-import { join as join6 } from "node:path";
+import { existsSync as existsSync9, mkdirSync as mkdirSync5, readFileSync as readFileSync6, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join20 } from "node:path";
+init_types();
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 var MARKETPLACE_SOURCE = {
   source: { source: "github", repo: "hearsay-tools/squeal", path: "plugins/claude-code" }
 };
-var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 function init(args, io) {
   if (args.length > 0) {
     io.stderr("squeal init: takes no arguments\n\nUsage: squeal init\n");
@@ -2027,7 +9543,7 @@ function init(args, io) {
 `);
     return 1;
   }
-  const settingsPath = join6(root, ".claude", "settings.json");
+  const settingsPath = join20(root, ".claude", "settings.json");
   const settings = readSettings(settingsPath);
   if (typeof settings === "string") {
     io.stderr(`squeal init: ${settings}; nothing changed
@@ -2040,18 +9556,18 @@ function init(args, io) {
     ["extraKnownMarketplaces", marketplaces],
     ["enabledPlugins", plugins]
   ]) {
-    if (!isObject(value)) {
+    if (!isObject2(value)) {
       io.stderr(`squeal init: ${key} in ${settingsPath} is not an object; nothing changed
 `);
       return 1;
     }
   }
   const lines = [];
-  const configPath = join6(root, "squeal.config.json");
-  if (existsSync4(configPath)) {
+  const configPath = join20(root, "squeal.config.json");
+  if (existsSync9(configPath)) {
     lines.push("kept squeal.config.json");
   } else {
-    writeFileSync(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}
+    writeFileSync2(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}
 `);
     lines.push("wrote squeal.config.json with every default policy key");
   }
@@ -2073,8 +9589,8 @@ function init(args, io) {
   const text = `${JSON.stringify(next, null, settings.indent)}
 `;
   if (text !== settings.text) {
-    mkdirSync2(join6(root, ".claude"), { recursive: true });
-    writeFileSync(settingsPath, text);
+    mkdirSync5(join20(root, ".claude"), { recursive: true });
+    writeFileSync2(settingsPath, text);
   }
   io.stdout(
     [
@@ -2086,16 +9602,319 @@ function init(args, io) {
   return 0;
 }
 function readSettings(path) {
-  if (!existsSync4(path)) return { value: {}, text: null, indent: 2 };
-  const text = readFileSync3(path, "utf8");
+  if (!existsSync9(path)) return { value: {}, text: null, indent: 2 };
+  const text = readFileSync6(path, "utf8");
   let value;
   try {
     value = JSON.parse(text);
   } catch {
     value = null;
   }
-  if (!isObject(value)) return `${path} is not a JSON object`;
+  if (!isObject2(value)) return `${path} is not a JSON object`;
   return { value, text, indent: /^([ \t]+)"/m.exec(text)?.[1] ?? 2 };
+}
+
+// src/cli/run.ts
+init_store2();
+
+// src/core/daemon/client.ts
+import { createConnection } from "node:net";
+function requestDaemon(socketPath, request, timeoutMs) {
+  return new Promise((resolve10, reject) => {
+    const socket = createConnection(socketPath);
+    let buffer = "";
+    let settled = false;
+    const settle = (error, response) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve10(response);
+    };
+    const timer = setTimeout(
+      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      timeoutMs
+    );
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
+`));
+    socket.on("data", (chunk) => {
+      buffer += chunk;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
+      try {
+        settle(null, JSON.parse(buffer.slice(0, end)));
+      } catch {
+        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
+      }
+    });
+    socket.on(
+      "error",
+      (error) => settle(failure(error.code ?? "EIO", error.message))
+    );
+    socket.on(
+      "close",
+      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
+    );
+  });
+}
+function failure(code, message2) {
+  return Object.assign(new Error(message2), { code });
+}
+
+// src/cli/daemon-access.ts
+init_store2();
+var CLI_SOCKET_TIMEOUT_MS = 2e3;
+function worktreeRoot(path, io) {
+  const from = path ?? io.cwd ?? process.cwd();
+  const root = findWorktreeRoot(from);
+  if (root === null) io.stderr(`squeal: ${from} is not inside a git worktree
+`);
+  return root;
+}
+function daemonSocket(root) {
+  const worktreeId = worktreeIdFor(root);
+  const commonDir = resolveCommonDir(root);
+  if (commonDir !== null) {
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: 1e3 });
+    if (!isStoreOpenFailure(store)) {
+      try {
+        const recorded2 = store.worktrees.get(worktreeId)?.daemon?.socketPath;
+        if (recorded2 !== void 0) return recorded2;
+      } catch {
+      } finally {
+        store.close();
+      }
+    }
+  }
+  return socketPathFor(worktreeId);
+}
+async function askDaemon(socketPath, request) {
+  try {
+    return await requestDaemon(socketPath, request, CLI_SOCKET_TIMEOUT_MS);
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ECONNREFUSED") return null;
+    throw error;
+  }
+}
+function delay(ms) {
+  return new Promise((resolve10) => setTimeout(resolve10, ms));
+}
+
+// src/cli/run.ts
+var USAGE2 = "usage: squeal run --all [--force] [--wait]\n";
+var RECORD_WAIT_MS = 1e4;
+var POLL_MS = 100;
+async function runCommand(args, io) {
+  const flags = new Set(args);
+  const unknown = args.filter((a) => !["--all", "--force", "--wait"].includes(a));
+  if (!flags.has("--all") || unknown.length > 0) {
+    io.stderr(
+      `squeal run: ${unknown.length > 0 ? `unknown argument "${unknown[0]}"` : "--all is required"}
+${USAGE2}`
+    );
+    return 2;
+  }
+  const root = worktreeRoot(void 0, io);
+  if (root === null) return 1;
+  const socketPath = daemonSocket(root);
+  const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
+  if (response === null) {
+    io.stderr(`squeal: no daemon running for ${root}; start one with squeal start
+`);
+    return 1;
+  }
+  if (!response.ok || response.type !== "run-all") {
+    io.stderr(`squeal: run --all failed: ${response.ok ? "unexpected answer" : response.error}
+`);
+    return 1;
+  }
+  const wait = flags.has("--wait");
+  const checkpoint = await recorded(socketPath, response, wait ? null : RECORD_WAIT_MS, io);
+  if (checkpoint === null) return 1;
+  io.stdout(
+    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files
+`
+  );
+  if (!wait) return 0;
+  const end = await ended(root, socketPath, checkpoint.id);
+  if (end === null) {
+    io.stderr(`squeal: the daemon stopped before checkpoint ${checkpoint.id} ended
+`);
+    return 1;
+  }
+  io.stdout(`Checkpoint ${checkpoint.id} ${end}
+
+`);
+  const now = io.now ?? Date.now;
+  io.stdout(formatStatus(readStatus(root, { now }), now()));
+  return end === "completed" ? 0 : 1;
+}
+async function recorded(socketPath, first, timeoutMs, io) {
+  const deadline = timeoutMs === null ? Number.POSITIVE_INFINITY : Date.now() + timeoutMs;
+  let state = first;
+  for (; ; ) {
+    if (state.checkpoint !== null) return state.checkpoint;
+    if (state.error !== null) {
+      io.stderr(`squeal: run --all failed: ${state.error}
+`);
+      return null;
+    }
+    if (Date.now() > deadline) {
+      io.stdout(
+        `Run requested (request ${first.requestId}); the daemon records the checkpoint once its current work allows
+`
+      );
+      return null;
+    }
+    await delay(POLL_MS);
+    const next = await askDaemon(socketPath, {
+      type: "run-all-status",
+      requestId: first.requestId
+    });
+    if (next === null || !next.ok || next.type !== "run-all") {
+      io.stderr("squeal: the daemon stopped before recording the checkpoint\n");
+      return null;
+    }
+    state = next;
+  }
+}
+async function ended(root, socketPath, id) {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return null;
+  for (let polls = 0; ; polls++) {
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: 1e3 });
+    if (isStoreOpenFailure(store)) return null;
+    let end;
+    try {
+      end = store.checkpoints.get(id)?.end ?? null;
+    } finally {
+      store.close();
+    }
+    if (end !== null) return end;
+    if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) return null;
+    await delay(250);
+  }
+}
+
+// src/core/daemon/ensure.ts
+init_paths2();
+init_types();
+import { spawn as spawn2 } from "node:child_process";
+import { existsSync as existsSync10 } from "node:fs";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+async function probeDaemon(root, timeoutMs) {
+  let socketPath;
+  try {
+    socketPath = socketPathFor(worktreeIdFor(root));
+  } catch (error) {
+    return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
+  }
+  try {
+    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    if (response.ok && response.type === "ping") return { state: "alive", ping: response };
+    return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ECONNREFUSED") return { state: "absent", code };
+    return { state: "unresponsive", reason: error.message };
+  }
+}
+async function ensureDaemon(root, options) {
+  const probe = await probeDaemon(root, options?.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS);
+  if (probe.state === "alive") return "alive";
+  if (probe.state === "unresponsive") return "unavailable";
+  const cli = daemonCliEntry();
+  if (!existsSync10(cli)) return "unavailable";
+  try {
+    const child = spawn2(process.execPath, [cli, "daemon", root], {
+      cwd: root,
+      detached: true,
+      stdio: "ignore"
+    });
+    child.on("error", () => {
+    });
+    child.unref();
+    return "spawned";
+  } catch {
+    return "unavailable";
+  }
+}
+function daemonCliEntry(env = process.env) {
+  const override = env.SQUEAL_CLI;
+  if (override !== void 0 && override !== "") return override;
+  return fileURLToPath2(new URL("../../cli/index.js", import.meta.url));
+}
+
+// src/cli/start.ts
+var SPAWN_WAIT_MS = 1e4;
+async function startCommand(args, io) {
+  if (args.length > 1 || args[0]?.startsWith("-")) {
+    io.stderr("usage: squeal start [root]\n");
+    return 2;
+  }
+  const root = worktreeRoot(args[0], io);
+  if (root === null) return 1;
+  const result = await ensureDaemon(root);
+  if (result === "unavailable") {
+    io.stderr(`squeal: no daemon could be reached or started for ${root}
+`);
+    return 1;
+  }
+  if (result === "spawned") {
+    const deadline = Date.now() + SPAWN_WAIT_MS;
+    while ((await probeDaemon(root, 100)).state !== "alive") {
+      if (Date.now() > deadline) {
+        io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer
+`);
+        return 1;
+      }
+      await delay(50);
+    }
+  }
+  io.stdout(`Squeal daemon ${result} for ${root}
+
+`);
+  const now = io.now ?? Date.now;
+  io.stdout(formatStatus(readStatus(root, { now }), now()));
+  return 0;
+}
+
+// src/cli/stop.ts
+var STOP_WAIT_MS = 6e4;
+async function stopCommand(args, io) {
+  if (args.length > 1 || args[0]?.startsWith("-")) {
+    io.stderr("usage: squeal stop [root]\n");
+    return 2;
+  }
+  const root = worktreeRoot(args[0], io);
+  if (root === null) return 1;
+  const socketPath = daemonSocket(root);
+  const response = await askDaemon(socketPath, { type: "stop" });
+  if (response === null) {
+    io.stdout(`No daemon running for ${root}
+`);
+    return 0;
+  }
+  if (!response.ok) {
+    io.stderr(`squeal: the daemon refused to stop: ${response.error}
+`);
+    return 1;
+  }
+  const deadline = Date.now() + STOP_WAIT_MS;
+  while (await askDaemon(socketPath, { type: "ping" }).catch(() => "busy") !== null) {
+    if (Date.now() > deadline) {
+      io.stdout(`Stop requested; the daemon for ${root} is finishing the tier in flight
+`);
+      return 0;
+    }
+    await delay(50);
+  }
+  io.stdout(`Squeal daemon stopped for ${root}
+`);
+  return 0;
 }
 
 // src/cli/main.ts
@@ -2104,17 +9923,22 @@ var HELP = `squeal: continuous validation for coding agents. Push transitions, p
 Usage:
   squeal status [--json]        Current validation state of this worktree
   squeal why <check> [--json]   History and provenance of one check
+  squeal start [root]           Start this worktree's daemon if none runs, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon
+  squeal stop [root]            Stop this worktree's daemon
+  squeal daemon <root>          Run the daemon in the foreground (hooks start it)
   squeal --version              Print the version
   squeal --help                 Print this help
 
 A check is named as in status output: "path > describe > test", or any
 unique part of that name. Status reads the store directly; no daemon needed.
 
-Commands from spec 001 still to come: run, daemon, start, init.
+Commands from spec 001 still to come: init.
 `;
 function readVersion() {
   const manifest = new URL("../../package.json", import.meta.url);
-  const parsed = JSON.parse(readFileSync4(manifest, "utf8"));
+  const parsed = JSON.parse(readFileSync7(manifest, "utf8"));
   if (typeof parsed === "object" && parsed !== null && "version" in parsed) {
     return String(parsed.version);
   }
@@ -2134,6 +9958,10 @@ function main(argv, io) {
   if (first === "status") return status(rest, io);
   if (first === "why") return why(rest, io);
   if (first === "init") return init(rest, io);
+  if (first === "daemon") return daemonCommand(rest, io);
+  if (first === "start") return startCommand(rest, io);
+  if (first === "run") return runCommand(rest, io);
+  if (first === "stop") return stopCommand(rest, io);
   io.stderr(`squeal: unknown command "${first}"
 
 ${HELP}`);
@@ -2183,7 +10011,7 @@ function json2(value) {
 }
 
 // src/cli/index.ts
-process.exitCode = main(process.argv.slice(2), {
+process.exitCode = await main(process.argv.slice(2), {
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
   cwd: process.cwd()

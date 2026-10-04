@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
-import { init } from "./init.js";
 import { daemonCommand } from "./daemon.js";
+import { init } from "./init.js";
 import { runCommand } from "./run.js";
 import { startCommand } from "./start.js";
 import { stopCommand } from "./stop.js";
