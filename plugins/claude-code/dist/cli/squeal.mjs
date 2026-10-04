@@ -2813,14 +2813,22 @@ function rekeyContent(context, ledger, revision) {
   const { keys } = context;
   const changes = revision.changes;
   const touched = [];
+  const policy = reloadPolicy(context, changes);
+  touched.push(...policy.changes.map((c) => c.testFile));
   const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
   touched.push(...rekeyed);
   const declared = keys.updateDeclaredInputs(changes);
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
-  const environment = changes.some((c) => keys.isEnvironmentInput(c.path));
-  if (environment) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
+  const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
+  if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
   ledger.settle(touched, new Set(changes.map((c) => c.path)));
-  return { rekeyed, environment };
+  return { rekeyed, environment: inputs || policy.environment };
+}
+function reloadPolicy(context, changes) {
+  const policy = context.reloadPolicy(changes);
+  if (policy === null) return { changes: [], environment: false };
+  context.policy = policy;
+  return context.keys.setPolicy(policy);
 }
 async function applyRevision(context, ledger, revision, content) {
   const { keys, runner } = context;
@@ -3667,6 +3675,9 @@ var init_lockfiles = __esm({
 
 // src/core/scheduler/keying.ts
 import { createHash as createHash6 } from "node:crypto";
+function sameList(a, b) {
+  return a.length === b.length && a.every((value, i) => value === b[i]);
+}
 var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
 var init_keying = __esm({
   "src/core/scheduler/keying.ts"() {
@@ -3681,15 +3692,16 @@ var init_keying = __esm({
     WorktreeKeys = class {
       constructor(options) {
         this.options = options;
+        this.#policy = options.policy;
+        this.#isDeclared = createInputMatcher(options.policy.inputs);
         this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
         this.#lockfiles = new Lockfiles(options.root);
         this.index = new KeyIndex((path) => this.cache.hashOf(path));
-        this.isDeclaredInput = createInputMatcher(options.policy.inputs);
       }
       options;
       cache;
       index;
-      isDeclaredInput;
+      isDeclaredInput = (path) => this.#isDeclared(path);
       #runnerClosures = /* @__PURE__ */ new Map();
       #environments = /* @__PURE__ */ new Map();
       #environmentFiles = /* @__PURE__ */ new Set();
@@ -3699,6 +3711,8 @@ var init_keying = __esm({
       /** Lockfile paths already checked against `.gitignore`. */
       #ignoreChecked = /* @__PURE__ */ new Set();
       #declared = [];
+      #policy;
+      #isDeclared;
       /**
        * Brings the stat cache up to date at daemon start. Cached paths are
        * reconciled, so what changed while no daemon ran becomes a revision.
@@ -3726,7 +3740,7 @@ var init_keying = __esm({
         const unlisted = [...this.cache.paths()].filter((path) => !known2.has(path));
         for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
         await this.#seed(listed.filter((path) => this.cache.hashOf(path) === void 0));
-        this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
+        this.#declared = selectDeclaredInputs(this.#policy.inputs, this.#knownFiles());
         return revision;
       }
       /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
@@ -3740,7 +3754,8 @@ var init_keying = __esm({
        * lockfile is looked up from the project's root (review N8).
        */
       async setEnvironments(environments) {
-        const { policy, squealVersion: squealVersion2, env } = this.options;
+        const { squealVersion: squealVersion2, env } = this.options;
+        const policy = this.#policy;
         this.#environments.clear();
         this.#environmentFiles.clear();
         for (const environment of environments) {
@@ -3779,12 +3794,41 @@ var init_keying = __esm({
             inputs.set(project, [...inputs.get(project) ?? [], [change.path, change.newHash]]);
           }
         }
-        return [...inputs].flatMap(([project, changed]) => {
-          const previous = this.index.environment(project);
-          if (previous === void 0) return [];
-          const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
-          return this.index.setEnvironment(project, createHash6("sha256").update(encoded).digest("hex"));
-        });
+        return [...inputs].flatMap(([project, changed]) => this.#provisional(project, changed));
+      }
+      /** A provisional environment hash for `project` from its current one and what changed. */
+      #provisional(project, changed) {
+        const previous = this.index.environment(project);
+        if (previous === void 0) return [];
+        const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
+        return this.index.setEnvironment(project, createHash6("sha256").update(encoded).digest("hex"));
+      }
+      /**
+       * Applies a reloaded policy (spec 001 D11, review S3). New `inputs`:
+       * declared inputs are selected again and every closure re-assembled with
+       * them. A new `env.allowlist`: every environment hash moves to a
+       * provisional one in this call, so no key keeps a result of the old
+       * environment; `environment: true` asks the caller to read the
+       * environments again, which sets the real hash with the new allowlist.
+       */
+      setPolicy(policy) {
+        const previous = this.#policy;
+        this.#policy = policy;
+        const changes = [];
+        if (!sameList(previous.inputs, policy.inputs)) {
+          this.#isDeclared = createInputMatcher(policy.inputs);
+          this.#declared = selectDeclaredInputs(policy.inputs, this.#knownFiles());
+          changes.push(
+            ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner))
+          );
+        }
+        const environment = !sameList(previous.env.allowlist, policy.env.allowlist);
+        if (environment) {
+          for (const project of this.#environments.keys()) {
+            changes.push(...this.#provisional(project, [["env.allowlist", policy.env.allowlist]]));
+          }
+        }
+        return { changes, environment };
       }
       /**
        * True when a change to `path` can change an environment hash: a runner
@@ -3826,7 +3870,7 @@ var init_keying = __esm({
           (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path)
         );
         if (!structural) return null;
-        this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
+        this.#declared = selectDeclaredInputs(this.#policy.inputs, this.#knownFiles());
         return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
       }
       /** Hashes the closure paths the stat cache did not track, then re-keys with them. */
@@ -4569,6 +4613,7 @@ var init_scheduler2 = __esm({
             runner: options.runner,
             sink: options.sink,
             policy: options.policy,
+            reloadPolicy: options.reloadPolicy ?? (() => null),
             keys,
             hasher,
             runsDir: options.runsDir,
@@ -5512,9 +5557,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname12 = sp.dirname(file);
+        const dirname13 = sp.dirname(file);
         const basename5 = sp.basename(file);
-        const parent = this.fsw._getWatchedDir(dirname12);
+        const parent = this.fsw._getWatchedDir(dirname13);
         let prevStats = stats;
         if (parent.has(basename5))
           return;
@@ -5541,7 +5586,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname12, basename5);
+              this.fsw._remove(dirname13, basename5);
             }
           } else if (parent.has(basename5)) {
             const at = newStats.atimeMs;
@@ -6512,7 +6557,7 @@ var init_chokidar = __esm({
 });
 
 // src/core/watcher/exclusions.ts
-import { dirname as dirname8 } from "node:path";
+import { dirname as dirname9 } from "node:path";
 var Exclusions;
 var init_exclusions = __esm({
   "src/core/watcher/exclusions.ts"() {
@@ -6532,7 +6577,7 @@ var init_exclusions = __esm({
         let current = path;
         while (current.length > root.length) {
           if (this.excluded.has(current)) return true;
-          const parent = dirname8(current);
+          const parent = dirname9(current);
           if (parent === current) break;
           current = parent;
         }
@@ -6597,7 +6642,7 @@ var init_chokidar_backend = __esm({
 });
 
 // src/core/watcher/parcel-backend.ts
-import { dirname as dirname9 } from "node:path";
+import { dirname as dirname10 } from "node:path";
 async function loadOwnParcel() {
   try {
     return (await import("@parcel/watcher")).default;
@@ -6640,7 +6685,7 @@ async function subscribeAll(parcel, spec, listener) {
   const hidden = /* @__PURE__ */ new Map();
   for (const file of spec.extraFiles) {
     if (!withoutExtras.excludes(file)) continue;
-    const parent = dirname9(file);
+    const parent = dirname10(file);
     hidden.set(parent, (hidden.get(parent) ?? /* @__PURE__ */ new Set()).add(file));
   }
   for (const [parent, files] of hidden) {
@@ -6983,9 +7028,9 @@ async function buildWatchSpec(root, extraFiles = [], status2) {
   };
 }
 function sameWatchSpec(a, b) {
-  return a.root === b.root && sameList(a.excluded, b.excluded) && sameList(a.extraFiles, b.extraFiles);
+  return a.root === b.root && sameList2(a.excluded, b.excluded) && sameList2(a.extraFiles, b.extraFiles);
 }
-function sameList(a, b) {
+function sameList2(a, b) {
   return a.length === b.length && a.every((value, i) => value === b[i]);
 }
 var init_watch_spec = __esm({
@@ -7228,7 +7273,7 @@ var init_daemon_loop = __esm({
 
 // src/runners/vitest/graph.ts
 import { existsSync as existsSync7 } from "node:fs";
-import { dirname as dirname10, extname as extname2, join as join19, resolve as resolve9 } from "node:path";
+import { dirname as dirname11, extname as extname2, join as join19, resolve as resolve9 } from "node:path";
 async function importClosure(project, entries) {
   const environment = project.vite.environments.ssr;
   if (!environment) {
@@ -7266,7 +7311,7 @@ function depToPath(dep, importer, root) {
   if (dep.startsWith("/@fs/")) return dep.slice("/@fs".length);
   if (dep.startsWith("/@") || dep.startsWith("\0") || dep.includes(":")) return null;
   if (dep.startsWith("/")) return join19(root, dep.split("?")[0] ?? dep);
-  if (dep.startsWith("./") || dep.startsWith("../")) return resolve9(dirname10(importer), dep);
+  if (dep.startsWith("./") || dep.startsWith("../")) return resolve9(dirname11(importer), dep);
   return null;
 }
 function resolutionCandidates(target, extensions) {
@@ -7298,7 +7343,7 @@ var init_graph = __esm({
 });
 
 // src/runners/vitest/project.ts
-import { basename as basename4, dirname as dirname11, join as join20 } from "node:path";
+import { basename as basename4, dirname as dirname12, join as join20 } from "node:path";
 function configFiles(vitest) {
   const files = /* @__PURE__ */ new Set();
   for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
@@ -7334,7 +7379,7 @@ function snapshotPath(project, testFile) {
   if (resolveSnapshotPath) {
     return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
   }
-  return join20(dirname11(testFile), "__snapshots__", `${basename4(testFile)}.snap`);
+  return join20(dirname12(testFile), "__snapshots__", `${basename4(testFile)}.snap`);
 }
 function resolveExtensions(project) {
   return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
@@ -7642,7 +7687,7 @@ var init_reporter = __esm({
 });
 
 // src/runners/vitest/run.ts
-import { mkdirSync as mkdirSync4, writeFileSync } from "node:fs";
+import { mkdirSync as mkdirSync5, writeFileSync } from "node:fs";
 import { join as join21 } from "node:path";
 async function execute(vitest, specs, timeoutMs, collector) {
   const run = vitest.runTestSpecifications([...specs]).then(
@@ -7669,7 +7714,7 @@ async function execute(vitest, specs, timeoutMs, collector) {
 function cancel(vitest, collector) {
   vitest.cancelCurrentRun(CANCEL_REASON).catch((error) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
 }
-function abandon(vitest, collector) {
+function abandon2(vitest, collector) {
   vitest.close().catch(
     (error) => collector.note(`close() of an abandoned instance failed: ${describeError(error)}`)
   );
@@ -7728,7 +7773,7 @@ function owner(error, collector) {
   return path === null ? null : collector.paths.toRelative(path);
 }
 function writeRunLog(options, collector, report2) {
-  mkdirSync4(options.logDir, { recursive: true });
+  mkdirSync5(options.logDir, { recursive: true });
   const header = [
     `squeal vitest run ${options.runId}`,
     `end: ${report2.end}${report2.failure ? ` (${report2.failure})` : ""}, ${report2.durationMs} ms`,
@@ -7943,7 +7988,7 @@ var init_adapter = __esm({
             const execution = await execute(vitest, specs, options.timeoutMs, collector);
             if (execution.hung) {
               this.#vitest = null;
-              abandon(vitest, collector);
+              abandon2(vitest, collector);
             }
             const report2 = buildReport(collector, execution, Math.round(performance.now() - started));
             writeRunLog(options, collector, report2);
@@ -8671,6 +8716,9 @@ function report(store, root, check) {
   };
 }
 
+// src/core/daemon/daemon.ts
+init_types();
+
 // src/core/daemon/desk.ts
 import { existsSync as existsSync4 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
@@ -9163,6 +9211,13 @@ async function openDaemon(rootArgument, now) {
     );
   }
   const worktreeId = worktreeIdFor(root);
+  let lock;
+  try {
+    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
+  } catch (error) {
+    return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
+  }
+  if (lock === null) return exit("lost-lock", 0, `another daemon serves ${root}`);
   let store;
   try {
     const opened = openStore(commonDir, {
@@ -9171,6 +9226,7 @@ async function openDaemon(rootArgument, now) {
       now
     });
     if (isStoreOpenFailure(opened)) {
+      lock.release();
       if (opened.reason === "newer-schema") {
         const text = `daemon exited: store schema ${opened.found} is newer than this Squeal (supports ${opened.supported})`;
         noteInNewerStore(commonDir, worktreeId, { at: now(), revision: null, text });
@@ -9180,20 +9236,22 @@ async function openDaemon(rootArgument, now) {
     }
     store = opened;
   } catch (error) {
+    lock.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
   }
-  let lock;
-  try {
-    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
-  } catch (error) {
-    store.close();
-    return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
-  }
-  if (lock === null) {
-    store.close();
-    return exit("lost-lock", 0, `another daemon serves ${root}`);
-  }
   return { root, commonDir, worktreeId, store, lock };
+}
+function abandon(opened, now, log, text) {
+  const report2 = log ?? (() => {
+  });
+  writeNote(opened.store, opened.worktreeId, { at: now(), revision: null, text }, report2);
+  try {
+    opened.store.close();
+  } catch (error) {
+    report2(`shutdown: store.close failed: ${message(error)}`);
+  }
+  opened.lock.release();
+  return exit("start-failed", 1, text);
 }
 function exit(reason2, code, text) {
   return { reason: reason2, code, message: text };
@@ -9204,18 +9262,47 @@ function message(error) {
 
 // src/core/daemon/paths.ts
 init_fs();
-import { lstatSync as lstatSync2, readFileSync as readFileSync4 } from "node:fs";
+import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync4, readFileSync as readFileSync4 } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute as isAbsolute3, join as join10, resolve as resolve6 } from "node:path";
+import { dirname as dirname6, isAbsolute as isAbsolute3, join as join10, resolve as resolve6 } from "node:path";
 function runtimeDir(env = process.env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : tmpdir();
+  return xdgRuntimeDir(env) ?? join10(tempDir(env), userDirName());
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
   const path = join10(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join10("/tmp", name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join10("/tmp", userDirName(), name);
+}
+function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
+  const dir = dirname6(socketPath);
+  if (dir === xdgRuntimeDir(env)) {
+    mkdirSync4(dir, { recursive: true, mode: 448 });
+    return;
+  }
+  mkdirSync4(dirname6(dir), { recursive: true });
+  try {
+    mkdirSync4(dir, { mode: 448 });
+    chmodSync2(dir, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid);
+}
+function checkPrivateDir(dir, uid) {
+  const stat5 = lstatSync2(dir);
+  if (!stat5.isDirectory()) {
+    throw new Error(`socket directory ${dir} is not a directory; refusing to bind in it`);
+  }
+  if (stat5.uid !== uid) {
+    throw new Error(
+      `socket directory ${dir} is owned by uid ${stat5.uid}, not ${uid}; refusing to bind in it`
+    );
+  }
+  if ((stat5.mode & 63) !== 0) {
+    const mode = (stat5.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`socket directory ${dir} has mode ${mode}, not 700; refusing to bind in it`);
+  }
 }
 function linkedWorktreeDir(root) {
   const dotGit = join10(root, ".git");
@@ -9228,6 +9315,22 @@ function linkedWorktreeDir(root) {
   const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync4(dotGit, "utf8"));
   return match?.[1] ? resolve6(root, match[1]) : null;
 }
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
+}
+function tempDir(env) {
+  if (process.platform === "win32") return tmpdir();
+  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
+  const dir = isAbsolute3(given) ? given : "/tmp";
+  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
+}
+function userDirName() {
+  return `squeal-${currentUid()}`;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
 
 // src/core/daemon/policy.ts
 init_fs();
@@ -9235,16 +9338,6 @@ init_types();
 import { readFileSync as readFileSync5 } from "node:fs";
 import { join as join11 } from "node:path";
 var POLICY_FILE = "squeal.config.json";
-var PolicyError = class extends Error {
-  constructor(path, problems) {
-    super(`${path}: ${problems.join("; ")}`);
-    this.path = path;
-    this.problems = problems;
-  }
-  path;
-  problems;
-  name = "PolicyError";
-};
 var boolean = (v) => typeof v === "boolean" ? null : "true or false";
 var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
@@ -9270,25 +9363,30 @@ var SHAPE = {
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
 function loadPolicy(root) {
-  const path = join11(root, POLICY_FILE);
   let text;
   try {
-    text = readFileSync5(path, "utf8");
+    text = readFileSync5(join11(root, POLICY_FILE), "utf8");
   } catch (error) {
-    if (isMissing(error)) return DEFAULT_POLICY;
-    throw error;
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
   }
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    throw new PolicyError(path, [`not valid JSON (${error.message})`]);
+    return defaultsBecause(`not valid JSON (${error.message})`);
   }
-  if (!isObject(parsed)) throw new PolicyError(path, ["must be a JSON object"]);
+  if (!isObject(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
+  }
   const problems = [];
   const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  if (problems.length > 0) throw new PolicyError(path, problems);
-  return merged;
+  return { policy: merged, problems };
+}
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
 }
 function merge(shape, defaults, given, prefix, problems) {
   const result = { ...defaults };
@@ -9316,6 +9414,21 @@ function isObject(value) {
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
+function describeProblems(problems) {
+  return `${problems.join("; ")}; the defaults apply in their place`;
+}
+function lastPolicyNote(store, worktreeId) {
+  let notes2;
+  try {
+    notes2 = JSON.parse(store.meta.get(notesMetaKey(worktreeId)) ?? "[]");
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(notes2)) return null;
+  const texts = notes2.map((note) => note.text);
+  const last = texts.findLast((text) => typeof text === "string" && text.startsWith(POLICY_FILE));
+  return typeof last === "string" ? last : null;
+}
 
 // src/core/daemon/daemon.ts
 async function startDaemon(options) {
@@ -9326,7 +9439,14 @@ async function startDaemon(options) {
     desk.discard();
     return opened;
   }
-  return new Daemon(opened, options).start(desk);
+  let daemon;
+  try {
+    daemon = new Daemon(opened, options);
+  } catch (error) {
+    desk.discard();
+    return abandon(opened, now, options.log, `daemon exited: could not start: ${message(error)}`);
+  }
+  return daemon.start(desk);
 }
 var Daemon = class {
   constructor(opened, options) {
@@ -9347,6 +9467,7 @@ var Daemon = class {
   #startedAt;
   #version = squealVersion();
   #phase = "starting";
+  #policy = DEFAULT_POLICY;
   #desk = null;
   #runner = null;
   #loop = null;
@@ -9363,34 +9484,26 @@ var Daemon = class {
   async start(desk) {
     const { root, worktreeId } = this.opened;
     try {
+      prepareSocketDir(this.#socketPath, this.options.env);
+    } catch (error) {
+      desk.discard();
+      return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
+    }
+    try {
       this.#desk = await this.#openDesk(desk);
       this.#register();
     } catch (error) {
       return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
     }
-    let policy;
     try {
-      policy = loadPolicy(root);
+      const { policy, problems } = loadPolicy(root);
+      this.#policy = policy;
+      this.#notePolicyProblems(problems);
+      this.#startTimers();
     } catch (error) {
-      this.#shutdown("bad-policy", 1, `daemon exited: ${message(error)}`);
-      return this.#exited;
+      return this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
     }
-    this.#stopTimers = startTimers({
-      ...this.opened,
-      policy,
-      now: this.#now,
-      linkedDir: linkedWorktreeDir(root),
-      timings: this.options.timings ?? {},
-      heartbeatMs: this.#heartbeatMs(),
-      lastActive: () => this.#lastActive,
-      active: (at) => {
-        this.#lastActive = at;
-      },
-      note: (text) => this.#note(text),
-      log: this.#log,
-      shutdown: (reason2, text) => void this.#shutdown(reason2, 0, text)
-    });
-    this.#starting = this.#run(policy);
+    this.#starting = this.#run();
     const ready = this.#starting.catch(() => {
     });
     return {
@@ -9401,6 +9514,53 @@ var Daemon = class {
       exited: this.#exited,
       stop: (reason2) => this.#shutdown(reason2, 0, `daemon stopped: ${reason2}`)
     };
+  }
+  /** (Re)starts heartbeat, lifecycle checks and pruning with the current policy. */
+  #startTimers() {
+    this.#stopTimers();
+    this.#stopTimers = startTimers({
+      ...this.opened,
+      policy: this.#policy,
+      now: this.#now,
+      linkedDir: linkedWorktreeDir(this.opened.root),
+      timings: this.options.timings ?? {},
+      heartbeatMs: this.#heartbeatMs(),
+      lastActive: () => this.#lastActive,
+      active: (at) => {
+        this.#lastActive = at;
+      },
+      note: (text) => this.#note(text),
+      log: this.#log,
+      shutdown: (reason2, text) => void this.#shutdown(reason2, 0, text)
+    });
+  }
+  /**
+   * Spec 001 D11: a bad policy is a state; "the daemon persists one note and
+   * keeps running". One note per distinct problem set: a restart that finds
+   * the same problems as the last policy note adds none.
+   */
+  #notePolicyProblems(problems) {
+    if (problems.length === 0) return;
+    const text = `${POLICY_FILE}: ${describeProblems(problems)}`;
+    if (lastPolicyNote(this.opened.store, this.opened.worktreeId) === text) {
+      this.#log(text);
+      return;
+    }
+    this.#note(text);
+  }
+  /**
+   * `SchedulerOptions.reloadPolicy`: spec 001 D11, "a revision that changes
+   * the file reloads it and re-keys what `inputs` and `env.allowlist`
+   * touch". The scheduler re-keys; the daemon restarts its timers for
+   * `daemon.*` and `store.*` and notes the reload.
+   */
+  #reloadPolicy() {
+    const { policy, problems } = loadPolicy(this.opened.root);
+    this.#policy = policy;
+    if (this.#phase !== "stopping") this.#startTimers();
+    const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
+    this.#note(`${POLICY_FILE} changed; policy reloaded${found}`);
+    return policy;
   }
   #heartbeatMs() {
     return this.options.timings?.heartbeatMs ?? 5e3;
@@ -9428,7 +9588,7 @@ var Daemon = class {
     });
   }
   /** Runner, sink and loop. The heavy modules load here, after the socket is up. */
-  async #run(policy) {
+  async #run() {
     const { root, worktreeId, store, commonDir } = this.opened;
     try {
       const [{ createDaemonLoop: createDaemonLoop2 }, { createStateSink: createStateSink2, describeFailure: describeFailure2 }, vitest, runnerModule] = await Promise.all([
@@ -9454,7 +9614,8 @@ var Daemon = class {
         store,
         runner,
         sink: createStateSink2(store, { now: this.#now }),
-        policy,
+        policy: this.#policy,
+        reloadPolicy: (changes) => changes.some((change) => change.path === POLICY_FILE) ? this.#reloadPolicy() : null,
         squealVersion: this.#version,
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
@@ -9464,6 +9625,7 @@ var Daemon = class {
       });
       this.#loop = loop;
       await loop.start();
+      this.#lastActive = this.#now();
       if (this.#phase === "starting") this.#setPhase("ready");
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
@@ -9604,7 +9766,7 @@ async function daemonCommand(args, io) {
 }
 
 // src/cli/init.ts
-import { existsSync as existsSync9, mkdirSync as mkdirSync5, readFileSync as readFileSync6, rmSync as rmSync4, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync6, readFileSync as readFileSync6, rmSync as rmSync4, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join23 } from "node:path";
 init_types();
 var MARKETPLACE_NAME = "squeal";
@@ -9671,7 +9833,7 @@ function init(args, io) {
   } : restorer(settingsPath, settings.text);
   try {
     if (text !== settings.text) {
-      mkdirSync5(join23(root, ".claude"), { recursive: true });
+      mkdirSync6(join23(root, ".claude"), { recursive: true });
       writeFileSync2(settingsPath, text);
     }
   } catch (error) {

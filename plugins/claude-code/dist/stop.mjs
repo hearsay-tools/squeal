@@ -2180,16 +2180,31 @@ function failure(code, message) {
 
 // src/core/daemon/paths.ts
 import { tmpdir } from "node:os";
-import { isAbsolute as isAbsolute2, join as join6, resolve as resolve5 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join6, resolve as resolve5 } from "node:path";
 function runtimeDir(env = process.env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : tmpdir();
+  return xdgRuntimeDir(env) ?? join6(tempDir(env), userDirName());
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
   const path = join6(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join6("/tmp", name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join6("/tmp", userDirName(), name);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : null;
+}
+function tempDir(env) {
+  if (process.platform === "win32") return tmpdir();
+  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
+  const dir = isAbsolute2(given) ? given : "/tmp";
+  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
+}
+function userDirName() {
+  return `squeal-${currentUid()}`;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
 }
 
 // src/core/daemon/ensure.ts
@@ -2338,36 +2353,88 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/policy.ts
+// src/core/daemon/policy.ts
 import { readFileSync as readFileSync3 } from "node:fs";
 import { join as join7 } from "node:path";
-function readHookPolicy(root) {
+var POLICY_FILE = "squeal.config.json";
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null ? null : `${expected}, or null`;
+};
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean },
+  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+  inputs: strings,
+  env: { allowlist: strings },
+  runner: {
+    tierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger),
+    maxConcurrentRuns: positiveInteger
+  },
+  daemon: { idleExitMinutes: aboveZero },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+};
+function loadPolicy(root) {
   let text;
   try {
-    text = readFileSync3(join7(root, "squeal.config.json"), "utf8");
+    text = readFileSync3(join7(root, POLICY_FILE), "utf8");
   } catch (error) {
-    if (isMissing(error)) return DEFAULT_POLICY;
-    throw error;
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
   }
-  let file;
+  let parsed;
   try {
-    file = JSON.parse(text);
-  } catch {
-    return DEFAULT_POLICY;
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return defaultsBecause(`not valid JSON (${error.message})`);
   }
-  return merge(DEFAULT_POLICY, file);
+  if (!isObject(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
+  }
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged, problems };
 }
-var isPlain = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-function merge(defaults, file) {
-  if (!isPlain(defaults) || !isPlain(file)) return defaults;
-  const out = { ...defaults };
-  for (const [key, value] of Object.entries(defaults)) {
-    const given = file[key];
-    if (given === void 0) continue;
-    if (isPlain(value)) out[key] = merge(value, given);
-    else if (value === null || typeof given === typeof value) out[key] = given;
+function readPolicy(root) {
+  return loadPolicy(root).policy;
+}
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isObject(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
   }
-  return out;
+  return result;
+}
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 // src/harness/claude-code/text.ts
@@ -2465,7 +2532,7 @@ function stopBusyTimeoutMs(waitMs) {
   return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
 }
 var stop = (input, location2, deps) => {
-  const policy = readHookPolicy(location2.root).stop;
+  const policy = readPolicy(location2.root).stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext(
     input,
