@@ -61,7 +61,9 @@ if (mode === "writer") {
   let regressions = 0;
   let partialTransactions = 0;
   const deadline = Date.now() + 120_000;
-  while (!existsSync(stopFile) && Date.now() < deadline) {
+  // Tell the test we are open and looping, so writers start only once readers run alongside them.
+  console.log("ready");
+  do {
     const now = counter();
     if (now < last) regressions++;
     last = now;
@@ -71,7 +73,7 @@ if (mode === "writer") {
       if (seen.length !== 0 && seen.length !== 50) partialTransactions++;
     }
     reads++;
-  }
+  } while (!existsSync(stopFile) && Date.now() < deadline);
   console.log(JSON.stringify({ mode, id, reads, regressions, partialTransactions, last }));
 } else if (mode === "crasher") {
   const [perTx = "50"] = rest;

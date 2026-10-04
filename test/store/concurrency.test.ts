@@ -24,6 +24,9 @@ describe("store under concurrent processes (spec 001 D8, goal 7)", () => {
     const readers = Array.from({ length: READERS }, (_, i) =>
       spawnWorker(["reader", commonDir, String(i)]),
     );
+    // On a slow runner a reader can still be starting when the writers finish; wait until every
+    // reader is open and looping so the reads below really overlap the writes.
+    await Promise.all(readers.map((reader) => reader.waitFor("ready")));
     const writers = Array.from({ length: WRITERS }, (_, i) =>
       spawnWorker(["writer", commonDir, String(i), String(TRANSACTIONS), String(ROWS_PER_TX)]),
     );

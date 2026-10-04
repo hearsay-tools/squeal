@@ -54,10 +54,11 @@ export function spawnWorker(args: readonly string[]): Worker {
   };
 }
 
-/** Parses the single JSON line a worker prints, failing with its stderr otherwise. */
+/** Parses the last line a worker prints as JSON, failing with its stderr otherwise. */
 export function report<T>(finished: Finished): T {
   if (finished.code !== 0) {
     throw new Error(`worker exited ${finished.code ?? finished.signal}: ${finished.stderr}`);
   }
-  return JSON.parse(finished.stdout.trim()) as T;
+  const lines = finished.stdout.trim().split("\n");
+  return JSON.parse(lines[lines.length - 1] ?? "") as T;
 }
