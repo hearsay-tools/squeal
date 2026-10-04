@@ -118,6 +118,13 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     expect(f.attempts()).toBe(2);
   });
 
+  it("strips colour codes from the error, since notes are plain text", async () => {
+    const f = factory(["\u001b[31m[PARSE_ERROR] \u001b[0mUnexpected token\n"]);
+    const { adapter, failures } = runner(f);
+    await adapter.open();
+    expect(failures).toEqual(["Vitest could not start: [PARSE_ERROR] Unexpected token"]);
+  });
+
   it("reports a changed error, not the same one twice", async () => {
     const f = factory(["broken", "broken", "still broken"]);
     const { adapter, failures } = runner(f);

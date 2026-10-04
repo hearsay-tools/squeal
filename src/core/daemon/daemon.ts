@@ -280,7 +280,7 @@ class Daemon {
       await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
-      lock.release();
+      await this.#step("lock release", () => lock.release());
       const result = exit(reason, code, text);
       this.#resolveExit(result);
       return result;
