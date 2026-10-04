@@ -1,9 +1,19 @@
-import { writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import {
   type BuiltCli,
   buildCli,
+  childEnv,
   createFixtureRepo,
   type FixtureRepo,
   readNotes,
@@ -101,5 +111,43 @@ describe("squeal daemon: a bad policy is a state (spec 001 D11, review S3)", SLO
       "keys moved by the declared input",
     );
     expect(spawned.child.exitCode).toBeNull();
+  });
+});
+
+describe("squeal daemon: socket directory without XDG_RUNTIME_DIR (review S8)", SLOW, () => {
+  const uid = process.getuid?.() ?? 0;
+
+  /** The fixture's environment without a runtime dir, with a short private TMPDIR. */
+  function withoutRuntimeDir(repo: FixtureRepo) {
+    const tmp = realpathSync(mkdtempSync("/tmp/sq-"));
+    cleanups.push(() => rmSync(tmp, { recursive: true, force: true }));
+    const env: NodeJS.ProcessEnv = { ...childEnv(repo.runtimeDir), TMPDIR: tmp };
+    delete env.XDG_RUNTIME_DIR;
+    const socketPath = socketPathFor(repo.worktreeId, { TMPDIR: tmp });
+    return { tmp, env, dir: join(tmp, `squeal-${uid}`), repo: { ...repo, env, socketPath } };
+  }
+
+  it("binds in <tmpdir>/squeal-<uid>, created with mode 0700", async () => {
+    const { dir, repo } = withoutRuntimeDir(fixture());
+    expect(repo.socketPath).toBe(join(dir, `squeal-${repo.worktreeId}.sock`));
+    const spawned = daemon(repo);
+    await waitReady(repo, spawned);
+    expect(statSync(dir).mode & 0o777).toBe(0o700);
+    const record = withStore(repo, (store) => store.worktrees.get(repo.worktreeId));
+    expect(record?.daemon?.socketPath).toBe(repo.socketPath);
+  });
+
+  it("refuses a directory others can enter, with a note, and exits 1", async () => {
+    const { dir, repo } = withoutRuntimeDir(fixture());
+    mkdirSync(dir);
+    chmodSync(dir, 0o755);
+    const spawned = daemon(repo);
+    expect(await spawned.exited).toEqual({ code: 1, signal: null });
+    const reason = `could not start serving: socket directory ${dir} has mode 755, not 700; refusing to bind in it`;
+    expect(spawned.stderr()).toContain(reason);
+    expect(readNotes(repo).at(-1)).toBe(reason);
+    expect(
+      withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon ?? null),
+    ).toBeNull();
   });
 });

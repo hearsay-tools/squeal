@@ -1,17 +1,19 @@
-import { lstatSync, readFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { isMissing } from "../fs/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 
 /**
  * Directory of daemon sockets: `XDG_RUNTIME_DIR` when it is set to an
- * absolute path, else the OS temp dir. Spec 001 D1: sockets live "never under
- * the worktree, because socket paths are limited to 104 bytes on macOS".
+ * absolute path, else `<tmpdir>/squeal-<uid>`. Spec 001 D1: sockets live
+ * "never under the worktree, because socket paths are limited to 104 bytes
+ * on macOS". Review S8: a fixed name in a shared, sticky temp dir lets
+ * another local user bind it first, so the fallback is a directory of this
+ * user's own (`prepareSocketDir`).
  */
 export function runtimeDir(env: NodeJS.ProcessEnv = process.env): AbsolutePath {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? xdg : tmpdir();
+  return xdgRuntimeDir(env) ?? join(tempDir(env), userDirName());
 }
 
 /** macOS `sun_path` holds 104 bytes including the terminating NUL (research, daemon lifecycle). */
@@ -20,8 +22,8 @@ export const MAX_SOCKET_PATH_BYTES = 103;
 /**
  * Spec 001 D1: "`<runtime dir>/squeal-<worktree-hash>.sock`". When a long
  * runtime dir would push the path past `MAX_SOCKET_PATH_BYTES`, binding
- * fails with `EINVAL`, so the socket goes to `/tmp` instead. Daemon and
- * hooks derive the same path from the same environment.
+ * fails with `EINVAL`, so the socket goes to `/tmp/squeal-<uid>` instead.
+ * Daemon and hooks derive the same path from the same environment.
  */
 export function socketPathFor(
   worktreeId: WorktreeId,
@@ -29,7 +31,56 @@ export function socketPathFor(
 ): AbsolutePath {
   const name = `squeal-${worktreeId}.sock`;
   const path = join(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join("/tmp", name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES
+    ? path
+    : join("/tmp", userDirName(), name);
+}
+
+/**
+ * Makes the directory of `socketPath` ready for the daemon to bind in, or
+ * throws saying why it must not. Review S8: outside `XDG_RUNTIME_DIR` the
+ * directory is created with mode 0700, and an existing one must be a real
+ * directory owned by `uid` that no one else can enter; anything else may
+ * belong to another user, who could then answer for this daemon. An
+ * `XDG_RUNTIME_DIR` is private to its user by the XDG specification and is
+ * used as it is.
+ */
+export function prepareSocketDir(
+  socketPath: AbsolutePath,
+  env: NodeJS.ProcessEnv = process.env,
+  uid: number = currentUid(),
+): void {
+  const dir = dirname(socketPath);
+  if (dir === xdgRuntimeDir(env)) {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    return;
+  }
+  mkdirSync(dirname(dir), { recursive: true });
+  try {
+    mkdirSync(dir, { mode: 0o700 });
+    // The umask may have taken bits off; the mode must be exactly 0700.
+    chmodSync(dir, 0o700);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid);
+}
+
+/** Throws unless `dir` is a directory, not a symlink, owned by `uid`, with no group or other permissions. */
+export function checkPrivateDir(dir: AbsolutePath, uid: number): void {
+  const stat = lstatSync(dir);
+  if (!stat.isDirectory()) {
+    throw new Error(`socket directory ${dir} is not a directory; refusing to bind in it`);
+  }
+  if (stat.uid !== uid) {
+    throw new Error(
+      `socket directory ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to bind in it`,
+    );
+  }
+  if ((stat.mode & 0o077) !== 0) {
+    const mode = (stat.mode & 0o777).toString(8).padStart(3, "0");
+    throw new Error(`socket directory ${dir} has mode ${mode}, not 700; refusing to bind in it`);
+  }
 }
 
 /**
@@ -48,4 +99,26 @@ export function linkedWorktreeDir(root: AbsolutePath): AbsolutePath | null {
   }
   const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
   return match?.[1] ? resolve(root, match[1]) : null;
+}
+
+function xdgRuntimeDir(env: NodeJS.ProcessEnv): AbsolutePath | null {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? xdg : null;
+}
+
+/** `os.tmpdir()` read from `env`, so hooks and tests given an environment agree with the daemon. */
+function tempDir(env: NodeJS.ProcessEnv): AbsolutePath {
+  if (process.platform === "win32") return tmpdir();
+  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
+  const dir = isAbsolute(given) ? given : "/tmp";
+  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
+}
+
+function userDirName(): string {
+  return `squeal-${currentUid()}`;
+}
+
+/** The real uid; `process.getuid` is missing only on Windows, where no other user shares the temp dir. */
+function currentUid(): number {
+  return process.getuid?.() ?? 0;
 }

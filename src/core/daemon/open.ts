@@ -26,10 +26,12 @@ export interface OpenedDaemon {
 export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
 
 /**
- * Daemon start up to the singleton lock, in the order of the wave 2 review
- * inputs for 001-30: realpath of the root; the common dir from git (D1);
- * the worktree id; the store with `integrity_check` (D12), exiting with a
- * note on a newer schema (D8); the exclusive lock (D10), losers exit.
+ * Daemon start up to the open store: realpath of the root; the common dir
+ * from git (D1); the worktree id; the exclusive lock (D10), losers exit;
+ * then the store with `integrity_check` (D12), exiting with a note on a
+ * newer schema (D8). Spec 001 D10 as amended after the wave 3 review: the
+ * daemon takes the lock "before opening the store, so losers never run the
+ * integrity check".
  */
 export async function openDaemon(
   rootArgument: string,
@@ -51,6 +53,16 @@ export async function openDaemon(
   }
   const worktreeId = worktreeIdFor(root);
 
+  // Before the store: a loser never runs `integrity_check` (review S8). The
+  // lock file needs only the store directory.
+  let lock: DaemonLock | null;
+  try {
+    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
+  } catch (error) {
+    return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
+  }
+  if (lock === null) return exit("lost-lock", 0, `another daemon serves ${root}`);
+
   let store: Store;
   try {
     const opened = openStore(commonDir, {
@@ -59,6 +71,7 @@ export async function openDaemon(
       now,
     });
     if (isStoreOpenFailure(opened)) {
+      lock.release();
       if (opened.reason === "newer-schema") {
         const text = `daemon exited: store schema ${opened.found} is newer than this Squeal (supports ${opened.supported})`;
         noteInNewerStore(commonDir, worktreeId, { at: now(), revision: null, text });
@@ -68,19 +81,8 @@ export async function openDaemon(
     }
     store = opened;
   } catch (error) {
+    lock.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
-  }
-
-  let lock: DaemonLock | null;
-  try {
-    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
-  } catch (error) {
-    store.close();
-    return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
-  }
-  if (lock === null) {
-    store.close();
-    return exit("lost-lock", 0, `another daemon serves ${root}`);
   }
   return { root, commonDir, worktreeId, store, lock };
 }

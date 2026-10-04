@@ -15,7 +15,7 @@ import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { type DaemonTimings, startTimers } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { exit, message, type OpenedDaemon, openDaemon } from "./open.js";
-import { linkedWorktreeDir, socketPathFor } from "./paths.js";
+import { linkedWorktreeDir, prepareSocketDir, socketPathFor } from "./paths.js";
 import { loadPolicy, POLICY_FILE } from "./policy.js";
 import type { RecoveringRunner } from "./runner.js";
 import { squealVersion } from "./version.js";
@@ -47,12 +47,12 @@ export interface RunningDaemon {
 
 /**
  * Starts the daemon of one worktree. Spec 001 D10 and the start order of the
- * wave 2 review inputs: worktree, store and lock (`openDaemon`), then the
+ * wave 2 review inputs: worktree, lock and store (`openDaemon`), then the
  * socket, which answers pings from here on; the worktree row and the daemon
  * record; the policy; the runner, the state sink and the daemon loop, loaded
  * only now so the socket is up within the hooks' spawn budget. Returns a
  * `DaemonExit` when this process must not serve: not a worktree, store
- * newer or unusable, lock lost.
+ * newer or unusable, lock lost, socket directory refused.
  *
  * Spec 001 D12 as amended: the daemon has no log file, so every exit after
  * the store opened persists a note with its reason first, start failures
@@ -127,6 +127,12 @@ class Daemon {
 
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {
     const { root, worktreeId } = this.opened;
+    try {
+      prepareSocketDir(this.#socketPath, this.options.env);
+    } catch (error) {
+      desk.discard();
+      return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
+    }
     try {
       this.#desk = await this.#openDesk(desk);
       this.#register();
