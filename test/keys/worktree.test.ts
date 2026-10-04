@@ -40,10 +40,13 @@ async function keyOf(root: string): Promise<CheckKey | null> {
     runnerVersion: "5.0.3",
     adapterVersion: "1",
     resolvedConfig: "{}",
-    files: [["package.json", cache.hashOf("package.json") ?? ""]] as const,
+    files: ["package.json"],
   };
   const index = new KeyIndex((path) => cache.hashOf(path));
-  index.setEnvironment("", environmentHash(core, runner));
+  index.setEnvironment(
+    "",
+    environmentHash(core, runner, (path) => cache.hashOf(path)),
+  );
   index.setClosure(
     assembleClosure(
       {

@@ -1,6 +1,6 @@
 import type { CheckError, RunOutcome, TestCheckId } from "./check.js";
 import type { AbsolutePath, ProjectName, RelativePath, SourceLocation } from "./common.js";
-import type { FileHash, TestFileRef } from "./keys.js";
+import type { TestFileRef } from "./keys.js";
 
 /**
  * A changed path handed to the runner. The kind tells the adapter whether
@@ -52,8 +52,12 @@ export interface RunnerEnvironment {
   readonly adapterVersion: string;
   /** Canonical JSON of the resolved config, absolute paths relativized. */
   readonly resolvedConfig: string;
-  /** Config file, its dependencies, setup files and global setup with their closures. */
-  readonly files: readonly (readonly [RelativePath, FileHash])[];
+  /**
+   * Config file, its dependencies, setup files and global setup with their
+   * closures. Paths only: the core hashes them with its own file hash (D3) and
+   * stat cache, and recomputes the environment when one of them changes.
+   */
+  readonly files: readonly RelativePath[];
 }
 
 /**

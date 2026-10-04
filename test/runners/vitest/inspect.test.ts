@@ -1,11 +1,5 @@
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ALL_TEST_FILES, openFixture, ref, SLOW } from "./helpers.js";
-
-const gitBlobHash = (bytes: Buffer) =>
-  createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
 
 describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () => {
   it("lists every test file from the project's include globs", async () => {
@@ -59,7 +53,7 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
     expect(math.map((c) => c.check.fullName)).toEqual(["math > adds", "math > adds base"]);
   });
 
-  it("reports environment inputs with canonical config and file hashes", async () => {
+  it("reports environment inputs with canonical config and file paths", async () => {
     const fx = await openFixture();
     const envs = await fx.adapter.environment();
     expect(envs).toHaveLength(1);
@@ -72,7 +66,8 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
     expect(env.resolvedConfig).not.toContain(fx.root);
     expect(JSON.parse(env.resolvedConfig).setupFiles).toEqual(["test/setup.ts"]);
 
-    expect(env.files.map(([path]) => path)).toEqual([
+    // Paths only: the core hashes them through its stat cache (review S3).
+    expect(env.files).toEqual([
       "src/global-dep.ts",
       "src/setup-dep.ts",
       "test/global-setup.ts",
@@ -80,9 +75,6 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
       "vitest.config.ts",
       "vitest.shared.ts",
     ]);
-    for (const [path, hash] of env.files) {
-      expect(hash).toBe(gitBlobHash(readFileSync(join(fx.root, path))));
-    }
   });
 
   it("produces identical environment inputs for a copy at another path", async () => {

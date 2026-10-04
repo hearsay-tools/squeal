@@ -5,7 +5,12 @@ import {
   environmentHash,
   installedDependenciesFingerprint,
 } from "../../src/core/keys/index.js";
-import type { CoreEnvironmentInputs, RunnerEnvironment } from "../../src/core/types/index.js";
+import type {
+  CoreEnvironmentInputs,
+  FileHash,
+  RelativePath,
+  RunnerEnvironment,
+} from "../../src/core/types/index.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 
 const core: CoreEnvironmentInputs = {
@@ -23,23 +28,52 @@ const runner: RunnerEnvironment = {
   runnerVersion: "5.0.3",
   adapterVersion: "1",
   resolvedConfig: '{"globals":false}',
-  files: [
-    ["vitest.config.ts", "aaa"],
-    ["test/setup.ts", "bbb"],
-  ],
+  files: ["vitest.config.ts", "test/setup.ts"],
 };
+
+const hashes: Record<RelativePath, FileHash | null> = {
+  "vitest.config.ts": "aaa",
+  "test/setup.ts": "bbb",
+  "test/setup2.ts": "bbb",
+  "test/absent.ts": null,
+};
+const hashOf = (path: RelativePath) => hashes[path];
+const hashWith =
+  (overrides: Record<RelativePath, FileHash | null>) =>
+  (path: RelativePath): FileHash | null | undefined =>
+    path in overrides ? overrides[path] : hashOf(path);
 
 describe("environmentHash", () => {
   it("is a lowercase sha256 hex digest", () => {
-    expect(environmentHash(core, runner)).toMatch(/^[0-9a-f]{64}$/);
+    expect(environmentHash(core, runner, hashOf)).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("is stable under reordering of env variables and runner files", () => {
     const reordered = environmentHash(
       { ...core, env: { TZ: "UTC", CI: "1" } },
       { ...runner, files: [...runner.files].reverse() },
+      hashOf,
     );
-    expect(reordered).toBe(environmentHash(core, runner));
+    expect(reordered).toBe(environmentHash(core, runner, hashOf));
+  });
+
+  it("hashes runner files through the lookup, so a content change changes it", () => {
+    const changed = hashWith({ "vitest.config.ts": "ccc" });
+    expect(environmentHash(core, runner, changed)).not.toBe(environmentHash(core, runner, hashOf));
+  });
+
+  it("encodes an absent runner file, distinct from any content", () => {
+    const withAbsent = { ...runner, files: [...runner.files, "test/absent.ts"] };
+    const absent = environmentHash(core, withAbsent, hashOf);
+    expect(absent).not.toBe(environmentHash(core, runner, hashOf));
+    expect(absent).not.toBe(environmentHash(core, withAbsent, hashWith({ "test/absent.ts": "-" })));
+  });
+
+  it("refuses a runner file the lookup does not track", () => {
+    const withUntracked = { ...runner, files: [...runner.files, "gen/setup.ts"] };
+    expect(() => environmentHash(core, withUntracked, hashOf)).toThrow(
+      /project "": runner file "gen\/setup.ts" has not been hashed/,
+    );
   });
 
   const changes: Record<string, [Partial<CoreEnvironmentInputs>, Partial<RunnerEnvironment>]> = {
@@ -55,36 +89,19 @@ describe("environmentHash", () => {
     "runner version": [{}, { runnerVersion: "5.0.4" }],
     "adapter version": [{}, { adapterVersion: "2" }],
     "resolved config": [{}, { resolvedConfig: '{"globals":true}' }],
-    "a config file hash": [
-      {},
-      {
-        files: [
-          ["vitest.config.ts", "ccc"],
-          ["test/setup.ts", "bbb"],
-        ],
-      },
-    ],
-    "a setup file path": [
-      {},
-      {
-        files: [
-          ["vitest.config.ts", "aaa"],
-          ["test/setup2.ts", "bbb"],
-        ],
-      },
-    ],
+    "a setup file path": [{}, { files: ["vitest.config.ts", "test/setup2.ts"] }],
   };
   for (const [name, [coreChange, runnerChange]] of Object.entries(changes)) {
     it(`changes with the ${name}`, () => {
-      expect(environmentHash({ ...core, ...coreChange }, { ...runner, ...runnerChange })).not.toBe(
-        environmentHash(core, runner),
-      );
+      expect(
+        environmentHash({ ...core, ...coreChange }, { ...runner, ...runnerChange }, hashOf),
+      ).not.toBe(environmentHash(core, runner, hashOf));
     });
   }
 
   it("does not confuse field boundaries", () => {
-    const a = environmentHash({ ...core, platform: "linux", arch: "x64" }, runner);
-    const b = environmentHash({ ...core, platform: "linuxx", arch: "64" }, runner);
+    const a = environmentHash({ ...core, platform: "linux", arch: "x64" }, runner, hashOf);
+    const b = environmentHash({ ...core, platform: "linuxx", arch: "64" }, runner, hashOf);
     expect(a).not.toBe(b);
   });
 });

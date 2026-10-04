@@ -6,6 +6,8 @@ import type {
   AbsolutePath,
   CoreEnvironmentInputs,
   EnvironmentHash,
+  FileHash,
+  RelativePath,
   RunnerEnvironment,
 } from "../types/index.js";
 import { compare } from "./closure.js";
@@ -23,11 +25,26 @@ const ENVIRONMENT_ENCODING = "squeal-environment/1";
  * [...], allow-listed environment variables". Env variables and runner files
  * are sorted, so their order does not matter. Fields are JSON-encoded, so no
  * two different inputs share an encoding.
+ *
+ * `hashOf` hashes the runner files, normally `StatCache.hashOf`, so they get
+ * the same file hash as closure paths (D3: "One definition everywhere"). `null`
+ * is an absent file. `undefined` is a path the caller never hashed; it throws
+ * rather than encoding an unknown file as absent.
  */
 export function environmentHash(
   core: CoreEnvironmentInputs,
   runner: RunnerEnvironment,
+  hashOf: (path: RelativePath) => FileHash | null | undefined,
 ): EnvironmentHash {
+  const files = [...new Set(runner.files)].sort(compare).map((path) => {
+    const hash = hashOf(path);
+    if (hash === undefined) {
+      throw new Error(
+        `squeal: environment of project "${runner.project}": runner file "${path}" has not been hashed`,
+      );
+    }
+    return [path, hash] as const;
+  });
   const encoded = JSON.stringify([
     ENVIRONMENT_ENCODING,
     core.squealVersion,
@@ -41,7 +58,7 @@ export function environmentHash(
     runner.runnerVersion,
     runner.adapterVersion,
     runner.resolvedConfig,
-    [...runner.files].sort(([a], [b]) => compare(a, b)),
+    files,
   ]);
   return createHash("sha256").update(encoded).digest("hex");
 }

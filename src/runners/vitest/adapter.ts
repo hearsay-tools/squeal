@@ -1,9 +1,7 @@
 import { existsSync } from "node:fs";
 import { createVitest, type TestSpecification, type Vitest, version } from "vitest/node";
 import type {
-  AbsolutePath,
   EnumeratedCheck,
-  FileHash,
   InvalidatedPath,
   InvalidateResult,
   RelativePath,
@@ -46,10 +44,7 @@ export class VitestAdapter implements RunnerAdapter {
   #queue: Promise<unknown> = Promise.resolve();
   #closed = false;
 
-  constructor(
-    readonly paths: WorktreePaths,
-    readonly hashFile: (path: AbsolutePath) => FileHash,
-  ) {}
+  constructor(readonly paths: WorktreePaths) {}
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
   async #start(): Promise<Vitest> {
@@ -179,7 +174,6 @@ export class VitestAdapter implements RunnerAdapter {
         paths: this.paths,
         runnerVersion: version,
         adapterVersion: this.adapterVersion,
-        hashFile: this.hashFile,
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
