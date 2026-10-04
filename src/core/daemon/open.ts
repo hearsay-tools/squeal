@@ -11,7 +11,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import { acquireDaemonLock, type DaemonLock } from "./lock.js";
-import { noteInNewerStore } from "./notes.js";
+import { noteInNewerStore, writeNote } from "./notes.js";
 
 /** What a daemon owns once it won its worktree. */
 export interface OpenedDaemon {
@@ -85,6 +85,24 @@ export async function openDaemon(
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
   }
   return { root, commonDir, worktreeId, store, lock };
+}
+
+/** A start that failed before the daemon owned anything else: a note, then the store and the lock go. */
+export function abandon(
+  opened: OpenedDaemon,
+  now: () => EpochMs,
+  log: ((line: string) => void) | undefined,
+  text: string,
+): DaemonExit {
+  const report = log ?? (() => {});
+  writeNote(opened.store, opened.worktreeId, { at: now(), revision: null, text }, report);
+  try {
+    opened.store.close();
+  } catch (error) {
+    report(`shutdown: store.close failed: ${message(error)}`);
+  }
+  opened.lock.release();
+  return exit("start-failed", 1, text);
 }
 
 export function exit(reason: DaemonExitReason, code: 0 | 1, text: string): DaemonExit {
