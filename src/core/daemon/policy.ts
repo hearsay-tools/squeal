@@ -1,21 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMissing } from "../fs/index.js";
-import { type AbsolutePath, DEFAULT_POLICY, type Policy } from "../types/index.js";
+import { DEFAULT_POLICY, type LoadedPolicy, type Policy } from "../types/index.js";
 
 /** Spec 001 D11: "`squeal.config.json` at the repository root, committed, all keys optional". */
 export const POLICY_FILE = "squeal.config.json";
-
-/** `squeal.config.json` has keys that are unknown or values of the wrong type. Lists every problem. */
-export class PolicyError extends Error {
-  override readonly name = "PolicyError";
-  constructor(
-    readonly path: AbsolutePath,
-    readonly problems: readonly string[],
-  ) {
-    super(`${path}: ${problems.join("; ")}`);
-  }
-}
 
 /** Checks one leaf value; returns what was expected when the value does not fit. */
 type Leaf = (value: unknown) => string | null;
@@ -59,30 +48,44 @@ const SHAPE: Shape = {
 
 /**
  * Reads `squeal.config.json` from the worktree root and applies it over
- * `DEFAULT_POLICY` (spec 001 D11). A missing file is the defaults. Throws a
- * `PolicyError` naming every unknown key and every value of the wrong type,
- * so a typo never silently falls back to a default.
+ * `DEFAULT_POLICY`. The one loader of daemon and hooks; never throws.
+ *
+ * Spec 001 D11: "unknown keys and wrong types are reported as problems, the
+ * defaults apply for those keys". A missing file is the defaults with no
+ * problems. A file that cannot be read, is not JSON or is not an object is
+ * the defaults with one problem.
  */
-export function loadPolicy(root: AbsolutePath): Policy {
-  const path = join(root, POLICY_FILE);
+export function loadPolicy(root: string): LoadedPolicy {
   let text: string;
   try {
-    text = readFileSync(path, "utf8");
+    text = readFileSync(join(root, POLICY_FILE), "utf8");
   } catch (error) {
-    if (isMissing(error)) return DEFAULT_POLICY;
-    throw error;
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    throw new PolicyError(path, [`not valid JSON (${(error as Error).message})`]);
+    return defaultsBecause(`not valid JSON (${(error as Error).message})`);
   }
-  if (!isObject(parsed)) throw new PolicyError(path, ["must be a JSON object"]);
+  if (!isObject(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`,
+    );
+  }
   const problems: string[] = [];
   const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  if (problems.length > 0) throw new PolicyError(path, problems);
-  return merged as unknown as Policy;
+  return { policy: merged as unknown as Policy, problems };
+}
+
+/** The policy alone, for callers that act on it and leave reporting to the daemon (the hooks). */
+export function readPolicy(root: string): Policy {
+  return loadPolicy(root).policy;
+}
+
+function defaultsBecause(problem: string): LoadedPolicy {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
 }
 
 function merge(

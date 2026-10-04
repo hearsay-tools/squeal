@@ -190,16 +190,6 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     );
   });
 
-  it("exits with a note naming the bad key when squeal.config.json is invalid", async () => {
-    const repo = fixture({ "squeal.config.json": '{"runner": {"tierSiz": 2}}' });
-    const spawned = daemon(repo);
-    expect(await spawned.exited).toEqual({ code: 1, signal: null });
-    expect(spawned.stderr()).toMatch(/unknown key "runner.tierSiz"/);
-    expect(notes(repo).at(-1)).toMatch(/squeal\.config\.json: unknown key "runner.tierSiz"/);
-    expect(withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon)).toBeNull();
-    expect(existsSync(repo.socketPath)).toBe(false);
-  });
-
   it("exits when its linked worktree is removed", async () => {
     const repo = fixture();
     const { git } = await import("../hash/git-repo.js");

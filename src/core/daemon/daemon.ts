@@ -7,14 +7,16 @@ import type {
   DaemonPhase,
   EpochMs,
   Policy,
+  Store,
   WorktreeId,
 } from "../types/index.js";
+import { DEFAULT_POLICY, notesMetaKey } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { type DaemonTimings, startTimers } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { exit, message, type OpenedDaemon, openDaemon } from "./open.js";
 import { linkedWorktreeDir, socketPathFor } from "./paths.js";
-import { loadPolicy } from "./policy.js";
+import { loadPolicy, POLICY_FILE } from "./policy.js";
 import type { RecoveringRunner } from "./runner.js";
 import { squealVersion } from "./version.js";
 
@@ -51,6 +53,10 @@ export interface RunningDaemon {
  * only now so the socket is up within the hooks' spawn budget. Returns a
  * `DaemonExit` when this process must not serve: not a worktree, store
  * newer or unusable, lock lost.
+ *
+ * Spec 001 D12 as amended: the daemon has no log file, so every exit after
+ * the store opened persists a note with its reason first, start failures
+ * included.
  */
 export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon | DaemonExit> {
   const now = options.now ?? Date.now;
@@ -60,7 +66,32 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
     desk.discard();
     return opened;
   }
-  return new Daemon(opened, options).start(desk);
+  let daemon: Daemon;
+  try {
+    daemon = new Daemon(opened, options);
+  } catch (error) {
+    desk.discard();
+    return abandon(opened, now, options.log, `daemon exited: could not start: ${message(error)}`);
+  }
+  return daemon.start(desk);
+}
+
+/** A start that failed before the daemon owned anything else: a note, then the store and the lock go. */
+function abandon(
+  opened: OpenedDaemon,
+  now: () => EpochMs,
+  log: ((line: string) => void) | undefined,
+  text: string,
+): DaemonExit {
+  const report = log ?? (() => {});
+  writeNote(opened.store, opened.worktreeId, { at: now(), revision: null, text }, report);
+  try {
+    opened.store.close();
+  } catch (error) {
+    report(`shutdown: store.close failed: ${message(error)}`);
+  }
+  opened.lock.release();
+  return exit("start-failed", 1, text);
 }
 
 class Daemon {
@@ -70,6 +101,7 @@ class Daemon {
   readonly #startedAt: EpochMs;
   readonly #version = squealVersion();
   #phase: DaemonPhase = "starting";
+  #policy: Policy = DEFAULT_POLICY;
   #desk: FrontDesk | null = null;
   #runner: RecoveringRunner | null = null;
   #loop: DaemonLoop | null = null;
@@ -101,18 +133,34 @@ class Daemon {
     } catch (error) {
       return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
     }
-    let policy: Policy;
     try {
-      policy = loadPolicy(root);
+      const { policy, problems } = loadPolicy(root);
+      this.#policy = policy;
+      this.#notePolicyProblems(problems);
+      this.#startTimers();
     } catch (error) {
-      this.#shutdown("bad-policy", 1, `daemon exited: ${message(error)}`);
-      return this.#exited;
+      return this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
     }
+    this.#starting = this.#run();
+    const ready = this.#starting.catch(() => {});
+    return {
+      root,
+      worktreeId,
+      socketPath: this.#socketPath,
+      ready,
+      exited: this.#exited,
+      stop: (reason) => this.#shutdown(reason, 0, `daemon stopped: ${reason}`),
+    };
+  }
+
+  /** (Re)starts heartbeat, lifecycle checks and pruning with the current policy. */
+  #startTimers(): void {
+    this.#stopTimers();
     this.#stopTimers = startTimers({
       ...this.opened,
-      policy,
+      policy: this.#policy,
       now: this.#now,
-      linkedDir: linkedWorktreeDir(root),
+      linkedDir: linkedWorktreeDir(this.opened.root),
       timings: this.options.timings ?? {},
       heartbeatMs: this.#heartbeatMs(),
       lastActive: () => this.#lastActive,
@@ -123,16 +171,36 @@ class Daemon {
       log: this.#log,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
     });
-    this.#starting = this.#run(policy);
-    const ready = this.#starting.catch(() => {});
-    return {
-      root,
-      worktreeId,
-      socketPath: this.#socketPath,
-      ready,
-      exited: this.#exited,
-      stop: (reason) => this.#shutdown(reason, 0, `daemon stopped: ${reason}`),
-    };
+  }
+
+  /**
+   * Spec 001 D11: a bad policy is a state; "the daemon persists one note and
+   * keeps running". One note per distinct problem set: a restart that finds
+   * the same problems as the last policy note adds none.
+   */
+  #notePolicyProblems(problems: readonly string[]): void {
+    if (problems.length === 0) return;
+    const text = `${POLICY_FILE}: ${describeProblems(problems)}`;
+    if (lastPolicyNote(this.opened.store, this.opened.worktreeId) === text) {
+      this.#log(text);
+      return;
+    }
+    this.#note(text);
+  }
+
+  /**
+   * `SchedulerOptions.reloadPolicy`: spec 001 D11, "a revision that changes
+   * the file reloads it and re-keys what `inputs` and `env.allowlist`
+   * touch". The scheduler re-keys; the daemon restarts its timers for
+   * `daemon.*` and `store.*` and notes the reload.
+   */
+  #reloadPolicy(): Policy {
+    const { policy, problems } = loadPolicy(this.opened.root);
+    this.#policy = policy;
+    if (this.#phase !== "stopping") this.#startTimers();
+    const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
+    this.#note(`${POLICY_FILE} changed; policy reloaded${found}`);
+    return policy;
   }
 
   #heartbeatMs(): number {
@@ -163,7 +231,7 @@ class Daemon {
   }
 
   /** Runner, sink and loop. The heavy modules load here, after the socket is up. */
-  async #run(policy: Policy): Promise<void> {
+  async #run(): Promise<void> {
     const { root, worktreeId, store, commonDir } = this.opened;
     try {
       const [{ createDaemonLoop }, { createStateSink, describeFailure }, vitest, runnerModule] =
@@ -191,7 +259,9 @@ class Daemon {
         store,
         runner,
         sink: createStateSink(store, { now: this.#now }),
-        policy,
+        policy: this.#policy,
+        reloadPolicy: (changes) =>
+          changes.some((change) => change.path === POLICY_FILE) ? this.#reloadPolicy() : null,
         squealVersion: this.#version,
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
@@ -295,4 +365,23 @@ class Daemon {
       this.#log(`shutdown: ${name} failed: ${message(error)}`);
     }
   }
+}
+
+function describeProblems(problems: readonly string[]): string {
+  return `${problems.join("; ")}; the defaults apply in their place`;
+}
+
+/** Text of the newest persisted note about `squeal.config.json`, or `null`. */
+function lastPolicyNote(store: Store, worktreeId: WorktreeId): string | null {
+  let notes: unknown;
+  try {
+    notes = JSON.parse(store.meta.get(notesMetaKey(worktreeId)) ?? "[]");
+  } catch {
+    // Notes that do not parse are replaced by the next note (`appendNote`).
+    return null;
+  }
+  if (!Array.isArray(notes)) return null;
+  const texts = notes.map((note) => (note as { text?: unknown }).text);
+  const last = texts.findLast((text) => typeof text === "string" && text.startsWith(POLICY_FILE));
+  return typeof last === "string" ? last : null;
 }

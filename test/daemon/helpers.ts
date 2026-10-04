@@ -15,7 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { isStoreOpenFailure, openStore, worktreeIdFor } from "../../src/core/store/index.js";
-import type { PingResponse, Store } from "../../src/core/types/index.js";
+import { notesMetaKey, type PingResponse, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
@@ -191,16 +191,58 @@ export async function ping(socketPath: string, timeoutMs = 100): Promise<PingRes
   }
 }
 
-/** Waits for the daemon to answer with `phase: "ready"`: baseline lookup done, watcher on. */
-export function waitReady(repo: FixtureRepo, timeoutMs = 60_000): Promise<PingResponse> {
-  return waitFor(
-    async () => {
-      const answer = await ping(repo.socketPath, 500);
-      return answer?.phase === "ready" ? answer : null;
-    },
-    timeoutMs,
-    "daemon ready",
-  );
+/**
+ * Waits for the daemon to answer with `phase: "ready"`: baseline lookup done,
+ * watcher on. When it does not, the error carries what explains it: the
+ * daemon's persisted notes, its exit, and the end of its stderr.
+ */
+export async function waitReady(
+  repo: Pick<FixtureRepo, "socketPath" | "commonDir" | "worktreeId">,
+  spawned?: SpawnedProcess,
+  timeoutMs = 60_000,
+): Promise<PingResponse> {
+  try {
+    return await waitFor(
+      async () => {
+        const answer = await ping(repo.socketPath, 500);
+        return answer?.phase === "ready" ? answer : null;
+      },
+      timeoutMs,
+      "daemon ready",
+    );
+  } catch (error) {
+    throw new Error(`${(error as Error).message}\n${diagnose(repo, spawned)}`);
+  }
+}
+
+/** Notes, exit and stderr of a daemon, for a failure message. */
+export function diagnose(
+  repo: Pick<FixtureRepo, "commonDir" | "worktreeId">,
+  spawned?: SpawnedProcess,
+): string {
+  const lines = [`notes: ${JSON.stringify(readNotes(repo))}`];
+  if (spawned !== undefined) {
+    const { exitCode, signalCode, pid } = spawned.child;
+    lines.push(`daemon pid ${pid}: exit code ${exitCode}, signal ${signalCode}`);
+    lines.push(`stderr (last 2,000 characters): ${spawned.stderr().slice(-2_000)}`);
+  }
+  return lines.join("\n");
+}
+
+/** Persisted note texts of the worktree, oldest first; a missing or unreadable store reads as a reason. */
+export function readNotes(repo: Pick<FixtureRepo, "commonDir" | "worktreeId">): string[] {
+  let store: Store | undefined;
+  try {
+    const opened = openStore(repo.commonDir, { create: false, busyTimeoutMs: 10_000 });
+    if (isStoreOpenFailure(opened)) return [`(store: ${JSON.stringify(opened)})`];
+    store = opened;
+    const raw = store.meta.get(notesMetaKey(repo.worktreeId));
+    return raw === null ? [] : (JSON.parse(raw) as { text: string }[]).map((n) => n.text);
+  } catch (error) {
+    return [`(store unreadable: ${String(error)})`];
+  } finally {
+    store?.close();
+  }
 }
 
 /** Opens the fixture's store for reading in the test. */
