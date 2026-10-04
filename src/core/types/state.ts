@@ -1,5 +1,7 @@
 import type { CheckId } from "./check.js";
 import type { CommitSha, EpochMs, RevisionNumber, SourceLocation, WorktreeId } from "./common.js";
+import type { TestFileRef } from "./keys.js";
+import type { ResultRecord } from "./store-records.js";
 
 /**
  * Last known outcome of a check.
@@ -70,7 +72,11 @@ export interface KnownState {
   readonly origin: ResultOrigin | null;
   readonly durationMs: number | null;
   readonly location: SourceLocation | null;
-  /** Concise failure text for deltas and status; `null` unless `outcome` is `fail`. */
+  /**
+   * Concise failure text for deltas and status when `outcome` is `fail`; the
+   * reason no result exists (runner crash, timeout) when it is `unknown` after
+   * `StateSink.markUnknown`; `null` otherwise.
+   */
   readonly summary: string | null;
   readonly fingerprint: DiagnosticFingerprint | null;
 }
@@ -113,4 +119,75 @@ export interface Transition {
   readonly toFingerprint: DiagnosticFingerprint | null;
   readonly revision: RevisionNumber;
   readonly at: EpochMs;
+}
+
+/**
+ * Context of one `StateSink` call that the results do not carry themselves.
+ *
+ * Spec 001 D6: "Failures first observed by the baseline run after
+ * registration are delivered once, in a batch labelled as baseline findings."
+ * The sink looks the checkpoint up and remembers first-seen failures of a
+ * `baseline` checkpoint for that label.
+ */
+export interface StateProvenance {
+  /** `RunRecord.checkpointId` of the run, or the checkpoint a lookup belongs to; `null` otherwise. */
+  readonly checkpointId: string | null;
+}
+
+/**
+ * Where the scheduler (task 001-20) hands results to the known state (task
+ * 001-21). Synchronous like the store. Each call is one store transaction
+ * that updates `known_states` and appends the notable `transitions` (D6);
+ * each returns the transitions it recorded.
+ *
+ * Order of writes: store results (`results.putMany`) and the worktree's
+ * `test_file_keys` first, then call the sink. Validity is classified against
+ * `test_file_keys`: a result is `current` only when its key is the key
+ * recorded for its test file; a test file with no recorded key is `stale`.
+ */
+export interface StateSink {
+  /**
+   * Applies results produced by a run of this worktree or found by key
+   * lookup (D5 step 3). Origin is `own` when `provenance.worktreeId` of a
+   * result is this worktree, else `inherited`. `fingerprint` and `summary` of
+   * a `fail` should come from `describeFailure` (src/core/state).
+   */
+  applyResults(
+    worktreeId: WorktreeId,
+    revision: RevisionNumber,
+    results: readonly ResultRecord[],
+    provenance: StateProvenance,
+  ): readonly Transition[];
+
+  /**
+   * Spec 001 D12: "every check in the tier becomes `unknown` at this
+   * revision, one transition is recorded". Every known check of the given
+   * test files becomes `unknown` with `reason` as its summary. Nothing is
+   * stored under a key.
+   */
+  markUnknown(
+    worktreeId: WorktreeId,
+    revision: RevisionNumber,
+    testFiles: readonly TestFileRef[],
+    reason: string,
+  ): readonly Transition[];
+
+  /**
+   * Re-derives known states from `test_file_keys` and the results stored
+   * under those keys: a check with a result under its file's current key
+   * takes that result (a lookup hit), every other known check keeps its
+   * outcome and becomes `pending`, `stale` or `unknown`. Call after keys or
+   * pending phases change. Test files without a recorded key are left alone.
+   */
+  refresh(
+    worktreeId: WorktreeId,
+    revision: RevisionNumber,
+    provenance: StateProvenance,
+  ): readonly Transition[];
+
+  /**
+   * Spec 001 D8: "Checks that disappear from a test file are retired from
+   * `known_states` and every consumer view". No transition is recorded.
+   */
+  retire(worktreeId: WorktreeId, checks: readonly CheckId[]): void;
 }

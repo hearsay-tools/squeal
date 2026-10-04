@@ -61,6 +61,13 @@ export interface DeltaEntry {
   readonly origin: ResultOrigin;
   readonly summary: string | null;
   readonly location: SourceLocation | null;
+  /**
+   * True for a `first-seen-fail` first observed by the worktree's baseline
+   * checkpoint. Spec 001 D6: "Failures first observed by the baseline run
+   * after registration are delivered once, in a batch labelled as baseline
+   * findings." Absent means false.
+   */
+  readonly baseline?: boolean;
 }
 
 /**
@@ -74,6 +81,7 @@ export interface Delta {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly consumer: Consumer;
   readonly header: StatusHeader;
+  /** `baseline` when every entry is a baseline finding, else `transitions`. */
   readonly label: "transitions" | "baseline";
   /** Never empty: an empty delta is `null` at the call site. */
   readonly entries: readonly DeltaEntry[];
