@@ -106,8 +106,9 @@ export interface Provenance {
  * Row of `results`, keyed by `(check, key)`. Crashes and timeouts are not
  * stored here: an `unknown` under a key would be inherited as a hit (D5).
  *
- * Spec 001 D8: "`results` (keyed by check and key)". "Failure text is
- * deduplicated by fingerprint."
+ * Spec 001 D8: "`results` (keyed by check and key, with a last-used time
+ * advanced on every lookup hit)". "Failure text is deduplicated by exact
+ * text; the fingerprint is a separate derived column."
  */
 export interface ResultRecord {
   readonly check: CheckId;

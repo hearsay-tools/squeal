@@ -89,10 +89,9 @@ export function createResultRepo(conn: Connection): ResultRepo {
 
 /**
  * Stores failure text once and returns its id, or `null` when there is none.
- * Spec 001 D8: "Failure text is deduplicated by fingerprint." The id hashes
- * the text itself rather than the fingerprint, which normalizes the message
- * and drops stack and diff, so every result reads back the text it was
- * stored with.
+ * Spec 001 D8: "Failure text is deduplicated by exact text; the fingerprint
+ * is a separate derived column." The id hashes the text, so every result
+ * reads back the text it was stored with.
  */
 function storeFailureText(
   conn: Connection,
