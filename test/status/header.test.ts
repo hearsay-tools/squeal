@@ -52,8 +52,10 @@ describe("delivery header and status", () => {
       atCurrentRevision: true,
       lastCompletedRevision: 0,
     });
-    const { revision, counts, testFilesWithoutChecks, fullSuite } = status;
-    expect({ revision, counts, testFilesWithoutChecks, fullSuite }).toEqual(registration.header);
+    const { revision, counts, testFilesWithoutChecks, fullSuite, daemon } = status;
+    expect({ revision, counts, testFilesWithoutChecks, fullSuite, daemon }).toEqual(
+      registration.header,
+    );
     expect(status.knownFailures).toEqual(registration.knownFailures);
   });
 });
