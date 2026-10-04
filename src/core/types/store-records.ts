@@ -73,7 +73,14 @@ export interface TestFileRecord {
 export interface TestFileKeyRecord {
   readonly worktreeId: WorktreeId;
   readonly testFile: TestFileRef;
-  readonly key: CheckKey;
+  /**
+   * `null` while the test file cannot be keyed: its project's environment or
+   * its closure is unknown (a runner call failed, spec 001 D5), or a closure
+   * path is untracked. The row stays so status and headers count the file as
+   * `unknown`; it is removed only when a successful listing no longer has the
+   * test file. `pending` is `null` for an unkeyed file.
+   */
+  readonly key: CheckKey | null;
   readonly revision: RevisionNumber;
   readonly pending: PendingPhase | null;
 }

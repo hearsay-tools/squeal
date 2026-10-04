@@ -69,7 +69,7 @@ CREATE TABLE test_file_keys (
   worktree_id TEXT NOT NULL,
   project TEXT NOT NULL,
   path TEXT NOT NULL,
-  key TEXT NOT NULL,
+  key TEXT,
   revision INTEGER NOT NULL,
   pending TEXT,
   PRIMARY KEY (worktree_id, project, path)
