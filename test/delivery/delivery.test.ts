@@ -7,6 +7,7 @@ import {
   type DeltaEntry,
   type DeltaKind,
   type HarnessDelivery,
+  REGRESSION_KINDS,
   type ResultRecord,
   type StateSink,
   type Store,
@@ -230,6 +231,44 @@ describe("onToolBoundary", () => {
     clock = 30_000;
     await delivery.onToolBoundary(C1);
     expect(store.consumers.get(C1)).toMatchObject({ lastSeenAt: 30_000, lastDeliveredAt: 30_000 });
+  });
+});
+
+describe("peek", () => {
+  it("consumes regressions only; a following onToolBoundary still delivers the recoveries", async () => {
+    const c = check("c");
+    apply(pass(), result(B, "fail"), result(c, "fail", { message: "one" }));
+    await delivery.register(C1);
+    apply(fail(), result(B, "pass"), result(c, "fail", { message: "two" }));
+
+    const peeked = await delivery.peek(C1, { kinds: REGRESSION_KINDS });
+    expect(peeked?.entries.map((e) => [e.check, e.kind])).toEqual([[A, "pass-to-fail"]]);
+    expect(peeked?.label).toBe("transitions");
+    expect(await delivery.peek(C1, { kinds: REGRESSION_KINDS })).toBeNull();
+
+    const rest = await delivery.onToolBoundary(C1);
+    expect(rest?.entries.map((e) => [e.check, e.kind])).toEqual([
+      [c, "fail-changed"],
+      [B, "fail-to-pass"],
+    ]);
+  });
+
+  it("leaves other consumers and retired failures alone", async () => {
+    apply(pass(), result(B, "fail"));
+    await delivery.register(C1);
+    await delivery.register(C2);
+    sink.retire(WT, [B]);
+    apply(fail());
+
+    expect((await delivery.peek(C1, { kinds: REGRESSION_KINDS }))?.entries).toHaveLength(1);
+    expect(await kindsFor(C1)).toEqual(["fail-retired"]);
+    expect(await kindsFor(C2)).toEqual(["pass-to-fail", "fail-retired"]);
+  });
+
+  it("returns null for an unregistered consumer", async () => {
+    apply(fail());
+    expect(await delivery.peek(C1, { kinds: REGRESSION_KINDS })).toBeNull();
+    expect(store.views.list(C1)).toEqual([]);
   });
 });
 

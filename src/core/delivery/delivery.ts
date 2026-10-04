@@ -4,6 +4,7 @@ import {
   CONSUMER_EXPIRY_MS,
   type Consumer,
   type Delta,
+  type DeltaKind,
   type EpochMs,
   type HarnessDelivery,
   type KnownState,
@@ -11,7 +12,7 @@ import {
   type StatusBuilder,
   type Store,
 } from "../types/index.js";
-import { type DeltaPlan, isBaselineEntry, planDelta, toView } from "./delta.js";
+import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -41,33 +42,44 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   const now = options.now ?? Date.now;
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
-  function plan(consumer: Consumer, states: readonly KnownState[], toldAt: EpochMs): DeltaPlan {
-    return planDelta({
+  function plan(
+    consumer: Consumer,
+    states: readonly KnownState[],
+    toldAt: EpochMs,
+    kinds: ReadonlySet<DeltaKind> | null,
+  ): DeltaPlan {
+    const full = planDelta({
       view: store.views.list(consumer),
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
     });
+    return kinds === null ? full : restrictPlan(full, kinds);
   }
 
   /**
    * Reads the delta, writes the view and returns the delta, in one
    * transaction. `heardFrom` records the consumer as seen even when nothing
-   * is delivered; a waiter's empty polls do not count.
+   * is delivered; a waiter's empty polls do not count. `kinds` limits the
+   * delivery to entries of those kinds (`peek`).
    */
-  function deliver(consumer: Consumer, heardFrom: boolean): Delta | null {
+  function deliver(
+    consumer: Consumer,
+    heardFrom: boolean,
+    kinds: ReadonlySet<DeltaKind> | null = null,
+  ): Delta | null {
     if (!heardFrom) {
       // Read-only first: an idle waiter takes no write lock until there is something to write.
       if (store.consumers.get(consumer) === null) return null;
       const states = store.knownStates.list(consumer.worktreeId);
-      if (isEmpty(plan(consumer, states, now()))) return null;
+      if (isEmpty(plan(consumer, states, now(), kinds))) return null;
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
       const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at);
+      const delta = plan(consumer, states, at, kinds);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const delivered = delta.entries.length > 0;
@@ -107,6 +119,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     },
 
     onToolBoundary: async (consumer) => deliver(consumer, true),
+
+    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
 
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
