@@ -3,17 +3,10 @@ import type {
   FileHash,
   FileHashRecord,
   FileHashRepo,
+  FileStat,
   RelativePath,
   WorktreeId,
 } from "../types/index.js";
-
-/** The stat fields a cache entry is validated against. */
-export interface FileStat {
-  readonly mtimeMs: number;
-  readonly ctimeMs: number;
-  readonly size: number;
-  readonly inode: number;
-}
 
 /**
  * How close to the time of hashing a file's mtime may be before the stat is
@@ -44,9 +37,17 @@ export function isRacy(stat: FileStat, hashedAt: EpochMs): boolean {
  * their stat is unchanged. The mark is in-memory only, so entries loaded from
  * the store are trusted. That is wrong only if a daemon hashed a file and then
  * stopped within one timestamp tick of a same-size rewrite.
+ *
+ * `hashOf` is tri-state (`HashSource`). A path is known absent once a
+ * reconciliation or a seed looked for it and found no file; that mark is
+ * in-memory only, because `FileHashRepo` stores files, not absences. Every
+ * other path without an entry is untracked: nothing watches it, so its hash
+ * is unknown. Spec 001 D2: "A test file is never keyed while any of its
+ * closure paths is untracked by the stat cache."
  */
 export class StatCache {
   private readonly entries = new Map<RelativePath, FileHashRecord>();
+  private readonly absent = new Set<RelativePath>();
   private readonly racy = new Set<RelativePath>();
   private readonly upserted = new Set<RelativePath>();
   private readonly removed = new Set<RelativePath>();
@@ -67,27 +68,34 @@ export class StatCache {
     return this.entries.get(path);
   }
 
-  hashOf(path: RelativePath): FileHash | null {
-    return this.entries.get(path)?.hash ?? null;
+  /** The file's hash, `null` when it is known to be absent, `undefined` when untracked. */
+  hashOf(path: RelativePath): FileHash | null | undefined {
+    const entry = this.entries.get(path);
+    if (entry) return entry.hash;
+    return this.absent.has(path) ? null : undefined;
   }
 
   isRacy(path: RelativePath): boolean {
     return this.racy.has(path);
   }
 
+  /** Paths with a file. Known-absent paths are not listed. */
   paths(): IterableIterator<RelativePath> {
     return this.entries.keys();
   }
 
   set(record: FileHashRecord, options: { racy?: boolean } = {}): void {
     this.entries.set(record.path, record);
+    this.absent.delete(record.path);
     if (options.racy) this.racy.add(record.path);
     else this.racy.delete(record.path);
     this.upserted.add(record.path);
     this.removed.delete(record.path);
   }
 
+  /** Records that `path` has no file: drops its entry and marks it known absent. */
   delete(path: RelativePath): void {
+    this.absent.add(path);
     if (!this.entries.delete(path)) return;
     this.racy.delete(path);
     this.upserted.delete(path);

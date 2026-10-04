@@ -6,15 +6,21 @@ const ref = (path: string, project = "unit"): TestFileRef => ({ project, path })
 const closureOf = (testFile: TestFileRef, paths: readonly string[]): Closure =>
   assembleClosure({ testFile, paths }, []);
 
-/** A hash table the test edits in place, as reconciliation edits the stat cache. */
+/**
+ * A hash table the test edits in place, as reconciliation edits the stat cache.
+ * Paths in `untracked` read as `undefined`; every other unknown path is absent.
+ */
 const hashTable = (entries: Record<string, string>) => {
   const hashes = new Map(Object.entries(entries));
+  const untracked = new Set<string>();
   let reads = 0;
   return {
     hashes,
+    untracked,
     reads: () => reads,
-    hashOf: (path: string) => {
+    hashOf: (path: string): string | null | undefined => {
       reads++;
+      if (untracked.has(path)) return undefined;
       return hashes.get(path) ?? null;
     },
   };
@@ -43,11 +49,11 @@ describe("KeyIndex", () => {
     const index = new KeyIndex(table.hashOf);
     const closure = closureOf(a, []);
 
-    expect(index.setClosure(closure)).toEqual([]);
+    expect(index.setClosure(closure)).toEqual({ changes: [], untracked: [] });
     expect(index.key(a)).toBeNull();
 
     const changes = index.setEnvironment("unit", "env1");
-    const key = checkKey("env1", closure, table.hashOf);
+    const key = checkKey("env1", closure, (path) => table.hashOf(path) ?? null);
     expect(changes).toEqual([{ testFile: a, previous: null, key }]);
     expect(index.key(a)).toBe(key);
   });
@@ -84,7 +90,7 @@ describe("KeyIndex", () => {
 
   it("replaces a closure and updates the reverse index", () => {
     const { table, index } = setup();
-    const changes = index.setClosure(closureOf(a, ["src/y.ts"]));
+    const { changes } = index.setClosure(closureOf(a, ["src/y.ts"]));
     expect(changes.map((c) => c.testFile)).toEqual([a]);
 
     table.hashes.set("src/x.ts", "x2");
@@ -99,14 +105,14 @@ describe("KeyIndex", () => {
     table.hashes.set("test/c.test.ts", "c1");
     table.hashes.set("src/y.ts", "y2");
 
-    const changes = index.setClosure(closureOf(c, ["src/y.ts"]));
+    const { changes } = index.setClosure(closureOf(c, ["src/y.ts"]));
 
     expect(changes.map((change) => change.testFile)).toEqual([c, b]);
   });
 
   it("reports nothing when a closure is set again unchanged", () => {
     const { index } = setup();
-    expect(index.setClosure(closureOf(a, ["src/x.ts"]))).toEqual([]);
+    expect(index.setClosure(closureOf(a, ["src/x.ts"]))).toEqual({ changes: [], untracked: [] });
   });
 
   it("forgets a removed test file", () => {
@@ -117,6 +123,52 @@ describe("KeyIndex", () => {
     table.hashes.set("src/x.ts", "x2");
     expect(index.rekey(["src/x.ts"]).map((c) => c.testFile)).toEqual([b]);
     expect(index.removeTestFile(a)).toBe(false);
+  });
+
+  it("returns untracked closure paths and keys the test file only once they are hashed", () => {
+    const { table, index } = setup();
+    const c = ref("test/c.test.ts");
+    table.hashes.set("test/c.test.ts", "c1");
+    table.untracked.add("src/gen/client.ts");
+
+    const result = index.setClosure(closureOf(c, ["src/gen/client.ts", "src/x.ts"]));
+
+    expect(result).toEqual({ changes: [], untracked: ["src/gen/client.ts"] });
+    expect(index.key(c)).toBeNull();
+
+    // The caller hashes the path into the stat cache, then reports it.
+    table.untracked.delete("src/gen/client.ts");
+    table.hashes.set("src/gen/client.ts", "g1");
+    const keyed = index.rekey(["src/gen/client.ts"]);
+    expect(keyed).toEqual([{ testFile: c, previous: null, key: expect.any(String) }]);
+    expect(index.key(c)).toBe(keyed[0]?.key);
+  });
+
+  it("treats a known-absent path as tracked", () => {
+    const { index } = setup();
+    const c = ref("test/c.test.ts");
+    const result = index.setClosure(closureOf(c, ["test/__snapshots__/c.test.ts.snap"]));
+    expect(result.untracked).toEqual([]);
+    expect(result.changes.map((change) => change.testFile)).toEqual([c]);
+  });
+
+  it("drops the key of a test file whose new closure has an untracked path", () => {
+    const { table, index } = setup();
+    const before = index.key(a);
+    table.untracked.add("src/gen/client.ts");
+
+    const result = index.setClosure(closureOf(a, ["src/gen/client.ts", "src/x.ts"]));
+
+    expect(result).toEqual({
+      changes: [{ testFile: a, previous: before, key: null }],
+      untracked: ["src/gen/client.ts"],
+    });
+    expect(index.key(a)).toBeNull();
+    // Another closure sharing the untracked path reports it too.
+    expect(index.setClosure(closureOf(b, ["src/gen/client.ts"])).untracked).toEqual([
+      "src/gen/client.ts",
+    ]);
+    expect(index.key(b)).toBeNull();
   });
 
   it("re-keys 5,000 closures of 300 paths in under 1 s", () => {

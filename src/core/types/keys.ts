@@ -9,6 +9,17 @@ import type { ProjectName, RelativePath } from "./common.js";
  */
 export type FileHash = string;
 
+/**
+ * The current hash of a worktree-relative path, normally `StatCache.hashOf`.
+ * Tri-state: a `FileHash` when a file is there, `null` when the path is known
+ * to have no file, `undefined` when nothing tracks the path (never hashed,
+ * for example a gitignored file outside the watch), so its content is unknown.
+ *
+ * Spec 001 D2: "A test file is never keyed while any of its closure paths is
+ * untracked by the stat cache."
+ */
+export type HashSource = (path: RelativePath) => FileHash | null | undefined;
+
 /** Hash of the environment inputs of one runner project in one worktree, lowercase hex sha256. */
 export type EnvironmentHash = string;
 

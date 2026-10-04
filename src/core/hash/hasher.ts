@@ -1,10 +1,10 @@
 import { stat as fsStat } from "node:fs/promises";
 import { join } from "node:path";
-import type { AbsolutePath, EpochMs, FileHash, RelativePath } from "../types/index.js";
+import type { AbsolutePath, EpochMs, FileHash, FileStat, RelativePath } from "../types/index.js";
 import { hashFile, isMissing, type ObjectFormat } from "./blob.js";
 import { mapConcurrent } from "./concurrency.js";
 import { readCleanIndexHashes } from "./git-index.js";
-import { type FileStat, isRacy, type StatCache, sameStat } from "./stat-cache.js";
+import { isRacy, type StatCache, sameStat } from "./stat-cache.js";
 
 /**
  * Filesystem access for reconciliation, relative to one worktree root. Tests
