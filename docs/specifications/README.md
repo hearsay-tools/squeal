@@ -15,4 +15,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 
 | # | Feature | Stage |
 |---|---------|-------|
-| 001 | Core validation loop (watcher, revisions, Vitest adapter, state, events, status) | draft |
+| 001 | Core validation loop (watcher, revisions, Vitest adapter, state, events, status) | in-progress |
