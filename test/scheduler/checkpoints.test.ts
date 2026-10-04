@@ -115,7 +115,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     const applied = b.sink.callsOf("applyResults").flatMap((c) => c.results);
     expect(applied).toHaveLength(6);
     expect(new Set(applied.map((r) => r.provenance.worktreeId))).toEqual(new Set([a.worktreeId]));
-    for (const state of b.sink.states.values()) {
+    for (const state of b.sink.states()) {
       expect(state.validity).toBe("current");
       expect(state.origin).toEqual({
         kind: "inherited",
