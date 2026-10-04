@@ -33,8 +33,8 @@ export type CheckId = TestCheckId | FileCheckId;
 /**
  * Outcome of one check in one run, as the runner reports it.
  *
- * `skip` covers Vitest `skipped` and `todo`. Spec 001 does not settle how a
- * skip maps to known state; D6 derivation (001-21) decides.
+ * `skip` covers Vitest `skipped` and `todo`. It maps to the known state
+ * `skip` (spec 001 D6).
  */
 export type RunOutcome = "pass" | "fail" | "skip";
 

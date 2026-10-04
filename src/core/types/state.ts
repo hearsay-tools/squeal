@@ -4,10 +4,12 @@ import type { CommitSha, EpochMs, RevisionNumber, SourceLocation, WorktreeId } f
 /**
  * Last known outcome of a check.
  *
- * Spec 001 D6: "the **known state**: `pass`, `fail`, `unknown`". `unknown`
- * covers "no result at all" (D5) and "runner-crash to `unknown`" (D6).
+ * Spec 001 D6: "the **known state**: `pass`, `fail`, `skip` (skipped or todo
+ * in the runner; counted separately, never a failure, never notable in a
+ * delta), `unknown`". `unknown` covers "no result at all" (D5) and
+ * "runner-crash to `unknown`" (D6).
  */
-export type KnownOutcome = "pass" | "fail" | "unknown";
+export type KnownOutcome = "pass" | "fail" | "skip" | "unknown";
 
 /**
  * Whether the known outcome describes the current revision. Exactly one class
@@ -50,8 +52,8 @@ export type DiagnosticFingerprint = string;
  * The derived state of one check in one worktree.
  *
  * Spec 001 D6: "For each worktree and check the daemon derives the **known
- * state**: `pass`, `fail`, `unknown`, with `current | stale | pending`
- * validity, the revision and commit it was observed at, its origin [...],
+ * state**: `pass`, `fail`, `skip` [...], `unknown`, with `current | stale |
+ * pending` validity, the revision and commit it was observed at, its origin [...],
  * duration, location, a concise failure summary, and a **diagnostic
  * fingerprint**".
  */

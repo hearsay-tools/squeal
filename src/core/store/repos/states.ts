@@ -21,7 +21,7 @@ import {
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
-const OUTCOMES = ["pass", "fail", "unknown"] as const;
+const OUTCOMES = ["pass", "fail", "skip", "unknown"] as const;
 const VALIDITIES = ["current", "pending", "stale", "unknown"] as const;
 const PENDING = ["queued", "running"] as const;
 const KINDS = [

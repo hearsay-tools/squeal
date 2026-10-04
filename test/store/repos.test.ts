@@ -289,7 +289,8 @@ describe("known states", () => {
       fingerprint: null,
     };
     const own = { ...a, check: testCheck("c"), origin: { kind: "own" as const }, commit: "abc" };
-    store.knownStates.upsertMany([a, b, own]);
+    const skipped = { ...own, check: testCheck("d"), outcome: "skip" as const, summary: null };
+    store.knownStates.upsertMany([a, b, own, skipped]);
     store.knownStates.upsertMany([{ ...a, outcome: "pass", summary: null, fingerprint: null }]);
     expect(store.knownStates.get("w", testCheck("a"))).toEqual({
       ...a,
@@ -299,7 +300,8 @@ describe("known states", () => {
     });
     expect(store.knownStates.get("w", fileCheck)).toEqual(b);
     expect(store.knownStates.get("w", testCheck("c"))).toEqual(own);
-    expect(store.knownStates.list("w")).toHaveLength(3);
+    expect(store.knownStates.get("w", testCheck("d"))).toEqual(skipped);
+    expect(store.knownStates.list("w")).toHaveLength(4);
     expect(store.knownStates.get("other", fileCheck)).toBeNull();
   });
 });
@@ -316,8 +318,9 @@ describe("transitions", () => {
       at: 9,
     };
     store.transitions.append([first]);
-    store.transitions.append([second, { ...first, check: testCheck("other") }]);
-    expect(store.transitions.history("w", testCheck("t"))).toEqual([first, second]);
+    const fromSkip = { ...first, from: "skip" as const, at: 10 };
+    store.transitions.append([second, { ...first, check: testCheck("other") }, fromSkip]);
+    expect(store.transitions.history("w", testCheck("t"))).toEqual([first, second, fromSkip]);
   });
 });
 
@@ -359,12 +362,13 @@ describe("consumers and views", () => {
     store.consumers.register(consumer, 1);
     const a = view();
     const b = { ...view(), check: fileCheck, outcome: "pass" as const, fingerprint: null };
-    store.views.writeMany(consumer, [a, b]);
+    const c = { ...b, check: testCheck("skipped"), outcome: "skip" as const };
+    store.views.writeMany(consumer, [a, b, c]);
     store.views.writeMany(consumer, [{ ...a, outcome: "pass", fingerprint: null, toldAt: 9 }]);
     expect(store.views.list(consumer)).toEqual(
-      expect.arrayContaining([{ ...a, outcome: "pass", fingerprint: null, toldAt: 9 }, b]),
+      expect.arrayContaining([{ ...a, outcome: "pass", fingerprint: null, toldAt: 9 }, b, c]),
     );
-    expect(store.views.list(consumer)).toHaveLength(2);
+    expect(store.views.list(consumer)).toHaveLength(3);
     expect(store.views.list({ ...consumer, agentId: "x" })).toEqual([]);
 
     store.consumers.register(consumer, 2);
