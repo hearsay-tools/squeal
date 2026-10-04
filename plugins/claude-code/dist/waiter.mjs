@@ -1792,10 +1792,10 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
   try {
-    lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
-    lock.exec("BEGIN EXCLUSIVE");
+    lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
+    lock2.exec("BEGIN EXCLUSIVE");
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
@@ -1809,8 +1809,8 @@ function recover(paths, options) {
     }
     return fresh;
   } finally {
-    rollback(lock);
-    lock.close();
+    rollback(lock2);
+    lock2.close();
   }
 }
 function moveAside(database, at2) {
@@ -2032,7 +2032,7 @@ function locate(cwd) {
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
     create: false,
-    busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS
+    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
   });
   if (isStoreOpenFailure(store)) return null;
   try {
@@ -2055,10 +2055,11 @@ function openContext(input, location2, options = {}) {
 }
 
 // src/harness/claude-code/hook.ts
-async function withContext(input, location2, deps, fn) {
+async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
-    ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs }
+    ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs },
+    ...overrides
   };
   const context = openContext(input, location2, options);
   if (context === null) return null;
@@ -2083,22 +2084,37 @@ function waiterLockPath(locksDir, consumer) {
 }
 function acquireWaiterLock(locksDir, consumer) {
   mkdirSync2(locksDir, { recursive: true });
+  const db = lock(waiterLockPath(locksDir, consumer));
+  if (db === null) return null;
+  return {
+    release(remove) {
+      db.close();
+      if (remove) removeWaiterLock(locksDir, consumer);
+    }
+  };
+}
+function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
+  if (!existsSync4(path)) return;
+  const db = lock(path);
+  if (db === null) return;
+  try {
+    rmSync3(path, { force: true });
+  } finally {
+    db.close();
+  }
+}
+function lock(path) {
   const db = new DatabaseSync2(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
     db.exec("BEGIN EXCLUSIVE");
+    return db;
   } catch {
     db.close();
     return null;
   }
-  return {
-    release(remove) {
-      if (remove) rmSync3(path, { force: true });
-      db.close();
-    }
-  };
 }
 
 // src/harness/claude-code/hooks/waiter.ts
@@ -2113,15 +2129,15 @@ function isInteractive(env) {
 var waiter = async (input, location2, deps) => {
   if (input.agent_id !== void 0 || !isInteractive(deps.env)) return null;
   return withContext(input, location2, deps, async (context) => {
-    const lock = acquireWaiterLock(storePaths(location2.commonDir).locksDir, context.consumer);
-    if (lock === null) return null;
+    const lock2 = acquireWaiterLock(storePaths(location2.commonDir).locksDir, context.consumer);
+    if (lock2 === null) return null;
     let gone = false;
     try {
       const outcome = await waitForDelta(context, deps);
       gone = outcome === "unregistered";
       return outcome === "unregistered" || outcome === null ? null : { stderr: formatDelta(outcome), exitCode: 2 };
     } finally {
-      lock.release(gone);
+      lock2.release(gone);
     }
   });
 };
