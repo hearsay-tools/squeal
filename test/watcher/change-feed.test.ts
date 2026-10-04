@@ -190,7 +190,8 @@ describe("ChangeFeed", () => {
     expect(log.paths().filter((p) => p.startsWith("wt/src/a.ts") || p === "wt")).toEqual([]);
   });
 
-  it("emits a candidate for a touch; deciding there is no revision is 001-11 work", async () => {
+  // That a touch creates no revision is tested in test/revision/reconcile.test.ts.
+  it("emits a candidate for a touch", async () => {
     await startFeed();
     const later = new Date(Date.now() + 5_000);
     utimesSync(join(root, "src/a.ts"), later, later);
