@@ -1,9 +1,19 @@
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Vitest } from "vitest/node";
 import type { CheckRunResult, TestFileRef } from "../../../src/core/types/index.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { RunCollector } from "../../../src/runners/vitest/reporter.js";
 import { refKey } from "../../../src/runners/vitest/results.js";
-import { buildReport, type RunExecution } from "../../../src/runners/vitest/run.js";
+import {
+  abandon,
+  buildReport,
+  execute,
+  type RunExecution,
+  writeRunLog,
+} from "../../../src/runners/vitest/run.js";
 import { ref } from "./helpers.js";
 
 const ROOT = "/work/tree";
@@ -82,5 +92,46 @@ describe("vitest adapter: run report", () => {
     expect(report.failure).toBe("Error: pool died at x");
     expect(report.completedFiles).toEqual([]);
     expect(report.results).toEqual([]);
+  });
+});
+
+describe("vitest adapter: errors around cancel and close go to the run log (review N3)", () => {
+  const logFile = (dir: string) => join(dir, "vitest.log");
+
+  it("logs a failed cancelCurrentRun", async () => {
+    const collector = collectorWithTwoPassedFiles();
+    let settle = () => {};
+    const vitest = {
+      runTestSpecifications: () => new Promise<void>((resolve) => (settle = resolve)),
+      cancelCurrentRun: async () => {
+        settle();
+        throw new Error("cancel failed");
+      },
+    } as unknown as Vitest;
+    const execution = await execute(vitest, [], 10, collector);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(execution.end).toBe("timed-out");
+    expect(collector.log.join("\n")).toContain("cancelCurrentRun failed: Error: cancel failed");
+  });
+
+  it("logs a failed close() of an abandoned instance, also after the log was written", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-run-log-"));
+    try {
+      const collector = collectorWithTwoPassedFiles();
+      let fail = (_: Error) => {};
+      const vitest = {
+        close: () => new Promise<void>((_, reject) => (fail = reject)),
+      } as unknown as Vitest;
+      abandon(vitest, collector);
+      const options = { runId: "r1", logDir: dir, timeoutMs: null };
+      writeRunLog(options, collector, buildReport(collector, completed, 1));
+      fail(new Error("close hung"));
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(readFileSync(logFile(dir), "utf8")).toContain(
+        "close() of an abandoned instance failed: Error: close hung",
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

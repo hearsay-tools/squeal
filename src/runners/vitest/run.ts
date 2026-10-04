@@ -53,13 +53,31 @@ export async function execute(
   if (first) return first;
   collector.cancelRequested = true;
   const failure = `run exceeded timeoutMs (${timeoutMs} ms)`;
-  vitest.cancelCurrentRun(CANCEL_REASON).catch(() => {});
+  cancel(vitest, collector);
   if (await settleWithin(run, GRACE_BEFORE_FORCE_MS))
     return { end: "timed-out", failure, hung: false };
-  vitest.cancelCurrentRun(CANCEL_REASON).catch(() => {});
+  cancel(vitest, collector);
   if (await settleWithin(run, GRACE_AFTER_FORCE_MS))
     return { end: "timed-out", failure, hung: false };
   return { end: "timed-out", failure: `${failure}; workers did not stop`, hung: true };
+}
+
+function cancel(vitest: Vitest, collector: RunCollector): void {
+  vitest
+    .cancelCurrentRun(CANCEL_REASON)
+    .catch((error: unknown) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
+}
+
+/**
+ * Closes an instance whose workers ignored cancellation, without waiting:
+ * the close may hang too. A failure goes to the run log.
+ */
+export function abandon(vitest: Vitest, collector: RunCollector): void {
+  vitest
+    .close()
+    .catch((error: unknown) =>
+      collector.note(`close() of an abandoned instance failed: ${describeError(error)}`),
+    );
 }
 
 async function settleWithin<T>(promise: Promise<T>, ms: number): Promise<T | null> {
@@ -152,10 +170,9 @@ export function writeRunLog(options: RunOptions, collector: RunCollector, report
     `end: ${report.end}${report.failure ? ` (${report.failure})` : ""}, ${report.durationMs} ms`,
     "",
   ];
-  writeFileSync(
-    join(options.logDir, "vitest.log"),
-    `${[...header, ...collector.log].join("\n")}\n`,
-  );
+  const logFile = join(options.logDir, "vitest.log");
+  writeFileSync(logFile, `${[...header, ...collector.log].join("\n")}\n`);
+  collector.logFile = logFile;
   writeFileSync(
     join(options.logDir, "report.json"),
     `${JSON.stringify({ runId: options.runId, report }, null, 2)}\n`,
