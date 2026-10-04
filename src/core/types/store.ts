@@ -6,6 +6,8 @@ import type { Revision } from "./revision.js";
 import type { RunEnd } from "./runner.js";
 import type { KnownState, Transition } from "./state.js";
 import type {
+  CheckpointEnd,
+  CheckpointRecord,
   CheckRecord,
   ConsumerRecord,
   DaemonRecord,
@@ -92,8 +94,19 @@ export interface RunRepo {
   start(record: Omit<RunRecord, "endedAt" | "end">): RunRecord;
   finish(id: string, end: RunEnd, at: EpochMs): void;
   get(id: string): RunRecord | null;
-  /** Newest completed full-suite run of a worktree, for D7. */
-  lastFullSuite(worktreeId: WorktreeId): RunRecord | null;
+}
+
+/** Spec 001 D8: "`checkpoints` (one per `run --all` or baseline request, referenced by its tier runs)". */
+export interface CheckpointRepo {
+  start(record: Omit<CheckpointRecord, "completedAt" | "end">): CheckpointRecord;
+  finish(id: string, end: CheckpointEnd, at: EpochMs): void;
+  get(id: string): CheckpointRecord | null;
+  /**
+   * Newest `completed` checkpoint of a worktree. Spec 001 D7: "whether a
+   * full-suite checkpoint completed for this revision and at which revision
+   * the last one completed".
+   */
+  lastCompleted(worktreeId: WorktreeId): CheckpointRecord | null;
 }
 
 /**
@@ -147,6 +160,7 @@ export interface MetaRepo {
 export interface PruneReport {
   readonly resultsRemoved: number;
   readonly runsRemoved: number;
+  readonly checkpointsRemoved: number;
   /** `checks` rows no result, known state, view or transition referenced any more. */
   readonly checksRemoved: number;
   readonly worktreesRemoved: number;
@@ -172,6 +186,7 @@ export interface Store {
   readonly checks: CheckRepo;
   readonly results: ResultRepo;
   readonly runs: RunRepo;
+  readonly checkpoints: CheckpointRepo;
   readonly knownStates: KnownStateRepo;
   readonly transitions: TransitionRepo;
   readonly consumers: ConsumerRepo;

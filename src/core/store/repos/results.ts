@@ -1,12 +1,5 @@
 import { createHash } from "node:crypto";
-import type {
-  CheckError,
-  ResultRecord,
-  ResultRepo,
-  RunRecord,
-  RunRepo,
-  TestFileRef,
-} from "../../types/index.js";
+import type { CheckError, ResultRecord, ResultRepo } from "../../types/index.js";
 import {
   bool,
   CHECK_COLUMNS,
@@ -18,16 +11,13 @@ import {
   location,
   locationParams,
   num,
-  numOrNull,
   oneOf,
-  oneOfOrNull,
   str,
   strOrNull,
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
 const OUTCOMES = ["pass", "fail", "skip"] as const;
-const RUN_ENDS = ["completed", "crashed", "timed-out"] as const;
 
 const SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
@@ -133,53 +123,5 @@ function toResult(row: Row): ResultRecord {
       runId: str(row, "run_id"),
       recordedAt: num(row, "recorded_at"),
     },
-  };
-}
-
-export function createRunRepo(conn: Connection): RunRepo {
-  return {
-    start: (record) => {
-      conn.run(
-        `INSERT INTO runs (id, worktree_id, revision, test_files, full_suite, log_dir, started_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        record.id,
-        record.worktreeId,
-        record.revision,
-        JSON.stringify(record.testFiles),
-        flag(record.fullSuite),
-        record.logDir,
-        record.startedAt,
-      );
-      return { ...record, endedAt: null, end: null };
-    },
-    finish: (id, end, at) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
-    },
-    get: (id) => {
-      const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
-      return row === null ? null : toRun(row);
-    },
-    lastFullSuite: (worktreeId) => {
-      const row = conn.get(
-        `SELECT * FROM runs WHERE worktree_id = ? AND full_suite = 1 AND end_state = 'completed'
-         ORDER BY ended_at DESC LIMIT 1`,
-        worktreeId,
-      );
-      return row === null ? null : toRun(row);
-    },
-  };
-}
-
-function toRun(row: Row): RunRecord {
-  return {
-    id: str(row, "id"),
-    worktreeId: str(row, "worktree_id"),
-    revision: num(row, "revision"),
-    testFiles: json<TestFileRef[]>(row, "test_files"),
-    fullSuite: bool(row, "full_suite"),
-    logDir: str(row, "log_dir"),
-    startedAt: num(row, "started_at"),
-    endedAt: numOrNull(row, "ended_at"),
-    end: oneOfOrNull(row, "end_state", RUN_ENDS),
   };
 }

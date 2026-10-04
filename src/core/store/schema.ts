@@ -121,18 +121,30 @@ CREATE INDEX results_by_worktree ON results (worktree_id, check_id, recorded_at)
 CREATE INDEX results_by_run ON results (run_id);
 CREATE INDEX results_by_failure ON results (failure_id);
 
+CREATE TABLE checkpoints (
+  id TEXT PRIMARY KEY,
+  worktree_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  test_files TEXT NOT NULL,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  end_state TEXT
+) STRICT;
+CREATE INDEX checkpoints_by_worktree ON checkpoints (worktree_id, end_state, completed_at);
+
 CREATE TABLE runs (
   id TEXT PRIMARY KEY,
   worktree_id TEXT NOT NULL,
   revision INTEGER NOT NULL,
   test_files TEXT NOT NULL,
-  full_suite INTEGER NOT NULL,
+  checkpoint_id TEXT,
   log_dir TEXT NOT NULL,
   started_at INTEGER NOT NULL,
   ended_at INTEGER,
   end_state TEXT
 ) STRICT;
-CREATE INDEX runs_by_worktree ON runs (worktree_id, full_suite, ended_at);
+CREATE INDEX runs_by_checkpoint ON runs (checkpoint_id);
 
 CREATE TABLE known_states (
   worktree_id TEXT NOT NULL,
