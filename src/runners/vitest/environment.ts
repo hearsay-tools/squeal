@@ -1,4 +1,5 @@
 import type { TestProject } from "vitest/node";
+import { compare } from "../../core/fs/index.js";
 import type { RelativePath, RunnerEnvironment } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { globalSetupFiles, type ProjectInputs } from "./project.js";
@@ -33,7 +34,7 @@ export function projectEnvironment(
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
     resolvedConfig: canonicalConfig(project, paths),
-    files: [...files].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    files: [...files].sort(compare),
   };
 }
 
@@ -61,7 +62,7 @@ function canonicalize(value: unknown, paths: WorktreePaths): unknown {
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value)
       .filter(([, v]) => v !== undefined && typeof v !== "function")
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .sort(([a], [b]) => compare(a, b))
       .map(([k, v]) => [k, canonicalize(v, paths)]);
     return Object.fromEntries(entries);
   }

@@ -1,6 +1,6 @@
 import { posix } from "node:path";
+import { compare } from "../fs/index.js";
 import type { FileChange, RelativePath, TestFileRef } from "../types/index.js";
-import { compare } from "./closure.js";
 import { directoryOf, type ReverseIndex, testFileId } from "./reverse-index.js";
 
 /**

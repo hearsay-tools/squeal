@@ -1,3 +1,4 @@
+import { compare } from "../fs/index.js";
 import {
   type CacheUpdate,
   type Hasher,
@@ -6,7 +7,6 @@ import {
   type StatCache,
   sameStat,
 } from "../hash/index.js";
-import { compare } from "../keys/closure.js";
 import type {
   CandidateBatch,
   CandidatePath,
