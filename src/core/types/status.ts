@@ -114,8 +114,9 @@ export interface CheckBreakdown {
  * dirty flag, daemon liveness and last heartbeat, known failures with
  * fingerprint and location, counts of current / pending / stale / unknown
  * checks, how many current results are inherited and from where, whether a
- * full-suite result exists for this revision and at which revision the last
- * one completed, the closure method, and store schema version."
+ * full-suite checkpoint completed for this revision and at which revision the
+ * last one completed, the closure method, store schema version, and the latest
+ * persisted daemon notes".
  */
 export interface StatusSnapshot extends StatusHeader {
   readonly schemaVersion: PayloadSchemaVersion;
@@ -134,8 +135,19 @@ export interface StatusSnapshot extends StatusHeader {
   readonly breakdown: CheckBreakdown;
   readonly closureMethod: ClosureMethod;
   readonly storeSchemaVersion: number;
-  /** Factual notes: dropped watcher events, baseline lost after corruption (D12). */
+  /** Factual notes status itself derives: worktree not registered, no revision, baseline lost after corruption (D12). */
   readonly notes: readonly string[];
+  /**
+   * The latest persisted daemon notes, oldest first, at most 20: runner
+   * failures, dropped watcher events, tier pump stopped. Spec 001 D7: "the
+   * latest persisted daemon notes [...], kept bounded per worktree in `meta`".
+   * `revision` is `null` when the note belongs to no revision.
+   */
+  readonly daemonNotes: readonly {
+    readonly at: EpochMs;
+    readonly revision: RevisionNumber | null;
+    readonly text: string;
+  }[];
 }
 
 /**
