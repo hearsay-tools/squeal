@@ -29,6 +29,11 @@ export function isRacy(stat: FileStat, hashedAt: EpochMs): boolean {
   return hashedAt - stat.mtimeMs < RACY_WINDOW_MS;
 }
 
+/** One stat cache change computed by reconciliation, written by `StatCache.flush`. */
+export type CacheUpdate =
+  | { readonly kind: "set"; readonly record: FileHashRecord; readonly racy: boolean }
+  | { readonly kind: "delete"; readonly path: RelativePath };
+
 /**
  * In-memory stat cache of one worktree, persisted through `FileHashRepo`.
  *
@@ -102,13 +107,33 @@ export class StatCache {
     this.removed.add(path);
   }
 
-  /** Writes the entries changed since the last flush or load. */
-  flush(repo: FileHashRepo, worktreeId: WorktreeId): void {
-    if (this.upserted.size > 0) {
-      const records = [...this.upserted].map((path) => this.entries.get(path) as FileHashRecord);
-      repo.upsertMany(worktreeId, records);
+  /**
+   * Writes the entries changed since the last flush or load, plus `updates`,
+   * then applies `updates` in memory. If a write throws, memory and the
+   * pending changes are as before, so a rolled-back transaction leaves the
+   * cache matching the store and the next reconciliation sees the same
+   * changes again.
+   */
+  flush(repo: FileHashRepo, worktreeId: WorktreeId, updates: readonly CacheUpdate[] = []): void {
+    const upserts = new Map<RelativePath, FileHashRecord>();
+    const removals = new Set<RelativePath>(this.removed);
+    for (const path of this.upserted) upserts.set(path, this.entries.get(path) as FileHashRecord);
+    for (const update of updates) {
+      if (update.kind === "set") {
+        upserts.set(update.record.path, update.record);
+        removals.delete(update.record.path);
+      } else {
+        upserts.delete(update.path);
+        if (this.entries.has(update.path)) removals.add(update.path);
+      }
     }
-    if (this.removed.size > 0) repo.removeMany(worktreeId, [...this.removed]);
+    if (upserts.size > 0) repo.upsertMany(worktreeId, [...upserts.values()]);
+    if (removals.size > 0) repo.removeMany(worktreeId, [...removals]);
+
+    for (const update of updates) {
+      if (update.kind === "set") this.set(update.record, { racy: update.racy });
+      else this.delete(update.path);
+    }
     this.upserted.clear();
     this.removed.clear();
   }

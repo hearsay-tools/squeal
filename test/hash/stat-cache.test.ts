@@ -64,6 +64,55 @@ describe("StatCache", () => {
     expect(cache.hashOf("gone.ts")).toBe("h2");
   });
 
+  it("writes pending updates with its changes and applies them only after the write", () => {
+    const repo = new FakeFileHashRepo();
+    const cache = new StatCache();
+    cache.set(record("a.ts", "h1"));
+    cache.set(record("b.ts", "h2"));
+    cache.flush(repo, "w");
+    cache.set(record("seeded.ts", "h3"));
+
+    cache.flush(repo, "w", [
+      { kind: "set", record: record("a.ts", "h1b"), racy: true },
+      { kind: "delete", path: "b.ts" },
+      { kind: "delete", path: "never.ts" },
+    ]);
+
+    expect(repo.list("w").map((r) => [r.path, r.hash])).toEqual([
+      ["a.ts", "h1b"],
+      ["seeded.ts", "h3"],
+    ]);
+    expect(repo.removes).toBe(1);
+    expect(cache.hashOf("a.ts")).toBe("h1b");
+    expect(cache.isRacy("a.ts")).toBe(true);
+    expect(cache.hashOf("b.ts")).toBeNull();
+    expect(cache.hashOf("never.ts")).toBeNull();
+    // Applied as written: nothing is dirty afterwards.
+    cache.flush(repo, "w");
+    expect(repo.upserts).toBe(4);
+  });
+
+  it("keeps memory and dirty state when the write throws", () => {
+    const repo = new FakeFileHashRepo();
+    const cache = new StatCache();
+    cache.set(record("a.ts", "h1"));
+    const failing = {
+      ...repo,
+      upsertMany: () => {
+        throw new Error("disk full");
+      },
+      removeMany: () => {},
+    } as unknown as FakeFileHashRepo;
+
+    expect(() =>
+      cache.flush(failing, "w", [{ kind: "set", record: record("a.ts", "h9"), racy: false }]),
+    ).toThrow("disk full");
+    expect(cache.hashOf("a.ts")).toBe("h1");
+
+    cache.flush(repo, "w");
+    expect(repo.get("w", "a.ts")?.hash).toBe("h1");
+  });
+
   it("loads from and flushes only its changes to a FileHashRepo", () => {
     const repo = new FakeFileHashRepo();
     repo.upsertMany("w", [record("a.ts", "h1"), record("b.ts", "h2"), record("c.ts", "h3")]);
