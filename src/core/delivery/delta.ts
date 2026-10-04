@@ -2,11 +2,11 @@ import { checkIdentity, transitionKind } from "../state/index.js";
 import type {
   CheckId,
   DeltaEntry,
+  DeltaKind,
   DiagnosticFingerprint,
   EpochMs,
   KnownState,
   RevisionNumber,
-  TransitionKind,
   ViewEntry,
 } from "../types/index.js";
 
@@ -16,7 +16,7 @@ export interface DeltaPlan {
   readonly entries: readonly DeltaEntry[];
   /** View entries to write: every delivered entry plus first observations written silently. */
   readonly writes: readonly ViewEntry[];
-  /** Checks in the view that have no known state any more (retired). */
+  /** Checks in the view that have no known state any more (retired); told failures among them are entries. */
   readonly removals: readonly CheckId[];
 }
 
@@ -28,20 +28,26 @@ export interface PlanInput {
     fingerprint: DiagnosticFingerprint | null,
   ) => boolean;
   readonly toldAt: EpochMs;
-  /** Used as `observedAt` of a state never observed (an `unknown` without a revision). */
+  /** Current revision: `observedAt` of a retired entry and of a state never observed. */
   readonly revision: RevisionNumber;
 }
 
-/** Regressions first, then changed failures, baseline findings, unknowns, recoveries. */
-const RANK: Record<TransitionKind, number> = {
+/** Regressions first, then changed failures, baseline findings, unknowns, recoveries, retired failures. */
+const RANK: Record<DeltaKind, number> = {
   "pass-to-fail": 0,
   "first-seen-fail": 0,
   "fail-changed": 1,
   "to-unknown": 3,
   "fail-to-pass": 4,
+  "fail-retired": 5,
 };
 
-const rank = (e: DeltaEntry) => (e.baseline === true ? 2 : RANK[e.kind]);
+const rank = (e: DeltaEntry) => (isBaselineEntry(e) ? 2 : RANK[e.kind]);
+
+/** A `first-seen-fail` first observed by the worktree's baseline checkpoint. */
+export function isBaselineEntry(e: DeltaEntry): boolean {
+  return e.kind !== "fail-retired" && e.baseline === true;
+}
 
 export function toView(state: KnownState, toldAt: EpochMs): ViewEntry {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
@@ -58,15 +64,19 @@ export function toView(state: KnownState, toldAt: EpochMs): ViewEntry {
  * holds is what the consumer was told. So a check that broke and recovered
  * between two deliveries, or a failure that was skipped and came back
  * unchanged, produces nothing.
+ *
+ * A view entry with no known state is a retired check. D6: one told as
+ * `fail` "is delivered once to that consumer as resolved"; every other one
+ * leaves the view silently.
  */
 export function planDelta(input: PlanInput): DeltaPlan {
-  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
+  const toldOnly = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
   const entries: DeltaEntry[] = [];
   const writes: ViewEntry[] = [];
   for (const state of input.states) {
     const id = checkIdentity(state.check);
-    const before = told.get(id) ?? null;
-    told.delete(id);
+    const before = toldOnly.get(id) ?? null;
+    toldOnly.delete(id);
     const kind = transitionKind(before, state);
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
@@ -85,9 +95,20 @@ export function planDelta(input: PlanInput): DeltaPlan {
       ...(baseline ? { baseline } : {}),
     });
   }
+  for (const told of toldOnly.values()) {
+    if (told.outcome !== "fail") continue;
+    entries.push({
+      check: told.check,
+      kind: "fail-retired",
+      from: "fail",
+      to: null,
+      fingerprint: told.fingerprint,
+      observedAt: input.revision,
+    });
+  }
   const sorted = entries
     .map((entry, i) => ({ entry, i }))
     .sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i)
     .map(({ entry }) => entry);
-  return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
+  return { entries: sorted, writes, removals: [...toldOnly.values()].map((v) => v.check) };
 }

@@ -2,12 +2,13 @@ import { formatCheck, SUMMARY_MAX_CHARS } from "../state/index.js";
 import type {
   CheckId,
   Delta,
-  DeltaEntry,
   KnownFailure,
   KnownOutcome,
   Registration,
+  RetiredEntry,
   SourceLocation,
   StatusHeader,
+  TransitionEntry,
 } from "../types/index.js";
 
 /*
@@ -27,7 +28,10 @@ const OVERFLOW_RESERVE = 200;
 const INDENT = "      ";
 const STATUS_POINTER = "`squeal status` lists every known failure.";
 
-const upper = (outcome: KnownOutcome) => outcome.toUpperCase();
+/** What a block counts as when it is left out: an outcome, or a retired failure. */
+type Shown = KnownOutcome | "resolved";
+
+const upper = (outcome: Shown) => outcome.toUpperCase();
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function cap(text: string, max: number): string {
@@ -60,7 +64,7 @@ function headerLine(header: StatusHeader): string {
   );
 }
 
-function change(entry: DeltaEntry): string {
+function change(entry: TransitionEntry): string {
   switch (entry.kind) {
     case "first-seen-fail": {
       const line = entry.from === null ? "first observed: FAIL" : `${upper(entry.from)} -> FAIL`;
@@ -73,7 +77,7 @@ function change(entry: DeltaEntry): string {
   }
 }
 
-function provenance(entry: DeltaEntry, revision: number): string | null {
+function provenance(entry: TransitionEntry, revision: number): string | null {
   const parts: string[] = [];
   if (entry.validity === "stale") parts.push(`stale, observed at revision ${entry.observedAt}`);
   if (entry.validity === "pending") {
@@ -89,15 +93,15 @@ function provenance(entry: DeltaEntry, revision: number): string | null {
 
 interface Block {
   readonly text: string;
-  readonly outcomes: readonly KnownOutcome[];
+  readonly outcomes: readonly Shown[];
 }
 
-function block(head: string, lines: readonly (string | null)[], outcomes: KnownOutcome[]): Block {
+function block(head: string, lines: readonly (string | null)[], outcomes: Shown[]): Block {
   const body = lines.filter((l): l is string => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), outcomes };
 }
 
-function entryBlock(entry: DeltaEntry, revision: number): Block {
+function entryBlock(entry: TransitionEntry, revision: number): Block {
   return block(
     `${upper(entry.to)}  ${checkName(entry.check)}`,
     [
@@ -110,9 +114,18 @@ function entryBlock(entry: DeltaEntry, revision: number): Block {
   );
 }
 
+/** Spec 001 D6: a retired told failure is "worded as no longer reported by the runner". */
+function retiredBlock(entry: RetiredEntry): Block {
+  return block(
+    `RESOLVED  ${checkName(entry.check)}`,
+    ["FAIL -> no longer reported by the runner"],
+    ["resolved"],
+  );
+}
+
 /** Spec 001 D12: a crashed tier yields "one factual line", so unknowns group by reason. */
-function unknownBlocks(entries: readonly DeltaEntry[]): Block[] {
-  const byReason = new Map<string, DeltaEntry[]>();
+function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
+  const byReason = new Map<string, TransitionEntry[]>();
   for (const e of entries) {
     const reason = e.summary ?? "no trusted result";
     byReason.set(reason, [...(byReason.get(reason) ?? []), e]);
@@ -152,21 +165,24 @@ function assemble(
   return out;
 }
 
-/** Renders a delta: header, failures first, unknowns, recoveries. */
+/** Renders a delta: header, failures first, unknowns, recoveries, retired failures. */
 export function formatDelta(delta: Delta): string {
   const { header, entries } = delta;
+  const changed = entries.filter((e): e is TransitionEntry => e.kind !== "fail-retired");
+  const retired = entries.filter((e): e is RetiredEntry => e.kind === "fail-retired");
   const title =
     delta.label === "baseline"
       ? `SQUEAL · baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}`
       : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
   const blocks = [
-    ...entries.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
-    ...unknownBlocks(entries.filter((e) => e.to === "unknown")),
-    ...entries.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
+    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
+    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
+    ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
+    ...retired.map(retiredBlock),
   ];
   return assemble(`${title}\n${headerLine(header)}`, blocks, (left) => {
     const outcomes = left.flatMap((b) => b.outcomes);
-    const by = (["fail", "pass", "unknown"] as const)
+    const by = (["fail", "pass", "unknown", "resolved"] as const)
       .map((o) => [o, outcomes.filter((x) => x === o).length] as const)
       .filter(([, n]) => n > 0)
       .map(([o, n]) => `${n} ${upper(o)}`);

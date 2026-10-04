@@ -4,6 +4,8 @@ import { createStateSink } from "../../src/core/state/index.js";
 import {
   CONSUMER_EXPIRY_MS,
   type Consumer,
+  type DeltaEntry,
+  type DeltaKind,
   type HarnessDelivery,
   type ResultRecord,
   type StateSink,
@@ -18,6 +20,9 @@ const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const C2: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "sub-1" };
 const A = check("a");
 const B = check("b");
+
+/** `baseline` of a transition entry; retired entries have none. */
+const baselineOf = (e: DeltaEntry) => ("baseline" in e ? e.baseline : undefined);
 
 let store: Store;
 let sink: StateSink;
@@ -46,7 +51,7 @@ function apply(...results: ResultRecord[]) {
 const pass = () => result(A, "pass");
 const fail = (message = "expected 1 to be 2") => result(A, "fail", { message });
 
-async function kindsFor(consumer: Consumer): Promise<TransitionKind[] | null> {
+async function kindsFor(consumer: Consumer): Promise<DeltaKind[] | null> {
   const delta = await delivery.onToolBoundary(consumer);
   return delta === null ? null : delta.entries.map((e) => e.kind);
 }
@@ -91,7 +96,7 @@ describe("onToolBoundary", () => {
         },
       ],
     });
-    expect(delta?.entries[0]?.baseline).toBeUndefined();
+    expect(delta?.entries.map(baselineOf)).toEqual([undefined]);
   });
 
   it("stays silent for PASS -> PASS and for FAIL -> FAIL with the same fingerprint", async () => {
@@ -166,12 +171,54 @@ describe("onToolBoundary", () => {
     expect(store.consumers.get(C1)).toBeNull();
   });
 
-  it("drops view entries of retired checks silently", async () => {
-    apply(fail(), result(B, "pass"));
+  it("drops view entries of retired checks told as passing silently", async () => {
+    apply(pass(), result(B, "pass"));
     await delivery.register(C1);
-    store.knownStates.removeMany(WT, [A]);
+    sink.retire(WT, [A]);
     expect(await delivery.onToolBoundary(C1)).toBeNull();
     expect(store.views.list(C1).map((v) => v.check)).toEqual([B]);
+  });
+
+  it("delivers a retired check told as failing once, as no longer reported", async () => {
+    const fileLevel = { kind: "file" as const, project: "", testPath: FILE.path };
+    apply(result(fileLevel, "fail"), result(B, "pass"));
+    await delivery.register(C1);
+    await delivery.register(C2);
+    store.revisions.append({
+      worktreeId: WT,
+      createdAt: 1,
+      head: null,
+      dirty: false,
+      trigger: "watch",
+      changes: [{ path: FILE.path, oldHash: "a", newHash: "b" }],
+    });
+    sink.retire(WT, [fileLevel]);
+
+    const delta = await delivery.onToolBoundary(C1);
+    expect(delta?.entries).toEqual([
+      {
+        check: fileLevel,
+        kind: "fail-retired",
+        from: "fail",
+        to: null,
+        fingerprint: "AssertionError: expected 1 to be 2 @ src/a.ts:3:5",
+        observedAt: 1,
+      },
+    ]);
+    expect(delta?.label).toBe("transitions");
+    expect(await delivery.onToolBoundary(C1)).toBeNull();
+    expect(store.views.list(C1).map((v) => v.check)).toEqual([B]);
+    expect((await delivery.onToolBoundary(C2))?.entries.map((e) => e.kind)).toEqual([
+      "fail-retired",
+    ]);
+  });
+
+  it("stays silent when a retired told failure comes back unchanged before delivery", async () => {
+    apply(fail());
+    await delivery.register(C1);
+    sink.retire(WT, [A]);
+    apply(fail());
+    expect(await delivery.onToolBoundary(C1)).toBeNull();
   });
 
   it("records when the consumer was seen and delivered to", async () => {
@@ -288,7 +335,7 @@ describe("baseline findings", () => {
     sink.applyResults(WT, 1, [fail(), result(B, "pass")], startBaseline());
     const delta = await delivery.onToolBoundary(C1);
     expect(delta?.label).toBe("baseline");
-    expect(delta?.entries.map((e) => [e.check, e.kind, e.baseline])).toEqual([
+    expect(delta?.entries.map((e) => [e.check, e.kind, baselineOf(e)])).toEqual([
       [A, "first-seen-fail", true],
     ]);
   });
@@ -307,7 +354,7 @@ describe("baseline findings", () => {
     apply(result(B, "fail"));
     const delta = await delivery.onToolBoundary(C1);
     expect(delta?.label).toBe("transitions");
-    expect(delta?.entries.map((e) => [e.check, e.baseline ?? false])).toEqual([
+    expect(delta?.entries.map((e) => [e.check, baselineOf(e) ?? false])).toEqual([
       [B, false],
       [A, true],
     ]);
@@ -333,7 +380,7 @@ describe("baseline findings", () => {
     sink.markUnknown(WT, 2, [FILE], "runner crashed");
     apply(fail());
     const delta = await delivery.onToolBoundary(C1);
-    expect(delta?.entries.map((e) => [e.kind, e.baseline ?? false])).toEqual([
+    expect(delta?.entries.map((e) => [e.kind, baselineOf(e) ?? false])).toEqual([
       ["first-seen-fail", false],
     ]);
   });

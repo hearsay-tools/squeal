@@ -45,12 +45,13 @@ export interface ViewEntry {
 }
 
 /**
- * One notable difference between a consumer's view and the known state.
+ * One notable difference between a consumer's view and the known state of a
+ * check that still has one.
  *
  * Spec 001 D6: "keeps only notable differences (the transition kinds above,
  * evaluated between what was told and what is known now)".
  */
-export interface DeltaEntry {
+export interface TransitionEntry {
   readonly check: CheckId;
   readonly kind: TransitionKind;
   readonly from: KnownOutcome | null;
@@ -69,6 +70,35 @@ export interface DeltaEntry {
    */
   readonly baseline?: boolean;
 }
+
+/**
+ * A check told to this consumer as failing that has no known state any more:
+ * the runner stopped reporting it (renamed or deleted test, a file-level
+ * failure gone after a fix). Not a transition: nothing is recorded in the
+ * audit log.
+ *
+ * Spec 001 D6: "A check retired while the last state told to a consumer was
+ * `fail` is delivered once to that consumer as resolved, worded as no longer
+ * reported by the runner, so a renamed or deleted failing test never leaves an
+ * open failure in an agent's view."
+ */
+export interface RetiredEntry {
+  readonly check: CheckId;
+  readonly kind: "fail-retired";
+  readonly from: "fail";
+  /** No known state: the runner no longer reports the check. */
+  readonly to: null;
+  /** Fingerprint of the failure that was told. */
+  readonly fingerprint: DiagnosticFingerprint | null;
+  /** Current revision when the delivery found the check gone. */
+  readonly observedAt: RevisionNumber;
+}
+
+/** Kind of a delta entry: a transition kind, or `fail-retired`. */
+export type DeltaKind = TransitionKind | RetiredEntry["kind"];
+
+/** Discriminated by `kind`. */
+export type DeltaEntry = TransitionEntry | RetiredEntry;
 
 /**
  * A delivery: header plus notable differences, failures first.
