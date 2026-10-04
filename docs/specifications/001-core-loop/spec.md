@@ -98,7 +98,7 @@ Explicit checkpoints: `squeal run --all` queues every test file whose key has no
 
 ### D6. State, transitions and delivery views
 
-The store holds the latest result per `(check id, key)` and the history needed for provenance. For each worktree and check the daemon derives the **known state**: `pass`, `fail`, `unknown`, with `current | stale | pending` validity, the revision and commit it was observed at, its origin (`own` or `inherited from <worktree> at <commit>`), duration, location, a concise failure summary, and a **diagnostic fingerprint** (normalized first error line plus source location).
+The store holds the latest result per `(check id, key)` and the history needed for provenance. For each worktree and check the daemon derives the **known state**: `pass`, `fail`, `skip` (skipped or todo in the runner; counted separately, never a failure, never notable in a delta), `unknown`, with `current | stale | pending` validity, the revision and commit it was observed at, its origin (`own` or `inherited from <worktree> at <commit>`), duration, location, a concise failure summary, and a **diagnostic fingerprint** (normalized first error line plus source location).
 
 A **transition** is recorded, per worktree, whenever a new result changes a check's known state in the ways the vision lists: first-seen fail, `pass -> fail`, `fail -> pass`, `fail -> fail` with a changed fingerprint, runner-crash to `unknown`. Transitions are the audit log. Agents never read them directly.
 
@@ -114,7 +114,7 @@ Every delivered message carries a header: the worktree's current revision, how m
 
 SQLite through `node:sqlite` (Node 22.13 or later; `--disable-warning=ExperimentalWarning` until Node 24 is the floor). WAL mode, `synchronous=NORMAL`, a busy timeout on every connection, short `BEGIN IMMEDIATE` write transactions, schema version in `user_version` with transactional migrations. Research measured 0 lost writes and 0 corruptions under 4 writers, 4 readers and 20 hard kills, with 0.45 ms median reads; JSON lost 75% of updates without a lock and was about 500 times slower with one.
 
-Tables: `worktrees`, `revisions`, `file_hashes`, `test_files` (with the newest closure path list, stored once per test file), `checks`, `results` (keyed by check and key), `runs`, `transitions`, `consumers` and `consumer_views`, `meta`. Failure text is deduplicated by fingerprint.
+Tables: `worktrees`, `revisions`, `file_hashes`, `test_files` (with the newest closure path list, stored once per test file), `test_file_keys` (the key each worktree computed per test file at its current revision, plus pending phase), `checks`, `results` (keyed by check and key), `runs`, `known_states` (the derived state per worktree and check, written by the daemon so hooks and status classify validity without one), `transitions`, `consumers` and `consumer_views`, `meta`. Failure text is deduplicated by fingerprint. Crashes and timeouts are never stored as results under a key: an `unknown` under a key would be inherited as a hit.
 
 Pruning: keep every result whose key is current in any live worktree plus the newest result per check on the main worktree; drop other keys after 7 days and everything owned by removed worktrees; a size cap with LRU eviction as a backstop. Expected steady state for 5,000 tests at 50 revisions a day is about 40 MB.
 

@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: draft (spec written from research, awaiting human review)
+Stage: in-progress (approved 2026-10-04; wave 0 done, wave 1 running)
 Started: 2026-10-02
 
 ## Decisions so far
@@ -11,6 +11,10 @@ Started: 2026-10-02
 - Agents receive a diff between what they were last told and the current known state, computed at delivery time, never a replay of raw events.
 - Result validity is per check, not per run. No cancel-and-restart on new changes.
 - Delivery must reach the agent mid-turn, at tool boundaries, not only at the end of a turn.
+
+## Amendments after approval
+
+- 2026-10-04, from wave 0 type review: added `test_file_keys` and `known_states` tables (D8), `skip` as a known outcome (D6), rule that `unknown` is never stored under a content key (D8).
 
 ## Research
 
