@@ -7,4 +7,5 @@ export {
   expireConsumers,
 } from "./delivery.js";
 export { type DeltaPlan, type PlanInput, planDelta } from "./delta.js";
+export { formatDelta, formatRegistration, MESSAGE_CAP_CHARS } from "./format.js";
 export { readHeader } from "./header.js";
