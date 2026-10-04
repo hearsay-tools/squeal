@@ -171,6 +171,8 @@ export interface WhyReport {
   /** Current revision of the worktree; `null` when none is recorded. */
   readonly revision: RevisionNumber | null;
   readonly check: CheckId;
+  /** Root of every worktree in the store, for naming origins and producers. */
+  readonly worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>;
   /** Known state in this worktree; `null` when it has none. */
   readonly knownState: KnownState | null;
   /** Transitions of the check in this worktree, oldest first. */
