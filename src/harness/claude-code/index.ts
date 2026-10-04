@@ -8,5 +8,6 @@ export {
   WAITER_HOOK_TIMEOUT_S,
   WAITER_TIMEOUT_MS,
 } from "./hooks/waiter.js";
-export { HOOKS, type HookName, type HookResult, runHook } from "./run.js";
+export { HOOKS, type HookName, runHook } from "./hooks.js";
+export { type HookResult, runHandler } from "./run.js";
 export { waiterLockPath } from "./waiter-lock.js";

@@ -1,27 +1,6 @@
 import { locate } from "./context.js";
 import type { Handler, HookDeps } from "./hook.js";
-import { postToolBatch } from "./hooks/post-tool-batch.js";
-import { preToolUse } from "./hooks/pre-tool-use.js";
-import { sessionEnd } from "./hooks/session-end.js";
-import { sessionStart } from "./hooks/session-start.js";
-import { stop } from "./hooks/stop.js";
-import { waiter } from "./hooks/waiter.js";
 import { parseHookInput } from "./input.js";
-
-/**
- * Hook entry points; one bundle each under plugins/claude-code/dist/.
- * SubagentStart uses `session-start` and SubagentStop uses `stop`.
- */
-export const HOOKS = {
-  "session-start": sessionStart,
-  "post-tool-batch": postToolBatch,
-  "pre-tool-use": preToolUse,
-  stop,
-  "session-end": sessionEnd,
-  waiter,
-} satisfies Record<string, Handler>;
-
-export type HookName = keyof typeof HOOKS;
 
 export interface HookResult {
   readonly stdout: string;
@@ -38,13 +17,18 @@ const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };
  * `SQUEAL_HOOK_DEBUG=1` reports the swallowed error on stderr, which Claude
  * Code does not show the model after exit 0.
  */
-export async function runHook(name: HookName, stdin: string, deps: HookDeps): Promise<HookResult> {
+export async function runHandler(
+  name: string,
+  handler: Handler,
+  stdin: string,
+  deps: HookDeps,
+): Promise<HookResult> {
   try {
     const input = parseHookInput(stdin);
     if (input === null) return SILENT;
     const location = locate(input.cwd);
     if (location === null) return SILENT;
-    const outcome = await HOOKS[name](input, location, deps);
+    const outcome = await handler(input, location, deps);
     if (outcome === null) return SILENT;
     return {
       stdout: outcome.output === undefined ? "" : JSON.stringify(outcome.output),
