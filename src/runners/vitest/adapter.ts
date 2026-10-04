@@ -1,4 +1,4 @@
-import { createVitest, type TestSpecification, type Vitest, version } from "vitest/node";
+import type { TestSpecification, Vitest } from "vitest/node";
 import type {
   EnumeratedCheck,
   InvalidatedPath,
@@ -14,6 +14,7 @@ import type {
 import { affectedTestFiles } from "./affected.js";
 import { projectEnvironment } from "./environment.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
+import type { VitestNode } from "./load.js";
 import type { WorktreePaths } from "./paths.js";
 import {
   findProject,
@@ -49,13 +50,20 @@ export class VitestAdapter implements RunnerAdapter {
   #queue: Promise<unknown> = Promise.resolve();
   #closed = false;
 
-  constructor(readonly paths: WorktreePaths) {}
+  /**
+   * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
+   * come from Squeal's Vitest, so loading this module loads no Vitest.
+   */
+  constructor(
+    readonly paths: WorktreePaths,
+    private readonly vitest: VitestNode,
+  ) {}
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
   async #start(): Promise<Vitest> {
     const generation = ++this.#generation;
     const current = () => (generation === this.#generation ? this.#collector : null);
-    const vitest = await createVitest("test", {
+    const vitest = await this.vitest.createVitest("test", {
       root: this.paths.root,
       watch: false,
       reporters: [createSquealReporter(current)],
@@ -188,7 +196,7 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#serial(async (vitest) => {
       const context = {
         paths: this.paths,
-        runnerVersion: version,
+        runnerVersion: this.vitest.version,
         adapterVersion: this.adapterVersion,
       };
       const envs: RunnerEnvironment[] = [];

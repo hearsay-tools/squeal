@@ -1,5 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { accessSync, constants, existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  accessSync,
+  constants,
+  copyFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { describe, expect, it } from "vitest";
@@ -11,6 +18,7 @@ import {
 } from "../../src/harness/claude-code/build.js";
 import { WAITER_HOOK_TIMEOUT_S } from "../../src/harness/claude-code/index.js";
 import { tempDir } from "../store/helpers.js";
+import { runtimeDir } from "./bundle-helpers.js";
 
 const PLUGIN = join(REPO_ROOT, "plugins/claude-code");
 const readJson = (path: string): unknown => JSON.parse(readFileSync(join(PLUGIN, path), "utf8"));
@@ -77,16 +85,17 @@ describe("plugin manifest", () => {
     };
     const plugin = readJson(".claude-plugin/plugin.json") as { name: string; version: string };
     const pkg = readJson("package.json") as { version: string; type: string };
-    const marketplace = readJson(".claude-plugin/marketplace.json") as {
-      name: string;
-      plugins: { name: string; source: string }[];
-    };
+    // Review wave 3, S4: a github marketplace resolves plugin sources against the clone root.
+    const marketplace = JSON.parse(
+      readFileSync(join(REPO_ROOT, ".claude-plugin/marketplace.json"), "utf8"),
+    ) as { name: string; plugins: { name: string; source: string }[] };
     expect(plugin.version).toBe(root.version);
     expect(pkg).toMatchObject({ version: root.version, type: "module" });
     expect(marketplace.name).toBe("squeal");
     expect(marketplace.plugins).toEqual([
-      expect.objectContaining({ name: plugin.name, source: "." }),
+      expect.objectContaining({ name: plugin.name, source: "./plugins/claude-code" }),
     ]);
+    expect(existsSync(join(PLUGIN, ".claude-plugin/marketplace.json"))).toBe(false);
   });
 
   it("puts an executable squeal on the plugin path that runs the bundled CLI", () => {
@@ -110,6 +119,37 @@ describe("bundles", () => {
       expect(readFileSync(join(PLUGIN_DIST, file), "utf8"), file).toBe(
         readFileSync(join(outdir, file), "utf8"),
       );
+    }
+  });
+
+  it("give the CLI the root version with no manifest anywhere near it (B1)", () => {
+    // Under /tmp: the OS temp dir can sit inside a checkout of this repository.
+    const dir = runtimeDir();
+    copyFileSync(join(PLUGIN_DIST, "cli/squeal.mjs"), join(dir, "squeal.mjs"));
+    const root = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
+      version: string;
+    };
+    const out = execFileSync(process.execPath, [join(dir, "squeal.mjs"), "--version"], {
+      cwd: dir,
+      encoding: "utf8",
+    });
+    expect(out).toBe(`${root.version}\n`);
+  });
+
+  it("ship the daemon's socket worker beside the CLI (B1)", () => {
+    expect(existsSync(join(PLUGIN_DIST, "cli/front-desk.mjs"))).toBe(true);
+  });
+
+  it("load Vitest and @parcel/watcher only from the project, never statically (B2, N11)", async () => {
+    const result = await build({ ...bundleOptions(tempDir("squeal-bundles-")), write: false });
+    const metafile = result.metafile as Metafile;
+    for (const [path, output] of Object.entries(metafile.outputs)) {
+      const packages = output.imports
+        .filter((i) => !i.path.startsWith("node:"))
+        .map((i) => `${i.kind} ${i.path}`);
+      // Squeal's own @parcel/watcher is tried first, lazily; the project's is the fallback.
+      const allowed = path.endsWith("cli/squeal.mjs") ? ["dynamic-import @parcel/watcher"] : [];
+      expect(packages, path).toEqual(allowed);
     }
   });
 
