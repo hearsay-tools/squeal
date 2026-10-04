@@ -85,13 +85,13 @@ export function toView(state: KnownState, toldAt: EpochMs): ViewEntry {
  * leaves the view silently.
  */
 export function planDelta(input: PlanInput): DeltaPlan {
-  const toldOnly = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
+  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
   const entries: DeltaEntry[] = [];
   const writes: ViewEntry[] = [];
   for (const state of input.states) {
     const id = checkIdentity(state.check);
-    const before = toldOnly.get(id) ?? null;
-    toldOnly.delete(id);
+    const before = told.get(id) ?? null;
+    told.delete(id);
     const kind = transitionKind(before, state);
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
@@ -113,14 +113,14 @@ export function planDelta(input: PlanInput): DeltaPlan {
       ...(baseline ? { baseline } : {}),
     });
   }
-  for (const told of toldOnly.values()) {
-    if (told.outcome !== "fail") continue;
+  for (const view of told.values()) {
+    if (view.outcome !== "fail") continue;
     entries.push({
-      check: told.check,
+      check: view.check,
       kind: "fail-retired",
       from: "fail",
       to: null,
-      fingerprint: told.fingerprint,
+      fingerprint: view.fingerprint,
       observedAt: input.revision,
     });
   }
@@ -128,5 +128,5 @@ export function planDelta(input: PlanInput): DeltaPlan {
     .map((entry, i) => ({ entry, i }))
     .sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i)
     .map(({ entry }) => entry);
-  return { entries: sorted, writes, removals: [...toldOnly.values()].map((v) => v.check) };
+  return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
