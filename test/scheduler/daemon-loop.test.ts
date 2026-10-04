@@ -38,7 +38,12 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       expect([...loop.scheduler.trackedPaths()]).toContain("src/gen/client.ts");
       const first = keyOf();
       expect(first?.key).toMatch(/^[0-9a-f]{64}$/);
-      expect(store.results.byKey(first?.key ?? "").map((r) => r.outcome)).toEqual(["pass"]);
+      const outcomes = (key: string | null | undefined) =>
+        store.results.byKey(key ?? null).map((r) => [r.check.kind, r.outcome]);
+      expect(outcomes(first?.key)).toEqual([
+        ["file", "pass"],
+        ["test", "pass"],
+      ]);
 
       // Codegen rewrites the file with a breaking change.
       writeFileSync(join(root, "src/gen/client.ts"), 'export const client = () => "changed";\n');
@@ -48,7 +53,10 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
 
       const second = keyOf();
       expect(second?.key).not.toBe(first?.key);
-      expect(store.results.byKey(second?.key ?? "").map((r) => r.outcome)).toEqual(["fail"]);
+      expect(outcomes(second?.key)).toEqual([
+        ["file", "pass"],
+        ["test", "fail"],
+      ]);
       expect(store.revisions.latest(worktreeId)?.changes.map((c) => c.path)).toEqual([
         "src/gen/client.ts",
       ]);

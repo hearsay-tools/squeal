@@ -40,7 +40,8 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     }
     const status = h.scheduler.status();
     expect(status.testFiles).toEqual({ current: 5, pending: 0, stale: 0, unknown: 0 });
-    expect(status.checks).toEqual({ current: 6, pending: 0, stale: 0, unknown: 0 });
+    // Six tests plus one file-level check per test file (S1).
+    expect(status.checks).toEqual({ current: 11, pending: 0, stale: 0, unknown: 0 });
     expect(status.lookups).toEqual({ hits: 0, misses: 5 });
     expect(
       h.sink.stateOf({
@@ -113,7 +114,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     for (const path of ALL_TEST_FILES) expect(b.keyOf(path)).toBe(a.keyOf(path));
 
     const applied = b.sink.callsOf("applyResults").flatMap((c) => c.results);
-    expect(applied).toHaveLength(6);
+    expect(applied).toHaveLength(11);
     expect(new Set(applied.map((r) => r.provenance.worktreeId))).toEqual(new Set([a.worktreeId]));
     for (const state of b.sink.states()) {
       expect(state.validity).toBe("current");

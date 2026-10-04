@@ -13,23 +13,13 @@ import type {
 import { checkId } from "./files.js";
 
 /**
- * Summary and fingerprint of a failure. Task 001-21 owns the real one
- * (`describeFailure` in src/core/state); the scheduler takes it as an option.
+ * Summary and fingerprint of a failure. Defaults to `describeFailure` from
+ * src/core/state (review S8); tests may pass another.
  */
 export type FailureDescriber = (
   errors: readonly CheckError[],
   location: SourceLocation | null,
 ) => { readonly summary: string | null; readonly fingerprint: DiagnosticFingerprint | null };
-
-/**
- * Stand-in until `describeFailure` lands: the first line of the first error
- * as summary, no fingerprint. Never invents a fingerprint (spec 001 D6 is
- * task 001-21's).
- */
-export const firstLineSummary: FailureDescriber = (errors) => {
-  const first = errors[0]?.message.split("\n")[0]?.trim();
-  return { summary: first ? first : null, fingerprint: null };
-};
 
 export function fileCheck(ref: TestFileRef): FileCheckId {
   return { kind: "file", project: ref.project, testPath: ref.path };
@@ -54,7 +44,8 @@ export interface FileRecordsInput {
  * D8: "the file-level error expansion uses the checks of the file's previous
  * key, never every check ever seen." A check that ran in this run keeps its
  * own result: an unhandled error attributed to the file after its tests ran
- * fails the file-level check, not the tests that passed.
+ * fails the file-level check, not the tests that passed. A file with no
+ * file-level error records a `pass` for its file-level check.
  */
 export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const { ref, key, report, provenance, describe } = input;
@@ -83,7 +74,23 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const errors = report.fileErrors
     .filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path)
     .flatMap((e) => e.errors);
-  if (errors.length === 0) return records;
+  if (errors.length === 0) {
+    // Spec 001 D6: "The file-level check of a test file records `pass`
+    // whenever the file loads, so a fixed import or syntax error closes with
+    // `fail -> pass` like any test."
+    records.push({
+      check: fileCheck(ref),
+      key,
+      outcome: "pass",
+      durationMs: 0,
+      location: null,
+      summary: null,
+      fingerprint: null,
+      errors: [],
+      provenance,
+    });
+    return records;
+  }
   const location = errors[0]?.location ?? null;
   const failure = describe(errors, location);
   const failed = (check: CheckId): ResultRecord => ({

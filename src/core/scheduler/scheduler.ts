@@ -1,5 +1,6 @@
 import { createFsHasher, type Hasher, readObjectFormat } from "../hash/index.js";
 import { type HeadState, statCandidates } from "../revision/index.js";
+import { describeFailure } from "../state/index.js";
 import type {
   AbsolutePath,
   CandidateBatch,
@@ -24,7 +25,7 @@ import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import { priorityOf } from "./queue.js";
-import { type FailureDescriber, firstLineSummary } from "./records.js";
+import type { FailureDescriber } from "./records.js";
 import { applyRevision, checkLockfile } from "./revision.js";
 import {
   executeTier,
@@ -49,7 +50,7 @@ export interface SchedulerOptions {
   readonly runsDir: AbsolutePath;
   /** `HEAD` and the dirty flag for new revisions. */
   readonly head: () => Promise<HeadState>;
-  /** Summary and fingerprint of a failure. Defaults to `firstLineSummary` until 001-21 lands. */
+  /** Summary and fingerprint of a failure. Defaults to `describeFailure` (D6). */
   readonly describeFailure?: FailureDescriber;
   /**
    * The full extra-file list whenever it grows. Called while a batch is being
@@ -113,7 +114,7 @@ class TierScheduler implements Scheduler {
         keys,
         hasher,
         runsDir: options.runsDir,
-        describe: options.describeFailure ?? firstLineSummary,
+        describe: options.describeFailure ?? describeFailure,
         head: options.head,
         now: options.now ?? Date.now,
         note: (message) => this.#note(message),
