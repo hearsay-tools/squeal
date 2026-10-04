@@ -24,7 +24,7 @@ import {
 } from "./project.js";
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { checkNames, compareRefs } from "./results.js";
-import { buildReport, execute, writeRunLog } from "./run.js";
+import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -82,6 +82,7 @@ export class VitestAdapter implements RunnerAdapter {
       this.#vitest ??= await this.#start();
       return fn(this.#vitest);
     });
+    // The caller gets the error from `next`; the queue only needs to settle.
     this.#queue = next.catch(() => {});
     return next;
   }
@@ -214,7 +215,7 @@ export class VitestAdapter implements RunnerAdapter {
         if (execution.hung) {
           // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
           this.#vitest = null;
-          vitest.close().catch(() => {});
+          abandon(vitest, collector);
         }
         const report = buildReport(collector, execution, Math.round(performance.now() - started));
         writeRunLog(options, collector, report);

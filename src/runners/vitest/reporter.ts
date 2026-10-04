@@ -1,5 +1,6 @@
+import { appendFileSync } from "node:fs";
 import type { Reporter, SerializedError, TestCase, TestModule } from "vitest/node";
-import type { CheckRunResult, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath, CheckRunResult, TestFileRef } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { checkNames, refKey, toCheckRunResult } from "./results.js";
 
@@ -31,6 +32,8 @@ export class RunCollector {
   readonly log: string[] = [];
   reason: TestRunEndReason | null = null;
   cancelRequested = false;
+  /** Set once `vitest.log` is written; later notes are appended to it. */
+  logFile: AbsolutePath | null = null;
   readonly #requested: Map<string, TestFileRef>;
   readonly #names = new WeakMap<TestModule, Map<string, string>>();
 
@@ -87,6 +90,24 @@ export class RunCollector {
     this.reason = reason;
     this.log.push(`RUN END ${reason}, ${unhandledErrors.length} unhandled error(s)`);
     for (const error of unhandledErrors) this.log.push(indent(`unhandled: ${errorText(error)}`));
+  }
+
+  /**
+   * An adapter event for the run log, such as an error from cancelling the
+   * run or closing an instance. The styleguide: "Never swallow an error
+   * silently" (review N3).
+   */
+  note(text: string): void {
+    const line = `squeal: ${text}`;
+    if (this.logFile === null) {
+      this.log.push(line);
+      return;
+    }
+    try {
+      appendFileSync(this.logFile, `${line}\n`);
+    } catch (error) {
+      process.emitWarning(`${line} (run log ${this.logFile} not writable: ${String(error)})`);
+    }
   }
 
   console(type: string, content: string): void {
