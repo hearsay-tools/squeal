@@ -80,9 +80,9 @@ export interface ResultRepo {
    *
    * Every hit advances the results' last-used time to `usedAt`, never back.
    * Spec 001 D8: "with a last-used time advanced on every lookup hit"; the
-   * size cap evicts by it.
+   * size cap evicts by it. A `null` key (an unkeyed test file) has no results.
    */
-  byKey(key: CheckKey, usedAt?: EpochMs): readonly ResultRecord[];
+  byKey(key: CheckKey | null, usedAt?: EpochMs): readonly ResultRecord[];
   /**
    * The checks with a result under a key, sorted. Spec 001 D8: "the
    * file-level error expansion uses the checks of the file's previous key,

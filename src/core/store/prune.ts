@@ -21,8 +21,12 @@ const EVICTION_BATCH = 32;
  * checkpoint of each live worktree is kept for status (D7).
  */
 
-/** Keys some live worktree computed for its current revision. */
-const LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id`;
+/**
+ * Keys some live worktree computed for its current revision. Unkeyed rows are
+ * left out: one `NULL` in a `NOT IN` list makes it match nothing.
+ */
+const LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+  WHERE k.key IS NOT NULL`;
 
 /** Row ids of the newest result per check produced by the main worktree. */
 const MAIN_NEWEST = `

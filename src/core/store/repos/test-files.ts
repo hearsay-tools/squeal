@@ -20,6 +20,7 @@ import {
   oneOf,
   oneOfOrNull,
   str,
+  strOrNull,
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
@@ -119,7 +120,7 @@ function toTestFileKey(row: Row): TestFileKeyRecord {
   return {
     worktreeId: str(row, "worktree_id"),
     testFile: { project: str(row, "project"), path: str(row, "path") },
-    key: str(row, "key"),
+    key: strOrNull(row, "key"),
     revision: num(row, "revision"),
     pending: oneOfOrNull(row, "pending", PENDING),
   };
