@@ -240,6 +240,7 @@ describe("register", () => {
     expect(header).toEqual({
       revision: 1,
       counts: { current: 1, pending: 0, stale: 1, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 0 },
       fullSuite: { atCurrentRevision: true, lastCompletedRevision: 1 },
     });
   });
@@ -249,9 +250,23 @@ describe("register", () => {
     expect(header).toEqual({
       revision: 0,
       counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
     });
     expect(knownFailures).toEqual([]);
+  });
+
+  it("counts test files without checks: never-run as unknown, queued and running as pending", async () => {
+    apply(pass());
+    const file = (path: string) => ({ project: "", path });
+    setKey(store, "k-new", { file: file("src/new.test.ts") });
+    setKey(store, "k-queued", { file: file("src/queued.test.ts"), pending: "queued" });
+    setKey(store, "k-running", { file: file("src/running.test.ts"), pending: "running" });
+    setKey(store, "k1", { pending: "queued" });
+
+    const { header } = await delivery.register(C1);
+
+    expect(header.testFilesWithoutChecks).toEqual({ pending: 2, unknown: 1 });
   });
 });
 

@@ -45,7 +45,9 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
     ),
     ...(result.breakdown.testFilesWithoutChecks === 0
       ? []
-      : [`Test files without known checks: ${result.breakdown.testFilesWithoutChecks}`]),
+      : [
+          `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`,
+        ]),
     `Closure method: ${result.closureMethod}`,
     `Store schema: ${result.storeSchemaVersion}`,
     ...result.notes.map((note) => `Note: ${note}`),

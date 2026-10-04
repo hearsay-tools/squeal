@@ -23,6 +23,15 @@ describe("delivery header and status", () => {
         fingerprint: "AssertionError: expected 1 to be 2 @ src/a.ts:1:1",
       }),
     ]);
+    store.testFileKeys.upsertMany(
+      ["src/a.test.ts", "src/new.test.ts"].map((path) => ({
+        worktreeId: b.id,
+        testFile: { project: "", path },
+        key: `key-${path}`,
+        revision: 0,
+        pending: null,
+      })),
+    );
     store.checkpoints.start({
       id: "cp-base",
       worktreeId: b.id,
@@ -43,14 +52,8 @@ describe("delivery header and status", () => {
       atCurrentRevision: true,
       lastCompletedRevision: 0,
     });
-    const { revision, counts, fullSuite } = status;
-    expect({ revision, counts, fullSuite }).toEqual(
-      expect.objectContaining({
-        revision: registration.header.revision,
-        counts: registration.header.counts,
-        fullSuite: registration.header.fullSuite,
-      }),
-    );
+    const { revision, counts, testFilesWithoutChecks, fullSuite } = status;
+    expect({ revision, counts, testFilesWithoutChecks, fullSuite }).toEqual(registration.header);
     expect(status.knownFailures).toEqual(registration.knownFailures);
   });
 });

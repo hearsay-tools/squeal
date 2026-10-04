@@ -80,15 +80,19 @@ function seedBusyWorktree(repo: FakeRepo, store: Store) {
     state(b.id, check("src/util.test.ts", "todo"), { outcome: "skip" }),
   ]);
   store.testFileKeys.upsertMany(
-    ["src/auth.test.ts", "src/math.test.ts", "src/util.test.ts", "src/empty.test.ts"].map(
-      (path) => ({
-        worktreeId: b.id,
-        testFile: { project: "", path },
-        key: `key-${path}`,
-        revision: 2,
-        pending: path === "src/empty.test.ts" ? ("queued" as const) : null,
-      }),
-    ),
+    [
+      "src/auth.test.ts",
+      "src/math.test.ts",
+      "src/util.test.ts",
+      "src/empty.test.ts",
+      "src/never.test.ts",
+    ].map((path) => ({
+      worktreeId: b.id,
+      testFile: { project: "", path },
+      key: `key-${path}`,
+      revision: 2,
+      pending: path === "src/empty.test.ts" ? ("queued" as const) : null,
+    })),
   );
   store.checkpoints.start({
     id: "cp-1",
@@ -128,6 +132,7 @@ describe("readStatus", () => {
       dirty: true,
       daemon: { state: "alive", lastHeartbeatAt: NOW - 2_000 },
       counts: { current: 5, pending: 2, stale: 1, unknown: 1 },
+      testFilesWithoutChecks: { pending: 1, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
       knownFailures: [
         {
@@ -147,8 +152,8 @@ describe("readStatus", () => {
       breakdown: {
         currentByOutcome: { pass: 3, fail: 1, skip: 1, unknown: 0 },
         pendingByPhase: { queued: 1, running: 1 },
-        testFiles: 4,
-        testFilesWithoutChecks: 1,
+        testFiles: 5,
+        testFilesWithoutChecks: 2,
       },
       closureMethod: "static imports plus declared inputs",
       storeSchemaVersion: SCHEMA_VERSION,
@@ -181,7 +186,7 @@ describe("readStatus", () => {
       Daemon: running, last heartbeat 2 s ago
       Inherited: 2 current results
         2 from <main> at abc1234
-      Test files without known checks: 1
+      Test files without checks: 1 pending, 1 unknown
       Closure method: static imports plus declared inputs
       Store schema: 1
       Note: store was recovered from corruption at 2026-10-04T09:00:00.000Z; the baseline was lost (corrupt file moved to /repo/.git/squeal/store.sqlite.corrupt-1)
