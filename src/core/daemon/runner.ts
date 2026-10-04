@@ -120,6 +120,10 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   };
 }
 
+/** SGR colour codes: Vite's config bundler colours its errors, and notes are plain text. */
+const ANSI_COLOUR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
 function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const text = error instanceof Error ? error.message : String(error);
+  return text.replace(ANSI_COLOUR, "").trim();
 }

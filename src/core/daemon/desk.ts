@@ -74,7 +74,7 @@ async function inWorker(
   let listening = false;
   let closing = false;
   let closed: (() => void) | null = null;
-  await new Promise<void>((resolve, reject) => {
+  const listen = new Promise<void>((resolve, reject) => {
     worker.on("message", (message: FromDesk) => {
       switch (message.type) {
         case "listening":
@@ -117,6 +117,13 @@ async function inWorker(
     worker.on("exit", (code) => died(new Error(`socket worker exited with code ${code}`)));
     post({ type: "bind", identity });
   });
+  try {
+    await listen;
+  } catch (error) {
+    closing = true;
+    await worker.terminate();
+    throw error;
+  }
   return {
     setPhase: (phase) => post({ type: "phase", phase }),
     async close() {
