@@ -10,13 +10,14 @@ import {
   type InheritedSource,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
+  type StatusBuilder,
   type StatusResult,
   type StatusSnapshot,
   type Store,
   type TestFileKeyRecord,
   type WorktreeId,
 } from "../types/index.js";
-import { type StatusStoreOptions, withStatusStore } from "./open.js";
+import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 
 export interface StatusOptions extends StatusStoreOptions {
   readonly now?: () => EpochMs;
@@ -38,9 +39,44 @@ export function readStatus(cwd: AbsolutePath, options: StatusOptions = {}): Stat
   return withStatusStore(cwd, options, ({ store, root }) => buildSnapshot(store, root, now()));
 }
 
-/** The D7 snapshot of one worktree from an open store. */
+export interface StatusBuilderOptions {
+  readonly now?: () => EpochMs;
+}
+
+/**
+ * The store-backed `StatusBuilder`. Resolves the worktree root through the
+ * `worktrees` table; a worktree with no row is `not-registered`.
+ */
+export function createStatusBuilder(
+  store: Store,
+  options: StatusBuilderOptions = {},
+): StatusBuilder {
+  const now = options.now ?? Date.now;
+  return {
+    build(worktreeId) {
+      const worktree = store.worktrees.get(worktreeId);
+      if (worktree === null) {
+        return unavailable(
+          "not-registered",
+          `worktree ${worktreeId} is not registered in the store`,
+        );
+      }
+      return snapshot(store, worktreeId, worktree.root, now());
+    },
+  };
+}
+
+/** The D7 snapshot of the worktree at `root` from an open store. */
 export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): StatusSnapshot {
-  const worktreeId = worktreeIdFor(root);
+  return snapshot(store, worktreeIdFor(root), root, now);
+}
+
+function snapshot(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  now: EpochMs,
+): StatusSnapshot {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
