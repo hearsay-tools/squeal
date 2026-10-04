@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
+import { init } from "./init.js";
 
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
@@ -48,6 +49,7 @@ export function main(argv: readonly string[], io: CliIo): number {
   }
   if (first === "status") return status(rest, io);
   if (first === "why") return why(rest, io);
+  if (first === "init") return init(rest, io);
   io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
   return 2;
 }
