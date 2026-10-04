@@ -50,9 +50,19 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
         ]),
     `Closure method: ${result.closureMethod}`,
     `Store schema: ${result.storeSchemaVersion}`,
-    ...result.notes.map((note) => `Note: ${note}`),
+    ...notes(result),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/** Status's own notes, then the daemon's with time and revision. */
+function notes(s: StatusSnapshot): string[] {
+  const daemon = s.daemonNotes.map((n) => {
+    const at = new Date(n.at).toISOString();
+    return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
+  });
+  const all = [...s.notes, ...daemon];
+  return all.length === 0 ? [] : ["Notes:", ...all.map((note) => `  ${note}`)];
 }
 
 export function formatUnavailable(result: StatusUnavailable): string {

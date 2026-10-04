@@ -17,6 +17,7 @@ import {
   type TestFileKeyRecord,
   type WorktreeId,
 } from "../types/index.js";
+import { readDaemonNotes } from "./notes.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 
 export interface StatusOptions extends StatusStoreOptions {
@@ -106,6 +107,7 @@ function snapshot(
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
+    daemonNotes: readDaemonNotes(store, worktreeId),
   };
 }
 

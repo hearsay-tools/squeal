@@ -104,6 +104,13 @@ function seedBusyWorktree(repo: FakeRepo, store: Store) {
   });
   store.checkpoints.finish("cp-1", "completed", NOW - 40_000);
   store.meta.set(
+    `notes.${b.id}`,
+    JSON.stringify([
+      { at: Date.UTC(2026, 9, 4, 10, 0, 0), revision: 1, text: "runner environment failed: x" },
+      { at: Date.UTC(2026, 9, 4, 11, 0, 0), revision: null, text: "watcher dropped events" },
+    ]),
+  );
+  store.meta.set(
     META_STORE_RECOVERED,
     JSON.stringify({
       at: Date.UTC(2026, 9, 4, 9, 0, 0),
@@ -160,6 +167,10 @@ describe("readStatus", () => {
       notes: [
         "store was recovered from corruption at 2026-10-04T09:00:00.000Z; the baseline was lost (corrupt file moved to /repo/.git/squeal/store.sqlite.corrupt-1)",
       ],
+      daemonNotes: [
+        { at: Date.UTC(2026, 9, 4, 10, 0, 0), revision: 1, text: "runner environment failed: x" },
+        { at: Date.UTC(2026, 9, 4, 11, 0, 0), revision: null, text: "watcher dropped events" },
+      ],
     } satisfies StatusSnapshot);
   });
 
@@ -189,7 +200,10 @@ describe("readStatus", () => {
       Test files without checks: 1 pending, 1 unknown
       Closure method: static imports plus declared inputs
       Store schema: 1
-      Note: store was recovered from corruption at 2026-10-04T09:00:00.000Z; the baseline was lost (corrupt file moved to /repo/.git/squeal/store.sqlite.corrupt-1)
+      Notes:
+        store was recovered from corruption at 2026-10-04T09:00:00.000Z; the baseline was lost (corrupt file moved to /repo/.git/squeal/store.sqlite.corrupt-1)
+        2026-10-04T10:00:00.000Z, revision 1: runner environment failed: x
+        2026-10-04T11:00:00.000Z: watcher dropped events
       "
     `);
   });
@@ -397,6 +411,22 @@ describe("readStatus", () => {
     expect(formatStatus(status, NOW)).toContain(
       "\nDaemon: no daemon running since 2026-10-04T11:59:00.000Z\n",
     );
+  });
+
+  it("reads at most the 20 newest daemon notes and ignores malformed ones", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    const notes = Array.from({ length: 25 }, (_, i) => ({ at: i, revision: i, text: `n${i}` }));
+    store.meta.set(
+      `notes.${repo.mainId}`,
+      JSON.stringify([...notes.slice(0, 24), { at: "x", text: 1 }, notes[24]]),
+    );
+
+    const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+
+    expect(status.daemonNotes.map((n) => n.text)).toEqual(notes.slice(5).map((n) => n.text));
+    store.meta.set(`notes.${repo.mainId}`, "{not json");
+    expect(snapshotOf(readStatus(repo.main, { now: () => NOW })).daemonNotes).toEqual([]);
   });
 
   it("is honest about a worktree the store has never seen", () => {
