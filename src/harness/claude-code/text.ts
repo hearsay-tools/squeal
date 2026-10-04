@@ -52,15 +52,45 @@ export function denialSentence(toolName: string): string {
   );
 }
 
-export function knownFailuresReason(revision: number, failures: readonly KnownFailure[]): string {
-  const names = failures.slice(0, LISTED_FAILURES).map((f) => formatCheck(f.check));
-  const more = failures.length - names.length;
-  const list = more > 0 ? `${names.join(", ")} and ${more} more` : names.join(", ");
-  const verb = failures.length === 1 ? "exists" : "exist";
-  return (
-    `Squeal policy stop.blockOnKnownFailures is on and ${plural(failures.length, "known failure")} ` +
-    `${verb} at revision ${revision}: ${list}.`
-  );
+function list(names: readonly string[]): string {
+  const shown = names.slice(0, LISTED_FAILURES);
+  const more = names.length - shown.length;
+  return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
+}
+
+/**
+ * The block reason: `current` failures exist at `revision`; `earlier` ones
+ * were observed at an earlier revision and are named with it, as pending when
+ * their re-run is queued or running (review wave 3, S1).
+ */
+export function knownFailuresReason(
+  revision: number,
+  current: readonly KnownFailure[],
+  earlier: readonly KnownFailure[] = [],
+): string {
+  const verb = current.length === 1 ? "exists" : "exist";
+  const sentences = [
+    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current.length, "known failure")} ` +
+      `${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`,
+  ];
+  const named = (fs: readonly KnownFailure[]) =>
+    list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
+  const pending = earlier.filter((f) => f.validity === "pending");
+  if (pending.length > 0) {
+    const its = pending.length === 1 ? "its re-run" : "their re-runs";
+    sentences.push(
+      `${plural(pending.length, "check")} last failed at an earlier revision and ${its} at ` +
+        `revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named(pending)}.`,
+    );
+  }
+  const unrun = earlier.filter((f) => f.validity !== "pending");
+  if (unrun.length > 0) {
+    sentences.push(
+      `${plural(unrun.length, "check")} last failed at an earlier revision and ` +
+        `${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named(unrun)}.`,
+    );
+  }
+  return sentences.join(" ");
 }
 
 export function fullSuiteReason(header: StatusHeader): string {
