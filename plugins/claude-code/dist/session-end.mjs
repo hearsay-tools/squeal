@@ -1395,10 +1395,10 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
   try {
-    lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
-    lock.exec("BEGIN EXCLUSIVE");
+    lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
+    lock2.exec("BEGIN EXCLUSIVE");
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
@@ -1412,8 +1412,8 @@ function recover(paths, options) {
     }
     return fresh;
   } finally {
-    rollback(lock);
-    lock.close();
+    rollback(lock2);
+    lock2.close();
   }
 }
 function moveAside(database, at) {
@@ -1896,7 +1896,7 @@ function locate(cwd) {
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
     create: false,
-    busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS
+    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
   });
   if (isStoreOpenFailure(store)) return null;
   try {
@@ -1919,10 +1919,11 @@ function openContext(input, location2, options = {}) {
 }
 
 // src/harness/claude-code/hook.ts
-async function withContext(input, location2, deps, fn) {
+async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
-    ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs }
+    ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs },
+    ...overrides
   };
   const context = openContext(input, location2, options);
   if (context === null) return null;
@@ -1942,28 +1943,28 @@ function waiterLockPath(locksDir, consumer) {
   const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
   return join6(locksDir, `waiter-${id}.sqlite`);
 }
-function acquireWaiterLock(locksDir, consumer) {
-  mkdirSync2(locksDir, { recursive: true });
+function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
+  if (!existsSync4(path)) return;
+  const db = lock(path);
+  if (db === null) return;
+  try {
+    rmSync3(path, { force: true });
+  } finally {
+    db.close();
+  }
+}
+function lock(path) {
   const db = new DatabaseSync2(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
     db.exec("BEGIN EXCLUSIVE");
+    return db;
   } catch {
     db.close();
     return null;
   }
-  return {
-    release(remove) {
-      if (remove) rmSync3(path, { force: true });
-      db.close();
-    }
-  };
-}
-function removeWaiterLock(locksDir, consumer) {
-  if (!existsSync4(waiterLockPath(locksDir, consumer))) return;
-  acquireWaiterLock(locksDir, consumer)?.release(true);
 }
 
 // src/harness/claude-code/hooks/session-end.ts

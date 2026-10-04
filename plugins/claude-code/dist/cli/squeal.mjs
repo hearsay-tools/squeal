@@ -10142,6 +10142,9 @@ function json2(value) {
 }
 
 // src/cli/index.ts
+process.stdout.on("error", (error) => {
+  if (error.code !== "EPIPE") throw error;
+});
 process.exitCode = await main(process.argv.slice(2), {
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),

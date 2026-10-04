@@ -1832,10 +1832,10 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
   try {
-    lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
-    lock.exec("BEGIN EXCLUSIVE");
+    lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
+    lock2.exec("BEGIN EXCLUSIVE");
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
@@ -1849,8 +1849,8 @@ function recover(paths, options) {
     }
     return fresh;
   } finally {
-    rollback(lock);
-    lock.close();
+    rollback(lock2);
+    lock2.close();
   }
 }
 function moveAside(database, at2) {
@@ -2070,7 +2070,7 @@ function locate(cwd) {
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
     create: false,
-    busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS
+    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
   });
   if (isStoreOpenFailure(store)) return null;
   try {
@@ -2093,10 +2093,12 @@ function openContext(input, location2, options = {}) {
 }
 
 // src/harness/claude-code/hook.ts
-async function withContext(input, location2, deps, fn) {
+var HOOK_TIMEOUT_MS = 2e3;
+async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
-    ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs }
+    ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs },
+    ...overrides
   };
   const context = openContext(input, location2, options);
   if (context === null) return null;
@@ -2171,12 +2173,31 @@ function statusText(consumer, header, failures) {
 function knownFailuresLine(failures) {
   return `Known failures: ${failures}`;
 }
-function knownFailuresReason(revision, failures) {
-  const names = failures.slice(0, LISTED_FAILURES).map((f) => formatCheck(f.check));
-  const more = failures.length - names.length;
-  const list = more > 0 ? `${names.join(", ")} and ${more} more` : names.join(", ");
-  const verb = failures.length === 1 ? "exists" : "exist";
-  return `Squeal policy stop.blockOnKnownFailures is on and ${plural3(failures.length, "known failure")} ${verb} at revision ${revision}: ${list}.`;
+function list(names) {
+  const shown = names.slice(0, LISTED_FAILURES);
+  const more = names.length - shown.length;
+  return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
+}
+function knownFailuresReason(revision, current, earlier2 = []) {
+  const verb = current.length === 1 ? "exists" : "exist";
+  const sentences = [
+    `Squeal policy stop.blockOnKnownFailures is on and ${plural3(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
+  ];
+  const named = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
+  const pending = earlier2.filter((f) => f.validity === "pending");
+  if (pending.length > 0) {
+    const its = pending.length === 1 ? "its re-run" : "their re-runs";
+    sentences.push(
+      `${plural3(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named(pending)}.`
+    );
+  }
+  const unrun = earlier2.filter((f) => f.validity !== "pending");
+  if (unrun.length > 0) {
+    sentences.push(
+      `${plural3(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named(unrun)}.`
+    );
+  }
+  return sentences.join(" ");
 }
 function fullSuiteReason(header) {
   const last = header.fullSuite.lastCompletedRevision;
@@ -2184,35 +2205,89 @@ function fullSuiteReason(header) {
   return `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ${header.revision}; ${before}. \`squeal run --all\` starts one.`;
 }
 
+// src/harness/claude-code/waiter-lock.ts
+import { createHash as createHash3 } from "node:crypto";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
+import { join as join7 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+function waiterLockPath(locksDir, consumer) {
+  const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  return join7(locksDir, `waiter-${id}.sqlite`);
+}
+function removeWaiterLock(locksDir, consumer) {
+  const path = waiterLockPath(locksDir, consumer);
+  if (!existsSync4(path)) return;
+  const db = lock(path);
+  if (db === null) return;
+  try {
+    rmSync3(path, { force: true });
+  } finally {
+    db.close();
+  }
+}
+function lock(path) {
+  const db = new DatabaseSync2(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+    return db;
+  } catch {
+    db.close();
+    return null;
+  }
+}
+
 // src/harness/claude-code/hooks/stop.ts
 var STOP_WAIT_CAP_MS = 1500;
+var STOP_MARGIN_MS = 250;
 var STOP_POLL_MS = 100;
-var stop = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
+function stopBusyTimeoutMs(waitMs) {
+  return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
+}
+var stop = (input, location2, deps) => {
   const policy = readHookPolicy(location2.root).stop;
-  const wait = Math.min(policy.waitMs, STOP_WAIT_CAP_MS);
-  if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
-  const { store, consumer } = context;
-  const news = await newsText(context);
-  const states = store.knownStates.list(consumer.worktreeId);
-  const header = readHeader(store, consumer.worktreeId, states);
-  const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-  const reasons = [];
-  if (input.stop_hook_active !== true) {
-    if (policy.blockOnKnownFailures && failures.length > 0) {
-      reasons.push(knownFailuresReason(header.revision, failures));
-    }
-    if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
-      reasons.push(fullSuiteReason(header));
-    }
-  }
-  if (reasons.length > 0) {
-    const text = news ?? statusText(consumer, header, failures.length);
-    return { output: { decision: "block", reason: `${reasons.join("\n")}
+  const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
+  return withContext(
+    input,
+    location2,
+    deps,
+    async (context) => {
+      if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
+      const { store, consumer } = context;
+      const news = await newsText(context);
+      const states = store.knownStates.list(consumer.worktreeId);
+      const header = readHeader(store, consumer.worktreeId, states);
+      const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
+      const current = failures.filter((f) => f.validity === "current");
+      const reasons = [];
+      if (input.stop_hook_active !== true) {
+        if (policy.blockOnKnownFailures && current.length > 0) {
+          reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
+        }
+        if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
+          reasons.push(fullSuiteReason(header));
+        }
+      }
+      if (reasons.length > 0) {
+        const text = news ?? statusText(consumer, header, failures.length);
+        return { output: { decision: "block", reason: `${reasons.join("\n")}
 
 ${text}` } };
-  }
-  return news === null ? null : additionalContext(input, news);
-});
+      }
+      if (input.agent_id !== void 0) await finishSubagent(context);
+      return news === null ? null : additionalContext(input, news);
+    },
+    { busyTimeoutMs: stopBusyTimeoutMs(wait) }
+  );
+};
+function earlier(failures) {
+  return failures.filter((f) => f.validity !== "current");
+}
+async function finishSubagent(context) {
+  await context.delivery.unregister(context.consumer);
+  removeWaiterLock(storePaths(context.commonDir).locksDir, context.consumer);
+}
 async function newsText(context) {
   const { store, delivery, consumer } = context;
   if (!isRegistered(context)) {
