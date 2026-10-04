@@ -1,0 +1,94 @@
+import { existsSync, realpathSync } from "node:fs";
+import { join } from "node:path";
+import { runGit } from "../fs/index.js";
+import { isStoreOpenFailure, lockFileFor, openStore, worktreeIdFor } from "../store/index.js";
+import type {
+  AbsolutePath,
+  DaemonExit,
+  DaemonExitReason,
+  EpochMs,
+  Store,
+  WorktreeId,
+} from "../types/index.js";
+import { acquireDaemonLock, type DaemonLock } from "./lock.js";
+import { noteInNewerStore } from "./notes.js";
+
+/** What a daemon owns once it won its worktree. */
+export interface OpenedDaemon {
+  readonly root: AbsolutePath;
+  readonly commonDir: AbsolutePath;
+  readonly worktreeId: WorktreeId;
+  readonly store: Store;
+  readonly lock: DaemonLock;
+}
+
+/** The daemon may wait longer on the store than a hook (spec 001 D8: a busy timeout on every connection). */
+export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
+
+/**
+ * Daemon start up to the singleton lock, in the order of the wave 2 review
+ * inputs for 001-30: realpath of the root; the common dir from git (D1);
+ * the worktree id; the store with `integrity_check` (D12), exiting with a
+ * note on a newer schema (D8); the exclusive lock (D10), losers exit.
+ */
+export async function openDaemon(
+  rootArgument: string,
+  now: () => EpochMs,
+): Promise<OpenedDaemon | DaemonExit> {
+  let root: AbsolutePath;
+  let commonDir: AbsolutePath;
+  try {
+    root = realpathSync(rootArgument);
+    if (!existsSync(join(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    const out = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+    commonDir = realpathSync(out.trim());
+  } catch (error) {
+    return exit(
+      "not-a-worktree",
+      1,
+      `${rootArgument} is not a git worktree root: ${message(error)}`,
+    );
+  }
+  const worktreeId = worktreeIdFor(root);
+
+  let store: Store;
+  try {
+    const opened = openStore(commonDir, {
+      checkIntegrity: true,
+      busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS,
+      now,
+    });
+    if (isStoreOpenFailure(opened)) {
+      if (opened.reason === "newer-schema") {
+        const text = `daemon exited: store schema ${opened.found} is newer than this Squeal (supports ${opened.supported})`;
+        noteInNewerStore(commonDir, worktreeId, { at: now(), revision: null, text });
+        return exit("store-newer", 1, text);
+      }
+      return exit("store-unusable", 1, `store unusable: ${JSON.stringify(opened)}`);
+    }
+    store = opened;
+  } catch (error) {
+    return exit("store-unusable", 1, `store unusable: ${message(error)}`);
+  }
+
+  let lock: DaemonLock | null;
+  try {
+    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
+  } catch (error) {
+    store.close();
+    return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
+  }
+  if (lock === null) {
+    store.close();
+    return exit("lost-lock", 0, `another daemon serves ${root}`);
+  }
+  return { root, commonDir, worktreeId, store, lock };
+}
+
+export function exit(reason: DaemonExitReason, code: 0 | 1, text: string): DaemonExit {
+  return { reason, code, message: text };
+}
+
+export function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
