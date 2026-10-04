@@ -99,6 +99,43 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     });
   });
 
+  it("runs a file again when a batch during its crashed run gave it a new key", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+
+    let batch: Promise<void> | null = null;
+    h.runner.beforeRun = (files) => {
+      if (batch !== null || !files.some((f) => f.path === "test/kill.test.ts")) return;
+      // The agent fixes the file while the crashing run is in flight; the watcher reports it.
+      h.write("test/kill.test.ts", 'import { it } from "vitest";\nit("survives", () => {});\n');
+      batch = h.batch("test/kill.test.ts");
+    };
+    h.write(
+      "test/kill.test.ts",
+      'import { it } from "vitest";\nit("kills its worker", () => { process.kill(process.pid, "SIGKILL"); });\n',
+    );
+    await h.batch("test/kill.test.ts");
+    await h.scheduler.idle();
+    await batch;
+    await h.scheduler.idle();
+
+    const runs = h.runsOf("test/kill.test.ts");
+    expect(runs.map((r) => r.report.end)).toEqual(["crashed", "completed"]);
+    const key = h.keyOf("test/kill.test.ts");
+    expect(store.results.byKey(key ?? "").map((r) => [r.check, r.outcome])).toEqual([
+      [check("test/kill.test.ts", "survives"), "pass"],
+    ]);
+    expect(h.scheduler.status().testFiles).toEqual({
+      current: 6,
+      pending: 0,
+      stale: 0,
+      unknown: 0,
+    });
+  });
+
   it("retires checks that disappeared from a test file", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
