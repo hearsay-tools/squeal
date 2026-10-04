@@ -1,3 +1,4 @@
+import { formatCheck } from "../state/index.js";
 import type {
   KnownOutcome,
   KnownState,
@@ -6,7 +7,6 @@ import type {
   WhyResult,
   WhyResultEntry,
 } from "../types/index.js";
-import { formatCheck } from "./check-name.js";
 import { formatUnavailable, plural, shortCommit } from "./format-status.js";
 
 const INDENT = "        ";

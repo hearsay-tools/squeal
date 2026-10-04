@@ -239,10 +239,11 @@ describe("check names", () => {
     expect(checks.map(formatCheck)).toEqual([
       "src/auth.test.ts > auth > login",
       "[web] src/a.test.ts > x > y > z",
-      "src/a.test.ts",
-      "[web] src/a.test.ts",
+      "src/a.test.ts (file-level)",
+      "[web] src/a.test.ts (file-level)",
     ]);
     for (const c of checks) expect(parseCheck(formatCheck(c))).toEqual(c);
+    expect(parseCheck("[web] src/a.test.ts")).toEqual(checks[3]);
     expect(parseCheck("  ")).toBeNull();
   });
 });

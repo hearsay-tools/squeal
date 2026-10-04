@@ -1,19 +1,17 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { baselineFindings } from "../state/index.js";
+import { baselineFindings, readHeader, toKnownFailure } from "../state/index.js";
 import {
   CONSUMER_EXPIRY_MS,
   type Consumer,
   type Delta,
   type EpochMs,
   type HarnessDelivery,
-  type KnownFailure,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
   type StatusBuilder,
   type Store,
 } from "../types/index.js";
 import { type DeltaPlan, planDelta, toView } from "./delta.js";
-import { readHeader } from "./header.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -29,19 +27,6 @@ export const DEFAULT_POLL_INTERVAL_MS = 250;
 
 const isEmpty = (plan: DeltaPlan) =>
   plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
-
-function toKnownFailure(state: KnownState, revision: number): KnownFailure | null {
-  if (state.outcome !== "fail") return null;
-  return {
-    check: state.check,
-    outcome: "fail",
-    validity: state.validity,
-    observedAt: state.observedAt ?? revision,
-    summary: state.summary ?? "",
-    fingerprint: state.fingerprint ?? "",
-    location: state.location,
-  };
-}
 
 /**
  * The store-backed `HarnessDelivery` (spec 001 D6, D9). Hooks and the daemon

@@ -1,3 +1,4 @@
+import { formatCheck } from "../state/index.js";
 import type {
   CommitSha,
   EpochMs,
@@ -5,7 +6,6 @@ import type {
   StatusSnapshot,
   StatusUnavailable,
 } from "../types/index.js";
-import { formatCheck } from "./check-name.js";
 
 /**
  * Human rendering of `squeal status`. The first lines reproduce the vision
