@@ -7,7 +7,7 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
-import { MemorySink } from "./memory-sink.js";
+import { RecordingSink } from "./recording-sink.js";
 
 describe("daemon loop: change feed into scheduler", SLOW, () => {
   it("a gitignored generated file in a closure is watched and changes the key when rewritten (B2)", async () => {
@@ -22,7 +22,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       worktreeId,
       store,
       runner,
-      sink: new MemorySink(store, worktreeId),
+      sink: new RecordingSink(store, worktreeId),
       policy: DEFAULT_POLICY,
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,

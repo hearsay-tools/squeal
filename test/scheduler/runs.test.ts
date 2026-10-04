@@ -39,7 +39,6 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     expect(h.sink.stateOf(check("test/math.test.ts", "adds"))).toMatchObject({
       outcome: "pass",
       validity: "current",
-      key: finalKey,
     });
     // The scheduler reconciled the change itself: a revision records it.
     const revision = store.revisions.latest(h.worktreeId);

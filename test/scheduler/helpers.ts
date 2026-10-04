@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } fr
 import { dirname, join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
+import { createDelivery, readHeader } from "../../src/core/delivery/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
@@ -15,18 +16,22 @@ import {
 } from "../../src/core/store/index.js";
 import {
   type CheckKey,
+  type Consumer,
   DEFAULT_POLICY,
+  type HarnessDelivery,
+  MAIN_AGENT,
   type Policy,
   type RunnerAdapter,
   type RunOptions,
   type RunReport,
   type Scheduler,
+  type StatusHeader,
   type Store,
   type TestFileRef,
 } from "../../src/core/types/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
-import { MemorySink } from "./memory-sink.js";
+import { RecordingSink } from "./recording-sink.js";
 
 const fixture = resolve(import.meta.dirname, "../fixtures/scheduler/basic");
 /** Inside the repository, so fixture copies resolve `vitest` from its `node_modules`. Git-ignored. */
@@ -86,30 +91,51 @@ export interface RecordedRun {
   readonly report: RunReport;
 }
 
-/** A real adapter that records every run and can act just before one starts. */
+/** Adapter calls a test can make reject. */
+export type FailingCall = "invalidate" | "affected" | "closure" | "testFiles" | "environment";
+
+/**
+ * A real adapter that records every run. Calls are serialized like the Vitest
+ * adapter's, and `beforeRun` runs inside that queue: while it is pending, a
+ * tier is in flight and every later runner call waits behind it.
+ */
 export interface RecordingRunner extends RunnerAdapter {
   readonly runs: RecordedRun[];
-  beforeRun: ((files: readonly TestFileRef[]) => void) | null;
+  beforeRun: ((files: readonly TestFileRef[]) => void | Promise<void>) | null;
+  /** Calls that reject with `failure` while listed. */
+  readonly failing: Set<FailingCall>;
+  failure: string;
 }
 
 function recording(inner: RunnerAdapter): RecordingRunner {
+  let queue: Promise<unknown> = Promise.resolve();
+  const serial = <T>(call: () => Promise<T>): Promise<T> => {
+    const next = queue.then(call);
+    queue = next.catch(() => {});
+    return next;
+  };
+  const guarded = <T>(name: FailingCall, call: () => Promise<T>): Promise<T> =>
+    serial(() => (runner.failing.has(name) ? Promise.reject(new Error(runner.failure)) : call()));
   const runner: RecordingRunner = {
     name: inner.name,
     adapterVersion: inner.adapterVersion,
     runs: [],
     beforeRun: null,
-    invalidate: (paths) => inner.invalidate(paths),
-    affected: (paths) => inner.affected(paths),
-    closure: (testFile) => inner.closure(testFile),
-    enumerate: (testFile) => inner.enumerate(testFile),
-    testFiles: () => inner.testFiles(),
-    environment: () => inner.environment(),
-    async run(files, options) {
-      runner.beforeRun?.(files);
-      const report = await inner.run(files, options);
-      runner.runs.push({ files, options, report });
-      return report;
-    },
+    failing: new Set(),
+    failure: "vitest.config.ts: Unexpected token",
+    invalidate: (paths) => guarded("invalidate", () => inner.invalidate(paths)),
+    affected: (paths) => guarded("affected", () => inner.affected(paths)),
+    closure: (testFile) => guarded("closure", () => inner.closure(testFile)),
+    enumerate: (testFile) => serial(() => inner.enumerate(testFile)),
+    testFiles: () => guarded("testFiles", () => inner.testFiles()),
+    environment: () => guarded("environment", () => inner.environment()),
+    run: (files, options) =>
+      serial(async () => {
+        await runner.beforeRun?.(files);
+        const report = await inner.run(files, options);
+        runner.runs.push({ files, options, report });
+        return report;
+      }),
     close: () => inner.close(),
   };
   return runner;
@@ -120,9 +146,11 @@ export interface Harness {
   readonly store: Store;
   readonly worktreeId: string;
   readonly runner: RecordingRunner;
-  readonly sink: MemorySink;
+  readonly sink: RecordingSink;
   readonly scheduler: Scheduler;
   readonly extraFiles: string[][];
+  /** Errors the scheduler reported through `onError`; the first fails the test at cleanup. */
+  readonly errors: Error[];
   write(path: string, content: string): void;
   remove(path: string): void;
   /** Hands the scheduler a watch batch for `paths`, as the change feed would. */
@@ -130,11 +158,21 @@ export interface Harness {
   keyOf(path: string): CheckKey | null;
   /** Runs that ran `path`. */
   runsOf(path: string): RecordedRun[];
+  /** The delivery header as hooks read it (D6). */
+  header(): StatusHeader;
+  /** A consumer of this worktree registered with a real `HarnessDelivery`. */
+  consumer(sessionId?: string): Promise<{ delivery: HarnessDelivery; consumer: Consumer }>;
 }
 
 export interface HarnessOptions {
   readonly tierSize?: number;
+  /** Policy `runner.timeoutMs`; default `DEFAULT_POLICY`'s. */
+  readonly timeoutMs?: number | null;
   readonly policy?: Partial<Policy>;
+  /** Make these adapter calls reject from the start. */
+  readonly failing?: readonly FailingCall[];
+  /** Errors are expected: do not fail the test on `onError`. */
+  readonly allowErrors?: boolean;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -145,14 +183,19 @@ export async function openHarness(
   options: HarnessOptions = {},
 ): Promise<Harness> {
   const runner = recording(await createVitestAdapter({ root }));
+  for (const call of options.failing ?? []) runner.failing.add(call);
   const worktreeId = worktreeIdFor(root);
-  const sink = new MemorySink(store, worktreeId);
+  const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
   const errors: Error[] = [];
   const policy: Policy = {
     ...DEFAULT_POLICY,
     ...options.policy,
-    runner: { ...DEFAULT_POLICY.runner, tierSize: options.tierSize ?? 2 },
+    runner: {
+      ...DEFAULT_POLICY.runner,
+      tierSize: options.tierSize ?? 2,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    },
   };
   const scheduler = createScheduler({
     root,
@@ -170,7 +213,7 @@ export async function openHarness(
   cleanups.push(async () => {
     await scheduler.close();
     await runner.close();
-    if (errors.length > 0) throw errors[0];
+    if (errors.length > 0 && options.allowErrors !== true) throw errors[0];
   });
   const hasher = createFsHasher(root, "sha1");
   const at = (path: string) => join(root, path);
@@ -182,6 +225,7 @@ export async function openHarness(
     sink,
     scheduler,
     extraFiles,
+    errors,
     write(path, content) {
       mkdirSync(dirname(at(path)), { recursive: true });
       writeFileSync(at(path), content);
@@ -196,5 +240,21 @@ export async function openHarness(
       return row?.key ?? null;
     },
     runsOf: (path) => runner.runs.filter((run) => run.files.some((f) => f.path === path)),
+    header: () => readHeader(store, worktreeId),
+    async consumer(sessionId = "session") {
+      const delivery = createDelivery(store, {
+        status: {
+          build: () => ({
+            schemaVersion: 1,
+            available: false,
+            reason: "timeout",
+            message: "status is not under test here",
+          }),
+        },
+      });
+      const consumer: Consumer = { worktreeId, sessionId, agentId: MAIN_AGENT };
+      await delivery.register(consumer);
+      return { delivery, consumer };
+    },
   };
 }
