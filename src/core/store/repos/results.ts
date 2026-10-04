@@ -27,13 +27,20 @@ const SELECT_RESULTS = `
 
 export function createResultRepo(conn: Connection): ResultRepo {
   return {
-    byKey: (key) =>
-      conn
+    byKey: (key, usedAt = Date.now()) => {
+      conn.run(
+        "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
+        usedAt,
+        key,
+        usedAt,
+      );
+      return conn
         .all(
           `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
           key,
         )
-        .map(toResult),
+        .map(toResult);
+    },
     checksForKey: (key) =>
       conn
         .all(
@@ -58,8 +65,8 @@ export function createResultRepo(conn: Connection): ResultRepo {
           conn.run(
             `INSERT OR REPLACE INTO results (check_id, key, outcome, duration_ms, location_path,
                location_line, location_column, fingerprint, failure_id, worktree_id, revision,
-               commit_sha, dirty, run_id, recorded_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               commit_sha, dirty, run_id, recorded_at, last_used_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             ensureCheckId(conn, r.check, p.recordedAt),
             r.key,
             r.outcome,
@@ -72,6 +79,7 @@ export function createResultRepo(conn: Connection): ResultRepo {
             p.commit,
             flag(p.dirty),
             p.runId,
+            p.recordedAt,
             p.recordedAt,
           );
         }

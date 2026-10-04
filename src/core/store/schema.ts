@@ -112,11 +112,13 @@ CREATE TABLE results (
   dirty INTEGER NOT NULL,
   run_id TEXT NOT NULL,
   recorded_at INTEGER NOT NULL,
+  last_used_at INTEGER NOT NULL,
   PRIMARY KEY (check_id, key)
 ) STRICT;
 CREATE INDEX results_by_key ON results (key);
 CREATE INDEX results_by_check_time ON results (check_id, recorded_at);
 CREATE INDEX results_by_time ON results (recorded_at);
+CREATE INDEX results_by_last_use ON results (last_used_at);
 CREATE INDEX results_by_worktree ON results (worktree_id, check_id, recorded_at);
 CREATE INDEX results_by_run ON results (run_id);
 CREATE INDEX results_by_failure ON results (failure_id);

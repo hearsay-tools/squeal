@@ -258,7 +258,7 @@ describe("prune (spec 001 D8)", () => {
     expect(keys(store, ["k-3d", "k-1d"])).toEqual(["k-1d"]);
   });
 
-  it("evicts least recently recorded unprotected results first when over the size cap", () => {
+  it("evicts least recently used unprotected results first when over the size cap", () => {
     const { store } = fixture();
     const big = (seed: number): CheckError[] => [
       {
@@ -290,6 +290,12 @@ describe("prune (spec 001 D8)", () => {
       ),
     );
 
+    // Lookup hits on the ten oldest results make them the most recently used.
+    const used = evictable.slice(0, 10);
+    for (const key of used) expect(store.results.byKey(key, NOW)).toHaveLength(1);
+    // An earlier hit never moves the last-used time back.
+    for (const key of used) store.results.byKey(key, ago(10));
+
     const uncapped = store.prune({ now: NOW, retentionDays: 7, maxSizeMb: null });
     expect(uncapped.resultsRemoved).toBe(0);
     expect(uncapped.bytesAfter).toBeGreaterThan(1024 * 1024);
@@ -301,7 +307,8 @@ describe("prune (spec 001 D8)", () => {
     expect(store.results.byKey("k-protected")).toHaveLength(1);
     const left = keys(store, evictable);
     expect(left.length).toBe(150 - capped.resultsRemoved);
-    // The survivors are the most recently recorded ones.
-    expect(left).toEqual(evictable.slice(150 - left.length));
+    expect(left.length).toBeGreaterThan(used.length);
+    // The survivors are the used ones, then the most recently recorded.
+    expect(left).toEqual([...used, ...evictable.slice(150 - (left.length - used.length))]);
   });
 });
