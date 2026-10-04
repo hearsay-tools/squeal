@@ -44,6 +44,13 @@ describe("socket paths (spec 001 D1)", () => {
     expect(Buffer.byteLength(path)).toBeLessThan(104);
   });
 
+  it("falls back to /tmp when the runtime dir would make the path too long to bind", () => {
+    const long = `/home/agent/${"x".repeat(80)}`;
+    expect(socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: long })).toBe(
+      "/tmp/squeal-0123456789abcdef.sock",
+    );
+  });
+
   it("finds the <common-dir>/worktrees/<name> entry of a linked worktree, none for the main one", () => {
     const dir = tempDir();
     const main = join(dir, "main");

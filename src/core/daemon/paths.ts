@@ -14,12 +14,22 @@ export function runtimeDir(env: NodeJS.ProcessEnv = process.env): AbsolutePath {
   return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? xdg : tmpdir();
 }
 
-/** Spec 001 D1: "`<runtime dir>/squeal-<worktree-hash>.sock`". */
+/** macOS `sun_path` holds 104 bytes including the terminating NUL (research, daemon lifecycle). */
+export const MAX_SOCKET_PATH_BYTES = 103;
+
+/**
+ * Spec 001 D1: "`<runtime dir>/squeal-<worktree-hash>.sock`". When a long
+ * runtime dir would push the path past `MAX_SOCKET_PATH_BYTES`, binding
+ * fails with `EINVAL`, so the socket goes to `/tmp` instead. Daemon and
+ * hooks derive the same path from the same environment.
+ */
 export function socketPathFor(
   worktreeId: WorktreeId,
   env: NodeJS.ProcessEnv = process.env,
 ): AbsolutePath {
-  return join(runtimeDir(env), `squeal-${worktreeId}.sock`);
+  const name = `squeal-${worktreeId}.sock`;
+  const path = join(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join("/tmp", name);
 }
 
 /**

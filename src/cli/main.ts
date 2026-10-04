@@ -2,19 +2,28 @@ import { readFileSync } from "node:fs";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import { init } from "./init.js";
+import { daemonCommand } from "./daemon.js";
+import { runCommand } from "./run.js";
+import { startCommand } from "./start.js";
+import { stopCommand } from "./stop.js";
 
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
 Usage:
   squeal status [--json]        Current validation state of this worktree
   squeal why <check> [--json]   History and provenance of one check
+  squeal start [root]           Start this worktree's daemon if none runs, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon
+  squeal stop [root]            Stop this worktree's daemon
+  squeal daemon <root>          Run the daemon in the foreground (hooks start it)
   squeal --version              Print the version
   squeal --help                 Print this help
 
 A check is named as in status output: "path > describe > test", or any
 unique part of that name. Status reads the store directly; no daemon needed.
 
-Commands from spec 001 still to come: run, daemon, start, init.
+Commands from spec 001 still to come: init.
 `;
 
 /** Reads `version` from the package manifest two levels up from `src/cli` or `dist/cli`. */
@@ -36,8 +45,13 @@ export interface CliIo {
   readonly now?: () => EpochMs;
 }
 
+/** Commands that answer from the store at once; the daemon commands are asynchronous. */
+type StoreCommand = "status" | "why";
+
 /** Runs the CLI and returns the exit code. */
-export function main(argv: readonly string[], io: CliIo): number {
+export function main(argv: readonly [StoreCommand, ...string[]], io: CliIo): number;
+export function main(argv: readonly string[], io: CliIo): number | Promise<number>;
+export function main(argv: readonly string[], io: CliIo): number | Promise<number> {
   const [first, ...rest] = argv;
   if (first === "--version" || first === "-v") {
     io.stdout(`${readVersion()}\n`);
@@ -50,6 +64,10 @@ export function main(argv: readonly string[], io: CliIo): number {
   if (first === "status") return status(rest, io);
   if (first === "why") return why(rest, io);
   if (first === "init") return init(rest, io);
+  if (first === "daemon") return daemonCommand(rest, io);
+  if (first === "start") return startCommand(rest, io);
+  if (first === "run") return runCommand(rest, io);
+  if (first === "stop") return stopCommand(rest, io);
   io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
   return 2;
 }
