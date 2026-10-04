@@ -16,6 +16,7 @@ describe("vitest adapter: edge cases", SLOW, () => {
       "test/broken.test.ts",
     ]);
     expect((await fx.adapter.closure(ref("test/broken.test.ts"))).paths).toEqual([
+      "test/__snapshots__/broken.test.ts.snap",
       "test/broken.test.ts",
     ]);
   });

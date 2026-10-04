@@ -74,6 +74,11 @@ export function snapshotPath(project: TestProject, testFile: AbsolutePath): Abso
   return join(dirname(testFile), "__snapshots__", `${basename(testFile)}.snap`);
 }
 
+/** `resolve.extensions` of the environment tests run in (`ssr`, see `importClosure`). */
+export function resolveExtensions(project: TestProject): readonly string[] {
+  return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
+}
+
 export function findProject(vitest: Vitest, testFile: TestFileRef): TestProject {
   const project = vitest.projects.find((p) => p.name === testFile.project);
   if (!project) {

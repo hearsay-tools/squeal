@@ -1,17 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { ALL_TEST_FILES, openFixture, ref, SLOW } from "./helpers.js";
 
+const VITE_EXTENSIONS = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"];
+
 describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () => {
   it("lists every test file from the project's include globs", async () => {
     const fx = await openFixture();
     expect(await fx.adapter.testFiles()).toEqual(ALL_TEST_FILES.map((p) => ref(p)));
   });
 
-  it("builds a closure from the transform graph plus the snapshot file", async () => {
+  it("builds a closure from the transform graph plus the snapshot path", async () => {
     const fx = await openFixture();
+    // Spec 001 D3: "its snapshot file path whether or not the file exists" (review B1).
     expect(await fx.adapter.closure(ref("test/math.test.ts"))).toEqual({
       testFile: ref("test/math.test.ts"),
-      paths: ["src/deep.ts", "src/math.ts", "test/math.test.ts"],
+      paths: [
+        "src/deep.ts",
+        "src/math.ts",
+        "test/__snapshots__/math.test.ts.snap",
+        "test/math.test.ts",
+      ],
     });
     expect((await fx.adapter.closure(ref("test/strings.test.ts"))).paths).toEqual([
       "src/strings.ts",
@@ -20,8 +28,43 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
     ]);
     // Setup files belong to the environment hash, not to each closure.
     expect((await fx.adapter.closure(ref("test/greeting.test.ts"))).paths).toEqual([
+      "test/__snapshots__/greeting.test.ts.snap",
       "test/greeting.test.ts",
     ]);
+  });
+
+  it("adds every resolution candidate of an unresolved import to the closure", async () => {
+    const fx = await openFixture();
+    fx.write(
+      "test/missing.test.ts",
+      [
+        'import { it } from "vitest";',
+        'import { client } from "../src/client";',
+        'import { util } from "./helpers/util.js";',
+        'it("uses them", () => { client(util); });',
+        "",
+      ].join("\n"),
+    );
+    await fx.adapter.invalidate([{ path: "test/missing.test.ts", kind: "add" }]);
+
+    // Spec 001 D3: "for every unresolved import the target path and its
+    // resolution candidates (each configured extension and `index` file)".
+    // Vite's default `resolve.extensions`; a `.js` specifier also resolves to
+    // `.ts` and `.tsx`, as Vite does for TypeScript importers.
+    const candidates = (target: string) => [
+      target,
+      ...VITE_EXTENSIONS.map((ext) => `${target}${ext}`),
+      ...VITE_EXTENSIONS.map((ext) => `${target}/index${ext}`),
+    ];
+    const expected = [
+      ...candidates("src/client"),
+      ...candidates("test/helpers/util.js"),
+      "test/helpers/util.ts",
+      "test/helpers/util.tsx",
+      "test/__snapshots__/missing.test.ts.snap",
+      "test/missing.test.ts",
+    ].sort();
+    expect((await fx.adapter.closure(ref("test/missing.test.ts"))).paths).toEqual(expected);
   });
 
   it("enumerates tests statically and flags templated test.each entries", async () => {

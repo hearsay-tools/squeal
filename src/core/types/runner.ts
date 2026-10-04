@@ -29,12 +29,17 @@ export interface InvalidateResult {
  * `inputs` (D3) and builds the final `Closure`.
  *
  * Spec 001 D4: "`closure(testFile) -> paths`: from the same transform graph,
- * plus the additions in D3." The snapshot file is a runner addition because
- * only the runner knows where snapshots live.
+ * plus the additions in D3." The snapshot path and resolution candidates are
+ * runner additions because only the runner knows where snapshots live and
+ * how imports resolve.
  */
 export interface RunnerClosure {
   readonly testFile: TestFileRef;
-  /** Transitive static and dynamic project imports plus snapshot files. `node_modules` excluded. */
+  /**
+   * Transitive static and dynamic project imports, the snapshot path whether
+   * or not it exists, and every resolution candidate of an unresolved import
+   * (D3). Paths that do not exist hash as absent. `node_modules` excluded.
+   */
   readonly paths: readonly RelativePath[];
 }
 
