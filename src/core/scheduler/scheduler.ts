@@ -6,6 +6,7 @@ import type {
   CandidateBatch,
   CheckpointRecord,
   EpochMs,
+  FileChange,
   FullSuiteRequest,
   Policy,
   RelativePath,
@@ -59,6 +60,17 @@ export interface SchedulerOptions {
    * the feed delivers the next batch only after this one.
    */
   readonly onExtraFiles?: (paths: readonly RelativePath[]) => void;
+  /**
+   * Called with the changes of every new revision, inside the transaction
+   * that stores it. Returns the policy to apply from this revision on, or
+   * `null` to keep the current one; the daemon reloads when the changes
+   * include `squeal.config.json` (spec 001 D11, review S3). A new `inputs`
+   * re-selects the declared inputs and re-assembles every closure; a new
+   * `env.allowlist` moves every environment hash and reads the environments
+   * again, the same paths a content or config change takes. `runner.*` keys
+   * apply from the next tier; `baseline.onStart` only at the next start.
+   */
+  readonly reloadPolicy?: (changes: readonly FileChange[]) => Policy | null;
   /** Errors of background work (tiers, persisting notes). Batch errors reject `handleBatch`. */
   readonly onError?: (error: Error) => void;
   readonly hasher?: Hasher;
@@ -112,6 +124,7 @@ class TierScheduler implements Scheduler {
         runner: options.runner,
         sink: options.sink,
         policy: options.policy,
+        reloadPolicy: options.reloadPolicy ?? (() => null),
         keys,
         hasher,
         runsDir: options.runsDir,

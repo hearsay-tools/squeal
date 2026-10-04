@@ -39,14 +39,31 @@ export function rekeyContent(
   const { keys } = context;
   const changes = revision.changes;
   const touched: TestFileRef[] = [];
+  const policy = reloadPolicy(context, changes);
+  touched.push(...policy.changes.map((c) => c.testFile));
   const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
   touched.push(...rekeyed);
   const declared = keys.updateDeclaredInputs(changes);
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
-  const environment = changes.some((c) => keys.isEnvironmentInput(c.path));
-  if (environment) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
+  const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
+  if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
   ledger.settle(touched, new Set(changes.map((c) => c.path)));
-  return { rekeyed, environment };
+  return { rekeyed, environment: inputs || policy.environment };
+}
+
+/**
+ * Applies a policy the revision reloaded (`SchedulerOptions.reloadPolicy`):
+ * the key changes of new `inputs` and of a new `env.allowlist`, and whether
+ * the environments must be read again.
+ */
+function reloadPolicy(
+  context: SchedulerContext,
+  changes: readonly FileChange[],
+): { changes: KeyChange[]; environment: boolean } {
+  const policy = context.reloadPolicy(changes);
+  if (policy === null) return { changes: [], environment: false };
+  context.policy = policy;
+  return context.keys.setPolicy(policy);
 }
 
 /**

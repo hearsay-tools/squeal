@@ -7,7 +7,7 @@ import { createDelivery, readHeader } from "../../src/core/delivery/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
+import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
 import {
   isStoreOpenFailure,
   openStore,
@@ -180,6 +180,8 @@ export interface HarnessOptions {
   readonly environmentRoot?: string;
   /** Errors are expected: do not fail the test on `onError`. */
   readonly allowErrors?: boolean;
+  /** `SchedulerOptions.reloadPolicy`. */
+  readonly reloadPolicy?: SchedulerOptions["reloadPolicy"];
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -216,6 +218,7 @@ export async function openHarness(
     head: () => readHead(root),
     onExtraFiles: (paths) => extraFiles.push([...paths]),
     onError: (error) => errors.push(error),
+    ...(options.reloadPolicy === undefined ? {} : { reloadPolicy: options.reloadPolicy }),
   });
   cleanups.push(async () => {
     await scheduler.close();
