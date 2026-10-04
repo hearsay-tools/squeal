@@ -18,11 +18,16 @@ export const STOP_POLL_MS = 100;
 
 /**
  * Stop and SubagentStop (D9): wait up to `stop.waitMs` for the pending checks
- * of the current revision, then deliver the status header plus the delta, and
+ * of the current revision, deliver the delta with its status header, and
  * block with a factual reason when `stop.blockOnKnownFailures` or
- * `stop.requireFullSuite` is not met. A Stop that fires while an earlier block
- * keeps the agent going (`stop_hook_active`) never blocks again, so a policy
- * the agent cannot meet cannot loop forever.
+ * `stop.requireFullSuite` is not met.
+ *
+ * Stop context is not passive: Claude Code continues the turn so the model
+ * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
+ * speaks only with news: a delta, a first registration with known failures,
+ * or a block. A Stop that fires while an earlier one keeps the agent going
+ * (`stop_hook_active`) never blocks again, so a policy the agent cannot meet
+ * cannot loop.
  */
 export const stop: Handler = (input, location, deps) =>
   withContext(input, location, deps, async (context) => {
@@ -31,7 +36,7 @@ export const stop: Handler = (input, location, deps) =>
     if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
 
     const { store, consumer } = context;
-    const text = await deliveryText(context);
+    const news = await newsText(context);
     const states = store.knownStates.list(consumer.worktreeId);
     const header = readHeader(store, consumer.worktreeId, states);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
@@ -46,20 +51,28 @@ export const stop: Handler = (input, location, deps) =>
       }
     }
     if (reasons.length > 0) {
+      const text = news ?? statusText(consumer, header, failures.length);
       return { output: { decision: "block", reason: `${reasons.join("\n")}\n\n${text}` } };
     }
-    return additionalContext(input, text);
+    return news === null ? null : additionalContext(input, news);
   });
 
-/** The delta with its header, the header alone, or the registration of an unregistered consumer. */
-async function deliveryText(context: HookContext): Promise<string> {
+/**
+ * The delta with its header and the known-failure count; for a consumer with
+ * no registration, its registration when that lists known failures. `null`
+ * when there is nothing new.
+ */
+async function newsText(context: HookContext): Promise<string | null> {
   const { store, delivery, consumer } = context;
-  if (!isRegistered(context)) return formatRegistration(await delivery.register(consumer));
+  if (!isRegistered(context)) {
+    const registration = await delivery.register(consumer);
+    return registration.knownFailures.length > 0 ? formatRegistration(registration) : null;
+  }
   const delta = await delivery.onToolBoundary(consumer);
-  const states = store.knownStates.list(consumer.worktreeId);
-  const header = readHeader(store, consumer.worktreeId, states);
-  const failures = states.filter((s) => s.outcome === "fail").length;
-  if (delta === null) return statusText(consumer, header, failures);
+  if (delta === null) return null;
+  const failures = store.knownStates
+    .list(consumer.worktreeId)
+    .filter((s) => s.outcome === "fail").length;
   return `${formatDelta(delta)}\n${knownFailuresLine(failures)}`;
 }
 

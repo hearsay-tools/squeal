@@ -193,20 +193,29 @@ describe("PreToolUse", () => {
 });
 
 describe("Stop and SubagentStop", () => {
-  it("delivers the status header when nothing changed", async () => {
+  it("is silent when nothing changed, because Stop context keeps the turn going", async () => {
     const r = squealRepo();
     r.apply(r.pass(), r.fail(SUBTRACTS));
     await runHook("session-start", recorded("session-start", r.root), deps());
 
-    const out = await runHook("stop", recorded("stop", r.root), deps());
+    expect(await runHook("stop", recorded("stop", r.root), deps())).toEqual(SILENT);
+  });
 
+  it("registers an unregistered consumer and speaks only when it has known failures", async () => {
+    const quiet = squealRepo();
+    quiet.apply(quiet.pass());
+    expect(await runHook("stop", recorded("stop", quiet.root), deps())).toEqual(SILENT);
+    expect(quiet.store.consumers.get(quiet.consumer())).not.toBeNull();
+
+    const failing = squealRepo();
+    failing.apply(failing.fail());
+    const out = await runHook("stop", recorded("stop", failing.root), deps());
     expect(json(out)).toEqual({
       hookSpecificOutput: {
         hookEventName: "Stop",
-        additionalContext:
-          "SQUEAL · status at revision 1\n" +
-          "Revision 1: 2 current, 0 pending, 0 stale, 0 unknown. Full suite: not completed at any revision.\n" +
-          "Known failures: 1",
+        additionalContext: expect.stringMatching(
+          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 1/,
+        ),
       },
     });
   });
@@ -266,7 +275,20 @@ describe("Stop and SubagentStop", () => {
     r.policy({ stop: { blockOnKnownFailures: true } });
 
     const out = await runHook("stop", recorded("stop", r.root, { stop_hook_active: true }), deps());
-    expect(json(out)).toMatchObject({ hookSpecificOutput: { hookEventName: "Stop" } });
+    expect(out).toEqual(SILENT);
+
+    r.apply(r.fail(ADDS, "a different failure"));
+    const changed = await runHook(
+      "stop",
+      recorded("stop", r.root, { stop_hook_active: true }),
+      deps(),
+    );
+    expect(json(changed)).toMatchObject({
+      hookSpecificOutput: {
+        hookEventName: "Stop",
+        additionalContext: expect.stringContaining("FAIL -> FAIL, failure changed"),
+      },
+    });
   });
 
   it("waits up to stop.waitMs for pending checks of the current revision", async () => {
@@ -282,7 +304,7 @@ describe("Stop and SubagentStop", () => {
       r.store.testFileKeys.upsertMany([
         { worktreeId: r.worktreeId, testFile: FILE_REF, key: "k1", revision: 2, pending: null },
       ]);
-      r.sink.refresh(r.worktreeId, 1, { checkpointId: null });
+      r.apply(r.fail());
     }, 300);
 
     const started = performance.now();
@@ -292,6 +314,7 @@ describe("Stop and SubagentStop", () => {
     expect(waited).toBeGreaterThanOrEqual(250);
     expect(waited).toBeLessThan(1_000);
     expect(out.stdout).toContain("1 current, 0 pending");
+    expect(out.stdout).toContain("PASS -> FAIL");
   });
 });
 
