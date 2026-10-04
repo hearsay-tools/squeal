@@ -42,16 +42,21 @@ export type Handler = (
   deps: HookDeps,
 ) => Promise<HookOutcome | null>;
 
+/** Every synchronous hook in hooks.json has `timeout: 2`; Claude Code kills it after this. */
+export const HOOK_TIMEOUT_MS = 2_000;
+
 /** Runs `fn` with an open store; `null` without one. Always closes the store. */
 export async function withContext(
   input: HookInput,
   location: HookLocation,
   deps: HookDeps,
   fn: (context: HookContext) => Promise<HookOutcome | null>,
+  overrides: Pick<ContextOptions, "busyTimeoutMs"> = {},
 ): Promise<HookOutcome | null> {
   const options: ContextOptions = {
     ...(deps.now === undefined ? {} : { now: deps.now }),
     ...(deps.pollIntervalMs === undefined ? {} : { pollIntervalMs: deps.pollIntervalMs }),
+    ...overrides,
   };
   const context = openContext(input, location, options);
   if (context === null) return null;

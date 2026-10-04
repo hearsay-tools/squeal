@@ -58,6 +58,8 @@ export interface HookContext extends HookLocation {
 export interface ContextOptions {
   readonly now?: () => EpochMs;
   readonly pollIntervalMs?: number;
+  /** How long a store statement waits for a lock. Default `STATUS_BUSY_TIMEOUT_MS`. */
+  readonly busyTimeoutMs?: number;
 }
 
 /**
@@ -72,7 +74,7 @@ export function openContext(
 ): HookContext | null {
   const store = openStore(location.commonDir, {
     create: false,
-    busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS,
+    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
   });
   if (isStoreOpenFailure(store)) return null;
   try {
