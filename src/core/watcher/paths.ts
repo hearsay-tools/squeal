@@ -1,5 +1,6 @@
 import { lstat } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
+import { isMissing } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
 
 /** `abs` relative to `root` with `/` separators, or `null` when it is the root or outside it. */
@@ -40,10 +41,4 @@ export async function hasGitEntry(dir: AbsolutePath): Promise<boolean> {
     if (isMissing(error)) return false;
     throw error;
   }
-}
-
-/** True for the errors `lstat` gives when a path, or one of its parents, does not exist. */
-export function isMissing(error: unknown): boolean {
-  const code = (error as NodeJS.ErrnoException | null)?.code;
-  return code === "ENOENT" || code === "ENOTDIR";
 }
