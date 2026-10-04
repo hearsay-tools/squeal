@@ -17,6 +17,7 @@ import {
   type TestFileKeyRecord,
   type WorktreeId,
 } from "../types/index.js";
+import { readGitHead } from "./git-head.js";
 import { readDaemonNotes } from "./notes.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 
@@ -98,8 +99,8 @@ function snapshot(
     worktreeId,
     worktreeRoot: worktree?.root ?? root,
     ...header,
-    head: revision?.head ?? null,
-    dirty: revision?.dirty ?? false,
+    head: revision === null ? readGitHead(root) : revision.head,
+    dirty: revision?.dirty ?? null,
     daemon: liveness(worktree?.daemon ?? null, now),
     knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
     inherited: inheritedSources(store, states),

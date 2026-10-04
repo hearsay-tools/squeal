@@ -87,8 +87,8 @@ function affected(s: StatusSnapshot): string {
 }
 
 function worktreeLine(s: StatusSnapshot): string {
-  if (s.revision === 0 && s.head === null) return `Worktree: ${s.worktreeRoot}`;
-  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${s.dirty ? "dirty" : "clean"})`;
+  const dirty = s.dirty === null ? "dirty state unknown" : s.dirty ? "dirty" : "clean";
+  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirty})`;
 }
 
 function daemonLine(s: StatusSnapshot, now: EpochMs): string {

@@ -454,6 +454,6 @@ describe("readStatus", () => {
       "Last full suite: none recorded",
       "Current revision has not completed a full-suite run",
     ]);
-    expect(lines).toContain(`Worktree: ${repo.main}`);
+    expect(lines).toContain(`Worktree: ${repo.main} (HEAD no commit, dirty state unknown)`);
   });
 });
