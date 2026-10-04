@@ -9,4 +9,4 @@ export {
   type SeedReport,
   seedStatCache,
 } from "./hasher.js";
-export { isRacy, RACY_WINDOW_MS, StatCache, sameStat } from "./stat-cache.js";
+export { type CacheUpdate, isRacy, RACY_WINDOW_MS, StatCache, sameStat } from "./stat-cache.js";
