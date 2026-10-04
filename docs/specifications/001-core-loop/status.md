@@ -20,6 +20,8 @@ Started: 2026-10-02
 
 - 2026-10-04, from the wave 2 review (`reviews/wave-2.md`): runner failure is a state not a skip, revision atomic with content re-key and queued phases, checkpoints abandon on unkeyed files (D5); file-level check passes on load, retired told failures delivered as resolved, header carries test-file counts and shared readers (D6); persisted notes in status (D7); shared-key last-writer rule accepted (D8); PreToolUse peek of regressions only (D9); run timeout default 10 minutes (D11).
 
+- 2026-10-04, from wave 3 (001-31): the bundled hook entry points are committed under `plugins/claude-code/dist/` because a plugin install copies the git tree as it is; `npm run build` regenerates them, and CI must fail when they are stale (D9). `squeal.config.json` written by `squeal init` is plain JSON with every default spelled out; key documentation lives in the plugin skill and D11.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.

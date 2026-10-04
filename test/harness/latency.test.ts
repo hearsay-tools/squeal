@@ -17,7 +17,9 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 const RUNS = 20;
 const ROUNDS = 3;
 const BUDGET_MS = 80;
-const MAX_LOAD = 8;
+// Inside the full parallel suite the measurement competes with other test files; at load 7 a
+// hook read 80 ms p95 that measured 50 ms alone. Assert only on a quiet machine, report always.
+const MAX_LOAD = 4;
 const FILES = 50;
 const CHECKS_PER_FILE = 10;
 
