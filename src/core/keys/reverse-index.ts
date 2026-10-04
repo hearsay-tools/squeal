@@ -1,6 +1,6 @@
 import { posix } from "node:path";
+import { compare } from "../fs/index.js";
 import type { RelativePath, TestFileRef } from "../types/index.js";
-import { compare } from "./closure.js";
 
 /** Map key of a test file. NUL cannot occur in a project name or a path. */
 export function testFileId(ref: TestFileRef): string {

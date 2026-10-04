@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
-import { isMissing, toRelative } from "../fs/index.js";
+import { compare, isMissing, toRelative } from "../fs/index.js";
 import type {
   AbsolutePath,
   CoreEnvironmentInputs,
@@ -10,7 +10,6 @@ import type {
   RelativePath,
   RunnerEnvironment,
 } from "../types/index.js";
-import { compare } from "./closure.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const ENVIRONMENT_ENCODING = "squeal-environment/1";

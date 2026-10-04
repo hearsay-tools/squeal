@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { compare } from "../fs/index.js";
 import type { Closure, ClosureMethod, RelativePath, RunnerClosure } from "../types/index.js";
 import { createInputMatcher } from "./glob.js";
 
@@ -80,9 +81,4 @@ export function assembleClosure(
 
 function isNodeModules(path: RelativePath): boolean {
   return path.startsWith("node_modules/") || path.includes("/node_modules/");
-}
-
-/** Code-unit order: the same in every locale, so keys do not depend on one. */
-export function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
 }

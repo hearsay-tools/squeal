@@ -1,4 +1,5 @@
 import type { SerializedError, TestCase } from "vitest/node";
+import { compare } from "../../core/fs/index.js";
 import type {
   CheckError,
   CheckRunResult,
@@ -82,5 +83,3 @@ export const refKey = (ref: TestFileRef) => `${ref.project}\0${ref.path}`;
 export function compareRefs(a: TestFileRef, b: TestFileRef): number {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
-
-const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
