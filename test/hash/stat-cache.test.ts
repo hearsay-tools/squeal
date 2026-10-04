@@ -5,12 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   blobHash,
   createFsHasher,
-  type FileStat,
   StatCache,
   sameStat,
   seedStatCache,
 } from "../../src/core/hash/index.js";
-import type { FileHashRecord } from "../../src/core/types/index.js";
+import type { FileHashRecord, FileStat } from "../../src/core/types/index.js";
 import { FakeFileHashRepo } from "./fakes.js";
 import { git, initRepo, tempDir, writeFile } from "./git-repo.js";
 
