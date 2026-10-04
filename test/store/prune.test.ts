@@ -83,17 +83,16 @@ describe("prune (spec 001 D8)", () => {
     ]);
 
     const outside = tempDir();
-    const runs: [string, string, number, number | null, boolean, string?][] = [
-      // id, worktree, startedAt, endedAt, fullSuite, logDir
-      ["run-cur", "removed", ago(30), ago(30), false],
-      ["run-removed", "removed", ago(1), ago(1), false],
-      ["run-old-l", "linked", ago(10), ago(10), false],
-      ["run-recent-l", "linked", ago(1), ago(1), false],
-      ["run-running-l", "linked", ago(20), null, false],
-      ["run-full-main", "main", ago(50), ago(50), true],
-      ["run-full-main-older", "main", ago(60), ago(60), true, outside],
+    const runs: [string, string, number, number | null, string?][] = [
+      // id, worktree, startedAt, endedAt, logDir
+      ["run-cur", "removed", ago(30), ago(30)],
+      ["run-removed", "removed", ago(1), ago(1)],
+      ["run-old-l", "linked", ago(10), ago(10)],
+      ["run-recent-l", "linked", ago(1), ago(1)],
+      ["run-running-l", "linked", ago(20), null],
+      ["run-old-main", "main", ago(60), ago(60), outside],
     ];
-    for (const [id, worktreeId, startedAt, endedAt, fullSuite, logDir] of runs) {
+    for (const [id, worktreeId, startedAt, endedAt, logDir] of runs) {
       const dir = logDir ?? join(runsDir, id);
       mkdirSync(dir, { recursive: true });
       store.runs.start({
@@ -101,7 +100,7 @@ describe("prune (spec 001 D8)", () => {
         worktreeId,
         revision: 1,
         testFiles: [],
-        fullSuite,
+        checkpointId: null,
         logDir: dir,
         startedAt,
       });
@@ -113,6 +112,7 @@ describe("prune (spec 001 D8)", () => {
     expect(report).toEqual({
       resultsRemoved: 4,
       runsRemoved: 3,
+      checkpointsRemoved: 0,
       checksRemoved: 2,
       worktreesRemoved: 1,
       bytesAfter: expect.any(Number),
@@ -135,7 +135,7 @@ describe("prune (spec 001 D8)", () => {
     expect(keys(store, allKeys)).toEqual(["k-current", "k-main-newest", "k-recent", "k-boundary"]);
 
     const keptRuns = runs.map(([id]) => id).filter((id) => store.runs.get(id) !== null);
-    expect(keptRuns).toEqual(["run-cur", "run-recent-l", "run-running-l", "run-full-main"]);
+    expect(keptRuns).toEqual(["run-cur", "run-recent-l", "run-running-l"]);
     expect(existsSync(join(runsDir, "run-old-l"))).toBe(false);
     expect(existsSync(join(runsDir, "run-removed"))).toBe(false);
     expect(existsSync(join(runsDir, "run-cur"))).toBe(true);
@@ -148,6 +148,59 @@ describe("prune (spec 001 D8)", () => {
       runsRemoved: 0,
       worktreesRemoved: 0,
     });
+  });
+
+  it("keeps the last completed checkpoint per live worktree and those runs reference", () => {
+    const { store } = fixture();
+    const checkpoints: [string, string, number, "completed" | "abandoned" | null][] = [
+      // id, worktree, ended (or started, when unfinished), end
+      ["cp-last-linked", "linked", ago(30), "completed"],
+      ["cp-older-linked", "linked", ago(40), "completed"],
+      ["cp-abandoned-old", "linked", ago(20), "abandoned"],
+      ["cp-abandoned-recent", "linked", ago(1), "abandoned"],
+      ["cp-unfinished-old", "linked", ago(20), null],
+      ["cp-referenced", "linked", ago(50), "completed"],
+      ["cp-removed", "removed", ago(1), "completed"],
+      ["cp-last-main", "main", ago(60), "completed"],
+    ];
+    for (const [id, worktreeId, at, end] of checkpoints) {
+      store.checkpoints.start({
+        id,
+        worktreeId,
+        revision: 1,
+        kind: "run-all",
+        testFiles: [],
+        startedAt: at,
+      });
+      if (end !== null) store.checkpoints.finish(id, end, at);
+    }
+    // A tier run kept because a recent result references it keeps its checkpoint too.
+    store.runs.start({
+      id: "run-ref",
+      worktreeId: "linked",
+      revision: 1,
+      testFiles: [],
+      checkpointId: "cp-referenced",
+      logDir: "/nowhere",
+      startedAt: ago(1),
+    });
+    store.runs.finish("run-ref", "completed", ago(1));
+    store.results.putMany([
+      result(testCheck("a"), "k", { worktreeId: "linked", recordedAt: ago(1), runId: "run-ref" }),
+    ]);
+
+    const report = store.prune({ now: NOW, retentionDays: 7, maxSizeMb: null });
+
+    expect(report.checkpointsRemoved).toBe(3);
+    const kept = checkpoints.map(([id]) => id).filter((id) => store.checkpoints.get(id) !== null);
+    expect(kept).toEqual([
+      "cp-last-linked",
+      "cp-abandoned-recent",
+      "cp-unfinished-old",
+      "cp-referenced",
+      "cp-last-main",
+    ]);
+    expect(store.checkpoints.lastCompleted("linked")?.id).toBe("cp-last-linked");
   });
 
   it("drops checks that no result, known state, view or transition references", () => {

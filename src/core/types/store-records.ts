@@ -127,13 +127,45 @@ export interface RunRecord {
   readonly worktreeId: WorktreeId;
   readonly revision: RevisionNumber;
   readonly testFiles: readonly TestFileRef[];
-  /** True for `squeal run --all` (D5), which makes a full-suite result possible (D7). */
-  readonly fullSuite: boolean;
+  /** The checkpoint this run is a tier of; `null` for runs the daemon scheduled on its own. */
+  readonly checkpointId: string | null;
   readonly logDir: AbsolutePath;
   readonly startedAt: EpochMs;
   readonly endedAt: EpochMs | null;
   /** `null` while running. */
   readonly end: RunEnd | null;
+}
+
+/** Spec 001 D7: "A checkpoint is one `run --all` or baseline request". */
+export type CheckpointKind = "run-all" | "baseline";
+
+/**
+ * How a checkpoint ended. `completed`: every requested test file has a
+ * result. `abandoned`: it ended without one for some file (daemon stopped,
+ * superseded by a newer request, a tier crashed or timed out).
+ */
+export type CheckpointEnd = "completed" | "abandoned";
+
+/**
+ * Row of `checkpoints`: one `run --all` or baseline request. Its tiers are
+ * separate `RunRecord`s that carry its id.
+ *
+ * Spec 001 D7: status reports "whether a full-suite checkpoint completed for
+ * this revision and at which revision the last one completed".
+ */
+export interface CheckpointRecord {
+  readonly id: string;
+  readonly worktreeId: WorktreeId;
+  /** Revision the request was made at. */
+  readonly revision: RevisionNumber;
+  readonly kind: CheckpointKind;
+  /** Test files the request queued. D5: misses only, or every file with `--force`. */
+  readonly testFiles: readonly TestFileRef[];
+  readonly startedAt: EpochMs;
+  /** When `end` was recorded, whichever it is; `null` while running. */
+  readonly completedAt: EpochMs | null;
+  /** `null` while running. */
+  readonly end: CheckpointEnd | null;
 }
 
 /**

@@ -260,29 +260,66 @@ describe("results", () => {
 });
 
 describe("runs", () => {
-  it("starts, finishes and finds the newest completed full suite", () => {
+  it("starts, finishes and round-trips the checkpoint a tier belongs to", () => {
     const store = open(fakeCommonDir());
     const base = {
       worktreeId: "w",
       revision: 1,
       testFiles: [{ project: "", path: "a.test.ts" }],
-      fullSuite: true,
+      checkpointId: "cp-1",
       logDir: "/repo/.git/squeal/runs/r1",
       startedAt: 1,
     };
     const r1 = store.runs.start({ ...base, id: "r1" });
     expect(r1).toEqual({ ...base, id: "r1", endedAt: null, end: null });
-    store.runs.start({ ...base, id: "r2", startedAt: 2 });
-    store.runs.start({ ...base, id: "r3", startedAt: 3 });
-    store.runs.start({ ...base, id: "r4", startedAt: 4, fullSuite: false });
+    store.runs.start({ ...base, id: "r2", startedAt: 2, checkpointId: null });
     store.runs.finish("r1", "completed", 10);
-    store.runs.finish("r2", "completed", 20);
-    store.runs.finish("r3", "crashed", 30);
-    store.runs.finish("r4", "completed", 40);
-    expect(store.runs.get("r2")).toMatchObject({ endedAt: 20, end: "completed" });
-    expect(store.runs.lastFullSuite("w")?.id).toBe("r2");
-    expect(store.runs.lastFullSuite("x")).toBeNull();
+    store.runs.finish("r2", "crashed", 20);
+    expect(store.runs.get("r1")).toEqual({ ...r1, endedAt: 10, end: "completed" });
+    expect(store.runs.get("r2")).toMatchObject({ checkpointId: null, endedAt: 20, end: "crashed" });
     expect(store.runs.get("missing")).toBeNull();
+  });
+});
+
+describe("checkpoints", () => {
+  it("starts, finishes and finds the newest completed checkpoint of a worktree", () => {
+    const store = open(fakeCommonDir());
+    const base = {
+      worktreeId: "w",
+      revision: 3,
+      kind: "run-all" as const,
+      testFiles: [
+        { project: "", path: "a.test.ts" },
+        { project: "", path: "b.test.ts" },
+      ],
+      startedAt: 1,
+    };
+    const first = store.checkpoints.start({ ...base, id: "cp-1" });
+    expect(first).toEqual({ ...base, id: "cp-1", completedAt: null, end: null });
+    expect(store.checkpoints.get("cp-1")).toEqual(first);
+    expect(store.checkpoints.lastCompleted("w")).toBeNull();
+
+    store.checkpoints.start({ ...base, id: "cp-2", kind: "baseline", revision: 1, startedAt: 2 });
+    store.checkpoints.start({ ...base, id: "cp-3", revision: 5, startedAt: 3 });
+    store.checkpoints.start({ ...base, id: "cp-4", revision: 6, startedAt: 4 });
+    store.checkpoints.start({ ...base, id: "cp-other", worktreeId: "x", startedAt: 5 });
+    store.checkpoints.finish("cp-1", "completed", 10);
+    store.checkpoints.finish("cp-2", "completed", 20);
+    store.checkpoints.finish("cp-3", "abandoned", 30);
+    // cp-4 is still running.
+
+    expect(store.checkpoints.get("cp-2")).toEqual({
+      ...base,
+      id: "cp-2",
+      kind: "baseline",
+      revision: 1,
+      startedAt: 2,
+      completedAt: 20,
+      end: "completed",
+    });
+    expect(store.checkpoints.lastCompleted("w")?.id).toBe("cp-2");
+    expect(store.checkpoints.lastCompleted("x")).toBeNull();
+    expect(store.checkpoints.get("missing")).toBeNull();
   });
 });
 

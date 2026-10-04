@@ -3,8 +3,9 @@ import { bool, flag, num, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
 /**
- * Tables whose rows belong to one worktree and go with it. Results and runs
- * are not listed: they are content-keyed and shared, so `prune` decides when
+ * Tables whose rows belong to one worktree and go with it. Results, runs and
+ * checkpoints are not listed: results are content-keyed and shared, runs are
+ * referenced by results and checkpoints by runs, so `prune` decides when
  * they go (spec 001 D8).
  */
 export const WORKTREE_SCOPED_TABLES = [

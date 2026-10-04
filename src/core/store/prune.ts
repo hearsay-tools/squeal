@@ -16,6 +16,9 @@ const EVICTION_BATCH = 32;
  * state, view or transition references."
  *
  * A live worktree is a `worktrees` row whose root still has a `.git` entry.
+ * Runs and checkpoints follow the 7 days rule unless a kept result
+ * references the run or a kept run the checkpoint; the newest completed
+ * checkpoint of each live worktree is kept for status (D7).
  */
 
 /** Keys some live worktree computed for its current revision. */
@@ -29,12 +32,12 @@ const MAIN_NEWEST = `
     FROM results WHERE worktree_id IN (SELECT id FROM worktrees WHERE is_main = 1)
   ) WHERE n = 1`;
 
-/** The newest completed full-suite run of each live worktree; status reports it (D7). */
-const LAST_FULL_SUITES = `
+/** The newest completed checkpoint of each live worktree; status reports it (D7). */
+const LAST_COMPLETED_CHECKPOINTS = `
   SELECT id FROM (
-    SELECT (SELECT x.id FROM runs x
-            WHERE x.worktree_id = w.id AND x.full_suite = 1 AND x.end_state = 'completed'
-            ORDER BY x.ended_at DESC LIMIT 1) AS id
+    SELECT (SELECT x.id FROM checkpoints x
+            WHERE x.worktree_id = w.id AND x.end_state = 'completed'
+            ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1) AS id
     FROM worktrees w
   ) WHERE id IS NOT NULL`;
 
@@ -73,7 +76,6 @@ export function prune(
     conn.all(
       `DELETE FROM runs
        WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
-         AND id NOT IN (${LAST_FULL_SUITES})
          AND (worktree_id NOT IN (SELECT id FROM worktrees)
               OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
        RETURNING log_dir`,
@@ -81,6 +83,18 @@ export function prune(
     ),
   );
   for (const row of droppedRuns) removeRunLog(paths, str(row, "log_dir"));
+
+  // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
+  const checkpointsRemoved = conn.transaction(() =>
+    conn.run(
+      `DELETE FROM checkpoints
+       WHERE id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
+         AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+         AND (worktree_id NOT IN (SELECT id FROM worktrees)
+              OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
+      cutoff,
+    ),
+  );
 
   const checksRemoved = conn.transaction(() =>
     conn.run(
@@ -94,6 +108,7 @@ export function prune(
   return {
     resultsRemoved,
     runsRemoved: droppedRuns.length,
+    checkpointsRemoved,
     checksRemoved,
     worktreesRemoved,
     bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size"),

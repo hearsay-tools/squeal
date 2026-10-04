@@ -4,7 +4,8 @@ import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";
 import { prune } from "./prune.js";
 import { createConsumerRepo, createViewRepo } from "./repos/consumers.js";
-import { createResultRepo, createRunRepo } from "./repos/results.js";
+import { createResultRepo } from "./repos/results.js";
+import { createCheckpointRepo, createRunRepo } from "./repos/runs.js";
 import { createKnownStateRepo, createTransitionRepo } from "./repos/states.js";
 import { createCheckRepo, createTestFileKeyRepo, createTestFileRepo } from "./repos/test-files.js";
 import { createFileHashRepo, createRevisionRepo } from "./repos/workspace.js";
@@ -31,6 +32,7 @@ export function createStore(conn: Connection, schemaVersion: number, paths: Stor
     checks: createCheckRepo(conn),
     results: createResultRepo(conn),
     runs: createRunRepo(conn),
+    checkpoints: createCheckpointRepo(conn),
     knownStates: createKnownStateRepo(conn),
     transitions: createTransitionRepo(conn),
     consumers: createConsumerRepo(conn),
