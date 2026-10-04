@@ -1,4 +1,4 @@
-import { stat as fsStat } from "node:fs/promises";
+import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import type { AbsolutePath, EpochMs, FileHash, FileStat, RelativePath } from "../types/index.js";
 import { hashFile, isMissing, type ObjectFormat } from "./blob.js";
@@ -9,11 +9,16 @@ import { isRacy, type StatCache, sameStat } from "./stat-cache.js";
 /**
  * Filesystem access for reconciliation, relative to one worktree root. Tests
  * substitute a fake to count or script reads.
+ *
+ * One stat definition, shared with the watcher (`FileStat`): `lstat`, so a
+ * symlink is described, not followed, and hashed as git stores it (the blob
+ * of its target path). A regular file or a symlink is a file; anything else
+ * (directory, fifo, socket, device) counts as absent.
  */
 export interface Hasher {
-  /** Stat of a regular file (symlinks followed), or `null` when there is none. */
+  /** `lstat` of a regular file or symlink, or `null` when there is none. */
   stat(path: RelativePath): Promise<FileStat | null>;
-  /** Blob id of the file's bytes, or `null` when it does not exist. */
+  /** Blob id of the file's bytes or the symlink's target, or `null` when there is no file. */
   hash(path: RelativePath): Promise<FileHash | null>;
   /** Wall clock, for the racy check. */
   now(): EpochMs;
@@ -23,8 +28,8 @@ export function createFsHasher(root: AbsolutePath, format: ObjectFormat): Hasher
   return {
     async stat(path) {
       try {
-        const stats = await fsStat(join(root, path));
-        if (!stats.isFile()) return null;
+        const stats = await lstat(join(root, path));
+        if (!stats.isFile() && !stats.isSymbolicLink()) return null;
         return {
           mtimeMs: stats.mtimeMs,
           ctimeMs: stats.ctimeMs,
@@ -52,7 +57,7 @@ export interface SeedReport {
   readonly fromIndex: number;
   /** Hashes computed from bytes. */
   readonly fromBytes: number;
-  /** Paths with no regular file; left out of the cache. */
+  /** Paths with no regular file or symlink; marked known absent in the cache. */
   readonly missing: number;
 }
 

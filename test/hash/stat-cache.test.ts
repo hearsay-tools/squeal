@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { lstatSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -127,6 +128,42 @@ describe("seedStatCache", () => {
     }
     expect(cache.get("gone.ts")).toBeUndefined();
     expect(cache.hashOf("gone.ts")).toBeNull();
+  });
+
+  it("stats symlinks without following them and hashes them as git does", async () => {
+    initRepo(root, { "target.ts": "t\n" });
+    symlinkSync("target.ts", join(root, "link.ts"));
+    symlinkSync("nowhere.ts", join(root, "dangling.ts"));
+    git(root, ["add", "-A"]);
+    git(root, ["commit", "-qm", "links"]);
+    const oid = (path: string) => git(root, ["ls-files", "-s", path]).split(" ")[1];
+    const hasher = createFsHasher(root, "sha1");
+
+    expect(await hasher.hash("link.ts")).toBe(oid("link.ts"));
+    expect(await hasher.hash("dangling.ts")).toBe(oid("dangling.ts"));
+    expect((await hasher.stat("link.ts"))?.size).toBe("target.ts".length);
+    expect((await hasher.stat("dangling.ts"))?.inode).toBe(
+      lstatSync(join(root, "dangling.ts")).ino,
+    );
+
+    // Clean symlinks come from the index; their lstat matches what git compared.
+    const cache = new StatCache();
+    const report = await seedStatCache(cache, root, ["link.ts", "dangling.ts"], {
+      objectFormat: "sha1",
+    });
+    expect(report).toEqual({ fromIndex: 2, fromBytes: 0, missing: 0 });
+    expect(cache.hashOf("link.ts")).toBe(oid("link.ts"));
+  });
+
+  it("treats a directory, or a fifo, as no file", async () => {
+    initRepo(root, {});
+    mkdirSync(join(root, "dir"));
+    execFileSync("mkfifo", [join(root, "pipe")]);
+    const hasher = createFsHasher(root, "sha1");
+    expect(await hasher.stat("dir")).toBeNull();
+    expect(await hasher.hash("dir")).toBeNull();
+    expect(await hasher.stat("pipe")).toBeNull();
+    expect(await hasher.hash("pipe")).toBeNull();
   });
 
   it("falls back to hashing bytes when an eol attribute makes the index oid differ from disk", async () => {
