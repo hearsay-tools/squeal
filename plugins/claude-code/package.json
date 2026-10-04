@@ -2,6 +2,6 @@
   "name": "squeal-claude-code-plugin",
   "version": "0.0.0",
   "private": true,
-  "description": "Gives the bundled CLI in dist/cli its version and marks the bundles as ES modules.",
+  "description": "Marks the bundles under dist/ as ES modules; its version follows the root package. The bundles carry their version from the build.",
   "type": "module"
 }

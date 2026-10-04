@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type BuildOptions, build } from "esbuild";
@@ -21,6 +21,14 @@ export function hookEntries(): string[] {
     .sort();
 }
 
+/** The root manifest's version, baked into every bundle (review wave 3, B1: one version source). */
+export function rootVersion(): string {
+  const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
+    version: string;
+  };
+  return manifest.version;
+}
+
 export function bundleOptions(outdir: string): BuildOptions {
   return {
     absWorkingDir: REPO_ROOT,
@@ -29,8 +37,10 @@ export function bundleOptions(outdir: string): BuildOptions {
         in: `src/harness/claude-code/entries/${name}.ts`,
         out: name,
       })),
-      // `bin/squeal` runs this; `squeal --version` reads ../../package.json, the plugin's.
+      // `bin/squeal` runs this; hooks spawn it as the daemon.
       { in: "src/cli/index.ts", out: "cli/squeal" },
+      // The daemon's socket worker, found beside the CLI by `prepareFrontDesk`.
+      { in: "src/core/daemon/front-desk.ts", out: "cli/front-desk" },
     ],
     outdir,
     outExtension: { ".js": ".mjs" },
@@ -38,7 +48,9 @@ export function bundleOptions(outdir: string): BuildOptions {
     platform: "node",
     format: "esm",
     target: "node22.13",
-    // Runner-side packages the daemon loads from the project, never from the plugin.
+    define: { __SQUEAL_VERSION__: JSON.stringify(rootVersion()) },
+    // Vitest and @parcel/watcher are resolved from the project at run time (B2); this keeps a
+    // type-only or stray reference from pulling them in.
     external: ["vitest", "vitest/*", "@parcel/watcher"],
     legalComments: "none",
     logLevel: "warning",

@@ -43,8 +43,8 @@ export interface PreparedDesk {
  * socket is served on the main thread instead.
  */
 export function prepareFrontDesk(): PreparedDesk {
-  const script = fileURLToPath(new URL("./front-desk.js", import.meta.url));
-  if (!existsSync(script)) {
+  const script = frontDeskScript(new URL(import.meta.url));
+  if (script === null) {
     return { open: (identity, events) => inThread(identity, events), discard: () => {} };
   }
   const worker = new Worker(script);
@@ -63,6 +63,19 @@ export function prepareFrontDesk(): PreparedDesk {
     },
     discard: () => void worker.terminate(),
   };
+}
+
+/**
+ * The socket worker beside `module`: `front-desk.js` in the `tsc` build,
+ * `front-desk.mjs` beside the plugin's CLI bundle (review wave 3, B1).
+ * `null` from the TypeScript sources.
+ */
+export function frontDeskScript(module: URL): string | null {
+  for (const name of ["./front-desk.js", "./front-desk.mjs"]) {
+    const script = fileURLToPath(new URL(name, module));
+    if (existsSync(script)) return script;
+  }
+  return null;
 }
 
 async function inWorker(

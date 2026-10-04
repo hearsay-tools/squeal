@@ -1,3 +1,4 @@
+import type { EnsureDaemonOptions } from "../../core/daemon/ensure.js";
 import type { AbsolutePath, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
 import {
   type ContextOptions,
@@ -13,8 +14,13 @@ export interface HookDeps {
   /** Default: `ensureDaemon` from src/core/daemon. */
   readonly ensureDaemon?: (
     root: AbsolutePath,
-    options: { readonly socketTimeoutMs: number },
+    options: EnsureDaemonOptions & { readonly socketTimeoutMs: number },
   ) => Promise<EnsureDaemonResult>;
+  /**
+   * The CLI bundle a hook spawns as the daemon: `dist/cli/squeal.mjs` beside
+   * the hook bundles (review wave 3, B1). `SQUEAL_CLI` overrides it.
+   */
+  readonly cli?: AbsolutePath;
   readonly now?: () => EpochMs;
   /** How long the idle waiter waits before it exits silently. Default `WAITER_TIMEOUT_MS`. */
   readonly waiterTimeoutMs?: number;

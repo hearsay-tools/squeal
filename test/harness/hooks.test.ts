@@ -27,14 +27,15 @@ describe("SessionStart and SubagentStart", () => {
       "session-start",
       recorded("session-start", r.root),
       deps({
-        ensureDaemon: async (root, { socketTimeoutMs }) => {
-          ensured.push(`${root} ${socketTimeoutMs}`);
-          return "spawned";
+        cli: "/plugin/dist/cli/squeal.mjs",
+        ensureDaemon: async (root, { socketTimeoutMs, cli }) => {
+          ensured.push(`${root} ${socketTimeoutMs} ${cli}`);
+          return "alive";
         },
       }),
     );
 
-    expect(ensured).toEqual([`${r.root} 100`]);
+    expect(ensured).toEqual([`${r.root} 100 /plugin/dist/cli/squeal.mjs`]);
     expect(r.store.consumers.get(r.consumer())).not.toBeNull();
     const registration = await delivery(r).register(r.consumer());
     expect(json(out)).toEqual({

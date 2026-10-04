@@ -13,7 +13,10 @@ export const SOCKET_TIMEOUT_MS = 100;
  */
 export const sessionStart: Handler = async (input, location, deps) => {
   if (!usesSqueal(location)) return null;
-  await (deps.ensureDaemon ?? ensureDaemon)(location.root, { socketTimeoutMs: SOCKET_TIMEOUT_MS });
+  await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
+    socketTimeoutMs: SOCKET_TIMEOUT_MS,
+    ...(deps.cli === undefined ? {} : { cli: deps.cli }),
+  });
   return withContext(input, location, deps, async (context) => {
     const registration = await context.delivery.register(context.consumer);
     return additionalContext(input, formatRegistration(registration));
