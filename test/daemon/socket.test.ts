@@ -1,14 +1,30 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import { linkedWorktreeDir, runtimeDir, socketPathFor } from "../../src/core/daemon/paths.js";
+import {
+  checkPrivateDir,
+  linkedWorktreeDir,
+  prepareSocketDir,
+  runtimeDir,
+  socketPathFor,
+} from "../../src/core/daemon/paths.js";
 import { createDaemonServer, type DaemonServer } from "../../src/core/daemon/server.js";
 import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/index.js";
 
+const uid = process.getuid?.() ?? 0;
 const cleanups: (() => unknown)[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
@@ -31,23 +47,29 @@ async function serve(socketPath: string): Promise<DaemonServer> {
 }
 
 describe("socket paths (spec 001 D1)", () => {
-  it("uses XDG_RUNTIME_DIR when set and absolute, else the temp dir", () => {
+  it("uses XDG_RUNTIME_DIR when set and absolute, else <tmpdir>/squeal-<uid> (review S8)", () => {
     expect(runtimeDir({ XDG_RUNTIME_DIR: "/run/user/1000" })).toBe("/run/user/1000");
-    expect(runtimeDir({ XDG_RUNTIME_DIR: "" })).toBe(tmpdir());
-    expect(runtimeDir({ XDG_RUNTIME_DIR: "relative" })).toBe(tmpdir());
-    expect(runtimeDir({})).toBe(tmpdir());
+    expect(runtimeDir({ XDG_RUNTIME_DIR: "", TMPDIR: "/var/tmp" })).toBe(`/var/tmp/squeal-${uid}`);
+    expect(runtimeDir({ XDG_RUNTIME_DIR: "relative", TMPDIR: "/var/tmp/" })).toBe(
+      `/var/tmp/squeal-${uid}`,
+    );
+    expect(runtimeDir({})).toBe(`/tmp/squeal-${uid}`);
+    expect(runtimeDir({ TMPDIR: "relative" })).toBe(`/tmp/squeal-${uid}`);
   });
 
   it("names the socket squeal-<worktree-hash>.sock, short enough for macOS", () => {
     const path = socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: "/run/user/1000" });
     expect(path).toBe("/run/user/1000/squeal-0123456789abcdef.sock");
     expect(Buffer.byteLength(path)).toBeLessThan(104);
+    expect(socketPathFor("0123456789abcdef", { TMPDIR: "/tmp" })).toBe(
+      `/tmp/squeal-${uid}/squeal-0123456789abcdef.sock`,
+    );
   });
 
-  it("falls back to /tmp when the runtime dir would make the path too long to bind", () => {
+  it("falls back to /tmp/squeal-<uid> when the runtime dir would make the path too long to bind", () => {
     const long = `/home/agent/${"x".repeat(80)}`;
     expect(socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: long })).toBe(
-      "/tmp/squeal-0123456789abcdef.sock",
+      `/tmp/squeal-${uid}/squeal-0123456789abcdef.sock`,
     );
   });
 
@@ -149,5 +171,55 @@ describe("daemon singleton lock (spec 001 D10)", () => {
     const second = acquireDaemonLock(path);
     expect(second).not.toBeNull();
     second?.release();
+  });
+});
+
+describe("socket directory outside XDG_RUNTIME_DIR (review S8)", () => {
+  // Short, so the socket path stays below the bind limit and no fallback applies.
+  const tempDir = () => {
+    const dir = realpathSync(mkdtempSync("/tmp/sq-"));
+    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+    return dir;
+  };
+  const socketIn = (tmp: string) => socketPathFor("0123456789abcdef", { TMPDIR: tmp });
+
+  it("is created with mode 0700 and accepted again", () => {
+    const tmp = tempDir();
+    const socketPath = socketIn(tmp);
+    prepareSocketDir(socketPath, { TMPDIR: tmp });
+    const stat = statSync(join(tmp, `squeal-${uid}`));
+    expect(stat.mode & 0o777).toBe(0o700);
+    expect(stat.uid).toBe(uid);
+    expect(() => prepareSocketDir(socketPath, { TMPDIR: tmp })).not.toThrow();
+  });
+
+  it("is refused when another user owns it", () => {
+    const tmp = tempDir();
+    prepareSocketDir(socketIn(tmp), { TMPDIR: tmp });
+    // Without root no test can chown; the owner the check expects is what differs.
+    expect(() => prepareSocketDir(socketIn(tmp), { TMPDIR: tmp }, uid + 1)).toThrow(
+      new RegExp(`squeal-${uid} is owned by uid ${uid}, not ${uid + 1}; refusing to bind in it`),
+    );
+  });
+
+  it("is refused when its mode lets others in, or when it is a symlink", () => {
+    const tmp = tempDir();
+    const dir = join(tmp, `squeal-${uid}`);
+    mkdirSync(dir, { mode: 0o755 });
+    chmodSync(dir, 0o755);
+    expect(() => prepareSocketDir(socketIn(tmp), { TMPDIR: tmp })).toThrow(
+      /has mode 755, not 700; refusing to bind in it/,
+    );
+    rmSync(dir, { recursive: true });
+    const elsewhere = tempDir();
+    symlinkSync(elsewhere, dir);
+    expect(() => checkPrivateDir(dir, uid)).toThrow(/is not a directory; refusing to bind in it/);
+  });
+
+  it("leaves XDG_RUNTIME_DIR as it is", () => {
+    const xdg = tempDir();
+    chmodSync(xdg, 0o755);
+    const socketPath = socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: xdg });
+    expect(() => prepareSocketDir(socketPath, { XDG_RUNTIME_DIR: xdg })).not.toThrow();
   });
 });
