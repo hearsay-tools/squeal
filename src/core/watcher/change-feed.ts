@@ -1,0 +1,214 @@
+import { realpath } from "node:fs/promises";
+import { basename } from "node:path";
+import {
+  type AbsolutePath,
+  type CandidateBatch,
+  type RelativePath,
+  type RevisionTrigger,
+  WATCHER_TIMINGS,
+  type WatcherBackend,
+  type WatchHint,
+  type WatchSpec,
+  type WatchSubscription,
+} from "../types/index.js";
+import { createWatcherBackend } from "./backend.js";
+import {
+  type CandidateContext,
+  candidatesForReconcile,
+  candidatesFromHints,
+} from "./candidates.js";
+import { Debouncer } from "./debounce.js";
+import { Exclusions } from "./exclusions.js";
+import { type GitStatus, gitStatus } from "./git.js";
+import { buildWatchSpec, sameWatchSpec } from "./watch-spec.js";
+
+export interface ChangeFeedOptions {
+  /** The worktree root. Resolved with `realpath` on start. */
+  readonly root: AbsolutePath;
+  /** Receives every batch, one at a time: the next waits for the returned promise. */
+  readonly onBatch: (batch: CandidateBatch) => void | Promise<void>;
+  /** Git, filesystem, backend and `onBatch` failures. The feed keeps running. */
+  readonly onError: (error: Error) => void;
+  /**
+   * The backend reported lost events. A full reconciliation follows. Spec 001
+   * D12: "full reconciliation pass; a note in status."
+   */
+  readonly onDropped?: (reason: string) => void;
+  /** Defaults to the backend for `process.platform`. */
+  readonly backend?: WatcherBackend;
+  /** Paths re-stat'ed on every reconciliation pass: the stat cache. */
+  readonly trackedPaths?: () => Iterable<RelativePath>;
+  /** Ignored files watched anyway because a closure references them. */
+  readonly extraFiles?: readonly RelativePath[];
+  readonly timings?: Partial<WatcherTimings>;
+}
+
+export type WatcherTimings = { -readonly [K in keyof typeof WATCHER_TIMINGS]: number };
+
+export interface ChangeFeed {
+  /** The spec the backend currently watches; `null` before `start`. */
+  readonly spec: WatchSpec | null;
+  /** Starts the backend, then emits the `start` reconciliation batch. */
+  start(): Promise<void>;
+  /** Queues a reconciliation pass and resolves once its batch was delivered. */
+  reconcile(trigger: RevisionTrigger): Promise<void>;
+  /** Replaces the extra files and updates the watch. */
+  setExtraFiles(paths: readonly RelativePath[]): Promise<void>;
+  close(): Promise<void>;
+}
+
+/**
+ * Turns watcher hints and reconciliation passes into candidate batches.
+ *
+ * Spec 001 D2: debounced batches (100 ms quiet, 500 ms maximum); ignore rules
+ * from git in three layers; "A reconciliation pass runs every 30 s when idle
+ * and on daemon start". D12: "Watcher backend error or dropped-events signal:
+ * full reconciliation pass".
+ *
+ * Batches are delivered in order and never overlap. Watch batches with no
+ * candidates left after filtering are not emitted; reconciliation batches
+ * always are, so the caller can tell that a pass completed.
+ */
+export function createChangeFeed(options: ChangeFeedOptions): ChangeFeed {
+  return new Feed(options);
+}
+
+/** Basenames whose change means the watch-time exclusions may be out of date. */
+const SPEC_INPUTS = new Set([".gitignore", ".git"]);
+
+class Feed implements ChangeFeed {
+  spec: WatchSpec | null = null;
+  private root: AbsolutePath;
+  private readonly backend: WatcherBackend;
+  private readonly timings: WatcherTimings;
+  private readonly debouncer: Debouncer<AbsolutePath>;
+  private extraFiles: RelativePath[];
+  private sub: WatchSubscription | null = null;
+  private queue: Promise<void> = Promise.resolve();
+  private idleTimer: NodeJS.Timeout | null = null;
+  private closed = false;
+
+  constructor(private readonly options: ChangeFeedOptions) {
+    this.root = options.root;
+    this.backend = options.backend ?? createWatcherBackend(process.platform);
+    this.timings = { ...WATCHER_TIMINGS, ...options.timings };
+    this.extraFiles = [...(options.extraFiles ?? [])];
+    this.debouncer = new Debouncer((paths) => this.onDebounced(paths), this.timings);
+  }
+
+  async start(): Promise<void> {
+    this.root = await realpath(this.root);
+    const status = await gitStatus(this.root);
+    this.spec = await buildWatchSpec(this.root, this.extraFiles, status);
+    this.sub = await this.backend.watch(this.spec, {
+      onHints: (hints) => this.onHints(hints),
+      onDropped: (reason) => this.onLost(() => this.options.onDropped?.(reason)),
+      onError: (error) => this.onLost(() => this.options.onError(error)),
+    });
+    await this.reconcile("start");
+  }
+
+  reconcile(trigger: RevisionTrigger): Promise<void> {
+    return this.enqueue(() => this.reconcileNow(trigger));
+  }
+
+  setExtraFiles(paths: readonly RelativePath[]): Promise<void> {
+    this.extraFiles = [...paths];
+    return this.enqueue(async () => {
+      await this.rebuildSpec();
+    });
+  }
+
+  async close(): Promise<void> {
+    this.closed = true;
+    this.debouncer.cancel();
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    await this.sub?.close();
+    await this.queue;
+  }
+
+  private onHints(hints: readonly WatchHint[]): void {
+    if (this.closed) return;
+    this.debouncer.push(hints.map((h) => h.path));
+    this.armIdle();
+  }
+
+  /** Backend errors are treated like dropped events: events may be missing. */
+  private onLost(report: () => void): void {
+    if (this.closed) return;
+    report();
+    void this.reconcile("dropped-events");
+  }
+
+  private onDebounced(paths: AbsolutePath[]): void {
+    void this.enqueue(async () => {
+      const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
+      let widened = specChanged ? await this.rebuildSpec() : false;
+      const { paths: candidates, ignoredDirs } = await candidatesFromHints(this.context(), paths);
+      if (ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
+      if (candidates.length > 0) await this.emit({ trigger: "watch", paths: candidates });
+      // Paths that were excluded until now were never watched; git status finds them.
+      if (widened) await this.reconcileNow("watch");
+    });
+  }
+
+  private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
+    const status = await gitStatus(this.root);
+    await this.rebuildSpec(status);
+    const paths = await candidatesForReconcile(this.context(), status.paths);
+    await this.emit({ trigger, paths });
+  }
+
+  /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
+  private async rebuildSpec(status?: GitStatus): Promise<boolean> {
+    const current = this.spec;
+    if (!current || !this.sub) return false;
+    const next = await buildWatchSpec(this.root, this.extraFiles, status);
+    if (sameWatchSpec(current, next)) return false;
+    await this.sub.update(next);
+    this.spec = next;
+    return current.excluded.some((p) => !next.excluded.includes(p));
+  }
+
+  private context(): CandidateContext {
+    const spec = this.spec ?? { root: this.root, excluded: [], extraFiles: [] };
+    return {
+      root: this.root,
+      exclusions: new Exclusions(spec),
+      extraFiles: new Set(this.extraFiles),
+      trackedPaths: this.options.trackedPaths ?? (() => []),
+    };
+  }
+
+  private async emit(batch: CandidateBatch): Promise<void> {
+    if (this.closed) return;
+    await this.options.onBatch(batch);
+  }
+
+  /** Runs tasks one at a time. A failed task is reported and does not stop the queue. */
+  private enqueue(task: () => Promise<void>): Promise<void> {
+    const run = this.queue.then(async () => {
+      if (this.closed) return;
+      try {
+        await task();
+      } catch (error) {
+        this.options.onError(error instanceof Error ? error : new Error(String(error)));
+      } finally {
+        this.armIdle();
+      }
+    });
+    this.queue = run;
+    return run;
+  }
+
+  /** Schedules the idle reconciliation; any hint or batch pushes it back. */
+  private armIdle(): void {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.closed) return;
+    this.idleTimer = setTimeout(() => {
+      if (this.debouncer.pending) this.armIdle();
+      else void this.reconcile("interval");
+    }, this.timings.reconcileIntervalMs);
+    this.idleTimer.unref();
+  }
+}

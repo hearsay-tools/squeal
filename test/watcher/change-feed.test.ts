@@ -1,0 +1,220 @@
+import { spawnSync } from "node:child_process";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { CandidateBatch } from "../../src/core/types/index.js";
+import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
+import { createWatcherBackend } from "../../src/core/watcher/index.js";
+import { BatchLog, delay, git, makeRepo, PausableBackend, waitFor } from "./helpers.js";
+
+function write(root: string, path: string, content = "x\n"): void {
+  mkdirSync(join(root, path, ".."), { recursive: true });
+  writeFileSync(join(root, path), content);
+}
+
+describe("ChangeFeed", () => {
+  let root: string;
+  let cleanup: () => void;
+  let log: BatchLog;
+  let errors: Error[];
+  let dropped: string[];
+  let backend: PausableBackend;
+  let feed: ChangeFeed | null;
+  let tracked: string[];
+  let onBatch: (batch: CandidateBatch) => void;
+
+  const startFeed = async (options: { reconcileIntervalMs?: number; extra?: string[] } = {}) => {
+    feed = createChangeFeed({
+      root,
+      backend,
+      onBatch: (batch) => onBatch(batch),
+      onError: (error) => errors.push(error),
+      onDropped: (reason) => dropped.push(reason),
+      trackedPaths: () => tracked,
+      extraFiles: options.extra ?? [],
+      timings: { reconcileIntervalMs: options.reconcileIntervalMs ?? 60_000 },
+    });
+    await feed.start();
+  };
+  const watchBatchWith = (path: string) =>
+    log.batches.some((b) => b.trigger === "watch" && b.paths.some((p) => p.path === path));
+
+  beforeEach(() => {
+    ({ root, cleanup } = makeRepo());
+    log = new BatchLog();
+    onBatch = log.push;
+    errors = [];
+    dropped = [];
+    backend = new PausableBackend(createWatcherBackend("linux"));
+    feed = null;
+    tracked = ["README.md", "src/a.ts", "src/lib/b.ts"];
+  });
+  afterEach(async () => {
+    await feed?.close();
+    cleanup();
+    expect(errors).toEqual([]);
+  });
+
+  it("emits a start batch from git status and the tracked paths", async () => {
+    write(root, "src/a.ts", "dirty\n");
+    write(root, "src/new.ts");
+    write(root, "src/debug.log");
+    rmSync(join(root, "README.md"));
+    await startFeed();
+    expect(log.batches[0]?.trigger).toBe("start");
+    const paths = log.batches[0]?.paths ?? [];
+    expect(paths.map((p) => p.path)).toEqual([
+      "README.md",
+      "src/a.ts",
+      "src/lib/b.ts",
+      "src/new.ts",
+    ]);
+    const a = statSync(join(root, "src/a.ts"));
+    expect(paths.find((p) => p.path === "src/a.ts")?.stat).toEqual({
+      mtimeMs: a.mtimeMs,
+      ctimeMs: a.ctimeMs,
+      size: a.size,
+      inode: a.ino,
+    });
+    expect(paths.find((p) => p.path === "README.md")?.stat).toBeNull();
+  });
+
+  it("reports a write after an atomic save", async () => {
+    await startFeed();
+    write(root, "src/a.ts.tmp", "saved\n");
+    renameSync(join(root, "src/a.ts.tmp"), join(root, "src/a.ts"));
+    await waitFor(() => watchBatchWith("src/a.ts"));
+    await delay(150);
+    log.batches.length = 0;
+    write(root, "src/a.ts", "written after the save\n");
+    await waitFor(() => watchBatchWith("src/a.ts"));
+    expect(log.find("src/a.ts")?.candidate.stat?.size).toBe("written after the save\n".length);
+    expect(log.has("src/a.ts.tmp")).toBe(false);
+  });
+
+  it("reports files written inside a renamed directory, and the old paths as gone", async () => {
+    await startFeed();
+    renameSync(join(root, "src/lib"), join(root, "src/moved"));
+    await waitFor(() => watchBatchWith("src/moved/b.ts") && watchBatchWith("src/lib/b.ts"));
+    expect(log.find("src/lib/b.ts")?.candidate.stat).toBeNull();
+    await delay(150);
+    log.batches.length = 0;
+    write(root, "src/moved/b.ts", "edited\n");
+    write(root, "src/moved/new.ts", "new\n");
+    await waitFor(() => watchBatchWith("src/moved/b.ts") && watchBatchWith("src/moved/new.ts"));
+  });
+
+  it("produces no candidates from inside a nested worktree once its .git entry exists", async () => {
+    const wt = join(root, "wt");
+    // A branch without .gitignore, so only the .git entry can trigger the rebuild.
+    git(root, "switch", "-q", "-c", "side");
+    git(root, "rm", "-q", ".gitignore");
+    git(root, "commit", "-q", "-m", "side without .gitignore");
+    git(root, "switch", "-q", "main");
+    const fromInsideAfterGit: string[] = [];
+    // A batch delivered while wt/.git exists must not carry paths from inside wt.
+    onBatch = (batch) => {
+      if (existsSync(join(wt, ".git"))) {
+        fromInsideAfterGit.push(
+          ...batch.paths.map((p) => p.path).filter((p) => p.startsWith("wt/")),
+        );
+      }
+      log.push(batch);
+    };
+    await startFeed();
+    git(root, "worktree", "add", "-q", "--detach", "wt", "side");
+    await waitFor(() => feed?.spec?.excluded.includes(wt) === true);
+    write(root, "wt/src/a.ts", "edited in the nested worktree\n");
+    write(root, "wt/src/extra.ts");
+    write(root, "src/a.ts", "edited in the outer worktree\n");
+    await waitFor(() => watchBatchWith("src/a.ts"));
+    await delay(300);
+    // A tracked path inside the nested worktree is dropped by reconciliation too.
+    tracked.push("wt/src/a.ts");
+    await feed?.reconcile("interval");
+    expect(log.batches.at(-1)?.trigger).toBe("interval");
+    expect(fromInsideAfterGit).toEqual([]);
+    expect(log.has("wt/src/extra.ts")).toBe(false);
+    expect(log.paths().filter((p) => p.startsWith("wt/src/a.ts"))).toEqual([]);
+  });
+
+  it("emits a candidate for a touch; deciding there is no revision is 001-11 work", async () => {
+    await startFeed();
+    const later = new Date(Date.now() + 5_000);
+    utimesSync(join(root, "src/a.ts"), later, later);
+    await waitFor(() => watchBatchWith("src/a.ts"));
+    expect(log.find("src/a.ts")?.candidate.stat?.mtimeMs).toBe(later.getTime());
+  });
+
+  it("catches an edit made while the backend is paused in the interval reconciliation", async () => {
+    tracked.push("out/gen.js");
+    await startFeed({ reconcileIntervalMs: 400, extra: ["out/gen.js"] });
+    backend.paused = true;
+    write(root, "src/a.ts", "edited while paused\n");
+    write(root, "out/gen.js", "regenerated while paused\n");
+    write(root, "src/new.ts", "created while paused\n");
+    await delay(200);
+    expect(log.batches.filter((b) => b.trigger === "watch")).toEqual([]);
+    await waitFor(() => log.batches.some((b) => b.trigger === "interval"));
+    const batch = log.batches.find((b) => b.trigger === "interval");
+    const stat = (path: string) => batch?.paths.find((p) => p.path === path)?.stat;
+    expect(stat("src/a.ts")?.size).toBe("edited while paused\n".length);
+    expect(stat("out/gen.js")?.size).toBe("regenerated while paused\n".length);
+    expect(stat("src/new.ts")?.size).toBe("created while paused\n".length);
+  });
+
+  it("runs a full reconciliation after a dropped-events signal", async () => {
+    await startFeed();
+    backend.paused = true;
+    write(root, "src/lib/b.ts", "edited while paused\n");
+    await delay(150);
+    backend.signalDropped("test: events were dropped");
+    await waitFor(() => log.batches.some((b) => b.trigger === "dropped-events"));
+    expect(dropped).toEqual(["test: events were dropped"]);
+    const batch = log.batches.find((b) => b.trigger === "dropped-events");
+    expect(batch?.paths.find((p) => p.path === "src/lib/b.ts")?.stat?.size).toBe(
+      "edited while paused\n".length,
+    );
+  });
+
+  it("never reports gitignored paths", async () => {
+    write(root, "out/before.js");
+    write(root, "src/before.log");
+    await startFeed();
+    write(root, "out/x.js");
+    write(root, "node_modules/pkg/index.js");
+    write(root, "src/debug.log");
+    write(root, "build/deep/b.js");
+    appendFileSync(join(root, ".gitignore"), "gen/\n");
+    await waitFor(() => watchBatchWith(".gitignore"));
+    write(root, "gen/x.ts");
+    write(root, "src/control.ts");
+    await waitFor(() => watchBatchWith("src/control.ts"));
+    await feed?.reconcile("interval");
+    expect(log.has("src/control.ts")).toBe(true);
+    const check = spawnSync("git", ["check-ignore", "--stdin"], {
+      cwd: root,
+      input: log.paths().join("\n"),
+      encoding: "utf8",
+    });
+    // Exit 1: none of the reported paths is ignored.
+    expect({ status: check.status, ignored: check.stdout }).toEqual({ status: 1, ignored: "" });
+  });
+
+  it("rebuilds the watch spec when a .gitignore changes", async () => {
+    write(root, "tmp/a.txt");
+    await startFeed();
+    expect(feed?.spec?.excluded).not.toContain(join(root, "tmp"));
+    appendFileSync(join(root, ".gitignore"), "tmp/\n");
+    await waitFor(() => feed?.spec?.excluded.includes(join(root, "tmp")) === true);
+  });
+});
