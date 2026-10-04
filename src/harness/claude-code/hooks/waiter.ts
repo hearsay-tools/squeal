@@ -20,7 +20,7 @@ export const WAITER_TIMEOUT_MS = (WAITER_HOOK_TIMEOUT_S - 60) * 1_000;
 export const REGISTRATION_GRACE_MS = 10_000;
 
 /** Between waits the waiter checks that its consumer is still registered. */
-const WAIT_CHUNK_MS = 30_000;
+const WAIT_CHUNK_MS = 1_000;
 const REGISTRATION_POLL_MS = 100;
 
 /**
