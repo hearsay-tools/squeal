@@ -6,6 +6,7 @@ import type {
   ResultOrigin,
   ResultRecord,
   RevisionNumber,
+  SourceLocation,
   TestFileKeyRecord,
   TestFileRef,
   Validity,
@@ -142,6 +143,27 @@ export function unknownState(
   };
 }
 
+function sameLocation(a: SourceLocation | null, b: SourceLocation | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.path === b.path && a.line === b.line && a.column === b.column;
+}
+
+/** Field by field, so the property order of a decoded state does not matter. */
 export function sameState(a: KnownState, b: KnownState): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return (
+    a.worktreeId === b.worktreeId &&
+    checkIdentity(a.check) === checkIdentity(b.check) &&
+    a.outcome === b.outcome &&
+    a.validity === b.validity &&
+    a.pendingPhase === b.pendingPhase &&
+    a.observedAt === b.observedAt &&
+    a.commit === b.commit &&
+    (a.origin === null || b.origin === null
+      ? a.origin === b.origin
+      : sameOrigin(a.origin, b.origin)) &&
+    a.durationMs === b.durationMs &&
+    sameLocation(a.location, b.location) &&
+    a.summary === b.summary &&
+    a.fingerprint === b.fingerprint
+  );
 }

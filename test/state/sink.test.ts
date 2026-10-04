@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createStateSink } from "../../src/core/state/index.js";
 import type { StateSink, Store } from "../../src/core/types/index.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "./helpers.js";
@@ -203,6 +203,25 @@ describe("refresh", () => {
     sink.refresh(WT, 3, NONE);
     expect(sink.refresh(WT, 4, NONE)).toEqual([]);
     expect(store.knownStates.get(WT, a)?.observedAt).toBe(3);
+  });
+
+  it("writes no known state when a refresh derives the same one, in any property order", () => {
+    const [a, b] = [check("a"), check("b")];
+    const results = [result(a, "fail", { key: "k1", worktreeId: OTHER }), result(b, "pass")];
+    store.results.putMany(results);
+    sink.applyResults(WT, 1, results, NONE);
+    // A decoder may build the same state with its properties in another order.
+    const list = store.knownStates.list.bind(store.knownStates);
+    const reorder = <T extends object>(o: T): T =>
+      Object.fromEntries(
+        Object.entries(o)
+          .reverse()
+          .map(([k, v]) => [k, v !== null && typeof v === "object" ? reorder(v) : v]),
+      ) as T;
+    vi.spyOn(store.knownStates, "list").mockImplementation((id) => list(id).map(reorder));
+    const upserts = vi.spyOn(store.knownStates, "upsertMany");
+    sink.refresh(WT, 1, NONE);
+    expect(upserts.mock.calls.flatMap(([states]) => states)).toEqual([]);
   });
 
   it("returns a check to current when its key comes back", () => {
