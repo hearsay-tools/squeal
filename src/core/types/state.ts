@@ -178,11 +178,13 @@ export interface StateSink {
    * takes that result (a lookup hit), every other known check keeps its
    * outcome and becomes `pending`, `stale` or `unknown`. Call after keys or
    * pending phases change. Test files without a recorded key are left alone.
+   * `testFiles` limits the work to those files; default every keyed file.
    */
   refresh(
     worktreeId: WorktreeId,
     revision: RevisionNumber,
     provenance: StateProvenance,
+    testFiles?: readonly TestFileRef[],
   ): readonly Transition[];
 
   /**

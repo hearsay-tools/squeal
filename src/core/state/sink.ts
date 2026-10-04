@@ -1,0 +1,137 @@
+import type {
+  EpochMs,
+  KnownState,
+  RevisionNumber,
+  StateSink,
+  Store,
+  TestFileKeyRecord,
+  Transition,
+  WorktreeId,
+} from "../types/index.js";
+import { recordBaselineFindings } from "./baseline.js";
+import {
+  checkIdentity,
+  sameState,
+  stateFromResult,
+  stateWithoutResult,
+  testFileIdentity,
+  testFileOf,
+  unknownState,
+} from "./derive.js";
+import { transitionKind } from "./transitions.js";
+
+export interface StateSinkOptions {
+  /** Clock for transition times. Default `Date.now`. */
+  readonly now?: () => EpochMs;
+}
+
+/**
+ * The store-backed `StateSink` (spec 001 D6). Every method runs in one store
+ * transaction: known states, transitions and baseline findings are written
+ * together or not at all.
+ */
+export function createStateSink(store: Store, options: StateSinkOptions = {}): StateSink {
+  const now = options.now ?? Date.now;
+
+  /** Previous states, keys by test file, and a writer that records transitions. */
+  function begin(worktreeId: WorktreeId) {
+    const previous = new Map(
+      store.knownStates.list(worktreeId).map((s) => [checkIdentity(s.check), s]),
+    );
+    const keys = new Map(
+      store.testFileKeys.list(worktreeId).map((k) => [testFileIdentity(k.testFile), k]),
+    );
+    const keyOf = (state: Pick<KnownState, "check">): TestFileKeyRecord | undefined =>
+      keys.get(testFileIdentity(testFileOf(state.check)));
+    const prior = (state: Pick<KnownState, "check">) =>
+      previous.get(checkIdentity(state.check)) ?? null;
+
+    const commit = (
+      revision: RevisionNumber,
+      next: readonly KnownState[],
+      checkpointId: string | null,
+    ): readonly Transition[] => {
+      const at = now();
+      const changed: KnownState[] = [];
+      const recorded: Transition[] = [];
+      for (const state of next) {
+        const before = prior(state);
+        if (before !== null && sameState(before, state)) continue;
+        changed.push(state);
+        const kind = transitionKind(before, state);
+        if (kind === null) continue;
+        recorded.push({
+          worktreeId,
+          check: state.check,
+          kind,
+          from: before?.outcome ?? null,
+          to: state.outcome,
+          fromFingerprint: before?.fingerprint ?? null,
+          toFingerprint: state.fingerprint,
+          revision,
+          at,
+        });
+      }
+      store.knownStates.upsertMany(changed);
+      store.transitions.append(recorded);
+      recordBaselineFindings(store, worktreeId, checkpointId, recorded);
+      return recorded;
+    };
+
+    return { previous, keys, keyOf, prior, commit };
+  }
+
+  return {
+    applyResults: (worktreeId, revision, results, provenance) =>
+      store.transaction(() => {
+        const { keyOf, prior, commit } = begin(worktreeId);
+        const next = results.map((r) =>
+          stateFromResult(worktreeId, revision, r, keyOf(r), prior(r)),
+        );
+        return commit(revision, next, provenance.checkpointId);
+      }),
+
+    markUnknown: (worktreeId, revision, testFiles, reason) =>
+      store.transaction(() => {
+        const { previous, keyOf, commit } = begin(worktreeId);
+        const files = new Set(testFiles.map(testFileIdentity));
+        const next = [...previous.values()]
+          .filter((s) => files.has(testFileIdentity(testFileOf(s.check))))
+          .map((s) => unknownState(s, revision, keyOf(s), reason));
+        return commit(revision, next, null);
+      }),
+
+    refresh: (worktreeId, revision, provenance, testFiles) =>
+      store.transaction(() => {
+        const { previous, keys, keyOf, prior, commit } = begin(worktreeId);
+        const only = testFiles === undefined ? null : new Set(testFiles.map(testFileIdentity));
+        const included = (file: string) => only === null || only.has(file);
+        const at = now();
+        const next = new Map<string, KnownState>();
+        for (const [file, key] of keys) {
+          if (!included(file)) continue;
+          for (const r of store.results.byKey(key.key, at)) {
+            next.set(
+              checkIdentity(r.check),
+              stateFromResult(worktreeId, revision, r, key, prior(r)),
+            );
+          }
+        }
+        for (const [id, state] of previous) {
+          const key = keyOf(state);
+          if (key === undefined || next.has(id)) continue;
+          if (included(testFileIdentity(key.testFile)))
+            next.set(id, stateWithoutResult(state, key));
+        }
+        return commit(revision, [...next.values()], provenance.checkpointId);
+      }),
+
+    retire: (worktreeId, checks) =>
+      store.transaction(() => {
+        store.knownStates.removeMany(worktreeId, checks);
+        for (const { consumer } of store.consumers.list(worktreeId)) {
+          store.views.removeMany(consumer, checks);
+        }
+      }),
+  };
+}
