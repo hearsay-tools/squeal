@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { waitFor } from "../watcher/helpers.js";
 import {
   ALL_TEST_FILES,
   addWorktree,
@@ -173,5 +174,44 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     expect(second.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
     // Nothing changed while no daemon ran: no revision.
     expect(store.revisions.latest(second.worktreeId)).toBeNull();
+  });
+
+  it("attributes results to the baseline per file, never to a whole mixed tier (S9)", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+    let batch: Promise<void> | null = null;
+    h.runner.beforeRun = async () => {
+      if (batch !== null) return;
+      // The agent creates a failing test file while the first baseline tier runs.
+      h.write(
+        "test/new.test.ts",
+        'import { expect, it } from "vitest";\nit("is new", () => {\n  expect(1).toBe(2);\n});\n',
+      );
+      batch = h.batch("test/new.test.ts");
+      await waitFor(() => store.revisions.latest(h.worktreeId) !== null, 10_000);
+    };
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    await batch;
+    await h.scheduler.idle();
+
+    const mixed = h.runner.runs.find((r) => r.files.some((f) => f.path === "test/new.test.ts"));
+    expect(mixed?.files.map((f) => f.path)).toEqual(["test/new.test.ts", "test/plain.test.ts"]);
+    const baseline = store.runs.get(h.runner.runs[0]?.options.runId ?? "")?.checkpointId ?? null;
+    expect(baseline).not.toBeNull();
+
+    const attributed = (path: string) =>
+      h.sink
+        .callsOf("applyResults")
+        .filter((c) => c.results.some((r) => r.check.testPath === path))
+        .map((c) => c.checkpointId);
+    expect(attributed("test/new.test.ts")).toEqual([null]);
+    expect(attributed("test/plain.test.ts")).toEqual([baseline]);
+    for (const call of h.sink.callsOf("refresh")) {
+      const paths = call.testFiles?.map((f) => f.path) ?? [];
+      if (paths.includes("test/new.test.ts")) expect(call.checkpointId).toBeNull();
+    }
+    expect(store.checkpoints.get(baseline ?? "")?.end).toBe("completed");
   });
 });
