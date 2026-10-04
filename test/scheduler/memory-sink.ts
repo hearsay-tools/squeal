@@ -40,7 +40,11 @@ export type SinkCall =
       readonly testFiles: readonly TestFileRef[];
       readonly reason: string;
     }
-  | { readonly method: "refresh"; readonly revision: RevisionNumber }
+  | {
+      readonly method: "refresh";
+      readonly revision: RevisionNumber;
+      readonly testFiles: readonly TestFileRef[] | undefined;
+    }
   | { readonly method: "retire"; readonly checks: readonly CheckId[] };
 
 /**
@@ -95,10 +99,15 @@ export class MemorySink implements StateSink {
     worktreeId: WorktreeId,
     revision: RevisionNumber,
     _provenance: StateProvenance,
+    testFiles?: readonly TestFileRef[],
   ): readonly Transition[] {
     this.#own(worktreeId);
-    this.calls.push({ method: "refresh", revision });
+    this.calls.push({ method: "refresh", revision, testFiles });
     const keys = this.#keys();
+    if (testFiles !== undefined) {
+      const ids = new Set(testFiles.map(testFileId));
+      for (const id of keys.keys()) if (!ids.has(id)) keys.delete(id);
+    }
     for (const row of keys.values()) {
       const results = this.store.results.byKey(row.key);
       if (results.length > 0) this.#apply(revision, results, keys);
