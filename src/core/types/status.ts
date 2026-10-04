@@ -148,15 +148,17 @@ export interface StatusSnapshot extends StatusHeader {
 export interface StatusUnavailable {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly available: false;
-  readonly reason: "no-store" | "store-newer" | "store-unreadable" | "timeout";
+  /** `not-registered`: the store has no `worktrees` row for the id a `StatusBuilder` was asked about. */
+  readonly reason: "no-store" | "store-newer" | "store-unreadable" | "timeout" | "not-registered";
   readonly message: string;
 }
 
 export type StatusResult = StatusSnapshot | StatusUnavailable;
 
 /**
- * Builds the full status of one worktree. Task 001-22 owns the
- * implementation; `HarnessDelivery.status` delegates to it (D9 `status()`).
+ * Builds the full status of one worktree. `HarnessDelivery.status` delegates
+ * to it (D9 `status()`); `createStatusBuilder` in src/core/status is the
+ * store-backed implementation.
  */
 export interface StatusBuilder {
   build(worktreeId: WorktreeId): StatusResult | Promise<StatusResult>;

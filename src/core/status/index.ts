@@ -11,8 +11,10 @@ export {
 } from "./open.js";
 export {
   buildSnapshot,
+  createStatusBuilder,
   HEARTBEAT_GRACE_INTERVALS,
   readStatus,
+  type StatusBuilderOptions,
   type StatusOptions,
 } from "./snapshot.js";
 export { readWhy, WHY_CANDIDATE_LIMIT, WHY_RESULT_LIMIT } from "./why.js";

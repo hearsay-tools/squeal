@@ -1,8 +1,8 @@
 import type { StatusBuilder, StatusResult } from "../../src/core/types/index.js";
 
 /**
- * A `StatusBuilder` that returns a fixed result. Stands in for task 001-22's
- * builder until it lands.
+ * A `StatusBuilder` that returns a fixed result, for delivery tests that do
+ * not look at status. `test/status/builder.test.ts` covers the real one.
  */
 export function fixedStatus(
   status: StatusResult = {
