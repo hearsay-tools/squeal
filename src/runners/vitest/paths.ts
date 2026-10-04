@@ -1,26 +1,6 @@
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import type {
-  AbsolutePath,
-  FileHash,
-  RelativePath,
-  SourceLocation,
-} from "../../core/types/index.js";
-
-/**
- * Git blob id of a file's bytes, SHA-1 object format.
- *
- * Spec 001 D3: "the git blob id of the bytes on disk, `sha1("blob <len>\0" +
- * bytes)`". SHA-256 repositories and the clean-index shortcut belong to the
- * core hasher (001-11), which can replace this one through
- * `VitestAdapterOptions.hashFile`.
- */
-export function gitBlobHash(path: AbsolutePath): FileHash {
-  const bytes = readFileSync(path);
-  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
-}
+import type { AbsolutePath, RelativePath, SourceLocation } from "../../core/types/index.js";
 
 /**
  * Converts between Vitest's absolute paths and Squeal's worktree-relative

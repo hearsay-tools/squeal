@@ -1,5 +1,5 @@
 import type { TestProject } from "vitest/node";
-import type { AbsolutePath, FileHash, RunnerEnvironment } from "../../core/types/index.js";
+import type { RelativePath, RunnerEnvironment } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { globalSetupFiles, type ProjectInputs } from "./project.js";
 
@@ -7,7 +7,6 @@ export interface EnvironmentContext {
   readonly paths: WorktreePaths;
   readonly runnerVersion: string;
   readonly adapterVersion: string;
-  readonly hashFile: (path: AbsolutePath) => FileHash;
 }
 
 /**
@@ -15,7 +14,7 @@ export interface EnvironmentContext {
  *
  * Spec 001 D3: "the resolved Vitest config, the contents of the config file
  * and its `configFileDependencies`, the closure of every `setupFiles` and
- * `globalSetup` entry".
+ * `globalSetup` entry". The adapter lists the files; the core hashes them.
  */
 export function projectEnvironment(
   project: TestProject,
@@ -23,12 +22,10 @@ export function projectEnvironment(
   context: EnvironmentContext,
 ): RunnerEnvironment {
   const { paths } = context;
-  const files = new Map<string, FileHash>();
+  const files = new Set<RelativePath>();
   for (const file of [...inputs.configFiles, ...inputs.setup.files, ...inputs.globalSetup.files]) {
     const rel = paths.toRelative(file);
-    if (rel !== null && paths.isProjectFile(file) && !files.has(rel)) {
-      files.set(rel, context.hashFile(file));
-    }
+    if (rel !== null && paths.isProjectFile(file)) files.add(rel);
   }
   return {
     project: project.name,
@@ -36,7 +33,7 @@ export function projectEnvironment(
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
     resolvedConfig: canonicalConfig(project, paths),
-    files: [...files].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    files: [...files].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
   };
 }
 

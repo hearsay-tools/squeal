@@ -86,11 +86,7 @@ describe("vitest adapter: projects", SLOW, () => {
 
     const envs = await fx.adapter.environment();
     expect(envs.map((e) => e.project)).toEqual(["setup", "unit"]);
-    expect(envs[0]?.files.map(([p]) => p)).toEqual([
-      "src/only-setup.ts",
-      "test/setup.ts",
-      "vitest.config.ts",
-    ]);
-    expect(envs[1]?.files.map(([p]) => p)).toEqual(["vitest.config.ts"]);
+    expect(envs[0]?.files).toEqual(["src/only-setup.ts", "test/setup.ts", "vitest.config.ts"]);
+    expect(envs[1]?.files).toEqual(["vitest.config.ts"]);
   });
 });
