@@ -152,7 +152,8 @@ describe("ChangeFeed", () => {
     const later = new Date(Date.now() + 5_000);
     utimesSync(join(root, "src/a.ts"), later, later);
     await waitFor(() => watchBatchWith("src/a.ts"));
-    expect(log.find("src/a.ts")?.candidate.stat?.mtimeMs).toBe(later.getTime());
+    // Node 22 reports mtimeMs with sub-millisecond float error (CI saw x.999), so compare within 1 ms.
+    expect(log.find("src/a.ts")?.candidate.stat?.mtimeMs).toBeCloseTo(later.getTime(), 0);
   });
 
   it("catches an edit made while the backend is paused in the interval reconciliation", async () => {
