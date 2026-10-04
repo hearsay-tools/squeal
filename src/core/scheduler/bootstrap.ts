@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
 import type { CheckId, CheckKey, TestFileRef } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
+import { block, type Failures } from "./failures.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
-import { type Failures, readEnvironments, resolveClosures } from "./revision.js";
+import { readEnvironments, resolveClosures } from "./revision.js";
 
 /**
  * Daemon start in a worktree.
@@ -107,7 +108,7 @@ export async function bootstrap(context: SchedulerContext, ledger: Ledger): Prom
     for (const file of misses) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
   }
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
-  if (failures.size > 0) ledger.block(failures);
+  if (failures.size > 0) block(ledger, failures);
   ledger.commit();
 }
 

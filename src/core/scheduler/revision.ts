@@ -1,13 +1,7 @@
 import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
-import type {
-  FileChange,
-  InvalidatedPath,
-  ProjectName,
-  RelativePath,
-  Revision,
-  TestFileRef,
-} from "../types/index.js";
+import type { FileChange, InvalidatedPath, Revision, TestFileRef } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
+import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 
@@ -53,18 +47,6 @@ export function rekeyContent(
   if (environment) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
   ledger.settle(touched, new Set(changes.map((c) => c.path)));
   return { rekeyed, environment };
-}
-
-/**
- * Failed runner calls of one revision, by project; `null` is every project.
- * Spec 001 D5: "when environment, invalidation or closure resolution fails
- * for a project, every test file of that project becomes `unknown`".
- */
-export type Failures = Map<ProjectName | null, string>;
-
-/** Records a failure; the first one of a project gives the reason. */
-export function failed(failures: Failures, project: ProjectName | null, reason: string): void {
-  if (!failures.has(project)) failures.set(project, reason);
 }
 
 /**
@@ -213,17 +195,6 @@ export async function resolveClosures(
   changes.push(...(await context.keys.trackUntracked()));
   storeClosures(context, resolved);
   return changes;
-}
-
-/** Blocks the files of failed projects; with no failure, settles the files a previous one blocked. */
-function settleFailures(
-  ledger: Ledger,
-  failures: Failures,
-  retrying: boolean,
-  changed: ReadonlySet<RelativePath>,
-): void {
-  if (failures.size > 0) ledger.block(failures);
-  else if (retrying) ledger.settle(ledger.unblock(), changed);
 }
 
 /** Fetches a test file's closure from the runner and sets it. `null` when the runner failed. */
