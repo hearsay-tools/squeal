@@ -12,6 +12,6 @@ export {
   installedDependenciesFingerprint,
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
-export { type KeyChange, KeyIndex } from "./key-index.js";
+export { type ClosureUpdate, type KeyChange, KeyIndex } from "./key-index.js";
 export { closuresToReresolve } from "./resolution.js";
 export { directoryOf, ReverseIndex, testFileId } from "./reverse-index.js";

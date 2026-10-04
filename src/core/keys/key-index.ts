@@ -3,6 +3,7 @@ import type {
   Closure,
   EnvironmentHash,
   FileHash,
+  HashSource,
   ProjectName,
   RelativePath,
   TestFileRef,
@@ -15,12 +16,25 @@ export interface KeyChange {
   readonly testFile: TestFileRef;
   /** `null` the first time the test file is keyed. */
   readonly previous: CheckKey | null;
-  readonly key: CheckKey;
+  /** `null` when the test file lost its key: its new closure has an untracked path. */
+  readonly key: CheckKey | null;
+}
+
+/** What `KeyIndex.setClosure` did. */
+export interface ClosureUpdate {
+  readonly changes: KeyChange[];
+  /**
+   * The closure's paths the hash source does not track, in closure order. The
+   * test file stays unkeyed until each is hashed into the stat cache and
+   * passed to `rekey`.
+   */
+  readonly untracked: RelativePath[];
 }
 
 /** One closure path, shared by every closure that references it. */
 interface PathEntry {
-  hash: FileHash | null;
+  /** `undefined` while the hash source does not track the path. */
+  hash: FileHash | null | undefined;
   segment: string;
   references: number;
 }
@@ -45,7 +59,9 @@ interface Keyed {
  * paths passed to `rekey` and for the paths of a closure passed to
  * `setClosure`. So update the stat cache first, then call `rekey` with every
  * changed path. A test file has a key once both its closure and its project's
- * environment hash are set.
+ * environment hash are set, and no path of its closure is untracked (`hashOf`
+ * returns `undefined`). Spec 001 D2: "A test file is never keyed while any of
+ * its closure paths is untracked by the stat cache."
  */
 export class KeyIndex {
   readonly reverse = new ReverseIndex();
@@ -53,7 +69,7 @@ export class KeyIndex {
   private readonly paths = new Map<RelativePath, PathEntry>();
   private readonly environments = new Map<ProjectName, EnvironmentHash>();
 
-  constructor(private readonly hashOf: (path: RelativePath) => FileHash | null) {}
+  constructor(private readonly hashOf: HashSource) {}
 
   key(testFile: TestFileRef): CheckKey | null {
     return this.keyed.get(testFileId(testFile))?.key ?? null;
@@ -77,9 +93,10 @@ export class KeyIndex {
   /**
    * Sets or replaces a test file's closure and keys it. Every path's hash is
    * read again; a path whose hash changed without a `rekey` also re-keys the
-   * other test files that reference it.
+   * other test files that reference it. While any path is untracked the test
+   * file has no key, and a key it had is dropped (a change to `null`).
    */
-  setClosure(closure: Closure): KeyChange[] {
+  setClosure(closure: Closure): ClosureUpdate {
     const id = testFileId(closure.testFile);
     const previous = this.keyed.get(id);
     const stale: RelativePath[] = [];
@@ -93,7 +110,8 @@ export class KeyIndex {
     this.reverse.set(closure.testFile, closure.paths);
 
     const affected = this.reverse.referencing(stale).filter((ref) => testFileId(ref) !== id);
-    return this.recompute([closure.testFile, ...affected]);
+    const untracked = closure.paths.filter((_, i) => entries[i]?.hash === undefined);
+    return { changes: this.recompute([closure.testFile, ...affected]), untracked };
   }
 
   /** Forgets a deleted test file. Returns whether it was known. */
@@ -123,8 +141,7 @@ export class KeyIndex {
       const keyed = this.keyed.get(testFileId(testFile));
       const envHash = this.environments.get(testFile.project);
       if (!keyed || envHash === undefined) continue;
-      const segments = keyed.entries.map((entry) => entry.segment);
-      const key = keyFromSegments(envHash, testFile, segments);
+      const key = this.keyOf(keyed, envHash);
       if (key === keyed.key) continue;
       changes.push({ testFile, previous: keyed.key, key });
       keyed.key = key;
@@ -132,12 +149,22 @@ export class KeyIndex {
     return changes;
   }
 
+  /** `null` while any closure path is untracked. */
+  private keyOf(keyed: Keyed, envHash: EnvironmentHash): CheckKey | null {
+    const segments: string[] = [];
+    for (const entry of keyed.entries) {
+      if (entry.hash === undefined) return null;
+      segments.push(entry.segment);
+    }
+    return keyFromSegments(envHash, keyed.closure.testFile, segments);
+  }
+
   /** The entry of `path` with one more reference; a new entry reads the hash. */
   private acquire(path: RelativePath): PathEntry {
     let entry = this.paths.get(path);
     if (!entry) {
       const hash = this.hashOf(path);
-      entry = { hash, segment: encodeSegment(path, hash), references: 0 };
+      entry = { hash, segment: encodeSegment(path, hash ?? null), references: 0 };
       this.paths.set(path, entry);
     }
     entry.references++;
@@ -156,7 +183,7 @@ export class KeyIndex {
     const hash = this.hashOf(path);
     if (hash === entry.hash) return false;
     entry.hash = hash;
-    entry.segment = encodeSegment(path, hash);
+    entry.segment = encodeSegment(path, hash ?? null);
     return true;
   }
 }

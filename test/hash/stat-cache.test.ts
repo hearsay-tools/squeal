@@ -41,11 +41,26 @@ describe("StatCache", () => {
     cache.set(record("a.ts", "h1"));
     expect(cache.get("a.ts")?.hash).toBe("h1");
     expect(cache.hashOf("a.ts")).toBe("h1");
-    expect(cache.hashOf("b.ts")).toBeNull();
     expect(cache.size).toBe(1);
     cache.delete("a.ts");
     expect(cache.get("a.ts")).toBeUndefined();
     expect(cache.size).toBe(0);
+  });
+
+  it("tells a known-absent path (null) from an untracked one (undefined)", () => {
+    const cache = new StatCache();
+    expect(cache.hashOf("never.ts")).toBeUndefined();
+
+    cache.set(record("a.ts", "h1"));
+    cache.delete("a.ts");
+    expect(cache.hashOf("a.ts")).toBeNull();
+
+    cache.delete("gone.ts");
+    expect(cache.hashOf("gone.ts")).toBeNull();
+    expect([...cache.paths()]).toEqual([]);
+
+    cache.set(record("gone.ts", "h2"));
+    expect(cache.hashOf("gone.ts")).toBe("h2");
   });
 
   it("loads from and flushes only its changes to a FileHashRepo", () => {
@@ -111,6 +126,7 @@ describe("seedStatCache", () => {
       expect(cache.hashOf(path)).toBe(blobHash(readFileSync(join(root, path)), "sha1"));
     }
     expect(cache.get("gone.ts")).toBeUndefined();
+    expect(cache.hashOf("gone.ts")).toBeNull();
   });
 
   it("falls back to hashing bytes when an eol attribute makes the index oid differ from disk", async () => {
