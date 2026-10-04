@@ -5,6 +5,7 @@ export type * from "./keys.js";
 export * from "./policy.js";
 export type * from "./revision.js";
 export type * from "./runner.js";
+export type * from "./scheduler.js";
 export * from "./state.js";
 export type * from "./status.js";
 export type * from "./store.js";
