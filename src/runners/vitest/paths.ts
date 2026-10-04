@@ -1,5 +1,6 @@
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { sep } from "node:path";
 import { stripVTControlCharacters } from "node:util";
+import { toAbsolute, toRelative } from "../../core/fs/index.js";
 import type { AbsolutePath, RelativePath, SourceLocation } from "../../core/types/index.js";
 
 /**
@@ -12,14 +13,12 @@ export class WorktreePaths {
   constructor(readonly root: AbsolutePath) {}
 
   toAbsolute(path: RelativePath): AbsolutePath {
-    return resolve(this.root, path);
+    return toAbsolute(this.root, path);
   }
 
   /** `null` when the path is the root itself or outside it. */
   toRelative(path: AbsolutePath): RelativePath | null {
-    const rel = relative(this.root, path);
-    if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
-    return rel.split(sep).join("/");
+    return toRelative(this.root, path);
   }
 
   isProjectFile(path: AbsolutePath): boolean {

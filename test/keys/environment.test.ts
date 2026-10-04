@@ -170,4 +170,11 @@ describe("installedDependenciesFingerprint", () => {
     writeFile(worktree, "node_modules/.yarn-state.yml", "x");
     expect(await fingerprintOf(worktree, join(worktree, "packages/app"))).not.toBe("none");
   });
+
+  // Its own `relative(...).startsWith("..")` stopped at a directory named `..app` as if outside.
+  it("looks up past a project directory whose name starts with ..", async () => {
+    writeFile(dir.path, "node_modules/.package-lock.json", "{}");
+    writeFile(dir.path, "..app/src/a.ts", "");
+    expect(await fingerprintOf(dir.path, join(dir.path, "..app"))).not.toBe("none");
+  });
 });
