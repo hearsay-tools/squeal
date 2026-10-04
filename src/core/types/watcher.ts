@@ -79,8 +79,11 @@ export interface WatcherBackend {
 }
 
 /**
- * `lstat` data of one path, as the stat cache records it. Symlinks are
- * described, not followed, matching what git records in its index.
+ * `lstat` data of one file, as the stat cache records it. The one stat
+ * definition shared by the watcher, the hasher and the stat cache: symlinks
+ * are described, not followed, matching what git records in its index, and a
+ * symlink hashes as git stores it, the blob of its target path. A path with
+ * no regular file or symlink has no `FileStat`.
  *
  * Spec 001 D3: "a stat cache `path -> (mtime, ctime, size, inode, hash)`".
  * Same fields as `FileHashRecord` without `path` and `hash`.
@@ -100,8 +103,11 @@ export interface CandidatePath {
 
 /**
  * Paths that may have changed, after ignore filtering and before hashing.
- * The revision task (001-11) compares each stat with the stat cache, hashes
- * what differs, and creates a revision only when a hash changed.
+ * `ChangeFeed` emits one batch at a time; the daemon passes each to
+ * `reconcile` (src/core/revision), which takes `trigger` from the batch and
+ * each `stat` as the post-event stat without stat-ing again, compares it with
+ * the stat cache, hashes what differs, and creates a revision only when a
+ * hash changed.
  *
  * Spec 001 D2: "Watcher events are hints. Each debounced batch [...] is
  * reconciled: every reported path is re-stat'ed and, if `mtime`, `size` or
