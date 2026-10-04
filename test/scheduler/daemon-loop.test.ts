@@ -1,0 +1,61 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
+import { storePaths, worktreeIdFor } from "../../src/core/store/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { createVitestAdapter } from "../../src/runners/vitest/index.js";
+import { waitFor } from "../watcher/helpers.js";
+import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { MemorySink } from "./memory-sink.js";
+
+describe("daemon loop: change feed into scheduler", SLOW, () => {
+  it("a gitignored generated file in a closure is watched and changes the key when rewritten (B2)", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const root = repo.main;
+    const worktreeId = worktreeIdFor(root);
+    const runner = await createVitestAdapter({ root });
+    const errors: Error[] = [];
+    const loop = createDaemonLoop({
+      root,
+      worktreeId,
+      store,
+      runner,
+      sink: new MemorySink(store, worktreeId),
+      policy: DEFAULT_POLICY,
+      squealVersion: "0.0.0-test",
+      runsDir: storePaths(repo.commonDir).runsDir,
+      onError: (error) => errors.push(error),
+      timings: { reconcileIntervalMs: 60_000 },
+    });
+    const keyOf = () =>
+      store.testFileKeys.list(worktreeId).find((r) => r.testFile.path === "test/gen.test.ts");
+    try {
+      await loop.start();
+      await loop.scheduler.idle();
+      expect(loop.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
+      expect([...loop.scheduler.trackedPaths()]).toContain("src/gen/client.ts");
+      const first = keyOf();
+      expect(first?.key).toMatch(/^[0-9a-f]{64}$/);
+      expect(store.results.byKey(first?.key ?? "").map((r) => r.outcome)).toEqual(["pass"]);
+
+      // Codegen rewrites the file with a breaking change.
+      writeFileSync(join(root, "src/gen/client.ts"), 'export const client = () => "changed";\n');
+      await waitFor(() => keyOf()?.key !== first?.key, 10_000);
+      await waitFor(() => keyOf()?.pending === null, 30_000);
+      await loop.scheduler.idle();
+
+      const second = keyOf();
+      expect(second?.key).not.toBe(first?.key);
+      expect(store.results.byKey(second?.key ?? "").map((r) => r.outcome)).toEqual(["fail"]);
+      expect(store.revisions.latest(worktreeId)?.changes.map((c) => c.path)).toEqual([
+        "src/gen/client.ts",
+      ]);
+    } finally {
+      await loop.close();
+      await runner.close();
+    }
+    expect(errors).toEqual([]);
+  });
+});
