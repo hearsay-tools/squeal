@@ -37,9 +37,9 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 001-20 scheduler and validity | running | D5 plus the daemon loop glue and the "Inputs for wave 2" section of `reviews/wave-1.md` (S8 lockfile watching, untracked closure paths, environment refresh, bootstrap re-applying declared inputs): per-check validity, lookup-before-run, ordering, tiers with re-planning, post-tier stability check, baseline lookup then run-missing, `run --all`. | Fixture test: change during a tier discards and re-queues; second worktree bootstrap runs zero tests. |
-| 001-21 known state, transitions, delivery views | running | D6: known-state derivation, fingerprint, transition recording, consumer registration with seeded view, delta computation, message formatting with header and 10,000-character cap. | Break-and-recover between deliveries yields silence; first-seen fail, pass to fail, fail to pass, changed fingerprint each yield exactly one delta line. |
-| 001-22 status and why | running | D7: `squeal status`, `--json`, `squeal why <check>`, human formatter matching the vision example, daemon liveness from heartbeat. | Snapshot tests of both renderings; works with no daemon running. |
+| 001-20 scheduler and validity | review | D5 plus the daemon loop glue and the "Inputs for wave 2" section of `reviews/wave-1.md` (S8 lockfile watching, untracked closure paths, environment refresh, bootstrap re-applying declared inputs): per-check validity, lookup-before-run, ordering, tiers with re-planning, post-tier stability check, baseline lookup then run-missing, `run --all`. | Fixture test: change during a tier discards and re-queues; second worktree bootstrap runs zero tests. |
+| 001-21 known state, transitions, delivery views | review | D6: known-state derivation, fingerprint, transition recording, consumer registration with seeded view, delta computation, message formatting with header and 10,000-character cap. | Break-and-recover between deliveries yields silence; first-seen fail, pass to fail, fail to pass, changed fingerprint each yield exactly one delta line. |
+| 001-22 status and why | review | D7: `squeal status`, `--json`, `squeal why <check>`, human formatter matching the vision example, daemon liveness from heartbeat. | Snapshot tests of both renderings; works with no daemon running. |
 
 ### Wave 3: runtime and harness (parallel, after wave 2 review)
 
