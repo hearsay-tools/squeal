@@ -236,9 +236,11 @@ export class Ledger {
         sink.markUnknown(worktreeId, revision, testFiles, reason);
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
-      if (rows.length > 0 || unkeyed.length > 0) {
+      if (rows.length > 0) {
+        // Only rows that changed: no other file's key, phase or validity moved.
         const checkpointId = this.checkpoints.active?.record.id ?? null;
-        sink.refresh(worktreeId, revision, { checkpointId });
+        const testFiles = rows.map((row) => row.testFile);
+        sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
       }
     });
   }
