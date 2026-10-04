@@ -1,0 +1,4 @@
+import { base } from "./deep.ts";
+
+export const add = (a: number, b: number) => a + b;
+export const addBase = (a: number) => a + base;
