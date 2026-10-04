@@ -182,7 +182,8 @@ export class Ledger {
     if (entries.length === 0) return;
     for (const { file, key } of entries) {
       file.unknownKey = key;
-      this.queue.remove(file.ref);
+      // A file queued again for a newer key during the run still needs that run.
+      if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
       this.#syncPhase(file);
       this.checkpoints.failed(file.ref);
     }
