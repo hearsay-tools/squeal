@@ -25,16 +25,18 @@ export function runBundle(
   );
 }
 
-/** Runs `node <args>` with a minimal environment plus `env`, stdin piped, timed. */
+/** Runs `node <args>` in `cwd` with a minimal environment plus `env`, stdin piped, timed. */
 export function runNode(
   args: readonly string[],
   stdin: string,
   env: Readonly<Record<string, string>> = {},
+  cwd?: string,
 ): Promise<BundleRun> {
   return new Promise((resolve, reject) => {
     const started = performance.now();
     const child = spawn(process.execPath, args, {
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
+      ...(cwd === undefined ? {} : { cwd }),
     });
     const out: Buffer[] = [];
     const err: Buffer[] = [];
