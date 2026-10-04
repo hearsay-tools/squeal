@@ -1,7 +1,7 @@
 import type { Reporter, SerializedError, TestCase, TestModule } from "vitest/node";
 import type { CheckRunResult, TestFileRef } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
-import { refKey, toCheckRunResult } from "./results.js";
+import { checkNames, refKey, toCheckRunResult } from "./results.js";
 
 type TestRunEndReason = Parameters<NonNullable<Reporter["onTestRunEnd"]>>[2];
 
@@ -32,6 +32,7 @@ export class RunCollector {
   reason: TestRunEndReason | null = null;
   cancelRequested = false;
   readonly #requested: Map<string, TestFileRef>;
+  readonly #names = new WeakMap<TestModule, Map<string, string>>();
 
   constructor(
     requested: readonly TestFileRef[],
@@ -48,13 +49,23 @@ export class RunCollector {
   testCase(testCase: TestCase): void {
     const ref = this.#ref(testCase.project.name, testCase.module.moduleId);
     if (!ref) return;
-    const result = toCheckRunResult(testCase, ref, this.paths);
+    const result = toCheckRunResult(testCase, ref, this.paths, this.#name(testCase));
     if (!result) return;
     this.results.push({ ref, result });
     this.log.push(
       `${result.outcome.toUpperCase()} ${label(ref)} > ${result.check.fullName} (${Math.round(result.durationMs)} ms)`,
     );
     for (const error of testCase.result().errors ?? []) this.log.push(indent(errorText(error)));
+  }
+
+  /** The check name of a test; modules are fully collected before their tests report. */
+  #name(testCase: TestCase): string {
+    let names = this.#names.get(testCase.module);
+    if (!names) {
+      names = checkNames(testCase.module.children.allTests());
+      this.#names.set(testCase.module, names);
+    }
+    return names.get(testCase.id) ?? testCase.fullName;
   }
 
   moduleEnd(module: TestModule): void {

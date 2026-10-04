@@ -27,10 +27,35 @@ export function toCheckError(error: SerializedError, paths: WorktreePaths): Chec
   };
 }
 
+/**
+ * Check names of one module's tests, by test id, in declaration order.
+ *
+ * Spec 001 D4: "When two tests in one file share a `fullName`, the second and
+ * later ones carry their source line as a suffix." Duplicates on one line
+ * (`test.each` with equal names) add an ordinal: `name (line 5, 2)`.
+ */
+export function checkNames(tests: Iterable<TestCase>): Map<string, string> {
+  const names = new Map<string, string>();
+  const used = new Set<string>();
+  for (const test of tests) {
+    let name = test.fullName;
+    if (used.has(name)) {
+      const line = test.location ? `line ${test.location.line}` : "line ?";
+      name = `${test.fullName} (${line})`;
+      for (let n = 2; used.has(name); n++) name = `${test.fullName} (${line}, ${n})`;
+    }
+    used.add(name);
+    names.set(test.id, name);
+  }
+  return names;
+}
+
+/** `fullName` is the check name from `checkNames`. */
 export function toCheckRunResult(
   testCase: TestCase,
   testFile: TestFileRef,
   paths: WorktreePaths,
+  fullName: string,
 ): CheckRunResult | null {
   const result = testCase.result();
   const outcome = OUTCOMES[result.state];
@@ -41,7 +66,7 @@ export function toCheckRunResult(
       kind: "test",
       project: testFile.project,
       testPath: testFile.path,
-      fullName: testCase.fullName,
+      fullName,
     },
     outcome,
     durationMs: testCase.diagnostic()?.duration ?? 0,

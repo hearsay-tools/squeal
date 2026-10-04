@@ -41,6 +41,36 @@ describe("vitest adapter: edge cases", SLOW, () => {
     expect(report.fileErrors[0]?.errors[0]?.message).toBe("late boom");
   });
 
+  it("suffixes the source line to the second and later tests sharing a fullName (review N4)", async () => {
+    const fx = await openFixture();
+    fx.write(
+      "test/dupes.test.ts",
+      [
+        'import { expect, it } from "vitest";',
+        'it("same", () => {});',
+        'it("same", () => { expect(1).toBe(2); });',
+        'it("same", () => {});',
+        'it.each([1, 1, 1])("each %i", () => {});',
+        "",
+      ].join("\n"),
+    );
+    await fx.adapter.invalidate([{ path: "test/dupes.test.ts", kind: "add" }]);
+
+    const names = ["same", "same (line 3)", "same (line 4)"];
+    const enumerated = await fx.adapter.enumerate(ref("test/dupes.test.ts"));
+    expect(enumerated.map((c) => c.check.fullName)).toEqual([...names, "each %i"]);
+
+    const report = await fx.adapter.run([ref("test/dupes.test.ts")], fx.runOptions());
+    expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([
+      ["same", "pass"],
+      ["same (line 3)", "fail"],
+      ["same (line 4)", "pass"],
+      ["each 1", "pass"],
+      ["each 1 (line 5)", "pass"],
+      ["each 1 (line 5, 2)", "pass"],
+    ]);
+  });
+
   it("runs nothing for an empty list", async () => {
     const fx = await openFixture();
     const report = await fx.adapter.run([], fx.runOptions());
