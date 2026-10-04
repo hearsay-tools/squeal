@@ -121,7 +121,10 @@ export interface RunOptions {
 export interface RunReport {
   readonly end: RunEnd;
   readonly durationMs: number;
-  /** Test files that ran to completion; the rest of the tier has no reliable result. */
+  /**
+   * Test files that ran to completion; the rest of the tier has no reliable
+   * result. Empty when `end` is `crashed`: nothing in the run is trusted (D12).
+   */
   readonly completedFiles: readonly TestFileRef[];
   readonly results: readonly CheckRunResult[];
   readonly fileErrors: readonly FileLevelError[];

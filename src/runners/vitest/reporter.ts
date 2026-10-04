@@ -100,7 +100,8 @@ const label = (ref: TestFileRef) => (ref.project ? `[${ref.project}] ${ref.path}
 
 const indent = (text: string) => text.replace(/^/gm, "    ");
 
-function errorText(error: SerializedError): string {
+/** One error as the run log prints it: the stack (or name and message), then the diff. */
+export function errorText(error: SerializedError): string {
   const diff = typeof error.diff === "string" ? `\n${error.diff}` : "";
   return `${error.stack ?? `${error.name ?? "Error"}: ${error.message}`}${diff}`;
 }
