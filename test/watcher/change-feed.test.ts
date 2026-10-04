@@ -181,13 +181,13 @@ describe("ChangeFeed", () => {
     write(root, "src/a.ts", "edited in the outer worktree\n");
     await waitFor(() => watchBatchWith("src/a.ts"));
     await delay(300);
-    // A tracked path inside the nested worktree is dropped by reconciliation too.
-    tracked.push("wt/src/a.ts");
+    // A tracked path inside the nested worktree, or its root, is dropped by reconciliation too.
+    tracked.push("wt/src/a.ts", "wt");
     await feed?.reconcile("interval");
     expect(log.batches.at(-1)?.trigger).toBe("interval");
     expect(fromInsideAfterGit).toEqual([]);
     expect(log.has("wt/src/extra.ts")).toBe(false);
-    expect(log.paths().filter((p) => p.startsWith("wt/src/a.ts"))).toEqual([]);
+    expect(log.paths().filter((p) => p.startsWith("wt/src/a.ts") || p === "wt")).toEqual([]);
   });
 
   it("emits a candidate for a touch; deciding there is no revision is 001-11 work", async () => {

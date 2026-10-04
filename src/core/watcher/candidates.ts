@@ -117,15 +117,19 @@ export async function candidatesForReconcile(
 ): Promise<CandidatePath[]> {
   const nested = new NestedRepoProbe(ctx.root);
   const all = new Set<RelativePath>([...statusPaths, ...ctx.trackedPaths(), ...ctx.extraFiles]);
-  const stats = await mapConcurrent(all, async (rel) =>
-    isGitMetadata(rel) || (await nested.isInside(rel)) ? undefined : statOrNull(ctx.root, rel),
-  );
+  const paths = [...all].filter((rel) => !isGitMetadata(rel));
+  const stats = await mapConcurrent(paths, async (rel) => {
+    const stats = await lstatOrNull(toAbsolute(ctx.root, rel));
+    // Only a directory can hold a `.git` entry itself; for anything else, probe the ones above it.
+    const probe = stats?.isDirectory() ? rel : parentDir(rel);
+    if (probe !== null && (await nested.isInside(probe))) return undefined;
+    return stats && !stats.isDirectory() ? toFileStat(stats) : null;
+  });
   const out = new Map<RelativePath, FileStat | null>();
-  let i = 0;
-  for (const rel of all) {
-    const stat = stats[i++];
+  paths.forEach((rel, i) => {
+    const stat = stats[i];
     if (stat !== undefined) out.set(rel, stat);
-  }
+  });
   return sortCandidates(out);
 }
 
@@ -192,6 +196,11 @@ async function lstatOrNull(abs: AbsolutePath): Promise<Stats | null> {
 async function statOrNull(root: AbsolutePath, rel: RelativePath): Promise<FileStat | null> {
   const stats = await lstatOrNull(toAbsolute(root, rel));
   return stats && !stats.isDirectory() ? toFileStat(stats) : null;
+}
+
+function parentDir(rel: RelativePath): RelativePath | null {
+  const slash = rel.lastIndexOf("/");
+  return slash < 0 ? null : rel.slice(0, slash);
 }
 
 function toFileStat(stats: Stats): FileStat {
