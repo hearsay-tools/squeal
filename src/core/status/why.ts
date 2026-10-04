@@ -1,3 +1,4 @@
+import { formatCheck, parseCheck } from "../state/index.js";
 import { worktreeIdFor } from "../store/index.js";
 import {
   type AbsolutePath,
@@ -8,7 +9,6 @@ import {
   type WhyReport,
   type WhyResult,
 } from "../types/index.js";
-import { formatCheck, parseCheck } from "./check-name.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
 
 /** Most results `squeal why` lists for one check. */
@@ -24,7 +24,8 @@ export const WHY_CANDIDATE_LIMIT = 20;
  *
  * `query` is a name in the shape `formatCheck` prints. When no check has that
  * exact name, a check of this worktree whose name contains `query` is taken
- * if it is the only one, or the only one whose name ends with it.
+ * if it is the only one, or the only one whose name ends with it. A name
+ * ending in `...`, as a delta prints a capped one, matches by the part before.
  */
 export function readWhy(
   cwd: AbsolutePath,
@@ -53,7 +54,10 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
     check: s.check,
     name: formatCheck(s.check),
   }));
-  let matches = named.filter((n) => n.name.includes(query));
+  const stem = query.endsWith("...") ? query.slice(0, -3) : null;
+  let matches = named.filter(
+    (n) => n.name.includes(query) || (stem !== null && n.name.startsWith(stem)),
+  );
   if (matches.length > 1) {
     const ending = matches.filter(
       (n) => n.name.endsWith(` > ${query}`) || n.name.endsWith(`/${query}`),

@@ -1,4 +1,5 @@
-import { CLOSURE_METHOD } from "../keys/index.js";
+import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
+import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
 import { META_STORE_RECOVERED, worktreeIdFor } from "../store/index.js";
 import {
   type AbsolutePath,
@@ -7,14 +8,12 @@ import {
   type DaemonRecord,
   type EpochMs,
   type InheritedSource,
-  type KnownFailure,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
   type StatusResult,
   type StatusSnapshot,
   type Store,
   type TestFileKeyRecord,
-  type ValidityCounts,
   type WorktreeId,
 } from "../types/index.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
@@ -46,8 +45,7 @@ export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): S
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
-  const checkpoint = store.checkpoints.lastCompleted(worktreeId);
-  const current = revision?.number ?? 0;
+  const header = readHeader(store, worktreeId, states);
 
   const notes: string[] = [];
   if (worktree === null) {
@@ -62,17 +60,11 @@ export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): S
     available: true,
     worktreeId,
     worktreeRoot: worktree?.root ?? root,
-    revision: current,
+    ...header,
     head: revision?.head ?? null,
     dirty: revision?.dirty ?? false,
     daemon: liveness(worktree?.daemon ?? null, now),
-    counts: countValidity(states),
-    fullSuite: {
-      atCurrentRevision:
-        checkpoint !== null && revision !== null && checkpoint.revision === current,
-      lastCompletedRevision: checkpoint?.revision ?? null,
-    },
-    knownFailures: states.flatMap(knownFailure),
+    knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),
     closureMethod: CLOSURE_METHOD,
@@ -88,28 +80,6 @@ function liveness(daemon: DaemonRecord | null, now: EpochMs): DaemonLiveness {
     return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
   }
   return { state: "down", since: daemon.heartbeatAt };
-}
-
-function countValidity(states: readonly KnownState[]): ValidityCounts {
-  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const s of states) counts[s.validity]++;
-  return counts;
-}
-
-/** Every `fail`, whatever its validity: a stale failure is still the last thing known. */
-function knownFailure(s: KnownState): KnownFailure[] {
-  if (s.outcome !== "fail") return [];
-  return [
-    {
-      check: s.check,
-      outcome: "fail",
-      validity: s.validity,
-      observedAt: s.observedAt ?? 0,
-      summary: s.summary ?? "",
-      fingerprint: s.fingerprint ?? "",
-      location: s.location,
-    },
-  ];
 }
 
 /** Current inherited results grouped by source worktree and commit, largest group first. */
@@ -160,22 +130,19 @@ function breakdown(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
 ): CheckBreakdown {
-  const fileId = (project: string, path: string) => JSON.stringify([project, path]);
-  const filePhase = new Map(
-    keys.map((k) => [fileId(k.testFile.project, k.testFile.path), k.pending]),
-  );
+  const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const pendingByPhase = { queued: 0, running: 0 };
   const filesWithChecks = new Set<string>();
   for (const s of states) {
-    const file = fileId(s.check.project, s.check.testPath);
+    const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
     if (s.validity === "current") currentByOutcome[s.outcome]++;
     if (s.validity === "pending")
       pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
   }
   const testFilesWithoutChecks = keys.filter(
-    (k) => !filesWithChecks.has(fileId(k.testFile.project, k.testFile.path)),
+    (k) => !filesWithChecks.has(testFileId(k.testFile)),
   ).length;
   return { currentByOutcome, pendingByPhase, testFiles: keys.length, testFilesWithoutChecks };
 }

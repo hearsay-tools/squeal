@@ -1,3 +1,4 @@
+import { testFileId } from "../keys/index.js";
 import type {
   CheckId,
   KnownState,
@@ -12,14 +13,18 @@ import type {
 } from "../types/index.js";
 import { describeFailure } from "./fingerprint.js";
 
-/** One string per check identity, for maps keyed by check. */
+/**
+ * Map key of a check, the one check key helper. Test files use `testFileId`
+ * from `src/core/keys`. NUL cannot occur in a project name, path or test name.
+ */
 export function checkIdentity(check: CheckId): string {
   const name = check.kind === "test" ? check.fullName : "";
   return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
 }
 
-export function testFileIdentity(file: TestFileRef): string {
-  return `${file.project}\0${file.path}`;
+/** Map key of the test file a check belongs to. */
+export function testFileKeyOf(check: CheckId): string {
+  return testFileId(testFileOf(check));
 }
 
 export function testFileOf(check: CheckId): TestFileRef {
@@ -37,7 +42,8 @@ interface Classified {
  * revision. Otherwise the check is **stale** [...] or **unknown** [...].
  * **Pending** means a run that will produce a result for the current key is
  * queued or running." A current result stays current while a forced re-run
- * is pending.
+ * is pending. The one validity rule of a check: the sink, status and
+ * headers read what it wrote.
  */
 export function classify(
   outcome: KnownState["outcome"],

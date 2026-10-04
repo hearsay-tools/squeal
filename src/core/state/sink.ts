@@ -1,3 +1,4 @@
+import { testFileId } from "../keys/index.js";
 import type {
   EpochMs,
   KnownState,
@@ -14,8 +15,7 @@ import {
   sameState,
   stateFromResult,
   stateWithoutResult,
-  testFileIdentity,
-  testFileOf,
+  testFileKeyOf,
   unknownState,
 } from "./derive.js";
 import { transitionKind } from "./transitions.js";
@@ -39,10 +39,10 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
       store.knownStates.list(worktreeId).map((s) => [checkIdentity(s.check), s]),
     );
     const keys = new Map(
-      store.testFileKeys.list(worktreeId).map((k) => [testFileIdentity(k.testFile), k]),
+      store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]),
     );
     const keyOf = (state: Pick<KnownState, "check">): TestFileKeyRecord | undefined =>
-      keys.get(testFileIdentity(testFileOf(state.check)));
+      keys.get(testFileKeyOf(state.check));
     const prior = (state: Pick<KnownState, "check">) =>
       previous.get(checkIdentity(state.check)) ?? null;
 
@@ -94,9 +94,9 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
     markUnknown: (worktreeId, revision, testFiles, reason) =>
       store.transaction(() => {
         const { previous, keyOf, commit } = begin(worktreeId);
-        const files = new Set(testFiles.map(testFileIdentity));
+        const files = new Set(testFiles.map(testFileId));
         const next = [...previous.values()]
-          .filter((s) => files.has(testFileIdentity(testFileOf(s.check))))
+          .filter((s) => files.has(testFileKeyOf(s.check)))
           .map((s) => unknownState(s, revision, keyOf(s), reason));
         return commit(revision, next, null);
       }),
@@ -104,7 +104,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
     refresh: (worktreeId, revision, provenance, testFiles) =>
       store.transaction(() => {
         const { previous, keys, keyOf, prior, commit } = begin(worktreeId);
-        const only = testFiles === undefined ? null : new Set(testFiles.map(testFileIdentity));
+        const only = testFiles === undefined ? null : new Set(testFiles.map(testFileId));
         const included = (file: string) => only === null || only.has(file);
         const at = now();
         const next = new Map<string, KnownState>();
@@ -120,8 +120,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
         for (const [id, state] of previous) {
           const key = keyOf(state);
           if (key === undefined || next.has(id)) continue;
-          if (included(testFileIdentity(key.testFile)))
-            next.set(id, stateWithoutResult(state, key));
+          if (included(testFileId(key.testFile))) next.set(id, stateWithoutResult(state, key));
         }
         return commit(revision, [...next.values()], provenance.checkpointId);
       }),

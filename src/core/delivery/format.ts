@@ -1,4 +1,4 @@
-import { SUMMARY_MAX_CHARS } from "../state/index.js";
+import { formatCheck, SUMMARY_MAX_CHARS } from "../state/index.js";
 import type {
   CheckId,
   Delta,
@@ -34,13 +34,9 @@ function cap(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 
+/** `squeal why` resolves a capped name by the part before `...`. */
 function checkName(check: CheckId): string {
-  const project = check.project === "" ? "" : `[${check.project}] `;
-  const name =
-    check.kind === "test"
-      ? `${check.testPath} > ${check.fullName}`
-      : `${check.testPath} (file-level)`;
-  return cap(`${project}${name}`, SUMMARY_MAX_CHARS);
+  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
 
 function at(location: SourceLocation): string {
