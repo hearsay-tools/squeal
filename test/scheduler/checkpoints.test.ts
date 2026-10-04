@@ -153,4 +153,24 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     await h.scheduler.idle();
     expect(h.runner.runs.flatMap((r) => r.files)).toEqual([ref("test/math.test.ts")]);
   });
+
+  it("a restarted daemon runs nothing and watches the generated file again", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const first = await openHarness(repo.main, store, repo.commonDir);
+    await first.scheduler.start();
+    await first.scheduler.idle();
+    await first.scheduler.close();
+    await first.runner.close();
+
+    const second = await openHarness(repo.main, store, repo.commonDir);
+    await second.scheduler.start();
+    await second.scheduler.idle();
+
+    expect(second.runner.runs).toEqual([]);
+    expect(second.scheduler.status().lookups).toEqual({ hits: 5, misses: 0 });
+    expect(second.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
+    // Nothing changed while no daemon ran: no revision.
+    expect(store.revisions.latest(second.worktreeId)).toBeNull();
+  });
 });

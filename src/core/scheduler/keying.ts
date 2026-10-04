@@ -77,6 +77,8 @@ export class WorktreeKeys {
    * reconciled, so what changed while no daemon ran becomes a revision.
    * Tracked and untracked files git knows and the cache does not are hashed
    * without a revision: there is nothing earlier to compare them with.
+   * Cached paths git ignores entered the cache because a closure or an
+   * environment named them, so they are watched again as extra files.
    */
   async bootstrap(head: () => Promise<HeadState>): Promise<Revision | null> {
     let revision: Revision | null = null;
@@ -93,6 +95,9 @@ export class WorktreeKeys {
         "--exclude-standard",
       ]),
     );
+    const known = new Set(listed);
+    const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
+    for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
     await this.#seed(listed.filter((path) => this.cache.hashOf(path) === undefined));
     this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
     return revision;
