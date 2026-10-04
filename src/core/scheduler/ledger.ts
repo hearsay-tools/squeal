@@ -3,6 +3,7 @@ import type {
   CheckId,
   CheckKey,
   CommitSha,
+  ProjectName,
   RelativePath,
   ResultRecord,
   RevisionNumber,
@@ -46,6 +47,10 @@ export class Ledger {
   revision: RevisionState = { number: 0, head: null, dirty: false };
   /** Paths changed by revisions since the tier in flight was selected; `null` with no tier in flight. */
   tierChanges: Set<RelativePath> | null = null;
+  /** Some files are blocked by a runner failure; the next revision or `run --all` retries the runner. */
+  broken = false;
+  /** The last test file listing failed; the next revision lists again. */
+  listingFailed = false;
   readonly counters = {
     hits: 0,
     misses: 0,
@@ -133,7 +138,13 @@ export class Ledger {
       }
       this.counters.misses++;
       misses.push(file);
-      if (options.queueMisses !== false) this.enqueue(file, priorityOf(file, changed));
+      if (file.blocked !== null) {
+        // The runner cannot run it; it stays `unknown` until the runner recovers.
+        this.queue.remove(ref);
+        this.#syncPhase(file);
+      } else if (options.queueMisses !== false) {
+        this.enqueue(file, priorityOf(file, changed));
+      }
     }
     return misses;
   }
@@ -158,6 +169,7 @@ export class Ledger {
     file.failing = results.some((r) => r.outcome === "fail");
     file.unknownKey = null;
     file.discards = 0;
+    file.blocked = null;
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
     this.checkpoints.done(file.ref, checkpointId);
@@ -177,8 +189,9 @@ export class Ledger {
   /**
    * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
    * is stored under a key; the files' checks become `unknown` at this revision.
+   * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
    */
-  markUnknown(entries: readonly { file: FileState; key: CheckKey }[], reason: string): void {
+  markUnknown(entries: readonly { file: FileState; key: CheckKey | null }[], reason: string): void {
     if (entries.length === 0) return;
     for (const { file, key } of entries) {
       file.unknownKey = key;
@@ -188,6 +201,46 @@ export class Ledger {
       this.checkpoints.failed(file.ref);
     }
     this.#unknown.push({ testFiles: entries.map((e) => e.file.ref), reason });
+  }
+
+  /**
+   * Spec 001 D5: "when environment, invalidation or closure resolution fails
+   * for a project, every test file of that project becomes `unknown` at this
+   * revision with the runner's message as the reason". `null` is every
+   * project. A blocked file is not queued until `unblock`.
+   */
+  block(failures: ReadonlyMap<ProjectName | null, string>): void {
+    const every = failures.get(null);
+    const byReason = new Map<string, FileState[]>();
+    for (const file of this.files.values()) {
+      const reason = every ?? failures.get(file.ref.project);
+      if (reason === undefined || file.blocked !== null) continue;
+      file.blocked = reason;
+      if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
+      byReason.set(reason, [...(byReason.get(reason) ?? []), file]);
+    }
+    for (const [reason, files] of byReason) {
+      this.markUnknown(
+        files.map((file) => ({ file, key: file.key })),
+        reason,
+      );
+    }
+    this.broken = true;
+  }
+
+  /** The runner works again: every blocked file is settled anew. Returns them. */
+  unblock(): TestFileRef[] {
+    const refs: TestFileRef[] = [];
+    for (const file of this.files.values()) {
+      if (file.blocked === null) continue;
+      file.blocked = null;
+      file.unknownKey = null;
+      // Its known states are re-derived from the results under its key.
+      this.#dirty.add(file.id);
+      refs.push(file.ref);
+    }
+    this.broken = false;
+    return refs;
   }
 
   /**
@@ -202,7 +255,7 @@ export class Ledger {
     file.discards = file.key === key ? file.discards + 1 : 0;
     if (file.discards >= MAX_DISCARDS) {
       this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
-    } else if (file.key !== null) {
+    } else if (file.key !== null && file.blocked === null) {
       this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
     }
   }
@@ -212,13 +265,13 @@ export class Ledger {
     const { store, sink, worktreeId } = this.context;
     const revision = this.revision.number;
     const rows: TestFileKeyRecord[] = [];
-    const unkeyed = this.#removed.splice(0);
+    const removed = this.#removed.splice(0);
     for (const id of this.#dirty) {
       const file = this.files.get(id);
       if (!file) continue;
-      if (file.key === null) unkeyed.push(file.ref);
-      else
-        rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending: file.phase });
+      // An unkeyed file keeps its row with a null key: status counts it as unknown (B1).
+      const pending = file.key === null ? null : file.phase;
+      rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
     }
     this.#dirty.clear();
     const applied = this.#applied;
@@ -230,7 +283,7 @@ export class Ledger {
 
     store.transaction(() => {
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
-      if (unkeyed.length > 0) store.testFileKeys.remove(worktreeId, unkeyed);
+      if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
       for (const { results, checkpointId } of applied) {
         sink.applyResults(worktreeId, revision, results, { checkpointId });
       }

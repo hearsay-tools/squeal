@@ -53,7 +53,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
     if (picked.length >= policy.runner.tierSize) break;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
-    if (!file || key === null) {
+    if (!file || key === null || file.blocked !== null) {
       ledger.queue.remove(ref);
       if (file) ledger.touch(file);
       continue;
@@ -206,17 +206,21 @@ export function recordTier(
  * Spec 001 D5: "`squeal run --all` queues every test file whose key has no
  * result, or every test file when `--force` is given." One checkpoint of kind
  * `run-all` over those files (D7). Files already queued or running belong to
- * it too; a file that crashed at its key is queued again.
+ * it too; a file that crashed at its key is queued again. "An unkeyed or
+ * `unknown` file is always work to do": an unkeyed file, or one blocked by a
+ * runner failure, is requested too and ends the checkpoint `abandoned`.
  */
 export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord {
   const id = randomUUID();
-  const keyed = [...ledger.files.values()].filter((file) => file.key !== null);
+  const files = [...ledger.files.values()];
+  const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
+  const runnable = files.filter((file) => file.key !== null && file.blocked === null);
   let requested: FileState[];
   if (force) {
-    requested = keyed;
-    for (const file of keyed) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    requested = runnable;
+    for (const file of runnable) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
   } else {
-    const open = keyed.filter((file) => classify(file) !== "current");
+    const open = runnable.filter((file) => classify(file) !== "current");
     for (const file of open) file.unknownKey = null;
     const pending = open.filter((file) => file.phase !== null);
     const misses = ledger.settle(
@@ -230,9 +234,10 @@ export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord
     id,
     "run-all",
     ledger.revision.number,
-    requested.map((file) => file.ref),
+    [...requested, ...unrunnable].map((file) => file.ref),
     force,
   );
+  for (const file of unrunnable) ledger.checkpoints.failed(file.ref);
   ledger.commit();
   return record;
 }

@@ -77,7 +77,13 @@ describe("classify (D5 validity)", () => {
 
   it("is stale when results exist only under an older key", () => {
     expect(classify(file({ key: "k2", resultKey: "k1" }))).toBe("stale");
-    expect(classify(file({ key: null, resultKey: "k1" }))).toBe("stale");
+  });
+
+  it("is unknown while unkeyed or blocked by a runner failure (D5, D6)", () => {
+    expect(classify(file({ key: null, resultKey: "k1" }))).toBe("unknown");
+    expect(classify(file({ key: "k1", resultKey: "k1", blocked: "runner failed" }))).toBe(
+      "unknown",
+    );
   });
 
   it("is unknown with no result at all", () => {

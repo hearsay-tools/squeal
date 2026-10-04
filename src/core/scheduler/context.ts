@@ -37,22 +37,25 @@ export interface SchedulerContext {
 export const NOTHING_CHANGED: ReadonlySet<RelativePath> = new Set();
 
 /**
- * Calls the runner and turns a rejection into a note and `null`. Spec 001 D5
- * inputs (review): "A broken config makes every adapter call reject until it
- * is fixed [...]: map that to `unknown` for the project with one status note,
- * never to stored results."
+ * Calls the runner and turns a rejection into a note and `null`. `subject`
+ * names the call with its test file or paths (review N2); the note, which
+ * `onFailure` also receives, is the reason a failed call gives its files.
+ *
+ * Spec 001 D5: "A runner call that fails is a state, never a skip". Callers
+ * decide what the failure means for which files.
  */
 export async function tryRunner<T>(
   context: Pick<SchedulerContext, "note">,
-  what: string,
+  subject: string,
   call: () => Promise<T>,
+  onFailure?: (reason: string) => void,
 ): Promise<T | null> {
   try {
     return await call();
   } catch (error) {
-    context.note(
-      `runner ${what} failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    const reason = `runner ${subject} failed: ${error instanceof Error ? error.message : String(error)}`;
+    context.note(reason);
+    onFailure?.(reason);
     return null;
   }
 }
