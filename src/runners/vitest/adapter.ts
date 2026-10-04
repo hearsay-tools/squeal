@@ -41,6 +41,8 @@ export class VitestAdapter implements RunnerAdapter {
 
   #vitest: Vitest | null = null;
   #collector: RunCollector | null = null;
+  /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
+  #generation = 0;
   #queue: Promise<unknown> = Promise.resolve();
   #closed = false;
 
@@ -51,10 +53,12 @@ export class VitestAdapter implements RunnerAdapter {
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
   async #start(): Promise<Vitest> {
+    const generation = ++this.#generation;
+    const current = () => (generation === this.#generation ? this.#collector : null);
     const vitest = await createVitest("test", {
       root: this.paths.root,
       watch: false,
-      reporters: [createSquealReporter(() => this.#collector)],
+      reporters: [createSquealReporter(current)],
       update: "none",
       includeTaskLocation: true,
     });
@@ -191,6 +195,11 @@ export class VitestAdapter implements RunnerAdapter {
         findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
       );
       const collector = new RunCollector(testFiles, this.paths);
+      if (specs.length === 0) {
+        const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
+        writeRunLog(options, collector, empty);
+        return empty;
+      }
       const exitCode = process.exitCode;
       const started = performance.now();
       this.#collector = collector;
@@ -226,8 +235,9 @@ export class VitestAdapter implements RunnerAdapter {
 
   #ref(spec: TestSpecification): TestFileRef {
     const path = this.paths.toRelative(spec.moduleId);
-    if (path === null)
+    if (path === null) {
       throw new Error(`vitest adapter: test file outside the worktree: ${spec.moduleId}`);
+    }
     return { project: spec.project.name, path };
   }
 }
