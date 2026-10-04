@@ -1,0 +1,95 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { createDelivery } from "../../core/delivery/index.js";
+import {
+  createStatusBuilder,
+  findWorktreeRoot,
+  STATUS_BUSY_TIMEOUT_MS,
+} from "../../core/status/index.js";
+import {
+  isStoreOpenFailure,
+  openStore,
+  resolveCommonDir,
+  storePaths,
+  worktreeIdFor,
+} from "../../core/store/index.js";
+import {
+  type AbsolutePath,
+  type Consumer,
+  type EpochMs,
+  type HarnessDelivery,
+  MAIN_AGENT,
+  type Store,
+} from "../../core/types/index.js";
+import type { HookInput } from "./input.js";
+
+/** Where a hook runs: the worktree containing `cwd` and its git common dir. */
+export interface HookLocation {
+  readonly root: AbsolutePath;
+  readonly commonDir: AbsolutePath;
+}
+
+/**
+ * Spec 001 D1: the worktree is the nearest git top level of `cwd`; the common
+ * dir is resolved without spawning git. `null` outside a worktree.
+ */
+export function locate(cwd: string): HookLocation | null {
+  const root = findWorktreeRoot(cwd);
+  if (root === null) return null;
+  const commonDir = resolveCommonDir(root);
+  return commonDir === null ? null : { root, commonDir };
+}
+
+/** True when the repository has a store or a `squeal.config.json`, so Squeal is in use. */
+export function usesSqueal(location: HookLocation): boolean {
+  return (
+    existsSync(storePaths(location.commonDir).database) ||
+    existsSync(join(location.root, "squeal.config.json"))
+  );
+}
+
+export interface HookContext extends HookLocation {
+  readonly store: Store;
+  readonly delivery: HarnessDelivery;
+  readonly consumer: Consumer;
+  close(): void;
+}
+
+export interface ContextOptions {
+  readonly now?: () => EpochMs;
+  readonly pollIntervalMs?: number;
+}
+
+/**
+ * Opens the store read-write for one hook call. `null` when there is no store
+ * or it cannot be opened (newer schema, corrupt): hooks then stay silent.
+ * Spec 001 D9 consumer: `(worktree, session id, agent id or "main")`.
+ */
+export function openContext(
+  input: HookInput,
+  location: HookLocation,
+  options: ContextOptions = {},
+): HookContext | null {
+  const store = openStore(location.commonDir, {
+    create: false,
+    busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS,
+  });
+  if (isStoreOpenFailure(store)) return null;
+  try {
+    const consumer: Consumer = {
+      worktreeId: worktreeIdFor(location.root),
+      sessionId: input.session_id,
+      agentId: input.agent_id ?? MAIN_AGENT,
+    };
+    const now = options.now ?? Date.now;
+    const delivery = createDelivery(store, {
+      status: createStatusBuilder(store, { now }),
+      now,
+      ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
+    });
+    return { ...location, store, delivery, consumer, close: () => store.close() };
+  } catch (error) {
+    store.close();
+    throw error;
+  }
+}
