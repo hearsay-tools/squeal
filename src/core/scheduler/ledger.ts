@@ -3,7 +3,6 @@ import type {
   CheckId,
   CheckKey,
   CommitSha,
-  ProjectName,
   RelativePath,
   ResultRecord,
   RevisionNumber,
@@ -201,46 +200,6 @@ export class Ledger {
       this.checkpoints.failed(file.ref);
     }
     this.#unknown.push({ testFiles: entries.map((e) => e.file.ref), reason });
-  }
-
-  /**
-   * Spec 001 D5: "when environment, invalidation or closure resolution fails
-   * for a project, every test file of that project becomes `unknown` at this
-   * revision with the runner's message as the reason". `null` is every
-   * project. A blocked file is not queued until `unblock`.
-   */
-  block(failures: ReadonlyMap<ProjectName | null, string>): void {
-    const every = failures.get(null);
-    const byReason = new Map<string, FileState[]>();
-    for (const file of this.files.values()) {
-      const reason = every ?? failures.get(file.ref.project);
-      if (reason === undefined || file.blocked !== null) continue;
-      file.blocked = reason;
-      if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
-      byReason.set(reason, [...(byReason.get(reason) ?? []), file]);
-    }
-    for (const [reason, files] of byReason) {
-      this.markUnknown(
-        files.map((file) => ({ file, key: file.key })),
-        reason,
-      );
-    }
-    this.broken = true;
-  }
-
-  /** The runner works again: every blocked file is settled anew. Returns them. */
-  unblock(): TestFileRef[] {
-    const refs: TestFileRef[] = [];
-    for (const file of this.files.values()) {
-      if (file.blocked === null) continue;
-      file.blocked = null;
-      file.unknownKey = null;
-      // Its known states are re-derived from the results under its key.
-      this.#dirty.add(file.id);
-      refs.push(file.ref);
-    }
-    this.broken = false;
-    return refs;
   }
 
   /**

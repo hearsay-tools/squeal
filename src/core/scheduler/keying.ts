@@ -1,14 +1,11 @@
 import { createHash } from "node:crypto";
-import { join } from "node:path";
-import { runGit, splitNul, toRelative } from "../fs/index.js";
+import { runGit, splitNul } from "../fs/index.js";
 import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
 import {
   assembleClosure,
   coreEnvironmentInputs,
   createInputMatcher,
   environmentHash,
-  findInstalledLockfile,
-  installedDependenciesFingerprint,
   type KeyChange,
   KeyIndex,
   selectDeclaredInputs,
@@ -18,7 +15,6 @@ import { type HeadState, reconcile, statCandidates } from "../revision/index.js"
 import type {
   AbsolutePath,
   CandidateBatch,
-  CoreEnvironmentInputs,
   FileChange,
   FileHash,
   Policy,
@@ -32,6 +28,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
+import { Lockfiles } from "./lockfiles.js";
 
 export interface KeyingOptions {
   readonly root: AbsolutePath;
@@ -45,12 +42,6 @@ export interface KeyingOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Called with every extra file whenever the list grows. */
   readonly onExtraFiles: (paths: readonly RelativePath[]) => void;
-}
-
-/** An installed lockfile and its patches directory, relative to the worktree root. */
-interface Lockfile {
-  readonly path: RelativePath;
-  readonly patches: RelativePath | null;
 }
 
 /** Bumped when the provisional encoding changes; never equal to a real environment hash. */
@@ -75,16 +66,14 @@ export class WorktreeKeys {
   readonly #environmentFiles = new Set<RelativePath>();
   readonly #extra = new Set<RelativePath>();
   readonly #untracked = new Set<RelativePath>();
-  /** Installed lockfile of each project (review N8). */
-  readonly #lockfiles = new Map<ProjectName, Lockfile | null>();
-  /** Lockfile paths `lockfileCandidates` found moved, and the projects that read them. */
-  readonly #movedLockfiles = new Map<RelativePath, ProjectName[]>();
+  readonly #lockfiles: Lockfiles;
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
   #declared: RelativePath[] = [];
 
   constructor(private readonly options: KeyingOptions) {
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
+    this.#lockfiles = new Lockfiles(options.root);
     this.index = new KeyIndex((path) => this.cache.hashOf(path));
     this.isDeclaredInput = createInputMatcher(options.policy.inputs);
   }
@@ -132,35 +121,26 @@ export class WorktreeKeys {
    * lockfile is looked up from the project's root (review N8).
    */
   async setEnvironments(environments: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
-    const { root, policy, squealVersion, env } = this.options;
+    const { policy, squealVersion, env } = this.options;
     this.#environments.clear();
     this.#environmentFiles.clear();
-    this.#lockfiles.clear();
-    this.#movedLockfiles.clear();
-    const cores = new Map<ProjectName, CoreEnvironmentInputs>();
     for (const environment of environments) {
       this.#environments.set(environment.project, environment);
       for (const path of environment.files) this.#environmentFiles.add(path);
-      const projectRoot = this.#projectRoot(environment);
-      this.#lockfiles.set(environment.project, await this.#findLockfile(projectRoot));
-      const installedDependencies = await installedDependenciesFingerprint(projectRoot, root);
-      cores.set(
-        environment.project,
-        coreEnvironmentInputs({
-          squealVersion,
-          installedDependencies,
-          allowlist: policy.env.allowlist,
-          ...(env === undefined ? {} : { env }),
-        }),
-      );
     }
-    const lockPaths = this.#lockfilePaths();
+    const fingerprints = await this.#lockfiles.set(environments);
+    const lockPaths = this.#lockfiles.paths();
     await this.track([...this.#environmentFiles, ...lockPaths]);
     await this.#watchIgnored(lockPaths);
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
     return environments.flatMap((environment) => {
-      const core = cores.get(environment.project) as CoreEnvironmentInputs;
+      const core = coreEnvironmentInputs({
+        squealVersion,
+        installedDependencies: fingerprints.get(environment.project) ?? "none",
+        allowlist: policy.env.allowlist,
+        ...(env === undefined ? {} : { env }),
+      });
       return this.index.setEnvironment(
         environment.project,
         environmentHash(core, environment, hashOf),
@@ -207,18 +187,8 @@ export class WorktreeKeys {
    * one is in an ignored directory no watch batch reports, so reconciliation
    * passes ask here.
    */
-  async lockfileCandidates(): Promise<RelativePath[]> {
-    this.#movedLockfiles.clear();
-    for (const [project, environment] of this.#environments) {
-      const found = await this.#findLockfile(this.#projectRoot(environment));
-      const previous = this.#lockfiles.get(project) ?? null;
-      if (found?.path === previous?.path) continue;
-      for (const path of [previous?.path, found?.path]) {
-        if (path === undefined) continue;
-        this.#movedLockfiles.set(path, [...(this.#movedLockfiles.get(path) ?? []), project]);
-      }
-    }
-    return [...this.#movedLockfiles.keys()].sort();
+  lockfileCandidates(): Promise<RelativePath[]> {
+    return this.#lockfiles.moved();
   }
 
   /** Sets a test file's closure: the runner's paths plus this worktree's declared inputs (D3). */
@@ -277,45 +247,18 @@ export class WorktreeKeys {
   stabilityPaths(ref: TestFileRef): RelativePath[] {
     const paths = new Set(this.index.closure(ref)?.paths ?? []);
     for (const path of this.#environments.get(ref.project)?.files ?? []) paths.add(path);
-    const lockfile = this.#lockfiles.get(ref.project);
-    if (lockfile) paths.add(lockfile.path);
+    const lockfile = this.#lockfiles.of(ref.project);
+    if (lockfile !== null) paths.add(lockfile);
     return [...paths];
   }
 
   /** Projects whose environment hash reads `path`. */
   #projectsReading(path: RelativePath): ProjectName[] {
-    const projects = new Set(this.#movedLockfiles.get(path));
+    const projects = new Set(this.#lockfiles.projectsReading(path));
     for (const [project, environment] of this.#environments) {
       if (environment.files.includes(path)) projects.add(project);
-      const lockfile = this.#lockfiles.get(project);
-      if (!lockfile) continue;
-      if (path === lockfile.path) projects.add(project);
-      if (lockfile.patches !== null && path.startsWith(`${lockfile.patches}/`))
-        projects.add(project);
     }
     return [...projects];
-  }
-
-  #projectRoot(environment: RunnerEnvironment): AbsolutePath {
-    const { root } = this.options;
-    return environment.root === undefined || environment.root === ""
-      ? root
-      : join(root, environment.root);
-  }
-
-  async #findLockfile(projectRoot: AbsolutePath): Promise<Lockfile | null> {
-    const { root } = this.options;
-    const found = await findInstalledLockfile(projectRoot, root);
-    if (found === null) return null;
-    const path = toRelative(root, found.path);
-    if (path === null) return null;
-    return { path, patches: found.patches === null ? null : toRelative(root, found.patches) };
-  }
-
-  #lockfilePaths(): RelativePath[] {
-    const paths = new Set<RelativePath>();
-    for (const lockfile of this.#lockfiles.values()) if (lockfile) paths.add(lockfile.path);
-    return [...paths];
   }
 
   /** Lockfiles tracked by a reconciliation, not by `track`, are watched too when gitignored (D2). */
