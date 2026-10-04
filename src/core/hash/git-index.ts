@@ -1,6 +1,6 @@
+import { runGit, splitNul } from "../fs/index.js";
 import type { AbsolutePath, FileHash, RelativePath } from "../types/index.js";
 import type { ObjectFormat } from "./blob.js";
-import { runGit, splitNul } from "./git.js";
 
 /**
  * Attributes under which the index oid can differ from the bytes on disk.
@@ -53,7 +53,8 @@ export async function readCleanIndexHashes(
   root: AbsolutePath,
 ): Promise<Map<RelativePath, FileHash>> {
   const [autocrlf, entries, status] = await Promise.all([
-    runGit(root, ["config", "--get", "core.autocrlf"]).catch(configUnset),
+    // `git config --get` exits 1 when the key is unset.
+    runGit(root, ["config", "--get", "core.autocrlf"], { okCodes: [0, 1] }),
     runGit(root, ["ls-files", "--stage", "-v", "-z"]),
     runGit(root, [
       "status",
@@ -79,20 +80,12 @@ export async function readCleanIndexHashes(
   }
   if (candidates.size === 0) return candidates;
 
-  const attributes = await runGit(
-    root,
-    ["check-attr", "-z", "--stdin", ...CONVERTING_ATTRIBUTES],
-    `${[...candidates.keys()].join("\0")}\0`,
-  );
+  const attributes = await runGit(root, ["check-attr", "-z", "--stdin", ...CONVERTING_ATTRIBUTES], {
+    input: `${[...candidates.keys()].join("\0")}\0`,
+  });
   const fields = splitNul(attributes);
   for (let i = 0; i + 2 < fields.length; i += 3) {
     if (fields[i + 2] !== "unspecified") candidates.delete(fields[i] as RelativePath);
   }
   return candidates;
-}
-
-/** `git config --get` exits 1 when the key is unset. */
-function configUnset(error: unknown): string {
-  if (error instanceof Error && error.message.includes(" exited 1 ")) return "";
-  throw error;
 }
