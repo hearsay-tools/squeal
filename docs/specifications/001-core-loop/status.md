@@ -22,6 +22,8 @@ Started: 2026-10-02
 
 - 2026-10-04, from wave 3 (001-31): the bundled hook entry points are committed under `plugins/claude-code/dist/` because a plugin install copies the git tree as it is; `npm run build` regenerates them, and CI must fail when they are stale (D9). `squeal.config.json` written by `squeal init` is plain JSON with every default spelled out; key documentation lives in the plugin skill and D11.
 
+- 2026-10-04, from the wave 3 review (`reviews/wave-3.md`): hooks pass their shipped CLI to the daemon helper and Vitest is loaded from the project (D9, D11); Stop speaks only with news, waitMs capped at 1,500 ms, blocks only on current failures, SubagentStop unregisters, registration falls back to the first PostToolBatch, liveness in headers, PostToolBatch and Stop ensure the daemon on a stale heartbeat (D9); one non-throwing policy loader, bad policy is a state, reload on change (D11); per-user socket directory, recorded-socket probe, lock before store (D10); notes replace a daemon log (D12).
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
