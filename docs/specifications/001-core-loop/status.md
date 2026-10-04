@@ -16,6 +16,8 @@ Started: 2026-10-02
 
 - 2026-10-04, from wave 0 type review: added `test_file_keys` and `known_states` tables (D8), `skip` as a known outcome (D6), rule that `unknown` is never stored under a content key (D8).
 
+- 2026-10-04, from the wave 1 review (`reviews/wave-1.md`): closures include absent resolution candidates and the snapshot path (D3); policy inputs are closure inputs only (D3); full invalidation on add or delete and duplicate-name suffix rule (D4); lockfile and generated closure files watched, no keying with untracked paths (D2); checkpoints table, last-used eviction, text-exact failure dedupe, check retirement (D8, D7); unattributed unhandled error is a crash, timeout keeps completed files (D12).
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
