@@ -1,14 +1,18 @@
 import { formatDelta, formatRegistration } from "../../../core/delivery/index.js";
+import { ensureIfStale } from "../ensure.js";
 import { additionalContext, type Handler, isRegistered, withContext } from "../hook.js";
 
 /**
  * PostToolBatch (D9), the primary push channel: the consumer's delta, or
  * nothing. A consumer without a registration (the store did not exist yet at
  * SessionStart, or the registration expired) is registered here instead, so
- * it never waits silently for a SessionStart that will not come again.
+ * it never waits silently for a SessionStart that will not come again. A
+ * heartbeat older than two intervals restarts the daemon (review wave 3,
+ * S2); the delta then says no daemon is validating, once.
  */
 export const postToolBatch: Handler = (input, location, deps) =>
   withContext(input, location, deps, async (context) => {
+    await ensureIfStale(context, deps);
     if (!isRegistered(context)) {
       const registration = await context.delivery.register(context.consumer);
       return additionalContext(input, formatRegistration(registration));

@@ -57,6 +57,13 @@ export interface StatusHeader {
   readonly counts: ValidityCounts;
   readonly testFilesWithoutChecks: TestFileCounts;
   readonly fullSuite: FullSuiteState;
+  /**
+   * Whether a daemon is validating, from the heartbeat in `worktrees.daemon`.
+   * Spec 001 D9 and review wave 3, S2: delivered text says when no daemon is
+   * validating. Set on every header delivery and status build; absent only
+   * from the bare store reader `readHeader`.
+   */
+  readonly daemon?: DaemonLiveness;
 }
 
 /**

@@ -1,6 +1,7 @@
 /** Claude Code adapter: hook handlers behind the plugin in plugins/claude-code (spec 001 D9). Task 001-31. */
+
+export { SOCKET_TIMEOUT_MS, SPAWN_SETTLE_MS } from "./ensure.js";
 export { HOOK_TIMEOUT_MS, type HookDeps, type HookOutcome } from "./hook.js";
-export { SOCKET_TIMEOUT_MS } from "./hooks/session-start.js";
 export { STOP_MARGIN_MS, STOP_WAIT_CAP_MS, stopBusyTimeoutMs } from "./hooks/stop.js";
 export {
   isInteractive,

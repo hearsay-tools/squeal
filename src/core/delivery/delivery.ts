@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { baselineFindings, readHeader, toKnownFailure } from "../state/index.js";
+import { baselineFindings, toKnownFailure } from "../state/index.js";
 import {
   CONSUMER_EXPIRY_MS,
   type Consumer,
@@ -13,6 +13,7 @@ import {
   type Store,
 } from "../types/index.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
+import { daemonLiveness, readLiveHeader, tellLiveness, toldLiveness } from "./liveness.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -59,22 +60,33 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     return kinds === null ? full : restrictPlan(full, kinds);
   }
 
+  /** The daemon's liveness when it differs from what `consumer` was told, else `null`. */
+  function livenessChange(consumer: Consumer, at: EpochMs) {
+    const live = daemonLiveness(store.worktrees.get(consumer.worktreeId)?.daemon ?? null, at);
+    return live.state === toldLiveness(store, consumer) ? null : live;
+  }
+
   /**
    * Reads the delta, writes the view and returns the delta, in one
    * transaction. `heardFrom` records the consumer as seen even when nothing
    * is delivered; a waiter's empty polls do not count. `kinds` limits the
-   * delivery to entries of those kinds (`peek`).
+   * delivery to entries of those kinds (`peek`). `liveness` includes a
+   * change of daemon liveness: tool boundaries only, since a peek is for
+   * regressions and waking an idle agent to say the daemon stopped helps no
+   * one (review wave 3, S2).
    */
   function deliver(
     consumer: Consumer,
     heardFrom: boolean,
     kinds: ReadonlySet<DeltaKind> | null = null,
+    liveness = false,
   ): Delta | null {
     if (!heardFrom) {
       // Read-only first: an idle waiter takes no write lock until there is something to write.
       if (store.consumers.get(consumer) === null) return null;
       const states = store.knownStates.list(consumer.worktreeId);
-      if (isEmpty(plan(consumer, states, now(), kinds))) return null;
+      const quiet = !liveness || livenessChange(consumer, now()) === null;
+      if (quiet && isEmpty(plan(consumer, states, now(), kinds))) return null;
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
@@ -83,15 +95,22 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const delta = plan(consumer, states, at, kinds);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const delivered = delta.entries.length > 0;
+      const changed = liveness ? livenessChange(consumer, at) : null;
+      if (changed !== null) tellLiveness(store, consumer, changed.state);
+      const delivered = delta.entries.length > 0 || changed !== null;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) return null;
+      const label =
+        delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
+          ? "baseline"
+          : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
-        header: readHeader(store, consumer.worktreeId, states),
-        label: delta.entries.every(isBaselineEntry) ? "baseline" : "transitions",
+        header: readLiveHeader(store, consumer.worktreeId, at, states),
+        label,
         entries: delta.entries,
+        ...(changed === null ? {} : { liveness: changed }),
       };
     });
   }
@@ -106,7 +125,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           consumer,
           states.map((s) => toView(s, at)),
         );
-        const header = readHeader(store, consumer.worktreeId, states);
+        const header = readLiveHeader(store, consumer.worktreeId, at, states);
+        tellLiveness(store, consumer, header.daemon?.state ?? null);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
@@ -116,10 +136,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       }),
 
     unregister: async (consumer) => {
-      store.transaction(() => store.consumers.unregister(consumer));
+      store.transaction(() => {
+        store.consumers.unregister(consumer);
+        tellLiveness(store, consumer, null);
+      });
     },
 
-    onToolBoundary: async (consumer) => deliver(consumer, true),
+    onToolBoundary: async (consumer) => deliver(consumer, true, null, true),
 
     peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
 

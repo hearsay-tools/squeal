@@ -14,7 +14,7 @@ import type {
   TransitionKind,
   Validity,
 } from "./state.js";
-import type { KnownFailure, StatusHeader, StatusResult } from "./status.js";
+import type { DaemonLiveness, KnownFailure, StatusHeader, StatusResult } from "./status.js";
 
 /** Agent id of a session's main agent. */
 export const MAIN_AGENT = "main";
@@ -119,8 +119,18 @@ export interface Delta {
   readonly header: StatusHeader;
   /** `baseline` when every entry is a baseline finding, else `transitions`. */
   readonly label: "transitions" | "baseline";
-  /** Never empty: an empty delta is `null` at the call site. */
+  /**
+   * Empty only when `liveness` is set: a delta with nothing to say is `null`
+   * at the call site.
+   */
   readonly entries: readonly DeltaEntry[];
+  /**
+   * Set when daemon liveness changed since this consumer was last told; the
+   * same value as `header.daemon`. Spec 001 D9 and review wave 3, S2: the
+   * header line is delivered once per consumer when liveness changes.
+   * Tool-boundary deliveries only; a peek and the idle waiter leave it.
+   */
+  readonly liveness?: DaemonLiveness;
 }
 
 /**

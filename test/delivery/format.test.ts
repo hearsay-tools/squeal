@@ -272,6 +272,52 @@ describe("formatDelta", () => {
   });
 });
 
+describe("daemon liveness in the header (review wave 3, S2)", () => {
+  const since = Date.UTC(2026, 9, 4, 14, 2, 0);
+  const down = { ...header, daemon: { state: "down" as const, since } };
+
+  it("says nothing while a daemon validates", () => {
+    const alive = { ...header, daemon: { state: "alive" as const, lastHeartbeatAt: since } };
+    expect(formatDelta({ ...delta([regression]), header: alive })).toBe(
+      formatDelta(delta([regression])),
+    );
+  });
+
+  it("states since when no daemon has validated and which revision the results are as of", () => {
+    const text = formatRegistration({
+      schemaVersion: 1,
+      consumer,
+      header: down,
+      knownFailures: [],
+    });
+    expect(text.split("\n")[1]).toBe(
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
+        "Full suite: not completed at revision 184, last completed at revision 170. " +
+        "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
+    );
+  });
+
+  it("states a daemon that never recorded a heartbeat as none running", () => {
+    const none = { ...header, daemon: { state: "down" as const, since: null } };
+    expect(formatDelta({ ...delta([regression]), header: none })).toContain(
+      " No daemon is running; results are as of revision 184.",
+    );
+  });
+
+  it("titles a delta that carries only a liveness change", () => {
+    expect(formatDelta({ ...delta([]), header: down, liveness: down.daemon })).toBe(
+      "SQUEAL · no daemon is validating at revision 184\n" +
+        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
+        "Full suite: not completed at revision 184, last completed at revision 170. " +
+        "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
+    );
+    const alive = { state: "alive" as const, lastHeartbeatAt: since };
+    expect(
+      formatDelta({ ...delta([]), header: { ...header, daemon: alive }, liveness: alive }),
+    ).toMatch(/^SQUEAL · a daemon is validating again at revision 184\nRevision 184: /);
+  });
+});
+
 describe("formatRegistration", () => {
   const registration = (knownFailures: KnownFailure[]): Registration => ({
     schemaVersion: 1,
@@ -343,6 +389,20 @@ describe("wording", () => {
     formatDelta(delta(many)),
     formatRegistration({ schemaVersion: 1, consumer, header, knownFailures: [] }),
     formatRegistration({ schemaVersion: 1, consumer, header, knownFailures: failures }),
+    formatDelta({
+      ...delta([]),
+      header: { ...header, daemon: { state: "down", since: 1 } },
+      liveness: { state: "down", since: 1 },
+    }),
+    formatDelta({
+      ...delta([regression]),
+      header: { ...header, daemon: { state: "down", since: null } },
+    }),
+    formatDelta({
+      ...delta([]),
+      header: { ...header, daemon: { state: "alive", lastHeartbeatAt: 1 } },
+      liveness: { state: "alive", lastHeartbeatAt: 1 },
+    }),
   ];
   // Summaries are runner text, quoted as is; only Squeal's own wording is checked.
   const quoted = new Set(

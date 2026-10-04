@@ -8973,6 +8973,16 @@ init_types();
 // src/core/delivery/delta.ts
 init_state();
 
+// src/core/delivery/liveness.ts
+init_state();
+function daemonLiveness(record, now) {
+  if (record === null) return { state: "down", since: null };
+  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
+    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
+  }
+  return { state: "down", since: record.heartbeatAt };
+}
+
 // src/core/delivery/delivery.ts
 function expireConsumers(store, now = Date.now()) {
   return store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS));
@@ -9901,17 +9911,6 @@ async function ended(root, socketPath, id) {
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
 import { existsSync as existsSync10 } from "node:fs";
-
-// src/core/delivery/liveness.ts
-function daemonLiveness(record, now) {
-  if (record === null) return { state: "down", since: null };
-  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
-    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
-  }
-  return { state: "down", since: record.heartbeatAt };
-}
-
-// src/core/daemon/ensure.ts
 init_open();
 init_paths2();
 init_types();

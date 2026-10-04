@@ -5,7 +5,9 @@ description: Use before claiming a coding task is complete, done or passing in a
 
 # Squeal
 
-Squeal runs the project's Vitest tests in the background while you edit. It reports only changes: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. Those reports arrive as system reminders that start with `SQUEAL ·`, after a tool call or when you are idle. No report means nothing changed. It does not mean everything passes.
+Squeal runs the project's Vitest tests in the background while you edit. It reports only changes: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. Those reports arrive as system reminders that start with `SQUEAL ·`, after a tool call or when you are idle. No report means nothing changed while a daemon validates. It does not mean everything passes.
+
+A header that says `No daemon has validated since <time>` (or `No daemon is running`) means nothing is being validated: the results are as of the revision it names, and no report will come until a daemon runs again. The hooks start one; `squeal status` shows whether it is back. A report says once when the daemon stops and once when it validates again.
 
 You do not need to run the test suite yourself to learn the state. Pull it.
 
@@ -64,7 +66,7 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `interrupt.onRegression` | `true` | Deny one edit when a check newly fails. |
-| `stop.blockOnKnownFailures` | `false` | Keep the agent going at Stop while known failures exist. Blocks once per stop. |
+| `stop.blockOnKnownFailures` | `false` | Keep the agent going at Stop while failures exist at the current revision. Failures whose re-run is still pending are named as pending, with the revision they last failed at, and do not block. Blocks once per stop. |
 | `stop.requireFullSuite` | `false` | Keep the agent going at Stop until a full-suite run completed at the current revision. Blocks once per stop. |
 | `stop.waitMs` | `0` | At Stop, wait this long for pending checks of the current revision. Capped at 1500 ms by the 2 s hook timeout. |
 | `baseline.onStart` | `"lookup-then-run-missing"` | On daemon start, reuse stored results and run the rest, or `"lookup-only"`. |
