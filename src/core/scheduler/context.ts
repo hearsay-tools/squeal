@@ -3,6 +3,7 @@ import type { HeadState } from "../revision/index.js";
 import type {
   AbsolutePath,
   EpochMs,
+  FileChange,
   Policy,
   RelativePath,
   RunnerAdapter,
@@ -21,7 +22,10 @@ export interface SchedulerContext {
   readonly store: Store;
   readonly runner: RunnerAdapter;
   readonly sink: StateSink;
-  readonly policy: Policy;
+  /** Replaced when a revision reloads it (`reloadPolicy`). */
+  policy: Policy;
+  /** `SchedulerOptions.reloadPolicy`; `null` keeps the policy. */
+  readonly reloadPolicy: (changes: readonly FileChange[]) => Policy | null;
   readonly keys: WorktreeKeys;
   readonly hasher: Hasher;
   /** `<store>/runs`; each run logs to `<runsDir>/<run-id>` (D1). */

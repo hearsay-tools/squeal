@@ -60,7 +60,7 @@ const PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
 export class WorktreeKeys {
   readonly cache: StatCache;
   readonly index: KeyIndex;
-  readonly isDeclaredInput: (path: RelativePath) => boolean;
+  readonly isDeclaredInput = (path: RelativePath): boolean => this.#isDeclared(path);
   readonly #runnerClosures = new Map<string, RunnerClosure>();
   readonly #environments = new Map<ProjectName, RunnerEnvironment>();
   readonly #environmentFiles = new Set<RelativePath>();
@@ -70,12 +70,15 @@ export class WorktreeKeys {
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
   #declared: RelativePath[] = [];
+  #policy: Policy;
+  #isDeclared: (path: RelativePath) => boolean;
 
   constructor(private readonly options: KeyingOptions) {
+    this.#policy = options.policy;
+    this.#isDeclared = createInputMatcher(options.policy.inputs);
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
     this.#lockfiles = new Lockfiles(options.root);
     this.index = new KeyIndex((path) => this.cache.hashOf(path));
-    this.isDeclaredInput = createInputMatcher(options.policy.inputs);
   }
 
   /**
@@ -105,7 +108,7 @@ export class WorktreeKeys {
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
     for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
     await this.#seed(listed.filter((path) => this.cache.hashOf(path) === undefined));
-    this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
+    this.#declared = selectDeclaredInputs(this.#policy.inputs, this.#knownFiles());
     return revision;
   }
 
@@ -121,7 +124,8 @@ export class WorktreeKeys {
    * lockfile is looked up from the project's root (review N8).
    */
   async setEnvironments(environments: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
-    const { policy, squealVersion, env } = this.options;
+    const { squealVersion, env } = this.options;
+    const policy = this.#policy;
     this.#environments.clear();
     this.#environmentFiles.clear();
     for (const environment of environments) {
@@ -162,12 +166,43 @@ export class WorktreeKeys {
         inputs.set(project, [...(inputs.get(project) ?? []), [change.path, change.newHash]]);
       }
     }
-    return [...inputs].flatMap(([project, changed]) => {
-      const previous = this.index.environment(project);
-      if (previous === undefined) return [];
-      const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
-      return this.index.setEnvironment(project, createHash("sha256").update(encoded).digest("hex"));
-    });
+    return [...inputs].flatMap(([project, changed]) => this.#provisional(project, changed));
+  }
+
+  /** A provisional environment hash for `project` from its current one and what changed. */
+  #provisional(project: ProjectName, changed: unknown): KeyChange[] {
+    const previous = this.index.environment(project);
+    if (previous === undefined) return [];
+    const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
+    return this.index.setEnvironment(project, createHash("sha256").update(encoded).digest("hex"));
+  }
+
+  /**
+   * Applies a reloaded policy (spec 001 D11, review S3). New `inputs`:
+   * declared inputs are selected again and every closure re-assembled with
+   * them. A new `env.allowlist`: every environment hash moves to a
+   * provisional one in this call, so no key keeps a result of the old
+   * environment; `environment: true` asks the caller to read the
+   * environments again, which sets the real hash with the new allowlist.
+   */
+  setPolicy(policy: Policy): { changes: KeyChange[]; environment: boolean } {
+    const previous = this.#policy;
+    this.#policy = policy;
+    const changes: KeyChange[] = [];
+    if (!sameList(previous.inputs, policy.inputs)) {
+      this.#isDeclared = createInputMatcher(policy.inputs);
+      this.#declared = selectDeclaredInputs(policy.inputs, this.#knownFiles());
+      changes.push(
+        ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
+      );
+    }
+    const environment = !sameList(previous.env.allowlist, policy.env.allowlist);
+    if (environment) {
+      for (const project of this.#environments.keys()) {
+        changes.push(...this.#provisional(project, [["env.allowlist", policy.env.allowlist]]));
+      }
+    }
+    return { changes, environment };
   }
 
   /**
@@ -214,7 +249,7 @@ export class WorktreeKeys {
       (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path),
     );
     if (!structural) return null;
-    this.#declared = selectDeclaredInputs(this.options.policy.inputs, this.#knownFiles());
+    this.#declared = selectDeclaredInputs(this.#policy.inputs, this.#knownFiles());
     return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
   }
 
@@ -284,4 +319,8 @@ export class WorktreeKeys {
   #knownFiles(): RelativePath[] {
     return [...this.cache.paths(), ...this.#extra];
   }
+}
+
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, i) => value === b[i]);
 }
