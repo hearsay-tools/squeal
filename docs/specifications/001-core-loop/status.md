@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: in-progress (approved 2026-10-04; wave 0 done, wave 1 running)
+Stage: in-progress (waves 0 to 4 done; dogfooding in `lessons.md`; goal 3 open on revision lag, see lessons Defects 1 and 3)
 Started: 2026-10-02
 
 ## Decisions so far
