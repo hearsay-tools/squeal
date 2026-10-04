@@ -91,6 +91,13 @@ export interface ResultRepo {
   checksForKey(key: CheckKey): readonly CheckId[];
   latestForCheck(check: CheckId): ResultRecord | null;
   /**
+   * Results of one check under any key, from every worktree, newest first by
+   * record time, at most `limit`. Read only: never advances the last-used
+   * time. Spec 001 D7: "`squeal why <check>` prints the full history and
+   * provenance of one check".
+   */
+  listForCheck(check: CheckId, limit: number): readonly ResultRecord[];
+  /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
    * `provenance.recordedAt`.

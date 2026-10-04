@@ -58,6 +58,18 @@ export function createResultRepo(conn: Connection): ResultRepo {
       );
       return row === null ? null : toResult(row);
     },
+    listForCheck: (check, limit) => {
+      const id = findCheckId(conn, check);
+      if (id === null) return [];
+      return conn
+        .all(
+          `${SELECT_RESULTS} WHERE r.check_id = ?
+           ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
+          id,
+          limit,
+        )
+        .map(toResult);
+    },
     putMany: (records) =>
       conn.transaction(() => {
         for (const r of records) {

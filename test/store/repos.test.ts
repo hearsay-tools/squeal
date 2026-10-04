@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { connectionOf } from "../../src/core/store/store.js";
 import type {
   CheckRecord,
   Consumer,
@@ -243,6 +244,31 @@ describe("results", () => {
     ]);
     expect(store.results.latestForCheck(check)?.key).toBe("new");
     expect(store.results.latestForCheck(testCheck("none"))).toBeNull();
+  });
+
+  it("lists the results of a check across keys and worktrees, newest first, read only", () => {
+    const store = open(fakeCommonDir());
+    const check = testCheck("one");
+    store.results.putMany([
+      result(check, "old", { recordedAt: 1, worktreeId: "wt-a" }),
+      result(check, "new", { recordedAt: 3, worktreeId: "wt-b" }),
+      result(check, "mid", { recordedAt: 2, worktreeId: "wt-a", outcome: "fail" }),
+      result(testCheck("other"), "new", { recordedAt: 9 }),
+    ]);
+    const lastUsed = () =>
+      connectionOf(store).all("SELECT key, last_used_at FROM results ORDER BY key, check_id");
+    const before = lastUsed();
+
+    const listed = store.results.listForCheck(check, 10);
+    expect(listed.map((r) => [r.key, r.provenance.worktreeId, r.outcome])).toEqual([
+      ["new", "wt-b", "pass"],
+      ["mid", "wt-a", "fail"],
+      ["old", "wt-a", "pass"],
+    ]);
+    expect(listed[1]?.summary).toBe("expected 1 to be 2");
+    expect(store.results.listForCheck(check, 2).map((r) => r.key)).toEqual(["new", "mid"]);
+    expect(store.results.listForCheck(testCheck("none"), 10)).toEqual([]);
+    expect(lastUsed()).toEqual(before);
   });
 
   it("lists the checks stored under a key, without other keys' checks", () => {
