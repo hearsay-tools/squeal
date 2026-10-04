@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatCheck } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { expectAgrees } from "./agree.js";
 import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, SLOW, until } from "./harness.js";
@@ -15,8 +16,7 @@ const ADDS = "test/math.test.ts > math > adds";
 const MULTIPLIES = "test/math.test.ts > math > multiplies";
 const SLOWLY = "test/slow.test.ts > doubles slowly";
 
-const names = (s: StatusSnapshot) =>
-  s.knownFailures.map((f) => `${f.check.testPath} > ${f.check.fullName}`);
+const names = (s: StatusSnapshot) => s.knownFailures.map((f) => formatCheck(f.check));
 const failingOnly =
   (...expected: string[]) =>
   (s: StatusSnapshot) =>
