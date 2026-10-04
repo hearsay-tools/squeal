@@ -2192,7 +2192,7 @@ var stop = (input, location2, deps) => withContext(input, location2, deps, async
   const wait = Math.min(policy.waitMs, STOP_WAIT_CAP_MS);
   if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
   const { store, consumer } = context;
-  const text = await deliveryText(context);
+  const news = await newsText(context);
   const states = store.knownStates.list(consumer.worktreeId);
   const header = readHeader(store, consumer.worktreeId, states);
   const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
@@ -2206,20 +2206,22 @@ var stop = (input, location2, deps) => withContext(input, location2, deps, async
     }
   }
   if (reasons.length > 0) {
+    const text = news ?? statusText(consumer, header, failures.length);
     return { output: { decision: "block", reason: `${reasons.join("\n")}
 
 ${text}` } };
   }
-  return additionalContext(input, text);
+  return news === null ? null : additionalContext(input, news);
 });
-async function deliveryText(context) {
+async function newsText(context) {
   const { store, delivery, consumer } = context;
-  if (!isRegistered(context)) return formatRegistration(await delivery.register(consumer));
+  if (!isRegistered(context)) {
+    const registration = await delivery.register(consumer);
+    return registration.knownFailures.length > 0 ? formatRegistration(registration) : null;
+  }
   const delta = await delivery.onToolBoundary(consumer);
-  const states = store.knownStates.list(consumer.worktreeId);
-  const header = readHeader(store, consumer.worktreeId, states);
-  const failures = states.filter((s) => s.outcome === "fail").length;
-  if (delta === null) return statusText(consumer, header, failures);
+  if (delta === null) return null;
+  const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail").length;
   return `${formatDelta(delta)}
 ${knownFailuresLine(failures)}`;
 }
