@@ -110,6 +110,9 @@ export class VitestAdapter implements RunnerAdapter {
         // An add or delete can change how any import resolves, and Vite keeps
         // an unresolvable specifier verbatim in its cached transform. Drop
         // every cached transform so the next walk or run resolves afresh.
+        // Spec 001 D4 records this; the cold walk it costs on the next
+        // affected() (research: 100 to 400 ms per 50 files) is a dogfooding
+        // measurement (review N1).
         invalidateAll(vitest);
         const testGlob = structural.some((p) =>
           vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),

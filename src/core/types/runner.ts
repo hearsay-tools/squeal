@@ -4,11 +4,12 @@ import type { TestFileRef } from "./keys.js";
 
 /**
  * A changed path handed to the runner. The kind tells the adapter whether
- * specification caches must be cleared.
+ * cached transforms and specification caches must be dropped.
  *
- * Spec 001 D4: "`invalidate(paths)`: calls `invalidateFile` for each path;
- * calls `clearSpecificationsCache()` when a path matching a test glob was
- * added or removed".
+ * Spec 001 D4: "`invalidate(paths)`: calls `invalidateFile` for each changed
+ * path; on any add or delete invalidates every cached transform [...]; calls
+ * `clearSpecificationsCache()` when a path matching a test glob was added or
+ * removed".
  */
 export interface InvalidatedPath {
   readonly path: RelativePath;
@@ -66,7 +67,8 @@ export interface RunnerEnvironment {
 }
 
 /**
- * One check found statically, before the file has run.
+ * One check found statically, before the file has run. `check.fullName`
+ * carries the same line suffix for duplicate names as a run result (D4).
  *
  * Spec 001 D4: "`enumerate(testFile) -> check ids`: `parseSpecifications`,
  * static [...]. `test.each` appears as one templated entry until the file has
