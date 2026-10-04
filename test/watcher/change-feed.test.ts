@@ -113,6 +113,49 @@ describe("ChangeFeed", () => {
     await waitFor(() => watchBatchWith("src/moved/b.ts") && watchBatchWith("src/moved/new.ts"));
   });
 
+  it("ends a rename storm with the candidate set matching the disk", async () => {
+    const count = 200;
+    const name = (i: number, suffix: string) => `src/storm/f${i}${suffix}.ts`;
+    for (let i = 0; i < count; i++) write(root, name(i, ""), `file ${i}\n`);
+    const onDisk = () =>
+      git(root, "ls-files", "--cached", "--others", "--exclude-standard", "--deduplicate")
+        .split("\n")
+        .filter((p) => p !== "" && existsSync(join(root, p)))
+        .sort();
+    // What a consumer of the batches knows: the latest stat per path. The
+    // stat cache it stands for is also what the feed reads as tracked paths.
+    const known = new Map<string, boolean>(onDisk().map((p) => [p, true]));
+    const present = () => [...known].filter(([, exists]) => exists).map(([p]) => p);
+    tracked = present();
+    onBatch = (batch) => {
+      for (const p of batch.paths) known.set(p.path, p.stat !== null);
+      tracked = present();
+      log.push(batch);
+    };
+    const expectReportedToMatchDisk = async () => {
+      const disk = onDisk();
+      const reported = () => present().sort();
+      await waitFor(() => reported().join("\n") === disk.join("\n"), 10_000).catch(() => {});
+      expect(reported()).toEqual(disk);
+    };
+    await startFeed();
+
+    const move = (from: string, to: string) => renameSync(join(root, from), join(root, to));
+    for (let round = 0; round < 5; round++) {
+      for (let i = 0; i < count; i++) move(name(i, ""), name(i, ".swap"));
+      for (let i = 0; i < count; i++) move(name(i, ".swap"), name(i, ""));
+    }
+    for (let i = 0; i < count; i += 2) move(name(i, ""), name(i, ".final"));
+    // Checked before the directory rename, which reports every path under the old directory as gone.
+    await expectReportedToMatchDisk();
+    expect(onDisk().filter((p) => p.endsWith(".final.ts"))).toHaveLength(count / 2);
+
+    move("src/storm", "src/stormed");
+    await expectReportedToMatchDisk();
+    expect(onDisk().filter((p) => p.startsWith("src/stormed/"))).toHaveLength(count);
+    expect(log.batches.filter((b) => b.trigger !== "start" && b.trigger !== "watch")).toEqual([]);
+  });
+
   it("produces no candidates from inside a nested worktree once its .git entry exists", async () => {
     const wt = join(root, "wt");
     // A branch without .gitignore, so only the .git entry can trigger the rebuild.
