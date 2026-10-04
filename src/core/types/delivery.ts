@@ -132,6 +132,11 @@ export interface Registration {
   readonly knownFailures: readonly KnownFailure[];
 }
 
+export interface PeekOptions {
+  /** Kinds to return and mark delivered, e.g. `REGRESSION_KINDS`. */
+  readonly kinds: readonly DeltaKind[];
+}
+
 export interface WaitOptions {
   /** Silent expiry. Spec 001 D9: "Its `timeout` is explicit and long; expiry is silent". */
   readonly timeoutMs: number;
@@ -159,6 +164,17 @@ export interface HarnessDelivery {
    * two deliveries produces nothing."
    */
   onToolBoundary(consumer: Consumer): Promise<Delta | null>;
+
+  /**
+   * Like `onToolBoundary`, restricted to entries of `options.kinds`: only
+   * those are returned and written into the view, every other difference
+   * stays for the next delivery. `null` when none is notable.
+   *
+   * Spec 001 D9, PreToolUse: "The hook reads regressions through a peek that
+   * marks only those entries delivered, so recoveries are not consumed by a
+   * denial and the same regression never denies twice."
+   */
+  peek(consumer: Consumer, options: PeekOptions): Promise<Delta | null>;
 
   /** Resolves with the first non-empty delta, or `null` on timeout or abort. */
   waitForDelta(consumer: Consumer, options: WaitOptions): Promise<Delta | null>;
