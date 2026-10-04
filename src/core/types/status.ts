@@ -123,8 +123,13 @@ export interface StatusSnapshot extends StatusHeader {
   readonly available: true;
   readonly worktreeId: WorktreeId;
   readonly worktreeRoot: AbsolutePath;
+  /** From the latest revision; read from the git dir while none is recorded. */
   readonly head: CommitSha;
-  readonly dirty: boolean;
+  /**
+   * From the latest revision; `null` while none is recorded: dirtiness needs
+   * git, and status never spawns it.
+   */
+  readonly dirty: boolean | null;
   readonly daemon: DaemonLiveness;
   /** Failures first: the list is the reason status exists. */
   readonly knownFailures: readonly KnownFailure[];
