@@ -40,6 +40,19 @@ describe("vitest adapter: edge cases", SLOW, () => {
     expect(report.fileErrors[0]?.errors[0]?.message).toBe("late boom");
   });
 
+  it("runs nothing for an empty list", async () => {
+    const fx = await openFixture();
+    const report = await fx.adapter.run([], fx.runOptions());
+    expect(report).toEqual({
+      end: "completed",
+      durationMs: 0,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: null,
+    });
+  });
+
   it("rejects calls after close()", async () => {
     const fx = await openFixture();
     await fx.adapter.close();
