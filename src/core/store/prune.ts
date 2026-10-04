@@ -12,7 +12,8 @@ const EVICTION_BATCH = 32;
  * Spec 001 D8: "keep every result whose key is current in any live worktree
  * plus the newest result per check on the main worktree; drop other keys
  * after 7 days and everything owned by removed worktrees; a size cap with LRU
- * eviction as a backstop."
+ * eviction as a backstop [...]; drop `checks` rows that no result, known
+ * state, view or transition references."
  *
  * A live worktree is a `worktrees` row whose root still has a `.git` entry.
  */
@@ -81,10 +82,19 @@ export function prune(
   );
   for (const row of droppedRuns) removeRunLog(paths, str(row, "log_dir"));
 
+  const checksRemoved = conn.transaction(() =>
+    conn.run(
+      `DELETE FROM checks WHERE id NOT IN (
+         SELECT check_id FROM results UNION SELECT check_id FROM known_states
+         UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
+    ),
+  );
+
   conn.db.exec("PRAGMA incremental_vacuum");
   return {
     resultsRemoved,
     runsRemoved: droppedRuns.length,
+    checksRemoved,
     worktreesRemoved,
     bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size"),
   };

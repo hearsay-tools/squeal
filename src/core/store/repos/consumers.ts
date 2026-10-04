@@ -9,6 +9,7 @@ import {
   CHECK_COLUMNS,
   checkFrom,
   ensureCheckId,
+  findCheckId,
   num,
   numOrNull,
   oneOf,
@@ -128,6 +129,18 @@ export function createViewRepo(conn: Connection): ViewRepo {
             e.outcome,
             e.fingerprint,
             e.toldAt,
+          );
+        }
+      }),
+    removeMany: (consumer, checks) =>
+      conn.transaction(() => {
+        for (const check of checks) {
+          const id = findCheckId(conn, check);
+          if (id === null) continue;
+          conn.run(
+            `DELETE FROM consumer_views WHERE ${WHERE_CONSUMER} AND check_id = ?`,
+            ...consumerParams(consumer),
+            id,
           );
         }
       }),

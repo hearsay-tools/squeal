@@ -77,6 +77,12 @@ export interface ResultRepo {
    * provenance intact."
    */
   byKey(key: CheckKey): readonly ResultRecord[];
+  /**
+   * The checks with a result under a key, sorted. Spec 001 D8: "the
+   * file-level error expansion uses the checks of the file's previous key,
+   * never every check ever seen."
+   */
+  checksForKey(key: CheckKey): readonly CheckId[];
   latestForCheck(check: CheckId): ResultRecord | null;
   /** Spec 001 D5: "A result is stored only under a key whose inputs were stable for the whole run." */
   putMany(records: readonly ResultRecord[]): void;
@@ -99,6 +105,11 @@ export interface KnownStateRepo {
   list(worktreeId: WorktreeId): readonly KnownState[];
   get(worktreeId: WorktreeId, check: CheckId): KnownState | null;
   upsertMany(states: readonly KnownState[]): void;
+  /**
+   * Spec 001 D8: "Checks that disappear from a test file are retired from
+   * `known_states` and every consumer view". Unknown checks are ignored.
+   */
+  removeMany(worktreeId: WorktreeId, checks: readonly CheckId[]): void;
 }
 
 export interface TransitionRepo {
@@ -122,6 +133,8 @@ export interface ViewRepo {
   list(consumer: Consumer): readonly ViewEntry[];
   /** Replaces the given checks' entries. Run in the same transaction as the delta read. */
   writeMany(consumer: Consumer, entries: readonly ViewEntry[]): void;
+  /** Retires checks from this consumer's view; see `KnownStateRepo.removeMany`. */
+  removeMany(consumer: Consumer, checks: readonly CheckId[]): void;
 }
 
 /** Spec 001 D8: "`meta`". Free-form key-value data such as notes for status. */
@@ -134,6 +147,8 @@ export interface MetaRepo {
 export interface PruneReport {
   readonly resultsRemoved: number;
   readonly runsRemoved: number;
+  /** `checks` rows no result, known state, view or transition referenced any more. */
+  readonly checksRemoved: number;
   readonly worktreesRemoved: number;
   readonly bytesAfter: number;
 }
