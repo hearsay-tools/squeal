@@ -17,7 +17,7 @@ import {
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
-const OUTCOMES = ["pass", "fail", "unknown"] as const;
+const OUTCOMES = ["pass", "fail", "skip", "unknown"] as const;
 const WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 
 function consumerParams(c: Consumer) {
