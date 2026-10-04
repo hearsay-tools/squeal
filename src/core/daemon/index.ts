@@ -9,7 +9,7 @@ export {
 export { daemonCliEntry, ensureDaemon, probeDaemon } from "./ensure.js";
 export { acquireDaemonLock, type DaemonLock } from "./lock.js";
 export { linkedWorktreeDir, runtimeDir, socketPathFor } from "./paths.js";
-export { loadPolicy, POLICY_FILE, PolicyError } from "./policy.js";
+export { loadPolicy, POLICY_FILE, readPolicy } from "./policy.js";
 export {
   createRecoveringRunner,
   type RecoveringRunner,

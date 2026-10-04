@@ -74,3 +74,13 @@ export const DEFAULT_POLICY: Policy = {
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };
+
+/**
+ * What the one policy loader returns (spec 001 D11, review S3): the policy
+ * with the defaults applied for every missing or bad key, and one line per
+ * unknown key or value of the wrong type. A missing file has no problems.
+ */
+export interface LoadedPolicy {
+  readonly policy: Policy;
+  readonly problems: readonly string[];
+}
