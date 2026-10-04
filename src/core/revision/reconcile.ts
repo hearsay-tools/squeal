@@ -1,4 +1,4 @@
-import { type Hasher, isRacy, type StatCache, sameStat } from "../hash/index.js";
+import { type Hasher, isRacy, mapConcurrent, type StatCache, sameStat } from "../hash/index.js";
 import { compare } from "../keys/closure.js";
 import type {
   CommitSha,
@@ -45,16 +45,14 @@ export async function diffCandidates(
   hasher: Hasher,
 ): Promise<{ changes: FileChange[]; updates: CacheUpdate[] }> {
   const paths = [...new Set(candidates)].sort(compare);
-  const observed = await Promise.all(
-    paths.map(async (path) => {
-      const cached = cache.get(path);
-      const stat = await hasher.stat(path);
-      if (stat && cached && sameStat(cached, stat) && !cache.isRacy(path)) return null;
-      const hashedAt = hasher.now();
-      const hash = stat ? await hasher.hash(path) : null;
-      return { path, cached, stat: hash === null ? null : stat, hash, hashedAt };
-    }),
-  );
+  const observed = await mapConcurrent(paths, async (path) => {
+    const cached = cache.get(path);
+    const stat = await hasher.stat(path);
+    if (stat && cached && sameStat(cached, stat) && !cache.isRacy(path)) return null;
+    const hashedAt = hasher.now();
+    const hash = stat ? await hasher.hash(path) : null;
+    return { path, cached, stat: hash === null ? null : stat, hash, hashedAt };
+  });
 
   const changes: FileChange[] = [];
   const updates: CacheUpdate[] = [];
