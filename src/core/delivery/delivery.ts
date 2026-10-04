@@ -53,6 +53,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
+      rootOf: (id) => store.worktrees.get(id)?.root ?? null,
       revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
     });
     return kinds === null ? full : restrictPlan(full, kinds);

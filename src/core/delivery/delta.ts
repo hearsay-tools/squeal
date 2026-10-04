@@ -1,5 +1,6 @@
 import { checkIdentity, transitionKind } from "../state/index.js";
 import type {
+  AbsolutePath,
   CheckId,
   DeltaEntry,
   DeltaKind,
@@ -8,6 +9,7 @@ import type {
   KnownState,
   RevisionNumber,
   ViewEntry,
+  WorktreeId,
 } from "../types/index.js";
 
 /** What one delivery tells a consumer and how its view changes. */
@@ -28,6 +30,8 @@ export interface PlanInput {
     fingerprint: DiagnosticFingerprint | null,
   ) => boolean;
   readonly toldAt: EpochMs;
+  /** Root of a registered worktree, for naming the origin of inherited results. */
+  readonly rootOf: (worktreeId: WorktreeId) => AbsolutePath | null;
   /** Current revision: `observedAt` of a retired entry and of a state never observed. */
   readonly revision: RevisionNumber;
 }
@@ -93,6 +97,8 @@ export function planDelta(input: PlanInput): DeltaPlan {
     if (kind === null) continue;
     const baseline =
       kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
+    const originRoot =
+      state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
     entries.push({
       check: state.check,
       kind,
@@ -101,6 +107,7 @@ export function planDelta(input: PlanInput): DeltaPlan {
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
       origin: state.origin ?? { kind: "own" },
+      ...(originRoot === null ? {} : { originRoot }),
       summary: state.summary,
       location: state.location,
       ...(baseline ? { baseline } : {}),

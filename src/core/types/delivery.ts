@@ -1,5 +1,6 @@
 import type { CheckId } from "./check.js";
 import type {
+  AbsolutePath,
   EpochMs,
   PayloadSchemaVersion,
   RevisionNumber,
@@ -60,6 +61,11 @@ export interface TransitionEntry {
   readonly validity: Validity;
   readonly observedAt: RevisionNumber;
   readonly origin: ResultOrigin;
+  /**
+   * Root of the worktree an inherited result came from, from the `worktrees`
+   * table. Absent for own results and when that worktree has no row.
+   */
+  readonly originRoot?: AbsolutePath;
   readonly summary: string | null;
   readonly location: SourceLocation | null;
   /**

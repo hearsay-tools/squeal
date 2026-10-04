@@ -151,6 +151,20 @@ describe("formatDelta", () => {
     ]);
   });
 
+  it("names an inherited result's worktree by its root when known", () => {
+    const inherited = entry({
+      kind: "first-seen-fail",
+      to: "fail",
+      origin: { kind: "inherited", worktreeId: "0123456789abcdef", commit: "0123456789abcdef0123" },
+    });
+    expect(formatDelta(delta([{ ...inherited, originRoot: "/repo/main" }]))).toContain(
+      "      inherited from /repo/main at commit 0123456789ab",
+    );
+    expect(formatDelta(delta([inherited]))).toContain(
+      "      inherited from worktree 0123456789abcdef at commit 0123456789ab",
+    );
+  });
+
   it("renders the project and file-level checks", () => {
     const text = formatDelta(
       delta([

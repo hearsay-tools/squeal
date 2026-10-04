@@ -100,6 +100,32 @@ describe("onToolBoundary", () => {
     expect(delta?.entries.map(baselineOf)).toEqual([undefined]);
   });
 
+  it("names the root of the worktree an inherited result came from", async () => {
+    store.worktrees.upsert({
+      id: OTHER,
+      root: "/repo/other",
+      commonDir: "/repo/.git",
+      isMain: false,
+      registeredAt: 1,
+      daemon: null,
+    });
+    const gone = "wt-gone";
+    await delivery.register(C1);
+    apply(
+      result(A, "fail", { worktreeId: OTHER, commit: "beef" }),
+      result(B, "fail", { worktreeId: gone, commit: "beef" }),
+    );
+    const delta = await delivery.onToolBoundary(C1);
+    expect(delta?.entries).toEqual([
+      expect.objectContaining({
+        check: A,
+        origin: { kind: "inherited", worktreeId: OTHER, commit: "beef" },
+        originRoot: "/repo/other",
+      }),
+      expect.not.objectContaining({ originRoot: expect.anything() }),
+    ]);
+  });
+
   it("stays silent for PASS -> PASS and for FAIL -> FAIL with the same fingerprint", async () => {
     apply(pass(), result(B, "fail"));
     await delivery.register(C1);
