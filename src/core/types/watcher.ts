@@ -1,4 +1,5 @@
-import type { AbsolutePath } from "./common.js";
+import type { AbsolutePath, RelativePath } from "./common.js";
+import type { RevisionTrigger } from "./revision.js";
 
 /**
  * Debounce and reconciliation timings.
@@ -75,4 +76,40 @@ export interface WatchSubscription {
 export interface WatcherBackend {
   readonly name: "chokidar" | "parcel";
   watch(spec: WatchSpec, listener: WatchListener): Promise<WatchSubscription>;
+}
+
+/**
+ * `lstat` data of one path, as the stat cache records it. Symlinks are
+ * described, not followed, matching what git records in its index.
+ *
+ * Spec 001 D3: "a stat cache `path -> (mtime, ctime, size, inode, hash)`".
+ * Same fields as `FileHashRecord` without `path` and `hash`.
+ */
+export interface FileStat {
+  readonly mtimeMs: number;
+  readonly ctimeMs: number;
+  readonly size: number;
+  readonly inode: number;
+}
+
+/** One path that may have changed. `stat` is `null` when the path does not exist. */
+export interface CandidatePath {
+  readonly path: RelativePath;
+  readonly stat: FileStat | null;
+}
+
+/**
+ * Paths that may have changed, after ignore filtering and before hashing.
+ * The revision task (001-11) compares each stat with the stat cache, hashes
+ * what differs, and creates a revision only when a hash changed.
+ *
+ * Spec 001 D2: "Watcher events are hints. Each debounced batch [...] is
+ * reconciled: every reported path is re-stat'ed and, if `mtime`, `size` or
+ * inode changed, re-hashed". Only files and symlinks appear; directories are
+ * expanded into the files under them.
+ */
+export interface CandidateBatch {
+  readonly trigger: RevisionTrigger;
+  /** Sorted, unique. Empty only for reconciliation batches, which are always emitted. */
+  readonly paths: readonly CandidatePath[];
 }
