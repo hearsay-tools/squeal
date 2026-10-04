@@ -1,0 +1,3 @@
+#!/bin/sh
+# The Squeal CLI on the Bash tool's PATH (spec 001 D9): the bundle beside this plugin.
+exec node --disable-warning=ExperimentalWarning "$(dirname "$0")/../dist/cli/squeal.mjs" "$@"

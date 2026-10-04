@@ -1,0 +1,12 @@
+{
+  "name": "squeal",
+  "description": "The Squeal plugin for Claude Code.",
+  "owner": { "name": "Hearsay" },
+  "plugins": [
+    {
+      "name": "squeal",
+      "source": ".",
+      "description": "Continuous validation for coding agents: test transitions at tool boundaries, honest status on demand."
+    }
+  ]
+}
