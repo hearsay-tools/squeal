@@ -3,7 +3,16 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/index.js";
 import type { CheckError, Store } from "../../src/core/types/index.js";
-import { DAY_MS, fakeCommonDir, open, result, tempDir, testCheck, worktree } from "./helpers.js";
+import {
+  DAY_MS,
+  fakeCommonDir,
+  knownState,
+  open,
+  result,
+  tempDir,
+  testCheck,
+  worktree,
+} from "./helpers.js";
 
 const NOW = 100 * DAY_MS;
 const ago = (days: number) => NOW - days * DAY_MS;
@@ -104,6 +113,7 @@ describe("prune (spec 001 D8)", () => {
     expect(report).toEqual({
       resultsRemoved: 4,
       runsRemoved: 3,
+      checksRemoved: 2,
       worktreesRemoved: 1,
       bytesAfter: expect.any(Number),
     });
@@ -138,6 +148,51 @@ describe("prune (spec 001 D8)", () => {
       runsRemoved: 0,
       worktreesRemoved: 0,
     });
+  });
+
+  it("drops checks that no result, known state, view or transition references", () => {
+    const { store } = fixture();
+    const names = ["result", "state", "view", "transition", "expired", "enumerated"];
+    store.checks.upsertMany(
+      names.map((name) => ({
+        check: testCheck(name),
+        location: null,
+        templated: false,
+        firstSeenAt: ago(30),
+      })),
+    );
+    store.results.putMany([
+      result(testCheck("result"), "k-recent", { worktreeId: "linked", recordedAt: ago(1) }),
+      result(testCheck("expired"), "k-expired", { worktreeId: "linked", recordedAt: ago(10) }),
+    ]);
+    store.knownStates.upsertMany([knownState("linked", testCheck("state"))]);
+    store.views.writeMany({ worktreeId: "linked", sessionId: "s", agentId: "main" }, [
+      { check: testCheck("view"), outcome: "pass", fingerprint: null, toldAt: 1 },
+    ]);
+    store.transitions.append([
+      {
+        worktreeId: "linked",
+        check: testCheck("transition"),
+        kind: "first-seen-fail",
+        from: null,
+        to: "fail",
+        fromFingerprint: null,
+        toFingerprint: "Error: x",
+        revision: 1,
+        at: 1,
+      },
+    ]);
+    // Rows owned by the removed worktree go with it, and so do checks only they referenced.
+    store.knownStates.upsertMany([knownState("removed", testCheck("removed state"))]);
+
+    const report = store.prune({ now: NOW, retentionDays: 7, maxSizeMb: null });
+
+    expect(report.checksRemoved).toBe(3);
+    const left = store.checks
+      .listByTestFile({ project: "", path: "src/a.test.ts" })
+      .map((c) => (c.check.kind === "test" ? c.check.fullName : ""));
+    expect(left.sort()).toEqual(["result", "state", "transition", "view"]);
+    expect(store.prune({ now: NOW, retentionDays: 7, maxSizeMb: null }).checksRemoved).toBe(0);
   });
 
   it("honours retentionDays", () => {

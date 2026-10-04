@@ -82,6 +82,18 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
           );
         }
       }),
+    removeMany: (worktreeId, checks) =>
+      conn.transaction(() => {
+        for (const check of checks) {
+          const id = findCheckId(conn, check);
+          if (id === null) continue;
+          conn.run(
+            "DELETE FROM known_states WHERE worktree_id = ? AND check_id = ?",
+            worktreeId,
+            id,
+          );
+        }
+      }),
   };
 }
 

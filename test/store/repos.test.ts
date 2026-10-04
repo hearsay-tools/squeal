@@ -244,6 +244,19 @@ describe("results", () => {
     expect(store.results.latestForCheck(check)?.key).toBe("new");
     expect(store.results.latestForCheck(testCheck("none"))).toBeNull();
   });
+
+  it("lists the checks stored under a key, without other keys' checks", () => {
+    const store = open(fakeCommonDir());
+    store.results.putMany([
+      result(testCheck("b"), "k1"),
+      result(fileCheck, "k1", { outcome: "fail" }),
+      result(testCheck("a"), "k1"),
+      result(testCheck("renamed away"), "k0"),
+    ]);
+    expect(store.results.checksForKey("k1")).toEqual([fileCheck, testCheck("a"), testCheck("b")]);
+    expect(store.results.checksForKey("k0")).toEqual([testCheck("renamed away")]);
+    expect(store.results.checksForKey("missing")).toEqual([]);
+  });
 });
 
 describe("runs", () => {
@@ -303,6 +316,17 @@ describe("known states", () => {
     expect(store.knownStates.get("w", testCheck("d"))).toEqual(skipped);
     expect(store.knownStates.list("w")).toHaveLength(4);
     expect(store.knownStates.get("other", fileCheck)).toBeNull();
+  });
+
+  it("removes the given checks of one worktree only", () => {
+    const store = open(fakeCommonDir());
+    const states = ["a", "b", "c"].map((name) => knownState("w", testCheck(name)));
+    store.knownStates.upsertMany([...states, knownState("other", testCheck("a"))]);
+    store.knownStates.removeMany("w", [testCheck("a"), testCheck("c"), testCheck("never seen")]);
+    expect(store.knownStates.list("w").map((s) => s.check)).toEqual([testCheck("b")]);
+    expect(store.knownStates.get("other", testCheck("a"))).not.toBeNull();
+    store.knownStates.removeMany("w", []);
+    expect(store.knownStates.list("w")).toHaveLength(1);
   });
 });
 
@@ -373,6 +397,17 @@ describe("consumers and views", () => {
 
     store.consumers.register(consumer, 2);
     expect(store.views.list(consumer)).toEqual([]);
+  });
+
+  it("removes the given checks from one consumer's view only", () => {
+    const store = open(fakeCommonDir());
+    const sub = { ...consumer, agentId: "agent-2" };
+    const entries = ["a", "b", "c"].map((name) => ({ ...view(), check: testCheck(name) }));
+    store.views.writeMany(consumer, entries);
+    store.views.writeMany(sub, entries);
+    store.views.removeMany(consumer, [testCheck("a"), testCheck("c"), testCheck("never seen")]);
+    expect(store.views.list(consumer).map((e) => e.check)).toEqual([testCheck("b")]);
+    expect(store.views.list(sub)).toHaveLength(3);
   });
 });
 

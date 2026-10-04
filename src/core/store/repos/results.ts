@@ -44,6 +44,14 @@ export function createResultRepo(conn: Connection): ResultRepo {
           key,
         )
         .map(toResult),
+    checksForKey: (key) =>
+      conn
+        .all(
+          `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
+           WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+          key,
+        )
+        .map(checkFrom),
     latestForCheck: (check) => {
       const id = findCheckId(conn, check);
       if (id === null) return null;
