@@ -35,7 +35,10 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
 
     const finalKey = h.keyOf("test/math.test.ts");
     expect(finalKey).not.toBe(firstKey);
-    expect(store.results.byKey(finalKey ?? "").map((r) => r.outcome)).toEqual(["pass"]);
+    expect(store.results.byKey(finalKey).map((r) => [r.check.kind, r.outcome])).toEqual([
+      ["file", "pass"],
+      ["test", "pass"],
+    ]);
     expect(h.sink.stateOf(check("test/math.test.ts", "adds"))).toMatchObject({
       outcome: "pass",
       validity: "current",
@@ -124,7 +127,8 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     const runs = h.runsOf("test/kill.test.ts");
     expect(runs.map((r) => r.report.end)).toEqual(["crashed", "completed"]);
     const key = h.keyOf("test/kill.test.ts");
-    expect(store.results.byKey(key ?? "").map((r) => [r.check, r.outcome])).toEqual([
+    expect(store.results.byKey(key).map((r) => [r.check, r.outcome])).toEqual([
+      [{ kind: "file", project: "", testPath: "test/kill.test.ts" }, "pass"],
       [check("test/kill.test.ts", "survives"), "pass"],
     ]);
     expect(h.scheduler.status().testFiles).toEqual({
@@ -174,6 +178,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     expect(h.sink.callsOf("retire").flatMap((c) => c.checks)).toEqual([
       check("test/plain.test.ts", "is plain"),
       check("test/plain.test.ts", "is plain too"),
+      { kind: "file", project: "", testPath: "test/plain.test.ts" },
     ]);
     expect(h.scheduler.status().testFiles.current).toBe(4);
   });

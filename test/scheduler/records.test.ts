@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { firstLineSummary, recordsForFile } from "../../src/core/scheduler/records.js";
+import { recordsForFile } from "../../src/core/scheduler/records.js";
+import { describeFailure } from "../../src/core/state/index.js";
 import type {
   CheckError,
   CheckId,
@@ -63,12 +64,17 @@ describe("recordsForFile", () => {
       }),
       previousChecks: [],
       provenance,
-      describe: firstLineSummary,
+      describe: describeFailure,
     });
     expect(records.map((r) => [r.check, r.key, r.outcome, r.summary])).toEqual([
       [test("adds"), "k1", "pass", null],
       [test("fails"), "k1", "fail", "Cannot find module '../src/gone'"],
+      // S1: the file loaded, so its file-level check passes.
+      [{ kind: "file", project: "", testPath: file.path }, "k1", "pass", null],
     ]);
+    expect(records[1]?.fingerprint).toBe(
+      "Error: Cannot find module '../src/gone' @ test/a.test.ts:2:1",
+    );
     expect(records[0]?.provenance).toEqual(provenance);
   });
 
@@ -84,7 +90,7 @@ describe("recordsForFile", () => {
       report: report({ fileErrors: [{ testFile: file, errors: [importError] }] }),
       previousChecks,
       provenance,
-      describe: firstLineSummary,
+      describe: describeFailure,
     });
     expect(records.map((r) => [r.check, r.outcome])).toEqual([
       [test("adds"), "fail"],
@@ -107,11 +113,25 @@ describe("recordsForFile", () => {
       }),
       previousChecks: [test("adds")],
       provenance,
-      describe: firstLineSummary,
+      describe: describeFailure,
     });
     expect(records.map((r) => [r.check.kind, r.outcome])).toEqual([
       ["test", "pass"],
       ["file", "fail"],
+    ]);
+  });
+
+  it("records a pass for the file-level check of a file that loaded with no tests (S1)", () => {
+    const records = recordsForFile({
+      ref: file,
+      key: "k4",
+      report: report({}),
+      previousChecks: [{ kind: "file", project: "", testPath: file.path }],
+      provenance,
+      describe: describeFailure,
+    });
+    expect(records.map((r) => [r.check, r.outcome, r.durationMs, r.errors])).toEqual([
+      [{ kind: "file", project: "", testPath: file.path }, "pass", 0, []],
     ]);
   });
 });
