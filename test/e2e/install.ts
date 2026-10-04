@@ -83,8 +83,8 @@ async function install(): Promise<Install> {
         await npmInstall(tmp, mode);
         break;
       } catch (error) {
-        const stderr = (error as { stderr?: string }).stderr ?? String(error);
-        errors.push(`npm install ${mode}: ${stderr.trim().split("\n").slice(-3).join(" ")}`);
+        const stderr = (error as { stderr?: string }).stderr?.trim() || String(error);
+        errors.push(`npm install ${mode}: ${stderr.split("\n").slice(-3).join(" ")}`);
       }
     }
     if (!installed(tmp)) {

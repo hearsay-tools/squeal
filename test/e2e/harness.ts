@@ -8,9 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { setTimeout as sleep } from "node:timers/promises";
+import { join } from "node:path";
 import { afterEach, beforeAll, type TestContext } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
@@ -20,6 +18,11 @@ import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { type Install, vitestInstall } from "./install.js";
+import { MATH, SLOW, type Source, STRINGS } from "./sources.js";
+import { daemonPids, metric, type RunRow, readRuns, until } from "./support.js";
+
+export { MATH, SLOW, SLOW_MS, STRINGS } from "./sources.js";
+export { hasNodeModulesAbove, until } from "./support.js";
 
 /*
  * Spec 001 Testing, end to end, and review wave 3 "Inputs for wave 4": the
@@ -33,24 +36,13 @@ import { type Install, vitestInstall } from "./install.js";
  */
 
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
-/** `test/slow.test.ts` sleeps this long per run, so a hook can fire while it is in flight. */
-export const SLOW_MS = 5_000;
 /** Spec 001 D9: every hook has `timeout: 2`. */
 export const HOOK_BUDGET_MS = 2_000;
 const DAEMON_WAIT_MS = 45_000;
 const SETTLE_WAIT_MS = 90_000;
-const POLL_MS = 150;
 
-export const SESSION = "6248afa0-bd5b-459c-83da-3a7cc9d9f9a0";
+/** The recorded hook JSON's session is the default consumer; this is a second one. */
 export const OTHER_SESSION = "0d7c5b1e-3f0a-4b8e-9a51-2c6e8f4d7a90";
-
-export const MATH = (add: "+" | "-" = "+", mul: "*" | "+" = "*") =>
-  `export const add = (a: number, b: number) => a ${add} b;\nexport const mul = (a: number, b: number) => a ${mul} b;\n`;
-export const STRINGS = (suffix: "!" | "?" = "!") =>
-  `export const shout = (s: string) => \`\${s.toUpperCase()}${suffix}\`;\n`;
-export const SLOW = (factor: 2 | 3 = 2) =>
-  `export const SLOW_MS = ${SLOW_MS};\nexport const double = (n: number) => n * ${factor};\n`;
-type Source = "math" | "strings" | "slow";
 
 export type HookName =
   | "session-start"
@@ -75,12 +67,6 @@ interface HookJson {
   };
 }
 
-export interface RunRow {
-  readonly revision: number;
-  readonly testFiles: readonly string[];
-  readonly end: string | null;
-}
-
 export interface FixtureOptions {
   /** Written as `squeal.config.json`: an object as JSON, a string verbatim. Default `{}`. */
   readonly policy?: object | string;
@@ -90,13 +76,6 @@ export interface FixtureOptions {
 
 const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
-
-export function hasNodeModulesAbove(dir: string): boolean {
-  for (let at = dirname(dir); ; at = dirname(at)) {
-    if (existsSync(join(at, "node_modules"))) return true;
-    if (dirname(at) === at) return false;
-  }
-}
 
 /** One fixture: a plugin copy, a repository, its worktrees and their daemons. */
 export class E2E {
@@ -119,33 +98,44 @@ export class E2E {
     // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
     const base = realpathSync(mkdtempSync("/tmp/squeal-e2e-"));
     const e2e = new E2E(base, realpathSync(mkdtempSync("/tmp/sq-")), install);
+    try {
+      e2e.#build(options);
+    } catch (error) {
+      rmSync(base, { recursive: true, force: true });
+      rmSync(e2e.runtime, { recursive: true, force: true });
+      throw error;
+    }
+    return e2e;
+  }
+
+  #build(options: FixtureOptions): void {
     const archive = execFileSync("git", ["archive", "HEAD", "plugins/claude-code"], {
       cwd: REPO_ROOT,
       maxBuffer: 64 * 1024 * 1024,
     });
-    mkdirSync(join(base, "archive"));
-    execFileSync("tar", ["-x", "-C", join(base, "archive")], { input: archive });
-    execFileSync("mv", [join(base, "archive/plugins/claude-code"), e2e.plugin]);
-    rmSync(join(base, "archive"), { recursive: true });
+    const unpacked = join(this.base, "archive");
+    mkdirSync(unpacked);
+    execFileSync("tar", ["-x", "-C", unpacked], { input: archive });
+    execFileSync("mv", [join(unpacked, "plugins/claude-code"), this.plugin]);
+    rmSync(unpacked, { recursive: true });
 
-    const repo = e2e.main;
+    const repo = this.main;
     cpSync(join(FIXTURE, "project"), repo, { recursive: true });
     execFileSync("mv", [join(repo, "_gitignore"), join(repo, ".gitignore")]);
     if (options.slow === true) cpSync(join(FIXTURE, "slow"), repo, { recursive: true });
     mkdirSync(join(repo, "src"));
-    e2e.write(repo, "math", MATH());
-    e2e.write(repo, "strings", STRINGS());
-    if (options.slow === true) e2e.write(repo, "slow", SLOW());
+    this.write(repo, "math", MATH());
+    this.write(repo, "strings", STRINGS());
+    if (options.slow === true) this.write(repo, "slow", SLOW());
     const policy = options.policy ?? {};
     writeFileSync(
       join(repo, "squeal.config.json"),
       typeof policy === "string" ? policy : `${JSON.stringify(policy, null, 2)}\n`,
     );
-    e2e.#copyInstall(repo, true);
+    this.#copyInstall(repo, true);
     git(repo, ["init", "-q", "-b", "main"]);
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
-    return e2e;
   }
 
   /** package.json, its lockfile and node_modules from the cached install, as `npm install` leaves them. */
@@ -181,6 +171,7 @@ export class E2E {
     const json = run.stdout === "" ? null : (JSON.parse(run.stdout) as HookJson);
     const out = json?.hookSpecificOutput;
     const text = out?.additionalContext ?? out?.permissionDecisionReason ?? json?.reason ?? null;
+    metric({ hook: name, ms: Math.round(run.ms), delivered: text !== null });
     return { ...run, json, text };
   }
 
@@ -245,31 +236,16 @@ export class E2E {
     accept?: (s: StatusSnapshot) => boolean,
   ): Promise<StatusSnapshot> {
     const before = (await this.status(root)).revision;
+    const started = performance.now();
     this.write(root, file, body);
-    return this.settle(root, `the edit of src/${file}.ts to settle`, accept, before);
+    const settled = await this.settle(root, `the edit of src/${file}.ts to settle`, accept, before);
+    metric({ settle: file, ms: Math.round(performance.now() - started) });
+    return settled;
   }
 
   /** Runs of one worktree, oldest first, read straight from the shared store. */
   runs(root: string): RunRow[] {
-    const db = new DatabaseSync(join(this.main, ".git/squeal/store.sqlite"), { readOnly: true });
-    try {
-      const rows = db
-        .prepare(
-          "SELECT revision, test_files, end_state FROM runs WHERE worktree_id = ? ORDER BY started_at, rowid",
-        )
-        .all(worktreeIdFor(root)) as {
-        revision: number;
-        test_files: string;
-        end_state: string | null;
-      }[];
-      return rows.map((r) => ({
-        revision: r.revision,
-        testFiles: (JSON.parse(r.test_files) as { path: string }[]).map((f) => f.path),
-        end: r.end_state,
-      }));
-    } finally {
-      db.close();
-    }
+    return readRuns(join(this.main, ".git/squeal/store.sqlite"), worktreeIdFor(root));
   }
 
   /** `squeal stop` in every worktree, then SIGKILL for any daemon of this plugin copy still alive. */
@@ -285,39 +261,6 @@ export class E2E {
     }
     rmSync(this.base, { recursive: true, force: true });
     rmSync(this.runtime, { recursive: true, force: true });
-  }
-}
-
-/** Pids of daemons started from this plugin copy's CLI. */
-function daemonPids(plugin: string): number[] {
-  const ps = execFileSync("ps", ["-eo", "pid=,args="], { encoding: "utf8" });
-  const cli = join(plugin, "dist/cli/squeal.mjs");
-  return ps
-    .split("\n")
-    .filter((line) => line.includes(`${cli} daemon`))
-    .map((line) => Number.parseInt(line.trim(), 10))
-    .filter((pid) => Number.isInteger(pid) && pid !== process.pid);
-}
-
-export async function until<T>(
-  what: string,
-  ms: number,
-  probe: () => Promise<T | null>,
-): Promise<T> {
-  const deadline = Date.now() + ms;
-  let last: unknown = null;
-  for (;;) {
-    const value = await probe().catch((error: unknown) => {
-      last = error;
-      return null;
-    });
-    if (value !== null) return value;
-    if (Date.now() > deadline) {
-      throw new Error(
-        `timed out after ${ms} ms waiting for ${what}${last ? `: ${String(last)}` : ""}`,
-      );
-    }
-    await sleep(POLL_MS);
   }
 }
 
