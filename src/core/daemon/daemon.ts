@@ -7,16 +7,15 @@ import type {
   DaemonPhase,
   EpochMs,
   Policy,
-  Store,
   WorktreeId,
 } from "../types/index.js";
-import { DEFAULT_POLICY, notesMetaKey } from "../types/index.js";
+import { DEFAULT_POLICY } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { type DaemonTimings, startTimers } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
-import { exit, message, type OpenedDaemon, openDaemon } from "./open.js";
+import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
 import { linkedWorktreeDir, prepareSocketDir, socketPathFor } from "./paths.js";
-import { loadPolicy, POLICY_FILE } from "./policy.js";
+import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import type { RecoveringRunner } from "./runner.js";
 import { squealVersion } from "./version.js";
 
@@ -74,24 +73,6 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
     return abandon(opened, now, options.log, `daemon exited: could not start: ${message(error)}`);
   }
   return daemon.start(desk);
-}
-
-/** A start that failed before the daemon owned anything else: a note, then the store and the lock go. */
-function abandon(
-  opened: OpenedDaemon,
-  now: () => EpochMs,
-  log: ((line: string) => void) | undefined,
-  text: string,
-): DaemonExit {
-  const report = log ?? (() => {});
-  writeNote(opened.store, opened.worktreeId, { at: now(), revision: null, text }, report);
-  try {
-    opened.store.close();
-  } catch (error) {
-    report(`shutdown: store.close failed: ${message(error)}`);
-  }
-  opened.lock.release();
-  return exit("start-failed", 1, text);
 }
 
 class Daemon {
@@ -374,23 +355,4 @@ class Daemon {
       this.#log(`shutdown: ${name} failed: ${message(error)}`);
     }
   }
-}
-
-function describeProblems(problems: readonly string[]): string {
-  return `${problems.join("; ")}; the defaults apply in their place`;
-}
-
-/** Text of the newest persisted note about `squeal.config.json`, or `null`. */
-function lastPolicyNote(store: Store, worktreeId: WorktreeId): string | null {
-  let notes: unknown;
-  try {
-    notes = JSON.parse(store.meta.get(notesMetaKey(worktreeId)) ?? "[]");
-  } catch {
-    // Notes that do not parse are replaced by the next note (`appendNote`).
-    return null;
-  }
-  if (!Array.isArray(notes)) return null;
-  const texts = notes.map((note) => (note as { text?: unknown }).text);
-  const last = texts.findLast((text) => typeof text === "string" && text.startsWith(POLICY_FILE));
-  return typeof last === "string" ? last : null;
 }
