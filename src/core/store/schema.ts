@@ -6,7 +6,7 @@ export type Migration = (db: DatabaseSync) => void;
 
 /*
  * Schema version 1. Spec 001 D8 tables plus `failure_texts`, which holds the
- * deduplicated failure text ("Failure text is deduplicated by fingerprint").
+ * deduplicated failure text ("Failure text is deduplicated by exact text").
  *
  * Conventions: times are integer epoch ms, durations and stat times are REAL,
  * booleans are 0/1, lists are JSON text. A check is stored once in `checks`
