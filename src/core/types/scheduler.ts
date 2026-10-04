@@ -1,4 +1,4 @@
-import type { RelativePath, RevisionNumber } from "./common.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { ValidityCounts } from "./status.js";
 import type { CheckpointKind, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
@@ -42,6 +42,29 @@ export interface SchedulerStatus {
   } | null;
   /** Factual notes, newest last: runner errors the scheduler worked around. */
   readonly notes: readonly string[];
+}
+
+/**
+ * One factual daemon note, persisted for status.
+ *
+ * Spec 001 D7: status shows "the latest persisted daemon notes (runner
+ * failures, dropped watcher events, tier pump stopped), kept bounded per
+ * worktree in `meta`". Stored under `notesMetaKey(worktreeId)` as a JSON
+ * array, newest last, at most `MAX_PERSISTED_NOTES` entries.
+ */
+export interface DaemonNote {
+  readonly at: EpochMs;
+  /** The worktree's revision when the note was written; `null` before the scheduler started. */
+  readonly revision: RevisionNumber | null;
+  readonly text: string;
+}
+
+/** Notes kept per worktree; older ones are dropped. */
+export const MAX_PERSISTED_NOTES = 20;
+
+/** `meta` key of a worktree's persisted notes. */
+export function notesMetaKey(worktreeId: WorktreeId): string {
+  return `notes.${worktreeId}`;
 }
 
 /** A `squeal run --all` request. Spec 001 D5. */

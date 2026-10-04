@@ -24,6 +24,7 @@ import { classify } from "./files.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
+import { appendNote } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import type { FailureDescriber } from "./records.js";
 import { applyRevision, checkLockfile } from "./revision.js";
@@ -58,7 +59,7 @@ export interface SchedulerOptions {
    * the feed delivers the next batch only after this one.
    */
   readonly onExtraFiles?: (paths: readonly RelativePath[]) => void;
-  /** Errors of background work (tiers). Batch errors reject `handleBatch`. */
+  /** Errors of background work (tiers, persisting notes). Batch errors reject `handleBatch`. */
   readonly onError?: (error: Error) => void;
   readonly hasher?: Hasher;
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
@@ -66,7 +67,7 @@ export interface SchedulerOptions {
   readonly now?: () => EpochMs;
 }
 
-/** Notes kept for status; older ones are dropped. */
+/** Notes kept in memory for `status()`; older ones are dropped. */
 const MAX_NOTES = 20;
 
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
@@ -120,9 +121,10 @@ class TierScheduler implements Scheduler {
         note: (message) => this.#note(message),
       };
       const ledger = new Ledger(context);
+      // Notes written during the baseline carry its revision.
+      this.#ledger = ledger;
       await bootstrap(context, ledger);
       this.#context = context;
-      this.#ledger = ledger;
     });
     this.#pump();
   }
@@ -286,9 +288,19 @@ class TierScheduler implements Scheduler {
     return { context: this.#context, ledger: this.#ledger };
   }
 
+  /** Keeps a note for `status()` and persists it for `squeal status` (D7, review S6). */
   #note(message: string): void {
     this.#notes.push(message);
     if (this.#notes.length > MAX_NOTES) this.#notes.shift();
+    const { store, worktreeId, now } = this.options;
+    const revision = this.#ledger?.revision.number ?? null;
+    try {
+      appendNote(store, worktreeId, { at: (now ?? Date.now)(), revision, text: message });
+    } catch (error) {
+      this.options.onError?.(
+        new Error(`squeal scheduler: could not persist a note (${message}): ${String(error)}`),
+      );
+    }
   }
 }
 
