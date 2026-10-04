@@ -133,11 +133,9 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
         for (const { consumer } of store.consumers.list(worktreeId)) {
           const silent = store.views
             .list(consumer)
-            .filter((v) => v.outcome !== "fail" && retired.has(checkIdentity(v.check)));
-          store.views.removeMany(
-            consumer,
-            silent.map((v) => v.check),
-          );
+            .filter((v) => v.outcome !== "fail" && retired.has(checkIdentity(v.check)))
+            .map((v) => v.check);
+          store.views.removeMany(consumer, silent);
         }
       }),
   };
