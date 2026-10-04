@@ -86,7 +86,8 @@ function provenance(entry: TransitionEntry, revision: number): string | null {
   if (entry.origin.kind === "inherited") {
     const commit =
       entry.origin.commit === null ? "no commit" : `commit ${entry.origin.commit.slice(0, 12)}`;
-    parts.push(`inherited from worktree ${entry.origin.worktreeId} at ${commit}`);
+    const from = entry.originRoot ?? `worktree ${entry.origin.worktreeId}`;
+    parts.push(`inherited from ${from} at ${commit}`);
   }
   return parts.length === 0 ? null : parts.join("; ");
 }
