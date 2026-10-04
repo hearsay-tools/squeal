@@ -1,50 +1,5 @@
-import { spawn } from "node:child_process";
+import { runGit, splitNul } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
-
-/** Variables that would point git at another repository than the worktree root. */
-const REPO_ENV = ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"];
-
-function gitEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
-  for (const name of REPO_ENV) delete env[name];
-  return env;
-}
-
-/**
- * Runs git in `cwd` and resolves with stdout. Exit codes outside `okCodes`
- * reject with the command, directory and stderr.
- */
-export function runGit(
-  cwd: AbsolutePath,
-  args: readonly string[],
-  options: { input?: string; okCodes?: readonly number[] } = {},
-): Promise<string> {
-  const okCodes = options.okCodes ?? [0];
-  return new Promise((resolve, reject) => {
-    const child = spawn("git", args, { cwd, env: gitEnv(), stdio: ["pipe", "pipe", "pipe"] });
-    const out: Buffer[] = [];
-    const err: Buffer[] = [];
-    child.stdout.on("data", (chunk: Buffer) => out.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
-    child.on("error", (error) => reject(new Error(`git ${args[0]} in ${cwd}: ${error.message}`)));
-    child.on("close", (code) => {
-      if (code !== null && okCodes.includes(code)) {
-        resolve(Buffer.concat(out).toString("utf8"));
-        return;
-      }
-      const stderr = Buffer.concat(err).toString("utf8").trim();
-      reject(new Error(`git ${args.join(" ")} in ${cwd} exited with ${code}: ${stderr}`));
-    });
-    child.stdin.on("error", () => {
-      // EPIPE when git exits before reading stdin; the exit code reports the failure.
-    });
-    child.stdin.end(options.input ?? "");
-  });
-}
-
-function splitNul(output: string): string[] {
-  return output.split("\0").filter((entry) => entry !== "");
-}
 
 /**
  * Paths among `paths` that git ignores. One `git check-ignore --stdin` call.
