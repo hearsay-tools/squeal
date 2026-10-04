@@ -10,8 +10,12 @@ import { runGit, splitNul } from "./git.js";
  */
 const CONVERTING_ATTRIBUTES = ["eol", "text", "crlf", "filter", "ident", "working-tree-encoding"];
 
-/** Regular and executable files. Symlink (120000) and gitlink (160000) oids are not file bytes. */
-const FILE_MODES = new Set(["100644", "100755"]);
+/**
+ * Regular and executable files, and symlinks (120000), whose oid is the blob
+ * of the target path, which is how `hashFile` hashes them. Gitlink (160000)
+ * oids are commits, not file bytes.
+ */
+const FILE_MODES = new Set(["100644", "100755", "120000"]);
 
 /** `git config core.autocrlf` values that convert line endings without any attribute. */
 const AUTOCRLF_ON = new Set(["true", "input", "yes", "on", "1"]);
@@ -36,7 +40,7 @@ export async function readObjectFormat(root: AbsolutePath): Promise<ObjectFormat
  * - `git status` lists it (staged, modified, deleted, unmerged);
  * - its entry is assume-unchanged or skip-worktree, which status trusts
  *   without looking at the file;
- * - it is not a regular file (symlink, submodule);
+ * - it is not a regular file or a symlink (submodule);
  * - a converting attribute applies to it;
  * - `core.autocrlf` is on, which converts every text file. The whole shortcut
  *   is skipped then.
