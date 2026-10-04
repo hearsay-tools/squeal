@@ -1979,6 +1979,7 @@ var sessionEnd = (input, location2, deps) => withContext(input, location2, deps,
 
 // src/harness/claude-code/main.ts
 import { readFileSync as readFileSync3 } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // src/harness/claude-code/input.ts
 function parseHookInput(text) {
@@ -2036,6 +2037,8 @@ async function runMain(name, handler) {
   }
   const result = await runHandler(name, handler, stdin, {
     env: process.env,
+    // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs (review wave 3, B1).
+    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url)),
     ...waiterTimeout(process.env.SQUEAL_WAITER_TIMEOUT_MS)
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);

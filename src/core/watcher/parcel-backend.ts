@@ -9,7 +9,9 @@ import type {
 } from "../types/index.js";
 import { Exclusions } from "./exclusions.js";
 
-type Parcel = typeof import("@parcel/watcher");
+export type Parcel = typeof import("@parcel/watcher");
+/** Loads @parcel/watcher for the worktree at `root`. */
+export type ParcelLoader = (root: AbsolutePath) => Promise<Parcel>;
 type ParcelSubscription = Awaited<ReturnType<Parcel["subscribe"]>>;
 type ParcelCallback = Parameters<Parcel["subscribe"]>[1];
 
@@ -18,7 +20,8 @@ const KINDS = { create: "add", update: "change", delete: "unlink" } as const;
 /** FSEventsBackend.cc: "Events were dropped by the FSEvents client. File system must be re-scanned." */
 const DROPPED = /re-?scanned|dropped/i;
 
-async function loadParcel(): Promise<Parcel> {
+/** Squeal's own @parcel/watcher, an optional dependency of the npm package. */
+export async function loadOwnParcel(): Promise<Parcel> {
   try {
     return (await import("@parcel/watcher")).default;
   } catch (error) {
@@ -43,24 +46,29 @@ async function loadParcel(): Promise<Parcel> {
  * directories get one subscription per parent directory, filtered to those
  * files.
  */
-export const parcelBackend: WatcherBackend = {
-  name: "parcel",
-  async watch(spec: WatchSpec, listener: WatchListener): Promise<WatchSubscription> {
-    const parcel = await loadParcel();
-    let subs = await subscribeAll(parcel, spec, listener);
-    return {
-      async update(next: WatchSpec): Promise<void> {
-        const old = subs;
-        subs = await subscribeAll(parcel, next, listener);
-        await Promise.all(old.map((s) => s.unsubscribe()));
-      },
-      async close(): Promise<void> {
-        await Promise.all(subs.map((s) => s.unsubscribe()));
-        subs = [];
-      },
-    };
-  },
-};
+export const parcelBackend: WatcherBackend = createParcelBackend(() => loadOwnParcel());
+
+/** The parcel backend over the @parcel/watcher that `load` returns for the watched root. */
+export function createParcelBackend(load: ParcelLoader): WatcherBackend {
+  return {
+    name: "parcel",
+    async watch(spec: WatchSpec, listener: WatchListener): Promise<WatchSubscription> {
+      const parcel = await load(spec.root);
+      let subs = await subscribeAll(parcel, spec, listener);
+      return {
+        async update(next: WatchSpec): Promise<void> {
+          const old = subs;
+          subs = await subscribeAll(parcel, next, listener);
+          await Promise.all(old.map((s) => s.unsubscribe()));
+        },
+        async close(): Promise<void> {
+          await Promise.all(subs.map((s) => s.unsubscribe()));
+          subs = [];
+        },
+      };
+    },
+  };
+}
 
 async function subscribeAll(
   parcel: Parcel,
