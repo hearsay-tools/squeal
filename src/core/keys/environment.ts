@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import { isMissing } from "../hash/blob.js";
+import { isMissing } from "../fs/index.js";
 import type {
   AbsolutePath,
   CoreEnvironmentInputs,

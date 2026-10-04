@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
+import { isMissing } from "../fs/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 
 /**
@@ -66,8 +67,7 @@ function lstatOrNull(path: string) {
   try {
     return lstatSync(path);
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code === "ENOENT" || code === "ENOTDIR") return null;
+    if (isMissing(error)) return null;
     throw error;
   }
 }

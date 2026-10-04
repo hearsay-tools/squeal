@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { type FileHandle, open, readlink } from "node:fs/promises";
+import { isMissing } from "../fs/index.js";
 import type { AbsolutePath, FileHash } from "../types/index.js";
 
 /** Git object format of a repository: `extensions.objectFormat`. */
@@ -69,10 +70,4 @@ async function readlinkOrNull(
 
 function errorCode(error: unknown): string | undefined {
   return (error as NodeJS.ErrnoException | null)?.code;
-}
-
-/** True for errors meaning "no such file", including a path through a file or a directory read. */
-export function isMissing(error: unknown): boolean {
-  const code = errorCode(error);
-  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
 }
