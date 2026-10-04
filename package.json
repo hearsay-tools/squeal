@@ -1,0 +1,31 @@
+{
+  "name": "squeal",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Continuous validation layer for coding agents. Push transitions, pull state.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "bin": {
+    "squeal": "dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "plugins"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
