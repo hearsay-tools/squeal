@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   coreEnvironmentInputs,
   environmentHash,
+  findInstalledLockfile,
   installedDependenciesFingerprint,
 } from "../../src/core/keys/index.js";
 import type {
@@ -176,5 +177,33 @@ describe("installedDependenciesFingerprint", () => {
     writeFile(dir.path, "node_modules/.package-lock.json", "{}");
     writeFile(dir.path, "..app/src/a.ts", "");
     expect(await fingerprintOf(dir.path, join(dir.path, "..app"))).not.toBe("none");
+  });
+});
+
+describe("findInstalledLockfile (review S8)", () => {
+  let dir: ReturnType<typeof tempDir>;
+  beforeEach(() => {
+    dir = tempDir();
+  });
+  afterEach(() => dir.cleanup());
+
+  it("is null without any installed lockfile", async () => {
+    expect(await findInstalledLockfile(dir.path, dir.path)).toBeNull();
+  });
+
+  it("names the lockfile and patches directory the fingerprint reads", async () => {
+    writeFile(dir.path, "node_modules/.package-lock.json", "{}");
+    expect(await findInstalledLockfile(join(dir.path, "packages/app"), dir.path)).toEqual({
+      path: join(dir.path, "node_modules/.package-lock.json"),
+      patches: join(dir.path, "patches"),
+    });
+  });
+
+  it("has no patches directory for formats that keep none", async () => {
+    writeFile(dir.path, "node_modules/.pnpm/lock.yaml", "lockfileVersion: 9\n");
+    expect(await findInstalledLockfile(dir.path, dir.path)).toEqual({
+      path: join(dir.path, "node_modules/.pnpm/lock.yaml"),
+      patches: null,
+    });
   });
 });
