@@ -258,18 +258,20 @@ describe("refresh", () => {
 });
 
 describe("retire", () => {
-  it("removes known states and every consumer view entry of the checks", () => {
-    const [a, b] = [check("a"), check("b")];
-    sink.applyResults(WT, 1, [result(a, "fail"), result(b, "pass")], NONE);
+  it("removes known states and every view entry of the checks except told failures", () => {
+    const [a, b, c] = [check("a"), check("b"), check("c")];
+    sink.applyResults(WT, 1, [result(a, "fail"), result(b, "pass"), result(c, "pass")], NONE);
     const consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
     store.consumers.register(consumer, 1);
     store.views.writeMany(consumer, [
       { check: a, outcome: "fail", fingerprint: "x", toldAt: 1 },
       { check: b, outcome: "pass", fingerprint: null, toldAt: 1 },
+      { check: c, outcome: "pass", fingerprint: null, toldAt: 1 },
     ]);
 
-    sink.retire(WT, [a]);
-    expect(store.knownStates.list(WT).map((s) => s.check)).toEqual([b]);
-    expect(store.views.list(consumer).map((v) => v.check)).toEqual([b]);
+    sink.retire(WT, [a, b]);
+    expect(store.knownStates.list(WT).map((s) => s.check)).toEqual([c]);
+    // Delivery tells the consumer once that `a` is no longer reported, then drops it.
+    expect(store.views.list(consumer).map((v) => v.check)).toEqual([a, c]);
   });
 });

@@ -191,7 +191,9 @@ export interface StateSink {
 
   /**
    * Spec 001 D8: "Checks that disappear from a test file are retired from
-   * `known_states` and every consumer view". No transition is recorded.
+   * `known_states` and every consumer view". No transition is recorded. A
+   * view entry told as `fail` stays until delivery reports it once as no
+   * longer reported by the runner (D6, `RetiredEntry`).
    */
   retire(worktreeId: WorktreeId, checks: readonly CheckId[]): void;
 }

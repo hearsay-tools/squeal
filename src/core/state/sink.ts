@@ -125,11 +125,19 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
         return commit(revision, [...next.values()], provenance.checkpointId);
       }),
 
+    // A told failure stays in the view: delivery reports it once as no longer reported (D6).
     retire: (worktreeId, checks) =>
       store.transaction(() => {
         store.knownStates.removeMany(worktreeId, checks);
+        const retired = new Set(checks.map(checkIdentity));
         for (const { consumer } of store.consumers.list(worktreeId)) {
-          store.views.removeMany(consumer, checks);
+          const silent = store.views
+            .list(consumer)
+            .filter((v) => v.outcome !== "fail" && retired.has(checkIdentity(v.check)));
+          store.views.removeMany(
+            consumer,
+            silent.map((v) => v.check),
+          );
         }
       }),
   };

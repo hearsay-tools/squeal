@@ -9,7 +9,9 @@ import type {
   DeltaEntry,
   KnownFailure,
   Registration,
+  RetiredEntry,
   StatusHeader,
+  TransitionEntry,
 } from "../../src/core/types/index.js";
 
 const consumer = { worktreeId: "wt-a", sessionId: "s1", agentId: "main" };
@@ -25,7 +27,9 @@ function test(path: string, fullName: string) {
   return { kind: "test" as const, project: "", testPath: path, fullName };
 }
 
-function entry(overrides: Partial<DeltaEntry> & Pick<DeltaEntry, "kind" | "to">): DeltaEntry {
+function entry(
+  overrides: Partial<TransitionEntry> & Pick<TransitionEntry, "kind" | "to">,
+): TransitionEntry {
   return {
     check: test("tests/auth/login.test.ts", "login > expired token"),
     from: null,
@@ -123,6 +127,28 @@ describe("formatDelta", () => {
       "      observed at revision 183, revision 184 pending; inherited from worktree wt-main at commit 0123456789ab\n",
     );
     expect(text).toContain("      stale, observed at revision 180");
+  });
+
+  it("states a told failure that is no longer reported, after failures", () => {
+    const retired: RetiredEntry = {
+      check: { kind: "file", project: "", testPath: "tests/new.test.ts" },
+      kind: "fail-retired",
+      from: "fail",
+      to: null,
+      fingerprint: "SyntaxError: Unexpected token @ tests/new.test.ts:1:1",
+      observedAt: 184,
+    };
+    const text = formatDelta(delta([retired, regression]));
+    expect(text.split("\n").slice(2)).toEqual([
+      "",
+      "FAIL  tests/auth/login.test.ts > login > expired token",
+      "      PASS -> FAIL",
+      "      expected 401, received 500",
+      "      at src/auth.ts:42:7",
+      "",
+      "RESOLVED  tests/new.test.ts (file-level)",
+      "      FAIL -> no longer reported by the runner",
+    ]);
   });
 
   it("renders the project and file-level checks", () => {

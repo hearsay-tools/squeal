@@ -11,7 +11,7 @@ import {
   type StatusBuilder,
   type Store,
 } from "../types/index.js";
-import { type DeltaPlan, planDelta, toView } from "./delta.js";
+import { type DeltaPlan, isBaselineEntry, planDelta, toView } from "./delta.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -77,7 +77,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header: readHeader(store, consumer.worktreeId, states),
-        label: delta.entries.every((e) => e.baseline === true) ? "baseline" : "transitions",
+        label: delta.entries.every(isBaselineEntry) ? "baseline" : "transitions",
         entries: delta.entries,
       };
     });
