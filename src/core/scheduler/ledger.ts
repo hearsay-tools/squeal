@@ -14,7 +14,7 @@ import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, type FileState, newFileState } from "./files.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 
-/** After this many consecutive discarded tiers a file is `unknown` instead of re-queued. */
+/** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
 export const MAX_DISCARDS = 3;
 
 export interface RevisionState {
@@ -192,12 +192,14 @@ export class Ledger {
 
   /**
    * Spec 001 D5: "that file's results are discarded as unreliable and the file
-   * is re-queued". After `MAX_DISCARDS` in a row the file is `unknown` until
-   * its key changes: something rewrites its inputs during every run.
+   * is re-queued". After `MAX_DISCARDS` in a row at a key that did not move the
+   * file is `unknown` until its key changes: something rewrites its inputs
+   * during every run. A discard whose key moved is an edit the agent made
+   * while the file ran; it is not counted (review S5).
    */
   discard(file: FileState, key: CheckKey): void {
     this.counters.discarded++;
-    file.discards++;
+    file.discards = file.key === key ? file.discards + 1 : 0;
     if (file.discards >= MAX_DISCARDS) {
       this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
     } else if (file.key !== null) {

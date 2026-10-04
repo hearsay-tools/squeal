@@ -107,7 +107,7 @@ export interface RecordingRunner extends RunnerAdapter {
   failure: string;
 }
 
-function recording(inner: RunnerAdapter): RecordingRunner {
+function recording(inner: RunnerAdapter, environmentRoot?: string): RecordingRunner {
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(call: () => Promise<T>): Promise<T> => {
     const next = queue.then(call);
@@ -128,7 +128,12 @@ function recording(inner: RunnerAdapter): RecordingRunner {
     closure: (testFile) => guarded("closure", () => inner.closure(testFile)),
     enumerate: (testFile) => serial(() => inner.enumerate(testFile)),
     testFiles: () => guarded("testFiles", () => inner.testFiles()),
-    environment: () => guarded("environment", () => inner.environment()),
+    environment: () =>
+      guarded("environment", async () => {
+        const environments = await inner.environment();
+        if (environmentRoot === undefined) return environments;
+        return environments.map((environment) => ({ ...environment, root: environmentRoot }));
+      }),
     run: (files, options) =>
       serial(async () => {
         await runner.beforeRun?.(files);
@@ -171,6 +176,8 @@ export interface HarnessOptions {
   readonly policy?: Partial<Policy>;
   /** Make these adapter calls reject from the start. */
   readonly failing?: readonly FailingCall[];
+  /** Reported as every project's `RunnerEnvironment.root`. */
+  readonly environmentRoot?: string;
   /** Errors are expected: do not fail the test on `onError`. */
   readonly allowErrors?: boolean;
 }
@@ -182,7 +189,7 @@ export async function openHarness(
   commonDir: string,
   options: HarnessOptions = {},
 ): Promise<Harness> {
-  const runner = recording(await createVitestAdapter({ root }));
+  const runner = recording(await createVitestAdapter({ root }), options.environmentRoot);
   for (const call of options.failing ?? []) runner.failing.add(call);
   const worktreeId = worktreeIdFor(root);
   const sink = new RecordingSink(store, worktreeId);
