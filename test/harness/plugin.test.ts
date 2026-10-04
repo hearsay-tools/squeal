@@ -116,13 +116,16 @@ describe("bundles", () => {
   it("need nothing at runtime but Node built-ins", async () => {
     const result = await build({ ...bundleOptions(tempDir("squeal-bundles-")), write: false });
     const metafile = result.metafile as Metafile;
-    expect(Object.keys(metafile.inputs).filter((path) => path.includes("node_modules"))).toEqual(
-      [],
-    );
+    // The CLI bundle carries the daemon and therefore the pure-JS watcher dependency; the hook
+    // entry points must stay dependency-free, so the assertion is per hook output.
     const hooks = hookEntries().map((name) => `${name}.mjs`);
     for (const [path, output] of Object.entries(metafile.outputs)) {
       const name = path.split("/").at(-1) ?? "";
       if (!hooks.includes(name)) continue;
+      expect(
+        Object.keys(output.inputs).filter((input) => input.includes("node_modules")),
+        name,
+      ).toEqual([]);
       for (const imported of output.imports) expect(imported.path, name).toMatch(/^node:/);
     }
   });

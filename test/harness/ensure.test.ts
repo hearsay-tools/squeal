@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureDaemon, socketPathFor } from "../../src/core/daemon/ensure.js";
+import { ensureDaemon, socketPathFor } from "../../src/core/daemon/index.js";
 import { worktreeIdFor } from "../../src/core/store/index.js";
 import { fakeRepo } from "../status/helpers.js";
 import { tempDir } from "../store/helpers.js";
@@ -26,7 +26,23 @@ afterEach(() => {
 
 function listen(path: string): Promise<Server> {
   return new Promise((resolve) => {
-    const server = createServer((socket) => socket.end());
+    // Answer the daemon's ping the way a live daemon does; a bare connection is not "alive".
+    const server = createServer((socket) => {
+      socket.once("data", () => {
+        const response = {
+          schemaVersion: 1,
+          ok: true,
+          type: "ping",
+          pid: process.pid,
+          worktreeId: "0123456789abcdef",
+          root: "/",
+          squealVersion: "0.0.0-test",
+          phase: "ready",
+          startedAt: Date.now(),
+        };
+        socket.end(`${JSON.stringify(response)}\n`);
+      });
+    });
     servers.push(server);
     server.listen(path, () => resolve(server));
   });
