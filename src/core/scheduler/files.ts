@@ -27,6 +27,12 @@ export interface FileState {
    * that did not move (review S5).
    */
   discards: number;
+  /**
+   * Why the file is `unknown` because a runner call it needs failed (spec 001
+   * D5: "A runner call that fails is a state, never a skip"). It is not run
+   * until the runner recovers; `null` otherwise.
+   */
+  blocked: string | null;
 }
 
 export function newFileState(ref: TestFileRef): FileState {
@@ -41,6 +47,7 @@ export function newFileState(ref: TestFileRef): FileState {
     runningKey: null,
     unknownKey: null,
     discards: 0,
+    blocked: null,
   };
 }
 
@@ -54,12 +61,14 @@ export function newFileState(ref: TestFileRef): FileState {
  * another key) or **unknown** (no result at all). **Pending** means a run that
  * will produce a result for the current key is queued or running." Pending
  * wins over the other classes (`Validity`). D12: a crash or timeout makes the
- * file's checks `unknown` at this revision.
+ * file's checks `unknown` at this revision. D5: "An unkeyed or `unknown` file
+ * is always work to do", and a runner failure makes a file `unknown`.
  */
 export function classify(file: FileState): Validity {
   if (file.phase !== null) return "pending";
-  if (file.key !== null && file.unknownKey === file.key) return "unknown";
-  if (file.key !== null && file.resultKey === file.key) return "current";
+  if (file.key === null || file.blocked !== null) return "unknown";
+  if (file.unknownKey === file.key) return "unknown";
+  if (file.resultKey === file.key) return "current";
   return file.resultKey === null ? "unknown" : "stale";
 }
 

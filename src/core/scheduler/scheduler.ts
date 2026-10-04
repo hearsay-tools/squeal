@@ -1,5 +1,5 @@
 import { createFsHasher, type Hasher, readObjectFormat } from "../hash/index.js";
-import { type HeadState, statCandidates } from "../revision/index.js";
+import { commitBatch, diffBatch, type HeadState, statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
 import type {
   AbsolutePath,
@@ -9,6 +9,7 @@ import type {
   FullSuiteRequest,
   Policy,
   RelativePath,
+  Revision,
   RunnerAdapter,
   Scheduler,
   SchedulerStatus,
@@ -27,7 +28,7 @@ import { Mutex } from "./mutex.js";
 import { appendNote } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import type { FailureDescriber } from "./records.js";
-import { applyRevision, checkLockfile } from "./revision.js";
+import { applyRevision, type ContentRekey, rekeyContent, retryRunner } from "./revision.js";
 import {
   executeTier,
   queueFullSuite,
@@ -133,22 +134,66 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return;
     await this.#lock.run(async () => {
       const { context, ledger } = this.#started();
-      const revision = await context.keys.reconcile(batch, context.head);
-      if (revision === null) {
-        if (batch.trigger !== "watch" && (await checkLockfile(context, ledger))) ledger.commit();
-        return;
-      }
-      ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
-      for (const change of revision.changes) ledger.tierChanges?.add(change.path);
-      await applyRevision(context, ledger, revision);
+      const applied = await this.#reconcile(context, ledger, batch);
+      if (applied === null) return;
+      await applyRevision(context, ledger, applied.revision, applied.content);
       ledger.commit();
     });
     this.#pump();
   }
 
+  /**
+   * Reconciles a batch. A new revision is stored in one transaction with the
+   * stat cache flush, the content re-key, the `queued` phases and the
+   * refreshed known states, so the store never shows a revision whose
+   * classification lags (spec 001 D5, review B2). The runner part follows in
+   * `applyRevision`.
+   *
+   * `commitBatch` updates the in-memory stat cache as it writes; a later
+   * write in the same transaction that throws rolls the store back but not
+   * memory. `handleBatch` then rejects, like a failed `Ledger.commit`.
+   *
+   * A reconciliation pass that finds no change also asks whether an
+   * installed lockfile appeared, vanished or moved; that becomes a revision
+   * of its own (review S8, N3).
+   */
+  async #reconcile(
+    context: SchedulerContext,
+    ledger: Ledger,
+    batch: CandidateBatch,
+  ): Promise<{ revision: Revision; content: ContentRekey } | null> {
+    const { keys, hasher, store, worktreeId } = context;
+    let diff = await diffBatch(batch, keys.cache, hasher);
+    if (diff.changes.length === 0 && batch.trigger !== "watch") {
+      const moved = await keys.lockfileCandidates();
+      if (moved.length > 0) {
+        const paths = await statCandidates(moved, hasher);
+        const lockfiles = await diffBatch({ trigger: batch.trigger, paths }, keys.cache, hasher);
+        diff = { ...lockfiles, updates: [...diff.updates, ...lockfiles.updates] };
+      }
+    }
+    const head = diff.changes.length > 0 ? await context.head() : null;
+    return store.transaction(() => {
+      const revision = commitBatch(diff, keys.cache, {
+        worktreeId,
+        head,
+        revisions: store.revisions,
+        fileHashes: store.fileHashes,
+        now: context.now,
+      });
+      if (revision === null) return null;
+      ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
+      for (const change of revision.changes) ledger.tierChanges?.add(change.path);
+      const content = rekeyContent(context, ledger, revision);
+      ledger.commit();
+      return { revision, content };
+    });
+  }
+
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
-    const record = await this.#lock.run(() => {
-      const { ledger } = this.#started();
+    const record = await this.#lock.run(async () => {
+      const { context, ledger } = this.#started();
+      await retryRunner(context, ledger);
       return queueFullSuite(ledger, request.force === true);
     });
     this.#pump();

@@ -53,6 +53,13 @@ export interface RunnerClosure {
  */
 export interface RunnerEnvironment {
   readonly project: ProjectName;
+  /**
+   * The project's root directory relative to the worktree root; absent means
+   * the worktree root. The installed lockfile is looked up from here (D3:
+   * "installed lockfile metadata under `node_modules`"), so a workspace
+   * package with its own `node_modules` is hashed and watched (review N8).
+   */
+  readonly root?: RelativePath;
   readonly runnerName: string;
   readonly runnerVersion: string;
   readonly adapterVersion: string;
