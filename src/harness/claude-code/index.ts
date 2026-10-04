@@ -1,10 +1,12 @@
-import { notImplemented } from "../../core/not-implemented.js";
-import type { AbsolutePath, HarnessDelivery } from "../../core/types/index.js";
-
-/**
- * Store-backed delivery used by the Claude Code hook scripts (spec 001 D9).
- * Task 001-31.
- */
-export function createClaudeCodeDelivery(_commonDir: AbsolutePath): HarnessDelivery {
-  return notImplemented("createClaudeCodeDelivery");
-}
+/** Claude Code adapter: hook handlers behind the plugin in plugins/claude-code (spec 001 D9). Task 001-31. */
+export type { HookDeps, HookOutcome } from "./hook.js";
+export { SOCKET_TIMEOUT_MS } from "./hooks/session-start.js";
+export { STOP_WAIT_CAP_MS } from "./hooks/stop.js";
+export {
+  isInteractive,
+  REGISTRATION_GRACE_MS,
+  WAITER_HOOK_TIMEOUT_S,
+  WAITER_TIMEOUT_MS,
+} from "./hooks/waiter.js";
+export { HOOKS, type HookName, type HookResult, runHook } from "./run.js";
+export { waiterLockPath } from "./waiter-lock.js";
