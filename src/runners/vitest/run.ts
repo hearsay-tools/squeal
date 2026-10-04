@@ -1,14 +1,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { TestSpecification, Vitest } from "vitest/node";
+import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
 import type {
   FileLevelError,
+  RelativePath,
   RunEnd,
   RunOptions,
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
-import type { RunCollector } from "./reporter.js";
+import { errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
 
 /** After the first cancel, Vitest waits for running tests; a second cancel kills the workers. */
@@ -77,17 +78,30 @@ async function settleWithin<T>(promise: Promise<T>, ms: number): Promise<T | nul
  * Builds the report from the collector only. A file counts as completed when
  * its module ended before any timeout cancel and in a final state; results
  * and errors of other files are dropped, because a cancelled test reports
- * `skipped`.
+ * `skipped`. A crashed run completes no file.
  */
 export function buildReport(
   collector: RunCollector,
   execution: RunExecution,
   durationMs: number,
 ): RunReport {
-  const completed = [...collector.modules.values()]
-    .filter((m) => !m.afterCancel && m.state !== "pending" && m.state !== "queued")
-    .map((m) => m.ref)
-    .sort(compareRefs);
+  // Spec 001 D12: an unhandled error Vitest cannot attribute to a test file
+  // makes the run untrusted, like a runner crash (review S7).
+  const unattributed = collector.unhandledErrors.filter((e) => owner(e, collector) === null);
+  const end: RunEnd = unattributed.length > 0 ? "crashed" : execution.end;
+  const failure = [
+    ...(execution.failure === null ? [] : [execution.failure]),
+    ...unattributed.map((e) => `unhandled error outside any test file: ${errorText(e)}`),
+  ].join("\n");
+
+  // Nothing in a crashed run is trusted, so no file counts as completed.
+  const completed =
+    end === "crashed"
+      ? []
+      : [...collector.modules.values()]
+          .filter((m) => !m.afterCancel && m.state !== "pending" && m.state !== "queued")
+          .map((m) => m.ref)
+          .sort(compareRefs);
   const completedKeys = new Set(completed.map(refKey));
 
   const errors = new Map<string, FileLevelError>();
@@ -104,17 +118,15 @@ export function buildReport(
       );
     }
   }
-  // Unhandled errors carry the test file that raised them when Vitest knows
-  // it. Without one, every completed file is suspect: the run is not trusted.
+  // An unhandled error carrying `VITEST_TEST_PATH` belongs to that file.
   for (const error of collector.unhandledErrors) {
-    const path = typeof error.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null;
-    const rel = path === null ? null : collector.paths.toRelative(path);
-    const owners = completed.filter((ref) => rel === null || ref.path === rel);
-    for (const ref of owners) addErrors(ref, [toCheckError(error, collector.paths)]);
+    const rel = owner(error, collector);
+    const ref = completed.find((r) => r.path === rel);
+    if (ref) addErrors(ref, [toCheckError(error, collector.paths)]);
   }
 
   return {
-    end: execution.end,
+    end,
     durationMs,
     completedFiles: completed,
     results: collector.results
@@ -122,8 +134,14 @@ export function buildReport(
       .sort((a, b) => compareRefs(a.ref, b.ref))
       .map((r) => r.result),
     fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
-    failure: execution.failure === null ? null : collector.paths.relativizeText(execution.failure),
+    failure: failure === "" ? null : collector.paths.relativizeText(failure),
   };
+}
+
+/** The worktree-relative test file an unhandled error names, or `null`. */
+function owner(error: SerializedError, collector: RunCollector): RelativePath | null {
+  const path = typeof error.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null;
+  return path === null ? null : collector.paths.toRelative(path);
 }
 
 /** Writes `vitest.log` (raw output, absolute paths kept) and `report.json` under `logDir`. */
