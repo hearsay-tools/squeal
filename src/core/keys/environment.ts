@@ -113,37 +113,73 @@ const LOCKFILES: readonly { readonly path: string; readonly patches: string | nu
   { path: "bun.lockb", patches: "patches" },
 ];
 
+/** An installed lockfile and the patches directory its package manager applies. */
+export interface InstalledLockfile {
+  readonly path: AbsolutePath;
+  readonly patches: AbsolutePath | null;
+}
+
+/**
+ * The installed lockfile `installedDependenciesFingerprint` reads, or `null`.
+ * The daemon watches the file, which is usually gitignored, so `npm install`
+ * re-keys every check (review S8).
+ */
+export async function findInstalledLockfile(
+  projectRoot: AbsolutePath,
+  worktreeRoot: AbsolutePath,
+): Promise<InstalledLockfile | null> {
+  const found = await locateLockfile(projectRoot, worktreeRoot);
+  if (found === null) return null;
+  const { dir, format } = found;
+  return {
+    path: join(dir, format.path),
+    patches: format.patches === null ? null : join(dir, format.patches),
+  };
+}
+
 /**
  * Fingerprint of the installed dependencies of a project, or `"none"` when no
  * installed lockfile exists.
  *
  * Spec 001 D3: "the installed-dependency fingerprint (installed lockfile
- * metadata under `node_modules` plus `patches/`)". Looks in `projectRoot`, then
- * its parents up to `worktreeRoot`, never above it: another worktree's
- * `node_modules` is not this one's. Unlike Vitest, which adds the patches
- * directory's mtime, this hashes the patch contents, because an mtime differs
- * between two worktrees with identical patches.
+ * metadata under `node_modules` plus `patches/`)". Unlike Vitest, which adds
+ * the patches directory's mtime, this hashes the patch contents, because an
+ * mtime differs between two worktrees with identical patches.
  */
 export async function installedDependenciesFingerprint(
   projectRoot: AbsolutePath,
   worktreeRoot: AbsolutePath,
 ): Promise<string> {
+  const found = await locateLockfile(projectRoot, worktreeRoot);
+  if (found === null) return "none";
+  const { dir, format, content } = found;
+  const hash = createHash("sha256").update(`${format.path}\0`).update(content);
+  if (format.patches !== null) {
+    const patchesDir = join(dir, format.patches);
+    for (const path of await listEntries(patchesDir)) {
+      const bytes = await readIfFile(join(patchesDir, path));
+      if (bytes !== null) hash.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
+    }
+  }
+  return hash.digest("hex");
+}
+
+/**
+ * First installed lockfile in `projectRoot`, then its parents up to
+ * `worktreeRoot`, never above it: another worktree's `node_modules` is not
+ * this one's. First match wins.
+ */
+async function locateLockfile(
+  projectRoot: AbsolutePath,
+  worktreeRoot: AbsolutePath,
+): Promise<{ dir: AbsolutePath; format: (typeof LOCKFILES)[number]; content: Buffer } | null> {
   for (let dir = projectRoot; ; dir = dirname(dir)) {
     for (const format of LOCKFILES) {
       const content = await readIfFile(join(dir, format.path));
-      if (content === null) continue;
-      const hash = createHash("sha256").update(`${format.path}\0`).update(content);
-      if (format.patches !== null) {
-        const patchesDir = join(dir, format.patches);
-        for (const path of await listEntries(patchesDir)) {
-          const bytes = await readIfFile(join(patchesDir, path));
-          if (bytes !== null) hash.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
-        }
-      }
-      return hash.digest("hex");
+      if (content !== null) return { dir, format, content };
     }
     // `null` for the worktree root itself and anything outside it.
-    if (dirname(dir) === dir || toRelative(worktreeRoot, dir) === null) return "none";
+    if (dirname(dir) === dir || toRelative(worktreeRoot, dir) === null) return null;
   }
 }
 

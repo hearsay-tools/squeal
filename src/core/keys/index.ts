@@ -9,6 +9,8 @@ export {
   type CoreEnvironmentOptions,
   coreEnvironmentInputs,
   environmentHash,
+  findInstalledLockfile,
+  type InstalledLockfile,
   installedDependenciesFingerprint,
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
