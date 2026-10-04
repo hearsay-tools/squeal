@@ -152,6 +152,19 @@ export class WorktreeKeys {
     );
   }
 
+  /**
+   * True when the installed lockfile is not the one the environment was last
+   * hashed with: a first install created one, or another package manager's
+   * replaced it. Its old path is watched; a new one is in an ignored
+   * directory no watch batch reports, so reconciliation passes ask here.
+   */
+  async lockfileMoved(): Promise<boolean> {
+    const { root } = this.options;
+    const found = await findInstalledLockfile(root, root);
+    const path = found === null ? null : toRelative(root, found.path);
+    return path !== (this.#lockfile?.path ?? null);
+  }
+
   /** Sets a test file's closure: the runner's paths plus this worktree's declared inputs (D3). */
   setClosure(runner: RunnerClosure): KeyChange[] {
     this.#runnerClosures.set(testFileId(runner.testFile), runner);

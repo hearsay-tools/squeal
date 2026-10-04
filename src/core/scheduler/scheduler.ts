@@ -25,7 +25,7 @@ import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import { priorityOf } from "./queue.js";
 import { type FailureDescriber, firstLineSummary } from "./records.js";
-import { applyRevision } from "./revision.js";
+import { applyRevision, checkLockfile } from "./revision.js";
 import {
   executeTier,
   queueFullSuite,
@@ -131,7 +131,10 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(async () => {
       const { context, ledger } = this.#started();
       const revision = await context.keys.reconcile(batch, context.head);
-      if (revision === null) return;
+      if (revision === null) {
+        if (batch.trigger !== "watch" && (await checkLockfile(context, ledger))) ledger.commit();
+        return;
+      }
       ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
       for (const change of revision.changes) ledger.tierChanges?.add(change.path);
       await applyRevision(context, ledger, revision);
