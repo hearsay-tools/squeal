@@ -31,7 +31,11 @@ export interface Policy {
   readonly runner: {
     /** Test files per tier (D5). Default `4`. */
     readonly tierSize: number;
-    /** Per run. D11 gives no default; `null` means no limit. */
+    /**
+     * Per run. Spec 001 D11: "`runner.timeoutMs` per run (`600000`, because a
+     * synchronous loop in a test worker cannot be stopped by the runner's own
+     * test timeout)". `null` means no limit.
+     */
     readonly timeoutMs: number | null;
     /** Default `1` in v1. */
     readonly maxConcurrentRuns: number;
@@ -66,7 +70,7 @@ export const DEFAULT_POLICY: Policy = {
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: null, maxConcurrentRuns: 1 },
+  runner: { tierSize: 4, timeoutMs: 600_000, maxConcurrentRuns: 1 },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };
