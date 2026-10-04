@@ -5,7 +5,7 @@ import type { AbsolutePath, RelativePath } from "../types/index.js";
 const REPO_ENV = ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"];
 
 function gitEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name of REPO_ENV) delete env[name];
   return env;
 }
