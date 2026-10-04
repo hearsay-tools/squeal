@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { createVitest, type TestSpecification, type Vitest, version } from "vitest/node";
 import type {
   EnumeratedCheck,
@@ -14,9 +13,15 @@ import type {
 } from "../../core/types/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { projectEnvironment } from "./environment.js";
-import { importClosure } from "./graph.js";
+import { importClosure, resolutionCandidates } from "./graph.js";
 import type { WorktreePaths } from "./paths.js";
-import { findProject, projectInputs, recreateTriggers, snapshotPath } from "./project.js";
+import {
+  findProject,
+  projectInputs,
+  recreateTriggers,
+  resolveExtensions,
+  snapshotPath,
+} from "./project.js";
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { compareRefs } from "./results.js";
 import { buildReport, execute, writeRunLog } from "./run.js";
@@ -25,7 +30,7 @@ import { buildReport, execute, writeRunLog } from "./run.js";
  * Bumped when the adapter changes what a result, closure or environment means,
  * so the environment hash re-keys every check (D3).
  */
-export const VITEST_ADAPTER_VERSION = "1";
+export const VITEST_ADAPTER_VERSION = "2";
 
 /**
  * Vitest adapter over one warm `vitest/node` instance per worktree.
@@ -128,9 +133,15 @@ export class VitestAdapter implements RunnerAdapter {
       const project = findProject(vitest, testFile);
       const abs = this.paths.toAbsolute(testFile.path);
       const graph = await importClosure(project, [abs]);
+      // Spec 001 D3: the snapshot path whether or not the file exists, and
+      // every resolution candidate of an unresolved import, so the key
+      // changes when one appears, incrementally and at bootstrap (review B1).
       const files = new Set(graph.files);
-      const snapshot = snapshotPath(project, abs);
-      if (existsSync(snapshot)) files.add(snapshot);
+      files.add(snapshotPath(project, abs));
+      const extensions = resolveExtensions(project);
+      for (const target of graph.missing) {
+        for (const candidate of resolutionCandidates(target, extensions)) files.add(candidate);
+      }
       const paths = [...files]
         .filter((f) => this.paths.isProjectFile(f))
         .map((f) => this.paths.toRelative(f))

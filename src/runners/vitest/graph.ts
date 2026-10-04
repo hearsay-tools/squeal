@@ -77,6 +77,38 @@ function depToPath(dep: string, importer: AbsolutePath, root: AbsolutePath): Abs
   return null;
 }
 
+/** Vite resolves a JavaScript specifier to its TypeScript twin when the importer is TypeScript. */
+const TYPESCRIPT_TWINS: Readonly<Record<string, readonly string[]>> = {
+  ".js": [".ts", ".tsx"],
+  ".jsx": [".tsx"],
+  ".mjs": [".mts"],
+  ".cjs": [".cts"],
+};
+
+/**
+ * Every path whose appearance could resolve a missing import target: the
+ * target itself, the target with each extension, `index` with each extension
+ * inside it, and the TypeScript twin of a JavaScript extension.
+ *
+ * Spec 001 D3: the closure has "for every unresolved import the target path
+ * and its resolution candidates (each configured extension and `index`
+ * file)". A candidate that never appears only costs a longer closure; a
+ * missing candidate lets a result be inherited where the import resolves.
+ */
+export function resolutionCandidates(
+  target: AbsolutePath,
+  extensions: readonly string[],
+): AbsolutePath[] {
+  const ext = extname(target);
+  const twins = (TYPESCRIPT_TWINS[ext] ?? []).map((twin) => target.slice(0, -ext.length) + twin);
+  return [
+    target,
+    ...extensions.map((e) => `${target}${e}`),
+    ...extensions.map((e) => join(target, `index${e}`)),
+    ...twins,
+  ];
+}
+
 /** True when `path` is a missing import target, allowing for a specifier written without extension. */
 export function isMissingTarget(closure: ImportClosure, path: AbsolutePath): boolean {
   if (closure.missing.has(path)) return true;
