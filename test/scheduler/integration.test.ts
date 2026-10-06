@@ -114,9 +114,12 @@ describe("scheduler with state and delivery", SLOW, () => {
     await h.scheduler.idle();
     const before = h.runner.runs.length;
 
+    // Three files are queued, all direct (D5 step 4): plain changed itself, strings and
+    // upper import `src/strings.ts`. During the first tier, whichever it holds, math breaks.
+    let armed = false;
     let during: Promise<void> | null = null;
-    h.runner.beforeRun = async (files) => {
-      if (during !== null || files[0]?.path !== "test/plain.test.ts") return;
+    h.runner.beforeRun = async () => {
+      if (!armed || during !== null) return;
       h.write("src/math.ts", "export const add = (a: number, b: number) => a * b;\n");
       during = h.batch("src/math.ts");
       await waitFor(() => (store.revisions.latest(h.worktreeId)?.number ?? 0) >= 3, 10_000);
@@ -126,13 +129,19 @@ describe("scheduler with state and delivery", SLOW, () => {
       "test/plain.test.ts",
       'import { expect, it } from "vitest";\n\nit("is plain", () => {\n  expect(1).toBe(1);\n});\n',
     );
+    armed = true;
     await h.batch("src/strings.ts", "test/plain.test.ts");
     await h.scheduler.idle();
     await during;
     await h.scheduler.idle();
 
     const order = h.runner.runs.slice(before).map((r) => r.files.map((f) => f.path));
-    expect(order.slice(0, 2)).toEqual([["test/plain.test.ts"], ["test/math.test.ts"]]);
-    expect(order.slice(2).flat().sort()).toEqual(["test/strings.test.ts", "test/upper.test.ts"]);
+    expect(order).toHaveLength(4);
+    expect(order[1]).toEqual(["test/math.test.ts"]);
+    expect([order[0], ...order.slice(2)].flat().sort()).toEqual([
+      "test/plain.test.ts",
+      "test/strings.test.ts",
+      "test/upper.test.ts",
+    ]);
   });
 });
