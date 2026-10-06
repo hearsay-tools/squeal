@@ -11,7 +11,7 @@ Read the handoff file's resume notes, `docs/board.md`, and the current spec's `s
 
 ## 2. Brief
 
-For every `planned` row of the next wave, write its brief under `docs/specifications/NNN-*/tasks/wave-N.md` before dispatching anything. A brief carries: the row's scope and done-when, the spec sections it cites, the files it owns, the files its siblings own and it must leave alone, the required tests, and the line `Use /worker.` Sibling ownership is disjoint: one path, one owner. Done when a stranger could dispatch the wave from the file alone.
+For every `planned` row of the next wave, write its brief under `docs/specifications/NNN-*/tasks/wave-N.md` before dispatching anything. A brief carries: the row's scope and done-when, the spec sections it cites, the files it owns, the files its siblings own and it must leave alone, the required tests, and the line `Use /worker.` (`/researcher` for a research topic, `/reviewer` for a wave review). Sibling ownership is disjoint: one path, one owner. Done when a stranger could dispatch the wave from the file alone.
 
 ## 3. Dispatch
 
@@ -47,11 +47,15 @@ Done when main carries the wave, the board rows read `done`, and CI is running o
 
 ## 8. Review
 
-Spawn one reviewer over the wave's commit range with a brief that names the seams between the wave's modules, the spec sections, the earlier review's inputs, and `Use /worker, reviewer branch.` On return, triage: blockers become a fix wave `N.5` before the next wave; should-fix items fold into the next wave's briefs; every accepted deviation becomes a dated line in `status.md` and an edit to the spec section it changes. Done when the review is on main and the board shows the next wave.
+Spawn one reviewer over the wave's commit range with a brief that names the seams between the wave's modules, the spec sections, the earlier review's inputs, and `Use /reviewer.` On return, triage: blockers become a fix wave `N.5` before the next wave; should-fix items fold into the next wave's briefs; every accepted deviation becomes a dated line in `status.md` and an edit to the spec section it changes. Done when the review is on main and the board shows the next wave.
 
 ## 9. Handoff
 
 After every landing: one timestamped line under the progress log, and resume notes that say what is running, what to do on wake, and what is still open. Resume notes are empty only when the spec is shipped. Done when a fresh session could continue from the file alone.
+
+## Research first
+
+A new spec starts with research: one `/researcher` per open topic, in parallel, from a brief under `research/README.md`. The spec is written from their files, never from memory. A fan-out of two researchers on different models plus a judge is the human's call, because it is spend.
 
 ## Proof waves
 

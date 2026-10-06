@@ -8,6 +8,6 @@ Read these before any work, in this order:
 4. `docs/board.md`: what is running, planned and done. Coordinators own it; workers never edit it.
 5. The spec you are working against under `docs/specifications/NNN-*/spec.md`, with its `status.md` amendment log.
 
-Roles are skills: coordinating a wave, integrating workers or folding a review is `/coordinator`; implementing or reviewing one board row is `/worker`. Both live in `.claude/skills/` and are mirrored under `.agents/skills/`.
+Roles are skills: coordinating a wave, integrating workers or folding a review is `/coordinator`; implementing one board row is `/worker`; reviewing a wave's commit range is `/reviewer`; answering a research topic before a spec is `/researcher`. They live in `.claude/skills/` and are mirrored under `.agents/skills/`.
 
 Verification: `npm run lint`, `npm run typecheck`, `npm run build`, `npx vitest run`. Paste the output in your final message. `plugins/claude-code/dist` is committed and CI fails when it drifts from the build.
