@@ -1,8 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { baselineFindings, toKnownFailure } from "../state/index.js";
 import {
+  type AbsolutePath,
   CONSUMER_EXPIRY_MS,
   type Consumer,
+  type ConsumerRecord,
   type Delta,
   type DeltaKind,
   type EpochMs,
@@ -11,7 +13,9 @@ import {
   PAYLOAD_SCHEMA_VERSION,
   type StatusBuilder,
   type Store,
+  WAITERLESS_EXPIRY_MS,
 } from "../types/index.js";
+import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { readLiveHeader, tellLiveness, toldLiveness, worktreeLiveness } from "./liveness.js";
 
@@ -168,11 +172,57 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   };
 }
 
+export interface ExpiryOptions {
+  /**
+   * The store's `locks/` directory. With it, expiry removes the free lock
+   * files of the consumers it expires and also expires waiterless consumers
+   * (`WAITERLESS_EXPIRY_MS`). Without it, only the 12 hour rule applies.
+   */
+  readonly locksDir?: AbsolutePath;
+}
+
 /**
  * Spec 001 D10: "A consumer that has not been delivered to or heard from for
  * 12 hours is expired". The daemon calls this periodically; returns the
  * consumers removed with their views.
+ *
+ * Lessons, defects 8 and 10 (task 001-47): Claude Code runs no SessionEnd
+ * after an interactive exit that followed a typed prompt, but it kills the
+ * idle waiter, whose lock file stays behind. So a consumer whose waiter lock
+ * file exists, is held by no waiter, and that has not been delivered to or
+ * heard from for 10 minutes is expired too, and its lock file removed. The
+ * lock is only probed, never kept, so a waiter arming meanwhile is not
+ * refused; the staleness is checked again in the transaction that removes
+ * the consumer, so a hook that touched it in between keeps it.
  */
-export function expireConsumers(store: Store, now: EpochMs = Date.now()): readonly Consumer[] {
-  return store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS));
+export function expireConsumers(
+  store: Store,
+  now: EpochMs = Date.now(),
+  options: ExpiryOptions = {},
+): readonly Consumer[] {
+  const expired = [...store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS))];
+  const { locksDir } = options;
+  if (locksDir === undefined) return expired;
+  for (const consumer of expired) removeWaiterLock(locksDir, consumer);
+
+  const cutoff = now - WAITERLESS_EXPIRY_MS;
+  for (const { consumer } of store.consumers.idleSince(cutoff)) {
+    if (waiterLockState(locksDir, consumer) !== "free") continue;
+    const gone = store.transaction(() => {
+      const record = store.consumers.get(consumer);
+      if (record === null || !idle(record, cutoff)) return false;
+      store.consumers.unregister(consumer);
+      tellLiveness(store, consumer, null);
+      return true;
+    });
+    if (!gone) continue;
+    removeWaiterLock(locksDir, consumer);
+    expired.push(consumer);
+  }
+  return expired;
+}
+
+/** `ConsumerRepo.idleSince` for one record. */
+function idle(record: ConsumerRecord, cutoff: EpochMs): boolean {
+  return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
 }

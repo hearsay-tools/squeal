@@ -2,6 +2,7 @@ import type {
   Consumer,
   ConsumerRecord,
   ConsumerRepo,
+  EpochMs,
   ViewEntry,
   ViewRepo,
 } from "../../types/index.js";
@@ -31,6 +32,17 @@ export function createConsumerRepo(conn: Connection): ConsumerRepo {
       conn.run(`DELETE FROM consumer_views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
       conn.run(`DELETE FROM consumers WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
     });
+
+  const idleSince = (cutoff: EpochMs) =>
+    conn
+      .all(
+        `SELECT * FROM consumers
+         WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
+         ORDER BY worktree_id, session_id, agent_id`,
+        cutoff,
+        cutoff,
+      )
+      .map(toConsumer);
 
   return {
     get: (consumer) => {
@@ -78,18 +90,11 @@ export function createConsumerRepo(conn: Connection): ConsumerRepo {
     unregister,
     expire: (cutoff) =>
       conn.transaction(() => {
-        const expired = conn
-          .all(
-            `SELECT * FROM consumers
-             WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
-             ORDER BY worktree_id, session_id, agent_id`,
-            cutoff,
-            cutoff,
-          )
-          .map((row) => toConsumer(row).consumer);
+        const expired = idleSince(cutoff).map((record) => record.consumer);
         for (const consumer of expired) unregister(consumer);
         return expired;
       }),
+    idleSince,
   };
 }
 

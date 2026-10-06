@@ -6,6 +6,7 @@ export {
   createDelivery,
   DEFAULT_POLL_INTERVAL_MS,
   type DeliveryOptions,
+  type ExpiryOptions,
   expireConsumers,
 } from "./delivery.js";
 export { type DeltaPlan, type PlanInput, planDelta } from "./delta.js";

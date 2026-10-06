@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { expireConsumers } from "../delivery/index.js";
+import { storePaths } from "../store/index.js";
 import type {
   AbsolutePath,
   DaemonExitReason,
@@ -18,7 +19,10 @@ export interface DaemonTimings {
    * period, between 50 ms and 5 s.
    */
   readonly checkMs: number;
-  /** Consumer expiry (D10: 12 hours without a delivery or a call). */
+  /**
+   * Consumer expiry (D10: 12 hours without a delivery or a call; 10 minutes
+   * once the idle waiter is gone, task 001-47).
+   */
   readonly expireMs: number;
   /** Store pruning (D8), first after `firstPruneMs`. */
   readonly pruneMs: number;
@@ -28,6 +32,8 @@ export interface DaemonTimings {
 export interface TimerContext {
   readonly root: AbsolutePath;
   readonly worktreeId: WorktreeId;
+  /** The git common dir: its store's `locks/` holds the waiter locks the expiry pass reads. */
+  readonly commonDir: AbsolutePath;
   readonly store: Store;
   readonly policy: Policy;
   readonly now: () => EpochMs;
@@ -58,6 +64,7 @@ export function startTimers(context: TimerContext): () => void {
   const checkMs = timings.checkMs ?? Math.min(5_000, Math.max(50, idleMs / 10));
   const expireMs = timings.expireMs ?? 60_000;
   const pruneMs = timings.pruneMs ?? 60 * 60_000;
+  const { locksDir } = storePaths(context.commonDir);
   let lastExpire = Number.NEGATIVE_INFINITY;
   const attempt = (what: string, fn: () => void) => {
     try {
@@ -82,7 +89,7 @@ export function startTimers(context: TimerContext): () => void {
     const at = now();
     if (at - lastExpire >= expireMs) {
       lastExpire = at;
-      attempt("consumer expiry", () => expireConsumers(store, at));
+      attempt("consumer expiry", () => expireConsumers(store, at, { locksDir }));
     }
     attempt("idle check", () => {
       if (store.consumers.list(worktreeId).length > 0) context.active(at);

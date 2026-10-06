@@ -198,3 +198,12 @@ export interface ConsumerRecord {
 
 /** Spec 001 D10: consumer expiry. */
 export const CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * Expiry of a consumer whose idle waiter is gone: its waiter lock file exists
+ * and no waiter holds it (lessons, defects 8 and 10; task 001-47). Claude
+ * Code kills the waiter at every exit but runs no SessionEnd after a typed
+ * prompt, so the lock file left behind is the interactive main agent's
+ * liveness.
+ */
+export const WAITERLESS_EXPIRY_MS = 10 * 60 * 1000;
