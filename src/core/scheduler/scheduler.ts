@@ -24,7 +24,7 @@ import { NOTHING_CHANGED } from "./context.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
-import { appendNote } from "./notes.js";
+import { appendNote, plainText } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import type { FailureDescriber } from "./records.js";
 import { applyRevision, retryRunner } from "./revision.js";
@@ -267,7 +267,8 @@ class TierScheduler implements Scheduler {
   }
 
   /** Keeps a note for `status()` and persists it for `squeal status` (D7, review S6). */
-  #note(message: string): void {
+  #note(coloured: string): void {
+    const message = plainText(coloured);
     this.#notes.push(message);
     if (this.#notes.length > MAX_NOTES) this.#notes.shift();
     const { store, worktreeId, now } = this.options;

@@ -45,4 +45,18 @@ describe("persisted notes", () => {
       { at: 1, revision: null, text: "fresh" },
     ]);
   });
+
+  it("are plain text: ANSI escape codes are stripped (lessons defect 6)", () => {
+    const store = open(fakeCommonDir());
+    const esc = String.fromCharCode(27);
+    const coloured = `runner closure of test/a.test.ts failed: ${esc}[31m[PARSE_ERROR] ${esc}[0mExpected ${esc}[1m;${esc}[22m`;
+    appendNote(store, "wt", { at: 1, revision: 2, text: coloured });
+    expect(JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]")).toEqual([
+      {
+        at: 1,
+        revision: 2,
+        text: "runner closure of test/a.test.ts failed: [PARSE_ERROR] Expected ;",
+      },
+    ]);
+  });
 });
