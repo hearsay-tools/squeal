@@ -155,6 +155,10 @@ export function buildReport(
       .map((r) => r.result),
     fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
     failure: failure === "" ? null : collector.paths.relativizeText(failure),
+    fileDurations: [...collector.modules.values()]
+      .filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null)
+      .sort((a, b) => compareRefs(a.ref, b.ref))
+      .map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
   };
 }
 

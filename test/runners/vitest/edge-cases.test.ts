@@ -81,6 +81,7 @@ describe("vitest adapter: edge cases", SLOW, () => {
       results: [],
       fileErrors: [],
       failure: null,
+      fileDurations: [],
     });
   });
 

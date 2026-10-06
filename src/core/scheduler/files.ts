@@ -22,7 +22,9 @@ export interface FileState {
   failing: boolean;
   /**
    * Last known run time: the sum of `durationMs` over the results last
-   * applied, from this worktree's run or a lookup hit. `null` when unknown.
+   * applied, from this worktree's run or a lookup hit; the file-level check
+   * carries the time outside the test cases (`recordsForFile`). `null` when
+   * unknown.
    * D5 step 4 runs the shortest first within a class.
    */
   durationMs: number | null;

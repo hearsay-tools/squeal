@@ -46,15 +46,23 @@ export interface FileRecordsInput {
  * own result: an unhandled error attributed to the file after its tests ran
  * fails the file-level check, not the tests that passed. A file with no
  * file-level error records a `pass` for its file-level check.
+ *
+ * The file-level check carries the file's time outside its test cases
+ * (collection, setup, `beforeAll`, `afterAll`) when the runner reports a file
+ * duration, so the durations of a file's results add up to the whole file:
+ * D5 step 4 orders by it, after a run and after a lookup alike (review wave
+ * 4.5, N1).
  */
 export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const { ref, key, report, provenance, describe } = input;
   const inFile = (check: CheckId) => check.project === ref.project && check.testPath === ref.path;
   const records: ResultRecord[] = [];
   const ran = new Set<string>();
+  let testsMs = 0;
   for (const result of report.results) {
     if (!inFile(result.check)) continue;
     ran.add(checkId(result.check));
+    testsMs += result.durationMs;
     const failure =
       result.outcome === "fail"
         ? describe(result.errors, result.location)
@@ -74,6 +82,10 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const errors = report.fileErrors
     .filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path)
     .flatMap((e) => e.errors);
+  const fileMs = report.fileDurations?.find(
+    (d) => d.testFile.project === ref.project && d.testFile.path === ref.path,
+  )?.durationMs;
+  const outsideTestsMs = fileMs === undefined ? 0 : Math.max(0, fileMs - testsMs);
   if (errors.length === 0) {
     // Spec 001 D6: "The file-level check of a test file records `pass`
     // whenever the file loads, so a fixed import or syntax error closes with
@@ -82,7 +94,7 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
       check: fileCheck(ref),
       key,
       outcome: "pass",
-      durationMs: 0,
+      durationMs: outsideTestsMs,
       location: null,
       summary: null,
       fingerprint: null,
@@ -108,6 +120,6 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
       records.push(failed(check));
     }
   }
-  records.push(failed(fileCheck(ref)));
+  records.push({ ...failed(fileCheck(ref)), durationMs: outsideTestsMs });
   return records;
 }

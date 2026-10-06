@@ -14,6 +14,8 @@ export interface ModuleEnd {
   readonly errors: readonly SerializedError[];
   /** Ended after a timeout cancel was requested: its results are not trusted. */
   readonly afterCancel: boolean;
+  /** The module's own duration (`moduleDuration`), `null` when Vitest reports none. */
+  readonly durationMs: number | null;
 }
 
 /**
@@ -80,6 +82,7 @@ export class RunCollector {
       state: module.state(),
       errors,
       afterCancel: this.cancelRequested,
+      durationMs: moduleDuration(module),
     });
     this.log.push(`MODULE ${module.state()} ${label(ref)}`);
     for (const error of errors) this.log.push(indent(`file-level error: ${errorText(error)}`));
@@ -126,6 +129,23 @@ export function createSquealReporter(current: () => RunCollector | null): Report
     onTestRunEnd: (_modules, unhandledErrors, reason) => current()?.runEnd(unhandledErrors, reason),
     onUserConsoleLog: (log) => current()?.console(log.type, log.content),
   };
+}
+
+/**
+ * Environment setup, preparation, collection, setup files, and every test and
+ * hook of the module: what running this file alone costs (review wave 4.5,
+ * N1). `null` when Vitest has no diagnostic for it or a part is not a number.
+ */
+function moduleDuration(module: TestModule): number | null {
+  const d = module.diagnostic();
+  const parts = [
+    d.environmentSetupDuration,
+    d.prepareDuration,
+    d.collectDuration,
+    d.setupDuration,
+    d.duration,
+  ];
+  return parts.every((part) => Number.isFinite(part)) ? parts.reduce((a, b) => a + b, 0) : null;
 }
 
 const label = (ref: TestFileRef) => (ref.project ? `[${ref.project}] ${ref.path}` : ref.path);

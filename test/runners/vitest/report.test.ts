@@ -29,6 +29,7 @@ function collectorWithTwoPassedFiles(): RunCollector {
       state: "passed",
       errors: [],
       afterCancel: false,
+      durationMs: null,
     });
     collector.results.push({ ref: file, result: passed(file) });
   }
