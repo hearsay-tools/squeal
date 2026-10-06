@@ -448,6 +448,23 @@ describe("consumers and views", () => {
     expect(store.consumers.list("w")).toEqual([]);
   });
 
+  it("lists consumers idle since a cutoff in every worktree without removing them", () => {
+    const store = open(fakeCommonDir());
+    const other = { worktreeId: "x", sessionId: "s2", agentId: "main" };
+    const seen = { ...consumer, sessionId: "s3" };
+    const delivered = { ...consumer, sessionId: "s4" };
+    store.consumers.register(consumer, 10);
+    store.consumers.register(other, 20);
+    store.consumers.register(seen, 10);
+    store.consumers.touch(seen, 60, false);
+    store.consumers.register(delivered, 10);
+    store.consumers.touch(delivered, 60, true);
+
+    expect(store.consumers.idleSince(50).map((r) => r.consumer)).toEqual([consumer, other]);
+    expect(store.consumers.idleSince(20).map((r) => r.consumer)).toEqual([consumer]);
+    expect(store.consumers.list("w")).toHaveLength(3);
+  });
+
   it("replaces view entries per check and clears them on re-registration", () => {
     const store = open(fakeCommonDir());
     store.consumers.register(consumer, 1);

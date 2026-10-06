@@ -155,6 +155,8 @@ export interface ConsumerRepo {
   unregister(consumer: Consumer): void;
   /** Removes consumers idle since before `cutoff`; returns them. */
   expire(cutoff: EpochMs): readonly Consumer[];
+  /** Consumers idle since before `cutoff`, in every worktree: neither heard from nor delivered to. */
+  idleSince(cutoff: EpochMs): readonly ConsumerRecord[];
 }
 
 /** Spec 001 D8: "`consumers` and `consumer_views`". */

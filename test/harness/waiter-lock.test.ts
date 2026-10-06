@@ -7,7 +7,8 @@ import {
   acquireWaiterLock,
   removeWaiterLock,
   waiterLockPath,
-} from "../../src/harness/claude-code/waiter-lock.js";
+  waiterLockState,
+} from "../../src/core/waiter-lock/index.js";
 import { tempDir } from "../store/helpers.js";
 
 const consumer = { worktreeId: "0123456789abcdef", sessionId: "s", agentId: MAIN_AGENT };
@@ -47,5 +48,19 @@ describe("waiter lock (review wave 3, N3)", () => {
     } finally {
       next.close();
     }
+  });
+
+  it("reports absent, held and free without keeping the lock (task 001-47)", () => {
+    const dir = join(tempDir("squeal-locks-"), "locks");
+    expect(waiterLockState(dir, consumer)).toBe("absent");
+    const lock = acquireWaiterLock(dir, consumer);
+    expect(waiterLockState(dir, consumer)).toBe("held");
+    lock?.release(false);
+    expect(waiterLockState(dir, consumer)).toBe("free");
+    // The probe let go: a waiter arming next takes the lock.
+    const next = acquireWaiterLock(dir, consumer);
+    expect(next).not.toBeNull();
+    next?.release(true);
+    expect(waiterLockState(dir, consumer)).toBe("absent");
   });
 });
