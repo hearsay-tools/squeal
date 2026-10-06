@@ -150,6 +150,17 @@ export interface RunOptions {
   readonly timeoutMs: number | null;
 }
 
+/**
+ * How long one test file took as a whole: collection, setup files, hooks and
+ * tests. Review wave 4.5, N1: the sum of test-case durations leaves out
+ * `beforeAll`, `afterAll` and collection, so a file whose time goes into a
+ * `beforeAll` ranked as short in D5 step 4.
+ */
+export interface FileDuration {
+  readonly testFile: TestFileRef;
+  readonly durationMs: number;
+}
+
 /** Everything one `run` call produced. Only test files passed to `run` appear here. */
 export interface RunReport {
   readonly end: RunEnd;
@@ -163,6 +174,12 @@ export interface RunReport {
   readonly fileErrors: readonly FileLevelError[];
   /** Set when `end` is not `completed`. */
   readonly failure: string | null;
+  /**
+   * The duration of each completed file, when the runner reports one (Vitest:
+   * the module diagnostic of `onTestModuleEnd`). Optional: a runner without it
+   * leaves the file's duration to the sum of its test cases.
+   */
+  readonly fileDurations?: readonly FileDuration[];
 }
 
 /**

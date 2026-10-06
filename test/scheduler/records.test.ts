@@ -45,6 +45,48 @@ const report = (patch: Partial<RunReport>): RunReport => ({
 });
 
 describe("recordsForFile", () => {
+  it("puts the module's time outside its tests on the file-level check (review wave 4.5, N1)", () => {
+    const fileCheck = { kind: "file", project: "", testPath: file.path };
+    const records = recordsForFile({
+      ref: file,
+      key: "k1",
+      report: report({
+        results: [
+          { check: test("adds"), outcome: "pass", durationMs: 2, location: null, errors: [] },
+          { check: test("subs"), outcome: "pass", durationMs: 3, location: null, errors: [] },
+        ],
+        fileDurations: [
+          { testFile: file, durationMs: 305 },
+          { testFile: other, durationMs: 9 },
+        ],
+      }),
+      previousChecks: [],
+      provenance,
+      describe: describeFailure,
+    });
+    expect(records.map((r) => [r.check, r.durationMs])).toEqual([
+      [test("adds"), 2],
+      [test("subs"), 3],
+      [fileCheck, 300],
+    ]);
+  });
+
+  it("keeps the file-level check at 0 ms without a module duration", () => {
+    const records = recordsForFile({
+      ref: file,
+      key: "k1",
+      report: report({
+        results: [
+          { check: test("adds"), outcome: "pass", durationMs: 2, location: null, errors: [] },
+        ],
+      }),
+      previousChecks: [],
+      provenance,
+      describe: describeFailure,
+    });
+    expect(records.at(-1)?.durationMs).toBe(0);
+  });
+
   it("maps this file's results under the key and leaves other files out", () => {
     const records = recordsForFile({
       ref: file,

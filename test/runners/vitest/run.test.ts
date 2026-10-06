@@ -68,6 +68,30 @@ describe("vitest adapter: run()", SLOW, () => {
     expect(report.results.every((r) => r.check.testPath === "test/strings.test.ts")).toBe(true);
   });
 
+  /*
+   * Review wave 4.5, N1: the sum of test-case durations leaves out collection,
+   * `beforeAll` and `afterAll`, so a file whose time goes into a `beforeAll`
+   * ranked as short. The module's own duration comes from `onTestModuleEnd`.
+   */
+  it("reports each completed file's module duration, setup hooks included", async () => {
+    const fx = await openFixture();
+    fx.write(
+      "test/setup-heavy.test.ts",
+      'import { beforeAll, it } from "vitest";\n' +
+        "beforeAll(() => new Promise((resolve) => setTimeout(resolve, 300)));\n" +
+        'it("is quick", () => {});\n',
+    );
+    await fx.adapter.invalidate([{ path: "test/setup-heavy.test.ts", kind: "add" }]);
+    const report = await fx.adapter.run([ref("test/setup-heavy.test.ts")], fx.runOptions());
+
+    const tests = report.results.reduce((sum, r) => sum + r.durationMs, 0);
+    expect(tests).toBeLessThan(100);
+    expect(report.fileDurations).toEqual([
+      { testFile: ref("test/setup-heavy.test.ts"), durationMs: expect.any(Number) },
+    ]);
+    expect(report.fileDurations?.[0]?.durationMs).toBeGreaterThanOrEqual(290);
+  });
+
   it("maps skip and todo to skip", async () => {
     const fx = await openFixture();
     fx.write(
