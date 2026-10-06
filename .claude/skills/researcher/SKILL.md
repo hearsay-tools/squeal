@@ -27,4 +27,4 @@ The first line of the final message is the recommendation in one clause. Then wh
 
 ## Fan-out
 
-When the human asks for more than one opinion on a question, the coordinator runs two researchers on different models and then one judge who reads both files and names where they diverged rather than averaging them. The judge is a researcher with `research/<topic>-judgment.md` as its file.
+When the human asks for more than one opinion on a question, the coordinator runs two researchers on different models, each writing `research/<topic>-<n>.md`, and then one `/judge` over both files.

@@ -55,7 +55,11 @@ After every landing: one timestamped line under the progress log, and resume not
 
 ## Research first
 
-A new spec starts with research: one `/researcher` per open topic, in parallel, from a brief under `research/README.md`. The spec is written from their files, never from memory. A fan-out of two researchers on different models plus a judge is the human's call, because it is spend.
+A new spec starts with research: one `/researcher` per open topic, in parallel, from a brief under `research/README.md`. The spec is written from their files, never from memory. A fan-out of two `/researcher`s on different models plus one `/judge` over their files is the human's call, because it is spend; when the human asks for more than one opinion, that is the shape.
+
+## Quality
+
+After a spec ships, or after about ten landed rows since the last file under the spec's `quality/`, spawn one `/quality` over that stretch. Its findings become board rows or drop candidates; it never edits the board itself. It is not a merge gate.
 
 ## Proof waves
 

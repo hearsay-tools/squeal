@@ -99,6 +99,12 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-50 wave 6 review fixes | done | From `specifications/001-core-loop/reviews/wave-6.md`. S1: `user-prompt-submit.ts` injects the registration whenever it registers (a store created after SessionStart, or a consumer expired while idle), so a first attended session sees the header and a recovery is not seeded away. S2: a SubagentStop whose consumer was never registered is treated as a fork (no registration, no block, no output), which catches forks under `claude --agent <name>`. N4: PostToolBatch and PreToolUse skip forks. N2: a test for the staleness re-check in the expiry transaction. Amend D9 with the review's proposed sentences for SessionStart, UserPromptSubmit and SubagentStop. Rebuild bundles at integration. | Tests for each; an attended first session on a new store shows the `SQUEAL` header; an `--agent` fork's SubagentStop is not blocked. |
 | 001-51 attended check of wave 6.5 | done | Attended Claude Code session in tmux on a scratch fixture, as `lessons.md` "Attended re-run after wave 6": A8 (first session on a new store shows the `SQUEAL` header after the first prompt) and G1 (`claude --agent helper`, policy on, failures current: no fork blocked, no extra `prompt_suggestion` request). Append a dated line to that section. | Both observed and recorded in `lessons.md`. |
 
+### Wave 7: first quality pass
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-52 quality scan of spec 001 | planned | `/quality` over `935e251..main`: every wave of 001. Output `docs/specifications/001-core-loop/quality/2026-10.md`. | Findings file committed; the coordinator turns its rows into board rows or drops. |
+
 ## Later
 
 - 002 pytest runner adapter.
