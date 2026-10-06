@@ -544,3 +544,44 @@ New product defects hit in this run. No product code was changed.
 - Interactive `--resume` with the waiter.
 - Store concurrency beyond two worktrees, the fixture's seven consumers and one `-p` session at a time.
 - A repository baseline at calm load: the only one ran at load 18 to 55 (446.7 s).
+
+## Attended re-run after wave 6
+
+Task 001-49, 2026-10-06, part of `reviews/wave-6.md`. Squeal at commit `1f1a372` (waves 6 landed: 001-47, 001-48). The question: are defects 8, 9 and 10 of the re-run above gone with a real attended Claude Code session?
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Claude Code | 2.1.291, `DISABLE_AUTOUPDATER=1`, `--setting-sources project --strict-mcp-config --permission-mode acceptEdits`, the allow-list of the first run, `--debug hooks --debug-file`, model `claude-sonnet-5-5`; `CLAUDE*` and `CEZ_*` variables removed |
+| Plugin | `git archive 1f1a372 plugins/claude-code`, loaded with `--plugin-dir`. `squeal init`'s `.claude/settings.json` was deleted, so the marketplace copy could not load beside it. |
+| Fixture | `/tmp/sq6/fix`: the fixture of the runs above (4 modules, 4 test files, 24 checks), fresh `git init`, `squeal init`. Policy `stop.blockOnKnownFailures: true`, `stop.waitMs: 1500`, `daemon.idleExitMinutes: 5`: the idle period was shortened in policy, never in product code, so the idle exit fitted the task. `fix2` (the Esc probe) and `fix3` (latency, `-p`, `--agent`) are copies with their own store and daemon. |
+| Drivers | `tmux`, a 30 s logger of consumers, lock files (held or free, by one lock attempt) and waiter processes, debug logs and transcripts. Scratch under `/tmp/sq6`. |
+| Machine | Same host, load average 2.2 to 5.9 |
+| Cost | $0.59 attended (turn-end cost records of the debug logs), $0.09 for one `-p` session |
+
+### Sessions
+
+| Id | Fixture | Steps (UTC) | SessionEnd | Waiter | Consumer gone after last heard from | Lock file | Squeal said |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A8 | `fix`, no store before it | one typed question at 15:14:14, `/exit` at 15:16:31 | none | armed by UserPromptSubmit, killed at exit (137) | yes: 10 min 47 s after 15:14:18 | removed with the row | nothing: no `SQUEAL` header (finding 4) |
+| A6 | `fix` | one typed edit (`double` in `src/money.ts`), `/exit` at 15:17:10 | none | SessionStart's, killed at exit (137) | yes: 10 min 4 s after 15:17:01 | removed with the row | the SessionStart header |
+| A11 | `fix` | one typed question, Ctrl-C twice at 15:17:10 | none | SessionStart's, killed at exit (137) | yes: 10 min 4 s after 15:17:01 | removed with the row | the SessionStart header |
+| E1 | `fix2` | one typed question; `src/money.ts` broken from outside (wake 1, 5 `PASS -> FAIL` at 15:17:52), then restored (wake 2, 5 `FAIL -> PASS` at 15:18:18); Esc 1.5 s into the woken turn; `/exit` at 15:18:44 | none | armed after the Esc: the woken turn's UserPromptSubmit started one 39 ms after wake 2; it ran until the exit killed it (137) | yes: 10 min 19 s after 15:18:18 | removed with the row | both wakes, as UserPromptSubmit blocking errors |
+| G1 | `fix3`, `claude --agent helper`, 5 failures current | one typed question, `/exit` at 15:23:42 | none | SessionStart's, killed at exit (137) | not sampled; at 15:38:15 the store had no consumer and no waiter lock file | gone | the header; main Stop blocked once; both forks' SubagentStop blocked (finding 3) |
+
+The logger sampled every 30 s, which bounds each expiry to a 30 s window (A8 10 min 17 s to 10 min 56 s, A6 and A11 10 min 0 s to 10 min 13 s, E1 10 min 0 s to 10 min 31 s). The exact figures come from the daemon's idle exit: it checks every 5 s, its expiry pass runs in the same tick, and it stops 5 minutes after the last tick that saw a consumer. Each store's last write is that stop (`fix` 15:32:00.7, `fix2` 15:33:32.0, `fix3` 15:38:14.6), so the last expiry of each fixture ran about 4 min 55 s earlier. The expiry pass runs every 60 s, so A8's was the pass 2 minutes before A6's, the first after 15:24:18.
+
+### Findings
+
+1. **Defect 8 holds in Claude Code, and Squeal now absorbs it.** 2.1.291 still runs no SessionEnd after a typed prompt: 5 of 5 here (A6, A8, A11, E1, G1; none logged a SessionEnd hook, and every sampled main consumer was still registered after exit). Claude Code killed the armed waiter at every exit (`status code 137`), and the lock file stayed, free, in every sampled session. The daemon expired each consumer between 10 min 4 s and 10 min 47 s (A8, A6, A11, E1; G1 was not sampled) after it was last heard from, and removed its lock file. The fixture daemons idled out 5 minutes after their last consumer expired, at 15:32:01 (`fix`), 15:33:32 (`fix2`) and 15:38:15 (`fix3`), each with no consumer and no waiter lock file left.
+2. **Defect 10 is gone, for a reason the brief did not expect.** Claude Code runs UserPromptSubmit for the turn a waiter wakes. In E1 a new waiter started 25 ms and 39 ms after the two wakes and before any Stop, and the waiter killed at exit was logged as `Hook UserPromptSubmit (UserPromptSubmit) error: status code 137`. The queued wake message in the transcript carries a `promptId`. So the woken turn re-arms its own waiter, and an Esc during it leaves one armed. Claude Code labels the wake `Stop hook blocking error from command "UserPromptSubmit"`, after the event that armed the waiter.
+3. **Defect 9 is gone without `--agent`, and back under it.** In A6, A8, A11 and E1 no fork was ever registered. In G1 (`claude --agent helper`, 5 failures current, policy on), both forks' SubagentStop calls were blocked, and each made a second `source=prompt_suggestion` request. Neither fork had a consumer row before its SubagentStop, and both rows were gone after a second, silent SubagentStop (review S2).
+4. **A first attended session on a new store never sees the header.** A8 started on a repository with no store, so SessionStart only spawned the daemon. UserPromptSubmit then registered the consumer silently because no failure was known. The transcript has no `SQUEAL` header, and every later PostToolBatch had an empty delta. A6 and A11, started once the store existed, got it from SessionStart (2 `SQUEAL ·` lines each). Review S1.
+5. **Hook cost.** UserPromptSubmit p50 64 / p95 70 ms registered, 66 / 76 ms re-registering; a quiet PostToolBatch 62 / 67 ms in the same round (fixture store, load 2.2 to 2.9). In `-p` both UserPromptSubmit hooks returned silently and the session ended normally in 4.2 s.
+
+### Not measured
+
+- UserPromptSubmit on this repository's 885-check store.
+- A user idle for more than 69 minutes: the 59-minute waiter timeout followed by the 10-minute expiry and a re-registration at the next prompt. Only unit tests cover it.
+- Whether Claude Code feeds SubagentStop `additionalContext` to a fork. That is the default-policy path of review S2.
