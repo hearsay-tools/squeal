@@ -625,6 +625,18 @@ On this repository (102 test files) the same steps cost 11 ms and 410 ms, and ev
 
 11. **An add or delete re-transforms the whole module graph before anything runs.** `src/runners/vitest/adapter.ts` `invalidate` calls `invalidateAll` on any structural path (D4). On a 516-file repository the following `affected` walk takes 5 to 6 s instead of 0.5 s, and the new test file's first result arrives 9 to 12 s after the save. Agents create and delete files often, so this lag hits them on most turns that add a test.
 
+### Re-run after 001-56
+
+2026-10-07, task 001-54. Same probe on a fresh clone of `cezar` at `82dfae5` (536 test files on disk, projects `server`, `contract`, `api-client` and `web`, Vitest 4.1.10) with Squeal at `8119c64`, built with `tsc`. One adapter instance, warmed by one cold `affected` (6.8 s), then three rounds of: append a comment to `packages/cezar/src/core/agent-model-policy.test.ts`; add `packages/cezar/src/artifacts/squeal-probe.test.ts`, which imports `./store.js`; delete it. Each step is `invalidate` with the path's kind, then `affected` with the path. The machine had 24 cores at load average 9 to 12.
+
+| Step | Edit | Add test file | Delete test file |
+| --- | --- | --- | --- |
+| `invalidate` | 0 to 1 ms | 50 ms, then 8 and 10 ms | 6 to 7 ms |
+| `affected` | 462 to 560 ms | 492 to 603 ms | 779 to 943 ms |
+| `affected` again, transforms warm | | 483 to 593 ms | |
+
+A warm `affected` with nothing changed took 487 ms. The add's first `invalidate` is the one that scans the source of every cached module (D4). An add now costs what an edit costs: the walk after it no longer re-transforms the graph, against 5.3 s at `6185990`. A delete costs about 300 ms more than a warm walk, against 6.2 s before; the probe file had no importers, so the extra is not re-transformed importers. Defect 11 does not reproduce at this step.
+
 ## A dependency install under a running daemon
 
 2026-10-07, found by the coordinator in `cezar` session `bbe5c9d9` (Squeal plugin at `cfb8e9e`), from `cezar/.git/squeal/store.sqlite` and the run logs under `cezar/.git/squeal/runs/`. Nothing since `cfb8e9e` touches this path.
