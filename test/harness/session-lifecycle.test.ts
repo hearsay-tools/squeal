@@ -174,3 +174,70 @@ describe("SessionStart sweep (defect 5)", () => {
     );
   });
 });
+
+/*
+ * Review wave 4.5, S4: SessionStart fires for `startup`, `resume`, `clear` and
+ * `compact`. After a compaction the same session goes on, with its subagents
+ * possibly still running, so only `startup` and `resume` mean an earlier run
+ * of the session id is gone.
+ */
+describe("SessionStart sweep by source (review wave 4.5, S4)", () => {
+  it.each(["startup", "resume"])("sweeps the session's subagents on %s", async (source) => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    registered(r);
+    registered(r, { agentId: SUBAGENT });
+
+    await runHook("session-start", recorded("session-start", r.root, { source }), deps());
+
+    expect(sessionsIn(r, r.worktreeId)).toEqual([`${SESSION}/main`]);
+  });
+
+  it("keeps a live subagent and the main agent's view on compact", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), deps());
+    await runHook("session-start", recorded("subagent-start", r.root), deps());
+    // A regression the main agent has not been told yet.
+    r.apply(r.fail());
+
+    const out = await runHook(
+      "session-start",
+      recorded("session-start", r.root, { source: "compact" }),
+      deps(),
+    );
+
+    expect(out).toEqual(SILENT);
+    expect(sessionsIn(r, r.worktreeId)).toEqual(
+      [`${SESSION}/${SUBAGENT}`, `${SESSION}/main`].sort(),
+    );
+    // Not re-seeded: the regression is still delivered at the next tool boundary.
+    const next = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps());
+    expect(next.stdout).toContain("PASS -> FAIL");
+  });
+
+  it("registers the main agent on compact when it is not registered", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+
+    await runHook(
+      "session-start",
+      recorded("session-start", r.root, { source: "compact" }),
+      deps(),
+    );
+
+    expect(sessionsIn(r, r.worktreeId)).toEqual([`${SESSION}/main`]);
+  });
+
+  it.each(["clear", undefined])("does not sweep on source %s", async (source) => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    registered(r, { agentId: SUBAGENT });
+
+    await runHook("session-start", recorded("session-start", r.root, { source }), deps());
+
+    expect(sessionsIn(r, r.worktreeId)).toEqual(
+      [`${SESSION}/${SUBAGENT}`, `${SESSION}/main`].sort(),
+    );
+  });
+});

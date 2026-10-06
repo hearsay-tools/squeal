@@ -1,7 +1,7 @@
 import { formatRegistration } from "../../../core/delivery/index.js";
 import { usesSqueal } from "../context.js";
 import { ensure, settle } from "../ensure.js";
-import { additionalContext, type Handler, withContext } from "../hook.js";
+import { additionalContext, type Handler, isRegistered, withContext } from "../hook.js";
 import { unregisterSession } from "../sweep.js";
 
 /**
@@ -13,11 +13,19 @@ import { unregisterSession } from "../sweep.js";
  * briefly for its heartbeat, so its header reports a daemon that is about to
  * validate as validating.
  *
- * Lessons, defect 5: a SessionStart (not SubagentStart) for a session id means
- * any earlier run of that session is gone, so every consumer of the session id
- * still registered (a missed SessionEnd, subagents of the earlier run, other
- * worktrees) is unregistered before the main agent registers.
+ * Lessons, defect 5: a SessionStart (not SubagentStart) with source `startup`
+ * or `resume` means any earlier run of that session id is gone, so every
+ * consumer of the session id still registered (a missed SessionEnd, subagents
+ * of the earlier run, other worktrees) is unregistered before the main agent
+ * registers. Review wave 4.5, S4: after `compact` the same run goes on, with
+ * its subagents possibly running, so it keeps every consumer; a main agent
+ * still registered keeps its view too, so nothing it was not told yet is
+ * seeded away, and the hook says nothing. `clear` and a missing source do not
+ * sweep either.
  */
+/** Sources after which no earlier run of the session id goes on. */
+const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
+
 export const sessionStart: Handler = async (input, location, deps) => {
   if (!usesSqueal(location)) return null;
   let ensured = false;
@@ -29,7 +37,9 @@ export const sessionStart: Handler = async (input, location, deps) => {
     // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
     // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
     // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
-    if (input.agent_id === undefined) {
+    const main = input.agent_id === undefined;
+    if (main && input.source === "compact" && isRegistered(context)) return null;
+    if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
         except: context.consumer,
