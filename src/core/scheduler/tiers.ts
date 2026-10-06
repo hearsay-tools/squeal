@@ -144,6 +144,7 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<S
  * - Otherwise one `putMany` per file under the key it ran under. When that is
  *   still the file's key the results become current; else they wait in the
  *   store for a lookup, and the file is already queued for its new key.
+ * - The report's notes become status notes (D7), after the transaction.
  */
 export function recordTier(
   context: SchedulerContext,
@@ -199,6 +200,7 @@ export function recordTier(
     ledger.markUnknown(unknown, reason);
     ledger.commit();
   });
+  for (const note of report.notes ?? []) context.note(note);
   return [...changedOnDisk];
 }
 

@@ -182,6 +182,11 @@ export interface RunReport {
    * leaves the file's duration to the sum of its test cases.
    */
   readonly fileDurations?: readonly FileDuration[];
+  /**
+   * Facts about the run recorded as status notes (D7), e.g. a runner failure
+   * that recreated the instance (D5). Optional, like `InvalidateResult.notes`.
+   */
+  readonly notes?: readonly string[];
 }
 
 /**
