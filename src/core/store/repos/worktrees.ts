@@ -1,5 +1,5 @@
 import type { WorktreeRecord, WorktreeRepo } from "../../types/index.js";
-import { bool, flag, num, str, strOrNull } from "../codec.js";
+import { bool, flag, num, numOrNull, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
 /**
@@ -44,14 +44,16 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
         record.registeredAt,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
-        d?.heartbeatAt ?? null,
+        d?.heartbeatAt ?? record.lastHeartbeatAt ?? null,
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null,
       );
     },
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
     setDaemon: (id, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?, daemon_heartbeat_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+           daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
            daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
@@ -81,6 +83,7 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
 
 function toRecord(row: Row): WorktreeRecord {
   const socketPath = strOrNull(row, "daemon_socket");
+  const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {
     id: str(row, "id"),
     root: str(row, "root"),
@@ -97,5 +100,6 @@ function toRecord(row: Row): WorktreeRecord {
             heartbeatIntervalMs: num(row, "daemon_heartbeat_interval_ms"),
             squealVersion: str(row, "daemon_version"),
           },
+    ...(socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}),
   };
 }

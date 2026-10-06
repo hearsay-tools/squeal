@@ -93,7 +93,7 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
-  const daemon = liveness(worktree?.daemon ?? null, now);
+  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
   // Nothing observes the files without a daemon, so the last revision's flag may be old news (D7).
   const observed = daemon.state === "alive" ? revision : null;
 
@@ -117,8 +117,13 @@ function snapshot(
   };
 }
 
-function liveness(daemon: DaemonRecord | null, now: EpochMs): DaemonLiveness {
-  if (daemon === null) return { state: "down", since: null };
+/** With no daemon record, the heartbeat kept after `squeal stop` says since when (review wave 4.5, N5). */
+function liveness(
+  daemon: DaemonRecord | null,
+  now: EpochMs,
+  lastHeartbeatAt: EpochMs | null,
+): DaemonLiveness {
+  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
   const age = now - daemon.heartbeatAt;
   if (age <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };

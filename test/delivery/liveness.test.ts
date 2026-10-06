@@ -90,9 +90,23 @@ describe("liveness in headers", () => {
   });
 
   it("is down since nothing when no daemon recorded a heartbeat", async () => {
-    store.worktrees.setDaemon(WT, null);
+    store.worktrees.upsert({
+      id: WT,
+      root: "/repo",
+      commonDir: "/repo/.git",
+      isMain: true,
+      registeredAt: 1,
+      daemon: null,
+    });
     const { header } = await delivery.register(C1);
     expect(header.daemon).toEqual({ state: "down", since: null });
+  });
+
+  it("is down since the last heartbeat after the daemon cleared its record (review wave 4.5, N5)", async () => {
+    clock += 1_000;
+    store.worktrees.setDaemon(WT, null);
+    const { header } = await delivery.register(C1);
+    expect(header.daemon).toEqual({ state: "down", since: clock - 1_000 });
   });
 });
 

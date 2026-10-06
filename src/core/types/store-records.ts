@@ -27,6 +27,13 @@ export interface WorktreeRecord {
   readonly isMain: boolean;
   readonly registeredAt: EpochMs;
   readonly daemon: DaemonRecord | null;
+  /**
+   * The last heartbeat of a daemon that cleared its record on shutdown; set
+   * only while `daemon` is `null`. Spec 001 D10: status reports "no daemon
+   * running since <time>" (review wave 4.5, N5). Absent when no daemon ever
+   * recorded one, or when an `upsert` cleared it.
+   */
+  readonly lastHeartbeatAt?: EpochMs;
 }
 
 export interface DaemonRecord {

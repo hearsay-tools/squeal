@@ -9,20 +9,32 @@ import type {
   StatusHeader,
   Store,
   WorktreeId,
+  WorktreeRecord,
 } from "../types/index.js";
 
 /**
  * Daemon liveness from the heartbeat the daemon records in `worktrees`,
  * judged as `squeal status` judges it (spec 001 D10), so a header and status
  * never disagree. Review wave 3, S2: delivered text says when no daemon is
- * validating; hooks restart one when the heartbeat is this old.
+ * validating; hooks restart one when the heartbeat is this old. With no
+ * record, `lastHeartbeatAt` (`WorktreeRecord.lastHeartbeatAt`, kept after
+ * `squeal stop`) says since when (review wave 4.5, N5).
  */
-export function daemonLiveness(record: DaemonRecord | null, now: EpochMs): DaemonLiveness {
-  if (record === null) return { state: "down", since: null };
+export function daemonLiveness(
+  record: DaemonRecord | null,
+  now: EpochMs,
+  lastHeartbeatAt: EpochMs | null = null,
+): DaemonLiveness {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
   if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
   }
   return { state: "down", since: record.heartbeatAt };
+}
+
+/** `daemonLiveness` of a worktree row, its last heartbeat included; down since nothing without a row. */
+export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs): DaemonLiveness {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
 
 /** The shared header (D6) with the worktree's daemon liveness. */
@@ -34,7 +46,7 @@ export function readLiveHeader(
 ): StatusHeader {
   return {
     ...readHeader(store, worktreeId, states),
-    daemon: daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, now),
+    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
   };
 }
 

@@ -32,6 +32,10 @@ describe("worktrees", () => {
     expect(store.worktrees.get("wt-1")?.daemon).toEqual({ ...daemon, heartbeatAt: 99 });
     store.worktrees.setDaemon("wt-1", null);
     expect(store.worktrees.get("wt-1")?.daemon).toBeNull();
+    // Review wave 4.5, N5: status says since when no daemon runs.
+    expect(store.worktrees.get("wt-1")?.lastHeartbeatAt).toBe(99);
+    store.worktrees.upsert(record);
+    expect(store.worktrees.get("wt-1")).toEqual(record);
 
     store.worktrees.upsert(worktree("wt-2", "/repo/other"));
     expect(store.worktrees.list().map((w) => w.id)).toEqual(["wt-1", "wt-2"]);
