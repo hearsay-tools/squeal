@@ -73,4 +73,40 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       ["test/barrel.test.ts"],
     ]);
   });
+
+  /*
+   * Review wave 4.5, S6 and probe A: on this repository every test file
+   * reaches an edited module through `src/core/state/index.ts` or another
+   * barrel, so the runner's `direct` class is empty and the order comes from
+   * the shortest-duration rule alone. Fixture `barrel-only`: both test files
+   * import only `src/index.ts`; the slow one sorts first by path.
+   */
+  it("with no direct importer at all, runs the shortest last known duration first", async () => {
+    const repo = createRepo("barrel-only");
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    const direct: string[][] = [];
+    const affectedDetailed = h.runner.affectedDetailed?.bind(h.runner);
+    h.runner.affectedDetailed = async (paths) => {
+      const affected = await (affectedDetailed as NonNullable<typeof affectedDetailed>)(paths);
+      direct.push(affected.direct.map((f) => f.path));
+      return affected;
+    };
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const baseline = h.runner.runs.length;
+    expect(h.runner.runs.map((run) => run.files.map((f) => f.path))).toEqual([
+      ["test/aa-slow.test.ts"],
+      ["test/zz-fast.test.ts"],
+    ]);
+
+    h.write("src/math.ts", edit);
+    await h.batch("src/math.ts");
+    await h.scheduler.idle();
+    expect(direct).toEqual([[]]);
+    expect(h.runner.runs.slice(baseline).map((run) => run.files.map((f) => f.path))).toEqual([
+      ["test/zz-fast.test.ts"],
+      ["test/aa-slow.test.ts"],
+    ]);
+  });
 });

@@ -60,7 +60,7 @@ afterEach(async () => {
  * A git repository holding a copy of a fixture under `test/fixtures/scheduler`.
  * In `basic`, `src/gen/` is gitignored but present.
  */
-export function createRepo(fixture: "basic" | "barrel" = "basic"): {
+export function createRepo(fixture: "basic" | "barrel" | "barrel-only" = "basic"): {
   main: string;
   commonDir: string;
   dir: string;
