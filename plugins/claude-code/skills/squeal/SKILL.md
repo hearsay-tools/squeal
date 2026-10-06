@@ -23,10 +23,22 @@ Full-suite checkpoint: none completed at revision 187; last completed at revisio
 ```
 
 - **Known failures: 0** with pending checks means "no known failures yet". Say that, not "all tests pass".
-- If checks are pending, the current revision is not fully validated. Wait and run `squeal status` again, or say what is still pending.
+- If checks are pending, the current revision is not fully validated. Wait for them with `squeal status --wait <ms>` (below), or say what is still pending.
 - If no full-suite checkpoint completed at the current revision, say so. `squeal run --all` requests one. A checkpoint is a request, not a coverage state: without one, current results are still current.
 
 `squeal status --json` gives the same snapshot as a versioned JSON object.
+
+## Waiting for pending checks
+
+Do not wait with `sleep` and poll. Run:
+
+```sh
+squeal status --wait 60000
+```
+
+It returns as soon as nothing is pending at the current revision, or as soon as a check changed (a new failure or a recovery), and at the latest after the given milliseconds. Then it prints status. Its first line says why it returned: `Returned on quiet`, `Returned on news` or `Returned on timeout`, with the revision and the time waited. The exit code is 0 in all three cases. After a timeout, checks are still pending: say so, or wait again. Keep the limit below your shell tool's own timeout. With `--json`, stdout is the snapshot and the line goes to stderr.
+
+It reads the store only and needs no daemon. It returns on quiet no sooner than 750 ms after it starts, so a revision for an edit you just made is recorded first.
 
 ## Reading the counts
 
@@ -70,7 +82,7 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | `stop.requireFullSuite` | `false` | Keep the agent going at Stop until a full-suite run completed at the current revision. Blocks once per stop. |
 | `stop.waitMs` | `0` | At Stop, wait this long for pending checks of the current revision. Capped at 1500 ms by the 2 s hook timeout. |
 | `baseline.onStart` | `"lookup-then-run-missing"` | On daemon start, reuse stored results and run the rest, or `"lookup-only"`. |
-| `inputs` | `[]` | Extra files (globs) a test file depends on, for fixtures read at runtime. |
+| `inputs` | `[]` | Extra files (globs) that test files read at runtime, so a change to them re-runs those tests. A list applies to every test file. A map from test-file glob to input globs applies to the matching test files only, for example `{"test/harness/plugin.test.ts": ["plugins/claude-code/dist/**"]}`. |
 | `env.allowlist` | `[]` | Environment variables whose values are part of a result's identity. |
 | `runner.tierSize` | `4` | Test files per run. |
 | `runner.timeoutMs` | `600000` | Limit per run; `null` for none. |
