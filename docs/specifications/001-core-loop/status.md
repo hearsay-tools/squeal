@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: in-progress (waves 0 to 4.5 done; all lessons defects fixed and re-probed; wave 4.6 closes the review's should-fix items before shipped-candidate)
+Stage: in-progress (waves 0 to 4.5 done; all lessons defects fixed and re-probed; wave 4.6 closes the review's should-fix items before shipped-candidate, its fixes await review)
 Started: 2026-10-02
 
 ## Decisions so far
@@ -27,6 +27,8 @@ Started: 2026-10-02
 - 2026-10-04, from dogfooding (`lessons.md`): revisions never wait on the runner (D2); direct importers from the module graph first, shortest duration first within a class (D5); fingerprint normalizes UUIDs, long hex and temp paths (D6); `status --wait`, not-listed-yet state, dirty flag labelled with its revision (D7); `inputs` may map test-file globs to input globs (D11).
 
 - 2026-10-06, from the wave 4.5 review (`reviews/wave-4.5.md`): refined-revision marker so deferred runner work counts as pending (D2); open questions 2, 4, 5 and 8 decided.
+
+- 2026-10-06, wave 4.6 (001-45): file duration is the whole file for ordering (D5); `status --wait` has its own outcome without a daemon (D7); the SessionStart sweep only on `startup` and `resume` (D9); status says since when after a clean stop (D10). D2 holds without amendment: the runner phase of a refinement runs without the scheduler lock, and a batch during a 2 s runner phase waits 11 to 12 ms (`test/scheduler/refinement-lock.test.ts`).
 
 ## Research
 
