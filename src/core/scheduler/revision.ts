@@ -1,17 +1,9 @@
-import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
-import type {
-  AffectedTestFiles,
-  FileChange,
-  InvalidatedPath,
-  RelativePath,
-  Revision,
-  RunnerAdapter,
-  TestFileRef,
-} from "../types/index.js";
+import { type KeyChange, testFileId } from "../keys/index.js";
+import type { FileChange, InvalidatedPath, Revision, TestFileRef } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
-import { listPaths, unmatchedInputNotes } from "./notes.js";
+import { unmatchedInputNotes } from "./notes.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
 export function toInvalidatedPath(change: FileChange): InvalidatedPath {
@@ -82,99 +74,6 @@ function reloadPolicy(
 }
 
 /**
- * The runner part of a new revision, after `rekeyContent` stored it.
- *
- * Spec 001 D5: "1. invalidates changed paths in the runner and updates the
- * stat cache and reverse index; 2. computes the affected test files and
- * recomputes their keys; 3. looks each new key up in the store [...]; 4.
- * orders the misses". In detail:
- *
- * - `runner.invalidate` with every change;
- * - the environment is read again when the runner recreated a project, when
- *   an environment input changed, or while a runner failure is outstanding;
- * - the test file list is re-read after an add, a delete, a recreate, or a
- *   failed listing. A failed listing keeps the previous list: nothing is
- *   retired because of it;
- * - closures are fetched again from the runner for files whose content key
- *   moved, the union of `closuresToReresolve` and the affected set (review:
- *   a rekey alone misses a newly created import target or snapshot), every
- *   file of a recreated project, and every blocked file;
- * - untracked closure paths are hashed before keying (review B2);
- * - every file whose key may have moved is settled: lookup, then queue,
- *   with the runner's direct importers in the `direct` class (D5 step 4);
- * - a failed environment, invalidation or closure call blocks the files of
- *   its project; with none, the files a previous failure blocked are settled
- *   anew.
- */
-export async function applyRevision(
-  context: SchedulerContext,
-  ledger: Ledger,
-  revision: Revision,
-  content: ContentRekey,
-): Promise<void> {
-  const { keys, runner } = context;
-  const changes = revision.changes;
-  const paths = changes.map((c) => c.path);
-  const changed = new Set(paths);
-  const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
-  const failures: Failures = new Map();
-  const touched = new Map<string, TestFileRef>();
-  const touch = (refs: Iterable<TestFileRef>) => {
-    for (const ref of refs) touched.set(testFileId(ref), ref);
-  };
-  const touchKeys = (keyChanges: readonly KeyChange[]) => touch(keyChanges.map((c) => c.testFile));
-  const retrying = ledger.broken;
-
-  const invalidated = await tryRunner(
-    context,
-    `invalidate (${listPaths(paths)})`,
-    () => runner.invalidate(changes.map(toInvalidatedPath)),
-    (reason) => failed(failures, null, reason),
-  );
-  const recreated = new Set(invalidated?.recreatedProjects ?? []);
-  if (recreated.size > 0 || content.environment || retrying) {
-    touchKeys(await readEnvironments(context, failures));
-  }
-
-  const reresolve = new Map<string, TestFileRef>();
-  const pick = (refs: Iterable<TestFileRef>) => {
-    for (const ref of refs) if (ledger.file(ref)) reresolve.set(testFileId(ref), ref);
-  };
-  if (structural || recreated.size > 0 || ledger.listingFailed) {
-    pick(await listTestFiles(context, ledger));
-  }
-  for (const file of ledger.files.values()) {
-    if (recreated.has(file.ref.project) || file.blocked !== null) reresolve.set(file.id, file.ref);
-  }
-  pick(content.rekeyed);
-  const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
-  pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
-  const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>
-    affectedOf(runner, paths),
-  );
-  pick(affected?.direct ?? []);
-  pick(affected?.transitive ?? []);
-  const direct = new Set((affected?.direct ?? []).map(testFileId));
-
-  touchKeys(await resolveClosures(context, [...reresolve.values()], failures));
-  touch(reresolve.values());
-  ledger.settle(touched.values(), changed, { direct });
-  settleFailures(ledger, failures, retrying, changed);
-}
-
-/**
- * `runner.affectedDetailed`, or `runner.affected` with every file transitive
- * for a runner without it. Spec 001 D5 step 4: direct importers run first.
- */
-function affectedOf(
-  runner: RunnerAdapter,
-  paths: readonly RelativePath[],
-): Promise<AffectedTestFiles> {
-  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
-  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
-}
-
-/**
  * Before `run --all`, while a runner failure is outstanding: reads the
  * environment, the test file list and the blocked files' closures again, so
  * the request covers what the runner can run now.
@@ -211,6 +110,18 @@ export async function readEnvironments(
  */
 async function listTestFiles(context: SchedulerContext, ledger: Ledger): Promise<TestFileRef[]> {
   const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
+  return applyListing(context, ledger, listed);
+}
+
+/**
+ * Applies a listing: `null` is a failed one, which keeps the list. Returns the
+ * listed files without a closure.
+ */
+export function applyListing(
+  context: SchedulerContext,
+  ledger: Ledger,
+  listed: readonly TestFileRef[] | null,
+): TestFileRef[] {
   ledger.listingFailed = listed === null;
   if (listed === null) return [];
   const ids = new Set(listed.map(testFileId));

@@ -9,7 +9,7 @@ import { type ContentRekey, rekeyContent } from "./revision.js";
  * stat cache flush, the content re-key, the `queued` phases and the
  * refreshed known states, so the store never shows a revision whose
  * classification lags (spec 001 D5, review B2). The runner part follows in
- * `applyRevision`.
+ * `fetchRunnerPart` and `applyRunnerPart`.
  *
  * `commitBatch` updates the in-memory stat cache as it writes; a later
  * write in the same transaction that throws rolls the store back but not
@@ -45,7 +45,10 @@ export async function reconcileBatch(
     });
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
-    for (const change of revision.changes) ledger.tierChanges?.add(change.path);
+    for (const change of revision.changes) {
+      ledger.tierChanges?.add(change.path);
+      ledger.refineChanges?.add(change.path);
+    }
     const content = rekeyContent(context, ledger, revision);
     ledger.commit();
     return { revision, content };

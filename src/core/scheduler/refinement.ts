@@ -1,0 +1,205 @@
+import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
+import type {
+  AffectedTestFiles,
+  ProjectName,
+  RelativePath,
+  Revision,
+  RunnerAdapter,
+  RunnerClosure,
+  RunnerEnvironment,
+  TestFileRef,
+} from "../types/index.js";
+import { type SchedulerContext, tryRunner } from "./context.js";
+import { type Failures, failed, settleFailures } from "./failures.js";
+import type { Ledger } from "./ledger.js";
+import { listPaths } from "./notes.js";
+import { applyListing, type ContentRekey, storeClosures, toInvalidatedPath } from "./revision.js";
+
+/**
+ * What the runner said about one revision: the runner phase of its
+ * refinement, fetched without the scheduler lock (review wave 4.5, S3).
+ */
+export interface RunnerPart {
+  readonly revision: Revision;
+  /** `ledger.broken` when the runner phase started: a failure is being retried. */
+  readonly retrying: boolean;
+  readonly failures: Failures;
+  /** `null` when not read, or when the read failed (then in `failures`). */
+  readonly environments: readonly RunnerEnvironment[] | null;
+  /** `undefined` when not listed; `null` when the listing failed. */
+  readonly listed: readonly TestFileRef[] | null | undefined;
+  /** `testFileId`s of the runner's direct importers (D5 step 4). */
+  readonly direct: ReadonlySet<string>;
+  /** Every test file whose closure was asked for, whether or not the runner answered. */
+  readonly reresolved: readonly TestFileRef[];
+  readonly closures: readonly RunnerClosure[];
+}
+
+/**
+ * The runner phase of a revision's refinement, after `rekeyContent` stored
+ * the revision. Calls the runner and reads scheduler state, but writes none,
+ * so it runs without the scheduler lock and a batch is never held behind it
+ * (D2: "Creating a revision never waits on the runner"). `applyRunnerPart`
+ * applies the result under the lock.
+ *
+ * Spec 001 D5: "1. invalidates changed paths in the runner [...]; 2.
+ * computes the affected test files and recomputes their keys". In detail:
+ *
+ * - `runner.invalidate` with every change;
+ * - the environment is read again when the runner recreated a project, when
+ *   an environment input changed, or while a runner failure is outstanding;
+ * - the test file list is re-read after an add, a delete, a recreate, or a
+ *   failed listing;
+ * - closures are fetched again from the runner for files whose content key
+ *   moved, the union of `closuresToReresolve` and the affected set (review:
+ *   a rekey alone misses a newly created import target or snapshot), new
+ *   files, every file of a recreated project, every blocked file, and the
+ *   files an earlier refinement found changed while it ran (`carried`).
+ *
+ * Refinements run one at a time and in revision order, and no tier runs
+ * between them, so each sees the runner as every earlier one left it.
+ */
+export async function fetchRunnerPart(
+  context: SchedulerContext,
+  ledger: Ledger,
+  revision: Revision,
+  content: ContentRekey,
+  carried: Iterable<TestFileRef>,
+): Promise<RunnerPart> {
+  const { keys, runner } = context;
+  const changes = revision.changes;
+  const paths = changes.map((c) => c.path);
+  const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
+  const failures: Failures = new Map();
+  const retrying = ledger.broken;
+
+  const invalidated = await tryRunner(
+    context,
+    `invalidate (${listPaths(paths)})`,
+    () => runner.invalidate(changes.map(toInvalidatedPath)),
+    (reason) => failed(failures, null, reason),
+  );
+  const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);
+  const environments =
+    recreated.size > 0 || content.environment || retrying
+      ? await tryRunner(
+          context,
+          "environment",
+          () => runner.environment(),
+          (reason) => failed(failures, null, reason),
+        )
+      : null;
+  const listed =
+    structural || recreated.size > 0 || ledger.listingFailed
+      ? await tryRunner(context, "testFiles", () => runner.testFiles())
+      : undefined;
+
+  // Test files as the listing leaves them: the ones to re-resolve are among these.
+  const exists = new Set(
+    listed ? listed.map(testFileId) : [...ledger.files.values()].map((f) => f.id),
+  );
+  const reresolve = new Map<string, TestFileRef>();
+  const pick = (refs: Iterable<TestFileRef>) => {
+    for (const ref of refs) {
+      const id = testFileId(ref);
+      if (exists.has(id)) reresolve.set(id, ref);
+    }
+  };
+  pick((listed ?? []).filter((ref) => !keys.index.closure(ref)));
+  pick(
+    [...ledger.files.values()]
+      .filter((file) => recreated.has(file.ref.project) || file.blocked !== null)
+      .map((file) => file.ref),
+  );
+  pick(content.rekeyed);
+  pick(carried);
+  const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
+  pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
+  const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>
+    affectedOf(runner, paths),
+  );
+  pick(affected?.direct ?? []);
+  pick(affected?.transitive ?? []);
+
+  const closures: RunnerClosure[] = [];
+  for (const ref of reresolve.values()) {
+    const closure = await tryRunner(
+      context,
+      `closure of ${ref.path}`,
+      () => runner.closure(ref),
+      (reason) => failed(failures, ref.project, reason),
+    );
+    if (closure !== null) closures.push(closure);
+  }
+  return {
+    revision,
+    retrying,
+    failures,
+    environments,
+    listed,
+    direct: new Set((affected?.direct ?? []).map(testFileId)),
+    reresolved: [...reresolve.values()],
+    closures,
+  };
+}
+
+/**
+ * The apply phase of a refinement, under the scheduler lock: environments,
+ * the listing and the closures the runner phase fetched become keys, then
+ * every file whose key may have moved is settled (D5 steps 2 to 4) and a
+ * failed call blocks the files of its project (D5: "A runner call that fails
+ * is a state, never a skip"). Untracked closure paths are hashed before
+ * keying (review B2).
+ *
+ * Freshness, as the stability check does for tiers (`Ledger.tierChanges`): a
+ * closure that names a path a revision changed while the runner phase ran
+ * may describe the files before that change. It is applied, since it is the
+ * newest the runner gave, and its test file is returned so the next
+ * refinement, which that revision queued, resolves it again. No tier runs in
+ * between: tiers wait for every queued refinement.
+ */
+export async function applyRunnerPart(
+  context: SchedulerContext,
+  ledger: Ledger,
+  part: RunnerPart,
+  changedMeanwhile: ReadonlySet<RelativePath>,
+): Promise<TestFileRef[]> {
+  const { keys } = context;
+  const changed = new Set(part.revision.changes.map((c) => c.path));
+  const touched = new Map<string, TestFileRef>();
+  const touch = (refs: Iterable<TestFileRef>) => {
+    for (const ref of refs) touched.set(testFileId(ref), ref);
+  };
+  const touchKeys = (keyChanges: readonly KeyChange[]) => touch(keyChanges.map((c) => c.testFile));
+
+  if (part.environments !== null) touchKeys(await keys.setEnvironments(part.environments));
+  if (part.listed !== undefined) applyListing(context, ledger, part.listed);
+
+  const resolved: TestFileRef[] = [];
+  const stale: TestFileRef[] = [];
+  for (const closure of part.closures) {
+    const ref = closure.testFile;
+    if (!ledger.file(ref)) continue;
+    touchKeys(keys.setClosure(closure));
+    resolved.push(ref);
+    if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) stale.push(ref);
+  }
+  touchKeys(await keys.trackUntracked());
+  storeClosures(context, resolved);
+  touch(part.reresolved);
+  ledger.settle(touched.values(), changed, { direct: part.direct });
+  settleFailures(ledger, part.failures, part.retrying, changed);
+  return stale;
+}
+
+/**
+ * `runner.affectedDetailed`, or `runner.affected` with every file transitive
+ * for a runner without it. Spec 001 D5 step 4: direct importers run first.
+ */
+function affectedOf(
+  runner: RunnerAdapter,
+  paths: readonly RelativePath[],
+): Promise<AffectedTestFiles> {
+  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
+  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
+}

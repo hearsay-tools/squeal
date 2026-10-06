@@ -1,4 +1,5 @@
 import { createFsHasher, type Hasher, readObjectFormat } from "../hash/index.js";
+import { testFileId } from "../keys/index.js";
 import { type HeadState, statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
 import {
@@ -10,12 +11,14 @@ import {
   type FullSuiteRequest,
   type Policy,
   type RelativePath,
+  type Revision,
   type RunnerAdapter,
   refinedMetaKey,
   type Scheduler,
   type SchedulerStatus,
   type StateSink,
   type Store,
+  type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
@@ -28,7 +31,8 @@ import { Mutex } from "./mutex.js";
 import { appendNote, plainText } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import type { FailureDescriber } from "./records.js";
-import { applyRevision, retryRunner } from "./revision.js";
+import { applyRunnerPart, fetchRunnerPart } from "./refinement.js";
+import { type ContentRekey, retryRunner } from "./revision.js";
 import { statusOf } from "./status.js";
 import {
   executeTier,
@@ -107,6 +111,10 @@ class TierScheduler implements Scheduler {
   readonly #idle: (() => void)[] = [];
   /** Runner work in arrival order, applied between tiers by the pump. */
   readonly #runnerWork: RunnerTask[] = [];
+  /** A refinement is in its runner phase: shifted off `#runnerWork`, not applied yet. */
+  #refining = false;
+  /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
+  readonly #carried = new Map<string, TestFileRef>();
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
@@ -161,15 +169,16 @@ class TierScheduler implements Scheduler {
   /**
    * Stores the revision a batch creates and returns: the revision row, stat
    * cache, content re-key, `queued` phases and known states, in one
-   * transaction. The runner part (`applyRevision`) is queued and applied by
-   * the pump after the tier in flight, in batch order.
+   * transaction. The runner part is queued and applied by the pump after the
+   * tier in flight, in batch order (`#refine`).
    *
    * Spec 001 D2: "Creating a revision never waits on the runner: the store
    * work [...] completes within the debounce window even while a tier is
    * running, and the runner-dependent refinement is queued behind the tier
-   * separately." Lessons, defect 1: awaiting `runner.invalidate` here, which
-   * the runner serializes behind the running tier, let a revision lag the
-   * workspace by a whole tier.
+   * separately and applied without holding the revision path." Lessons,
+   * defect 1: awaiting `runner.invalidate` here, which the runner serializes
+   * behind the running tier, let a revision lag the workspace by a whole
+   * tier.
    */
   async handleBatch(batch: CandidateBatch): Promise<void> {
     if (this.#closed) return;
@@ -178,22 +187,41 @@ class TierScheduler implements Scheduler {
       const applied = await reconcileBatch(context, ledger, batch);
       if (applied === null) return;
       const { revision, content } = applied;
-      this.#runnerWork.push({
-        run: async () => {
-          try {
-            await this.#lock.run(async () => {
-              await applyRevision(context, ledger, revision, content);
-              ledger.commit({ refined: revision.number });
-            });
-          } catch (error) {
-            this.#backgroundError(`could not apply revision ${revision.number}`, error);
-            this.#refinedAfterError(revision.number);
-          }
-        },
-        cancel: () => {},
-      });
+      this.#runnerWork.push({ run: () => this.#refine(revision, content), cancel: () => {} });
     });
     this.#pump();
+  }
+
+  /**
+   * The runner part of one revision, in two phases (review wave 4.5, S3).
+   * The runner phase calls the runner without the lock, so batches are
+   * reconciled meanwhile; the apply phase takes the lock, applies what the
+   * runner said, and commits it with the revision as refined (D2 as
+   * amended). Never rejects: an error is a note, and the revision counts as
+   * refined so no wait hangs on it.
+   */
+  async #refine(revision: Revision, content: ContentRekey): Promise<void> {
+    const { context, ledger } = this.#started();
+    this.#refining = true;
+    try {
+      ledger.refineChanges = new Set();
+      const carried = [...this.#carried.values()];
+      this.#carried.clear();
+      const part = await fetchRunnerPart(context, ledger, revision, content, carried);
+      await this.#lock.run(async () => {
+        const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
+        ledger.refineChanges = null;
+        const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
+        for (const ref of stale) this.#carried.set(testFileId(ref), ref);
+        ledger.commit({ refined: revision.number });
+      });
+    } catch (error) {
+      this.#backgroundError(`could not apply revision ${revision.number}`, error);
+      this.#refinedAfterError(revision.number);
+    } finally {
+      ledger.refineChanges = null;
+      this.#refining = false;
+    }
   }
 
   /**
@@ -207,7 +235,7 @@ class TierScheduler implements Scheduler {
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
-        if (ledger.broken || this.#runnerWork.length > 0) return null;
+        if (ledger.broken || this.#runnerWork.length > 0 || this.#refining) return null;
         return queueFullSuite(ledger, force);
       })) ??
       (await this.#afterTier(async () => {
