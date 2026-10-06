@@ -113,4 +113,41 @@ describe("idle waiter", () => {
     r.apply(r.fail());
     expect((await waiting).exitCode).toBe(2);
   });
+
+  it("touches its consumer when it times out, so the 10 minute expiry starts there", async () => {
+    const r = await registered();
+    const before = r.store.consumers.get(r.consumer())?.lastSeenAt ?? 0;
+    const at = before + 3_600_000;
+    const out = await runHook(
+      "waiter",
+      recorded("stop", r.root),
+      deps({ waiterTimeoutMs: 100, now: () => at }),
+    );
+    expect(out).toEqual(SILENT);
+    expect(r.store.consumers.get(r.consumer())?.lastSeenAt).toBe(at);
+  });
+});
+
+describe("idle waiter on UserPromptSubmit (defect 10)", () => {
+  it("arms for a registered consumer with no waiter and wakes it on a transition", async () => {
+    const r = await registered();
+    setTimeout(() => r.apply(r.fail()), 150);
+    const out = await runHook("waiter", recorded("user-prompt-submit", r.root), deps());
+    expect(out.exitCode).toBe(2);
+    expect(out.stderr).toContain("PASS -> FAIL");
+  });
+
+  it("exits at once when a waiter already holds the lock", async () => {
+    const r = await registered();
+    const first = runHook("waiter", recorded("stop", r.root), deps());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const started = performance.now();
+    const second = await runHook("waiter", recorded("user-prompt-submit", r.root), deps());
+    expect(second).toEqual(SILENT);
+    expect(performance.now() - started).toBeLessThan(100);
+
+    r.apply(r.fail());
+    expect((await first).exitCode).toBe(2);
+  });
 });
