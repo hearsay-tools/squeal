@@ -135,7 +135,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     });
   });
 
-  it("squeal stop shuts down in order and leaves worktrees.daemon null", async () => {
+  it("squeal stop shuts down in order and leaves worktrees.daemon null with its last heartbeat", async () => {
     const repo = fixture();
     const spawned = daemon(repo);
     await waitReady(repo, spawned);
@@ -152,7 +152,10 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     expect(await stop.exited).toEqual({ code: 0, signal: null });
     expect(stop.stdout()).toMatch(/stopped/);
     expect(await spawned.exited).toEqual({ code: 0, signal: null });
-    expect(withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon)).toBeNull();
+    const after = withStore(repo, (store) => store.worktrees.get(repo.worktreeId));
+    expect(after?.daemon).toBeNull();
+    // Review wave 4.5, N5: status says since when no daemon runs.
+    expect(after?.lastHeartbeatAt).toBeGreaterThanOrEqual(record?.daemon?.heartbeatAt ?? 0);
     expect(existsSync(repo.socketPath)).toBe(false);
   });
 

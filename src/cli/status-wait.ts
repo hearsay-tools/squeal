@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { daemonLiveness, planDelta, readHeader } from "../core/delivery/index.js";
+import { planDelta, readHeader, worktreeLiveness } from "../core/delivery/index.js";
 import { isPending, runnerPartText } from "../core/state/index.js";
 import {
   buildSnapshot,
@@ -113,7 +113,7 @@ export async function waitForStatus(
       start ??= states.map(toStartView);
       const transitions = countNews(start, states, header.revision);
       const settled = final || elapsed() >= settleMs;
-      const daemon = daemonLiveness(store.worktrees.get(id)?.daemon ?? null, now());
+      const daemon = worktreeLiveness(store.worktrees.get(id), now());
       const outcome: StatusWaitOutcome | null =
         transitions > 0
           ? "news"

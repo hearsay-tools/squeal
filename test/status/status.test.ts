@@ -515,6 +515,34 @@ describe("readStatus", () => {
     expect(formatStatus(status, NOW)).toContain("\nDaemon: no daemon running\n");
   });
 
+  it("says since when no daemon is running after squeal stop cleared the daemon (review wave 4.5, N5)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    const heartbeatAt = NOW - 60_000;
+    store.worktrees.upsert({
+      id: repo.mainId,
+      root: repo.main,
+      commonDir: repo.commonDir,
+      isMain: true,
+      registeredAt: 1,
+      daemon: {
+        socketPath: "/run/squeal.sock",
+        startedAt: 1,
+        heartbeatAt,
+        heartbeatIntervalMs: 5_000,
+        squealVersion: "0.0.0",
+      },
+    });
+    store.worktrees.setDaemon(repo.mainId, null);
+
+    const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+
+    expect(status.daemon).toEqual({ state: "down", since: heartbeatAt });
+    expect(formatStatus(status, NOW)).toContain(
+      "\nDaemon: no daemon running since 2026-10-04T11:59:00.000Z\n",
+    );
+  });
+
   it("says since when no daemon is running once the heartbeat is too old", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);

@@ -13,7 +13,7 @@ import {
   type Store,
 } from "../types/index.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { daemonLiveness, readLiveHeader, tellLiveness, toldLiveness } from "./liveness.js";
+import { readLiveHeader, tellLiveness, toldLiveness, worktreeLiveness } from "./liveness.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -63,7 +63,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
   /** The daemon's liveness when it differs from what `consumer` was told, else `null`. */
   function livenessChange(consumer: Consumer, at: EpochMs) {
-    const live = daemonLiveness(store.worktrees.get(consumer.worktreeId)?.daemon ?? null, at);
+    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
 

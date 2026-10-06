@@ -33,6 +33,7 @@ export interface WorktreeRepo {
   get(id: WorktreeId): WorktreeRecord | null;
   list(): readonly WorktreeRecord[];
   upsert(record: WorktreeRecord): void;
+  /** `null` clears the daemon and keeps its last heartbeat as `lastHeartbeatAt`. */
   setDaemon(id: WorktreeId, daemon: DaemonRecord | null): void;
   heartbeat(id: WorktreeId, at: EpochMs): void;
   /** Spec 001 D8: drop "everything owned by removed worktrees". */
