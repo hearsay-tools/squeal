@@ -108,6 +108,23 @@ describe("expireConsumers: waiterless interactive consumers (lessons, defects 8 
     expect(existsSync(path)).toBe(false);
   });
 
+  it("keeps a consumer a hook touched after the idle read (review wave 6, N2)", () => {
+    const { store, locksDir } = setup();
+    const c = consumer("touched");
+    store.consumers.register(c, NOW - 11 * MIN);
+    leaveLockFile(locksDir, c);
+    // The read that found it idle, then a UserPromptSubmit touching it before the transaction.
+    const stale = store.consumers.idleSince(NOW - WAITERLESS_EXPIRY_MS);
+    expect(stale.map((r) => r.consumer)).toEqual([c]);
+    store.consumers.touch(c, NOW - 1, false);
+    const consumers = Object.assign(Object.create(store.consumers), { idleSince: () => stale });
+    const snapshot: Store = Object.assign(Object.create(store), { consumers });
+
+    expect(expireConsumers(snapshot, NOW, { locksDir })).toEqual([]);
+    expect(registered(store)).toEqual(["touched"]);
+    expect(existsSync(waiterLockPath(locksDir, c))).toBe(true);
+  });
+
   it("without a locks directory applies only the 12 hour rule", () => {
     const { store, locksDir } = setup();
     const c = consumer("gone");
