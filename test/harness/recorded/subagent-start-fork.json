@@ -1,0 +1,9 @@
+{
+  "session_id": "6248afa0-bd5b-459c-83da-3a7cc9d9f9a0",
+  "transcript_path": "/home/dev/.claude/projects/-repo/6248afa0-bd5b-459c-83da-3a7cc9d9f9a0.jsonl",
+  "cwd": "/repo",
+  "hook_event_name": "SubagentStart",
+  "agent_id": "a7d96bf482821c613",
+  "agent_type": "",
+  "prompt_id": "e93f5e5e-426e-4ac1-b62c-598ea3f8c383"
+}
