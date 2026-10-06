@@ -309,3 +309,238 @@ Product defects hit while dogfooding. No product code was changed.
 - Compaction and interactive `--resume` with the waiter.
 - macOS.
 - Store concurrency beyond two worktrees, one subagent and the hooks.
+
+## Re-run after waves 4.5 and 4.6
+
+Task 001-46, 2026-10-06. Squeal at commit `6da5224` (waves 4.5 and 4.6 landed), run with the method of the Setup section above. Inputs: items 2 and 3 of "Spec 001 readiness" in `reviews/wave-4.5.md`.
+
+### Verdict
+
+The two limits this file named are gone. On this repository the edited module's own test finished 0.4 to 9.5 s after the edit, not 47 to 58 s, and a revision during a 47 s tier was recorded in 126 ms, with status at the new revision and its checks pending 183 ms after the edit. Across 21 `-p` sessions, 61 transitions were delivered, each at the first hook that may carry it, none twice. While a test file added during a tier was unlisted, no status read said nothing was pending: 496 of 501 reads said the runner part was pending, and the other 5 came after the listing. Agents never polled with `sleep`; two waited with `squeal status --wait`.
+
+Goals 1 to 7 held. Three new defects, none a blocker (Defects, below). The worst is Claude Code's: after a typed prompt, an interactive `/exit` never runs SessionEnd, so 7 of 12 attended exits left their consumer registered. That is probably the cause of defect 5 above.
+
+### Setup
+
+Same as the Setup table above, with these differences.
+
+| Item | Value |
+| --- | --- |
+| Claude Code | 2.1.288, same flags, model `claude-sonnet-5-5` in every session; `CLAUDE*` and `CEZ_*` variables removed from every session |
+| This repository | `git clone` of `6da5224` at `/tmp/sq46/repo`, `npm ci`, `bin/squeal init`, `inputs: {"test/harness/plugin.test.ts": ["plugins/claude-code/dist/**"]}`, committed. 98 test files, 885 checks after the baseline. |
+| Plugin | The clone's `plugins/claude-code` for P0, F0 to F7, R1 to R6 and A1. R2 and R6 ran `npm run build` in the clone, which rewrote the bundles under test (the `[file]` label of R1, the module move of R5). From S1 on, a `git archive 6da5224 plugins/claude-code` copy. The repository daemon was P0's, started from the unmodified bundle, for the whole run. A8 to A12 used a copy whose only change wraps the SessionEnd command in a script that logs its start and end. |
+| Fixture | The fixture of the first run, rebuilt: 4 modules (`money`, `cents`, `invoice`, `format`), 4 test files, 24 checks, the 2.5 s integration test. `stop.waitMs: 1500` throughout; `stop.blockOnKnownFailures: true` from F7 on. |
+| Repository policy | Defaults until R6; `stop.waitMs: 1500` from S1; `stop.blockOnKnownFailures: true` from S4. |
+| Machine | Same 24-core host. Load average 18 to 56 for P0 and F0 to F6 (other workers), 20 for R1, 3 to 12 from R2 on. The hook latency round ran at 3.6 to 4.3. |
+| Drivers | The stream-json timestamp driver, store queries, a tmux driver for attended sessions, and two probes that call no model: a status poller for item 8 and a Stop caller. Scratch under `/tmp/sq46`, outside every checkout. |
+| Cost | $1.51 for 21 `-p` sessions, $0.79 for the attended sessions (from their transcripts' cost records), $2.30 in total |
+
+### Sessions
+
+| Id | Where | Prompt (shortened) | Squeal said | Agent did |
+| --- | --- | --- | --- | --- |
+| P0, F0 | repo, fixture | "Reply OK" | nothing; SessionStart started each daemon | Replied. Repository baseline: 446.7 s at load 18 to 55, 25 runs, longest 69.3 s. |
+| F1 | fixture | default currency EUR to PLN, just that | Stop: 4 failures caught 3.4 s after the edit, inside the wait | Listed the 4 tests and asked before touching them. |
+| F2 | fixture | bring tests in line with PLN | registration with 4 known failures; PostToolBatch 4 recoveries | Edited the tests, loaded the skill, then ran `npx vitest run` itself. |
+| F3 | fixture | add a `subtract` test | registration only | The test already existed; ran the file, changed nothing. |
+| F4 | fixture | rename a test, add one | silence | Ran the file itself. |
+| F5 | fixture | move `toCents` to `src/cents.ts`, `src/` only | PostToolBatch 2 failures | Loaded the skill, ran `squeal status --wait 60000` (returned on quiet after 1.1 s with both failures), reported them as the move not yet reflected in `test/`. |
+| F6 | fixture | update `test/` for the move | PostToolBatch 2 recoveries | Loaded the skill, ran `squeal status`, reported "no known failures", no full-suite run. |
+| F7 | fixture, 6 failures from outside | add a JSDoc line, only that | Stop block: 6 failures exist at revision 14 | Traced them to the uncommitted change it had not made, asked which fix to apply. |
+| R1 | repo | file-level checks print `[file]`, `src/` only | 3 PreToolUse denials, 5 failures | Re-issued the denied edit each time, said the failures were the tests a teammate was updating. |
+| R2 | repo | bring `test/` in line with `[file]` | registration with 5 failures; 2 PostToolBatch deltas, 5 recoveries | Edited 3 tests, ran `npm run build`, ran the bundle test itself. |
+| R3 | repo | add `parseCheck` edge cases | silence; known 534 ms after the edit | Ran the file itself. |
+| R4 | repo | rename the vaguest fingerprint test | silence; known 333 ms after the edit | Renamed it. |
+| R5 | repo | move socket-path helpers to a new module, `src/` only | 2 PostToolBatch deltas, 23 failures | Could not typecheck (not in the allow-list), reported the failures as `test/` still importing the old module. |
+| R6 | repo | update `test/` for the move | registration with 23 failures, then nothing for 135 s | Edited 6 files, ran `npm run build`, `typecheck`, `lint` and two Vitest runs of 26 files (47 s each). See surprise 2. |
+| S1 | repo | reword the RESOLVED line, just that | Stop: 2 failures, known before Stop, delivered at the 1.5 s cap | Updated the test, rebuilt the bundles, ran 2 files itself. |
+| S2 | repo | `SUMMARY_MAX_CHARS` 300 to 400 | PostToolBatch: bundle test fails | Loaded the skill, ran `squeal status --wait 30000` (timed out, 66 pending), reported the bundle failure and the pending checks. |
+| S3 | repo | status label "Known failing checks", just that | Stop: 1 failure caught in the wait; second Stop: 5 failures held to the cap | Explained each and asked. |
+| S4 | repo, block on | update `test/` for the label | Stop block: 7 failures exist; 2 PostToolBatch deltas | Found a missing space in the source, fixed it, ran 10 test files itself. |
+| S5 | repo | shorten user-facing wording in `liveness.ts` | registration only | Found none, changed nothing. |
+| S6 | repo | reword "Returned on quiet", just that | nothing; the Stop wait missed the 9.5 s result | Made the change, said it ran no tests. |
+| A1 to A12 | fixture, attended `tmux` | see Interactive | 3 waiter wakes | See Interactive. |
+
+### Comparison
+
+| Measure | First run (`e8abd21`) | Re-run (`6da5224`) |
+| --- | --- | --- |
+| `-p` sessions; with edits | 25; 18 | 21; 17 |
+| Transitions delivered in `-p` sessions | 37 plus 1 retired check, in 13 sessions | 61, in 11 sessions (44 PostToolBatch, 12 Stop, 5 PreToolUse) |
+| Duplicate deliveries | 0 | 0 |
+| Deliveries that skipped an eligible hook | 0 of 37 | 0 of 61 |
+| Edit to result known, per transition | n=37, min 187, p50 2,384, p95 4,052, max 5,579 ms | n=60, min 208, p50 1,555, p95 11,566, max 11,570 ms |
+| Result known to delivered | p50 471, p95 6,158 ms | p50 1,417, p95 3,889, max 4,215 ms |
+| Edit to delivered | p50 2,718, p95 10,210 ms | p50 3,133, p95 12,541 ms; per delivery message (n=16) p50 3,228, p95 12,541 ms |
+| Edited module's own test finished, after the edit, on this repository | 47 s (C1), 58 s (P1) | 412, 414, 2,180, 2,960, 5,880 and 9,471 ms (S2, S1, R1, R5, S3, S6) |
+| Whole affected set of a barrel edit | 80 s to the first transition (P1) | 175 s to quiet (R1, 75 files), first failure at 1.7 s |
+| Repository sessions that ended before their first result | P1, S4 | S6 (result 5.9 s after the session ended). R6's 11 recoveries came 34 s after it ended. |
+| Revision while a tier runs | 4.5 to 45 s late | row in 126 ms; status at the new revision, 462 pending, returned 183 ms after the edit (probe 8) |
+| Test file added while a tier runs | not counted until the tier ended (wave 4.5, S1) | 496 of 501 reads said the runner part was pending, 0 read "nothing pending" with the file unlisted; listed and failed 42.4 and 42.7 s later, right after the 47 s tier |
+| `status --wait` with no daemon | not available | `Returned without a daemon: no daemon has validated since ...`, outcome `no-daemon`, 1.1 s |
+| Sessions with edits where the agent ran tests itself | 5 of 18 | 7 of 17 (F2, F4, R2, R3, R6, S1, S4) |
+| Sessions that pulled Squeal state | 5 of 18 | 4 of 17: `status --wait` twice (F5, S2), `status` twice (F6, F7). The skill was loaded unprompted 5 times. |
+| Waits with `sleep` | 2 | 0 |
+| PreToolUse denials | 4 in 2 of 18 sessions | 3 in 1 of 17 (R1) |
+| Stops with checks pending, `waitMs: 1500` | 5: caught 2, held a known result 1, nothing 2 | 10: caught 2 (F1, S3), waited to quiet so a block named only current failures 1 (F7), held a known result 2 (S1, S3), nothing 5 (S1, S2, S3, S4, S6) |
+| Attended exits that left a consumer | 1 of 6 | 7 of 12 |
+| Second worktree baseline | 760 of 760 inherited, 0 runs, 1.1 s | 885 of 885 inherited, 0 runs, 1.2 s |
+| Store after about 40 minutes | 13.6 MB plus 4.3 MB WAL | 3.3 MB plus 4.4 MB WAL; 45 revisions, 104 runs, 3,503 results |
+| Longest hook seen inside Claude Code | 1,616 ms | 1,728 ms (F1's Stop with `waitMs`, load 55). No hook reached its 2 s timeout. |
+| Cost | $1.56 (`-p` only) | $1.51 `-p`, $0.79 attended |
+
+Why the p95 of edit to result known grew while the median fell: results are stored when their tier ends (D5's post-tier stability check), so a fast file waits for the slowest file of its tier. In S4 the failing class put `test/cli/status-wait.test.ts` (9 s) in the first tier, beside the two edited tests, while the agent's own Vitest run of 10 files competed for the CPU: 11.5 s. Without S4 the p95 is 5,893 ms. The first run's repository results were mostly fast import failures (P5).
+
+### Hooks at calm load
+
+Cold runs of each bundle against this repository's store (885 checks, daemon alive, one consumer registered), 40 runs per round, best of 3 rounds, as in the first run. Load average 3.6 to 4.3 on 24 cores (4.28 during the Stop round). `node -e 0`: p50 49, p95 54 ms. The repository policy had `stop.waitMs: 1500` and `blockOnKnownFailures: true`; nothing was pending, so Stop did not wait.
+
+| Hook | First run p50 / p95 ms | Re-run p50 / p95 ms | Re-run p95 of each round |
+| --- | --- | --- | --- |
+| session-start, new session, registers | 84 / 93 | 91 / 99 | 99, 114, 100 |
+| subagent-start, new agent, registers | 82 / 98 | 86 / 94 | 95, 98, 94 |
+| post-tool-batch, quiet | 71 / 76 | 73 / 80 | 85, 81, 80 |
+| pre-tool-use, quiet | 74 / 89 | 75 / 80 | 101, 83, 80 |
+| stop, quiet | 82 / 86 | 87 / 96 | 97, 96, 99 |
+| session-end | 63 / 74 | 63 / 71 | 76, 71, 72 |
+| waiter, `-p` guard | 54 / 58 | 55 / 57 | 59, 80, 57 |
+
+PostToolBatch met its 80 ms p95 budget in its best round, exactly, and missed it by 1 and 5 ms in the other two. Registration costs 18 ms more than a quiet PostToolBatch at the median (885 checks; the first run measured 12 ms at 761). Inside Claude Code, from `hook_started` to `hook_response` over the sessions at load 3 to 12 (R2 to S6, F7): PostToolBatch quiet p50 87, p95 107 ms (n=47), delivering p95 165 ms (n=7); PreToolUse quiet p50 87, p95 113 ms (n=29); SessionStart with registration p50 127, p95 430 ms (n=12). At load 48 to 56 (F0 to F6) quiet PostToolBatch and PreToolUse reached p95 442 and 463 ms, and one registration took 1,250 ms, because it waited up to 750 ms for the heartbeat of the daemon it had just spawned.
+
+### Stop with `stop.waitMs: 1500`
+
+| Session | Pending at Stop | Stop ms | Outcome |
+| --- | --- | --- | --- |
+| F1 fixture | yes | 1,728 | Caught: 4 failures recorded inside the wait |
+| F7 fixture, block on | yes | 1,095 | Waited until quiet (about 1.0 s), then blocked on 6 failures current at revision 14 |
+| S1 repo | yes, 195 | 1,605 | Held: 2 failures known 1.2 and 0.7 s before Stop, delivered at the cap |
+| S1 repo, second Stop | yes | 1,587 | Nothing |
+| S2 repo | yes | 1,622 | Nothing |
+| S3 repo | yes, 148 | 1,634 | Caught: the bundle failure |
+| S3 repo, second Stop | yes, 91 | 1,638 | Held: 5 failures known before Stop, delivered at the cap |
+| S3 repo, third Stop | yes | 1,668 | Nothing |
+| S4 repo, block on | no | 117 | Blocked on 7 failures current at revision 37 |
+| S4 repo, second Stop | yes | 1,594 | Nothing (the turn had already been blocked once) |
+| S6 repo | yes | 1,594 | Nothing; the only affected result came 9.5 s after the edit |
+| 8 other Stops | no | 72 to 479 | Nothing to say |
+
+The wait still ends when nothing is pending, not when there is news, so it held known results for up to 1.5 s twice, as S8 did in the first run. On this repository a source edit leaves checks pending for tens of seconds, so all 8 repository Stops with pending checks ran to the cap. Each delivery or block started another model turn, and in every case the model summarised and asked before touching tests.
+
+"Exist" was used only for failures current at the named revision: the two natural blocks (F7, S4) and the SubagentStop blocks of defect 9. The Stop probe, a Stop called 200 ms after an edit that re-queued 7 known failures while 7 others stayed current, returned: "7 known failures exist at revision 17: ... 7 checks last failed at an earlier revision and their re-runs at revision 17 are pending: test/format.test.ts > formatCents > formats amount in default PLN (failed at revision 15), ...". With only pending failures it blocked nothing and said nothing.
+
+### PreToolUse
+
+3 denials, all in R1, 1 of 17 editing sessions. Each denied the same edit to `check-name.ts`, each time for regressions that the earlier edits of that file had caused, at revision 2: two tests, then two more, then the bundle test. The agent read the first denial and re-issued the edit each time: "The two failures are tests that still expect the old `(file-level)` text. You said a teammate is updating `test/`, so I'm leaving them alone and re-issuing the last edit." Its final message listed all three causes. Cost: 3 extra tool calls, 7.6 s. No stall, no loop. Denying hooks took 95 to 212 ms.
+
+### Interactive
+
+Fixture, attended `tmux`, same flags without `-p`, `--debug hooks`. The pane was polled every 250 ms.
+
+| Session | What | Waiter | `/exit` |
+| --- | --- | --- | --- |
+| A1 | no turn | armed | clean |
+| A2 | one typed question | armed | consumer left |
+| A3 | idle; `percentOf` broken from outside | woke the agent: result known +2,768 ms after the edit; the waiter took it 157 ms after the result, and the pane changed 313 ms after the result. The agent investigated; I interrupted its Bash call with Esc. | clean |
+| A4 | one typed question, `/clear`, then the break undone from outside | after `/clear`: a new session id, a new consumer and a new waiter; the old consumer, and a leftover subagent consumer (defect 9), unregistered by SessionEnd `clear`. The restore was a lookup: known +122 ms after the edit, taken 57 ms and visible 146 ms after the result. The agent summarised the recovery and asked for a task. | clean |
+| A5 | one typed question, `/compact`, then `formatCents` broken from outside | the session-start waiter kept running across `/compact`; the waiters started by Stop and by SessionStart `compact` exited on the lock. The consumer stayed. The wake after compaction: known +2,784 ms after the edit, taken 179 ms and visible 300 ms after the result. | consumer left |
+| A6 | one typed edit | armed | consumer left |
+| A7 | no turn | armed | clean |
+| A8, A9 | one typed question each | armed | consumer left, both |
+| A10 | no turn | armed | clean |
+| A11 | one typed question, then Ctrl-C twice | armed | consumer left |
+| A12 | one typed question, `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` | armed | consumer left |
+
+Every exit after a typed prompt left its consumer (7 of 7); every exit from a session without one ran SessionEnd (5 of 5, including A3 and A4's second session, which had only waiter-woken turns). In A8 to A12 the logging wrapper around the SessionEnd command never ran, so Claude Code did not spawn the hook (defect 8). All 21 `-p` sessions unregistered. At every exit Claude Code killed the armed waiter (`status code 137`), as before.
+
+After the interrupted turn in A3, no waiter was armed until the session ended: the waiter that woke the agent had exited, and Claude Code runs no Stop for an interrupted turn (defect 10).
+
+### What agents did
+
+Over the 17 `-p` sessions with edits: 7 ran tests themselves, 4 pulled Squeal state, 6 did neither. No agent waited with `sleep`. Both `status --wait` calls followed loading the skill, which now teaches it. One returned on quiet with the two failures (F5); the other timed out after 30 s with 66 checks pending, and the agent reported them as pending (S2). Agents that ran tests did so after a fix they wanted to confirm (F2, R2, S1, S4) or with broad runs while Squeal had nothing to say (R6). F2 did both in one breath: "Now let me run the tests, and check the squeal skill since the repo uses it", then `npx vitest run`. The prompts never mentioned Squeal.
+
+Agents read every delivery. They named failures they had not caused as pre-existing and traced them to the uncommitted change (F7, A3, A4), named failures from "just that change" tasks and asked before editing tests (F1, S1, S3), and called failures in a half-done refactor expected (R1, R5, F5). Agents tried `sed`, `cd ... && git` and other compound commands 11 times in 7 sessions; the allow-list refused them and the agents switched to Edit or to simpler commands.
+
+### Transcript excerpts
+
+Sanitized: session ids and tool-use ids removed, long lines shortened with `...`. Scratch paths kept.
+
+F5, the first `status --wait` an agent chose on its own:
+
+```text
++10593 ASSISTANT: The SQUEAL hook is active in this repo, so I'll load its skill before I call this done.
++12282 Bash: squeal status --wait 60000
++14865 RESULT: Returned on quiet: nothing pending at revision 11 after 1.1 s
+       Revision: 11  Known failures: 2
+       FAIL test/money.test.ts > money > converts to cents  toCents is not a function ...
++15171 PostToolBatch: SQUEAL · 2 checks changed at revision 11 ... PASS -> FAIL ...
++22158 ASSISTANT: `toCents` now lives in `src/cents.ts`, but two tests in `test/money.test.ts` fail.
+       ... I left `test/` alone, as you asked, so those two failures are the move not yet reflected there.
+```
+
+Probe 8, a source edit 2 s into a 47 s tier, then a new failing test file 3 s later:
+
+```text
+tier with lifecycle started +140 ms after the trigger: test/daemon/lifecycle.test.ts
+source edit: first read at the new revision 43 returned +183 ms; pending 462, runnerPartPending true
+revision 43 row created +126 ms after the edit
+added test/zz/new.test.ts: first read at revision 44 returned +162 ms: pending 462, runnerPartPending true
+reads after the add: 501; reads that showed the new revision with nothing pending and the file unlisted: 0
+file listed in status +42408 ms; its failure known in status +42683 ms
+lifecycle tier ended +41692 ms after the add (47058 ms long)
+```
+
+A4, Claude Code's prompt-suggestion fork blocked by Squeal (debug log):
+
+```text
+11:32:45.463 "Hook Stop (Stop) success: {"decision":"block","reason":"Squeal policy stop.blockOnKnownFailures is on
+             and 2 known failures exist at revision 20: ...
+11:32:46.606 "Hook SubagentStop (SubagentStop) success: {"decision":"block","reason":"Squeal policy ...
+11:32:46.606 Forked agent [prompt_suggestion] received message: type=user
+11:32:46.631 [API REQUEST] /v1/messages source=prompt_suggestion
+```
+
+A12, `/exit` after one typed question, SessionEnd wrapped in a logging script:
+
+```text
+waiters before exit: 1
+waiters after exit: 0
+consumers: ... 4407f9ae-...  main   (the session that just exited)
+debug log: [ERROR] Hook SessionStart:startup (SessionStart) error: status code 137   (the waiter)
+se.log: no line for this session (A10, no turn: "spawned", "start ... prompt_input_exit", "end status 0")
+```
+
+### Surprises
+
+1. **The barrel no longer decides the order, duration does.** No test imports `check-name.ts` or `format-status.ts` in one hop, so the direct class was empty for R1 and S3, as in wave 4.5's probe A. Shortest-duration-first still put the edited module's test in the first, second or third tier. The cost moved to the tail: R1's 75 affected files took 175 s to finish.
+2. **One tier of test timeouts held the queue for three minutes.** In R5's broken state, `test/e2e/transitions.test.ts` and `test/e2e/worktrees.test.ts` waited 45 s per test for a daemon the broken build could not start: one tier took 182 s. R6 fixed everything during that tier and got no delivery in its 135 s; it ran two 47 s Vitest runs itself. The 11 recoveries came 34 s after it ended. D5 never cancels a tier in flight, so this follows the spec.
+3. **Agents rebuild the plugin under test.** The bundle test fails after any source edit, and agents ran `npm run build` in R2, R6 and S1, which rewrote the hooks that the next sessions loaded. From S1 on the plugin came from a `git archive` copy. The same will happen to anyone dogfooding Squeal on itself.
+4. **A Stop wait that holds news is common on a large repository.** See the Stop section. It is the first run's S8 again, 2 times in 10.
+5. **Under heavy load the first header calls a fresh daemon dead.** F1 at load 55: SessionStart spawned the daemon and its header said `No daemon has validated since ...; results are as of revision 0`, because the heartbeat took longer than the 750 ms registration wait. The first PostToolBatch said `a daemon is validating again at revision 0`. Both were true when told.
+6. **Claude Code runs a forked agent after every interactive turn.** The `prompt_suggestion` fork fires SubagentStart and SubagentStop, so every attended turn registers and unregisters one more consumer, and a SubagentStop block reaches it (defect 9).
+
+### Goals 1 to 7
+
+| Goal | Held? | Evidence |
+| --- | --- | --- |
+| 1 `PASS -> FAIL` within one tool call, same turn | Yes | 61 of 61 at the first eligible hook. The edited module's test now finishes within 0.4 to 9.5 s, so most results land inside the session; S6's came 5.9 s after it. |
+| 2 `FAIL -> PASS` the same way; silence otherwise | Yes | Recoveries in F2, F6, R2, S4 and at A4's waiter; silence for R3, R4 and F4; 0 duplicates; one `FAIL -> FAIL, failure changed`, for a real new message (S4). |
+| 3 Everything told is true when told | Yes | Probe 8: the new revision in 126 ms during a tier, a new test file pending in every read. `status --wait` without a daemon says so. A fresh worktree's header says its counts are not complete. Stop said "exist" only for current failures. |
+| 4 Inheritance by lookup | Yes | 885 of 885 inherited, 0 runs, settled 1.2 s after SessionStart in a second worktree. |
+| 5 `squeal status` answers | Yes | Every field read in this run; `--wait` outcomes quiet, news, timeout and no-daemon seen. |
+| 6 No hook blocks past its timeout; dead daemon degrades | Yes | Longest hook 1,728 ms at load 55. Calm-load p95 80 to 99 ms (table above). |
+| 7 One store, several worktrees and agents | Yes, as far as exercised | Two worktrees on one store; up to 7 consumers on the fixture store, live, leaked and prompt-suggestion subagents; no lost write seen. Not stress-tested here. |
+
+### Defects
+
+New product defects hit in this run. No product code was changed.
+
+8. **After a typed prompt, an interactive exit never runs SessionEnd, so the consumer stays.** Claude Code 2.1.288 behaviour, and probably the cause of defect 5. Scenario: attended session, type one prompt, let the turn end, `/exit` (or Ctrl-C twice). 7 of 7 such exits left the consumer registered; a wrapper around the hook command logged nothing, so the hook was not spawned. Prompt suggestions off did not change it (A12). Exits from sessions without a typed prompt ran SessionEnd 5 of 5; `-p` sessions 21 of 21. `src/harness/claude-code/hooks/session-end.ts` is not at fault. What remains is the SessionStart sweep for the same session id and the 12 h consumer expiry, so a worktree's daemon cannot idle-exit for 12 hours after a normal interactive session (the repository daemon held 358 MB RSS here). An interactive consumer needs a liveness signal that does not depend on SessionEnd.
+9. **`stop.blockOnKnownFailures` blocks Claude Code's internal forked agents.** `src/harness/claude-code/hooks/stop.ts` treats the SubagentStop of the `prompt_suggestion` fork like a subagent's. Scenario: attended session, policy on, one failure current at the revision, any turn: the fork's SubagentStop is blocked (A4 twice, A5 once), the fork makes another API request (`source=prompt_suggestion`), and because a block keeps a subagent going its consumer is not unregistered until SessionEnd (A4: `aa4f734adea6466a2` still registered after the turn). The policy is off by default.
+10. **No waiter after an interrupted turn.** The waiter is armed by SessionStart and Stop only (`plugins/claude-code/hooks/hooks.json`), and Claude Code runs no Stop when the user interrupts a turn with Esc. Scenario: A3, a waiter wake started a turn, Esc interrupted it, and the session had no waiter (`waiters before exit: 0`) until it ended. An idle agent is not woken again until another turn completes.
+
+### Not measured
+
+- macOS, as before.
+- Interactive `--resume` with the waiter.
+- Store concurrency beyond two worktrees, the fixture's seven consumers and one `-p` session at a time.
+- A repository baseline at calm load: the only one ran at load 18 to 55 (446.7 s).
