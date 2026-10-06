@@ -12,6 +12,8 @@ export interface HookInput {
   readonly tool_name?: string;
   /** Stop and SubagentStop: true while a Stop hook's block keeps the agent going. */
   readonly stop_hook_active?: boolean;
+  /** SessionStart: `startup`, `resume`, `clear` or `compact`. */
+  readonly source?: string;
 }
 
 /** Parses hook stdin; `null` for anything that is not a hook input object. */
@@ -34,5 +36,6 @@ export function parseHookInput(text: string): HookInput | null {
     ...(typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {}),
     ...(typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {}),
     ...(typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}),
+    ...(typeof v.source === "string" ? { source: v.source } : {}),
   };
 }
