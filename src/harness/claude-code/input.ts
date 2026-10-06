@@ -8,6 +8,13 @@ export interface HookInput {
   readonly cwd: string;
   readonly hook_event_name: string;
   readonly agent_id?: string;
+  /**
+   * With `agent_id`: the subagent's type (`general-purpose`, `Explore`, a
+   * custom or plugin agent name). Claude Code's internal forks send the
+   * session's own agent name, empty without `--agent` (see `fork.ts`). Kept
+   * when empty.
+   */
+  readonly agent_type?: string;
   /** PreToolUse. */
   readonly tool_name?: string;
   /** Stop and SubagentStop: true while a Stop hook's block keeps the agent going. */
@@ -34,6 +41,7 @@ export function parseHookInput(text: string): HookInput | null {
     cwd: v.cwd,
     hook_event_name: v.hook_event_name,
     ...(typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {}),
+    ...(typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {}),
     ...(typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {}),
     ...(typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}),
     ...(typeof v.source === "string" ? { source: v.source } : {}),
