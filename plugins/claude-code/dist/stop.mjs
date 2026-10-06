@@ -183,6 +183,7 @@ function refinedMetaKey(worktreeId) {
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
@@ -269,6 +270,39 @@ function transitionKind(from, to) {
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
 
+// src/core/waiter-lock/waiter-lock.ts
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+function waiterLockPath(locksDir, consumer) {
+  const id = createHash("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  return join(locksDir, `waiter-${id}.sqlite`);
+}
+function removeWaiterLock(locksDir, consumer) {
+  const path = waiterLockPath(locksDir, consumer);
+  if (!existsSync(path)) return;
+  const db = lock(path);
+  if (db === null) return;
+  try {
+    rmSync(path, { force: true });
+  } finally {
+    db.close();
+  }
+}
+function lock(path) {
+  const db = new DatabaseSync(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+    return db;
+  } catch {
+    db.close();
+    return null;
+  }
+}
+
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
   const last = history.at(-1);
@@ -346,9 +380,9 @@ function planDelta(input) {
 }
 
 // src/core/store/open.ts
-import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
-import { join as join3 } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
+import { join as join4 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 var Connection = class {
@@ -416,14 +450,14 @@ function rollback(db) {
 }
 
 // src/core/store/paths.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync as realpathSync2 } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join as join2, resolve } from "node:path";
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
+  return createHash2("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
 }
 function resolveCommonDir(root) {
-  const dotGit = join(root, ".git");
+  const dotGit = join2(root, ".git");
   const stat = lstatOrNull(dotGit);
   if (stat === null) return null;
   if (stat.isDirectory()) return realpathSync2(dotGit);
@@ -432,19 +466,19 @@ function resolveCommonDir(root) {
   if (!match?.[1]) return null;
   const gitdir = resolve(root, match[1]);
   if (lstatOrNull(gitdir) === null) return null;
-  const commondirFile = join(gitdir, "commondir");
+  const commondirFile = join2(gitdir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync2(gitdir);
   const commondir = readFileSync(commondirFile, "utf8").trim();
   const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync2(common);
 }
 function storePaths(commonDir) {
-  const dir = join(commonDir, "squeal");
+  const dir = join2(commonDir, "squeal");
   return {
     dir,
-    database: join(dir, "store.sqlite"),
-    runsDir: join(dir, "runs"),
-    locksDir: join(dir, "locks")
+    database: join2(dir, "store.sqlite"),
+    runsDir: join2(dir, "runs"),
+    locksDir: join2(dir, "locks")
   };
 }
 function lstatOrNull(path) {
@@ -748,8 +782,8 @@ function flag(value) {
 }
 
 // src/core/store/prune.ts
-import { existsSync, rmSync } from "node:fs";
-import { join as join2, resolve as resolve2, sep } from "node:path";
+import { existsSync as existsSync2, rmSync as rmSync2 } from "node:fs";
+import { join as join3, resolve as resolve2, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -771,7 +805,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync(join2(worktree.root, ".git"))) continue;
+    if (existsSync2(join3(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -868,7 +902,7 @@ function pragmaNumber(conn, name) {
 function removeRunLog(paths, logDir) {
   const runsDir = resolve2(paths.runsDir);
   const target = resolve2(logDir);
-  if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
+  if (target.startsWith(runsDir + sep)) rmSync2(target, { recursive: true, force: true });
 }
 
 // src/core/store/repos/consumers.ts
@@ -882,6 +916,13 @@ function createConsumerRepo(conn) {
     conn.run(`DELETE FROM consumer_views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
     conn.run(`DELETE FROM consumers WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
   });
+  const idleSince = (cutoff) => conn.all(
+    `SELECT * FROM consumers
+         WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
+         ORDER BY worktree_id, session_id, agent_id`,
+    cutoff,
+    cutoff
+  ).map(toConsumer);
   return {
     get: (consumer) => {
       const row = conn.get(
@@ -923,16 +964,11 @@ function createConsumerRepo(conn) {
     },
     unregister,
     expire: (cutoff) => conn.transaction(() => {
-      const expired = conn.all(
-        `SELECT * FROM consumers
-             WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
-             ORDER BY worktree_id, session_id, agent_id`,
-        cutoff,
-        cutoff
-      ).map((row) => toConsumer(row).consumer);
+      const expired = idleSince(cutoff).map((record) => record.consumer);
       for (const consumer of expired) unregister(consumer);
       return expired;
-    })
+    }),
+    idleSince
   };
 }
 function toConsumer(row) {
@@ -992,7 +1028,7 @@ function toView2(row) {
 }
 
 // src/core/store/repos/results.ts
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 var OUTCOMES2 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
@@ -1067,7 +1103,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text = JSON.stringify(errors);
-  const id = createHash2("sha256").update(JSON.stringify([summary, text])).digest("hex");
+  const id = createHash3("sha256").update(JSON.stringify([summary, text])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -1684,9 +1720,9 @@ function isStoreOpenFailure(value) {
 }
 function openStore(commonDir, options = {}) {
   const paths = storePaths(commonDir);
-  if (!existsSync2(paths.database)) {
+  if (!existsSync3(paths.database)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync(paths.dir, { recursive: true });
+    mkdirSync2(paths.dir, { recursive: true });
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
@@ -1696,7 +1732,7 @@ function openStore(commonDir, options = {}) {
 function connect(paths, options) {
   let db;
   try {
-    db = new DatabaseSync(paths.database);
+    db = new DatabaseSync2(paths.database);
     db.exec(`PRAGMA busy_timeout = ${busyTimeout(options)}`);
     const found = userVersion(db);
     if (found > SCHEMA_VERSION) {
@@ -1737,8 +1773,8 @@ function isCorruption(error) {
   return typeof code === "number" && [11, 26].includes(code & 255);
 }
 function recover(paths, options) {
-  mkdirSync(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  mkdirSync2(paths.locksDir, { recursive: true });
+  const lock2 = new DatabaseSync2(join4(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -1761,33 +1797,33 @@ function recover(paths, options) {
 }
 function moveAside(database, at2) {
   let movedTo = `${database}.corrupt-${at2}`;
-  for (let n = 1; existsSync2(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
+  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
   renameSync(database, movedTo);
-  if (existsSync2(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
-  rmSync2(`${database}-shm`, { force: true });
+  if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
+  rmSync3(`${database}-shm`, { force: true });
   return movedTo;
 }
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync2, statSync } from "node:fs";
-import { join as join4, resolve as resolve3 } from "node:path";
+import { join as join5, resolve as resolve3 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = worktreeGitDir(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join4(gitDir, "HEAD"));
+  let value = read2(join5(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join4(gitDir, ref)) ?? read2(join4(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join5(gitDir, ref)) ?? read2(join5(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function worktreeGitDir(root) {
-  const dotGit = join4(root, ".git");
+  const dotGit = join5(root, ".git");
   try {
     if (statSync(dotGit).isDirectory()) return dotGit;
   } catch (error) {
@@ -1798,7 +1834,7 @@ function worktreeGitDir(root) {
   return line?.[1] === void 0 ? null : resolve3(root, line[1]);
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join4(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -1836,14 +1872,14 @@ function toNote(item) {
 }
 
 // src/core/status/open.ts
-import { existsSync as existsSync3, realpathSync as realpathSync3 } from "node:fs";
-import { dirname, join as join5, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync4, realpathSync as realpathSync3 } from "node:fs";
+import { dirname, join as join6, resolve as resolve4 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function findWorktreeRoot(path) {
   let dir = resolve4(path);
-  if (existsSync3(dir)) dir = realpathSync3(dir);
+  if (existsSync4(dir)) dir = realpathSync3(dir);
   for (; ; ) {
-    if (existsSync3(join5(dir, ".git"))) return dir;
+    if (existsSync4(join6(dir, ".git"))) return dir;
     const parent = dirname(dir);
     if (parent === dir) return null;
     dir = parent;
@@ -2281,7 +2317,7 @@ function formatRegistration(registration) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync4 } from "node:fs";
+import { existsSync as existsSync5 } from "node:fs";
 
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
@@ -2331,15 +2367,15 @@ function failure(code, message) {
 
 // src/core/daemon/paths.ts
 import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join6, resolve as resolve5 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join7, resolve as resolve5 } from "node:path";
 function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? join6(tempDir(env), userDirName());
+  return xdgRuntimeDir(env) ?? join7(tempDir(env), userDirName());
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join6(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join6("/tmp", userDirName(), name);
+  const path = join7(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join7("/tmp", userDirName(), name);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -2409,7 +2445,7 @@ async function ensureDaemon(root, options = {}) {
   if (probe.state === "alive") return "alive";
   if (probe.state === "unresponsive") return "unavailable";
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync4(cli)) return "unavailable";
+  if (cli === null || !existsSync5(cli)) return "unavailable";
   try {
     const child = spawn(process.execPath, [cli, "daemon", root], {
       cwd: root,
@@ -2443,6 +2479,12 @@ async function ensureIfStale(context, deps) {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
   if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return;
   await ensure(context, deps, record);
+}
+
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
 }
 
 // src/harness/claude-code/context.ts
@@ -2506,7 +2548,7 @@ function isRegistered(context) {
 
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var POLICY_FILE = "squeal.config.json";
 var boolean = (v) => typeof v === "boolean" ? null : "true or false";
 var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
@@ -2550,7 +2592,7 @@ var SHAPE = {
 function loadPolicy(root) {
   let text;
   try {
-    text = readFileSync3(join7(root, POLICY_FILE), "utf8");
+    text = readFileSync3(join8(root, POLICY_FILE), "utf8");
   } catch (error) {
     if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
     return defaultsBecause(`could not be read: ${String(error)}`);
@@ -2658,39 +2700,6 @@ function fullSuiteReason(header) {
   return `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ${header.revision}; ${before}. \`squeal run --all\` starts one.`;
 }
 
-// src/harness/claude-code/waiter-lock.ts
-import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync5, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
-import { join as join8 } from "node:path";
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-function waiterLockPath(locksDir, consumer) {
-  const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join8(locksDir, `waiter-${id}.sqlite`);
-}
-function removeWaiterLock(locksDir, consumer) {
-  const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync5(path)) return;
-  const db = lock(path);
-  if (db === null) return;
-  try {
-    rmSync3(path, { force: true });
-  } finally {
-    db.close();
-  }
-}
-function lock(path) {
-  const db = new DatabaseSync2(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-    return db;
-  } catch {
-    db.close();
-    return null;
-  }
-}
-
 // src/harness/claude-code/hooks/stop.ts
 var STOP_WAIT_CAP_MS = 1500;
 var STOP_MARGIN_MS = 250;
@@ -2699,6 +2708,7 @@ function stopBusyTimeoutMs(waitMs) {
   return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
 }
 var stop = (input, location2, deps) => {
+  if (isFork(input)) return forkStop(input, location2, deps);
   const policy = readPolicy(location2.root).stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext(
@@ -2735,6 +2745,10 @@ ${text}` } };
     { busyTimeoutMs: stopBusyTimeoutMs(wait) }
   );
 };
+var forkStop = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
+  if (isRegistered(context)) await finishSubagent(context);
+  return null;
+});
 function earlier(failures) {
   return failures.filter((f) => f.validity !== "current");
 }
@@ -2787,6 +2801,7 @@ function parseHookInput(text) {
     cwd: v.cwd,
     hook_event_name: v.hook_event_name,
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
+    ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}

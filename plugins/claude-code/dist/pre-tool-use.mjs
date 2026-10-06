@@ -180,6 +180,7 @@ var REGRESSION_KINDS = ["first-seen-fail", "pass-to-fail"];
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
@@ -263,6 +264,9 @@ function transitionKind(from, to) {
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
 
+// src/core/waiter-lock/waiter-lock.ts
+import { DatabaseSync } from "node:sqlite";
+
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
   const last = history.at(-1);
@@ -342,7 +346,7 @@ function planDelta(input) {
 // src/core/store/open.ts
 import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
 import { join as join3 } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 var Connection = class {
@@ -876,6 +880,13 @@ function createConsumerRepo(conn) {
     conn.run(`DELETE FROM consumer_views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
     conn.run(`DELETE FROM consumers WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
   });
+  const idleSince = (cutoff) => conn.all(
+    `SELECT * FROM consumers
+         WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
+         ORDER BY worktree_id, session_id, agent_id`,
+    cutoff,
+    cutoff
+  ).map(toConsumer);
   return {
     get: (consumer) => {
       const row = conn.get(
@@ -917,16 +928,11 @@ function createConsumerRepo(conn) {
     },
     unregister,
     expire: (cutoff) => conn.transaction(() => {
-      const expired = conn.all(
-        `SELECT * FROM consumers
-             WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
-             ORDER BY worktree_id, session_id, agent_id`,
-        cutoff,
-        cutoff
-      ).map((row) => toConsumer(row).consumer);
+      const expired = idleSince(cutoff).map((record) => record.consumer);
       for (const consumer of expired) unregister(consumer);
       return expired;
-    })
+    }),
+    idleSince
   };
 }
 function toConsumer(row) {
@@ -1690,7 +1696,7 @@ function openStore(commonDir, options = {}) {
 function connect(paths, options) {
   let db;
   try {
-    db = new DatabaseSync(paths.database);
+    db = new DatabaseSync2(paths.database);
     db.exec(`PRAGMA busy_timeout = ${busyTimeout(options)}`);
     const found = userVersion(db);
     if (found > SCHEMA_VERSION) {
@@ -1732,7 +1738,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join3(paths.locksDir, "store-recovery.sqlite"));
+  const lock = new DatabaseSync2(join3(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock.exec("BEGIN EXCLUSIVE");
@@ -2443,6 +2449,7 @@ function parseHookInput(text) {
     cwd: v.cwd,
     hook_event_name: v.hook_event_name,
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
+    ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}
