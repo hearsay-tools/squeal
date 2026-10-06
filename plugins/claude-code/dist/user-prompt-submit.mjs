@@ -2371,7 +2371,7 @@ var userPromptSubmit = (input, location2, deps) => {
       if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     }
     const registration = await context.delivery.register(context.consumer);
-    return registration.knownFailures.length > 0 ? additionalContext(input, formatRegistration(registration)) : null;
+    return additionalContext(input, formatRegistration(registration));
   });
 };
 

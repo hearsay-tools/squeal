@@ -2361,6 +2361,12 @@ async function ensureIfStale(context, deps) {
   await ensure(context, deps, record);
 }
 
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
+}
+
 // src/harness/claude-code/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
@@ -2420,15 +2426,18 @@ function isRegistered(context) {
 }
 
 // src/harness/claude-code/hooks/post-tool-batch.ts
-var postToolBatch = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
-  await ensureIfStale(context, deps);
-  if (!isRegistered(context)) {
-    const registration = await context.delivery.register(context.consumer);
-    return additionalContext(input, formatRegistration(registration));
-  }
-  const delta = await context.delivery.onToolBoundary(context.consumer);
-  return delta === null ? null : additionalContext(input, formatDelta(delta));
-});
+var postToolBatch = async (input, location2, deps) => {
+  if (isFork(input)) return null;
+  return withContext(input, location2, deps, async (context) => {
+    await ensureIfStale(context, deps);
+    if (!isRegistered(context)) {
+      const registration = await context.delivery.register(context.consumer);
+      return additionalContext(input, formatRegistration(registration));
+    }
+    const delta = await context.delivery.onToolBoundary(context.consumer);
+    return delta === null ? null : additionalContext(input, formatDelta(delta));
+  });
+};
 
 // src/harness/claude-code/main.ts
 import { readFileSync as readFileSync3 } from "node:fs";
