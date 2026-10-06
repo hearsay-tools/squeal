@@ -29,3 +29,31 @@ Seam: a new committed `squeal.config.json` at the repository root with only the 
 Own: `squeal.config.json`, `.gitignore`, and a new test file under `test/policy/` or `test/e2e/` if one is needed. Leave `src/runners/vitest/` and `test/runners/vitest/` alone (001-56).
 
 Done when: a test (through `loadPolicy` and closure assembly, real store) shows a change under `plugins/claude-code/dist` re-keys exactly `test/harness/plugin.test.ts` and `test/e2e/shipped-plugin.test.ts` (it archives the plugin) and no other test file; a write under `test/fixtures/vitest/.tmp/` produces no revision; `loadPolicy` on the committed file reports no problems.
+
+## After 001-56 and 001-57 land
+
+001-57 landed `6bd9c37..1c31c38`; 001-56 landed `615674a..1d66d1d`, bundles `94f468b`. Three rows in parallel, disjoint files, all `--backend claude --model opus --effort high`.
+
+## 001-59 re-review of 001-56
+
+Use /reviewer. Range `96a14e7..94f468b`. Output `reviews/wave-7.5.md`. Second and last round on this slice.
+
+Outcome: whether `reviews/wave-7.md` B1, S1, S2, N1, N3, N4 are closed, and whether the new rules opened anything.
+
+Read: `reviews/wave-7.md`, spec D3 and D4 as amended, `src/runners/vitest/stale.ts`, `dynamic.ts`, `graph.ts`, the `invalidate` branch of `adapter.ts`, `test/runners/vitest/structural*.test.ts`.
+
+Probe at least: re-run the five B1 probe rows against the candidate; rule 3 leaving out an added `index` file (the worker's claim that Vite reads `package.json` first); the added `package.json` case; the source scan on a file Vite serves but that is not on disk; the `invalidationState` fallback note reaching `notes.<worktreeId>`; the cost on the 1,000-module fixture. Do not re-check what `reviews/wave-7.md` "What fits" lists.
+
+## 001-58 runner-environment failures are not test results
+
+Use /worker. Shape: slice.
+
+Outcome: a broken runner environment never stores a `fail` under a key, so no worktree inherits failures that its code does not cause.
+
+Read: `lessons.md` "A dependency install under a running daemon" and defect 12; spec D5 (runner failure is a state), D8, D10; `src/runners/vitest/run.ts` and `results.ts` (how a file-level error becomes a result).
+
+Seam: where the adapter turns a file-level error into a check result. First edit: classify an error raised while the runner loads modules (ENOENT under the instance's own temp directory, and module-loader errors that name no project file) as a runner failure: the files `unknown`, one note, nothing stored, the instance recreated. A test file's own syntax or import error stays a `fail`. Then recreate the instance when the worktree's installed lockfile appears or changes. Spend at most 20 minutes establishing what deleted the temp directory (`npm ci`, `git checkout`, another instance's `close()`); record the finding or "not established" in your report.
+
+Own: `src/runners/vitest/`, `test/runners/vitest/`, `test/fixtures/vitest/`, `src/core/scheduler/` only if recreation needs a trigger there, D5 and D8 paragraphs in `spec.md`, one dated line in `status.md`. No store schema change: if you need one, ask first. Leave `lessons.md` (001-54) and `reviews/` (001-59) alone. Do not run `npm run build` or touch `plugins/claude-code/dist`.
+
+Done when: a fixture whose Vitest temp directory is removed under a running instance yields `unknown` and no stored result, then passes after recreation; a second worktree with the same keys inherits nothing from it; an install into a worktree with no `node_modules` recreates the instance; a test file with a real import error still records `fail`.
