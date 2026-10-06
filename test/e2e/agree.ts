@@ -31,9 +31,10 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
     revision: status.revision,
     ...status.counts,
   });
-  expect(text.includes(`Full suite: completed at revision ${status.revision}.`), text).toBe(
-    status.fullSuite.atCurrentRevision,
-  );
+  expect(
+    text.includes(`Full-suite checkpoint: completed at revision ${status.revision}.`),
+    text,
+  ).toBe(status.fullSuite.atCurrentRevision);
   expect(/No daemon (has validated|is running)/.test(text), text).toBe(
     status.daemon.state === "down",
   );
