@@ -150,6 +150,7 @@ describe("readStatus", () => {
       revision: 2,
       head: COMMIT,
       dirty: true,
+      dirtyObservedAt: 2,
       daemon: { state: "alive", lastHeartbeatAt: NOW - 2_000 },
       counts: { current: 5, pending: 2, stale: 1, unknown: 1 },
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
@@ -207,7 +208,7 @@ describe("readStatus", () => {
       Affected checks: 3 passed, 1 running, 1 queued, 1 skipped, 1 stale, 1 unknown
       Full-suite checkpoint: none completed at revision 2; last completed at revision 1
 
-      Worktree: <b> (HEAD abc1234, dirty)
+      Worktree: <b> (HEAD abc1234, dirty at revision 2)
       Daemon: running, last heartbeat 2 s ago
       Inherited: 2 current results
         2 from <main> at abc1234
@@ -334,6 +335,78 @@ describe("readStatus", () => {
     expect(listed.testFilesListed).toBe(true);
     expect(formatStatus(listed, NOW).split("\n")[2]).toBe(
       "Affected checks: 0 passed, 0 running, 0 queued",
+    );
+  });
+
+  it("labels the dirty flag with its revision and calls it not known without a daemon (lessons, defect 7)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    const daemon = (heartbeatAt: number) => ({
+      socketPath: "/run/squeal.sock",
+      startedAt: 1,
+      heartbeatAt,
+      heartbeatIntervalMs: 5_000,
+      squealVersion: "0.0.0",
+    });
+    const worktree = (heartbeatAt: number | null) =>
+      store.worktrees.upsert({
+        id: repo.mainId,
+        root: repo.main,
+        commonDir: repo.commonDir,
+        isMain: true,
+        registeredAt: 1,
+        daemon: heartbeatAt === null ? null : daemon(heartbeatAt),
+      });
+    appendRevisions(store, repo.mainId, 4, { head: COMMIT, dirty: false });
+    const worktreeLine = () => {
+      const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+      const line = formatStatus(status, NOW)
+        .split("\n")
+        .find((l) => l.startsWith("Worktree: "));
+      return { dirty: status.dirty, at: status.dirtyObservedAt, line };
+    };
+
+    worktree(NOW - 1_000);
+    expect(worktreeLine()).toEqual({
+      dirty: false,
+      at: 4,
+      line: `Worktree: ${repo.main} (HEAD abc1234, clean at revision 4)`,
+    });
+
+    worktree(NOW - 60_000);
+    expect(worktreeLine()).toEqual({
+      dirty: null,
+      at: null,
+      line: `Worktree: ${repo.main} (HEAD abc1234, dirty state not known: no daemon is validating)`,
+    });
+
+    worktree(null);
+    expect(worktreeLine().line).toContain("dirty state not known: no daemon is validating");
+  });
+
+  it("says no revision is recorded when the dirty flag has none", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    store.worktrees.upsert({
+      id: repo.mainId,
+      root: repo.main,
+      commonDir: repo.commonDir,
+      isMain: true,
+      registeredAt: 1,
+      daemon: {
+        socketPath: "/run/squeal.sock",
+        startedAt: 1,
+        heartbeatAt: NOW - 1_000,
+        heartbeatIntervalMs: 5_000,
+        squealVersion: "0.0.0",
+      },
+    });
+
+    const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+
+    expect(status.dirty).toBeNull();
+    expect(formatStatus(status, NOW)).toContain(
+      ", dirty state not known: no revision recorded yet)",
     );
   });
 
@@ -508,6 +581,8 @@ describe("readStatus", () => {
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
       "Full-suite checkpoint: none completed at any revision",
     ]);
-    expect(lines).toContain(`Worktree: ${repo.main} (HEAD no commit, dirty state unknown)`);
+    expect(lines).toContain(
+      `Worktree: ${repo.main} (HEAD no commit, dirty state not known: no daemon is validating)`,
+    );
   });
 });

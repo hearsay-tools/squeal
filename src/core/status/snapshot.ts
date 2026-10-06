@@ -93,6 +93,10 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
+  const daemon = liveness(worktree?.daemon ?? null, now);
+  // Nothing observes the files without a daemon, so the last revision's flag may be old news (D7).
+  const observed = daemon.state === "alive" ? revision : null;
+
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -100,8 +104,9 @@ function snapshot(
     worktreeRoot: worktree?.root ?? root,
     ...header,
     head: revision === null ? readGitHead(root) : revision.head,
-    dirty: revision?.dirty ?? null,
-    daemon: liveness(worktree?.daemon ?? null, now),
+    dirty: observed?.dirty ?? null,
+    dirtyObservedAt: observed?.number ?? null,
+    daemon,
     knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),

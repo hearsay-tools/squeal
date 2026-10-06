@@ -20,7 +20,7 @@ function write(path: string, text: string) {
 }
 
 describe("HEAD and dirty without a recorded revision", () => {
-  it("reads HEAD through a loose ref and leaves dirty unknown", () => {
+  it("reads HEAD through a loose ref and leaves dirty not known", () => {
     const repo = fakeRepo();
     seedStore(repo);
     write(join(repo.commonDir, "refs", "heads", "main"), `${SHA}\n`);
@@ -29,7 +29,7 @@ describe("HEAD and dirty without a recorded revision", () => {
 
     expect(status).toMatchObject({ revision: 0, head: SHA, dirty: null });
     expect(formatStatus(status, NOW)).toContain(
-      `\nWorktree: ${repo.main} (HEAD abc1234, dirty state unknown)\n`,
+      `\nWorktree: ${repo.main} (HEAD abc1234, dirty state not known: no daemon is validating)\n`,
     );
   });
 
@@ -52,7 +52,7 @@ describe("HEAD and dirty without a recorded revision", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
     expect(status).toMatchObject({ head: null, dirty: null });
     expect(formatStatus(status, NOW)).toContain(
-      `\nWorktree: ${repo.main} (HEAD no commit, dirty state unknown)\n`,
+      `\nWorktree: ${repo.main} (HEAD no commit, dirty state not known: no daemon is validating)\n`,
     );
 
     write(join(repo.commonDir, "HEAD"), `${SHA}\n`);
@@ -64,10 +64,25 @@ describe("HEAD and dirty without a recorded revision", () => {
     const store = seedStore(repo);
     write(join(repo.commonDir, "refs", "heads", "main"), `${OTHER_SHA}\n`);
     appendRevisions(store, repo.mainId, 1, { head: SHA, dirty: true });
+    store.worktrees.upsert({
+      id: repo.mainId,
+      root: repo.main,
+      commonDir: repo.commonDir,
+      isMain: true,
+      registeredAt: 1,
+      daemon: {
+        socketPath: "/run/squeal.sock",
+        startedAt: 1,
+        heartbeatAt: NOW - 1_000,
+        heartbeatIntervalMs: 5_000,
+        squealVersion: "0.0.0",
+      },
+    });
 
     expect(snapshotOf(readStatus(repo.main, { now: () => NOW }))).toMatchObject({
       head: SHA,
       dirty: true,
+      dirtyObservedAt: 1,
     });
   });
 });

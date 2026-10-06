@@ -153,10 +153,18 @@ export interface StatusSnapshot extends StatusHeader {
   /** From the latest revision; read from the git dir while none is recorded. */
   readonly head: CommitSha;
   /**
-   * From the latest revision; `null` while none is recorded: dirtiness needs
-   * git, and status never spawns it.
+   * From the latest revision; `null` while none is recorded (dirtiness needs
+   * git, and status never spawns it) and while no daemon is validating, since
+   * nothing observes the files then. Spec 001 D7 as amended: "The dirty flag
+   * is the one observed at the last revision and is labelled with that
+   * revision; when no daemon is validating it is reported as not known."
    */
   readonly dirty: boolean | null;
+  /**
+   * The revision `dirty` was observed at; `null` when `dirty` is. Optional
+   * for payloads from before the field.
+   */
+  readonly dirtyObservedAt?: RevisionNumber | null;
   readonly daemon: DaemonLiveness;
   /** Failures first: the list is the reason status exists. */
   readonly knownFailures: readonly KnownFailure[];
