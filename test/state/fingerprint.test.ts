@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { describeFailure, SUMMARY_MAX_CHARS } from "../../src/core/state/index.js";
 import type { CheckError, SourceLocation } from "../../src/core/types/index.js";
@@ -36,6 +38,80 @@ describe("describeFailure fingerprint", () => {
       null,
     );
     expect(a.fingerprint).toBe(b.fingerprint);
+  });
+
+  // Lessons, defect 2: test/daemon/lifecycle.test.ts failed at load with this
+  // line, and every re-run was delivered as FAIL -> FAIL, failure changed.
+  it("ignores the random cache directory of the lifecycle load failure", () => {
+    const line = (id: string) =>
+      "Command failed: /usr/local/bin/node node_modules/typescript/bin/tsc -p tsconfig.build.json " +
+      `--outDir node_modules/.cache/squeal-test/${id}/dist`;
+    const a = describeFailure([error(line("d80d9776-3b1e-4f0a-9c2d-5e6f7a8b9c0d"))], null);
+    const b = describeFailure([error(line("1c2b3a49-0f8e-4d7c-a6b5-c4d3e2f1a0b9"))], null);
+    expect(a.fingerprint).toBe(b.fingerprint);
+    expect(a.fingerprint).toContain("tsc -p tsconfig.build.json --outDir");
+  });
+
+  it("ignores UUIDs and hex identifiers of 16 or more characters", () => {
+    const a = describeFailure(
+      [
+        error(
+          "run 0F8E4D7C-A6B5-4C4D-93E2-F1A0B9C8D7E6 of commit 1de13c7a9b2f4e6d8c0a1b3c5d7e9f02 failed",
+        ),
+      ],
+      null,
+    );
+    const b = describeFailure(
+      [
+        error(
+          "run 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b of commit e8abd21f00c4b9a3d7e6f5a4b3c2d1e0 failed",
+        ),
+      ],
+      null,
+    );
+    expect(a.fingerprint).toBe(b.fingerprint);
+  });
+
+  it("keeps short hex, plain numbers and other values", () => {
+    const base = describeFailure([error("expected 1234567890123456 to be abc1234")], null);
+    expect(
+      describeFailure([error("expected 1234567890123457 to be abc1234")], null).fingerprint,
+    ).not.toBe(base.fingerprint);
+    expect(
+      describeFailure([error("expected 1234567890123456 to be abc1235")], null).fingerprint,
+    ).not.toBe(base.fingerprint);
+  });
+
+  it("ignores the random directory under the temp directory", () => {
+    const at = (dir: string) =>
+      describeFailure(
+        [error(`ENOENT: no such file, open '${join(tmpdir(), dir, "a.json")}'`)],
+        null,
+      ).fingerprint;
+    expect(at("squeal-e2e-Xy12Ab")).toBe(at("squeal-e2e-Qr98Zt"));
+    expect(at("squeal-e2e-Xy12Ab")).toContain("a.json");
+    expect(
+      describeFailure([error("ENOENT: no such file, open '/tmp/squeal-AbCdEf/b.json'")], null)
+        .fingerprint,
+    ).toBe(
+      describeFailure([error("ENOENT: no such file, open '/tmp/squeal-GhIjKl/b.json'")], null)
+        .fingerprint,
+    );
+  });
+
+  it("keeps a tmp directory inside the project", () => {
+    expect(
+      describeFailure([error("cannot open /repo/tmp/fixture-a/x.json")], null).fingerprint,
+    ).not.toBe(
+      describeFailure([error("cannot open /repo/tmp/fixture-b/x.json")], null).fingerprint,
+    );
+  });
+
+  it("ignores node_modules/.cache paths", () => {
+    const at = (dir: string) =>
+      describeFailure([error(`cannot read /repo/node_modules/.cache/vite/${dir}/deps.js`)], null)
+        .fingerprint;
+    expect(at("deps_temp_a1b2c3")).toBe(at("deps_temp_z9y8x7"));
   });
 
   it("changes when the first line, the error name or the location changes", () => {
