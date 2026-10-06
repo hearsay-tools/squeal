@@ -49,6 +49,11 @@ export class Ledger {
   revision: RevisionState = { number: 0, head: null, dirty: false };
   /** Paths changed by revisions since the tier in flight was selected; `null` with no tier in flight. */
   tierChanges: Set<RelativePath> | null = null;
+  /**
+   * Paths changed by revisions since the runner phase of the refinement in
+   * flight started; `null` with none in flight (`applyRunnerPart`).
+   */
+  refineChanges: Set<RelativePath> | null = null;
   /** Some files are blocked by a runner failure; the next revision or `run --all` retries the runner. */
   broken = false;
   /** The last test file listing failed; the next revision lists again. */
