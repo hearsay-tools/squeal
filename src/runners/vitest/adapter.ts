@@ -27,6 +27,7 @@ import {
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { checkNames, compareRefs } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
+import { staleTransforms } from "./stale.js";
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -116,13 +117,11 @@ export class VitestAdapter implements RunnerAdapter {
       for (const p of abs) vitest.invalidateFile(p.abs);
       const structural = abs.filter((p) => p.kind !== "change");
       if (structural.length > 0) {
-        // An add or delete can change how any import resolves, and Vite keeps
-        // an unresolvable specifier verbatim in its cached transform. Drop
-        // every cached transform so the next walk or run resolves afresh.
-        // Spec 001 D4 records this; the cold walk it costs on the next
-        // affected() (research: 100 to 400 ms per 50 files) is a dogfooding
-        // measurement (review N1).
-        invalidateAll(vitest);
+        // Spec 001 D4: an add or delete re-transforms only the importers whose
+        // resolution it can change, never the whole graph (lessons, defect 11).
+        const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
+        const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
+        for (const file of staleTransforms(vitest, added, deleted)) vitest.invalidateFile(file);
         const testGlob = structural.some((p) =>
           vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),
         );
@@ -279,14 +278,4 @@ export class VitestAdapter implements RunnerAdapter {
 /** Test specifications of every project. Typecheck specs (`tsc`, no module graph) are not supported in v1. */
 async function testSpecifications(vitest: Vitest): Promise<TestSpecification[]> {
   return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
-}
-
-function invalidateAll(vitest: Vitest): void {
-  const files = new Set<string>();
-  for (const project of vitest.projects) {
-    for (const environment of Object.values(project.vite.environments)) {
-      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
-    }
-  }
-  for (const file of files) vitest.invalidateFile(file);
 }

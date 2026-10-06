@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
 
@@ -88,7 +88,11 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
 }
 
 /** A transform dependency as a filesystem path, or `null` for virtual and bare ids. */
-function depToPath(dep: string, importer: AbsolutePath, root: AbsolutePath): AbsolutePath | null {
+export function depToPath(
+  dep: string,
+  importer: AbsolutePath,
+  root: AbsolutePath,
+): AbsolutePath | null {
   if (dep.startsWith("/@fs/")) return dep.slice("/@fs".length);
   if (dep.startsWith("/@") || dep.startsWith("\0") || dep.includes(":")) return null;
   if (dep.startsWith("/")) return join(root, dep.split("?")[0] ?? dep);
@@ -127,6 +131,26 @@ export function resolutionCandidates(
     ...extensions.map((e) => join(target, `index${e}`)),
     ...twins,
   ];
+}
+
+/**
+ * The inverse of `resolutionCandidates`: every import target that has `path`
+ * among its candidates. An import of one of these targets may resolve to
+ * `path` once it exists, whether it was unresolved or resolved to another
+ * candidate before.
+ */
+export function resolutionBases(path: AbsolutePath, extensions: readonly string[]): AbsolutePath[] {
+  const ext = extname(path);
+  const bases = [path];
+  if (ext === "") return bases;
+  if (extensions.includes(ext)) {
+    bases.push(path.slice(0, -ext.length));
+    if (basename(path) === `index${ext}`) bases.push(dirname(path));
+  }
+  for (const [js, twins] of Object.entries(TYPESCRIPT_TWINS)) {
+    if (twins.includes(ext)) bases.push(path.slice(0, -ext.length) + js);
+  }
+  return bases;
 }
 
 /** True when `path` is a missing import target, allowing for a specifier written without extension. */
