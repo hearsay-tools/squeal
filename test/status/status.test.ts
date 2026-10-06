@@ -8,6 +8,19 @@ import type { StatusResult, StatusSnapshot, Store } from "../../src/core/types/i
 import { tempDir } from "../store/helpers.js";
 import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 
+/** `test_file_keys` rows for `paths`, as a daemon writes them once it listed the test files. */
+function setKeys(store: Store, worktreeId: string, paths: string[]) {
+  store.testFileKeys.upsertMany(
+    paths.map((path) => ({
+      worktreeId,
+      testFile: { project: "", path },
+      key: `key-${path}`,
+      revision: 0,
+      pending: null,
+    })),
+  );
+}
+
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);
 const COMMIT = "abc1234def5678abc1234def5678abc1234def56";
 
@@ -141,6 +154,8 @@ describe("readStatus", () => {
       counts: { current: 5, pending: 2, stale: 1, unknown: 1 },
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
+      testFilesListed: true,
+      inheritedCount: 2,
       knownFailures: [
         {
           check: check("src/auth.test.ts", "auth > expired token"),
@@ -190,8 +205,7 @@ describe("readStatus", () => {
               expected 401, received 500
               at src/auth.ts:12:5, observed at revision 2, current
       Affected checks: 3 passed, 1 running, 1 queued, 1 skipped, 1 stale, 1 unknown
-      Last full suite: completed at revision 1
-      Current revision has not completed a full-suite run
+      Full-suite checkpoint: none completed at revision 2; last completed at revision 1
 
       Worktree: <b> (HEAD abc1234, dirty)
       Daemon: running, last heartbeat 2 s ago
@@ -208,7 +222,7 @@ describe("readStatus", () => {
     `);
   });
 
-  it("reproduces the vision example line for line", () => {
+  it("reproduces the vision example, with the full-suite line as a checkpoint (lessons, surprise 7)", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     store.worktrees.upsert({
@@ -251,12 +265,11 @@ describe("readStatus", () => {
 
     const lines = formatStatus(readStatus(repo.main, { now: () => NOW }), NOW).split("\n");
 
-    expect(lines.slice(0, 5)).toEqual([
+    expect(lines.slice(0, 4)).toEqual([
       "Revision: 187",
       "Known failures: 0",
       "Affected checks: 47 passed, 3 running, 12 queued",
-      "Last full suite: completed at revision 170",
-      "Current revision has not completed a full-suite run",
+      "Full-suite checkpoint: none completed at revision 187; last completed at revision 170",
     ]);
   });
 
@@ -277,10 +290,51 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.fullSuite).toEqual({ atCurrentRevision: true, lastCompletedRevision: 3 });
-    expect(formatStatus(status, NOW).split("\n").slice(3, 5)).toEqual([
-      "Last full suite: completed at revision 3",
-      "Current revision has completed a full-suite run",
+    expect(formatStatus(status, NOW).split("\n")[3]).toBe(
+      "Full-suite checkpoint: completed at revision 3",
+    );
+  });
+
+  it("says no full-suite checkpoint completed at any revision", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    appendRevisions(store, repo.mainId, 3, { head: null, dirty: false });
+    setKeys(store, repo.mainId, ["src/a.test.ts"]);
+
+    const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+
+    expect(formatStatus(status, NOW).split("\n")[3]).toBe(
+      "Full-suite checkpoint: none completed at any revision",
+    );
+  });
+
+  it("says the daemon has not listed the test files instead of zero counts (lessons, defect 4)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    store.worktrees.upsert({
+      id: repo.mainId,
+      root: repo.main,
+      commonDir: repo.commonDir,
+      isMain: true,
+      registeredAt: 1,
+      daemon: null,
+    });
+
+    const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+
+    expect(status.testFilesListed).toBe(false);
+    expect(formatStatus(status, NOW).split("\n").slice(0, 3)).toEqual([
+      "Revision: 0",
+      "Known failures: 0",
+      "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
     ]);
+
+    setKeys(store, repo.mainId, ["src/a.test.ts"]);
+    const listed = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+    expect(listed.testFilesListed).toBe(true);
+    expect(formatStatus(listed, NOW).split("\n")[2]).toBe(
+      "Affected checks: 0 passed, 0 running, 0 queued",
+    );
   });
 
   it("reports no store without creating one", () => {
@@ -440,6 +494,7 @@ describe("readStatus", () => {
       head: null,
       counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
+      testFilesListed: false,
       daemon: { state: "down", since: null },
       notes: [
         "this worktree is not registered in the store; no daemon has run here",
@@ -447,12 +502,11 @@ describe("readStatus", () => {
       ],
     });
     const lines = formatStatus(status, NOW).split("\n");
-    expect(lines.slice(0, 5)).toEqual([
+    expect(lines.slice(0, 4)).toEqual([
       "Revision: 0",
       "Known failures: 0",
-      "Affected checks: 0 passed, 0 running, 0 queued",
-      "Last full suite: none recorded",
-      "Current revision has not completed a full-suite run",
+      "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
+      "Full-suite checkpoint: none completed at any revision",
     ]);
     expect(lines).toContain(`Worktree: ${repo.main} (HEAD no commit, dirty state unknown)`);
   });

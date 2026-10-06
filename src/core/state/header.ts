@@ -23,7 +23,9 @@ import { testFileKeyOf } from "./derive.js";
  * apart, by class.
  * Revision `0` means no revision has been recorded yet; a full suite
  * completed at revision `0` is a full suite at the current revision until the
- * first revision is recorded.
+ * first revision is recorded. Test files count as listed once a key row or a
+ * completed checkpoint exists: a project with no test files at all is listed
+ * when its baseline completes.
  */
 export function readHeader(
   store: Store,
@@ -33,7 +35,11 @@ export function readHeader(
 ): StatusHeader {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const state of states) counts[state.validity]++;
+  let inheritedCount = 0;
+  for (const state of states) {
+    counts[state.validity]++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+  }
   const last = store.checkpoints.lastCompleted(worktreeId);
   return {
     revision,
@@ -43,7 +49,21 @@ export function readHeader(
       atCurrentRevision: last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
     },
+    testFilesListed: keys.length > 0 || last !== null,
+    inheritedCount,
   };
+}
+
+/**
+ * Spec 001 D7: "A checkpoint is one `run --all` or baseline request". Worded
+ * as a request that did or did not complete, not as a caveat on the counts
+ * (lessons, surprise 7). Delivered headers and status print the same words.
+ */
+export function fullSuiteText({ revision, fullSuite }: StatusHeader): string {
+  if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
+  return fullSuite.lastCompletedRevision === null
+    ? "none completed at any revision"
+    : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
 }
 
 /**

@@ -24,10 +24,12 @@ import type { ResultRecord } from "./store-records.js";
 export type ValidityCounts = Readonly<Record<Validity, number>>;
 
 /**
- * Whether a full-suite result exists.
+ * Whether a full-suite checkpoint completed.
  *
- * Spec 001 D7: "whether a full-suite result exists for this revision and at
- * which revision the last one completed".
+ * Spec 001 D7: "whether a full-suite checkpoint completed for this revision
+ * and at which revision the last one completed". A checkpoint is a request
+ * (`run --all` or baseline), not a coverage state: its absence says nothing
+ * against current results.
  */
 export interface FullSuiteState {
   readonly atCurrentRevision: boolean;
@@ -64,6 +66,23 @@ export interface StatusHeader {
    * from the bare store reader `readHeader`.
    */
   readonly daemon?: DaemonLiveness;
+  /**
+   * `false` while the daemon has not listed this worktree's test files: no
+   * `test_file_keys` row and no completed checkpoint. Zero counts then mean
+   * "not looked yet", not "nothing left to validate". Spec 001 D7 as amended:
+   * "When the daemon has not yet listed the worktree's test files, headers and
+   * status say so instead of presenting zero counts as complete." Set by
+   * `readHeader`; absent reads as listed.
+   */
+  readonly testFilesListed?: boolean;
+  /**
+   * Checks whose current result is inherited from another worktree, a part
+   * of `counts.current`. Goal 4: inherited results are reported as
+   * inherited; D9's skill reads "the header's pending and inherited counts".
+   * `StatusSnapshot.inherited` names the sources. Set by `readHeader`; absent
+   * reads as 0.
+   */
+  readonly inheritedCount?: number;
 }
 
 /**

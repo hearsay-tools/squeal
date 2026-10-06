@@ -1,4 +1,4 @@
-import { formatCheck } from "../state/index.js";
+import { formatCheck, fullSuiteText } from "../state/index.js";
 import type {
   CommitSha,
   EpochMs,
@@ -10,8 +10,9 @@ import type {
 /**
  * Human rendering of `squeal status`. The first lines reproduce the vision
  * example ("The desired experience"): revision, known failures (each listed
- * under the count), affected check counts, last full suite, and whether the
- * current revision completed one. Details follow after a blank line.
+ * under the count), affected check counts, and the full-suite checkpoint,
+ * worded as a request as delivered headers word it (lessons, surprise 7).
+ * Details follow after a blank line.
  */
 export function formatStatus(result: StatusResult, now: EpochMs): string {
   if (!result.available) return formatUnavailable(result);
@@ -30,12 +31,7 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
       ].join(", ")}`,
     ]),
     `Affected checks: ${affected(result)}`,
-    result.fullSuite.lastCompletedRevision === null
-      ? "Last full suite: none recorded"
-      : `Last full suite: completed at revision ${result.fullSuite.lastCompletedRevision}`,
-    result.fullSuite.atCurrentRevision
-      ? "Current revision has completed a full-suite run"
-      : "Current revision has not completed a full-suite run",
+    `Full-suite checkpoint: ${fullSuiteText(result)}`,
     "",
     worktreeLine(result),
     daemonLine(result, now),
@@ -69,8 +65,15 @@ export function formatUnavailable(result: StatusUnavailable): string {
   return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}\n`;
 }
 
-/** "47 passed, 3 running, 12 queued", then skipped, stale and unknown when there are any. */
+/**
+ * "47 passed, 3 running, 12 queued", then skipped, stale and unknown when
+ * there are any. Before the daemon listed the test files, zero counts would
+ * read as complete, so none are printed (D7 as amended).
+ */
 function affected(s: StatusSnapshot): string {
+  if (s.testFilesListed === false) {
+    return "none counted; the daemon has not listed this worktree's test files yet";
+  }
   const { currentByOutcome, pendingByPhase } = s.breakdown;
   const parts = [
     `${currentByOutcome.pass} passed`,
