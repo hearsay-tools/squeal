@@ -23,6 +23,8 @@ export interface InvalidateResult {
    * instance when the config file or one of its dependencies changed".
    */
   readonly recreatedProjects: readonly ProjectName[];
+  /** Facts the adapter worked around, recorded as status notes (D7), e.g. a fallback it took. */
+  readonly notes?: readonly string[];
 }
 
 /**
