@@ -2678,12 +2678,17 @@ var init_types = __esm({
 });
 
 // src/core/scheduler/notes.ts
+import { stripVTControlCharacters } from "node:util";
 function appendNote(store, worktreeId, note) {
   const key = notesMetaKey(worktreeId);
+  const plain = { ...note, text: plainText(note.text) };
   store.transaction(() => {
-    const notes2 = [...parse(store.meta.get(key)), note].slice(-MAX_PERSISTED_NOTES);
+    const notes2 = [...parse(store.meta.get(key)), plain].slice(-MAX_PERSISTED_NOTES);
     store.meta.set(key, JSON.stringify(notes2));
   });
+}
+function plainText(text) {
+  return stripVTControlCharacters(text);
 }
 function parse(raw) {
   if (raw === null) return [];
@@ -2714,6 +2719,7 @@ function newFileState(ref) {
     resultKey: null,
     checks: [],
     failing: false,
+    durationMs: null,
     phase: null,
     runningKey: null,
     unknownKey: null,
@@ -2731,6 +2737,10 @@ function classify2(file) {
 function checkId(check) {
   const name = check.kind === "test" ? check.fullName : "";
   return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
+function durationOf(results2) {
+  if (results2.length === 0) return null;
+  return results2.reduce((sum, result) => sum + result.durationMs, 0);
 }
 var init_files = __esm({
   "src/core/scheduler/files.ts"() {
@@ -2866,13 +2876,22 @@ async function applyRevision(context, ledger, revision, content) {
   pick(content.rekeyed);
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
-  pick(
-    await tryRunner(context, `affected (${listPaths(paths)})`, () => runner.affected(paths)) ?? []
+  const affected2 = await tryRunner(
+    context,
+    `affected (${listPaths(paths)})`,
+    () => affectedOf(runner, paths)
   );
+  pick(affected2?.direct ?? []);
+  pick(affected2?.transitive ?? []);
+  const direct = new Set((affected2?.direct ?? []).map(testFileId));
   touchKeys(await resolveClosures(context, [...reresolve.values()], failures));
   touch(reresolve.values());
-  ledger.settle(touched.values(), changed);
+  ledger.settle(touched.values(), changed, { direct });
   settleFailures(ledger, failures, retrying, changed);
+}
+function affectedOf(runner, paths) {
+  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
+  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
 }
 async function retryRunner(context, ledger) {
   if (!ledger.broken) return;
@@ -3380,18 +3399,22 @@ var init_batch = __esm({
 });
 
 // src/core/scheduler/queue.ts
-function priorityOf(file, changed) {
+function priorityOf(file, changed, direct = NO_DIRECT_IMPORTERS) {
   if (file.failing) return Priority.failing;
-  if (changed.has(file.ref.path)) return Priority.direct;
-  return file.resultKey === null ? Priority.neverRun : Priority.affected;
+  if (changed.has(file.ref.path) || direct.has(file.id)) return Priority.direct;
+  return file.resultKey === null ? Priority.neverRun : Priority.transitive;
 }
-var Priority, RunQueue;
+function byDuration(a, b) {
+  return a === b ? 0 : a < b ? -1 : 1;
+}
+var Priority, NO_DIRECT_IMPORTERS, RunQueue;
 var init_queue = __esm({
   "src/core/scheduler/queue.ts"() {
     "use strict";
     init_fs();
     init_keys();
-    Priority = { failing: 0, direct: 1, affected: 2, neverRun: 3 };
+    Priority = { failing: 0, direct: 1, transitive: 2, neverRun: 3 };
+    NO_DIRECT_IMPORTERS = /* @__PURE__ */ new Set();
     RunQueue = class {
       #entries = /* @__PURE__ */ new Map();
       #seq = 0;
@@ -3421,10 +3444,20 @@ var init_queue = __esm({
       isForced(ref) {
         return this.#entries.get(testFileId(ref))?.forced ?? false;
       }
-      /** Priority, then first queued, then project and path. */
-      ordered() {
+      /**
+       * Priority, then shortest last known duration with unknown ones last, then
+       * first queued, then project and path. Spec 001 D5 step 4: "within a class,
+       * shortest last known duration first, so a slow integration file never
+       * delays the edited module's own unit test."
+       */
+      ordered(durationOf2 = () => null) {
+        const durations = /* @__PURE__ */ new Map();
+        for (const entry2 of this.#entries.values()) {
+          durations.set(entry2, durationOf2(entry2.ref) ?? Number.POSITIVE_INFINITY);
+        }
+        const duration2 = (entry2) => durations.get(entry2) ?? Number.POSITIVE_INFINITY;
         return [...this.#entries.values()].sort(
-          (a, b) => a.priority - b.priority || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
+          (a, b) => a.priority - b.priority || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
         ).map((entry2) => entry2.ref);
       }
     };
@@ -3485,7 +3518,11 @@ async function bootstrap(context, ledger) {
   ];
   for (const file of misses) {
     const previous = previousKeys.get(file.id)?.key ?? null;
-    if (previous !== null && hasResults(context, previous)) file.resultKey = previous;
+    if (previous === null) continue;
+    const results2 = store.results.byKey(previous, 0);
+    if (results2.length === 0) continue;
+    file.resultKey = previous;
+    file.durationMs = durationOf(results2);
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
   ledger.checkpoints.start(
@@ -3522,15 +3559,13 @@ function restore(file, known2) {
   file.checks = [...known2.checks];
   file.failing = known2.failing;
 }
-function hasResults(context, key) {
-  return context.store.results.checksForKey(key).length > 0;
-}
 var init_bootstrap = __esm({
   "src/core/scheduler/bootstrap.ts"() {
     "use strict";
     init_keys();
     init_context();
     init_failures();
+    init_files();
     init_queue();
     init_revision();
   }
@@ -4051,6 +4086,10 @@ var init_ledger = __esm({
       file(ref) {
         return this.files.get(testFileId(ref));
       }
+      /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
+      ordered() {
+        return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null);
+      }
       addFile(ref) {
         const file = newFileState(ref);
         this.files.set(file.id, file);
@@ -4106,7 +4145,7 @@ var init_ledger = __esm({
             this.queue.remove(ref);
             this.#syncPhase(file);
           } else if (options.queueMisses !== false) {
-            this.enqueue(file, priorityOf(file, changed));
+            this.enqueue(file, priorityOf(file, changed, options.direct));
           }
         }
         return misses;
@@ -4124,6 +4163,7 @@ var init_ledger = __esm({
         file.resultKey = key;
         file.checks = next;
         file.failing = results2.some((r) => r.outcome === "fail");
+        file.durationMs = durationOf(results2) ?? file.durationMs;
         file.unknownKey = null;
         file.discards = 0;
         file.blocked = null;
@@ -4383,7 +4423,7 @@ import { join as join14 } from "node:path";
 function selectTier(context, ledger) {
   const { store, keys, policy } = context;
   const picked = [];
-  for (const ref of ledger.queue.ordered()) {
+  for (const ref of ledger.ordered()) {
     if (picked.length >= policy.runner.tierSize) break;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
@@ -4583,6 +4623,8 @@ var init_scheduler2 = __esm({
       #lock = new Mutex();
       #notes = [];
       #idle = [];
+      /** Runner work in arrival order, applied between tiers by the pump. */
+      #runnerWork = [];
       #context = null;
       #ledger = null;
       #pumping = null;
@@ -4629,22 +4671,59 @@ var init_scheduler2 = __esm({
         });
         this.#pump();
       }
+      /**
+       * Stores the revision a batch creates and returns: the revision row, stat
+       * cache, content re-key, `queued` phases and known states, in one
+       * transaction. The runner part (`applyRevision`) is queued and applied by
+       * the pump after the tier in flight, in batch order.
+       *
+       * Spec 001 D2: "Creating a revision never waits on the runner: the store
+       * work [...] completes within the debounce window even while a tier is
+       * running, and the runner-dependent refinement is queued behind the tier
+       * separately." Lessons, defect 1: awaiting `runner.invalidate` here, which
+       * the runner serializes behind the running tier, let a revision lag the
+       * workspace by a whole tier.
+       */
       async handleBatch(batch) {
         if (this.#closed) return;
         await this.#lock.run(async () => {
           const { context, ledger } = this.#started();
           const applied = await reconcileBatch(context, ledger, batch);
           if (applied === null) return;
-          await applyRevision(context, ledger, applied.revision, applied.content);
-          ledger.commit();
+          const { revision, content } = applied;
+          this.#runnerWork.push({
+            run: async () => {
+              try {
+                await this.#lock.run(async () => {
+                  await applyRevision(context, ledger, revision, content);
+                  ledger.commit();
+                });
+              } catch (error) {
+                this.#backgroundError(`could not apply revision ${revision.number}`, error);
+              }
+            },
+            cancel: () => {
+            }
+          });
         });
         this.#pump();
       }
+      /**
+       * Queues the checkpoint at once, unless it needs the runner: while a
+       * runner failure is outstanding the runner is retried first, and while a
+       * revision waits for its runner part the checkpoint follows it. Both wait
+       * for the tier in flight.
+       */
       async requestFullSuite(request = {}) {
-        const record = await this.#lock.run(async () => {
+        const force = request.force === true;
+        const record = await this.#lock.run(() => {
+          const { ledger } = this.#started();
+          if (ledger.broken || this.#runnerWork.length > 0) return null;
+          return queueFullSuite(ledger, force);
+        }) ?? await this.#afterTier(async () => {
           const { context, ledger } = this.#started();
           await retryRunner(context, ledger);
-          return queueFullSuite(ledger, request.force === true);
+          return queueFullSuite(ledger, force);
         });
         this.#pump();
         return record;
@@ -4666,6 +4745,7 @@ var init_scheduler2 = __esm({
         if (this.#closed) return;
         this.#closed = true;
         await this.#pumping;
+        for (const task of this.#runnerWork.splice(0)) task.cancel();
         await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
         for (const resolve10 of this.#idle.splice(0)) resolve10();
       }
@@ -4675,8 +4755,13 @@ var init_scheduler2 = __esm({
        * batches are reconciled while a tier is in flight. Spec 001 D5: "A tier in
        * flight is never cancelled by a new revision."
        *
-       * An error stops the pump with a note; the tier's files go back to the
-       * queue, and the next batch or request starts the pump again.
+       * Before each tier the runner work queued meanwhile is applied, in arrival
+       * order, while no tier holds the runner. A tier is never selected while
+       * runner work is pending: its keys would come from a revision the runner
+       * has not invalidated yet.
+       *
+       * An error of a tier stops the pump with a note; the tier's files go back
+       * to the queue, and the next batch or request starts the pump again.
        */
       #pump() {
         if (this.#pumping || this.#closed || !this.#ledger) return;
@@ -4685,10 +4770,15 @@ var init_scheduler2 = __esm({
           let tier = null;
           try {
             while (!this.#closed) {
-              tier = await this.#lock.run(() => {
+              await this.#drainRunnerWork();
+              if (this.#closed) break;
+              const next = await this.#lock.run(() => {
+                if (this.#runnerWork.length > 0) return "runner-work";
                 const { context: context2, ledger: ledger2 } = this.#started();
                 return selectTier(context2, ledger2);
               });
+              if (next === "runner-work") continue;
+              tier = next;
               if (tier === null) break;
               const { context, ledger } = this.#started();
               const selected = tier;
@@ -4707,10 +4797,32 @@ var init_scheduler2 = __esm({
             if (tier !== null) await this.#requeue(tier);
           } finally {
             this.#pumping = null;
-            if (!this.#closed && !this.#stalled && (this.#ledger?.queue.size ?? 0) > 0) this.#pump();
+            if (!this.#closed && !this.#stalled && this.#hasWork()) this.#pump();
             else if (this.#isIdle()) for (const resolve10 of this.#idle.splice(0)) resolve10();
           }
         })();
+      }
+      /** Applies the queued runner work, oldest first. */
+      async #drainRunnerWork() {
+        while (!this.#closed) {
+          const task = this.#runnerWork.shift();
+          if (!task) return;
+          await task.run();
+        }
+      }
+      /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
+      #afterTier(task) {
+        if (this.#closed) return Promise.reject(new Error("squeal scheduler: closed"));
+        return new Promise((resolve10, reject) => {
+          this.#runnerWork.push({
+            run: () => this.#lock.run(task).then(resolve10, reject),
+            cancel: () => reject(new Error("squeal scheduler: closed"))
+          });
+          this.#pump();
+        });
+      }
+      #hasWork() {
+        return this.#runnerWork.length > 0 || (this.#ledger?.queue.size ?? 0) > 0;
       }
       /** Puts the files of a tier that never got recorded back into the queue. */
       async #requeue(tier) {
@@ -4734,14 +4846,20 @@ var init_scheduler2 = __esm({
       }
       #isIdle() {
         if (this.#closed) return true;
-        return this.#pumping === null && (this.#stalled || (this.#ledger?.queue.size ?? 0) === 0);
+        return this.#pumping === null && (this.#stalled || !this.#hasWork());
       }
       #started() {
         if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
         return { context: this.#context, ledger: this.#ledger };
       }
+      /** An error of work no caller awaits: a note for status, and `onError`. */
+      #backgroundError(subject, error) {
+        this.#note(`${subject}: ${String(error)}`);
+        this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
+      }
       /** Keeps a note for `status()` and persists it for `squeal status` (D7, review S6). */
-      #note(message2) {
+      #note(coloured) {
+        const message2 = plainText(coloured);
         this.#notes.push(message2);
         if (this.#notes.length > MAX_NOTES2) this.#notes.shift();
         const { store, worktreeId, now } = this.options;
@@ -7275,10 +7393,6 @@ var init_daemon_loop = __esm({
 import { existsSync as existsSync7 } from "node:fs";
 import { dirname as dirname11, extname as extname2, join as join19, resolve as resolve9 } from "node:path";
 async function importClosure(project, entries) {
-  const environment = project.vite.environments.ssr;
-  if (!environment) {
-    throw new Error(`vitest adapter: project "${project.name}" has no ssr environment`);
-  }
   const files = /* @__PURE__ */ new Set();
   const missing = /* @__PURE__ */ new Set();
   const visit = async (file) => {
@@ -7289,23 +7403,33 @@ async function importClosure(project, entries) {
     }
     files.add(file);
     if (file.includes("node_modules")) return;
-    let transformed;
-    try {
-      transformed = environment.moduleGraph.getModuleById(file)?.transformResult ?? await environment.transformRequest(file);
-    } catch {
-      return;
-    }
-    if (!transformed) return;
-    const deps = [...transformed.deps ?? [], ...transformed.dynamicDeps ?? []];
-    await Promise.all(
-      deps.map((dep) => {
-        const target = depToPath(dep, file, project.config.root);
-        return target === null ? void 0 : visit(target);
-      })
-    );
+    await Promise.all((await importTargets(project, file)).map(visit));
   };
   await Promise.all(entries.map(visit));
   return { files, missing };
+}
+async function directImports(project, file) {
+  const files = /* @__PURE__ */ new Set();
+  const missing = /* @__PURE__ */ new Set();
+  for (const target of await importTargets(project, file)) {
+    (existsSync7(target) ? files : missing).add(target);
+  }
+  return { files, missing };
+}
+async function importTargets(project, file) {
+  const environment = project.vite.environments.ssr;
+  if (!environment) {
+    throw new Error(`vitest adapter: project "${project.name}" has no ssr environment`);
+  }
+  let transformed;
+  try {
+    transformed = environment.moduleGraph.getModuleById(file)?.transformResult ?? await environment.transformRequest(file);
+  } catch {
+    return [];
+  }
+  if (!transformed) return [];
+  const deps = [...transformed.deps ?? [], ...transformed.dynamicDeps ?? []];
+  return deps.map((dep) => depToPath(dep, file, project.config.root)).filter((target) => target !== null);
 }
 function depToPath(dep, importer, root) {
   if (dep.startsWith("/@fs/")) return dep.slice("/@fs".length);
@@ -7419,12 +7543,17 @@ var init_related = __esm({
 // src/runners/vitest/affected.ts
 import { existsSync as existsSync8 } from "node:fs";
 async function affectedTestFiles(vitest, specs, changed) {
-  if (changed.length === 0) return [];
+  if (changed.length === 0) return { direct: [], transitive: [] };
   const known2 = new Map(specs.map((s) => [specKey(s), s]));
   const affected2 = /* @__PURE__ */ new Map();
-  const add = (spec) => {
+  const imported = /* @__PURE__ */ new Set();
+  const direct = /* @__PURE__ */ new Set();
+  const add = (spec, through) => {
     const current = known2.get(specKey(spec));
-    if (current) affected2.set(specKey(spec), current);
+    if (!current) return;
+    affected2.set(specKey(spec), current);
+    if (through === "graph") imported.add(specKey(spec));
+    if (through === "snapshot") direct.add(specKey(spec));
   };
   let related;
   try {
@@ -7432,26 +7561,38 @@ async function affectedTestFiles(vitest, specs, changed) {
   } catch {
     related = await walkRelated(specs, changed);
   }
-  related.forEach(add);
+  for (const spec of related) add(spec, "graph");
   const gone = changed.filter((p) => !existsSync8(p));
   const snapshots = changed.filter((p) => p.endsWith(".snap"));
   for (const project of vitest.projects) {
     const projectSpecs = specs.filter((s) => s.project === project);
     const inputs = await projectInputs(vitest, project);
     if (changed.some((p) => isProjectInput(inputs, p))) {
-      projectSpecs.forEach(add);
-      continue;
+      for (const spec of projectSpecs) add(spec, "environment");
     }
     for (const spec of projectSpecs) {
-      if (snapshots.includes(snapshotPath(project, spec.moduleId))) add(spec);
+      if (snapshots.includes(snapshotPath(project, spec.moduleId))) add(spec, "snapshot");
     }
     if (gone.length === 0) continue;
     for (const spec of projectSpecs) {
       const closure = await importClosure(project, [spec.moduleId]);
-      if (gone.some((p) => isMissingTarget(closure, p))) add(spec);
+      if (gone.some((p) => isMissingTarget(closure, p))) add(spec, "graph");
     }
   }
-  return [...affected2.values()];
+  for (const id of imported) {
+    const spec = affected2.get(id);
+    if (!spec || direct.has(id)) continue;
+    if (changed.includes(spec.moduleId)) {
+      direct.add(id);
+      continue;
+    }
+    const imports = await directImports(spec.project, spec.moduleId);
+    if (changed.some((p) => imports.files.has(p) || isMissingTarget(imports, p))) direct.add(id);
+  }
+  const result = { direct: [], transitive: [] };
+  for (const [id, spec] of affected2)
+    (direct.has(id) ? result.direct : result.transitive).push(spec);
+  return result;
 }
 async function walkRelated(specs, changed) {
   const hits = [];
@@ -7910,11 +8051,21 @@ var init_adapter = __esm({
       }
       affected(changedPaths) {
         return this.#serial(async (vitest) => {
-          const specs = await testSpecifications(vitest);
-          const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
-          const refs = await affectedTestFiles(vitest, specs, changed);
-          return refs.map((r) => this.#ref(r)).sort(compareRefs);
+          const { direct, transitive } = await this.#affected(vitest, changedPaths);
+          return [...direct, ...transitive].sort(compareRefs);
         });
+      }
+      affectedDetailed(changedPaths) {
+        return this.#serial((vitest) => this.#affected(vitest, changedPaths));
+      }
+      async #affected(vitest, changedPaths) {
+        const specs = await testSpecifications(vitest);
+        const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
+        const { direct, transitive } = await affectedTestFiles(vitest, specs, changed);
+        return {
+          direct: direct.map((s) => this.#ref(s)).sort(compareRefs),
+          transitive: transitive.map((s) => this.#ref(s)).sort(compareRefs)
+        };
       }
       closure(testFile) {
         return this.#serial(async (vitest) => {
@@ -8046,7 +8197,7 @@ var init_load = __esm({
 
 // src/runners/vitest/paths.ts
 import { sep as sep4 } from "node:path";
-import { stripVTControlCharacters } from "node:util";
+import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 var WorktreePaths;
 var init_paths4 = __esm({
   "src/runners/vitest/paths.ts"() {
@@ -8069,7 +8220,7 @@ var init_paths4 = __esm({
       }
       /** Spec 001 D4: "Stack paths are relativized before storage." Also strips ANSI colours. */
       relativizeText(text) {
-        return stripVTControlCharacters(text).replaceAll(`file://${this.root}/`, "").replaceAll(`${this.root}/`, "").replaceAll(this.root, ".");
+        return stripVTControlCharacters2(text).replaceAll(`file://${this.root}/`, "").replaceAll(`${this.root}/`, "").replaceAll(this.root, ".");
       }
       location(file, line, column) {
         const path = this.toRelative(file);
@@ -8169,6 +8320,11 @@ function createRecoveringRunner(options) {
       return { recreatedProjects: [...projects].sort() };
     },
     affected: async (changedPaths) => (await adapter()).affected(changedPaths),
+    async affectedDetailed(changedPaths) {
+      const current = await adapter();
+      if (current.affectedDetailed) return current.affectedDetailed(changedPaths);
+      return { direct: [], transitive: await current.affected(changedPaths) };
+    },
     closure: async (testFile) => (await adapter()).closure(testFile),
     enumerate: async (testFile) => (await adapter()).enumerate(testFile),
     testFiles: async () => (await adapter()).testFiles(),
