@@ -105,6 +105,12 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 |---|---|---|---|
 | 001-52 quality scan of spec 001 | planned | `/quality` over `935e251..main`: every wave of 001. Output `docs/specifications/001-core-loop/quality/2026-10.md`. | Findings file committed; the coordinator turns its rows into board rows or drops. |
 
+### Wave 8: structural latency (from `specifications/001-core-loop/lessons.md` defect 11)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-53 targeted invalidation on add and delete | planned | Defect 11: replace `invalidateAll` in `VitestAdapter.invalidate` with targeted invalidation. On delete, the deleted module and its importers in the module graph. On add, the modules with an unresolved import that has the added path among its resolution candidates, plus any module whose resolved specifier the added path would now shadow. Amend D4 with the rule and the measurement. | An add or delete leaves the other transforms cached; `affected` after an add on a large fixture costs within 2× the warm walk; the cases `invalidateAll` covered (a missing import target appears, a resolved target is deleted, a new file shadows a resolved one) are tests; the `cezar` probe in `lessons.md` re-run shows add-to-run-start under 2 s. |
+
 ## Later
 
 - 002 pytest runner adapter.
