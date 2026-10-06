@@ -18,6 +18,8 @@ The operating model is the one from mega.dev's "autonomous product development",
 - **Coordinator**: the Cezar parent session. Reads the human's intent, runs research, writes the spec, keeps the board, dispatches waves, integrates worker commits, folds reviews back into the spec. Never writes product code itself beyond integration fixes.
 - **Researcher**: one worker per research topic. Read-only on the product; writes one findings file under `research/` with every finding tagged `verified by experiment`, `read in official docs`, `read in source code` or `inferred`. Throwaway probes live under `research/probes/`.
 - **Worker**: one worker per board row. Disjoint file ownership from the other workers of its wave. Test first. Final message lists decisions the spec did not settle and any type change.
+- **Judge**: one per fan-out question. Reads two or more findings files and names where they diverge; the output is the spec input, never an average.
+- **Quality**: one per stretch of landed work, after a spec ships or about ten rows. Proposes drop candidates, board rows and small slices; edits nothing.
 - **Reviewer**: one per wave. Changes no code. Labels every finding proven, plausible or unverified; only a proven break blocks. Writes `reviews/wave-N.md`: verdict, verification output, blockers, should-fix, nits, what fits, and inputs for the next wave.
 
 ## The loop for a feature
@@ -32,8 +34,8 @@ The operating model is the one from mega.dev's "autonomous product development",
 
 ## Procedures
 
-Each role's step-by-step procedure is a skill, so an agent loads only its own: `.claude/skills/{coordinator,worker,reviewer,researcher}/SKILL.md`, mirrored under `.agents/skills/` for other harnesses. This file describes the model; the skills carry the steps.
+Each role's step-by-step procedure is a skill, so an agent loads only its own: `.claude/skills/{coordinator,worker,reviewer,researcher,judge,quality}/SKILL.md`, mirrored under `.agents/skills/` for other harnesses. This file describes the model; the skills carry the steps.
 
 ## Provenance
 
-The model is mega.dev's "autonomous product development", whose reference implementation is [overment/limen](https://github.com/overment/limen). Limen injects vision and styleguide into every role and selects a short role preamble per spawn (`templates/<role>.md`, overridable per project); its roles are coordinator, worker, reviewer, researcher, judge and quality. We keep the first four as skills. Research there is always a fan-out of two models plus a judge, authorized by the human; here a fan-out is optional for the same reason. Quality scans of landed work are a future task on the board.
+The model is mega.dev's "autonomous product development", whose reference implementation is [overment/limen](https://github.com/overment/limen). Limen injects vision and styleguide into every role and selects a short role preamble per spawn (`templates/<role>.md`, overridable per project); its roles are coordinator, worker, reviewer, researcher, judge and quality, and all six are skills here. Research there is always a fan-out of two models plus a judge, authorized by the human; here a fan-out is optional for the same reason.
