@@ -83,6 +83,12 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 |---|---|---|---|
 | 001-45 close the review | done | S1 refined-revision marker written by the refinement commit and read by headers, status, `status --wait` and Stop as pending; S2 `status --wait` returns a distinct outcome without a daemon and the skill sentence is fixed; S3 split `applyRevision` into a runner phase without the lock and an apply phase under it with a freshness re-check (or, if unsafe, amend D2 with the measured bound); S4 sweep only on `startup` and `resume`; S5 note map keys and input globs that match nothing; S6 the six missing tests; N1 module duration from `onTestModuleEnd`; N5 keep the last heartbeat after `squeal stop`; N7 comment; N8 `AggregateError`. | Review probes B and G re-run as tests pass; no window in which status reads "0 pending" at a revision with unrun work. |
 
+### Wave 5: shipped proof
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-46 dogfooding re-run | running | Repeat the measurements of `lessons.md` on this repository after waves 4.5 and 4.6 with the real Claude Code CLI: edit-to-delivery p50 and p95 with duration ordering, whether agents use `status --wait` instead of `sleep`, `/exit` consumer leaks, hook p95 at calm load, and the review's items 2 and 3. Append a dated section to `lessons.md`; list any new defect. | Measurements recorded; `status.md` moves to shipped if goals 1 to 7 hold, or lists what still blocks. |
+
 ## Later
 
 - 002 pytest runner adapter.
