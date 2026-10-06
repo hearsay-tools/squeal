@@ -4887,6 +4887,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk) {
     ledger.markUnknown(unknown, reason2);
     ledger.commit();
   });
+  for (const note of report2.notes ?? []) context.note(note);
   return [...changedOnDisk];
 }
 function queueFullSuite(ledger, force) {
@@ -8012,51 +8013,6 @@ var init_affected = __esm({
   }
 });
 
-// src/runners/vitest/environment.ts
-function projectEnvironment(project, inputs2, context) {
-  const { paths } = context;
-  const files = /* @__PURE__ */ new Set();
-  for (const file of [...inputs2.configFiles, ...inputs2.setup.files, ...inputs2.globalSetup.files]) {
-    const rel = paths.toRelative(file);
-    if (rel !== null && paths.isProjectFile(file)) files.add(rel);
-  }
-  return {
-    project: project.name,
-    runnerName: "vitest",
-    runnerVersion: context.runnerVersion,
-    adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths),
-    files: [...files].sort(compare)
-  };
-}
-function canonicalConfig(project, paths) {
-  const { sequence, ...config } = project.serializedConfig;
-  const { seed: _seed, ...stableSequence } = sequence;
-  return JSON.stringify(
-    canonicalize(
-      { ...config, sequence: stableSequence, globalSetup: globalSetupFiles(project) },
-      paths
-    )
-  );
-}
-function canonicalize(value, paths) {
-  if (typeof value === "string") return paths.relativizeText(value);
-  if (value instanceof RegExp) return value.toString();
-  if (Array.isArray(value)) return value.map((v) => canonicalize(v, paths));
-  if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value).filter(([, v]) => v !== void 0 && typeof v !== "function").sort(([a], [b]) => compare(a, b)).map(([k, v]) => [k, canonicalize(v, paths)]);
-    return Object.fromEntries(entries);
-  }
-  return value;
-}
-var init_environment2 = __esm({
-  "src/runners/vitest/environment.ts"() {
-    "use strict";
-    init_fs();
-    init_project();
-  }
-});
-
 // src/runners/vitest/results.ts
 function toCheckError(error, paths) {
   const frame = error.stacks?.find((f) => paths.isProjectFile(f.file));
@@ -8238,9 +8194,128 @@ var init_reporter = __esm({
   }
 });
 
+// src/runners/vitest/broken.ts
+import { sep as sep4 } from "node:path";
+function instanceTempDirs(vitest) {
+  const root = vitest._tmpDir;
+  const dirs = vitest.projects.map((p) => p.tmpDir);
+  if (typeof root === "string") dirs.push(root);
+  return [...new Set(dirs)];
+}
+function runnerFailure(collector, files) {
+  const errors = [
+    ...[...collector.modules.values()].flatMap((m) => m.errors),
+    ...collector.unhandledErrors
+  ];
+  const error = errors.find((e) => isRunnerFailure(e, files));
+  return error === void 0 ? null : errorText(error).split("\n")[0] ?? "";
+}
+function isRunnerFailure(error, files) {
+  const text = `${error.message ?? ""}
+${error.stack ?? ""}`;
+  if (isMissingFile(error) && mentionedPaths(text).some((p) => underAny(p, files.tempDirs))) {
+    return true;
+  }
+  const top = topFrame(error.stack ?? "");
+  if (top === null || !isModuleRunner(top)) return false;
+  return !mentionedPaths(text).some(
+    (p) => files.paths.isProjectFile(p) && !underAny(p, files.tempDirs)
+  );
+}
+function isMissingFile(error) {
+  return error.code === "ENOENT" || /^ENOENT\b/.test(error.message ?? "");
+}
+function isModuleRunner(file) {
+  return file.split(sep4).join("/").endsWith("/vite/dist/node/module-runner.js");
+}
+function mentionedPaths(text) {
+  const found = text.matchAll(/(?:file:\/\/)?(\/[^\s'"`()[\]]+)/g);
+  return [...found].map((m) => (m[1] ?? "").replace(/(?::\d+)+$/, ""));
+}
+function topFrame(stack) {
+  const line = stack.split("\n").find((l) => /^\s*at\s/.test(l));
+  return line === void 0 ? null : mentionedPaths(line)[0] ?? null;
+}
+function underAny(path, dirs) {
+  return dirs.some((dir) => path === dir || path.startsWith(`${dir}${sep4}`));
+}
+var init_broken = __esm({
+  "src/runners/vitest/broken.ts"() {
+    "use strict";
+    init_reporter();
+  }
+});
+
+// src/runners/vitest/environment.ts
+function projectEnvironment(project, inputs2, context) {
+  const { paths } = context;
+  const files = /* @__PURE__ */ new Set();
+  for (const file of [...inputs2.configFiles, ...inputs2.setup.files, ...inputs2.globalSetup.files]) {
+    const rel = paths.toRelative(file);
+    if (rel !== null && paths.isProjectFile(file)) files.add(rel);
+  }
+  return {
+    project: project.name,
+    runnerName: "vitest",
+    runnerVersion: context.runnerVersion,
+    adapterVersion: context.adapterVersion,
+    resolvedConfig: canonicalConfig(project, paths),
+    files: [...files].sort(compare)
+  };
+}
+function canonicalConfig(project, paths) {
+  const { sequence, ...config } = project.serializedConfig;
+  const { seed: _seed, ...stableSequence } = sequence;
+  return JSON.stringify(
+    canonicalize(
+      { ...config, sequence: stableSequence, globalSetup: globalSetupFiles(project) },
+      paths
+    )
+  );
+}
+function canonicalize(value, paths) {
+  if (typeof value === "string") return paths.relativizeText(value);
+  if (value instanceof RegExp) return value.toString();
+  if (Array.isArray(value)) return value.map((v) => canonicalize(v, paths));
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value).filter(([, v]) => v !== void 0 && typeof v !== "function").sort(([a], [b]) => compare(a, b)).map(([k, v]) => [k, canonicalize(v, paths)]);
+    return Object.fromEntries(entries);
+  }
+  return value;
+}
+var init_environment2 = __esm({
+  "src/runners/vitest/environment.ts"() {
+    "use strict";
+    init_fs();
+    init_project();
+  }
+});
+
+// src/runners/vitest/load.ts
+import { createRequire as createRequire2 } from "node:module";
+import { join as join22 } from "node:path";
+import { pathToFileURL as pathToFileURL2 } from "node:url";
+async function loadVitest(root) {
+  let resolved;
+  try {
+    resolved = createRequire2(join22(root, "package.json")).resolve("vitest/node");
+  } catch (error) {
+    const reason2 = error instanceof Error ? error.message.split("\n")[0] : String(error);
+    throw new Error(
+      `vitest/node does not resolve from ${root} (${reason2}); Squeal runs only the project's own Vitest`
+    );
+  }
+  return await import(pathToFileURL2(resolved).href);
+}
+var init_load = __esm({
+  "src/runners/vitest/load.ts"() {
+    "use strict";
+  }
+});
+
 // src/runners/vitest/run.ts
 import { mkdirSync as mkdirSync6, writeFileSync } from "node:fs";
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 async function execute(vitest, specs, timeoutMs, collector) {
   const run = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
@@ -8332,12 +8407,12 @@ function writeRunLog(options, collector, report2) {
     `end: ${report2.end}${report2.failure ? ` (${report2.failure})` : ""}, ${report2.durationMs} ms`,
     ""
   ];
-  const logFile = join22(options.logDir, "vitest.log");
+  const logFile = join23(options.logDir, "vitest.log");
   writeFileSync(logFile, `${[...header, ...collector.log].join("\n")}
 `);
   collector.logFile = logFile;
   writeFileSync(
-    join22(options.logDir, "report.json"),
+    join23(options.logDir, "report.json"),
     `${JSON.stringify({ runId: options.runId, report: report2 }, null, 2)}
 `
   );
@@ -8468,9 +8543,12 @@ var VITEST_ADAPTER_VERSION, VitestAdapter;
 var init_adapter = __esm({
   "src/runners/vitest/adapter.ts"() {
     "use strict";
+    init_keys();
     init_affected();
+    init_broken();
     init_environment2();
     init_graph();
+    init_load();
     init_project();
     init_reporter();
     init_results2();
@@ -8484,13 +8562,19 @@ var init_adapter = __esm({
        */
       constructor(paths, vitest) {
         this.paths = paths;
-        this.vitest = vitest;
+        this.#node = vitest;
       }
       paths;
-      vitest;
       name = "vitest";
       adapterVersion = VITEST_ADAPTER_VERSION;
       #vitest = null;
+      /** Where the current instance copies transformed modules (`instanceTempDirs`). */
+      #tempDirs = [];
+      /** Installed lockfiles the current instance started with. */
+      #lockfiles = /* @__PURE__ */ new Set();
+      /** The next start imports `vitest/node` again: the installed dependencies changed. */
+      #reload = false;
+      #node;
       #collector = null;
       /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
       #generation = 0;
@@ -8500,9 +8584,13 @@ var init_adapter = __esm({
       #fellBack = /* @__PURE__ */ new WeakSet();
       /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
       async #start() {
+        if (this.#reload) {
+          this.#node = await loadVitest(this.paths.root);
+          this.#reload = false;
+        }
         const generation = ++this.#generation;
         const current = () => generation === this.#generation ? this.#collector : null;
-        const vitest = await this.vitest.createVitest("test", {
+        const vitest = await this.#node.createVitest("test", {
           root: this.paths.root,
           watch: false,
           reporters: [createSquealReporter(current)],
@@ -8511,11 +8599,22 @@ var init_adapter = __esm({
         });
         try {
           await vitest.standalone();
+          this.#tempDirs = instanceTempDirs(vitest);
+          this.#lockfiles = await this.#installedLockfiles(vitest);
         } catch (error) {
           await vitest.close();
           throw error;
         }
         return vitest;
+      }
+      /** The installed lockfile of each project, as the environment hash finds it (D3). */
+      async #installedLockfiles(vitest) {
+        const found = /* @__PURE__ */ new Set();
+        for (const project of vitest.projects) {
+          const lockfile = await findInstalledLockfile(project.config.root, this.paths.root);
+          if (lockfile !== null) found.add(lockfile.path);
+        }
+        return found;
       }
       async open() {
         this.#vitest = await this.#start();
@@ -8540,7 +8639,9 @@ var init_adapter = __esm({
         return this.#serial(async (vitest) => {
           const abs = paths.map((p) => ({ ...p, abs: this.paths.toAbsolute(p.path) }));
           const triggers = await recreateTriggers(vitest);
-          if (abs.some((p) => triggers.has(p.abs))) {
+          const lockfiles = /* @__PURE__ */ new Set([...this.#lockfiles, ...await this.#installedLockfiles(vitest)]);
+          if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
+          if (abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
             const before = vitest.projects.map((p) => p.name);
             const fresh = await this.#recreate(vitest);
             const names = /* @__PURE__ */ new Set([...before, ...fresh.projects.map((p) => p.name)]);
@@ -8628,7 +8729,7 @@ var init_adapter = __esm({
         return this.#serial(async (vitest) => {
           const context = {
             paths: this.paths,
-            runnerVersion: this.vitest.version,
+            runnerVersion: this.#node.version,
             adapterVersion: this.adapterVersion
           };
           const envs = [];
@@ -8653,12 +8754,27 @@ var init_adapter = __esm({
           const started = performance.now();
           this.#collector = collector;
           try {
-            const execution = await execute(vitest, specs, options.timeoutMs, collector);
+            let execution = await execute(vitest, specs, options.timeoutMs, collector);
             if (execution.hung) {
               this.#vitest = null;
               abandon2(vitest, collector);
             }
-            const report2 = buildReport(collector, execution, Math.round(performance.now() - started));
+            const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
+            if (broken !== null && this.#vitest === vitest) {
+              execution = {
+                end: "crashed",
+                failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
+                hung: false
+              };
+              this.#vitest = null;
+              await vitest.close().catch(
+                (error) => collector.note(`close() of a broken instance failed: ${String(error)}`)
+              );
+            }
+            let report2 = buildReport(collector, execution, Math.round(performance.now() - started));
+            if (broken !== null && report2.failure !== null) {
+              report2 = { ...report2, notes: [report2.failure] };
+            }
             writeRunLog(options, collector, report2);
             return report2;
           } finally {
@@ -8690,30 +8806,8 @@ var init_adapter = __esm({
   }
 });
 
-// src/runners/vitest/load.ts
-import { createRequire as createRequire2 } from "node:module";
-import { join as join23 } from "node:path";
-import { pathToFileURL as pathToFileURL2 } from "node:url";
-async function loadVitest(root) {
-  let resolved;
-  try {
-    resolved = createRequire2(join23(root, "package.json")).resolve("vitest/node");
-  } catch (error) {
-    const reason2 = error instanceof Error ? error.message.split("\n")[0] : String(error);
-    throw new Error(
-      `vitest/node does not resolve from ${root} (${reason2}); Squeal runs only the project's own Vitest`
-    );
-  }
-  return await import(pathToFileURL2(resolved).href);
-}
-var init_load = __esm({
-  "src/runners/vitest/load.ts"() {
-    "use strict";
-  }
-});
-
 // src/runners/vitest/paths.ts
-import { sep as sep4 } from "node:path";
+import { sep as sep5 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 var WorktreePaths;
 var init_paths4 = __esm({
@@ -8733,7 +8827,7 @@ var init_paths4 = __esm({
         return toRelative(this.root, path);
       }
       isProjectFile(path) {
-        return this.toRelative(path) !== null && !path.split(sep4).includes("node_modules");
+        return this.toRelative(path) !== null && !path.split(sep5).includes("node_modules");
       }
       /** Spec 001 D4: "Stack paths are relativized before storage." Also strips ANSI colours. */
       relativizeText(text) {
