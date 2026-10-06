@@ -83,4 +83,44 @@ describe("Claude Code's internal forks are not consumers (lessons, defect 9)", (
     expect(JSON.parse(out.stdout)).toMatchObject({ decision: "block" });
     expect(r.store.consumers.get(r.consumer(SUBAGENT))).not.toBeNull();
   });
+
+  it("PostToolBatch and PreToolUse of a fork register nothing and say nothing (review wave 6, N4)", async () => {
+    const r = await oneFailure();
+    const fork = { agent_id: FORK, agent_type: "" };
+
+    const batch = await runHook(
+      "post-tool-batch",
+      recorded("subagent-post-tool-batch", r.root, fork),
+      counting().deps,
+    );
+    const edit = await runHook(
+      "pre-tool-use",
+      recorded("pre-tool-use", r.root, fork),
+      counting().deps,
+    );
+
+    expect(batch).toEqual(SILENT);
+    expect(edit).toEqual(SILENT);
+    expect(r.store.consumers.get(r.consumer(FORK))).toBeNull();
+  });
+
+  it("PreToolUse of a fork never denies, even for a consumer an older build registered", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await runHook(
+      "session-start",
+      recorded("subagent-start", r.root, { agent_id: FORK }),
+      counting().deps,
+    );
+    r.apply(r.fail());
+
+    const fork = { agent_id: FORK, agent_type: "" };
+    const edit = await runHook(
+      "pre-tool-use",
+      recorded("pre-tool-use", r.root, fork),
+      counting().deps,
+    );
+
+    expect(edit).toEqual(SILENT);
+  });
 });
