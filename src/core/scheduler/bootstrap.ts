@@ -32,6 +32,9 @@ import { readEnvironments, resolveClosures } from "./revision.js";
  * forgotten and their checks retired. A failed listing keeps the previous
  * list; a failed environment or closure call blocks the project's files
  * (D5: "A runner call that fails is a state, never a skip").
+ *
+ * The baseline is the runner part of the revision it starts at, so its
+ * commit records that revision as refined (D2 as amended).
  */
 export async function bootstrap(context: SchedulerContext, ledger: Ledger): Promise<void> {
   const { store, keys, runner, worktreeId, policy } = context;
@@ -114,7 +117,7 @@ export async function bootstrap(context: SchedulerContext, ledger: Ledger): Prom
   }
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   if (failures.size > 0) block(ledger, failures);
-  ledger.commit();
+  ledger.commit({ refined: ledger.revision.number });
 }
 
 interface Known {

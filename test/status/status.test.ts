@@ -157,6 +157,8 @@ describe("readStatus", () => {
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
       testFilesListed: true,
       inheritedCount: 2,
+      refinedRevision: null,
+      runnerPartPending: false,
       knownFailures: [
         {
           check: check("src/auth.test.ts", "auth > expired token"),

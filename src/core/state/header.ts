@@ -1,15 +1,16 @@
 import { testFileId } from "../keys/index.js";
-import type {
-  CheckKey,
-  KnownFailure,
-  KnownState,
-  RevisionNumber,
-  StatusHeader,
-  Store,
-  TestFileCounts,
-  TestFileKeyRecord,
-  Validity,
-  WorktreeId,
+import {
+  type CheckKey,
+  type KnownFailure,
+  type KnownState,
+  type RevisionNumber,
+  refinedMetaKey,
+  type StatusHeader,
+  type Store,
+  type TestFileCounts,
+  type TestFileKeyRecord,
+  type Validity,
+  type WorktreeId,
 } from "../types/index.js";
 import { testFileKeyOf } from "./derive.js";
 
@@ -25,7 +26,9 @@ import { testFileKeyOf } from "./derive.js";
  * completed at revision `0` is a full suite at the current revision until the
  * first revision is recorded. Test files count as listed once a key row or a
  * completed checkpoint exists: a project with no test files at all is listed
- * when its baseline completes.
+ * when its baseline completes. The runner part of the current revision is
+ * pending while the refined revision the daemon recorded (`refinedMetaKey`)
+ * is behind it (review wave 4.5, S1).
  */
 export function readHeader(
   store: Store,
@@ -41,6 +44,7 @@ export function readHeader(
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
+  const refinedRevision = readRefined(store, worktreeId);
   return {
     revision,
     counts,
@@ -51,7 +55,33 @@ export function readHeader(
     },
     testFilesListed: keys.length > 0 || last !== null,
     inheritedCount,
+    refinedRevision,
+    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
   };
+}
+
+/** `null` when absent or not a number: a store no daemon of this version refined. */
+function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | null {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : null;
+}
+
+/**
+ * Whether anything is pending at the current revision: a check or a test
+ * file without checks queued or running, or the runner part of the revision.
+ * Status waits and Stop wait on this (D7, D9).
+ */
+export function isPending(header: StatusHeader): boolean {
+  return (
+    header.counts.pending + header.testFilesWithoutChecks.pending > 0 ||
+    header.runnerPartPending === true
+  );
+}
+
+/** Spec 001 D2 as amended: what a pending runner part means for the counts. */
+export function runnerPartText(revision: RevisionNumber): string {
+  return `the runner part of revision ${revision} is pending`;
 }
 
 /**

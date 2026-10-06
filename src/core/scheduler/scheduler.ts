@@ -1,21 +1,22 @@
 import { createFsHasher, type Hasher, readObjectFormat } from "../hash/index.js";
 import { type HeadState, statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
-import type {
-  AbsolutePath,
-  CandidateBatch,
-  CheckpointRecord,
-  EpochMs,
-  FileChange,
-  FullSuiteRequest,
-  Policy,
-  RelativePath,
-  RunnerAdapter,
-  Scheduler,
-  SchedulerStatus,
-  StateSink,
-  Store,
-  WorktreeId,
+import {
+  type AbsolutePath,
+  type CandidateBatch,
+  type CheckpointRecord,
+  type EpochMs,
+  type FileChange,
+  type FullSuiteRequest,
+  type Policy,
+  type RelativePath,
+  type RunnerAdapter,
+  refinedMetaKey,
+  type Scheduler,
+  type SchedulerStatus,
+  type StateSink,
+  type Store,
+  type WorktreeId,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
 import { bootstrap } from "./bootstrap.js";
@@ -182,10 +183,11 @@ class TierScheduler implements Scheduler {
           try {
             await this.#lock.run(async () => {
               await applyRevision(context, ledger, revision, content);
-              ledger.commit();
+              ledger.commit({ refined: revision.number });
             });
           } catch (error) {
             this.#backgroundError(`could not apply revision ${revision.number}`, error);
+            this.#refinedAfterError(revision.number);
           }
         },
         cancel: () => {},
@@ -353,6 +355,24 @@ class TierScheduler implements Scheduler {
   #started(): { context: SchedulerContext; ledger: Ledger } {
     if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
     return { context: this.#context, ledger: this.#ledger };
+  }
+
+  /**
+   * A refinement that threw is not pending any more: nothing retries it, and
+   * its note says what failed. Its revision is recorded as refined, so waits
+   * do not wait for it forever (D2 as amended).
+   */
+  #refinedAfterError(revision: number): void {
+    const { store, worktreeId } = this.options;
+    try {
+      store.transaction(() => {
+        const key = refinedMetaKey(worktreeId);
+        const previous = Number(store.meta.get(key) ?? Number.NaN);
+        if (!(previous >= revision)) store.meta.set(key, String(revision));
+      });
+    } catch (error) {
+      this.#backgroundError(`could not record revision ${revision} as refined`, error);
+    }
   }
 
   /** An error of work no caller awaits: a note for status, and `onError`. */

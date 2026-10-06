@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/index.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import { refinedMetaKey, type TestFileRef } from "../../src/core/types/index.js";
 import {
   HOOK_TIMEOUT_MS,
   type HookDeps,
@@ -117,6 +117,33 @@ describe("SubagentStop (review wave 3, S6)", () => {
 
     await runHook("stop", recorded("stop", r.root, { stop_hook_active: true }), deps());
     expect(r.store.consumers.get(r.consumer())).not.toBeNull();
+  });
+});
+
+describe("Stop's wait for pending checks (review wave 4.5, S1)", () => {
+  it("waits while the runner part of the current revision is pending", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), deps());
+    r.apply(r.pass());
+    const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
+    // Every check is current, but the runner has not looked at this revision yet.
+    r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision - 1));
+    r.policy({ stop: { waitMs: 1_000 } });
+    const refined = setTimeout(
+      () => r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision)),
+      300,
+    );
+    try {
+      const started = performance.now();
+      await runHook("stop", recorded("stop", r.root), deps());
+      const elapsed = performance.now() - started;
+
+      expect(elapsed).toBeGreaterThanOrEqual(290);
+      expect(elapsed).toBeLessThan(900);
+    } finally {
+      clearTimeout(refined);
+    }
   });
 });
 

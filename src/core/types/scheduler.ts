@@ -67,6 +67,22 @@ export function notesMetaKey(worktreeId: WorktreeId): string {
   return `notes.${worktreeId}`;
 }
 
+/**
+ * `meta` key of a worktree's refined revision: the newest revision whose
+ * runner part (invalidation, test file listing, affected set, closures) the
+ * daemon applied, as a decimal number. Written by the refinement's commit and
+ * by the baseline at daemon start.
+ *
+ * Spec 001 D2 as amended: "The last revision whose refinement was applied is
+ * recorded, and headers, status and every wait treat a revision ahead of it
+ * as pending, so a test file added during a tier is never reported as nothing
+ * pending." In `meta`, not on the `worktrees` row, so no schema migration is
+ * needed and a store without the key reads as nothing pending.
+ */
+export function refinedMetaKey(worktreeId: WorktreeId): string {
+  return `refined.${worktreeId}`;
+}
+
 /** A `squeal run --all` request. Spec 001 D5. */
 export interface FullSuiteRequest {
   /** Run every test file, even those with a result under their current key. */

@@ -1,4 +1,4 @@
-import { formatCheck, fullSuiteText } from "../state/index.js";
+import { formatCheck, fullSuiteText, runnerPartText } from "../state/index.js";
 import type {
   CommitSha,
   EpochMs,
@@ -68,7 +68,9 @@ export function formatUnavailable(result: StatusUnavailable): string {
 /**
  * "47 passed, 3 running, 12 queued", then skipped, stale and unknown when
  * there are any. Before the daemon listed the test files, zero counts would
- * read as complete, so none are printed (D7 as amended).
+ * read as complete, so none are printed (D7 as amended). While the runner
+ * part of the revision is pending, the counts say what they leave out (D2 as
+ * amended, review wave 4.5 S1).
  */
 function affected(s: StatusSnapshot): string {
   if (s.testFilesListed === false) {
@@ -86,7 +88,11 @@ function affected(s: StatusSnapshot): string {
     [s.counts.unknown + currentByOutcome.unknown, "unknown"],
   ];
   for (const [count, label] of optional) if (count > 0) parts.push(`${count} ${label}`);
-  return parts.join(", ");
+  const runnerPart =
+    s.runnerPartPending === true
+      ? `; ${runnerPartText(s.revision)}, so test files it adds are not counted yet`
+      : "";
+  return `${parts.join(", ")}${runnerPart}`;
 }
 
 /** Spec 001 D7 as amended: the dirty flag is labelled with its revision, not known without a daemon. */

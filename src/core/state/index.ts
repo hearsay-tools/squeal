@@ -4,6 +4,12 @@ export { baselineFindings } from "./baseline.js";
 export { formatCheck, parseCheck } from "./check-name.js";
 export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js";
 export { describeFailure, SUMMARY_MAX_CHARS } from "./fingerprint.js";
-export { fullSuiteText, readHeader, toKnownFailure } from "./header.js";
+export {
+  fullSuiteText,
+  isPending,
+  readHeader,
+  runnerPartText,
+  toKnownFailure,
+} from "./header.js";
 export { createStateSink, type StateSinkOptions } from "./sink.js";
 export { type Observation, transitionKind } from "./transitions.js";
