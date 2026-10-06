@@ -23,7 +23,7 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 
 | Path | What |
 | --- | --- |
-| `hooks/hooks.json` | SessionStart, SubagentStart, PostToolBatch, PreToolUse (`Edit\|Write\|NotebookEdit`), Stop, SubagentStop, SessionEnd: each `timeout: 2`. The idle waiter on SessionStart and Stop: `asyncRewake`, `timeout: 3600`. |
+| `hooks/hooks.json` | SessionStart, SubagentStart, UserPromptSubmit, PostToolBatch, PreToolUse (`Edit\|Write\|NotebookEdit`), Stop, SubagentStop, SessionEnd: each `timeout: 2`. The idle waiter on SessionStart, UserPromptSubmit and Stop: `asyncRewake`, `timeout: 3600`. |
 | `dist/*.mjs` | One bundle per hook, Node built-ins only. Sources: `src/harness/claude-code/`. |
 | `dist/cli/squeal.mjs`, `bin/squeal` | The CLI on the Bash tool's PATH, and the daemon the hooks spawn. |
 | `dist/cli/front-desk.mjs` | The daemon's socket worker thread, loaded beside the CLI. |
@@ -39,9 +39,9 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 - Every header says when no daemon is validating (`No daemon has validated since <time>; results are as of revision N.`), and a tool-boundary delivery says so once per consumer when that changes.
 - Stop speaks only with news: a delta, a first registration that lists known failures, or a policy block. Claude Code continues the turn on Stop context, so an unconditional status header would loop. `stop.blockOnKnownFailures` blocks only on failures current at the revision; pending ones are named as pending.
 - SubagentStop delivers, then unregisters the subagent's consumer unless a block keeps it going.
-- SessionEnd unregisters every consumer of the session, for any `reason`, in every worktree of the store, without the daemon; when its cwd is outside any worktree it uses `CLAUDE_PROJECT_DIR`. A SessionStart for a session id first unregisters what is left of that session (subagents, other worktrees), so a missed SessionEnd cannot keep a daemon alive past the next start of the session. The daemon still expires consumers silent for 12 hours.
+- SessionEnd unregisters every consumer of the session, for any `reason`, in every worktree of the store, without the daemon; when its cwd is outside any worktree it uses `CLAUDE_PROJECT_DIR`. A SessionStart for a session id first unregisters what is left of that session (subagents, other worktrees), so a missed SessionEnd cannot keep a daemon alive past the next start of the session. The daemon expires consumers silent for 12 hours, and after 10 minutes a consumer whose waiter lock file exists but no waiter holds: Claude Code kills the waiter at every exit but runs no SessionEnd after an interactive exit that followed a typed prompt.
 - `stop.waitMs` is capped at 1500 ms by the 2 s hook timeout; Stop's store lock wait after it is what is left of the 2 s minus 250 ms.
-- The waiter runs only for the main agent of an attended interactive session (`CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_ENTRYPOINT` not `sdk-cli`), one per consumer through a lock in `<store>/locks/waiter-*.sqlite`.
+- The waiter runs only for the main agent of an attended interactive session (`CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_ENTRYPOINT` not `sdk-cli`), one per consumer through a lock in `<store>/locks/waiter-*.sqlite`. Every prompt re-arms it, since Claude Code runs no Stop after an interrupted turn; a second waiter exits at once on the lock. A waiter that times out records its consumer as heard from. UserPromptSubmit records the consumer as heard from too, and in an interactive session re-registers one the daemon expired, speaking only when the registration lists known failures.
 - `SQUEAL_HOOK_DEBUG=1` prints a swallowed hook error on stderr; `SQUEAL_WAITER_TIMEOUT_MS` shortens the waiter; `SQUEAL_CLI` overrides the CLI that the hooks and `squeal start` spawn as the daemon. All three are for tests and debugging.
 
 Requires Node 22.13 or later on the PATH that Claude Code hooks see.
