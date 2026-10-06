@@ -1,5 +1,7 @@
 import type { TestSpecification, Vitest } from "vitest/node";
+import { findInstalledLockfile } from "../../core/keys/index.js";
 import type {
+  AbsolutePath,
   AffectedTestFiles,
   EnumeratedCheck,
   InvalidatedPath,
@@ -13,9 +15,10 @@ import type {
   TestFileRef,
 } from "../../core/types/index.js";
 import { affectedTestFiles } from "./affected.js";
+import { instanceTempDirs, runnerFailure } from "./broken.js";
 import { projectEnvironment } from "./environment.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
-import type { VitestNode } from "./load.js";
+import { loadVitest, type VitestNode } from "./load.js";
 import type { WorktreePaths } from "./paths.js";
 import {
   findProject,
@@ -46,6 +49,13 @@ export class VitestAdapter implements RunnerAdapter {
   readonly adapterVersion = VITEST_ADAPTER_VERSION;
 
   #vitest: Vitest | null = null;
+  /** Where the current instance copies transformed modules (`instanceTempDirs`). */
+  #tempDirs: AbsolutePath[] = [];
+  /** Installed lockfiles the current instance started with. */
+  #lockfiles = new Set<AbsolutePath>();
+  /** The next start imports `vitest/node` again: the installed dependencies changed. */
+  #reload = false;
+  #node: VitestNode;
   #collector: RunCollector | null = null;
   /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
   #generation = 0;
@@ -60,14 +70,21 @@ export class VitestAdapter implements RunnerAdapter {
    */
   constructor(
     readonly paths: WorktreePaths,
-    private readonly vitest: VitestNode,
-  ) {}
+    vitest: VitestNode,
+  ) {
+    this.#node = vitest;
+  }
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
   async #start(): Promise<Vitest> {
+    if (this.#reload) {
+      // A worktree that had no `node_modules` ran its parent's Vitest (lessons, defect 12).
+      this.#node = await loadVitest(this.paths.root);
+      this.#reload = false;
+    }
     const generation = ++this.#generation;
     const current = () => (generation === this.#generation ? this.#collector : null);
-    const vitest = await this.vitest.createVitest("test", {
+    const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
       watch: false,
       reporters: [createSquealReporter(current)],
@@ -76,11 +93,23 @@ export class VitestAdapter implements RunnerAdapter {
     });
     try {
       await vitest.standalone();
+      this.#tempDirs = instanceTempDirs(vitest);
+      this.#lockfiles = await this.#installedLockfiles(vitest);
     } catch (error) {
       await vitest.close();
       throw error;
     }
     return vitest;
+  }
+
+  /** The installed lockfile of each project, as the environment hash finds it (D3). */
+  async #installedLockfiles(vitest: Vitest): Promise<Set<AbsolutePath>> {
+    const found = new Set<AbsolutePath>();
+    for (const project of vitest.projects) {
+      const lockfile = await findInstalledLockfile(project.config.root, this.paths.root);
+      if (lockfile !== null) found.add(lockfile.path);
+    }
+    return found;
   }
 
   async open(): Promise<void> {
@@ -110,7 +139,12 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#serial(async (vitest) => {
       const abs = paths.map((p) => ({ ...p, abs: this.paths.toAbsolute(p.path) }));
       const triggers = await recreateTriggers(vitest);
-      if (abs.some((p) => triggers.has(p.abs))) {
+      // Spec 001 D4: an install recreates the instance from the worktree's own
+      // `vitest/node`. The lockfile it started with covers a change or a
+      // removal, the one found now an install into a worktree that had none.
+      const lockfiles = new Set([...this.#lockfiles, ...(await this.#installedLockfiles(vitest))]);
+      if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
+      if (abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
         const fresh = await this.#recreate(vitest);
         const names = new Set([...before, ...fresh.projects.map((p) => p.name)]);
@@ -219,7 +253,7 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#serial(async (vitest) => {
       const context = {
         paths: this.paths,
-        runnerVersion: this.vitest.version,
+        runnerVersion: this.#node.version,
         adapterVersion: this.adapterVersion,
       };
       const envs: RunnerEnvironment[] = [];
@@ -245,11 +279,27 @@ export class VitestAdapter implements RunnerAdapter {
       const started = performance.now();
       this.#collector = collector;
       try {
-        const execution = await execute(vitest, specs, options.timeoutMs, collector);
+        let execution = await execute(vitest, specs, options.timeoutMs, collector);
         if (execution.hung) {
           // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
           this.#vitest = null;
           abandon(vitest, collector);
+        }
+        const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
+        if (broken !== null && this.#vitest === vitest) {
+          // Spec 001 D5: a runner failure, never a `fail` stored under a key
+          // (lessons, defect 12). The next call starts a new instance.
+          execution = {
+            end: "crashed",
+            failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
+            hung: false,
+          };
+          this.#vitest = null;
+          await vitest
+            .close()
+            .catch((error: unknown) =>
+              collector.note(`close() of a broken instance failed: ${String(error)}`),
+            );
         }
         const report = buildReport(collector, execution, Math.round(performance.now() - started));
         writeRunLog(options, collector, report);
