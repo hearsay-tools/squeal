@@ -87,7 +87,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 001-46 dogfooding re-run | running | Repeat the measurements of `lessons.md` on this repository after waves 4.5 and 4.6 with the real Claude Code CLI: edit-to-delivery p50 and p95 with duration ordering, whether agents use `status --wait` instead of `sleep`, `/exit` consumer leaks, hook p95 at calm load, and the review's items 2 and 3. Append a dated section to `lessons.md`; list any new defect. | Measurements recorded; `status.md` moves to shipped if goals 1 to 7 hold, or lists what still blocks. |
+| 001-46 dogfooding re-run | planned (blocked 2026-10-06: Opus monthly spend limit reached) | Repeat the measurements of `lessons.md` on this repository after waves 4.5 and 4.6 with the real Claude Code CLI: edit-to-delivery p50 and p95 with duration ordering, whether agents use `status --wait` instead of `sleep`, `/exit` consumer leaks, hook p95 at calm load, and the review's items 2 and 3. Append a dated section to `lessons.md`; list any new defect. | Measurements recorded; `status.md` moves to shipped if goals 1 to 7 hold, or lists what still blocks. |
 
 ## Later
 
