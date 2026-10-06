@@ -33,7 +33,7 @@ import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
 import { RecordingSink } from "./recording-sink.js";
 
-const fixture = resolve(import.meta.dirname, "../fixtures/scheduler/basic");
+const fixtures = resolve(import.meta.dirname, "../fixtures/scheduler");
 /** Inside the repository, so fixture copies resolve `vitest` from its `node_modules`. Git-ignored. */
 const scratchDir = resolve(import.meta.dirname, "../fixtures/scheduler/.tmp");
 
@@ -56,12 +56,19 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-/** A git repository holding a copy of the fixture, with `src/gen/` gitignored but present. */
-export function createRepo(): { main: string; commonDir: string; dir: string } {
+/**
+ * A git repository holding a copy of a fixture under `test/fixtures/scheduler`.
+ * In `basic`, `src/gen/` is gitignored but present.
+ */
+export function createRepo(fixture: "basic" | "barrel" = "basic"): {
+  main: string;
+  commonDir: string;
+  dir: string;
+} {
   mkdirSync(scratchDir, { recursive: true });
   const dir = join(scratchDir, randomUUID());
   const main = join(dir, "main");
-  cpSync(fixture, main, { recursive: true });
+  cpSync(join(fixtures, fixture), main, { recursive: true });
   renameSync(join(main, "_gitignore"), join(main, ".gitignore"));
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);

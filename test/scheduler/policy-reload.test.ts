@@ -71,11 +71,19 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     h.write("squeal.config.json", '{"env": {"allowlist": ["SQUEAL_RELOAD_TEST"]}}\n');
     await h.batch("squeal.config.json");
     expect(h.store.revisions.latest(h.worktreeId)?.number).toBe((environments ?? 0) + 1);
-    const after = keysOf(h);
-    for (const [i, key] of after.entries()) expect(key, ALL_TEST_FILES[i]).not.toBe(before[i]);
+    // The stored revision moved every key to a provisional environment hash (D5).
+    const provisional = keysOf(h);
+    for (const [i, key] of provisional.entries()) {
+      expect(key, ALL_TEST_FILES[i]).not.toBe(before[i]);
+    }
     await h.scheduler.idle();
-    // The keys after the run are the real environment hash, not the provisional one.
-    expect(keysOf(h)).toEqual(after);
+    // The runner part read the environment again: the real hash replaced the provisional one.
+    const after = keysOf(h);
+    for (const [i, key] of after.entries()) {
+      expect(key, ALL_TEST_FILES[i]).not.toBe(before[i]);
+      expect(key, ALL_TEST_FILES[i]).not.toBe(provisional[i]);
+      expect(h.store.results.byKey(key).length, ALL_TEST_FILES[i]).toBeGreaterThan(0);
+    }
     expect(h.header()).toMatchObject({ counts: { pending: 0 } });
   });
 

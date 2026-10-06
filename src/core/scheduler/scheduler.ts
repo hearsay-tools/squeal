@@ -71,7 +71,10 @@ export interface SchedulerOptions {
    * apply from the next tier; `baseline.onStart` only at the next start.
    */
   readonly reloadPolicy?: (changes: readonly FileChange[]) => Policy | null;
-  /** Errors of background work (tiers, persisting notes). Batch errors reject `handleBatch`. */
+  /**
+   * Errors of background work: tiers, the runner part of a revision,
+   * persisting notes. Errors storing a revision reject `handleBatch`.
+   */
   readonly onError?: (error: Error) => void;
   readonly hasher?: Hasher;
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
@@ -82,6 +85,16 @@ export interface SchedulerOptions {
 /** Notes kept in memory for `status()`; older ones are dropped. */
 const MAX_NOTES = 20;
 
+/**
+ * Work that calls the runner outside a tier: the refinement of a revision, a
+ * `run --all` while a runner failure is outstanding. `run` never rejects;
+ * `cancel` settles it when the scheduler closes first.
+ */
+interface RunnerTask {
+  run(): Promise<void>;
+  cancel(): void;
+}
+
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
 export function createScheduler(options: SchedulerOptions): Scheduler {
   return new TierScheduler(options);
@@ -91,6 +104,8 @@ class TierScheduler implements Scheduler {
   readonly #lock = new Mutex();
   readonly #notes: string[] = [];
   readonly #idle: (() => void)[] = [];
+  /** Runner work in arrival order, applied between tiers by the pump. */
+  readonly #runnerWork: RunnerTask[] = [];
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
@@ -142,24 +157,62 @@ class TierScheduler implements Scheduler {
     this.#pump();
   }
 
+  /**
+   * Stores the revision a batch creates and returns: the revision row, stat
+   * cache, content re-key, `queued` phases and known states, in one
+   * transaction. The runner part (`applyRevision`) is queued and applied by
+   * the pump after the tier in flight, in batch order.
+   *
+   * Spec 001 D2: "Creating a revision never waits on the runner: the store
+   * work [...] completes within the debounce window even while a tier is
+   * running, and the runner-dependent refinement is queued behind the tier
+   * separately." Lessons, defect 1: awaiting `runner.invalidate` here, which
+   * the runner serializes behind the running tier, let a revision lag the
+   * workspace by a whole tier.
+   */
   async handleBatch(batch: CandidateBatch): Promise<void> {
     if (this.#closed) return;
     await this.#lock.run(async () => {
       const { context, ledger } = this.#started();
       const applied = await reconcileBatch(context, ledger, batch);
       if (applied === null) return;
-      await applyRevision(context, ledger, applied.revision, applied.content);
-      ledger.commit();
+      const { revision, content } = applied;
+      this.#runnerWork.push({
+        run: async () => {
+          try {
+            await this.#lock.run(async () => {
+              await applyRevision(context, ledger, revision, content);
+              ledger.commit();
+            });
+          } catch (error) {
+            this.#backgroundError(`could not apply revision ${revision.number}`, error);
+          }
+        },
+        cancel: () => {},
+      });
     });
     this.#pump();
   }
 
+  /**
+   * Queues the checkpoint at once, unless it needs the runner: while a
+   * runner failure is outstanding the runner is retried first, and while a
+   * revision waits for its runner part the checkpoint follows it. Both wait
+   * for the tier in flight.
+   */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
-    const record = await this.#lock.run(async () => {
-      const { context, ledger } = this.#started();
-      await retryRunner(context, ledger);
-      return queueFullSuite(ledger, request.force === true);
-    });
+    const force = request.force === true;
+    const record =
+      (await this.#lock.run(() => {
+        const { ledger } = this.#started();
+        if (ledger.broken || this.#runnerWork.length > 0) return null;
+        return queueFullSuite(ledger, force);
+      })) ??
+      (await this.#afterTier(async () => {
+        const { context, ledger } = this.#started();
+        await retryRunner(context, ledger);
+        return queueFullSuite(ledger, force);
+      }));
     this.#pump();
     return record;
   }
@@ -185,6 +238,7 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return;
     this.#closed = true;
     await this.#pumping;
+    for (const task of this.#runnerWork.splice(0)) task.cancel();
     await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
     for (const resolve of this.#idle.splice(0)) resolve();
   }
@@ -195,8 +249,13 @@ class TierScheduler implements Scheduler {
    * batches are reconciled while a tier is in flight. Spec 001 D5: "A tier in
    * flight is never cancelled by a new revision."
    *
-   * An error stops the pump with a note; the tier's files go back to the
-   * queue, and the next batch or request starts the pump again.
+   * Before each tier the runner work queued meanwhile is applied, in arrival
+   * order, while no tier holds the runner. A tier is never selected while
+   * runner work is pending: its keys would come from a revision the runner
+   * has not invalidated yet.
+   *
+   * An error of a tier stops the pump with a note; the tier's files go back
+   * to the queue, and the next batch or request starts the pump again.
    */
   #pump(): void {
     if (this.#pumping || this.#closed || !this.#ledger) return;
@@ -205,10 +264,15 @@ class TierScheduler implements Scheduler {
       let tier: Tier | null = null;
       try {
         while (!this.#closed) {
-          tier = await this.#lock.run(() => {
+          await this.#drainRunnerWork();
+          if (this.#closed) break;
+          const next = await this.#lock.run(() => {
+            if (this.#runnerWork.length > 0) return "runner-work" as const;
             const { context, ledger } = this.#started();
             return selectTier(context, ledger);
           });
+          if (next === "runner-work") continue;
+          tier = next;
           if (tier === null) break;
           const { context, ledger } = this.#started();
           const selected: Tier = tier;
@@ -228,10 +292,35 @@ class TierScheduler implements Scheduler {
         if (tier !== null) await this.#requeue(tier);
       } finally {
         this.#pumping = null;
-        if (!this.#closed && !this.#stalled && (this.#ledger?.queue.size ?? 0) > 0) this.#pump();
+        if (!this.#closed && !this.#stalled && this.#hasWork()) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
+  }
+
+  /** Applies the queued runner work, oldest first. */
+  async #drainRunnerWork(): Promise<void> {
+    while (!this.#closed) {
+      const task = this.#runnerWork.shift();
+      if (!task) return;
+      await task.run();
+    }
+  }
+
+  /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
+  #afterTier<T>(task: () => Promise<T>): Promise<T> {
+    if (this.#closed) return Promise.reject(new Error("squeal scheduler: closed"));
+    return new Promise<T>((resolve, reject) => {
+      this.#runnerWork.push({
+        run: () => this.#lock.run(task).then(resolve, reject),
+        cancel: () => reject(new Error("squeal scheduler: closed")),
+      });
+      this.#pump();
+    });
+  }
+
+  #hasWork(): boolean {
+    return this.#runnerWork.length > 0 || (this.#ledger?.queue.size ?? 0) > 0;
   }
 
   /** Puts the files of a tier that never got recorded back into the queue. */
@@ -258,12 +347,18 @@ class TierScheduler implements Scheduler {
 
   #isIdle(): boolean {
     if (this.#closed) return true;
-    return this.#pumping === null && (this.#stalled || (this.#ledger?.queue.size ?? 0) === 0);
+    return this.#pumping === null && (this.#stalled || !this.#hasWork());
   }
 
   #started(): { context: SchedulerContext; ledger: Ledger } {
     if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
     return { context: this.#context, ledger: this.#ledger };
+  }
+
+  /** An error of work no caller awaits: a note for status, and `onError`. */
+  #backgroundError(subject: string, error: unknown): void {
+    this.#note(`${subject}: ${String(error)}`);
+    this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
   }
 
   /** Keeps a note for `status()` and persists it for `squeal status` (D7, review S6). */

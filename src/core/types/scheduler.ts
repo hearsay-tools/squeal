@@ -90,12 +90,18 @@ export interface Scheduler {
    * lookup only, per policy `baseline.onStart` (D5, D11).
    */
   start(): Promise<void>;
-  /** Reconciles one `ChangeFeed` batch and handles the revision it creates, if any. */
+  /**
+   * Reconciles one `ChangeFeed` batch and handles the revision it creates, if
+   * any. Resolves once the revision is stored with its content re-key and
+   * `queued` phases, without waiting on the runner; the runner part
+   * (invalidation, affected set, closures, environment) follows after the
+   * tier in flight, in batch order (D2, D5). `idle` waits for it.
+   */
   handleBatch(batch: CandidateBatch): Promise<void>;
   /** Spec 001 D5 `squeal run --all`: one checkpoint of kind `run-all`, run in tiers. */
   requestFullSuite(request?: FullSuiteRequest): Promise<CheckpointRecord>;
   status(): SchedulerStatus;
-  /** Resolves once nothing is queued or running. */
+  /** Resolves once nothing is queued or running and no revision waits for its runner part. */
   idle(): Promise<void>;
   /** Paths the stat cache holds, for `ChangeFeed` reconciliation passes. */
   trackedPaths(): Iterable<RelativePath>;

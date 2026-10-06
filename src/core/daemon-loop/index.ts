@@ -30,11 +30,13 @@ export interface DaemonLoop {
  * Every `CandidateBatch` goes to `Scheduler.handleBatch`, one at a time: the
  * feed delivers the next batch only after the previous one's promise settled,
  * and the scheduler serializes batches with its own work, so `reconcile`
- * never overlaps on the stat cache. The scheduler starts first, so the feed
- * starts with the stat cache's paths and the extra files the baseline found
- * (gitignored closure paths and the installed lockfile, D2); later additions
- * go to `ChangeFeed.setExtraFiles`. The feed's own start reconciliation
- * catches what changed while the baseline ran.
+ * never overlaps on the stat cache. `handleBatch` settles once the revision
+ * is stored, never behind a running tier (D2), so the next batch is not held
+ * back either. The scheduler starts first, so the feed starts with the stat
+ * cache's paths and the extra files the baseline found (gitignored closure
+ * paths and the installed lockfile, D2); later additions go to
+ * `ChangeFeed.setExtraFiles`. The feed's own start reconciliation catches
+ * what changed while the baseline ran.
  */
 export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
   const { onDropped, backend, timings, ...rest } = options;
