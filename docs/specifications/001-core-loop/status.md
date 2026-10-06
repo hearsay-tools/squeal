@@ -55,3 +55,5 @@ See `spec.md`, section Open questions.
 - Vision: `../../vision.md`
 - ADRs: `../../decisions/0001-typescript-vitest-claude-code.md`, `0002-content-keyed-shared-store.md`, `0003-delivery-model.md`
 - Spec: `spec.md`
+
+- 2026-10-07, wave 7.5 (001-58, `lessons.md` defect 12): a run whose runner cannot load modules (ENOENT under the instance's temp directory, or a module-runner error naming no project file) ends `crashed`, stores nothing, persists one note through the new optional `RunReport.notes` and recreates the instance; an installed lockfile that appears, changes or disappears recreates the instance from a re-imported `vitest/node` (D5, D8). The temp directory sits under `os.tmpdir()`, which a Cezar session sets to its per-run directory and reaps recursively; which event removed it in `c257b736` is not established.
