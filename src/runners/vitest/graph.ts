@@ -93,11 +93,14 @@ export function depToPath(
   importer: AbsolutePath,
   root: AbsolutePath,
 ): AbsolutePath | null {
-  if (dep.startsWith("/@fs/")) return dep.slice("/@fs".length);
-  if (dep.startsWith("/@") || dep.startsWith("\0") || dep.includes(":")) return null;
-  if (dep.startsWith("/")) return join(root, dep.split("?")[0] ?? dep);
+  if (dep.startsWith("\0") || dep.includes(":")) return null;
+  // Review wave 7, N1: `?raw`, `?url` and the like name the same file.
+  const path = dep.split("?")[0] ?? dep;
+  if (path.startsWith("/@fs/")) return path.slice("/@fs".length);
+  if (path.startsWith("/@")) return null;
+  if (path.startsWith("/")) return join(root, path);
   // Vite keeps a relative specifier it could not resolve (target missing).
-  if (dep.startsWith("./") || dep.startsWith("../")) return resolve(dirname(importer), dep);
+  if (path.startsWith("./") || path.startsWith("../")) return resolve(dirname(importer), path);
   return null;
 }
 

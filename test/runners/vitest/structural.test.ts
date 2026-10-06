@@ -139,3 +139,116 @@ describe("vitest adapter: targeted invalidation on add and delete", SLOW, () => 
     ]);
   });
 });
+
+const configWith = (resolve: string) =>
+  [
+    'import { fileURLToPath } from "node:url";',
+    'import { defineConfig } from "vitest/config";',
+    'import { include } from "./vitest.shared.ts";',
+    `export default defineConfig({ resolve: ${resolve}, test: { include } });`,
+    "",
+  ].join("\n");
+
+/*
+ * Review wave 7, B1: resolution that is not extension, `index` or twin
+ * probing. Each case gave the right result under `invalidateAll` and a stale
+ * one under the first targeted rule.
+ */
+describe("vitest adapter: an add re-resolves every resolution path", SLOW, () => {
+  it("import.meta.glob picks up the new file", async () => {
+    const fx = await openFixture("basic", {
+      "src/plugins/a.ts": "export const name = 'a';\n",
+      // Not `Object.keys(import.meta.glob(...))`: Vite turns that into the keys alone, no imports.
+      "src/registry.ts": [
+        'const plugins = import.meta.glob("./plugins/*.ts", { eager: true });',
+        "export const count = Object.keys(plugins).length;",
+        "",
+      ].join("\n"),
+      "test/registry.test.ts": [
+        'import { expect, it } from "vitest";',
+        'import { count } from "../src/registry.ts";',
+        'it("counts two plugins", () => expect(count).toBe(2));',
+        "",
+      ].join("\n"),
+    });
+    const test = [ref("test/registry.test.ts")];
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+
+    fx.write("src/plugins/b.ts", "export const name = 'b';\n");
+    await fx.adapter.invalidate([{ path: "src/plugins/b.ts", kind: "add" }]);
+
+    expect(paths(await fx.adapter.affected(["src/plugins/b.ts"]))).toEqual([
+      "test/registry.test.ts",
+    ]);
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+  });
+
+  it("a template-literal dynamic import loads the new file", async () => {
+    const fx = await openFixture("basic", {
+      "src/locales/en.ts": 'export const which = "en";\n',
+      "src/locale.ts":
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: the fixture's own template literal.
+        "export const load = (l: string) => import(`./locales/${l}.ts`).then((m) => m.which);\n",
+      "test/locale.test.ts": [
+        'import { expect, it } from "vitest";',
+        'import { load } from "../src/locale.ts";',
+        'it("loads fr", async () => expect(await load("fr")).toBe("fr"));',
+        "",
+      ].join("\n"),
+    });
+    const test = [ref("test/locale.test.ts")];
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+
+    fx.write("src/locales/fr.ts", 'export const which = "fr";\n');
+    await fx.adapter.invalidate([{ path: "src/locales/fr.ts", kind: "add" }]);
+
+    expect(paths(await fx.adapter.affected(["src/locales/fr.ts"]))).toEqual([
+      "test/locale.test.ts",
+    ]);
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+  });
+
+  it("a new file shadows a directory resolved through its package.json", async () => {
+    const fx = await openFixture("basic", {
+      "src/pkg/package.json": '{ "main": "lib.ts" }\n',
+      "src/pkg/lib.ts": 'export const which = "dir";\n',
+      "src/uses.ts": 'export { which } from "./pkg";\n',
+      "test/pkg.test.ts": readsTest("../src/uses.ts", "file"),
+    });
+    const test = [ref("test/pkg.test.ts")];
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+
+    fx.write("src/pkg.ts", 'export const which = "file";\n');
+    await fx.adapter.invalidate([{ path: "src/pkg.ts", kind: "add" }]);
+
+    expect(paths(await fx.adapter.affected(["src/pkg.ts"]))).toEqual(["test/pkg.test.ts"]);
+    expect(await fx.adapter.affected(["src/pkg/lib.ts"])).toEqual([]);
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+  });
+
+  it.each([
+    ["an alias", '{ alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } }', "@"],
+    ["tsconfig paths", "{ tsconfigPaths: true }", "~"],
+  ])("an unresolved %s specifier enters the closure", async (_, resolve, prefix) => {
+    const fx = await openFixture("basic", {
+      "vitest.config.ts": configWith(resolve),
+      "tsconfig.json": '{ "compilerOptions": { "paths": { "~/*": ["./src/*"] } } }\n',
+      "src/uses.ts": `export { which } from "${prefix}/later";\n`,
+      "test/later.test.ts": readsTest("../src/uses.ts", "later"),
+    });
+    const later = ref("test/later.test.ts");
+    const test = [later];
+    expect((await fx.adapter.run(test, fx.runOptions())).fileErrors).toHaveLength(1);
+
+    fx.write("src/later.ts", 'export const which = "later";\n');
+    await fx.adapter.invalidate([{ path: "src/later.ts", kind: "add" }]);
+
+    expect(paths(await fx.adapter.affected(["src/later.ts"]))).toEqual(["test/later.test.ts"]);
+    expect((await fx.adapter.closure(later)).paths).toContain("src/later.ts");
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+
+    fx.write("src/later.ts", 'export const which = "changed";\n');
+    await fx.adapter.invalidate([{ path: "src/later.ts", kind: "change" }]);
+    expect(paths(await fx.adapter.affected(["src/later.ts"]))).toEqual(["test/later.test.ts"]);
+  });
+});

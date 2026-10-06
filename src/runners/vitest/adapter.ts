@@ -51,6 +51,8 @@ export class VitestAdapter implements RunnerAdapter {
   #generation = 0;
   #queue: Promise<unknown> = Promise.resolve();
   #closed = false;
+  /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
+  readonly #fellBack = new WeakSet<Vitest>();
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -115,19 +117,25 @@ export class VitestAdapter implements RunnerAdapter {
         return { recreatedProjects: [...names].sort() };
       }
       for (const p of abs) vitest.invalidateFile(p.abs);
+      const notes: string[] = [];
       const structural = abs.filter((p) => p.kind !== "change");
       if (structural.length > 0) {
         // Spec 001 D4: an add or delete re-transforms only the importers whose
         // resolution it can change, never the whole graph (lessons, defect 11).
         const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
         const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-        for (const file of staleTransforms(vitest, added, deleted)) vitest.invalidateFile(file);
+        const stale = staleTransforms(vitest, added, deleted);
+        for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
+        if (stale === null && !this.#fellBack.has(vitest)) {
+          this.#fellBack.add(vitest);
+          notes.push(FALLBACK_NOTE);
+        }
         const testGlob = structural.some((p) =>
           vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),
         );
         if (testGlob) vitest.clearSpecificationsCache();
       }
-      return { recreatedProjects: [] };
+      return { recreatedProjects: [], ...(notes.length > 0 ? { notes } : {}) };
     });
   }
 
@@ -273,6 +281,20 @@ export class VitestAdapter implements RunnerAdapter {
     }
     return { project: spec.project.name, path };
   }
+}
+
+const FALLBACK_NOTE =
+  "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
+
+/** Every file with a module in some environment: the full invalidation `staleTransforms` falls back to. */
+function cachedFiles(vitest: Vitest): Set<string> {
+  const files = new Set<string>();
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
+    }
+  }
+  return files;
 }
 
 /** Test specifications of every project. Typecheck specs (`tsc`, no module graph) are not supported in v1. */
