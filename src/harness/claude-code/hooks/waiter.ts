@@ -9,7 +9,7 @@ import { acquireWaiterLock } from "../waiter-lock.js";
 /**
  * The waiter's `asyncRewake` hook timeout in hooks.json, seconds. Spec 001
  * D9: "Its `timeout` is explicit and long; expiry is silent and the next Stop
- * re-arms it."
+ * re-arms it." UserPromptSubmit re-arms it too (task 001-47).
  */
 export const WAITER_HOOK_TIMEOUT_S = 3_600;
 
@@ -35,12 +35,19 @@ export function isInteractive(env: HookDeps["env"]): boolean {
 }
 
 /**
- * The idle waiter, an `asyncRewake` hook armed by SessionStart and Stop
- * (D9): one per consumer, held by a lock; it blocks until the consumer's
+ * The idle waiter, an `asyncRewake` hook armed by SessionStart, Stop and
+ * UserPromptSubmit (D9; lessons, defect 10: an interrupted turn runs no
+ * Stop): one per consumer, held by a lock; it blocks until the consumer's
  * delta is non-empty, then exits 2 with the delta on stderr, which wakes an
  * idle agent. Timeout, a lost lock race, an unregistered consumer or `-p`
  * mode exit 0 silently. Main agents only: a subagent that stopped cannot be
  * woken, and a wake would land in its parent's context.
+ *
+ * The held lock is the session's liveness: the daemon expires a consumer
+ * whose lock file no waiter holds after `WAITERLESS_EXPIRY_MS` (task
+ * 001-47). A waiter that times out leaves its session alive and its lock
+ * file free, so it records the consumer as heard from on the way out, and
+ * the 10 minutes start then.
  */
 export const waiter: Handler = async (input, location, deps) => {
   if (input.agent_id !== undefined || !isInteractive(deps.env)) return null;
@@ -51,6 +58,9 @@ export const waiter: Handler = async (input, location, deps) => {
     try {
       const outcome = await waitForDelta(context, deps);
       gone = outcome === "unregistered";
+      if (outcome === null) {
+        context.store.consumers.touch(context.consumer, (deps.now ?? Date.now)(), false);
+      }
       return outcome === "unregistered" || outcome === null
         ? null
         : { stderr: formatDelta(outcome), exitCode: 2 };
