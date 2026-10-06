@@ -1,4 +1,4 @@
-# Wave 8 worker briefs
+# Wave 7 worker briefs
 
 Ready to dispatch on the board's standing models. One worker.
 
