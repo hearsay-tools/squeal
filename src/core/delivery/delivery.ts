@@ -56,6 +56,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
       revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
+      history: (check) => store.transitions.history(consumer.worktreeId, check),
     });
     return kinds === null ? full : restrictPlan(full, kinds);
   }
