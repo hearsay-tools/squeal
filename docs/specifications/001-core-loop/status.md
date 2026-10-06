@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: shipped-candidate (2026-10-06: waves 0 to 4.6 done; goals 1 to 7 hold per `reviews/wave-4.5.md`; remaining before shipped: a short dogfooding re-run with Claude Code, hook p95 at calm load, macOS verification before any public release)
+Stage: shipped (2026-10-06: the dogfooding re-run in `lessons.md`, section "Re-run after waves 4.5 and 4.6", found goals 1 to 7 holding with Claude Code and no new blocker; open, not blocking: lessons defects 8, 9 and 10, and macOS verification before any public release)
 Started: 2026-10-02
 
 ## Decisions so far
@@ -29,6 +29,8 @@ Started: 2026-10-02
 - 2026-10-06, from the wave 4.5 review (`reviews/wave-4.5.md`): refined-revision marker so deferred runner work counts as pending (D2); open questions 2, 4, 5 and 8 decided.
 
 - 2026-10-06, wave 4.6 (001-45): file duration is the whole file for ordering (D5); `status --wait` has its own outcome without a daemon (D7); the SessionStart sweep only on `startup` and `resume` (D9); status says since when after a clean stop (D10). D2 holds without amendment: the runner phase of a refinement runs without the scheduler lock, and a batch during a 2 s runner phase waits 11 to 12 ms (`test/scheduler/refinement-lock.test.ts`).
+
+- 2026-10-06, dogfooding re-run (001-46, `lessons.md`): no spec change. Three new defects, recorded there: Claude Code skips SessionEnd on an interactive exit after a typed prompt, so consumers stay registered until the 12 h expiry (8); `stop.blockOnKnownFailures` blocks Claude Code's `prompt_suggestion` fork at SubagentStop (9); no idle waiter after an interrupted turn (10).
 
 ## Research
 
