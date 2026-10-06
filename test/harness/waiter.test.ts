@@ -66,7 +66,7 @@ describe("idle waiter", () => {
     const started = performance.now();
     const out = await runHook("waiter", recorded("stop", r.root), deps({ env }));
     expect(out).toEqual(SILENT);
-    expect(performance.now() - started).toBeLessThan(100);
+    expect(performance.now() - started).toBeLessThan(1_000); // far below the 5 s waiter timeout; CI took 142 ms
     const batch = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps());
     expect(batch.stdout).toContain("PASS -> FAIL");
   });
@@ -85,7 +85,7 @@ describe("idle waiter", () => {
     const started = performance.now();
     const second = await runHook("waiter", recorded("stop", r.root), deps());
     expect(second).toEqual(SILENT);
-    expect(performance.now() - started).toBeLessThan(100);
+    expect(performance.now() - started).toBeLessThan(1_000); // far below the 5 s waiter timeout; CI took 142 ms
 
     r.apply(r.fail());
     expect((await first).exitCode).toBe(2);
@@ -145,7 +145,7 @@ describe("idle waiter on UserPromptSubmit (defect 10)", () => {
     const started = performance.now();
     const second = await runHook("waiter", recorded("user-prompt-submit", r.root), deps());
     expect(second).toEqual(SILENT);
-    expect(performance.now() - started).toBeLessThan(100);
+    expect(performance.now() - started).toBeLessThan(1_000); // far below the 5 s waiter timeout; CI took 142 ms
 
     r.apply(r.fail());
     expect((await first).exitCode).toBe(2);
