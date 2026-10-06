@@ -30,12 +30,6 @@ The operating model is the one from mega.dev's "autonomous product development",
 6. **Review.** A reviewer closes the wave. Blockers become a fix wave (N.5) before the next wave starts; should-fix items fold into the next wave's briefs; every accepted deviation becomes a dated amendment line in `status.md` and an edit to the spec section.
 7. **Proof.** The last waves are an end-to-end suite that runs the product the way it ships and a dogfooding report written to `lessons.md`, which resolves the spec's open questions with evidence. The spec moves to `shipped` when its goals hold in dogfooding with no blocker.
 
-## Rules the first feature taught
+## Procedures
 
-- Workers run on Opus or cheaper, never Fable. Always pass `--model` on spawn.
-- Worker briefs are saved verbatim under `specifications/NNN-*/tasks/wave-N.md` before dispatch, so a new coordinator session can dispatch them unchanged.
-- Workers may ask the coordinator through a Cezar request; the coordinator answers with a decision, not a discussion, and relays anything a sibling worker needs.
-- Do not run `npm run build` inside a worker's worktree: Cezar's destroy then fails to verify it. Rebuild once on the coordinator branch after integrating a wave, and commit the bundles before running the end-to-end suite, which archives from HEAD.
-- Generated files (`plugins/claude-code/dist`) are committed; CI fails if they drift from the build.
-- A spawn that returns a transport error may still have created the worker. Check `worker inspect` before retrying.
-- The handoff file is updated after every landing with what is running, what to do on wake, and what is still open.
+The step-by-step procedure for each role is a skill, so the agent playing the role loads only its own: `.claude/skills/coordinator/SKILL.md` and `.claude/skills/worker/SKILL.md` (the reviewer is a branch of `worker`). `.agents/skills/` mirrors them for other harnesses. This file describes the model; the skills carry the steps and the rules the first feature taught.
