@@ -637,6 +637,19 @@ On this repository (102 test files) the same steps cost 11 ms and 410 ms, and ev
 
 A warm `affected` with nothing changed took 487 ms. The add's first `invalidate` is the one that scans the source of every cached module (D4). An add now costs what an edit costs: the walk after it no longer re-transforms the graph, against 5.3 s at `6185990`. A delete costs about 300 ms more than a warm walk, against 6.2 s before; the probe file had no importers, so the extra is not re-transformed importers. Defect 11 does not reproduce at this step.
 
+Daemon probe on the same copy: the plugin's `squeal.mjs start`, `baseline.onStart: "lookup-only"` in an untracked `squeal.config.json` so no baseline competes with the probe, then a warm-up round and three rounds of the same edit and add. The delete ran between rounds and was not timed. Times come from the copy's store: `revisions.created_at`, `runs.started_at` of the first run naming the file, and `results.recorded_at` of its checks, which is the tier's end and the earliest a hook can deliver. Save to revision was 136 to 200 ms throughout.
+
+| Round | Edit: run start | Edit: result | Add: run start | Add: result |
+| --- | --- | --- | --- | --- |
+| 1 | 1,027 ms | 1,457 ms | 1,399 ms | 1,905 ms |
+| 2 | 735 ms | 1,007 ms | 1,289 ms | 1,776 ms |
+| 3 | 974 ms | 1,324 ms | 1,472 ms | 2,137 ms |
+| `6185990` | 1.3 s | | 8.9 s, 11.3 s | 10.1 s, 12.3 s |
+
+Add-to-run-start is 1.3 to 1.5 s, under the 2 s of 001-53, and the add's result arrives in 1.8 to 2.1 s. Each run held only the changed file, and no run started between the revision and it. An add still costs 0.4 to 0.5 s more than an edit before its run starts. The adapter table puts the `affected` walk at about the same cost for both. A structural revision also re-lists the test files and resolves the new file's closure (`fetchRunnerPart`); this probe did not time those steps separately.
+
+The warm-up round is not in the table. Its add started the probe file's run in 932 ms, in a tier with three never-run `artifacts` files, and delivered at 2.5 s. It then queued every `server` test file that had no closure yet: 42 more tiers over about 10 minutes. On a structural revision `fetchRunnerPart` re-resolves every listed file without a closure. Under `lookup-only` that is every file never resolved, so the first add in a fresh store runs a deferred baseline of that project. Under the default baseline every file is resolved at start, and the human's `cezar` store had run its baseline. This is not counted as a defect here; it is the cost of the probe's setup. The daemon on the copy was stopped with `squeal stop`, and no process holds the copy.
+
 ## A dependency install under a running daemon
 
 2026-10-07, found by the coordinator in `cezar` session `bbe5c9d9` (Squeal plugin at `cfb8e9e`), from `cezar/.git/squeal/store.sqlite` and the run logs under `cezar/.git/squeal/runs/`. Nothing since `cfb8e9e` touches this path.
