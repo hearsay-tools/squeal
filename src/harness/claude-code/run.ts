@@ -11,6 +11,13 @@ export interface HookResult {
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };
 
 /**
+ * Hooks that fall back to `CLAUDE_PROJECT_DIR` when their cwd is outside any
+ * worktree: SessionEnd must reach the store the session registered in even
+ * after the agent left the repository (lessons, defect 5).
+ */
+const PROJECT_DIR_FALLBACK: ReadonlySet<string> = new Set(["session-end"]);
+
+/**
  * Runs one hook on its stdin text. Spec 001 D9: every hook "exits 0 with no
  * output on any internal error". Malformed input, a cwd outside any git
  * worktree, a missing or unreadable store and every thrown error end silent.
@@ -26,7 +33,7 @@ export async function runHandler(
   try {
     const input = parseHookInput(stdin);
     if (input === null) return SILENT;
-    const location = locate(input.cwd);
+    const location = locate(input.cwd) ?? projectDir(name, deps);
     if (location === null) return SILENT;
     const outcome = await handler(input, location, deps);
     if (outcome === null) return SILENT;
@@ -41,4 +48,9 @@ export async function runHandler(
     }
     return SILENT;
   }
+}
+
+function projectDir(name: string, deps: HookDeps) {
+  const dir = deps.env.CLAUDE_PROJECT_DIR;
+  return PROJECT_DIR_FALLBACK.has(name) && dir !== undefined && dir !== "" ? locate(dir) : null;
 }
