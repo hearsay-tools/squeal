@@ -89,12 +89,12 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 |---|---|---|---|
 | 001-46 dogfooding re-run | done | Repeat the measurements of `lessons.md` on this repository after waves 4.5 and 4.6 with the real Claude Code CLI: edit-to-delivery p50 and p95 with duration ordering, whether agents use `status --wait` instead of `sleep`, `/exit` consumer leaks, hook p95 at calm load, and the review's items 2 and 3. Append a dated section to `lessons.md`; list any new defect. | Measurements recorded; `status.md` moves to shipped if goals 1 to 7 hold, or lists what still blocks. |
 
-### Open after shipping 001 (from `lessons.md` re-run defects 8 to 10, none blocking)
+### Wave 6: post-ship defects (parallel, from `lessons.md` re-run defects 8 to 10, none blocking; briefs in `specifications/001-core-loop/tasks/wave-6.md`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 001-47 interactive consumer liveness | planned | Defect 8: Claude Code 2.1.288 runs no SessionEnd on an interactive exit after a typed prompt, so consumers linger 12 h and the daemon cannot idle out. Give interactive consumers a liveness signal that does not depend on SessionEnd (the waiter's poll, or a shorter expiry for consumers whose waiter is gone). Defect 10: re-arm the waiter after an interrupted turn (UserPromptSubmit or PostToolBatch when no waiter holds the lock). | Attended `/exit` after a typed prompt leaves no consumer past the shortened expiry; an interrupted turn re-arms the waiter. |
-| 001-48 forked-agent SubagentStop | planned | Defect 9: `stop.ts` must not apply `blockOnKnownFailures` to Claude Code's internal forks (`prompt_suggestion` and similar); detect by agent type or source and treat them as not consumers. | A fork's SubagentStop is never blocked and never registers a consumer. |
+| 001-47 interactive consumer liveness | running | Defect 8: Claude Code 2.1.288 runs no SessionEnd on an interactive exit after a typed prompt, so consumers linger 12 h and the daemon cannot idle out. Give interactive consumers a liveness signal that does not depend on SessionEnd (the waiter's poll, or a shorter expiry for consumers whose waiter is gone). Defect 10: re-arm the waiter after an interrupted turn (UserPromptSubmit or PostToolBatch when no waiter holds the lock). | Attended `/exit` after a typed prompt leaves no consumer past the shortened expiry; an interrupted turn re-arms the waiter. |
+| 001-48 forked-agent SubagentStop | running | Defect 9: `stop.ts` must not apply `blockOnKnownFailures` to Claude Code's internal forks (`prompt_suggestion` and similar); detect by agent type or source and treat them as not consumers. | A fork's SubagentStop is never blocked and never registers a consumer. |
 
 ## Later
 
