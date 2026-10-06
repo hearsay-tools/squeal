@@ -38,6 +38,8 @@ Started: 2026-10-02
 
 - 2026-10-06, wave 6.5 (001-50, from `reviews/wave-6.md` S1, S2, N2, N4): UserPromptSubmit injects the registration whenever it registers; a SubagentStop with no registration gets the fork behaviour, which covers forks under `--agent`; PostToolBatch and PreToolUse ignore forks (D9). Confirmed in an attended session (001-51, `lessons.md` "Attended check after wave 6.5"); defects 8 to 10 are closed.
 
+- 2026-10-06, wave 7 (001-53, `lessons.md` defect 11): an add or delete invalidates only the transforms whose imports it can re-resolve, the deleted path's importers and the importers of a target that has the added path among its resolution candidates, instead of every cached transform (D4). On a 1,000-module fixture, `affected` after an add costs 1.3 to 1.5 times the warm walk; the `cezar` probe in `lessons.md` has not been re-run.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
