@@ -13,7 +13,8 @@ import { removeWaiterLock } from "./waiter-lock.js";
  * repository after it registered, so its consumers are looked up by session
  * id in all of them. Store writes only; no daemon is involved. Every consumer
  * is unregistered before any lock file is touched, and a failure on one does
- * not stop the others: the first error is thrown once all were tried.
+ * not stop the others: once all were tried, one error is thrown as it is and
+ * several as one `AggregateError` carrying every one (review wave 4.5, N8).
  */
 export async function unregisterSession(
   context: HookContext,
@@ -48,7 +49,13 @@ export async function unregisterSession(
     const { locksDir } = storePaths(context.commonDir);
     for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
   }
-  if (errors.length > 0) throw errors[0];
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      `squeal: ${errors.length} errors unregistering session ${sessionId}`,
+    );
+  }
   return consumers;
 }
 

@@ -2,14 +2,17 @@ import { mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createDelivery } from "../../src/core/delivery/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { type Consumer, MAIN_AGENT } from "../../src/core/types/index.js";
+import type { HookContext } from "../../src/harness/claude-code/context.js";
 import {
   type HookDeps,
   type HookResult,
   runHook,
   waiterLockPath,
 } from "../../src/harness/claude-code/index.js";
+import { unregisterSession } from "../../src/harness/claude-code/sweep.js";
 import { acquireWaiterLock } from "../../src/harness/claude-code/waiter-lock.js";
 import { recorded, SESSION, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 
@@ -239,5 +242,64 @@ describe("SessionStart sweep by source (review wave 4.5, S4)", () => {
     expect(sessionsIn(r, r.worktreeId)).toEqual(
       [`${SESSION}/${SUBAGENT}`, `${SESSION}/main`].sort(),
     );
+  });
+});
+
+describe("unregisterSession errors (review wave 4.5, N8)", () => {
+  function contextWith(r: SquealRepo, failing: (consumer: Consumer) => Error | null): HookContext {
+    const delivery = createDelivery(r.store, {
+      status: {
+        build: () => ({ schemaVersion: 1, available: false, reason: "timeout", message: "" }),
+      },
+    });
+    return {
+      root: r.root,
+      commonDir: r.repo.commonDir,
+      store: r.store,
+      consumer: r.consumer(),
+      delivery: {
+        ...delivery,
+        unregister: async (consumer) => {
+          const error = failing(consumer);
+          if (error !== null) throw error;
+          await delivery.unregister(consumer);
+        },
+      },
+      close: () => {},
+    };
+  }
+
+  it("tries every consumer and throws every error as one AggregateError", async () => {
+    const r = squealRepo();
+    registered(r);
+    registered(r, { agentId: SUBAGENT });
+    registered(r, { agentId: "agent-3" });
+    const context = contextWith(r, (consumer) =>
+      consumer.agentId === MAIN_AGENT ? null : new Error(`locked: ${consumer.agentId}`),
+    );
+
+    const thrown = await unregisterSession(context, SESSION, { removeLocks: false }).catch(
+      (error: unknown) => error,
+    );
+
+    expect(thrown).toBeInstanceOf(AggregateError);
+    expect((thrown as AggregateError).errors.map((e: Error) => e.message).sort()).toEqual(
+      [`locked: ${SUBAGENT}`, "locked: agent-3"].sort(),
+    );
+    expect((thrown as AggregateError).message).toBe(
+      `squeal: 2 errors unregistering session ${SESSION}`,
+    );
+    expect(sessionsIn(r, r.worktreeId).sort()).toEqual(
+      [`${SESSION}/${SUBAGENT}`, `${SESSION}/agent-3`].sort(),
+    );
+  });
+
+  it("throws a single error as it is", async () => {
+    const r = squealRepo();
+    registered(r, { agentId: SUBAGENT });
+    const error = new Error("locked");
+    const context = contextWith(r, () => error);
+
+    await expect(unregisterSession(context, SESSION, { removeLocks: false })).rejects.toBe(error);
   });
 });
