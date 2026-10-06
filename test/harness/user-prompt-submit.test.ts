@@ -7,7 +7,8 @@ import { recorded, squealRepo } from "./helpers.js";
  * Lessons, defects 8 and 10 (task 001-47): an interrupted turn runs no Stop,
  * and a consumer whose waiter is gone expires after 10 minutes. UserPromptSubmit
  * arms the waiter (hooks.json) and brings back a registration that expired
- * while the session sat idle, speaking only when it carries known failures.
+ * while the session sat idle. Review wave 6, S1: whenever it registers, it
+ * injects the registration, since context on a prompt starts no extra turn.
  */
 
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };
@@ -31,16 +32,9 @@ describe("UserPromptSubmit", () => {
     expect(r.store.consumers.get(r.consumer())?.lastSeenAt).toBe(9_000);
   });
 
-  it("registers an expired consumer silently when it has no known failures", async () => {
+  it("registers on a fresh store and injects the header (review wave 6, S1)", async () => {
     const r = squealRepo();
     r.apply(r.pass());
-    expect(await runHook("user-prompt-submit", prompt(r.root), deps())).toEqual(SILENT);
-    expect(r.store.consumers.get(r.consumer())).not.toBeNull();
-  });
-
-  it("registers an expired consumer and injects the registration when it has known failures", async () => {
-    const r = squealRepo();
-    r.apply(r.fail());
     const out = await runHook("user-prompt-submit", prompt(r.root), deps());
 
     expect(r.store.consumers.get(r.consumer())).not.toBeNull();
@@ -48,11 +42,33 @@ describe("UserPromptSubmit", () => {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
         additionalContext: expect.stringMatching(
-          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 1/,
+          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 0$/,
         ),
       },
     });
-    expect(out.exitCode).toBe(0);
+  });
+
+  it("re-registers an expired consumer and states the recovery it was not told", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await runHook("user-prompt-submit", prompt(r.root), deps());
+    r.apply(r.fail());
+    // Told PASS -> FAIL, then expired while idle; the check recovers before the next prompt.
+    const told = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps());
+    expect(told.stdout).toContain("PASS -> FAIL");
+    r.store.consumers.unregister(r.consumer());
+    r.apply(r.pass());
+
+    const out = await runHook("user-prompt-submit", prompt(r.root), deps());
+
+    expect(JSON.parse(out.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext: expect.stringMatching(
+          /^SQUEAL · registered at revision 3\n[\s\S]*Known failures: 0$/,
+        ),
+      },
+    });
   });
 
   it("ensures a daemon whose heartbeat is stale before registering", async () => {

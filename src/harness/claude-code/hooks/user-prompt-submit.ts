@@ -11,10 +11,15 @@ import { isInteractive } from "./waiter.js";
  * interrupted turn. This hook keeps the consumer the waiter waits for:
  *
  * - registered: recorded as heard from, and silent;
- * - not registered in an interactive session (the daemon expired it while
- *   the session sat idle with no waiter, after `WAITERLESS_EXPIRY_MS`):
- *   ensure the daemon, which may have idled out since, register, and speak
- *   only when the registration carries known failures, the Stop rule;
+ * - not registered in an interactive session (a store created after
+ *   SessionStart, or the daemon expired the consumer while the session sat
+ *   idle with no waiter, after `WAITERLESS_EXPIRY_MS`): ensure the daemon,
+ *   which may have idled out since, register, and inject the registration.
+ *   Unlike Stop context, context on a prompt starts no extra turn, so the
+ *   header is always worth saying: it is the first one a session gets when
+ *   its store came after SessionStart, and after an expiry it restates the
+ *   current failures, so a recovery the agent was never told is not lost
+ *   (review wave 6, S1);
  * - `-p` mode registers nothing here: its SessionStart and first
  *   PostToolBatch register and inject the header, and a waiter never runs
  *   there, so nothing expires it early.
@@ -33,8 +38,6 @@ export const userPromptSubmit: Handler = (input, location, deps) => {
       if ((await ensure(location, deps, record)) === "spawned") await settle(context, deps);
     }
     const registration = await context.delivery.register(context.consumer);
-    return registration.knownFailures.length > 0
-      ? additionalContext(input, formatRegistration(registration))
-      : null;
+    return additionalContext(input, formatRegistration(registration));
   });
 };
