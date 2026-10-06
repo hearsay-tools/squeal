@@ -49,4 +49,73 @@ describe("vitest adapter: affected()", SLOW, () => {
       "test/strings.test.ts",
     ]);
   });
+
+  /*
+   * Lessons, defect 3, and spec 001 D5 step 4 as amended: "test files that
+   * import a changed path directly according to the runner's module graph,
+   * then transitively affected files". `src/math.ts` imports `src/deep.ts`.
+   */
+  it("affectedDetailed splits direct importers from transitive ones", async () => {
+    const fx = await openFixture();
+    const detailed = async (changed: string[]) => {
+      const result = await fx.adapter.affectedDetailed?.(changed);
+      return { direct: paths(result?.direct ?? []), transitive: paths(result?.transitive ?? []) };
+    };
+    expect(await detailed(["src/math.ts"])).toEqual({
+      direct: ["test/each.test.ts", "test/math.test.ts"],
+      transitive: [],
+    });
+    expect(await detailed(["src/deep.ts"])).toEqual({
+      direct: [],
+      transitive: ["test/each.test.ts", "test/math.test.ts"],
+    });
+    expect(await detailed(["test/greeting.test.ts"])).toEqual({
+      direct: ["test/greeting.test.ts"],
+      transitive: [],
+    });
+    expect(await detailed(["test/__snapshots__/strings.test.ts.snap"])).toEqual({
+      direct: ["test/strings.test.ts"],
+      transitive: [],
+    });
+    // A setup file reaches every test file through the environment, never in one hop.
+    expect(await detailed(["src/setup-dep.ts"])).toEqual({
+      direct: [],
+      transitive: ALL_TEST_FILES,
+    });
+    expect(await detailed([])).toEqual({ direct: [], transitive: [] });
+    // `affected` is the union, sorted.
+    expect(paths(await fx.adapter.affected(["src/math.ts", "src/strings.ts"]))).toEqual([
+      "test/each.test.ts",
+      "test/math.test.ts",
+      "test/strings.test.ts",
+    ]);
+  });
+
+  it("affectedDetailed: a test that imports through a barrel is transitive", async () => {
+    const fx = await openFixture();
+    fx.write(
+      "src/index.ts",
+      'export { add } from "./math.ts";\nexport { upper } from "./strings.ts";\n',
+    );
+    fx.write(
+      "test/barrel.test.ts",
+      'import { expect, it } from "vitest";\nimport { upper } from "../src/index.ts";\nit("barrel", () => expect(upper("a")).toBe("A"));\n',
+    );
+    await fx.adapter.invalidate([
+      { path: "src/index.ts", kind: "add" },
+      { path: "test/barrel.test.ts", kind: "add" },
+    ]);
+    const result = await fx.adapter.affectedDetailed?.(["src/strings.ts"]);
+    expect(paths(result?.direct ?? [])).toEqual(["test/strings.test.ts"]);
+    expect(paths(result?.transitive ?? [])).toEqual(["test/barrel.test.ts"]);
+  });
+
+  it("affectedDetailed: the importer of a deleted file is direct", async () => {
+    const fx = await openFixture();
+    fx.remove("src/strings.ts");
+    await fx.adapter.invalidate([{ path: "src/strings.ts", kind: "delete" }]);
+    const result = await fx.adapter.affectedDetailed?.(["src/strings.ts"]);
+    expect(paths(result?.direct ?? [])).toEqual(["test/strings.test.ts"]);
+    expect(paths(result?.transitive ?? [])).toEqual([]);
+  });
 });

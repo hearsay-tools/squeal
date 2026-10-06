@@ -28,10 +28,6 @@ export async function importClosure(
   project: TestProject,
   entries: readonly AbsolutePath[],
 ): Promise<ImportClosure> {
-  const environment = project.vite.environments.ssr;
-  if (!environment) {
-    throw new Error(`vitest adapter: project "${project.name}" has no ssr environment`);
-  }
   const files = new Set<AbsolutePath>();
   const missing = new Set<AbsolutePath>();
 
@@ -43,28 +39,52 @@ export async function importClosure(
     }
     files.add(file);
     if (file.includes("node_modules")) return;
-    let transformed: Awaited<ReturnType<typeof environment.transformRequest>>;
-    try {
-      transformed =
-        environment.moduleGraph.getModuleById(file)?.transformResult ??
-        (await environment.transformRequest(file));
-    } catch {
-      // A syntax error: the file stays in the closure and its run reports
-      // the error as a file-level error. Its imports are unknown until fixed.
-      return;
-    }
-    if (!transformed) return;
-    const deps = [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])];
-    await Promise.all(
-      deps.map((dep) => {
-        const target = depToPath(dep, file, project.config.root);
-        return target === null ? undefined : visit(target);
-      }),
-    );
+    await Promise.all((await importTargets(project, file)).map(visit));
   };
 
   await Promise.all(entries.map(visit));
   return { files, missing };
+}
+
+/**
+ * What `file` imports in one hop, statically or dynamically: existing files
+ * and missing targets, as `importClosure` reports them, without `file`.
+ * Spec 001 D5 step 4: "test files that import a changed path directly
+ * according to the runner's module graph".
+ */
+export async function directImports(
+  project: TestProject,
+  file: AbsolutePath,
+): Promise<ImportClosure> {
+  const files = new Set<AbsolutePath>();
+  const missing = new Set<AbsolutePath>();
+  for (const target of await importTargets(project, file)) {
+    (existsSync(target) ? files : missing).add(target);
+  }
+  return { files, missing };
+}
+
+/** One hop of the transform graph: the import targets of an existing project file. */
+async function importTargets(project: TestProject, file: AbsolutePath): Promise<AbsolutePath[]> {
+  const environment = project.vite.environments.ssr;
+  if (!environment) {
+    throw new Error(`vitest adapter: project "${project.name}" has no ssr environment`);
+  }
+  let transformed: Awaited<ReturnType<typeof environment.transformRequest>>;
+  try {
+    transformed =
+      environment.moduleGraph.getModuleById(file)?.transformResult ??
+      (await environment.transformRequest(file));
+  } catch {
+    // A syntax error: the file stays in the closure and its run reports
+    // the error as a file-level error. Its imports are unknown until fixed.
+    return [];
+  }
+  if (!transformed) return [];
+  const deps = [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])];
+  return deps
+    .map((dep) => depToPath(dep, file, project.config.root))
+    .filter((target): target is AbsolutePath => target !== null);
 }
 
 /** A transform dependency as a filesystem path, or `null` for virtual and bare ids. */
