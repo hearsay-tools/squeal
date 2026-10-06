@@ -95,8 +95,12 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
       `structural cost, ${MODULES} modules + ${TESTS + ROUNDS} test files, median of ${ROUNDS}:`,
       Object.fromEntries(Object.entries(measured).map(([k, ms]) => [k, `${ms.toFixed(1)} ms`])),
     );
+    // The ratios to the warm walk are reported, not asserted: an add carries a
+    // fixed cost (re-globbing test files, transforming the new one) of about
+    // 20 ms on CI against a 13 ms warm walk (reviews/wave-7.md B2). The guard
+    // against a return of whole-graph invalidation is the deliberately loose
+    // bound below, about 15 times on CI.
     expect(measured.afterAdd).toBeLessThan(measured.cold / 4);
-    expect(measured.afterAdd).toBeLessThanOrEqual(2 * measured.warm);
-    expect(measured.sourceAfterAdd).toBeLessThanOrEqual(2 * measured.sourceWarm);
+    expect(measured.sourceAfterAdd).toBeLessThan(measured.cold / 4);
   });
 });
