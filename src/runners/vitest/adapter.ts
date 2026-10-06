@@ -27,7 +27,7 @@ import {
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { checkNames, compareRefs } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
-import { staleTransforms } from "./stale.js";
+import { cachedFiles, FALLBACK_NOTE, staleTransforms } from "./stale.js";
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -281,20 +281,6 @@ export class VitestAdapter implements RunnerAdapter {
     }
     return { project: spec.project.name, path };
   }
-}
-
-const FALLBACK_NOTE =
-  "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
-
-/** Every file with a module in some environment: the full invalidation `staleTransforms` falls back to. */
-function cachedFiles(vitest: Vitest): Set<string> {
-  const files = new Set<string>();
-  for (const project of vitest.projects) {
-    for (const environment of Object.values(project.vite.environments)) {
-      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
-    }
-  }
-  return files;
 }
 
 /** Test specifications of every project. Typecheck specs (`tsc`, no module graph) are not supported in v1. */

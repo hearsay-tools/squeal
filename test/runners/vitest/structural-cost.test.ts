@@ -39,18 +39,20 @@ const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.len
 
 /*
  * Lessons, defect 11: after an add, `affected` re-transformed the whole graph
- * (5.3 s against 0.5 s warm on 516 test files). Task 001-53: it now costs
- * within two times the warm walk, the same call repeated. The add's own cost
- * is the one or two files it re-transforms, about what a plain edit costs, so
- * the graph is large enough that the walk, not one transform, dominates.
+ * (5.3 s against 0.5 s warm on 516 test files). Task 001-53: an add
+ * re-transforms only the importers it can re-resolve, so `affected` after it
+ * costs about what it costs after a plain edit. The graph is large enough that
+ * the walk, not one transform, dominates. The add's `invalidate` is reported
+ * apart: its first call scans the source of every module once (001-56, D4).
  */
 describe("vitest adapter: affected() after an add on a large graph", SLOW, () => {
-  it("costs within two times the warm walk", async () => {
+  it("stays under a quarter of the cold walk", async () => {
     const fx = await openFixture("basic", largeGraph());
     const [, cold] = await timed(() => fx.adapter.affected(["src/gen/m100.ts"]));
 
     const warm: number[] = [];
     const afterAdd: number[] = [];
+    const invalidateAdd: number[] = [];
     const afterEdit: number[] = [];
     const sourceWarm: number[] = [];
     const sourceAfterAdd: number[] = [];
@@ -58,7 +60,9 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
       // A new test file: its own transform and a fresh test glob are part of the cost.
       const added = `test/gen/new${i}.test.ts`;
       fx.write(added, testImporting(i));
-      await fx.adapter.invalidate([{ path: added, kind: "add" }]);
+      invalidateAdd.push(
+        (await timed(() => fx.adapter.invalidate([{ path: added, kind: "add" }])))[1],
+      );
       const [result, ms] = await timed(() => fx.adapter.affected([added]));
       expect(paths(result)).toEqual([added]);
       afterAdd.push(ms);
@@ -86,6 +90,8 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
     const measured = {
       cold,
       warm: median(warm),
+      firstInvalidateAdd: invalidateAdd[0] ?? 0,
+      invalidateAdd: median(invalidateAdd),
       afterAdd: median(afterAdd),
       afterEdit: median(afterEdit),
       sourceWarm: median(sourceWarm),
@@ -99,7 +105,8 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
     // fixed cost (re-globbing test files, transforming the new one) of about
     // 20 ms on CI against a 13 ms warm walk (reviews/wave-7.md B2). The guard
     // against a return of whole-graph invalidation is the deliberately loose
-    // bound below, about 15 times on CI.
+    // bound below, about 15 times on CI. `cold` is one sample on purpose: at
+    // that margin its noise does not matter, so do not tighten it.
     expect(measured.afterAdd).toBeLessThan(measured.cold / 4);
     expect(measured.sourceAfterAdd).toBeLessThan(measured.cold / 4);
   });

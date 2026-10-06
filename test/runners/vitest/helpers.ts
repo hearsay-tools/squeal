@@ -36,11 +36,12 @@ afterEach(async () => {
 
 /**
  * Copies `test/fixtures/vitest/<name>`, writes `files` into the copy, and
- * opens an adapter on it. Closed after each test.
+ * opens an adapter on it, through `create` when given. Closed after each test.
  */
 export async function openFixture(
   name = "basic",
   files: Readonly<Record<string, string>> = {},
+  create: (root: string) => Promise<RunnerAdapter> = (root) => createVitestAdapter({ root }),
 ): Promise<FixtureProject> {
   const root = join(scratchDir, `${name}-${randomUUID()}`);
   mkdirSync(scratchDir, { recursive: true });
@@ -51,7 +52,7 @@ export async function openFixture(
     writeFileSync(at(path), content);
   }
   try {
-    const adapter = await createVitestAdapter({ root });
+    const adapter = await create(root);
     const project: FixtureProject = {
       root,
       adapter,
