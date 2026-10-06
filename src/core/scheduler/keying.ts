@@ -13,6 +13,8 @@ import {
   KeyIndex,
   sameInputs,
   testFileId,
+  type UnmatchedInputs,
+  unmatchedInputs,
 } from "../keys/index.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
 import type {
@@ -237,6 +239,11 @@ export class WorktreeKeys {
     );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
+  }
+
+  /** Entries of policy `inputs` that select no test file among `testFiles` or no known file (review wave 4.5, S5). */
+  unmatchedInputs(testFiles: Iterable<RelativePath>): UnmatchedInputs {
+    return unmatchedInputs(this.#policy.inputs, testFiles, this.#knownFiles());
   }
 
   removeTestFile(ref: TestFileRef): void {

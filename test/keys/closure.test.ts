@@ -6,6 +6,7 @@ import {
   normalizeRelativePath,
   sameInputs,
   selectDeclaredInputs,
+  unmatchedInputs,
 } from "../../src/core/keys/index.js";
 import type { RunnerClosure } from "../../src/core/types/index.js";
 
@@ -91,6 +92,42 @@ describe("selectDeclaredInputs", () => {
         "fixtures/y.json",
       ]);
     });
+  });
+});
+
+/*
+ * Review wave 4.5, S5: a map key like "plugin.test.ts" matches no
+ * worktree-relative path, and the runtime read stays outside every closure
+ * while the user believes it was declared.
+ */
+describe("unmatchedInputs", () => {
+  const testFiles = ["test/plugin.test.ts", "test/math.test.ts"];
+  const files = [...testFiles, "dist/a.mjs", "fixtures/data.json"];
+
+  it("names map keys that match no test file and input globs that match no file", () => {
+    expect(
+      unmatchedInputs(
+        {
+          "plugin.test.ts": ["dist/**"],
+          "test/math.test.ts": ["fixtures/*.json", "fixture/*.json"],
+          "**/plugin.test.ts": ["dist/**", "build/**"],
+        },
+        testFiles,
+        files,
+      ),
+    ).toEqual({ testGlobs: ["plugin.test.ts"], inputGlobs: ["build/**", "fixture/*.json"] });
+  });
+
+  it("checks only input globs for a list", () => {
+    expect(unmatchedInputs(["fixtures/**", "*.json"], testFiles, files)).toEqual({
+      testGlobs: [],
+      inputGlobs: ["*.json"],
+    });
+  });
+
+  it("finds nothing to say about an empty policy", () => {
+    expect(unmatchedInputs([], testFiles, files)).toEqual({ testGlobs: [], inputGlobs: [] });
+    expect(unmatchedInputs({}, testFiles, files)).toEqual({ testGlobs: [], inputGlobs: [] });
   });
 });
 

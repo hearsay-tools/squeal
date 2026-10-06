@@ -9,6 +9,8 @@ export {
   normalizeRelativePath,
   sameInputs,
   selectDeclaredInputs,
+  type UnmatchedInputs,
+  unmatchedInputs,
 } from "./closure.js";
 export {
   type CoreEnvironmentOptions,

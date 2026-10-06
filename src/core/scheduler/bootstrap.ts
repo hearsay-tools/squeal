@@ -5,6 +5,7 @@ import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js"
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
+import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import { readEnvironments, resolveClosures } from "./revision.js";
 
@@ -34,7 +35,9 @@ import { readEnvironments, resolveClosures } from "./revision.js";
  * (D5: "A runner call that fails is a state, never a skip").
  *
  * The baseline is the runner part of the revision it starts at, so its
- * commit records that revision as refined (D2 as amended).
+ * commit records that revision as refined (D2 as amended). Policy `inputs`
+ * entries that select nothing get a note each, unless an earlier start
+ * persisted the same one (review wave 4.5, S5).
  */
 export async function bootstrap(context: SchedulerContext, ledger: Ledger): Promise<void> {
   const { store, keys, runner, worktreeId, policy } = context;
@@ -118,6 +121,14 @@ export async function bootstrap(context: SchedulerContext, ledger: Ledger): Prom
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
+  const persisted = persistedNoteTexts(store, worktreeId);
+  for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFilePaths(ledger)))) {
+    if (!persisted.has(text)) context.note(text);
+  }
+}
+
+function testFilePaths(ledger: Ledger): string[] {
+  return [...ledger.files.values()].map((file) => file.ref.path);
 }
 
 interface Known {

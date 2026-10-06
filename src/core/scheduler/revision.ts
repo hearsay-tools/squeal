@@ -11,7 +11,7 @@ import type {
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
-import { listPaths } from "./notes.js";
+import { listPaths, unmatchedInputNotes } from "./notes.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
 export function toInvalidatedPath(change: FileChange): InvalidatedPath {
@@ -47,7 +47,7 @@ export function rekeyContent(
   const { keys } = context;
   const changes = revision.changes;
   const touched: TestFileRef[] = [];
-  const policy = reloadPolicy(context, changes);
+  const policy = reloadPolicy(context, ledger, changes);
   touched.push(...policy.changes.map((c) => c.testFile));
   const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
   touched.push(...rekeyed);
@@ -62,16 +62,23 @@ export function rekeyContent(
 /**
  * Applies a policy the revision reloaded (`SchedulerOptions.reloadPolicy`):
  * the key changes of new `inputs` and of a new `env.allowlist`, and whether
- * the environments must be read again.
+ * the environments must be read again. Notes the `inputs` entries that
+ * select nothing, against the test files known now (review wave 4.5, S5).
  */
 function reloadPolicy(
   context: SchedulerContext,
+  ledger: Ledger,
   changes: readonly FileChange[],
 ): { changes: KeyChange[]; environment: boolean } {
   const policy = context.reloadPolicy(changes);
   if (policy === null) return { changes: [], environment: false };
   context.policy = policy;
-  return context.keys.setPolicy(policy);
+  const applied = context.keys.setPolicy(policy);
+  const testFiles = [...ledger.files.values()].map((file) => file.ref.path);
+  for (const text of unmatchedInputNotes(context.keys.unmatchedInputs(testFiles))) {
+    context.note(text);
+  }
+  return applied;
 }
 
 /**
