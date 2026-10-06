@@ -233,4 +233,27 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     expect(last?.end).toBe("completed");
     expect(a.scheduler.status().testFiles.unknown).toBe(0);
   });
+
+  it("an install the reconciliation pass finds recreates the instance", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const recreated: string[][] = [];
+    const invalidate = h.runner.invalidate;
+    h.runner.invalidate = async (paths) => {
+      const result = await invalidate(paths);
+      recreated.push([...result.recreatedProjects]);
+      return result;
+    };
+
+    // A first install: an ignored file in an ignored directory, so no watch batch names it.
+    h.write("node_modules/.package-lock.json", '{ "packages": {} }\n');
+    await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await h.scheduler.idle();
+
+    expect(recreated).toEqual([[""]]);
+    expect(h.scheduler.status().testFiles.unknown).toBe(0);
+  });
 });
