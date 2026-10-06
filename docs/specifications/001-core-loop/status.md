@@ -34,6 +34,8 @@ Started: 2026-10-02
 
 - 2026-10-06, wave 6 (001-47, 001-48): interactive consumers expire 10 minutes after their waiter is gone, and a timed-out waiter records its consumer as heard from (D10); `UserPromptSubmit` re-arms the waiter and re-registers an expired interactive consumer, and internal forks (empty `agent_type`) are not consumers (D9). Forks under `claude --agent <name>` are not detected. Claude Code 2.1.291 sent no SubagentStart for forks, so the recorded fork SubagentStart fixture is synthetic.
 
+- 2026-10-06, from the wave 6 review (`reviews/wave-6.md`): no blocker; defects 8 and 10 confirmed gone in an attended re-run (consumers expired 10 to 11 minutes after exit, a waiter armed after an Esc). D9 idle-waiter paragraph amended for UserPromptSubmit arming and the timeout touch (N3). Accepted: the sub-millisecond lock-probe windows of N1 (a lost waiter or consumer is restored by the next prompt) and every daemon of a store running the expiry pass over all worktrees (N5). S1, S2, N2 and N4 are row 001-50.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
