@@ -32,6 +32,8 @@ Started: 2026-10-02
 
 - 2026-10-06, dogfooding re-run (001-46, `lessons.md`): no spec change. Three new defects, recorded there: Claude Code skips SessionEnd on an interactive exit after a typed prompt, so consumers stay registered until the 12 h expiry (8); `stop.blockOnKnownFailures` blocks Claude Code's `prompt_suggestion` fork at SubagentStop (9); no idle waiter after an interrupted turn (10).
 
+- 2026-10-06, wave 6 (001-47, 001-48): interactive consumers expire 10 minutes after their waiter is gone, and a timed-out waiter records its consumer as heard from (D10); `UserPromptSubmit` re-arms the waiter and re-registers an expired interactive consumer, and internal forks (empty `agent_type`) are not consumers (D9). Forks under `claude --agent <name>` are not detected. Claude Code 2.1.291 sent no SubagentStart for forks, so the recorded fork SubagentStart fixture is synthetic.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
