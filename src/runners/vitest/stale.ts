@@ -1,45 +1,74 @@
+import { isBuiltin } from "node:module";
+import { basename, dirname } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
+import { expandsFromDisk } from "./dynamic.js";
 import { depToPath, resolutionBases, resolutionCandidates } from "./graph.js";
 
 type ModuleGraph = TestProject["vite"]["environments"][string]["moduleGraph"];
 type ModuleNode = NonNullable<ReturnType<ModuleGraph["getModuleById"]>>;
 type Transform = NonNullable<ModuleNode["transformResult"]>;
 
+/** Per instance: whether its module nodes carry Vite's internal `invalidationState`. */
+const tracksSoftInvalidation = new WeakMap<Vitest, boolean>();
+
 /**
- * Files whose cached transforms an add or delete can make wrong.
+ * Files whose cached transforms an add or delete can make wrong, or `null`
+ * when this Vite keeps no `invalidationState` and the stale set cannot be
+ * known: the caller then invalidates every cached transform.
  *
  * Spec 001 D4: a cached transform holds each import as Vite resolved it, and
- * an unresolvable relative specifier verbatim. A deleted file stales the
- * transform of every module that imports it. An added file stales every
- * module with an import that could now resolve to it: an unresolved target
- * that has it among its resolution candidates (D3), or a resolved one that
- * it would now shadow, under the same `resolve.extensions`, `index` and
- * TypeScript-twin rules. Every other transform stays cached (lessons,
- * defect 11). Only relative and root-relative imports are read, as in D3.
+ * an unresolvable specifier verbatim. A deleted file stales every module that
+ * imports it. An added file stales every module with:
+ *
+ * - an import whose target has it among its resolution candidates (D3), or a
+ *   resolved one it would now shadow (extension, `index`, TypeScript twin);
+ * - an import Vite could not resolve that is not relative: an alias,
+ *   `tsconfig` `paths` or a package. Vite turns every resolved import into a
+ *   `/…` or `/@fs/…` URL, packages included, so a bare dep is unresolved;
+ * - a resolved import under a directory it would now shadow, which covers a
+ *   directory resolved through its own `package.json`, and under the
+ *   directory of an added or deleted `package.json`;
+ * - `import.meta.glob` or a template-literal dynamic import in its source.
+ *
+ * Every other transform stays cached (lessons, defect 11). The deleted files
+ * themselves are left to the caller, which has invalidated them already.
  */
 export function staleTransforms(
   vitest: Vitest,
   added: readonly AbsolutePath[],
   deleted: readonly AbsolutePath[],
-): Set<AbsolutePath> {
-  const stale = new Set<AbsolutePath>(deleted);
+): Set<AbsolutePath> | null {
+  const stale = new Set<AbsolutePath>();
+  const gone = new Set<AbsolutePath>(deleted);
   for (const project of vitest.projects) {
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set<AbsolutePath>(deleted);
+      const directories = [...added, ...deleted].filter(isPackageJson).map((p) => `${dirname(p)}/`);
       for (const path of added) {
         for (const base of resolutionBases(path, extensions)) {
           for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
+          // A directory's `package.json` wins over its `index`, so an `index` shadows nothing under it.
+          if (base !== dirname(path)) directories.push(`${base}/`);
         }
       }
+      const reresolves = (dep: string, file: AbsolutePath): boolean => {
+        const path = depToPath(dep, file, project.config.root);
+        if (path === null) return added.length > 0 && isUnresolvedBare(dep);
+        return targets.has(path) || directories.some((dir) => path.startsWith(dir));
+      };
       for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
-        if (stale.has(file)) continue;
+        if (stale.has(file) || gone.has(file)) continue;
         for (const module of modules) {
+          if (!knowsSoftInvalidation(vitest, module)) return null;
           const result = cachedTransform(module);
           if (!result) continue;
           const deps = [...(result.deps ?? []), ...(result.dynamicDeps ?? [])];
-          if (deps.some((dep) => targets.has(depToPath(dep, file, project.config.root) ?? ""))) {
+          if (
+            deps.some((dep) => reresolves(dep, file)) ||
+            (added.length > 0 && expandsFromDisk(file, result))
+          ) {
             stale.add(file);
             break;
           }
@@ -48,6 +77,33 @@ export function staleTransforms(
     }
   }
   return stale;
+}
+
+/** A dep Vite left as written that is neither a path, a virtual id nor a Node builtin. */
+const isPackageJson = (path: AbsolutePath) => basename(path) === "package.json";
+
+function isUnresolvedBare(dep: string): boolean {
+  return (
+    !dep.startsWith("/") &&
+    !dep.startsWith(".") &&
+    !dep.startsWith("\0") &&
+    !dep.includes(":") &&
+    !isBuiltin(dep)
+  );
+}
+
+/**
+ * Reviews/wave-7.md S2: `invalidationState` is internal to Vite. Checked once
+ * per instance on its first module node, so a Vite that renamed it falls back
+ * to full invalidation instead of missing soft-invalidated importers.
+ */
+function knowsSoftInvalidation(vitest: Vitest, module: ModuleNode): boolean {
+  let known = tracksSoftInvalidation.get(vitest);
+  if (known === undefined) {
+    known = "invalidationState" in module;
+    tracksSoftInvalidation.set(vitest, known);
+  }
+  return known;
 }
 
 /**
