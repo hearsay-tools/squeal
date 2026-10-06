@@ -89,8 +89,14 @@ function affected(s: StatusSnapshot): string {
   return parts.join(", ");
 }
 
+/** Spec 001 D7 as amended: the dirty flag is labelled with its revision, not known without a daemon. */
 function worktreeLine(s: StatusSnapshot): string {
-  const dirty = s.dirty === null ? "dirty state unknown" : s.dirty ? "dirty" : "clean";
+  const dirty =
+    s.dirty !== null
+      ? `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}`
+      : s.daemon.state === "alive"
+        ? "dirty state not known: no revision recorded yet"
+        : "dirty state not known: no daemon is validating";
   return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirty})`;
 }
 
