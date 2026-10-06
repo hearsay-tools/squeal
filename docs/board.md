@@ -77,6 +77,12 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-43 state, delivery, status wording | done | Defect 2: fingerprint normalization of UUIDs, long hex, temp and cache paths (D6). Defect 4: header and registration say when test files are not yet listed. Defect 7: dirty flag labelled with its revision, not known without a daemon. Lessons surprise 7: full-suite line reworded as a checkpoint request. The two `test/e2e/worktrees.test.ts` expected failures: inherited count in `StatusHeader` and registration text; a break of an inherited pass never told reads `PASS -> FAIL` from the prior known state. Flip both `it.fails` to `it`. | Tests for each; `test/e2e/worktrees.test.ts` fully green. |
 | 001-44 harness, CLI and policy inputs | done | Defect 5: SessionEnd unregisters reliably (investigate the `/exit` case; add a startup sweep that unregisters consumers of the same session id when a new SessionStart arrives). `squeal status --wait <ms>` (D7). Per-test-file `inputs` map in policy, closure assembly and the loader (D11, D3). Skill: replace `sleep` polling advice with `status --wait`; README: `gh auth login` or SSH as the prerequisite for the private marketplace (lessons surprise 9). Rebuild bundles as the last commit. | Tests for each; skill and README updated. |
 
+### Wave 4.6: final review fixes (one worker, from `specifications/001-core-loop/reviews/wave-4.5.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-45 close the review | running | S1 refined-revision marker written by the refinement commit and read by headers, status, `status --wait` and Stop as pending; S2 `status --wait` returns a distinct outcome without a daemon and the skill sentence is fixed; S3 split `applyRevision` into a runner phase without the lock and an apply phase under it with a freshness re-check (or, if unsafe, amend D2 with the measured bound); S4 sweep only on `startup` and `resume`; S5 note map keys and input globs that match nothing; S6 the six missing tests; N1 module duration from `onTestModuleEnd`; N5 keep the last heartbeat after `squeal stop`; N7 comment; N8 `AggregateError`. | Review probes B and G re-run as tests pass; no window in which status reads "0 pending" at a revision with unrun work. |
+
 ## Later
 
 - 002 pytest runner adapter.

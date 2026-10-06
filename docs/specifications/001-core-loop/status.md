@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: in-progress (waves 0 to 4 done; dogfooding in `lessons.md`; goal 3 open on revision lag, see lessons Defects 1 and 3)
+Stage: in-progress (waves 0 to 4.5 done; all lessons defects fixed and re-probed; wave 4.6 closes the review's should-fix items before shipped-candidate)
 Started: 2026-10-02
 
 ## Decisions so far
@@ -25,6 +25,8 @@ Started: 2026-10-02
 - 2026-10-04, from the wave 3 review (`reviews/wave-3.md`): hooks pass their shipped CLI to the daemon helper and Vitest is loaded from the project (D9, D11); Stop speaks only with news, waitMs capped at 1,500 ms, blocks only on current failures, SubagentStop unregisters, registration falls back to the first PostToolBatch, liveness in headers, PostToolBatch and Stop ensure the daemon on a stale heartbeat (D9); one non-throwing policy loader, bad policy is a state, reload on change (D11); per-user socket directory, recorded-socket probe, lock before store (D10); notes replace a daemon log (D12).
 
 - 2026-10-04, from dogfooding (`lessons.md`): revisions never wait on the runner (D2); direct importers from the module graph first, shortest duration first within a class (D5); fingerprint normalizes UUIDs, long hex and temp paths (D6); `status --wait`, not-listed-yet state, dirty flag labelled with its revision (D7); `inputs` may map test-file globs to input globs (D11).
+
+- 2026-10-06, from the wave 4.5 review (`reviews/wave-4.5.md`): refined-revision marker so deferred runner work counts as pending (D2); open questions 2, 4, 5 and 8 decided.
 
 ## Research
 
