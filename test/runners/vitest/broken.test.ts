@@ -2,6 +2,7 @@ import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { SerializedError } from "vitest/node";
+import { type DaemonNote, notesMetaKey } from "../../../src/core/types/index.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { isRunnerFailure } from "../../../src/runners/vitest/broken.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
@@ -105,6 +106,8 @@ describe("vitest adapter: a broken runner environment", SLOW, () => {
     expect(broken.failure).toMatch(
       /^the Vitest instance failed to load modules and is recreated: Error: ENOENT/,
     );
+    expect(broken.notes).toEqual([broken.failure]);
+    expect(broken.failure).not.toContain(fx.root);
 
     const after = await fx.adapter.run(files, fx.runOptions());
     expect(after.end).toBe("completed");
@@ -204,6 +207,10 @@ describe("a broken runner environment in the shared store", SLOW, () => {
       broken.filter((r) => r.report.end === "crashed").map((r) => r.options.runId),
     );
     expect(a.scheduler.status().testFiles.unknown).toBeGreaterThan(0);
+    const notes = JSON.parse(store.meta.get(notesMetaKey(a.worktreeId)) ?? "[]") as DaemonNote[];
+    expect(notes.map((n) => n.text)).toContainEqual(
+      expect.stringMatching(/^the Vitest instance failed to load modules and is recreated: /),
+    );
 
     const keys = ALL_TEST_FILES.map((path) => a.keyOf(path));
     const stored = keys.flatMap((key) => store.results.byKey(key));

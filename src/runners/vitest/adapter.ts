@@ -301,7 +301,11 @@ export class VitestAdapter implements RunnerAdapter {
               collector.note(`close() of a broken instance failed: ${String(error)}`),
             );
         }
-        const report = buildReport(collector, execution, Math.round(performance.now() - started));
+        let report = buildReport(collector, execution, Math.round(performance.now() - started));
+        // One persisted note for status, besides the crash's delivered line (D5).
+        if (broken !== null && report.failure !== null) {
+          report = { ...report, notes: [report.failure] };
+        }
         writeRunLog(options, collector, report);
         return report;
       } finally {
