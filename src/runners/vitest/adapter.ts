@@ -1,5 +1,6 @@
 import type { TestSpecification, Vitest } from "vitest/node";
 import type {
+  AffectedTestFiles,
   EnumeratedCheck,
   InvalidatedPath,
   InvalidateResult,
@@ -133,11 +134,26 @@ export class VitestAdapter implements RunnerAdapter {
 
   affected(changedPaths: readonly RelativePath[]): Promise<readonly TestFileRef[]> {
     return this.#serial(async (vitest) => {
-      const specs = await testSpecifications(vitest);
-      const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
-      const refs = await affectedTestFiles(vitest, specs, changed);
-      return refs.map((r) => this.#ref(r)).sort(compareRefs);
+      const { direct, transitive } = await this.#affected(vitest, changedPaths);
+      return [...direct, ...transitive].sort(compareRefs);
     });
+  }
+
+  affectedDetailed(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles> {
+    return this.#serial((vitest) => this.#affected(vitest, changedPaths));
+  }
+
+  async #affected(
+    vitest: Vitest,
+    changedPaths: readonly RelativePath[],
+  ): Promise<AffectedTestFiles> {
+    const specs = await testSpecifications(vitest);
+    const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
+    const { direct, transitive } = await affectedTestFiles(vitest, specs, changed);
+    return {
+      direct: direct.map((s) => this.#ref(s)).sort(compareRefs),
+      transitive: transitive.map((s) => this.#ref(s)).sort(compareRefs),
+    };
   }
 
   closure(testFile: TestFileRef): Promise<RunnerClosure> {

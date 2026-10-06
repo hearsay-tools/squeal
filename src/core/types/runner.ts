@@ -99,6 +99,30 @@ export interface CheckRunResult {
 }
 
 /**
+ * The test files a change affects, split by distance in the runner's module
+ * graph. `affected(changedPaths)` is the union.
+ *
+ * Spec 001 D5 step 4 as amended: "test files that import a changed path
+ * directly according to the runner's module graph, then transitively
+ * affected files". Lessons, defect 3: with barrel imports, every source edit
+ * reaches most test files transitively, and the edited module's own test
+ * waited behind slow ones.
+ */
+export interface AffectedTestFiles {
+  /**
+   * Test files that changed themselves, import a changed path in one hop
+   * (statically or dynamically, including a changed path that no longer
+   * exists), or own a changed snapshot. Sorted.
+   */
+  readonly direct: readonly TestFileRef[];
+  /**
+   * The other affected test files: reached through other modules, or through
+   * an environment input (config, setup files). Sorted, disjoint from `direct`.
+   */
+  readonly transitive: readonly TestFileRef[];
+}
+
+/**
  * An import or syntax failure of a whole test file.
  *
  * Spec 001 D4: "File-level errors (import or syntax failures) become a `fail`
@@ -164,6 +188,12 @@ export interface RunnerAdapter {
    * owning test file when a `.snap` changed."
    */
   affected(changedPaths: readonly RelativePath[]): Promise<readonly TestFileRef[]>;
+
+  /**
+   * `affected`, split into direct importers and the rest (D5 step 4). Optional:
+   * the scheduler treats every file of a runner without it as transitive.
+   */
+  affectedDetailed?(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles>;
 
   /** Spec 001 D4: "`closure(testFile) -> paths`". */
   closure(testFile: TestFileRef): Promise<RunnerClosure>;
