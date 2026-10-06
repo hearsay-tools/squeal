@@ -79,6 +79,7 @@ export async function fetchRunnerPart(
     () => runner.invalidate(changes.map(toInvalidatedPath)),
     (reason) => failed(failures, null, reason),
   );
+  for (const note of invalidated?.notes ?? []) context.note(note);
   const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);
   const environments =
     recreated.size > 0 || content.environment || retrying
