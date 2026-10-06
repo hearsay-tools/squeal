@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: in-progress (waves 0 to 4.5 done; all lessons defects fixed and re-probed; wave 4.6 closes the review's should-fix items before shipped-candidate, its fixes await review)
+Stage: shipped-candidate (2026-10-06: waves 0 to 4.6 done; goals 1 to 7 hold per `reviews/wave-4.5.md`; remaining before shipped: a short dogfooding re-run with Claude Code, hook p95 at calm load, macOS verification before any public release)
 Started: 2026-10-02
 
 ## Decisions so far
