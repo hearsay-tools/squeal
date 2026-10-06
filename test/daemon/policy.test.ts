@@ -75,7 +75,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       '"baseline.onStart" must be one of "lookup-then-run-missing", "lookup-only", got "run"',
     ]);
     expect(problems('{"inputs": "fixtures/**"}')).toEqual([
-      '"inputs" must be an array of strings, got "fixtures/**"',
+      '"inputs" must be an array of strings, or an object from test-file glob to an array of strings, got "fixtures/**"',
     ]);
     expect(problems('{"stop": {"waitMs": -1}}')).toEqual([
       '"stop.waitMs" must be a number >= 0, got -1',
@@ -84,6 +84,42 @@ describe("loadPolicy (spec 001 D11)", () => {
       '"daemon.idleExitMinutes" must be a number > 0, got 0',
     ]);
     expect(problems('{"runner": 4}')).toEqual(['"runner" must be an object, got 4']);
+  });
+
+  it("accepts inputs as a map from test-file glob to input globs (D11 as amended)", () => {
+    const inputs = {
+      "test/harness/plugin.test.ts": ["plugins/claude-code/dist/**"],
+      "**/*.e2e.ts": [],
+    };
+    expect(loadPolicy(rootWith(JSON.stringify({ inputs })))).toEqual({
+      policy: { ...DEFAULT_POLICY, inputs },
+      problems: [],
+    });
+    expect(DEFAULT_POLICY.inputs).toEqual([]);
+  });
+
+  it("names a map of inputs whose values are not arrays of strings", () => {
+    const expected =
+      "must be an array of strings, or an object from test-file glob to an array of strings";
+    expect(problems('{"inputs": {"test/a.test.ts": "fixtures/**"}}')).toEqual([
+      `"inputs" ${expected}, got {"test/a.test.ts":"fixtures/**"}`,
+    ]);
+    expect(problems('{"inputs": {"test/a.test.ts": [1]}}')).toEqual([
+      `"inputs" ${expected}, got {"test/a.test.ts":[1]}`,
+    ]);
+  });
+
+  it("names an input glob Squeal cannot use, in either shape", () => {
+    expect(problems('{"inputs": ["!fixtures/**"]}')).toEqual([
+      '"inputs" has a glob Squeal cannot use: squeal: negated input glob is not supported: !fixtures/**',
+    ]);
+    expect(problems('{"inputs": {"/abs/*.test.ts": ["fixtures/**"]}}')).toEqual([
+      '"inputs" has a glob Squeal cannot use: squeal: input glob must be relative: /abs/*.test.ts',
+    ]);
+    expect(problems('{"inputs": {"test/*.test.ts": ["fixtures/[a"]}}')).toEqual([
+      '"inputs" has a glob Squeal cannot use: squeal: unclosed [ in input glob: fixtures/[a',
+    ]);
+    expect(loadPolicy(rootWith('{"inputs": ["!x"]}')).policy.inputs).toEqual([]);
   });
 
   it("applies the defaults for the bad keys only and keeps every good one (review S3)", () => {

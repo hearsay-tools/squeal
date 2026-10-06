@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMissing } from "../fs/index.js";
+import { globToRegExp } from "../keys/glob.js";
 import {
   DEFAULT_POLICY,
   type LoadedPolicy,
@@ -13,8 +14,12 @@ import {
 /** Spec 001 D11: "`squeal.config.json` at the repository root, committed, all keys optional". */
 export const POLICY_FILE = "squeal.config.json";
 
-/** Checks one leaf value; returns what was expected when the value does not fit. */
-type Leaf = (value: unknown) => string | null;
+/**
+ * Checks one leaf value; returns what was expected when the value does not
+ * fit, or a whole `problem` when the value has the right type but cannot be
+ * used.
+ */
+type Leaf = (value: unknown) => string | { readonly problem: string } | null;
 interface Shape {
   readonly [key: string]: Leaf | Shape;
 }
@@ -22,6 +27,28 @@ interface Shape {
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
 const strings: Leaf = (v) =>
   Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+/**
+ * Spec 001 D11 as amended: a list for every test file, or a map from
+ * test-file glob to input globs. Every glob must compile, so a typo is a
+ * problem when the file is read, not a daemon that cannot key.
+ */
+const inputs: Leaf = (v) => {
+  const isList = strings(v) === null;
+  if (!isList && !(isObject(v) && Object.values(v).every((globs) => strings(globs) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs = isList
+    ? (v as string[])
+    : Object.entries(v as Record<string, string[]>).flatMap(([test, input]) => [test, ...input]);
+  for (const glob of globs) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${(error as Error).message}` };
+    }
+  }
+  return null;
+};
 const atLeastZero: Leaf = (v) => (isNumber(v) && v >= 0 ? null : "a number >= 0");
 const aboveZero: Leaf = (v) => (isNumber(v) && v > 0 ? null : "a number > 0");
 const positiveInteger: Leaf = (v) =>
@@ -30,7 +57,7 @@ const orNull =
   (leaf: Leaf): Leaf =>
   (v) => {
     const expected = v === null ? null : leaf(v);
-    return expected === null ? null : `${expected}, or null`;
+    return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
   };
 const oneOf =
   (...values: readonly string[]): Leaf =>
@@ -42,7 +69,7 @@ const SHAPE: Shape = {
   interrupt: { onRegression: boolean },
   stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
-  inputs: strings,
+  inputs,
   env: { allowlist: strings },
   runner: {
     tierSize: positiveInteger,
@@ -111,6 +138,7 @@ function merge(
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
+      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
     } else if (!isObject(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);

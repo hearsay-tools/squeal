@@ -27,7 +27,7 @@ export interface Policy {
    * list applied to every test file or a map from test-file glob to input
    * globs so one runtime read does not re-key the whole suite." Default `[]`.
    */
-  readonly inputs: readonly string[];
+  readonly inputs: PolicyInputs;
   readonly env: {
     /** Spec 001 D11: "environment variables included in the environment hash." Default `[]`. */
     readonly allowlist: readonly string[];
