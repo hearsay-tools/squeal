@@ -74,6 +74,43 @@ describe("onToolBoundary", () => {
     expect(await kindsFor(C1)).toBeNull();
   });
 
+  it("reads the change from the prior known state of a check the consumer was never told", async () => {
+    await delivery.register(C1);
+    apply(pass());
+    apply(fail());
+    expect((await delivery.onToolBoundary(C1))?.entries).toMatchObject([
+      { check: A, kind: "pass-to-fail", from: "pass", to: "fail" },
+    ]);
+  });
+
+  it("reads the prior state from before the check started failing", async () => {
+    await delivery.register(C1);
+    apply(pass());
+    apply(fail("one"));
+    apply(fail("two"));
+    expect((await delivery.onToolBoundary(C1))?.entries).toMatchObject([
+      { kind: "pass-to-fail", from: "pass", to: "fail", summary: "two" },
+    ]);
+  });
+
+  it("reads an untold failure after a crash from the unknown state it followed", async () => {
+    await delivery.register(C1);
+    apply(pass());
+    sink.markUnknown(WT, 9, [FILE], "runner crashed");
+    apply(fail());
+    expect((await delivery.onToolBoundary(C1))?.entries).toMatchObject([
+      { kind: "first-seen-fail", from: "unknown", to: "fail" },
+    ]);
+  });
+
+  it("keeps a failure with no prior known state first observed", async () => {
+    await delivery.register(C1);
+    apply(fail());
+    expect((await delivery.onToolBoundary(C1))?.entries).toMatchObject([
+      { kind: "first-seen-fail", from: null, to: "fail" },
+    ]);
+  });
+
   it("delivers the entry with its state", async () => {
     apply(pass());
     await delivery.register(C1);

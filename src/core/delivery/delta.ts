@@ -1,4 +1,4 @@
-import { checkIdentity, transitionKind } from "../state/index.js";
+import { checkIdentity, type Observation, transitionKind } from "../state/index.js";
 import type {
   AbsolutePath,
   CheckId,
@@ -8,6 +8,7 @@ import type {
   EpochMs,
   KnownState,
   RevisionNumber,
+  Transition,
   ViewEntry,
   WorktreeId,
 } from "../types/index.js";
@@ -34,6 +35,34 @@ export interface PlanInput {
   readonly rootOf: (worktreeId: WorktreeId) => AbsolutePath | null;
   /** Current revision: `observedAt` of a retired entry and of a state never observed. */
   readonly revision: RevisionNumber;
+  /**
+   * Transitions of a check in this worktree, oldest first
+   * (`TransitionRepo.history`). Read only for a failing check the consumer
+   * was never told about; without it such a check is first observed.
+   */
+  readonly history?: (check: CheckId) => readonly Transition[];
+}
+
+/**
+ * What a failing check was before it started failing, from the audit log,
+ * when the log ends at the current failure; `null` when it has no state
+ * before the failure. A consumer registered before a check's first pass was
+ * never told the pass, yet the pass was known: the delta reads `PASS -> FAIL`
+ * from it, not "first observed" (goal 3). Changed failures are walked past,
+ * since the consumer was told none of them.
+ */
+export function beforeFailing(
+  history: readonly Transition[],
+  state: Pick<KnownState, "outcome" | "fingerprint">,
+): Observation | null {
+  const last = history.at(-1);
+  if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
+    return null;
+  }
+  const entered = history.findLast((t) => t.kind !== "fail-changed");
+  return entered?.from == null
+    ? null
+    : { outcome: entered.from, fingerprint: entered.fromFingerprint };
 }
 
 /** Regressions first, then changed failures, baseline findings, unknowns, recoveries, retired failures. */
@@ -92,7 +121,11 @@ export function planDelta(input: PlanInput): DeltaPlan {
     const id = checkIdentity(state.check);
     const before = told.get(id) ?? null;
     told.delete(id);
-    const kind = transitionKind(before, state);
+    const prior =
+      before === null && state.outcome === "fail" && input.history !== undefined
+        ? beforeFailing(input.history(state.check), state)
+        : null;
+    const kind = transitionKind(before ?? prior, state);
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
     const baseline =
@@ -102,7 +135,7 @@ export function planDelta(input: PlanInput): DeltaPlan {
     entries.push({
       check: state.check,
       kind,
-      from: before?.outcome ?? null,
+      from: (before ?? prior)?.outcome ?? null,
       to: state.outcome,
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
