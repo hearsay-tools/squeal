@@ -4,11 +4,14 @@ import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../has
 import {
   assembleClosure,
   coreEnvironmentInputs,
+  createDeclaredInputs,
   createInputMatcher,
+  type DeclaredInputs,
   environmentHash,
+  inputGlobs,
   type KeyChange,
   KeyIndex,
-  selectDeclaredInputs,
+  sameInputs,
   testFileId,
 } from "../keys/index.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
@@ -69,13 +72,13 @@ export class WorktreeKeys {
   readonly #lockfiles: Lockfiles;
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
-  #declared: RelativePath[] = [];
+  #declared: DeclaredInputs = createDeclaredInputs([], []);
   #policy: Policy;
   #isDeclared: (path: RelativePath) => boolean;
 
   constructor(private readonly options: KeyingOptions) {
     this.#policy = options.policy;
-    this.#isDeclared = createInputMatcher(options.policy.inputs);
+    this.#isDeclared = createInputMatcher(inputGlobs(options.policy.inputs));
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
     this.#lockfiles = new Lockfiles(options.root);
     this.index = new KeyIndex((path) => this.cache.hashOf(path));
@@ -108,7 +111,7 @@ export class WorktreeKeys {
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
     for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
     await this.#seed(listed.filter((path) => this.cache.hashOf(path) === undefined));
-    this.#declared = selectDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
     return revision;
   }
 
@@ -189,9 +192,9 @@ export class WorktreeKeys {
     const previous = this.#policy;
     this.#policy = policy;
     const changes: KeyChange[] = [];
-    if (!sameList(previous.inputs, policy.inputs)) {
-      this.#isDeclared = createInputMatcher(policy.inputs);
-      this.#declared = selectDeclaredInputs(policy.inputs, this.#knownFiles());
+    if (!sameInputs(previous.inputs, policy.inputs)) {
+      this.#isDeclared = createInputMatcher(inputGlobs(policy.inputs));
+      this.#declared = createDeclaredInputs(policy.inputs, this.#knownFiles());
       changes.push(
         ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
       );
@@ -229,7 +232,9 @@ export class WorktreeKeys {
   /** Sets a test file's closure: the runner's paths plus this worktree's declared inputs (D3). */
   setClosure(runner: RunnerClosure): KeyChange[] {
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
-    const update = this.index.setClosure(assembleClosure(runner, this.#declared));
+    const update = this.index.setClosure(
+      assembleClosure(runner, this.#declared.for(runner.testFile.path)),
+    );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
   }
@@ -249,7 +254,7 @@ export class WorktreeKeys {
       (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path),
     );
     if (!structural) return null;
-    this.#declared = selectDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
     return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
   }
 
