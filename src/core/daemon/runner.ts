@@ -106,6 +106,11 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
       return { recreatedProjects: [...projects].sort() };
     },
     affected: async (changedPaths) => (await adapter()).affected(changedPaths),
+    async affectedDetailed(changedPaths) {
+      const current = await adapter();
+      if (current.affectedDetailed) return current.affectedDetailed(changedPaths);
+      return { direct: [], transitive: await current.affected(changedPaths) };
+    },
     closure: async (testFile: TestFileRef) => (await adapter()).closure(testFile),
     enumerate: async (testFile: TestFileRef) => (await adapter()).enumerate(testFile),
     testFiles: async () => (await adapter()).testFiles(),
