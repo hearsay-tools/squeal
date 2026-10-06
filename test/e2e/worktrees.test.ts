@@ -67,13 +67,9 @@ describe("a second worktree", () => {
     expectAgrees(later.text, await e.status(wt2));
   }, 240_000);
 
-  // Product gap: a registration's header counts current checks but never says
-  // that they are inherited or from where; only `squeal status` does. Goal 4
-  // says inherited results are reported as inherited, and D9's skill reads
-  // "the header's pending and inherited counts". Suspected:
-  // src/core/delivery/format.ts (formatRegistration, headerLine) and the
-  // StatusHeader type in src/core/types/status.ts, which has no inherited count.
-  it.fails("names inherited results in the registration it delivers", async (ctx) => {
+  // Goal 4: inherited results are reported as inherited, and D9's skill reads
+  // "the header's pending and inherited counts" (StatusHeader.inheritedCount).
+  it("names inherited results in the registration it delivers", async (ctx) => {
     const e = fixture(ctx);
     const { wt2 } = await twoWorktrees(e);
     const later = await e.hook("session-start", wt2, { session_id: "late-session" });
@@ -81,12 +77,11 @@ describe("a second worktree", () => {
     expect(later.text).toMatch(/inherited/i);
   }, 240_000);
 
-  // Wording: a consumer registered before the lookup was never told the
-  // inherited pass, so the delta goes from nothing to FAIL and reads "first
-  // observed: FAIL", although Squeal observed the check passing at the
-  // previous revision (goal 3: what the agent is told is true). Suspected:
-  // src/core/delivery/format.ts (`change`, the `from === null` wording).
-  it.fails("calls a break of an inherited pass PASS -> FAIL before any tool boundary", async (ctx) => {
+  // A consumer registered before the lookup was never told the inherited
+  // pass, yet Squeal observed it (goal 3: what the agent is told is true), so
+  // the delta reads PASS -> FAIL from the prior known state, not "first
+  // observed: FAIL".
+  it("calls a break of an inherited pass PASS -> FAIL before any tool boundary", async (ctx) => {
     const e = fixture(ctx);
     const { wt2 } = await twoWorktrees(e);
     await e.edit(wt2, "strings", STRINGS("?"), (s) => s.knownFailures.length === 1);
