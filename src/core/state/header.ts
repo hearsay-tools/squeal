@@ -79,9 +79,9 @@ export function isPending(header: StatusHeader): boolean {
   );
 }
 
-/** Spec 001 D2 as amended: what a pending runner part means for the counts. */
+/** Spec 001 D2 as amended: names the runner part of a revision in headers, status and waits. */
 export function runnerPartText(revision: RevisionNumber): string {
-  return `the runner part of revision ${revision} is pending`;
+  return `the runner part of revision ${revision}`;
 }
 
 /**

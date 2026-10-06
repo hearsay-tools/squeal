@@ -90,7 +90,7 @@ function affected(s: StatusSnapshot): string {
   for (const [count, label] of optional) if (count > 0) parts.push(`${count} ${label}`);
   const runnerPart =
     s.runnerPartPending === true
-      ? `; ${runnerPartText(s.revision)}, so test files it adds are not counted yet`
+      ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet`
       : "";
   return `${parts.join(", ")}${runnerPart}`;
 }

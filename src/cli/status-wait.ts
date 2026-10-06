@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { planDelta, readHeader } from "../core/delivery/index.js";
+import { daemonLiveness, planDelta, readHeader } from "../core/delivery/index.js";
+import { isPending, runnerPartText } from "../core/state/index.js";
 import {
   buildSnapshot,
   formatStatus,
@@ -9,10 +10,10 @@ import {
 import { worktreeIdFor } from "../core/store/index.js";
 import type {
   AbsolutePath,
+  DaemonLiveness,
   EpochMs,
   KnownState,
   RevisionNumber,
-  StatusHeader,
   StatusResult,
   StatusSnapshot,
   StatusUnavailable,
@@ -42,10 +43,22 @@ export interface StatusWaitOptions {
 
 /**
  * Why the wait ended: `quiet`, nothing pending at the current revision;
- * `news`, a check changed notably since the wait started; `timeout`, neither
+ * `news`, a check changed notably since the wait started; `no-daemon`, no
+ * daemon is validating, so nothing pending would ever finish and quiet would
+ * say nothing about the files (review wave 4.5, S2); `timeout`, none of these
  * within the given time.
  */
-export type StatusWaitOutcome = "quiet" | "news" | "timeout";
+export type StatusWaitOutcome = "quiet" | "news" | "no-daemon" | "timeout";
+
+/**
+ * The `wait` field `status --json --wait` adds to the snapshot: the same
+ * outcome as the first human line.
+ */
+export interface StatusWaitPayload {
+  readonly outcome: StatusWaitOutcome;
+  readonly waitedMs: number;
+  readonly transitions: number;
+}
 
 export type StatusWait =
   | {
@@ -64,7 +77,11 @@ export type StatusWait =
 /**
  * Spec 001 D7: "`squeal status --wait <ms>` blocks until nothing is pending
  * at the current revision or a new transition is recorded, then prints the
- * snapshot". Reads the store only, every `pollMs`, and needs no daemon.
+ * snapshot". Reads the store only, every `pollMs`. Without a validating
+ * daemon nothing pending can finish, so once the settle time passed with no
+ * daemon alive it returns `no-daemon` instead of `quiet` or a long timeout;
+ * a daemon a hook just spawned has the settle time to record its heartbeat.
+ * Pending includes the runner part of the current revision (D2 as amended).
  *
  * A new transition is found the way delivery finds one (D6): the known
  * states at the start of the wait act as a view, and any notable difference
@@ -95,9 +112,18 @@ export async function waitForStatus(
       const header = readHeader(store, id, states);
       start ??= states.map(toStartView);
       const transitions = countNews(start, states, header.revision);
-      const quiet = pending(header) === 0 && (final || elapsed() >= settleMs);
+      const settled = final || elapsed() >= settleMs;
+      const daemon = daemonLiveness(store.worktrees.get(id)?.daemon ?? null, now());
       const outcome: StatusWaitOutcome | null =
-        transitions > 0 ? "news" : quiet ? "quiet" : final ? "timeout" : null;
+        transitions > 0
+          ? "news"
+          : settled && daemon.state !== "alive"
+            ? "no-daemon"
+            : settled && !isPending(header)
+              ? "quiet"
+              : final
+                ? "timeout"
+                : null;
       return outcome === null
         ? null
         : { outcome, transitions, result: buildSnapshot(store, root, now()) };
@@ -133,16 +159,12 @@ function countNews(
   }).entries.length;
 }
 
-/** Checks and test files still pending at the current revision. */
-function pending(header: StatusHeader): number {
-  return header.counts.pending + header.testFilesWithoutChecks.pending;
-}
-
 /**
- * `squeal status [--json] --wait <ms>`. Exit code 0 on quiet, news or
- * timeout; 1 when status is unavailable. The line saying why the wait ended
- * comes first in the human rendering and goes to stderr with `--json`, so
- * stdout stays the snapshot payload.
+ * `squeal status [--json] --wait <ms>`. Exit code 0 on quiet, news, no daemon
+ * or timeout; 1 when status is unavailable. The line saying why the wait
+ * ended comes first in the human rendering and goes to stderr with `--json`,
+ * where stdout is the snapshot payload plus a `wait` field
+ * (`StatusWaitPayload`) with the same outcome.
  */
 export async function statusWaitCommand(
   timeoutMs: number,
@@ -158,7 +180,12 @@ export async function statusWaitCommand(
   }
   const line = `${waitLine(wait.outcome, wait.transitions, wait.result, wait.waitedMs)}\n`;
   if (json) {
-    io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+    const payload: StatusWaitPayload = {
+      outcome: wait.outcome,
+      waitedMs: Math.round(wait.waitedMs),
+      transitions: wait.transitions,
+    };
+    io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);
   } else {
     io.stdout(`${line}\n${formatStatus(result, now())}`);
@@ -179,9 +206,17 @@ function waitLine(
       return `Returned on quiet: nothing pending ${at} ${after}`;
     case "news":
       return `Returned on news: ${transitions} ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
+    case "no-daemon":
+      return `Returned without a daemon: ${noDaemonText(snapshot.daemon)}; results are as of revision ${snapshot.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}`;
   }
+}
+
+/** As delivered headers word it (spec 001 D10: "no daemon running since <time>"). */
+function noDaemonText(daemon: DaemonLiveness): string {
+  if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
+  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
 }
 
 function pendingText(snapshot: StatusSnapshot): string {
@@ -189,7 +224,10 @@ function pendingText(snapshot: StatusSnapshot): string {
   const files = snapshot.testFilesWithoutChecks.pending;
   const parts = [`${checks} ${plural(checks, "check")}`];
   if (files > 0) parts.push(`${files} test ${plural(files, "file")} without checks`);
-  return `${parts.join(" and ")} pending`;
+  if (snapshot.runnerPartPending === true) parts.push(runnerPartText(snapshot.revision));
+  return parts.length === 1
+    ? `${parts[0]} pending`
+    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
 }
 
 function plural(count: number, word: string): string {

@@ -66,7 +66,7 @@ function headerLine(header: StatusHeader): string {
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart =
     header.runnerPartPending === true
-      ? ` ${capitalize(runnerPartText(revision))}; test files it adds are not counted yet.`
+      ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.`
       : "";
   return (
     `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ` +
