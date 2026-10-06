@@ -4525,6 +4525,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried) {
     () => runner.invalidate(changes.map(toInvalidatedPath)),
     (reason2) => failed(failures, null, reason2)
   );
+  for (const note of invalidated?.notes ?? []) context.note(note);
   const recreated = new Set(invalidated?.recreatedProjects ?? []);
   const environments = recreated.size > 0 || content.environment || retrying ? await tryRunner(
     context,
@@ -5481,9 +5482,9 @@ var init_readdirp = __esm({
       }
       // Synchronous in dirent mode; returns a promise only when stats are needed.
       _formatEntry(dirent, path) {
-        const basename6 = this._isDirent ? dirent.name : dirent;
-        const fullPath = pjoin(path, basename6);
-        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename6 };
+        const basename7 = this._isDirent ? dirent.name : dirent;
+        const fullPath = pjoin(path, basename7);
+        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename7 };
         if (this._isDirent) {
           entry2.dirent = dirent;
           return entry2;
@@ -6024,9 +6025,9 @@ var init_handler = __esm({
       _watchWithNodeFs(path, listener) {
         const opts = this.fsw.options;
         const directory = sp.dirname(path);
-        const basename6 = sp.basename(path);
+        const basename7 = sp.basename(path);
         const parent = this.fsw._getWatchedDir(directory);
-        parent.add(basename6);
+        parent.add(basename7);
         const absolutePath = sp.resolve(path);
         const options = {
           persistent: opts.persistent
@@ -6036,7 +6037,7 @@ var init_handler = __esm({
         let closer;
         if (opts.usePolling) {
           const enableBin = opts.interval !== opts.binaryInterval;
-          options.interval = enableBin && isBinaryPath(basename6) ? opts.binaryInterval : opts.interval;
+          options.interval = enableBin && isBinaryPath(basename7) ? opts.binaryInterval : opts.interval;
           closer = setFsWatchFileListener(path, absolutePath, options, {
             listener,
             rawEmitter: this.fsw._emitRaw
@@ -6058,11 +6059,11 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname13 = sp.dirname(file);
-        const basename6 = sp.basename(file);
-        const parent = this.fsw._getWatchedDir(dirname13);
+        const dirname14 = sp.dirname(file);
+        const basename7 = sp.basename(file);
+        const parent = this.fsw._getWatchedDir(dirname14);
         let prevStats = stats;
-        if (parent.has(basename6))
+        if (parent.has(basename7))
           return;
         const listener = async (path, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
@@ -6087,9 +6088,9 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname13, basename6);
+              this.fsw._remove(dirname14, basename7);
             }
-          } else if (parent.has(basename6)) {
+          } else if (parent.has(basename7)) {
             const at = newStats.atimeMs;
             const mt = newStats.mtimeMs;
             if (!at || at <= mt || mt !== prevStats.mtimeMs) {
@@ -7815,10 +7816,12 @@ async function importTargets(project, file) {
   return deps.map((dep) => depToPath(dep, file, project.config.root)).filter((target) => target !== null);
 }
 function depToPath(dep, importer, root) {
-  if (dep.startsWith("/@fs/")) return dep.slice("/@fs".length);
-  if (dep.startsWith("/@") || dep.startsWith("\0") || dep.includes(":")) return null;
-  if (dep.startsWith("/")) return join20(root, dep.split("?")[0] ?? dep);
-  if (dep.startsWith("./") || dep.startsWith("../")) return resolve9(dirname11(importer), dep);
+  if (dep.startsWith("\0") || dep.includes(":")) return null;
+  const path = dep.split("?")[0] ?? dep;
+  if (path.startsWith("/@fs/")) return path.slice("/@fs".length);
+  if (path.startsWith("/@")) return null;
+  if (path.startsWith("/")) return join20(root, path);
+  if (path.startsWith("./") || path.startsWith("../")) return resolve9(dirname11(importer), path);
   return null;
 }
 function resolutionCandidates(target, extensions) {
@@ -8354,25 +8357,63 @@ var init_run = __esm({
   }
 });
 
+// src/runners/vitest/dynamic.ts
+import { readFileSync as readFileSync6 } from "node:fs";
+function expandsFromDisk(file, transform) {
+  if (file.includes("/node_modules/")) return false;
+  let found = scanned.get(transform);
+  if (found === void 0) {
+    found = DYNAMIC_SPECIFIER.test(readSource(file));
+    scanned.set(transform, found);
+  }
+  return found;
+}
+function readSource(file) {
+  try {
+    return readFileSync6(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+var DYNAMIC_SPECIFIER, scanned;
+var init_dynamic = __esm({
+  "src/runners/vitest/dynamic.ts"() {
+    "use strict";
+    DYNAMIC_SPECIFIER = /import\.meta\.glob|\bimport\s*\(\s*`[^`]*\$\{/;
+    scanned = /* @__PURE__ */ new WeakMap();
+  }
+});
+
 // src/runners/vitest/stale.ts
+import { isBuiltin } from "node:module";
+import { basename as basename6, dirname as dirname13 } from "node:path";
 function staleTransforms(vitest, added, deleted) {
-  const stale = new Set(deleted);
+  const stale = /* @__PURE__ */ new Set();
+  const gone = new Set(deleted);
   for (const project of vitest.projects) {
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set(deleted);
+      const directories = [...added, ...deleted].filter(isPackageJson).map((p) => `${dirname13(p)}/`);
       for (const path of added) {
         for (const base of resolutionBases(path, extensions)) {
           for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
+          if (base !== dirname13(path)) directories.push(`${base}/`);
         }
       }
+      const reresolves = (dep, file) => {
+        const path = depToPath(dep, file, project.config.root);
+        if (path === null) return added.length > 0 && isUnresolvedBare(dep);
+        return targets.has(path) || directories.some((dir) => path.startsWith(dir));
+      };
       for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
-        if (stale.has(file)) continue;
+        if (stale.has(file) || gone.has(file)) continue;
         for (const module of modules) {
+          if (!knowsSoftInvalidation(vitest, module)) return null;
           const result = cachedTransform(module);
           if (!result) continue;
           const deps = [...result.deps ?? [], ...result.dynamicDeps ?? []];
-          if (deps.some((dep) => targets.has(depToPath(dep, file, project.config.root) ?? ""))) {
+          if (deps.some((dep) => reresolves(dep, file)) || added.length > 0 && expandsFromDisk(file, result)) {
             stale.add(file);
             break;
           }
@@ -8382,15 +8423,40 @@ function staleTransforms(vitest, added, deleted) {
   }
   return stale;
 }
+function isUnresolvedBare(dep) {
+  return !dep.startsWith("/") && !dep.startsWith(".") && !dep.startsWith("\0") && !dep.includes(":") && !isBuiltin(dep);
+}
+function knowsSoftInvalidation(vitest, module) {
+  let known2 = tracksSoftInvalidation.get(vitest);
+  if (known2 === void 0) {
+    known2 = "invalidationState" in module;
+    tracksSoftInvalidation.set(vitest, known2);
+  }
+  return known2;
+}
 function cachedTransform(module) {
   if (module.transformResult) return module.transformResult;
   const state = module.invalidationState;
   return typeof state === "object" && state !== null ? state : null;
 }
+function cachedFiles(vitest) {
+  const files = /* @__PURE__ */ new Set();
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
+    }
+  }
+  return files;
+}
+var tracksSoftInvalidation, isPackageJson, FALLBACK_NOTE;
 var init_stale = __esm({
   "src/runners/vitest/stale.ts"() {
     "use strict";
+    init_dynamic();
     init_graph();
+    tracksSoftInvalidation = /* @__PURE__ */ new WeakMap();
+    isPackageJson = (path) => basename6(path) === "package.json";
+    FALLBACK_NOTE = "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
   }
 });
 
@@ -8430,6 +8496,8 @@ var init_adapter = __esm({
       #generation = 0;
       #queue = Promise.resolve();
       #closed = false;
+      /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
+      #fellBack = /* @__PURE__ */ new WeakSet();
       /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
       async #start() {
         const generation = ++this.#generation;
@@ -8479,17 +8547,23 @@ var init_adapter = __esm({
             return { recreatedProjects: [...names].sort() };
           }
           for (const p of abs) vitest.invalidateFile(p.abs);
+          const notes2 = [];
           const structural = abs.filter((p) => p.kind !== "change");
           if (structural.length > 0) {
             const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
             const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-            for (const file of staleTransforms(vitest, added, deleted)) vitest.invalidateFile(file);
+            const stale = staleTransforms(vitest, added, deleted);
+            for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
+            if (stale === null && !this.#fellBack.has(vitest)) {
+              this.#fellBack.add(vitest);
+              notes2.push(FALLBACK_NOTE);
+            }
             const testGlob = structural.some(
               (p) => vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => ""))
             );
             if (testGlob) vitest.clearSpecificationsCache();
           }
-          return { recreatedProjects: [] };
+          return { recreatedProjects: [], ...notes2.length > 0 ? { notes: notes2 } : {} };
         });
       }
       affected(changedPaths) {
@@ -10433,7 +10507,7 @@ async function daemonCommand(args, io) {
 }
 
 // src/cli/init.ts
-import { existsSync as existsSync10, mkdirSync as mkdirSync7, readFileSync as readFileSync6, rmSync as rmSync5, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync10, mkdirSync as mkdirSync7, readFileSync as readFileSync7, rmSync as rmSync5, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join24 } from "node:path";
 init_types();
 var MARKETPLACE_NAME = "squeal";
@@ -10541,7 +10615,7 @@ function reason(error) {
 }
 function readSettings(path) {
   if (!existsSync10(path)) return { value: {}, text: null, indent: 2 };
-  const text = readFileSync6(path, "utf8");
+  const text = readFileSync7(path, "utf8");
   let value;
   try {
     value = JSON.parse(text);
