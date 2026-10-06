@@ -1,3 +1,231 @@
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
+
+// src/core/keys/closure.ts
+var CLOSURE_METHOD = "static imports plus declared inputs";
+
+// src/core/keys/reverse-index.ts
+function testFileId(ref) {
+  return `${ref.project}\0${ref.path}`;
+}
+
+// src/core/state/fingerprint.ts
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+var VOLATILE = [
+  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
+  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
+  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
+  // A cache path names a tool's scratch space; its segments are hashes and run ids.
+  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
+  ...tempPrefixes().map((prefix) => [
+    new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
+    "<tmp>"
+  ]),
+  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
+  // At least one letter, so a long decimal value in an assertion is kept.
+  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
+];
+function tempPrefixes() {
+  const dir = tmpdir().replace(/\/+$/, "");
+  let real = dir;
+  try {
+    real = realpathSync(dir);
+  } catch {
+  }
+  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+}
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// src/core/state/derive.ts
+function checkIdentity(check) {
+  const name = check.kind === "test" ? check.fullName : "";
+  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
+function testFileKeyOf(check) {
+  return testFileId(testFileOf(check));
+}
+function testFileOf(check) {
+  return { project: check.project, path: check.testPath };
+}
+
+// src/core/state/baseline.ts
+var metaKey = (worktreeId) => `state.baseline-findings.${worktreeId}`;
+function entry(check, fingerprint) {
+  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
+}
+function read(store, worktreeId) {
+  const raw = store.meta.get(metaKey(worktreeId));
+  return raw === null ? null : JSON.parse(raw);
+}
+function baselineFindings(store, worktreeId) {
+  const entries = new Set(read(store, worktreeId)?.entries);
+  return (check, fingerprint) => entries.has(entry(check, fingerprint));
+}
+
+// src/core/state/header.ts
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  let inheritedCount = 0;
+  for (const state of states) {
+    counts[state.validity]++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+  }
+  const last = store.checkpoints.lastCompleted(worktreeId);
+  return {
+    revision,
+    counts,
+    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
+    fullSuite: {
+      atCurrentRevision: last !== null && last.revision === revision,
+      lastCompletedRevision: last?.revision ?? null
+    },
+    testFilesListed: keys.length > 0 || last !== null,
+    inheritedCount
+  };
+}
+function countFilesWithoutChecks(states, keys) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const counts = { pending: 0, unknown: 0 };
+  for (const row of keys) {
+    if (withChecks.has(testFileId(row.testFile))) continue;
+    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
+  }
+  return counts;
+}
+function hasKey(row) {
+  return row.key !== null;
+}
+function toKnownFailure(state, revision) {
+  if (state.outcome !== "fail") return null;
+  return {
+    check: state.check,
+    outcome: "fail",
+    validity: state.validity,
+    observedAt: state.observedAt ?? revision,
+    summary: state.summary ?? "",
+    fingerprint: state.fingerprint ?? "",
+    location: state.location
+  };
+}
+
+// src/core/state/transitions.ts
+function transitionKind(from, to) {
+  const before = from?.outcome ?? null;
+  switch (to.outcome) {
+    case "fail":
+      if (before === "pass") return "pass-to-fail";
+      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
+      return "first-seen-fail";
+    case "pass":
+      return before === "fail" ? "fail-to-pass" : null;
+    case "unknown":
+      return before === "pass" || before === "fail" ? "to-unknown" : null;
+    case "skip":
+      return null;
+  }
+}
+
+// src/core/delivery/delivery.ts
+import { setTimeout as sleep } from "node:timers/promises";
+
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+
+// src/core/delivery/delta.ts
+function beforeFailing(history, state) {
+  const last = history.at(-1);
+  if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
+    return null;
+  }
+  const entered = history.findLast((t) => t.kind !== "fail-changed");
+  return entered?.from == null ? null : { outcome: entered.from, fingerprint: entered.fromFingerprint };
+}
+var RANK = {
+  "pass-to-fail": 0,
+  "first-seen-fail": 0,
+  "fail-changed": 1,
+  "to-unknown": 3,
+  "fail-to-pass": 4,
+  "fail-retired": 5
+};
+var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
+function isBaselineEntry(e) {
+  return e.kind !== "fail-retired" && e.baseline === true;
+}
+function restrictPlan(plan, kinds) {
+  const entries = plan.entries.filter((e) => kinds.has(e.kind));
+  const ids = new Set(entries.map((e) => checkIdentity(e.check)));
+  return {
+    entries,
+    writes: plan.writes.filter((w) => ids.has(checkIdentity(w.check))),
+    removals: plan.removals.filter((c) => ids.has(checkIdentity(c)))
+  };
+}
+function toView(state, toldAt) {
+  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
+}
+function planDelta(input) {
+  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
+  const entries = [];
+  const writes = [];
+  for (const state of input.states) {
+    const id = checkIdentity(state.check);
+    const before = told.get(id) ?? null;
+    told.delete(id);
+    const prior = before === null && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
+    const kind = transitionKind(before ?? prior, state);
+    if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
+    if (kind === null) continue;
+    const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
+    const originRoot = state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
+    entries.push({
+      check: state.check,
+      kind,
+      from: (before ?? prior)?.outcome ?? null,
+      to: state.outcome,
+      validity: state.validity,
+      observedAt: state.observedAt ?? input.revision,
+      origin: state.origin ?? { kind: "own" },
+      ...originRoot === null ? {} : { originRoot },
+      summary: state.summary,
+      location: state.location,
+      ...baseline ? { baseline } : {}
+    });
+  }
+  for (const view of told.values()) {
+    if (view.outcome !== "fail") continue;
+    entries.push({
+      check: view.check,
+      kind: "fail-retired",
+      from: "fail",
+      to: null,
+      fingerprint: view.fingerprint,
+      observedAt: input.revision
+    });
+  }
+  const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
+  return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
+}
+
 // src/core/store/open.ts
 import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
 import { join as join3 } from "node:path";
@@ -70,34 +298,26 @@ function rollback(db) {
 
 // src/core/store/paths.ts
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync as realpathSync2 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-
-// src/core/fs/errors.ts
-function isMissing(error) {
-  const code = error?.code;
-  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
-}
-
-// src/core/store/paths.ts
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return createHash("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
 }
 function resolveCommonDir(root) {
   const dotGit = join(root, ".git");
   const stat = lstatOrNull(dotGit);
   if (stat === null) return null;
-  if (stat.isDirectory()) return realpathSync(dotGit);
+  if (stat.isDirectory()) return realpathSync2(dotGit);
   if (!stat.isFile()) return null;
   const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
   if (!match?.[1]) return null;
   const gitdir = resolve(root, match[1]);
   if (lstatOrNull(gitdir) === null) return null;
   const commondirFile = join(gitdir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync(gitdir);
+  if (lstatOrNull(commondirFile) === null) return realpathSync2(gitdir);
   const commondir = readFileSync(commondirFile, "utf8").trim();
   const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync(common);
+  return lstatOrNull(common) === null ? null : realpathSync2(common);
 }
 function storePaths(commonDir) {
   const dir = join(commonDir, "squeal");
@@ -615,7 +835,7 @@ function createViewRepo(conn) {
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       ...consumerParams(consumer)
-    ).map(toView),
+    ).map(toView2),
     writeMany: (consumer, entries) => conn.transaction(() => {
       for (const e of entries) {
         conn.run(
@@ -643,7 +863,7 @@ function createViewRepo(conn) {
     })
   };
 }
-function toView(row) {
+function toView2(row) {
   return {
     check: checkFrom(row),
     outcome: oneOf(row, "outcome", OUTCOMES),
@@ -1425,183 +1645,6 @@ function moveAside(database, at) {
   return movedTo;
 }
 
-// src/core/keys/closure.ts
-var CLOSURE_METHOD = "static imports plus declared inputs";
-
-// src/core/keys/reverse-index.ts
-function testFileId(ref) {
-  return `${ref.project}\0${ref.path}`;
-}
-
-// src/core/state/derive.ts
-function checkIdentity(check) {
-  const name = check.kind === "test" ? check.fullName : "";
-  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
-}
-function testFileKeyOf(check) {
-  return testFileId(testFileOf(check));
-}
-function testFileOf(check) {
-  return { project: check.project, path: check.testPath };
-}
-
-// src/core/state/baseline.ts
-var metaKey = (worktreeId) => `state.baseline-findings.${worktreeId}`;
-function entry(check, fingerprint) {
-  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
-}
-function read(store, worktreeId) {
-  const raw = store.meta.get(metaKey(worktreeId));
-  return raw === null ? null : JSON.parse(raw);
-}
-function baselineFindings(store, worktreeId) {
-  const entries = new Set(read(store, worktreeId)?.entries);
-  return (check, fingerprint) => entries.has(entry(check, fingerprint));
-}
-
-// src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
-  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
-  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const state of states) counts[state.validity]++;
-  const last = store.checkpoints.lastCompleted(worktreeId);
-  return {
-    revision,
-    counts,
-    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    fullSuite: {
-      atCurrentRevision: last !== null && last.revision === revision,
-      lastCompletedRevision: last?.revision ?? null
-    }
-  };
-}
-function countFilesWithoutChecks(states, keys) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts = { pending: 0, unknown: 0 };
-  for (const row of keys) {
-    if (withChecks.has(testFileId(row.testFile))) continue;
-    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
-  }
-  return counts;
-}
-function hasKey(row) {
-  return row.key !== null;
-}
-function toKnownFailure(state, revision) {
-  if (state.outcome !== "fail") return null;
-  return {
-    check: state.check,
-    outcome: "fail",
-    validity: state.validity,
-    observedAt: state.observedAt ?? revision,
-    summary: state.summary ?? "",
-    fingerprint: state.fingerprint ?? "",
-    location: state.location
-  };
-}
-
-// src/core/state/transitions.ts
-function transitionKind(from, to) {
-  const before = from?.outcome ?? null;
-  switch (to.outcome) {
-    case "fail":
-      if (before === "pass") return "pass-to-fail";
-      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
-      return "first-seen-fail";
-    case "pass":
-      return before === "fail" ? "fail-to-pass" : null;
-    case "unknown":
-      return before === "pass" || before === "fail" ? "to-unknown" : null;
-    case "skip":
-      return null;
-  }
-}
-
-// src/core/delivery/delivery.ts
-import { setTimeout as sleep } from "node:timers/promises";
-
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-
-// src/core/delivery/delta.ts
-var RANK = {
-  "pass-to-fail": 0,
-  "first-seen-fail": 0,
-  "fail-changed": 1,
-  "to-unknown": 3,
-  "fail-to-pass": 4,
-  "fail-retired": 5
-};
-var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
-function isBaselineEntry(e) {
-  return e.kind !== "fail-retired" && e.baseline === true;
-}
-function restrictPlan(plan, kinds) {
-  const entries = plan.entries.filter((e) => kinds.has(e.kind));
-  const ids = new Set(entries.map((e) => checkIdentity(e.check)));
-  return {
-    entries,
-    writes: plan.writes.filter((w) => ids.has(checkIdentity(w.check))),
-    removals: plan.removals.filter((c) => ids.has(checkIdentity(c)))
-  };
-}
-function toView2(state, toldAt) {
-  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
-}
-function planDelta(input) {
-  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
-  const entries = [];
-  const writes = [];
-  for (const state of input.states) {
-    const id = checkIdentity(state.check);
-    const before = told.get(id) ?? null;
-    told.delete(id);
-    const kind = transitionKind(before, state);
-    if (before === null || kind !== null) writes.push(toView2(state, input.toldAt));
-    if (kind === null) continue;
-    const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
-    const originRoot = state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
-    entries.push({
-      check: state.check,
-      kind,
-      from: before?.outcome ?? null,
-      to: state.outcome,
-      validity: state.validity,
-      observedAt: state.observedAt ?? input.revision,
-      origin: state.origin ?? { kind: "own" },
-      ...originRoot === null ? {} : { originRoot },
-      summary: state.summary,
-      location: state.location,
-      ...baseline ? { baseline } : {}
-    });
-  }
-  for (const view of told.values()) {
-    if (view.outcome !== "fail") continue;
-    entries.push({
-      check: view.check,
-      kind: "fail-retired",
-      from: "fail",
-      to: null,
-      fingerprint: view.fingerprint,
-      observedAt: input.revision
-    });
-  }
-  const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
-  return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
-}
-
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync2, statSync } from "node:fs";
 import { join as join4, resolve as resolve3 } from "node:path";
@@ -1670,12 +1713,12 @@ function toNote(item) {
 }
 
 // src/core/status/open.ts
-import { existsSync as existsSync3, realpathSync as realpathSync2 } from "node:fs";
+import { existsSync as existsSync3, realpathSync as realpathSync3 } from "node:fs";
 import { dirname, join as join5, resolve as resolve4 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function findWorktreeRoot(path) {
   let dir = resolve4(path);
-  if (existsSync3(dir)) dir = realpathSync2(dir);
+  if (existsSync3(dir)) dir = realpathSync3(dir);
   for (; ; ) {
     if (existsSync3(join5(dir, ".git"))) return dir;
     const parent = dirname(dir);
@@ -1722,6 +1765,8 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
+  const daemon = liveness(worktree?.daemon ?? null, now);
+  const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -1729,8 +1774,9 @@ function snapshot(store, worktreeId, root, now) {
     worktreeRoot: worktree?.root ?? root,
     ...header,
     head: revision === null ? readGitHead(root) : revision.head,
-    dirty: revision?.dirty ?? null,
-    daemon: liveness(worktree?.daemon ?? null, now),
+    dirty: observed?.dirty ?? null,
+    dirtyObservedAt: observed?.number ?? null,
+    daemon,
     knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),
@@ -1861,7 +1907,8 @@ function createDelivery(store, options) {
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0
+      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
+      history: (check) => store.transitions.history(consumer.worktreeId, check)
     });
     return kinds === null ? full : restrictPlan(full, kinds);
   }
@@ -1906,7 +1953,7 @@ function createDelivery(store, options) {
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
         consumer,
-        states.map((s) => toView2(s, at))
+        states.map((s) => toView(s, at))
       );
       const header = readLiveHeader(store, consumer.worktreeId, at, states);
       tellLiveness(store, consumer, header.daemon?.state ?? null);
@@ -2026,16 +2073,52 @@ function lock(path) {
   }
 }
 
+// src/harness/claude-code/sweep.ts
+async function unregisterSession(context, sessionId, options) {
+  const { store, delivery } = context;
+  const worktrees = /* @__PURE__ */ new Set([
+    context.consumer.worktreeId,
+    ...store.worktrees.list().map((w) => w.id)
+  ]);
+  const consumers = [...worktrees].flatMap(
+    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same(consumer, options.except))
+  );
+  const errors = [];
+  const attempt = async (fn) => {
+    try {
+      await fn();
+    } catch (error) {
+      errors.push(error);
+    }
+  };
+  for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
+  if (options.removeLocks) {
+    const { locksDir } = storePaths(context.commonDir);
+    for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
+  }
+  if (errors.length > 0) throw errors[0];
+  return consumers;
+}
+function same(a, b) {
+  return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
+}
+
 // src/harness/claude-code/hooks/session-end.ts
-var sessionEnd = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
-  const { locksDir } = storePaths(location2.commonDir);
-  const consumers = context.store.consumers.list(context.consumer.worktreeId).filter((record) => record.consumer.sessionId === input.session_id);
-  for (const { consumer } of consumers) {
-    await context.delivery.unregister(consumer);
-    removeWaiterLock(locksDir, consumer);
+var sessionEnd = async (input, location2, deps) => {
+  const locations = [location2];
+  const project = deps.env.CLAUDE_PROJECT_DIR;
+  const fromProject = project === void 0 || project === "" ? null : locate(project);
+  if (fromProject !== null && fromProject.commonDir !== location2.commonDir) {
+    locations.push(fromProject);
+  }
+  for (const at of locations) {
+    await withContext(input, at, deps, async (context) => {
+      await unregisterSession(context, input.session_id, { removeLocks: true });
+      return null;
+    });
   }
   return null;
-});
+};
 
 // src/harness/claude-code/main.ts
 import { readFileSync as readFileSync3 } from "node:fs";
@@ -2066,11 +2149,12 @@ function parseHookInput(text) {
 
 // src/harness/claude-code/run.ts
 var SILENT = { stdout: "", stderr: "", exitCode: 0 };
+var PROJECT_DIR_FALLBACK = /* @__PURE__ */ new Set(["session-end"]);
 async function runHandler(name, handler, stdin, deps) {
   try {
     const input = parseHookInput(stdin);
     if (input === null) return SILENT;
-    const location2 = locate(input.cwd);
+    const location2 = locate(input.cwd) ?? projectDir(name, deps);
     if (location2 === null) return SILENT;
     const outcome = await handler(input, location2, deps);
     if (outcome === null) return SILENT;
@@ -2086,6 +2170,10 @@ async function runHandler(name, handler, stdin, deps) {
     }
     return SILENT;
   }
+}
+function projectDir(name, deps) {
+  const dir = deps.env.CLAUDE_PROJECT_DIR;
+  return PROJECT_DIR_FALLBACK.has(name) && dir !== void 0 && dir !== "" ? locate(dir) : null;
 }
 
 // src/harness/claude-code/main.ts

@@ -7,6 +7,78 @@ function isMissing(error) {
   return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
 }
 
+// src/core/keys/glob.ts
+function globToRegExp(glob) {
+  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
+  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function compile(glob, original) {
+  let out = "";
+  let i = 0;
+  while (i < glob.length) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        const atStart = i === 0 || glob[i - 1] === "/";
+        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+        if (atStart && atEnd) {
+          if (i + 2 === glob.length) out += ".+";
+          else out += "(?:.+/)?";
+          i += 3;
+          continue;
+        }
+      }
+      out += "[^/]*";
+      i += glob[i + 1] === "*" ? 2 : 1;
+    } else if (char === "?") {
+      out += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
+      const negated = body.startsWith("!");
+      if (negated) body = body.slice(1);
+      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
+      i = end + 1;
+    } else if (char === "{") {
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
+      i = end + 1;
+    } else {
+      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
+      i++;
+    }
+  }
+  return out;
+}
+function matchingBrace(glob, open, original) {
+  let depth = 0;
+  for (let i = open; i < glob.length; i++) {
+    if (glob[i] === "{") depth++;
+    else if (glob[i] === "}" && --depth === 0) return i;
+  }
+  throw new Error(`squeal: unclosed { in input glob: ${original}`);
+}
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}") depth--;
+    else if (body[i] === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -16,7 +88,35 @@ function testFileId(ref) {
 }
 
 // src/core/state/fingerprint.ts
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 var SUMMARY_MAX_CHARS = 300;
+var VOLATILE = [
+  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
+  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
+  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
+  // A cache path names a tool's scratch space; its segments are hashes and run ids.
+  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
+  ...tempPrefixes().map((prefix) => [
+    new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
+    "<tmp>"
+  ]),
+  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
+  // At least one letter, so a long decimal value in an assertion is kept.
+  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
+];
+function tempPrefixes() {
+  const dir = tmpdir().replace(/\/+$/, "");
+  let real = dir;
+  try {
+    real = realpathSync(dir);
+  } catch {
+  }
+  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+}
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 // src/core/state/derive.ts
 function checkIdentity(check) {
@@ -55,7 +155,11 @@ function formatCheck(check) {
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const state of states) counts[state.validity]++;
+  let inheritedCount = 0;
+  for (const state of states) {
+    counts[state.validity]++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+  }
   const last = store.checkpoints.lastCompleted(worktreeId);
   return {
     revision,
@@ -64,8 +168,14 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     fullSuite: {
       atCurrentRevision: last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null
-    }
+    },
+    testFilesListed: keys.length > 0 || last !== null,
+    inheritedCount
   };
+}
+function fullSuiteText({ revision, fullSuite }) {
+  if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
+  return fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -143,6 +253,14 @@ function notesMetaKey(worktreeId) {
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 
 // src/core/delivery/delta.ts
+function beforeFailing(history, state) {
+  const last = history.at(-1);
+  if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
+    return null;
+  }
+  const entered = history.findLast((t) => t.kind !== "fail-changed");
+  return entered?.from == null ? null : { outcome: entered.from, fingerprint: entered.fromFingerprint };
+}
 var RANK = {
   "pass-to-fail": 0,
   "first-seen-fail": 0,
@@ -175,7 +293,8 @@ function planDelta(input) {
     const id = checkIdentity(state.check);
     const before = told.get(id) ?? null;
     told.delete(id);
-    const kind = transitionKind(before, state);
+    const prior = before === null && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
+    const kind = transitionKind(before ?? prior, state);
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
     const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
@@ -183,7 +302,7 @@ function planDelta(input) {
     entries.push({
       check: state.check,
       kind,
-      from: before?.outcome ?? null,
+      from: (before ?? prior)?.outcome ?? null,
       to: state.outcome,
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
@@ -281,26 +400,26 @@ function rollback(db) {
 
 // src/core/store/paths.ts
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync as realpathSync2 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return createHash("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
 }
 function resolveCommonDir(root) {
   const dotGit = join(root, ".git");
   const stat = lstatOrNull(dotGit);
   if (stat === null) return null;
-  if (stat.isDirectory()) return realpathSync(dotGit);
+  if (stat.isDirectory()) return realpathSync2(dotGit);
   if (!stat.isFile()) return null;
   const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
   if (!match?.[1]) return null;
   const gitdir = resolve(root, match[1]);
   if (lstatOrNull(gitdir) === null) return null;
   const commondirFile = join(gitdir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync(gitdir);
+  if (lstatOrNull(commondirFile) === null) return realpathSync2(gitdir);
   const commondir = readFileSync(commondirFile, "utf8").trim();
   const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync(common);
+  return lstatOrNull(common) === null ? null : realpathSync2(common);
 }
 function storePaths(commonDir) {
   const dir = join(commonDir, "squeal");
@@ -1696,12 +1815,12 @@ function toNote(item) {
 }
 
 // src/core/status/open.ts
-import { existsSync as existsSync3, realpathSync as realpathSync2 } from "node:fs";
+import { existsSync as existsSync3, realpathSync as realpathSync3 } from "node:fs";
 import { dirname, join as join5, resolve as resolve4 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function findWorktreeRoot(path) {
   let dir = resolve4(path);
-  if (existsSync3(dir)) dir = realpathSync2(dir);
+  if (existsSync3(dir)) dir = realpathSync3(dir);
   for (; ; ) {
     if (existsSync3(join5(dir, ".git"))) return dir;
     const parent = dirname(dir);
@@ -1748,6 +1867,8 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
+  const daemon = liveness(worktree?.daemon ?? null, now);
+  const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -1755,8 +1876,9 @@ function snapshot(store, worktreeId, root, now) {
     worktreeRoot: worktree?.root ?? root,
     ...header,
     head: revision === null ? readGitHead(root) : revision.head,
-    dirty: revision?.dirty ?? null,
-    daemon: liveness(worktree?.daemon ?? null, now),
+    dirty: observed?.dirty ?? null,
+    dirtyObservedAt: observed?.number ?? null,
+    daemon,
     knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),
@@ -1887,7 +2009,8 @@ function createDelivery(store, options) {
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0
+      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
+      history: (check) => store.transitions.history(consumer.worktreeId, check)
     });
     return kinds === null ? full : restrictPlan(full, kinds);
   }
@@ -1987,11 +2110,13 @@ function checkName(check) {
 function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
 }
+var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 function headerLine(header) {
-  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
-  const suite = fullSuite.atCurrentRevision ? `completed at revision ${revision}` : fullSuite.lastCompletedRevision === null ? "not completed at any revision" : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const { revision, counts, testFilesWithoutChecks: files } = header;
+  const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
-  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.` + livenessSentence(header.daemon, revision);
+  const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
+  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
@@ -2179,7 +2304,7 @@ function failure(code, message) {
 }
 
 // src/core/daemon/paths.ts
-import { tmpdir } from "node:os";
+import { tmpdir as tmpdir2 } from "node:os";
 import { dirname as dirname2, isAbsolute as isAbsolute2, join as join6, resolve as resolve5 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? join6(tempDir(env), userDirName());
@@ -2195,7 +2320,7 @@ function xdgRuntimeDir(env) {
   return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : null;
 }
 function tempDir(env) {
-  if (process.platform === "win32") return tmpdir();
+  if (process.platform === "win32") return tmpdir2();
   const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
   const dir = isAbsolute2(given) ? given : "/tmp";
   return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
@@ -2359,19 +2484,34 @@ import { join as join7 } from "node:path";
 var POLICY_FILE = "squeal.config.json";
 var boolean = (v) => typeof v === "boolean" ? null : "true or false";
 var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings(v) === null;
+  if (!isList && !(isObject(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  for (const glob of globs) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
+    }
+  }
+  return null;
+};
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
 var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
 var orNull = (leaf) => (v) => {
   const expected = v === null ? null : leaf(v);
-  return expected === null ? null : `${expected}, or null`;
+  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
 };
 var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
   interrupt: { onRegression: boolean },
   stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
   baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
-  inputs: strings,
+  inputs,
   env: { allowlist: strings },
   runner: {
     tierSize: positiveInteger,
@@ -2420,6 +2560,7 @@ function merge(shape, defaults, given, prefix, problems) {
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
+      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
     } else if (!isObject(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
@@ -2627,11 +2768,12 @@ function parseHookInput(text) {
 
 // src/harness/claude-code/run.ts
 var SILENT = { stdout: "", stderr: "", exitCode: 0 };
+var PROJECT_DIR_FALLBACK = /* @__PURE__ */ new Set(["session-end"]);
 async function runHandler(name, handler, stdin, deps) {
   try {
     const input = parseHookInput(stdin);
     if (input === null) return SILENT;
-    const location2 = locate(input.cwd);
+    const location2 = locate(input.cwd) ?? projectDir(name, deps);
     if (location2 === null) return SILENT;
     const outcome = await handler(input, location2, deps);
     if (outcome === null) return SILENT;
@@ -2647,6 +2789,10 @@ async function runHandler(name, handler, stdin, deps) {
     }
     return SILENT;
   }
+}
+function projectDir(name, deps) {
+  const dir = deps.env.CLAUDE_PROJECT_DIR;
+  return PROJECT_DIR_FALLBACK.has(name) && dir !== void 0 && dir !== "" ? locate(dir) : null;
 }
 
 // src/harness/claude-code/main.ts
