@@ -604,3 +604,23 @@ Evidence:
 4. **G1 turn 2 was blocked again on the same 5 failures.** The agent had said in turn 1 that it could not fix them with Edit and Bash disabled, and said so again. This is the policy as specified: Stop blocks while failures are current, once per turn.
 
 Not measured: consumer expiry after these exits (both daemons were stopped by hand at 18:01, not by idle exit); A8 with the baseline still running at the first prompt; G1 with the default policy (S2 sends a fork to the same silent path under either policy; only policy on was run).
+
+## Structural changes on a large repository
+
+2026-10-06, reported by the human from Squeal on `cezar` (516 test files, projects `server` and `web`), measured by the coordinator. Answers the measurement D4 left open: the cost of the full transform invalidation on add or delete.
+
+The human saw an added or removed test take about 10 s to surface, against 1 to 2 s for an edit. The `cezar` store agrees. Editing `agent-model-policy.test.ts` (revision 9) started its run 1.3 s after the revision. Adding `artifacts/squeal-probe.test.ts` (revisions 12 and 14) started the run after 8.9 s and 11.3 s and delivered at 10.1 s and 12.3 s.
+
+The time goes into the runner phase of the refinement. Adapter calls timed on a copy of `cezar` at `82dfae5` with Squeal at `6185990`:
+
+| Step | Edit | Add test file | Delete test file |
+| --- | --- | --- | --- |
+| `invalidate` | 1 ms | 25 ms (`invalidateAll`) | 29 ms (`invalidateAll`) |
+| `affected` | 528 ms | 5,301 ms | 6,191 ms |
+| `affected` again, transforms warm | | 503 ms | |
+
+On this repository (102 test files) the same steps cost 11 ms and 410 ms, and every case surfaced within 2 s in a daemon probe. So the cost grows with the module graph. Each add or delete in any file, test or source, drops every cached transform in every project. The next walk re-transforms the whole graph, and so does every closure re-resolved after it. A test case added or removed inside an existing file is a plain edit and is not affected (0.3 to 0.6 s here).
+
+### Defects
+
+11. **An add or delete re-transforms the whole module graph before anything runs.** `src/runners/vitest/adapter.ts` `invalidate` calls `invalidateAll` on any structural path (D4). On a 516-file repository the following `affected` walk takes 5 to 6 s instead of 0.5 s, and the new test file's first result arrives 9 to 12 s after the save. Agents create and delete files often, so this lag hits them on most turns that add a test.
