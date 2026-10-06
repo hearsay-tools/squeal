@@ -2716,6 +2716,7 @@ var stop = (input, location2, deps) => {
     location2,
     deps,
     async (context) => {
+      if (input.agent_id !== void 0 && !isRegistered(context)) return null;
       await ensureIfStale(context, deps);
       if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
       const { store, consumer } = context;

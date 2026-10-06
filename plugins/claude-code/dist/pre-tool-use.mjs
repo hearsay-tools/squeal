@@ -2255,6 +2255,12 @@ function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
+}
+
 // src/harness/claude-code/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
@@ -2409,23 +2415,26 @@ function denialSentence(toolName) {
 }
 
 // src/harness/claude-code/hooks/pre-tool-use.ts
-var preToolUse = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
-  if (!readPolicy(location2.root).interrupt.onRegression) return null;
-  const delta = await context.delivery.peek(context.consumer, { kinds: REGRESSION_KINDS });
-  if (delta === null) return null;
-  const tool = input.tool_name ?? "tool";
-  return {
-    output: {
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: `${formatDelta(delta)}
+var preToolUse = async (input, location2, deps) => {
+  if (isFork(input)) return null;
+  return withContext(input, location2, deps, async (context) => {
+    if (!readPolicy(location2.root).interrupt.onRegression) return null;
+    const delta = await context.delivery.peek(context.consumer, { kinds: REGRESSION_KINDS });
+    if (delta === null) return null;
+    const tool = input.tool_name ?? "tool";
+    return {
+      output: {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: `${formatDelta(delta)}
 
 ${denialSentence(tool)}`
+        }
       }
-    }
-  };
-});
+    };
+  });
+};
 
 // src/harness/claude-code/main.ts
 import { readFileSync as readFileSync4 } from "node:fs";
