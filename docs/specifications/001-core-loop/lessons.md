@@ -624,3 +624,17 @@ On this repository (102 test files) the same steps cost 11 ms and 410 ms, and ev
 ### Defects
 
 11. **An add or delete re-transforms the whole module graph before anything runs.** `src/runners/vitest/adapter.ts` `invalidate` calls `invalidateAll` on any structural path (D4). On a 516-file repository the following `affected` walk takes 5 to 6 s instead of 0.5 s, and the new test file's first result arrives 9 to 12 s after the save. Agents create and delete files often, so this lag hits them on most turns that add a test.
+
+## A dependency install under a running daemon
+
+2026-10-07, found by the coordinator in `cezar` session `bbe5c9d9` (Squeal plugin at `cfb8e9e`), from `cezar/.git/squeal/store.sqlite` and the run logs under `cezar/.git/squeal/runs/`. Nothing since `cfb8e9e` touches this path.
+
+Worktree `c257b736` was registered before its dependencies were installed. Its tests resolved modules from the parent checkout's `node_modules`, because the worktree sits inside `cezar/.ai/cezar/worktrees/`. At 21:30:05 its baseline reported 1,282 failing checks. Four seconds later the agent ran `git checkout -b … origin/main && npm ci`, apparently to clear them. The daemon kept its Vitest instance, loaded from the parent's `node_modules`, across the install.
+
+From 21:32:48 to 21:34:40 every run in that worktree failed while loading the setup file, with `ENOENT … .ai/cezar/tmp/c257b736…/Yfp1fJ4OTMNiwKGwCRyDJ/ssr/<sha1>`. That directory is the Vitest instance's own temp directory, the place where the forks pool copies transformed modules (Vitest 4.1.10 `_tmpDir`). The instance remembers each copy's path (`_vitest_tmp`) and which directories it has already created, so it never writes them again after the directory disappears. What deleted the directory is not established. A second temp directory, `zcZHvgW_…`, alternated with the first in the logs. In 2 minutes, 122 runs ended `completed` and stored 3,929 `fail` results. Failing checks are re-run first, so the loop walked the whole suite.
+
+Those results were stored under keys computed after the install, so they matched the keys of installed worktrees. Other worktrees inherited them as ordinary failures: `bbe5c9d9` 7,754 checks, `86bc25a4` 7,657 and `aee1234c` 234. The main checkout was not affected. `bbe5c9d9` changed no code and ended with `Known failures: 8096`, delivered as `PASS -> FAIL … inherited from c257b736`. Its agent correctly called them unrelated. Each worktree clears them only by re-running the files itself.
+
+### Defects
+
+12. **A broken runner environment is stored as test failures and inherited by every worktree with the same keys.** A file-level error raised by the runner's own module loading (here, a missing transform copy in Vitest's temp directory) is recorded as a file-level `fail` under the check's key. D5 and D8 keep crashes out of the store because an `unknown` under a key would be inherited as a hit; this is the same harm through `fail`. Related: the daemon keeps a Vitest instance loaded from another `node_modules` across a dependency install in the worktree; and a baseline taken before the install reports failures that read as the agent's to fix.
