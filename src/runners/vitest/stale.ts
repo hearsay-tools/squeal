@@ -117,3 +117,17 @@ function cachedTransform(module: ModuleNode): Transform | null {
   const state = (module as { invalidationState?: unknown }).invalidationState;
   return typeof state === "object" && state !== null ? (state as Transform) : null;
 }
+
+export const FALLBACK_NOTE =
+  "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
+
+/** Every file with a module in some environment: the full invalidation `staleTransforms` falls back to. */
+export function cachedFiles(vitest: Vitest): Set<string> {
+  const files = new Set<string>();
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
+    }
+  }
+  return files;
+}

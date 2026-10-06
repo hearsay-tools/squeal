@@ -155,8 +155,20 @@ const configWith = (resolve: string) =>
  * one under the first targeted rule.
  */
 describe("vitest adapter: an add re-resolves every resolution path", SLOW, () => {
-  it("import.meta.glob picks up the new file", async () => {
+  // An inline project with a plugin of its own gets its own Vite server (D4: the scan covers it).
+  it.each([
+    ["the root project", ""],
+    ["an inline project with its own Vite server", "own"],
+  ])("import.meta.glob picks up the new file in %s", async (_, project) => {
+    const own = [
+      'import { defineConfig } from "vitest/config";',
+      "export default defineConfig({ test: { projects: [",
+      '  { plugins: [{ name: "own-server" }], test: { name: "own", include: ["test/**/*.test.ts"] } },',
+      "] } });",
+      "",
+    ].join("\n");
     const fx = await openFixture("basic", {
+      ...(project === "" ? {} : { "vitest.config.ts": own }),
       "src/plugins/a.ts": "export const name = 'a';\n",
       // Not `Object.keys(import.meta.glob(...))`: Vite turns that into the keys alone, no imports.
       "src/registry.ts": [
@@ -171,7 +183,7 @@ describe("vitest adapter: an add re-resolves every resolution path", SLOW, () =>
         "",
       ].join("\n"),
     });
-    const test = [ref("test/registry.test.ts")];
+    const test = [ref("test/registry.test.ts", project)];
     expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
 
     fx.write("src/plugins/b.ts", "export const name = 'b';\n");
@@ -223,6 +235,23 @@ describe("vitest adapter: an add re-resolves every resolution path", SLOW, () =>
 
     expect(paths(await fx.adapter.affected(["src/pkg.ts"]))).toEqual(["test/pkg.test.ts"]);
     expect(await fx.adapter.affected(["src/pkg/lib.ts"])).toEqual([]);
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+  });
+
+  it("a new package.json re-points a directory resolved through its index", async () => {
+    const fx = await openFixture("basic", {
+      "src/pkg/index.ts": 'export const which = "index";\n',
+      "src/pkg/lib.ts": 'export const which = "main";\n',
+      "src/uses.ts": 'export { which } from "./pkg";\n',
+      "test/pkg.test.ts": readsTest("../src/uses.ts", "main"),
+    });
+    const test = [ref("test/pkg.test.ts")];
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+
+    fx.write("src/pkg/package.json", '{ "main": "lib.ts" }\n');
+    await fx.adapter.invalidate([{ path: "src/pkg/package.json", kind: "add" }]);
+
+    expect(paths(await fx.adapter.affected(["src/pkg/lib.ts"]))).toEqual(["test/pkg.test.ts"]);
     expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
   });
 
