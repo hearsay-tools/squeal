@@ -41,6 +41,31 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "--disable-warning=ExperimentalWarning",
+              "${CLAUDE_PLUGIN_ROOT}/dist/user-prompt-submit.mjs"
+            ],
+            "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "--disable-warning=ExperimentalWarning",
+              "${CLAUDE_PLUGIN_ROOT}/dist/waiter.mjs"
+            ],
+            "asyncRewake": true,
+            "timeout": 3600
+          }
+        ]
+      }
+    ],
     "PostToolBatch": [
       {
         "hooks": [

@@ -4,6 +4,7 @@ import { preToolUse } from "./hooks/pre-tool-use.js";
 import { sessionEnd } from "./hooks/session-end.js";
 import { sessionStart } from "./hooks/session-start.js";
 import { stop } from "./hooks/stop.js";
+import { userPromptSubmit } from "./hooks/user-prompt-submit.js";
 import { waiter } from "./hooks/waiter.js";
 import { type HookResult, runHandler } from "./run.js";
 
@@ -18,6 +19,7 @@ export const HOOKS = {
   "pre-tool-use": preToolUse,
   stop,
   "session-end": sessionEnd,
+  "user-prompt-submit": userPromptSubmit,
   waiter,
 } as const;
 

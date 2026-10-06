@@ -8,9 +8,18 @@ import { tempDir } from "../store/helpers.js";
 import { liveSocket, outsideGit, runBundle, runtimeDir } from "./bundle-helpers.js";
 import { recorded, SUBTRACTS, squealRepo } from "./helpers.js";
 
-const HOOKS = ["session-start", "post-tool-batch", "pre-tool-use", "stop", "session-end", "waiter"];
+const HOOKS = [
+  "session-start",
+  "user-prompt-submit",
+  "post-tool-batch",
+  "pre-tool-use",
+  "stop",
+  "session-end",
+  "waiter",
+];
 const EVENT_OF: Record<string, string> = {
   "session-start": "session-start",
+  "user-prompt-submit": "user-prompt-submit",
   "post-tool-batch": "post-tool-batch",
   "pre-tool-use": "pre-tool-use",
   stop: "stop",
@@ -95,6 +104,18 @@ describe("bundled hooks, recorded JSON in and JSON out", () => {
     const end = await runBundle("session-end", recorded("session-end", r.root), env);
     expect(end).toMatchObject({ stdout: "", stderr: "", code: 0 });
     expect(r.store.consumers.list(r.worktreeId)).toEqual([]);
+
+    // Task 001-47: a prompt brings back an interactive registration the daemon expired.
+    const prompt = await runBundle("user-prompt-submit", recorded("user-prompt-submit", r.root), {
+      ...env,
+      ...INTERACTIVE,
+    });
+    expect(JSON.parse(prompt.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext: expect.stringMatching(/^SQUEAL · registered at revision 2\n/),
+      },
+    });
   });
 });
 

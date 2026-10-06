@@ -51,6 +51,9 @@ describe("hooks/hooks.json", () => {
       "SessionStart  session-start.mjs ",
       "SessionStart  waiter.mjs rewake",
       "SubagentStart  session-start.mjs ",
+      // Defect 10 (task 001-47): an interrupted turn runs no Stop, so every prompt re-arms.
+      "UserPromptSubmit  user-prompt-submit.mjs ",
+      "UserPromptSubmit  waiter.mjs rewake",
       "PostToolBatch  post-tool-batch.mjs ",
       "PreToolUse Edit|Write|NotebookEdit pre-tool-use.mjs ",
       "Stop  stop.mjs ",
