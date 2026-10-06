@@ -36,7 +36,7 @@ Started: 2026-10-02
 
 - 2026-10-06, from the wave 6 review (`reviews/wave-6.md`): no blocker; defects 8 and 10 confirmed gone in an attended re-run (consumers expired 10 to 11 minutes after exit, a waiter armed after an Esc). D9 idle-waiter paragraph amended for UserPromptSubmit arming and the timeout touch (N3). Accepted: the sub-millisecond lock-probe windows of N1 (a lost waiter or consumer is restored by the next prompt) and every daemon of a store running the expiry pass over all worktrees (N5). S1, S2, N2 and N4 are row 001-50.
 
-- 2026-10-06, wave 6.5 (001-50, from `reviews/wave-6.md` S1, S2, N2, N4): UserPromptSubmit injects the registration whenever it registers; a SubagentStop with no registration gets the fork behaviour, which covers forks under `--agent`; PostToolBatch and PreToolUse ignore forks (D9). Not yet checked in an attended session.
+- 2026-10-06, wave 6.5 (001-50, from `reviews/wave-6.md` S1, S2, N2, N4): UserPromptSubmit injects the registration whenever it registers; a SubagentStop with no registration gets the fork behaviour, which covers forks under `--agent`; PostToolBatch and PreToolUse ignore forks (D9). Confirmed in an attended session (001-51, `lessons.md` "Attended check after wave 6.5"); defects 8 to 10 are closed.
 
 ## Research
 
