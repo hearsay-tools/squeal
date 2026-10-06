@@ -36,9 +36,11 @@ Do not wait with `sleep` and poll. Run:
 squeal status --wait 60000
 ```
 
-It returns as soon as nothing is pending at the current revision, or as soon as a check changed (a new failure or a recovery), and at the latest after the given milliseconds. Then it prints status. Its first line says why it returned: `Returned on quiet`, `Returned on news` or `Returned on timeout`, with the revision and the time waited. The exit code is 0 in all three cases. After a timeout, checks are still pending: say so, or wait again. Keep the limit below your shell tool's own timeout. With `--json`, stdout is the snapshot and the line goes to stderr.
+It returns as soon as nothing is pending at the current revision, or as soon as a check changed (a new failure or a recovery), and at the latest after the given milliseconds. Then it prints status. Its first line says why it returned: `Returned on quiet`, `Returned on news`, `Returned without a daemon` or `Returned on timeout`, with the revision and the time waited. The exit code is 0 in all four cases. After a timeout, checks are still pending: say so, or wait again. Keep the limit below your shell tool's own timeout. With `--json`, stdout is the snapshot with a `wait` field (`outcome` is `quiet`, `news`, `no-daemon` or `timeout`) and the line goes to stderr.
 
-It reads the store only and needs no daemon. It returns on quiet no sooner than 750 ms after it starts, so a revision for an edit you just made is recorded first.
+Pending includes the runner part of a revision: until the daemon has listed the test files for the latest edit, the header says `The runner part of revision N is pending` and a test file you just added is not counted yet.
+
+It reads the store only and starts no daemon. Without a daemon nothing gets validated, so it does not report quiet: it returns `Returned without a daemon: no daemon has validated since <time>; results are as of revision N`. Results are then as old as that revision, whatever the files hold now; run `squeal start` and wait again. It returns no sooner than 750 ms after it starts, so a revision for an edit you just made is recorded first and a daemon a hook just started can report in.
 
 ## Reading the counts
 
