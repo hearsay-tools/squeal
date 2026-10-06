@@ -5,12 +5,16 @@ import { daemonCommand } from "./daemon.js";
 import { init } from "./init.js";
 import { runCommand } from "./run.js";
 import { startCommand } from "./start.js";
+import { statusWaitCommand } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
 
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
 Usage:
   squeal status [--json]        Current validation state of this worktree
+  squeal status --wait <ms> [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status
   squeal why <check> [--json]   History and provenance of one check
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
@@ -35,8 +39,11 @@ export interface CliIo {
   readonly now?: () => EpochMs;
 }
 
-/** Commands that answer from the store at once; the daemon commands are asynchronous. */
-type StoreCommand = "status" | "why";
+/**
+ * Commands that answer from the store at once; the daemon commands and
+ * `status --wait` are asynchronous.
+ */
+type StoreCommand = "why";
 
 /** Runs the CLI and returns the exit code. */
 export function main(argv: readonly [StoreCommand, ...string[]], io: CliIo): number;
@@ -66,11 +73,26 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
  * Exit codes for both commands: 0 with an answer, 1 when the store cannot
  * answer (status unavailable, no matching check), 2 on a usage error. Known
  * failures do not change the exit code: status reports, policy decides.
+ * `status --wait` also exits 0 when its wait timed out.
  */
-function status(args: readonly string[], io: CliIo): number {
-  const parsed = parseArgs("status", args, io);
+function status(args: readonly string[], io: CliIo): number | Promise<number> {
+  const waitAt = args.findIndex((a) => a === "--wait" || a.startsWith("--wait="));
+  let waitMs: number | null = null;
+  let rest = args;
+  if (waitAt !== -1) {
+    const arg = args[waitAt] as string;
+    const inline = arg.startsWith("--wait=");
+    const value = inline ? arg.slice("--wait=".length) : args[waitAt + 1];
+    if (value === undefined || !/^\d+$/.test(value)) {
+      return usage("status", "--wait takes a whole number of milliseconds", io);
+    }
+    waitMs = Number(value);
+    rest = args.filter((_, i) => i !== waitAt && (inline || i !== waitAt + 1));
+  }
+  const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
   if (parsed.positional.length > 0) return usage("status", "takes no arguments", io);
+  if (waitMs !== null) return statusWaitCommand(waitMs, parsed.json, io);
   const now = io.now ?? Date.now;
   const result = readStatus(io.cwd ?? process.cwd(), { now });
   io.stdout(parsed.json ? json(result) : formatStatus(result, now()));
