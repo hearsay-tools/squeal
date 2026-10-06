@@ -49,7 +49,7 @@ export interface Tier {
 export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | null {
   const { store, keys, policy } = context;
   const picked: TierFile[] = [];
-  for (const ref of ledger.queue.ordered()) {
+  for (const ref of ledger.ordered()) {
     if (picked.length >= policy.runner.tierSize) break;
     const file = ledger.file(ref);
     const key = file?.key ?? null;

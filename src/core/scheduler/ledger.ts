@@ -11,7 +11,7 @@ import type {
 } from "../types/index.js";
 import { Checkpoints } from "./checkpoints.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
-import { checkId, type FileState, newFileState } from "./files.js";
+import { checkId, durationOf, type FileState, newFileState } from "./files.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 
 /** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
@@ -28,6 +28,8 @@ export interface SettleOptions {
   readonly checkpointId?: string | null;
   /** Queue the misses. Default `true`. */
   readonly queueMisses?: boolean;
+  /** `testFileId`s the runner reported as direct importers of `changed` (D5 step 4). */
+  readonly direct?: ReadonlySet<string>;
 }
 
 /**
@@ -72,6 +74,11 @@ export class Ledger {
 
   file(ref: TestFileRef): FileState | undefined {
     return this.files.get(testFileId(ref));
+  }
+
+  /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
+  ordered(): TestFileRef[] {
+    return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null);
   }
 
   addFile(ref: TestFileRef): FileState {
@@ -142,7 +149,7 @@ export class Ledger {
         this.queue.remove(ref);
         this.#syncPhase(file);
       } else if (options.queueMisses !== false) {
-        this.enqueue(file, priorityOf(file, changed));
+        this.enqueue(file, priorityOf(file, changed, options.direct));
       }
     }
     return misses;
@@ -166,6 +173,7 @@ export class Ledger {
     file.resultKey = key;
     file.checks = next;
     file.failing = results.some((r) => r.outcome === "fail");
+    file.durationMs = durationOf(results) ?? file.durationMs;
     file.unknownKey = null;
     file.discards = 0;
     file.blocked = null;

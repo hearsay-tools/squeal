@@ -132,6 +132,11 @@ function recording(inner: RunnerAdapter, environmentRoot?: string): RecordingRun
     failure: "vitest.config.ts: Unexpected token",
     invalidate: (paths) => guarded("invalidate", () => inner.invalidate(paths)),
     affected: (paths) => guarded("affected", () => inner.affected(paths)),
+    affectedDetailed: (paths) =>
+      guarded("affected", async () => {
+        if (inner.affectedDetailed) return inner.affectedDetailed(paths);
+        return { direct: [], transitive: await inner.affected(paths) };
+      }),
     closure: (testFile) => guarded("closure", () => inner.closure(testFile)),
     enumerate: (testFile) => serial(() => inner.enumerate(testFile)),
     testFiles: () => guarded("testFiles", () => inner.testFiles()),
