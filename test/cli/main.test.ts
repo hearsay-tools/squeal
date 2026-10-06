@@ -51,8 +51,8 @@ describe("squeal status", () => {
       "  FAIL  src/a.test.ts > adds",
       "        expected 3, received 4",
       "        observed at revision 3, current",
-      "Affected checks: 0 passed, 0 running, 0 queued",
-      "Last full suite: none recorded",
+      "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
+      "Full-suite checkpoint: none completed at any revision",
     ]);
   });
 
