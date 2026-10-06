@@ -257,6 +257,7 @@ describe("Stop and SubagentStop", () => {
     const r = squealRepo();
     r.apply(r.pass());
     await runHook("session-start", recorded("session-start", r.root), deps());
+    await runHook("session-start", recorded("subagent-start", r.root), deps());
     r.policy({ stop: { requireFullSuite: true } });
 
     const out = await runHook("stop", recorded("subagent-stop", r.root), deps());

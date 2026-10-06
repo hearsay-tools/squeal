@@ -14,8 +14,12 @@ import type { HookInput } from "./input.js";
  *   other hook. `prompt_suggestion` is the fork's debug label and API
  *   request source, never its `agent_type`.
  *
- * Not covered: under `--agent <name>` a fork reports `<name>`, the same as a
- * real subagent of that type, so the input cannot tell them apart.
+ * Under `--agent <name>` a fork reports `<name>`, the same as a real subagent
+ * of that type, so the input cannot tell them apart. Stop covers that case
+ * with a second rule, checked after this one (review wave 6, S2): a
+ * SubagentStop whose consumer was never registered is treated as a fork's,
+ * since a real subagent is registered by SubagentStart or its first
+ * PostToolBatch.
  */
 export const FORK_AGENT_TYPES: ReadonlySet<string> = new Set([""]);
 

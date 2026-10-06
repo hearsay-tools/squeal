@@ -124,3 +124,46 @@ describe("Claude Code's internal forks are not consumers (lessons, defect 9)", (
     expect(edit).toEqual(SILENT);
   });
 });
+
+/*
+ * Review wave 6, S2: under `claude --agent <name>` a fork reports `<name>` as
+ * its agent type. A real subagent is registered by SubagentStart or its first
+ * PostToolBatch, so a SubagentStop with no registration is treated as a fork.
+ */
+describe("a SubagentStop that was never registered is a fork's (review wave 6, S2)", () => {
+  const HELPER = { agent_type: "helper" };
+
+  it("never blocks, says nothing, registers nothing and ensures no daemon", async () => {
+    const r = await oneFailure();
+    r.daemon("stale");
+    const { deps, ensured } = counting();
+
+    const out = await runHook("stop", recorded("subagent-stop", r.root, HELPER), deps);
+
+    expect(out).toEqual(SILENT);
+    expect(ensured()).toBe(0);
+    expect(r.store.consumers.get(r.consumer(SUBAGENT))).toBeNull();
+    expect(r.store.consumers.list(r.worktreeId).map((c) => c.consumer.agentId)).toEqual(["main"]);
+  });
+
+  it("a registered subagent of the same type is still blocked", async () => {
+    const r = await oneFailure();
+    await runHook("session-start", recorded("subagent-start", r.root, HELPER), counting().deps);
+
+    const out = await runHook("stop", recorded("subagent-stop", r.root, HELPER), counting().deps);
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ decision: "block" });
+    expect(r.store.consumers.get(r.consumer(SUBAGENT))).not.toBeNull();
+  });
+
+  it("a main agent's Stop with no registration still registers and is blocked", async () => {
+    const r = squealRepo();
+    r.apply(r.fail());
+    r.policy({ stop: { blockOnKnownFailures: true } });
+
+    const out = await runHook("stop", recorded("stop", r.root), counting().deps);
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ decision: "block" });
+    expect(r.store.consumers.get(r.consumer())).not.toBeNull();
+  });
+});

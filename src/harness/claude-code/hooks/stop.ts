@@ -65,7 +65,16 @@ export function stopBusyTimeoutMs(waitMs: number): number {
  * delivering (S6).
  *
  * Lessons, defect 9: the SubagentStop of one of Claude Code's internal forks
- * never blocks and delivers nothing, because a fork is not a consumer.
+ * never blocks and delivers nothing, because a fork is not a consumer. An
+ * empty `agent_type` marks a fork (`fork.ts`). Review wave 6, S2: so does a
+ * SubagentStop whose consumer has no registration. A real subagent is
+ * registered by SubagentStart or, if that hook failed, by its first
+ * PostToolBatch, so one that arrives unregistered ran no tool and has nothing
+ * to act on; forks send no SubagentStart and no other hook. Under
+ * `claude --agent <name>` a fork reports `<name>` and is caught only by this
+ * rule. Such a SubagentStop registers nothing, ensures no daemon, never
+ * blocks and says nothing. A main agent's Stop with no registration still
+ * registers, as `newsText` says.
  */
 export const stop: Handler = (input, location, deps) => {
   if (isFork(input)) return forkStop(input, location, deps);
@@ -76,6 +85,7 @@ export const stop: Handler = (input, location, deps) => {
     location,
     deps,
     async (context) => {
+      if (input.agent_id !== undefined && !isRegistered(context)) return null;
       await ensureIfStale(context, deps);
       if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
 
@@ -128,7 +138,7 @@ async function finishSubagent(context: HookContext): Promise<void> {
 }
 
 /**
- * The delta with its header and the known-failure count; for a consumer with
+ * The delta with its header and the known-failure count; for a main agent with
  * no registration, its registration when that lists known failures. `null`
  * when there is nothing new.
  */
