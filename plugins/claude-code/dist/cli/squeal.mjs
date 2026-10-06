@@ -242,6 +242,19 @@ function createDeclaredInputs(inputs2, files) {
     all: union(rules.map((r) => r.selected))
   };
 }
+function unmatchedInputs(inputs2, testFiles, files) {
+  const known2 = [...files];
+  const matchesNone = (glob, paths) => {
+    const matches = createInputMatcher([glob]);
+    return !paths.some((path) => matches(path));
+  };
+  const tests = [...testFiles];
+  const testGlobs = isInputList(inputs2) ? [] : Object.keys(inputs2).filter((glob) => matchesNone(glob, tests));
+  return {
+    testGlobs: testGlobs.sort(compare),
+    inputGlobs: inputGlobs(inputs2).filter((glob) => matchesNone(glob, known2)).sort(compare)
+  };
+}
 function inputGlobs(inputs2) {
   return isInputList(inputs2) ? [...inputs2] : [...new Set(Object.values(inputs2).flat())];
 }
@@ -885,6 +898,108 @@ var init_check_name = __esm({
   }
 });
 
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION;
+var init_common = __esm({
+  "src/core/types/common.ts"() {
+    "use strict";
+    PAYLOAD_SCHEMA_VERSION = 1;
+  }
+});
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS;
+var init_daemon = __esm({
+  "src/core/types/daemon.ts"() {
+    "use strict";
+    DAEMON_SOCKET_TIMEOUT_MS = 100;
+  }
+});
+
+// src/core/types/delivery.ts
+var init_delivery = __esm({
+  "src/core/types/delivery.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY;
+var init_policy = __esm({
+  "src/core/types/policy.ts"() {
+    "use strict";
+    DEFAULT_POLICY = {
+      interrupt: { onRegression: true },
+      stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+      baseline: { onStart: "lookup-then-run-missing" },
+      inputs: [],
+      env: { allowlist: [] },
+      runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
+      daemon: { idleExitMinutes: 60 },
+      store: { retentionDays: 7, maxSizeMb: null }
+    };
+  }
+});
+
+// src/core/types/scheduler.ts
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+var MAX_PERSISTED_NOTES;
+var init_scheduler = __esm({
+  "src/core/types/scheduler.ts"() {
+    "use strict";
+    MAX_PERSISTED_NOTES = 20;
+  }
+});
+
+// src/core/types/state.ts
+var init_state = __esm({
+  "src/core/types/state.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS;
+var init_store_records = __esm({
+  "src/core/types/store-records.ts"() {
+    "use strict";
+    CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+  }
+});
+
+// src/core/types/watcher.ts
+var WATCHER_TIMINGS;
+var init_watcher = __esm({
+  "src/core/types/watcher.ts"() {
+    "use strict";
+    WATCHER_TIMINGS = {
+      quietMs: 100,
+      maxBatchMs: 500,
+      reconcileIntervalMs: 3e4
+    };
+  }
+});
+
+// src/core/types/index.ts
+var init_types = __esm({
+  "src/core/types/index.ts"() {
+    "use strict";
+    init_common();
+    init_daemon();
+    init_delivery();
+    init_policy();
+    init_scheduler();
+    init_state();
+    init_store_records();
+    init_watcher();
+  }
+});
+
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -895,6 +1010,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
+  const refinedRevision = readRefined(store, worktreeId);
   return {
     revision,
     counts: counts2,
@@ -904,8 +1020,21 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
       lastCompletedRevision: last?.revision ?? null
     },
     testFilesListed: keys.length > 0 || last !== null,
-    inheritedCount
+    inheritedCount,
+    refinedRevision,
+    runnerPartPending: refinedRevision !== null && refinedRevision < revision
   };
+}
+function readRefined(store, worktreeId) {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : null;
+}
+function isPending(header) {
+  return header.counts.pending + header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+}
+function runnerPartText(revision) {
+  return `the runner part of revision ${revision}`;
 }
 function fullSuiteText({ revision, fullSuite }) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
@@ -939,6 +1068,7 @@ var init_header = __esm({
   "src/core/state/header.ts"() {
     "use strict";
     init_keys();
+    init_types();
     init_derive();
   }
 });
@@ -1074,14 +1204,16 @@ __export(state_exports, {
   describeFailure: () => describeFailure,
   formatCheck: () => formatCheck,
   fullSuiteText: () => fullSuiteText,
+  isPending: () => isPending,
   parseCheck: () => parseCheck,
   readHeader: () => readHeader,
+  runnerPartText: () => runnerPartText,
   testFileKeyOf: () => testFileKeyOf,
   testFileOf: () => testFileOf,
   toKnownFailure: () => toKnownFailure,
   transitionKind: () => transitionKind
 });
-var init_state = __esm({
+var init_state2 = __esm({
   "src/core/state/index.ts"() {
     "use strict";
     init_baseline();
@@ -2393,14 +2525,16 @@ function createWorktreeRepo(conn) {
         record.registeredAt,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
-        d?.heartbeatAt ?? null,
+        d?.heartbeatAt ?? record.lastHeartbeatAt ?? null,
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null
       );
     },
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
     setDaemon: (id, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?, daemon_heartbeat_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+           daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
            daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
@@ -2429,6 +2563,7 @@ function createWorktreeRepo(conn) {
 }
 function toRecord(row) {
   const socketPath = strOrNull(row, "daemon_socket");
+  const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {
     id: str(row, "id"),
     root: str(row, "root"),
@@ -2441,7 +2576,8 @@ function toRecord(row) {
       heartbeatAt: num(row, "daemon_heartbeat_at"),
       heartbeatIntervalMs: num(row, "daemon_heartbeat_interval_ms"),
       squealVersion: str(row, "daemon_version")
-    }
+    },
+    ...socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}
   };
 }
 var WORKTREE_SCOPED_TABLES;
@@ -2642,102 +2778,124 @@ var init_store2 = __esm({
   }
 });
 
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION;
-var init_common = __esm({
-  "src/core/types/common.ts"() {
-    "use strict";
-    PAYLOAD_SCHEMA_VERSION = 1;
+// src/core/daemon/policy.ts
+import { readFileSync as readFileSync4 } from "node:fs";
+import { join as join9 } from "node:path";
+function loadPolicy(root) {
+  let text;
+  try {
+    text = readFileSync4(join9(root, POLICY_FILE), "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
   }
-});
-
-// src/core/types/daemon.ts
-var DAEMON_SOCKET_TIMEOUT_MS;
-var init_daemon = __esm({
-  "src/core/types/daemon.ts"() {
-    "use strict";
-    DAEMON_SOCKET_TIMEOUT_MS = 100;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return defaultsBecause(`not valid JSON (${error.message})`);
   }
-});
-
-// src/core/types/delivery.ts
-var init_delivery = __esm({
-  "src/core/types/delivery.ts"() {
-    "use strict";
+  if (!isObject(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
   }
-});
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY;
-var init_policy = __esm({
-  "src/core/types/policy.ts"() {
-    "use strict";
-    DEFAULT_POLICY = {
-      interrupt: { onRegression: true },
-      stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-      baseline: { onStart: "lookup-then-run-missing" },
-      inputs: [],
-      env: { allowlist: [] },
-      runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
-      daemon: { idleExitMinutes: 60 },
-      store: { retentionDays: 7, maxSizeMb: null }
-    };
-  }
-});
-
-// src/core/types/scheduler.ts
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged, problems };
 }
-var MAX_PERSISTED_NOTES;
-var init_scheduler = __esm({
-  "src/core/types/scheduler.ts"() {
-    "use strict";
-    MAX_PERSISTED_NOTES = 20;
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isObject(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
   }
-});
-
-// src/core/types/state.ts
-var init_state2 = __esm({
-  "src/core/types/state.ts"() {
-    "use strict";
+  return result;
+}
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function describeProblems(problems) {
+  return `${problems.join("; ")}; the defaults apply in their place`;
+}
+function lastPolicyNote(store, worktreeId) {
+  let notes2;
+  try {
+    notes2 = JSON.parse(store.meta.get(notesMetaKey(worktreeId)) ?? "[]");
+  } catch {
+    return null;
   }
-});
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS;
-var init_store_records = __esm({
-  "src/core/types/store-records.ts"() {
+  if (!Array.isArray(notes2)) return null;
+  const texts = notes2.map((note) => note.text);
+  const last = texts.findLast((text) => typeof text === "string" && text.startsWith(POLICY_FILE));
+  return typeof last === "string" ? last : null;
+}
+var POLICY_FILE, boolean, strings, inputs, atLeastZero, aboveZero, positiveInteger, orNull, oneOf2, SHAPE;
+var init_policy2 = __esm({
+  "src/core/daemon/policy.ts"() {
     "use strict";
-    CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-  }
-});
-
-// src/core/types/watcher.ts
-var WATCHER_TIMINGS;
-var init_watcher = __esm({
-  "src/core/types/watcher.ts"() {
-    "use strict";
-    WATCHER_TIMINGS = {
-      quietMs: 100,
-      maxBatchMs: 500,
-      reconcileIntervalMs: 3e4
+    init_fs();
+    init_glob();
+    init_types();
+    POLICY_FILE = "squeal.config.json";
+    boolean = (v) => typeof v === "boolean" ? null : "true or false";
+    strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+    inputs = (v) => {
+      const isList = strings(v) === null;
+      if (!isList && !(isObject(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
+        return "an array of strings, or an object from test-file glob to an array of strings";
+      }
+      const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+      for (const glob of globs) {
+        try {
+          globToRegExp(glob);
+        } catch (error) {
+          return { problem: `has a glob Squeal cannot use: ${error.message}` };
+        }
+      }
+      return null;
     };
-  }
-});
-
-// src/core/types/index.ts
-var init_types = __esm({
-  "src/core/types/index.ts"() {
-    "use strict";
-    init_common();
-    init_daemon();
-    init_delivery();
-    init_policy();
-    init_scheduler();
-    init_state2();
-    init_store_records();
-    init_watcher();
+    atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
+    aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+    positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+    orNull = (leaf) => (v) => {
+      const expected = v === null ? null : leaf(v);
+      return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
+    };
+    oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+    SHAPE = {
+      interrupt: { onRegression: boolean },
+      stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+      baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+      inputs,
+      env: { allowlist: strings },
+      runner: {
+        tierSize: positiveInteger,
+        timeoutMs: orNull(positiveInteger),
+        maxConcurrentRuns: positiveInteger
+      },
+      daemon: { idleExitMinutes: aboveZero },
+      store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+    };
   }
 });
 
@@ -2767,9 +2925,21 @@ function listPaths(paths, max = 5) {
   const shown = paths.slice(0, max).join(", ");
   return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
 }
+function unmatchedInputNotes(unmatched) {
+  return [
+    ...unmatched.testGlobs.map(
+      (glob) => `${POLICY_FILE}: inputs key "${glob}" matches no test file; keys and input globs match worktree-relative paths from the start, so write "**/${glob}" for a file in any directory`
+    ),
+    ...unmatched.inputGlobs.map((glob) => `${POLICY_FILE}: inputs glob "${glob}" matches no file`)
+  ];
+}
+function persistedNoteTexts(store, worktreeId) {
+  return new Set(parse(store.meta.get(notesMetaKey(worktreeId))).map((note) => note.text));
+}
 var init_notes = __esm({
   "src/core/scheduler/notes.ts"() {
     "use strict";
+    init_policy2();
     init_types();
   }
 });
@@ -2887,7 +3057,7 @@ function rekeyContent(context, ledger, revision) {
   const { keys } = context;
   const changes = revision.changes;
   const touched = [];
-  const policy = reloadPolicy(context, changes);
+  const policy = reloadPolicy(context, ledger, changes);
   touched.push(...policy.changes.map((c) => c.testFile));
   const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
   touched.push(...rekeyed);
@@ -2898,64 +3068,16 @@ function rekeyContent(context, ledger, revision) {
   ledger.settle(touched, new Set(changes.map((c) => c.path)));
   return { rekeyed, environment: inputs2 || policy.environment };
 }
-function reloadPolicy(context, changes) {
+function reloadPolicy(context, ledger, changes) {
   const policy = context.reloadPolicy(changes);
   if (policy === null) return { changes: [], environment: false };
   context.policy = policy;
-  return context.keys.setPolicy(policy);
-}
-async function applyRevision(context, ledger, revision, content) {
-  const { keys, runner } = context;
-  const changes = revision.changes;
-  const paths = changes.map((c) => c.path);
-  const changed = new Set(paths);
-  const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
-  const failures = /* @__PURE__ */ new Map();
-  const touched = /* @__PURE__ */ new Map();
-  const touch = (refs) => {
-    for (const ref of refs) touched.set(testFileId(ref), ref);
-  };
-  const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
-  const retrying = ledger.broken;
-  const invalidated = await tryRunner(
-    context,
-    `invalidate (${listPaths(paths)})`,
-    () => runner.invalidate(changes.map(toInvalidatedPath)),
-    (reason2) => failed(failures, null, reason2)
-  );
-  const recreated = new Set(invalidated?.recreatedProjects ?? []);
-  if (recreated.size > 0 || content.environment || retrying) {
-    touchKeys(await readEnvironments(context, failures));
+  const applied = context.keys.setPolicy(policy);
+  const testFiles = [...ledger.files.values()].map((file) => file.ref.path);
+  for (const text of unmatchedInputNotes(context.keys.unmatchedInputs(testFiles))) {
+    context.note(text);
   }
-  const reresolve = /* @__PURE__ */ new Map();
-  const pick = (refs) => {
-    for (const ref of refs) if (ledger.file(ref)) reresolve.set(testFileId(ref), ref);
-  };
-  if (structural || recreated.size > 0 || ledger.listingFailed) {
-    pick(await listTestFiles(context, ledger));
-  }
-  for (const file of ledger.files.values()) {
-    if (recreated.has(file.ref.project) || file.blocked !== null) reresolve.set(file.id, file.ref);
-  }
-  pick(content.rekeyed);
-  const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
-  pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
-  const affected2 = await tryRunner(
-    context,
-    `affected (${listPaths(paths)})`,
-    () => affectedOf(runner, paths)
-  );
-  pick(affected2?.direct ?? []);
-  pick(affected2?.transitive ?? []);
-  const direct = new Set((affected2?.direct ?? []).map(testFileId));
-  touchKeys(await resolveClosures(context, [...reresolve.values()], failures));
-  touch(reresolve.values());
-  ledger.settle(touched.values(), changed, { direct });
-  settleFailures(ledger, failures, retrying, changed);
-}
-function affectedOf(runner, paths) {
-  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
-  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
+  return applied;
 }
 async function retryRunner(context, ledger) {
   if (!ledger.broken) return;
@@ -2979,6 +3101,9 @@ async function readEnvironments(context, failures) {
 }
 async function listTestFiles(context, ledger) {
   const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
+  return applyListing(context, ledger, listed);
+}
+function applyListing(context, ledger, listed) {
   ledger.listingFailed = listed === null;
   if (listed === null) return [];
   const ids = new Set(listed.map(testFileId));
@@ -3448,7 +3573,10 @@ async function reconcileBatch(context, ledger, batch) {
     });
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
-    for (const change of revision.changes) ledger.tierChanges?.add(change.path);
+    for (const change of revision.changes) {
+      ledger.tierChanges?.add(change.path);
+      ledger.refineChanges?.add(change.path);
+    }
     const content = rekeyContent(context, ledger, revision);
     ledger.commit();
     return { revision, content };
@@ -3602,7 +3730,14 @@ async function bootstrap(context, ledger) {
   }
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   if (failures.size > 0) block(ledger, failures);
-  ledger.commit();
+  ledger.commit({ refined: ledger.revision.number });
+  const persisted = persistedNoteTexts(store, worktreeId);
+  for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFilePaths(ledger)))) {
+    if (!persisted.has(text)) context.note(text);
+  }
+}
+function testFilePaths(ledger) {
+  return [...ledger.files.values()].map((file) => file.ref.path);
 }
 function knownChecks(context) {
   const byFile = /* @__PURE__ */ new Map();
@@ -3630,6 +3765,7 @@ var init_bootstrap = __esm({
     init_context();
     init_failures();
     init_files();
+    init_notes();
     init_queue();
     init_revision();
   }
@@ -3957,6 +4093,10 @@ var init_keying = __esm({
         for (const path of update.untracked) this.#untracked.add(path);
         return update.changes;
       }
+      /** Entries of policy `inputs` that select no test file among `testFiles` or no known file (review wave 4.5, S5). */
+      unmatchedInputs(testFiles) {
+        return unmatchedInputs(this.#policy.inputs, testFiles, this.#knownFiles());
+      }
       removeTestFile(ref) {
         this.#runnerClosures.delete(testFileId(ref));
         this.index.removeTestFile(ref);
@@ -4114,6 +4254,7 @@ var init_ledger = __esm({
   "src/core/scheduler/ledger.ts"() {
     "use strict";
     init_keys();
+    init_types();
     init_checkpoints();
     init_context();
     init_files();
@@ -4131,6 +4272,11 @@ var init_ledger = __esm({
       revision = { number: 0, head: null, dirty: false };
       /** Paths changed by revisions since the tier in flight was selected; `null` with no tier in flight. */
       tierChanges = null;
+      /**
+       * Paths changed by revisions since the runner phase of the refinement in
+       * flight started; `null` with none in flight (`applyRunnerPart`).
+       */
+      refineChanges = null;
       /** Some files are blocked by a runner failure; the next revision or `run --all` retries the runner. */
       broken = false;
       /** The last test file listing failed; the next revision lists again. */
@@ -4277,8 +4423,14 @@ var init_ledger = __esm({
           this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
         }
       }
-      /** Writes what this round of work owes the store and the sink, in one transaction. */
-      commit() {
+      /**
+       * Writes what this round of work owes the store and the sink, in one
+       * transaction. `refined` is the revision whose runner part this commit
+       * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
+       * spec 001 D2 as amended), so headers stop counting that runner part as
+       * pending in the same transaction that applies it.
+       */
+      commit(options = {}) {
         const { store, sink, worktreeId } = this.context;
         const revision = this.revision.number;
         const rows = [];
@@ -4286,8 +4438,8 @@ var init_ledger = __esm({
         for (const id of this.#dirty) {
           const file = this.files.get(id);
           if (!file) continue;
-          const pending2 = file.key === null ? null : file.phase;
-          rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending: pending2 });
+          const pending = file.key === null ? null : file.phase;
+          rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
         }
         this.#dirty.clear();
         const applied = this.#applied;
@@ -4308,6 +4460,9 @@ var init_ledger = __esm({
           if (retired.length > 0) sink.retire(worktreeId, retired);
           for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
             sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
+          }
+          if (options.refined !== void 0) {
+            store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
           }
         });
       }
@@ -4350,6 +4505,115 @@ var init_mutex = __esm({
         return next;
       }
     };
+  }
+});
+
+// src/core/scheduler/refinement.ts
+async function fetchRunnerPart(context, ledger, revision, content, carried) {
+  const { keys, runner } = context;
+  const changes = revision.changes;
+  const paths = changes.map((c) => c.path);
+  const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
+  const failures = /* @__PURE__ */ new Map();
+  const retrying = ledger.broken;
+  const invalidated = await tryRunner(
+    context,
+    `invalidate (${listPaths(paths)})`,
+    () => runner.invalidate(changes.map(toInvalidatedPath)),
+    (reason2) => failed(failures, null, reason2)
+  );
+  const recreated = new Set(invalidated?.recreatedProjects ?? []);
+  const environments = recreated.size > 0 || content.environment || retrying ? await tryRunner(
+    context,
+    "environment",
+    () => runner.environment(),
+    (reason2) => failed(failures, null, reason2)
+  ) : null;
+  const listed = structural || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => runner.testFiles()) : void 0;
+  const exists = new Set(
+    listed ? listed.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
+  );
+  const reresolve = /* @__PURE__ */ new Map();
+  const pick = (refs) => {
+    for (const ref of refs) {
+      const id = testFileId(ref);
+      if (exists.has(id)) reresolve.set(id, ref);
+    }
+  };
+  pick((listed ?? []).filter((ref) => !keys.index.closure(ref)));
+  pick(
+    [...ledger.files.values()].filter((file) => recreated.has(file.ref.project) || file.blocked !== null).map((file) => file.ref)
+  );
+  pick(content.rekeyed);
+  pick(carried);
+  const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
+  pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
+  const affected2 = await tryRunner(
+    context,
+    `affected (${listPaths(paths)})`,
+    () => affectedOf(runner, paths)
+  );
+  pick(affected2?.direct ?? []);
+  pick(affected2?.transitive ?? []);
+  const closures = [];
+  for (const ref of reresolve.values()) {
+    const closure = await tryRunner(
+      context,
+      `closure of ${ref.path}`,
+      () => runner.closure(ref),
+      (reason2) => failed(failures, ref.project, reason2)
+    );
+    if (closure !== null) closures.push(closure);
+  }
+  return {
+    revision,
+    retrying,
+    failures,
+    environments,
+    listed,
+    direct: new Set((affected2?.direct ?? []).map(testFileId)),
+    reresolved: [...reresolve.values()],
+    closures
+  };
+}
+async function applyRunnerPart(context, ledger, part, changedMeanwhile) {
+  const { keys } = context;
+  const changed = new Set(part.revision.changes.map((c) => c.path));
+  const touched = /* @__PURE__ */ new Map();
+  const touch = (refs) => {
+    for (const ref of refs) touched.set(testFileId(ref), ref);
+  };
+  const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
+  if (part.environments !== null) touchKeys(await keys.setEnvironments(part.environments));
+  if (part.listed !== void 0) applyListing(context, ledger, part.listed);
+  const resolved = [];
+  const stale = [];
+  for (const closure of part.closures) {
+    const ref = closure.testFile;
+    if (!ledger.file(ref)) continue;
+    touchKeys(keys.setClosure(closure));
+    resolved.push(ref);
+    if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) stale.push(ref);
+  }
+  touchKeys(await keys.trackUntracked());
+  storeClosures(context, resolved);
+  touch(part.reresolved);
+  ledger.settle(touched.values(), changed, { direct: part.direct });
+  settleFailures(ledger, part.failures, part.retrying, changed);
+  return stale;
+}
+function affectedOf(runner, paths) {
+  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
+  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
+}
+var init_refinement = __esm({
+  "src/core/scheduler/refinement.ts"() {
+    "use strict";
+    init_keys();
+    init_context();
+    init_failures();
+    init_notes();
+    init_revision();
   }
 });
 
@@ -4403,9 +4667,11 @@ function recordsForFile(input) {
   const inFile = (check) => check.project === ref.project && check.testPath === ref.path;
   const records = [];
   const ran = /* @__PURE__ */ new Set();
+  let testsMs = 0;
   for (const result of report2.results) {
     if (!inFile(result.check)) continue;
     ran.add(checkId(result.check));
+    testsMs += result.durationMs;
     const failure3 = result.outcome === "fail" ? describe(result.errors, result.location) : { summary: null, fingerprint: null };
     records.push({
       check: result.check,
@@ -4419,12 +4685,16 @@ function recordsForFile(input) {
     });
   }
   const errors = report2.fileErrors.filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path).flatMap((e) => e.errors);
+  const fileMs = report2.fileDurations?.find(
+    (d) => d.testFile.project === ref.project && d.testFile.path === ref.path
+  )?.durationMs;
+  const outsideTestsMs = fileMs === void 0 ? 0 : Math.max(0, fileMs - testsMs);
   if (errors.length === 0) {
     records.push({
       check: fileCheck(ref),
       key,
       outcome: "pass",
-      durationMs: 0,
+      durationMs: outsideTestsMs,
       location: null,
       summary: null,
       fingerprint: null,
@@ -4450,7 +4720,7 @@ function recordsForFile(input) {
       records.push(failed2(check));
     }
   }
-  records.push(failed2(fileCheck(ref)));
+  records.push({ ...failed2(fileCheck(ref)), durationMs: outsideTestsMs });
   return records;
 }
 var init_records = __esm({
@@ -4627,13 +4897,13 @@ function queueFullSuite(ledger, force) {
   } else {
     const open3 = runnable.filter((file) => classify2(file) !== "current");
     for (const file of open3) file.unknownKey = null;
-    const pending2 = open3.filter((file) => file.phase !== null);
+    const pending = open3.filter((file) => file.phase !== null);
     const misses = ledger.settle(
       open3.filter((file) => file.phase === null).map((file) => file.ref),
       NOTHING_CHANGED,
       { checkpointId: id }
     );
-    requested = [...pending2, ...misses];
+    requested = [...pending, ...misses];
   }
   const record = ledger.checkpoints.start(
     id,
@@ -4667,8 +4937,10 @@ var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
     init_hash();
+    init_keys();
     init_revision2();
-    init_state();
+    init_state2();
+    init_types();
     init_batch();
     init_bootstrap();
     init_context();
@@ -4677,6 +4949,7 @@ var init_scheduler2 = __esm({
     init_mutex();
     init_notes();
     init_queue();
+    init_refinement();
     init_revision();
     init_status();
     init_tiers();
@@ -4691,6 +4964,10 @@ var init_scheduler2 = __esm({
       #idle = [];
       /** Runner work in arrival order, applied between tiers by the pump. */
       #runnerWork = [];
+      /** A refinement is in its runner phase: shifted off `#runnerWork`, not applied yet. */
+      #refining = false;
+      /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
+      #carried = /* @__PURE__ */ new Map();
       #context = null;
       #ledger = null;
       #pumping = null;
@@ -4740,15 +5017,16 @@ var init_scheduler2 = __esm({
       /**
        * Stores the revision a batch creates and returns: the revision row, stat
        * cache, content re-key, `queued` phases and known states, in one
-       * transaction. The runner part (`applyRevision`) is queued and applied by
-       * the pump after the tier in flight, in batch order.
+       * transaction. The runner part is queued and applied by the pump after the
+       * tier in flight, in batch order (`#refine`).
        *
        * Spec 001 D2: "Creating a revision never waits on the runner: the store
        * work [...] completes within the debounce window even while a tier is
        * running, and the runner-dependent refinement is queued behind the tier
-       * separately." Lessons, defect 1: awaiting `runner.invalidate` here, which
-       * the runner serializes behind the running tier, let a revision lag the
-       * workspace by a whole tier.
+       * separately and applied without holding the revision path." Lessons,
+       * defect 1: awaiting `runner.invalidate` here, which the runner serializes
+       * behind the running tier, let a revision lag the workspace by a whole
+       * tier.
        */
       async handleBatch(batch) {
         if (this.#closed) return;
@@ -4757,22 +5035,41 @@ var init_scheduler2 = __esm({
           const applied = await reconcileBatch(context, ledger, batch);
           if (applied === null) return;
           const { revision, content } = applied;
-          this.#runnerWork.push({
-            run: async () => {
-              try {
-                await this.#lock.run(async () => {
-                  await applyRevision(context, ledger, revision, content);
-                  ledger.commit();
-                });
-              } catch (error) {
-                this.#backgroundError(`could not apply revision ${revision.number}`, error);
-              }
-            },
-            cancel: () => {
-            }
-          });
+          this.#runnerWork.push({ run: () => this.#refine(revision, content), cancel: () => {
+          } });
         });
         this.#pump();
+      }
+      /**
+       * The runner part of one revision, in two phases (review wave 4.5, S3).
+       * The runner phase calls the runner without the lock, so batches are
+       * reconciled meanwhile; the apply phase takes the lock, applies what the
+       * runner said, and commits it with the revision as refined (D2 as
+       * amended). Never rejects: an error is a note, and the revision counts as
+       * refined so no wait hangs on it.
+       */
+      async #refine(revision, content) {
+        const { context, ledger } = this.#started();
+        this.#refining = true;
+        try {
+          ledger.refineChanges = /* @__PURE__ */ new Set();
+          const carried = [...this.#carried.values()];
+          this.#carried.clear();
+          const part = await fetchRunnerPart(context, ledger, revision, content, carried);
+          await this.#lock.run(async () => {
+            const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
+            ledger.refineChanges = null;
+            const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
+            for (const ref of stale) this.#carried.set(testFileId(ref), ref);
+            ledger.commit({ refined: revision.number });
+          });
+        } catch (error) {
+          this.#backgroundError(`could not apply revision ${revision.number}`, error);
+          this.#refinedAfterError(revision.number);
+        } finally {
+          ledger.refineChanges = null;
+          this.#refining = false;
+        }
       }
       /**
        * Queues the checkpoint at once, unless it needs the runner: while a
@@ -4784,7 +5081,7 @@ var init_scheduler2 = __esm({
         const force = request.force === true;
         const record = await this.#lock.run(() => {
           const { ledger } = this.#started();
-          if (ledger.broken || this.#runnerWork.length > 0) return null;
+          if (ledger.broken || this.#runnerWork.length > 0 || this.#refining) return null;
           return queueFullSuite(ledger, force);
         }) ?? await this.#afterTier(async () => {
           const { context, ledger } = this.#started();
@@ -4917,6 +5214,23 @@ var init_scheduler2 = __esm({
       #started() {
         if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
         return { context: this.#context, ledger: this.#ledger };
+      }
+      /**
+       * A refinement that threw is not pending any more: nothing retries it, and
+       * its note says what failed. Its revision is recorded as refined, so waits
+       * do not wait for it forever (D2 as amended).
+       */
+      #refinedAfterError(revision) {
+        const { store, worktreeId } = this.options;
+        try {
+          store.transaction(() => {
+            const key = refinedMetaKey(worktreeId);
+            const previous = Number(store.meta.get(key) ?? Number.NaN);
+            if (!(previous >= revision)) store.meta.set(key, String(revision));
+          });
+        } catch (error) {
+          this.#backgroundError(`could not record revision ${revision} as refined`, error);
+        }
       }
       /** An error of work no caller awaits: a note for status, and `onError`. */
       #backgroundError(subject, error) {
@@ -7069,8 +7383,8 @@ async function candidatesForReconcile(ctx, statusPaths) {
 }
 async function walkFiles(ctx, nested, dir) {
   const files = [];
-  const pending2 = [dir];
-  for (let next = pending2.pop(); next !== void 0; next = pending2.pop()) {
+  const pending = [dir];
+  for (let next = pending.pop(); next !== void 0; next = pending.pop()) {
     let entries;
     try {
       entries = await readdir4(toAbsolute(ctx.root, next), { withFileTypes: true });
@@ -7083,7 +7397,7 @@ async function walkFiles(ctx, nested, dir) {
       const rel = `${next}/${entry2.name}`;
       if (ctx.exclusions.excludes(toAbsolute(ctx.root, rel))) continue;
       if (entry2.isDirectory()) {
-        if (!await nested.isInside(rel)) pending2.push(rel);
+        if (!await nested.isInside(rel)) pending.push(rel);
       } else {
         files.push(rel);
       }
@@ -7796,6 +8110,17 @@ function createSquealReporter(current) {
     onUserConsoleLog: (log) => current()?.console(log.type, log.content)
   };
 }
+function moduleDuration(module) {
+  const d = module.diagnostic();
+  const parts = [
+    d.environmentSetupDuration,
+    d.prepareDuration,
+    d.collectDuration,
+    d.setupDuration,
+    d.duration
+  ];
+  return parts.every((part) => Number.isFinite(part)) ? parts.reduce((a, b) => a + b, 0) : null;
+}
 function errorText(error) {
   const diff = typeof error.diff === "string" ? `
 ${error.diff}` : "";
@@ -7855,7 +8180,8 @@ var init_reporter = __esm({
           ref,
           state: module.state(),
           errors,
-          afterCancel: this.cancelRequested
+          afterCancel: this.cancelRequested,
+          durationMs: moduleDuration(module)
         });
         this.log.push(`MODULE ${module.state()} ${label(ref)}`);
         for (const error of errors) this.log.push(indent(`file-level error: ${errorText(error)}`));
@@ -7972,7 +8298,8 @@ function buildReport(collector, execution, durationMs) {
     completedFiles: completed,
     results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs(a.ref, b.ref)).map((r) => r.result),
     fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
-    failure: failure2 === "" ? null : collector.paths.relativizeText(failure2)
+    failure: failure2 === "" ? null : collector.paths.relativizeText(failure2),
+    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 }))
   };
 }
 function owner(error, collector) {
@@ -8449,10 +8776,10 @@ function readVersion(path) {
 }
 
 // src/core/status/index.ts
-init_state();
+init_state2();
 
 // src/core/status/format-status.ts
-init_state();
+init_state2();
 function formatStatus(result, now) {
   if (!result.available) return formatUnavailable(result);
   const lines = [
@@ -8514,7 +8841,8 @@ function affected(s) {
     [s.counts.unknown + currentByOutcome.unknown, "unknown"]
   ];
   for (const [count, label2] of optional) if (count > 0) parts.push(`${count} ${label2}`);
-  return parts.join(", ");
+  const runnerPart = s.runnerPartPending === true ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet` : "";
+  return `${parts.join(", ")}${runnerPart}`;
 }
 function worktreeLine(s) {
   const dirty = s.dirty !== null ? `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}` : s.daemon.state === "alive" ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
@@ -8542,7 +8870,7 @@ function age(ms) {
 }
 
 // src/core/status/format-why.ts
-init_state();
+init_state2();
 var INDENT = "        ";
 function formatWhy(why2) {
   if (!why2.available) return formatUnavailable(why2);
@@ -8699,7 +9027,7 @@ function isBusy(error) {
 
 // src/core/status/snapshot.ts
 init_keys();
-init_state();
+init_state2();
 init_store2();
 init_types();
 
@@ -8795,7 +9123,7 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes2.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes2.push(recovered);
-  const daemon = liveness(worktree?.daemon ?? null, now);
+  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
   const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -8816,8 +9144,8 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId)
   };
 }
-function liveness(daemon, now) {
-  if (daemon === null) return { state: "down", since: null };
+function liveness(daemon, now, lastHeartbeatAt) {
+  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
   const age2 = now - daemon.heartbeatAt;
   if (age2 <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
@@ -8879,7 +9207,7 @@ function recoveryNote(raw) {
 }
 
 // src/core/status/why.ts
-init_state();
+init_state2();
 init_store2();
 init_types();
 var WHY_RESULT_LIMIT = 20;
@@ -9239,14 +9567,14 @@ async function inThread(identity, events) {
 import { existsSync as existsSync5 } from "node:fs";
 
 // src/core/delivery/index.ts
-init_state();
+init_state2();
 
 // src/core/delivery/delivery.ts
-init_state();
+init_state2();
 init_types();
 
 // src/core/delivery/delta.ts
-init_state();
+init_state2();
 function beforeFailing(history2, state) {
   const last = history2.at(-1);
   if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
@@ -9314,13 +9642,16 @@ function planDelta(input) {
 }
 
 // src/core/delivery/liveness.ts
-init_state();
-function daemonLiveness(record, now) {
-  if (record === null) return { state: "down", since: null };
+init_state2();
+function daemonLiveness(record, now, lastHeartbeatAt = null) {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
   if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
   }
   return { state: "down", since: record.heartbeatAt };
+}
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
 
 // src/core/delivery/delivery.ts
@@ -9329,7 +9660,7 @@ function expireConsumers(store, now = Date.now()) {
 }
 
 // src/core/delivery/format.ts
-init_state();
+init_state2();
 
 // src/core/daemon/lifecycle.ts
 function startTimers(context) {
@@ -9449,7 +9780,7 @@ function parseNotes(raw) {
 init_fs();
 init_store2();
 import { existsSync as existsSync6, realpathSync as realpathSync4 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync3 } from "node:fs";
@@ -9492,7 +9823,7 @@ async function openDaemon(rootArgument, now) {
   let commonDir;
   try {
     root = realpathSync4(rootArgument);
-    if (!existsSync6(join9(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    if (!existsSync6(join10(root, ".git"))) throw new Error(`${root} has no .git entry`);
     const out = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
     commonDir = realpathSync4(out.trim());
   } catch (error) {
@@ -9554,17 +9885,17 @@ function message(error) {
 
 // src/core/daemon/paths.ts
 init_fs();
-import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync4, readFileSync as readFileSync4 } from "node:fs";
+import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync4, readFileSync as readFileSync5 } from "node:fs";
 import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname6, isAbsolute as isAbsolute3, join as join10, resolve as resolve6 } from "node:path";
+import { dirname as dirname6, isAbsolute as isAbsolute3, join as join11, resolve as resolve6 } from "node:path";
 function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? join10(tempDir(env), userDirName());
+  return xdgRuntimeDir(env) ?? join11(tempDir(env), userDirName());
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join10(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join10("/tmp", userDirName(), name);
+  const path = join11(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join11("/tmp", userDirName(), name);
 }
 function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
   const dir = dirname6(socketPath);
@@ -9597,14 +9928,14 @@ function checkPrivateDir(dir, uid) {
   }
 }
 function linkedWorktreeDir(root) {
-  const dotGit = join10(root, ".git");
+  const dotGit = join11(root, ".git");
   try {
     if (!lstatSync2(dotGit).isFile()) return null;
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync4(dotGit, "utf8"));
+  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync5(dotGit, "utf8"));
   return match?.[1] ? resolve6(root, match[1]) : null;
 }
 function xdgRuntimeDir(env) {
@@ -9624,122 +9955,8 @@ function currentUid() {
   return process.getuid?.() ?? 0;
 }
 
-// src/core/daemon/policy.ts
-init_fs();
-init_glob();
-init_types();
-import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join11 } from "node:path";
-var POLICY_FILE = "squeal.config.json";
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
-var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var inputs = (v) => {
-  const isList = strings(v) === null;
-  if (!isList && !(isObject(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
-    return "an array of strings, or an object from test-file glob to an array of strings";
-  }
-  const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  for (const glob of globs) {
-    try {
-      globToRegExp(glob);
-    } catch (error) {
-      return { problem: `has a glob Squeal cannot use: ${error.message}` };
-    }
-  }
-  return null;
-};
-var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
-var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
-var orNull = (leaf) => (v) => {
-  const expected = v === null ? null : leaf(v);
-  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
-};
-var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
-var SHAPE = {
-  interrupt: { onRegression: boolean },
-  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
-  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
-  inputs,
-  env: { allowlist: strings },
-  runner: {
-    tierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger),
-    maxConcurrentRuns: positiveInteger
-  },
-  daemon: { idleExitMinutes: aboveZero },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
-};
-function loadPolicy(root) {
-  let text;
-  try {
-    text = readFileSync5(join11(root, POLICY_FILE), "utf8");
-  } catch (error) {
-    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
-    return defaultsBecause(`could not be read: ${String(error)}`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return defaultsBecause(`not valid JSON (${error.message})`);
-  }
-  if (!isObject(parsed)) {
-    return defaultsBecause(
-      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
-    );
-  }
-  const problems = [];
-  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  return { policy: merged, problems };
-}
-function defaultsBecause(problem) {
-  return { policy: DEFAULT_POLICY, problems: [problem] };
-}
-function merge(shape, defaults, given, prefix, problems) {
-  const result = { ...defaults };
-  for (const [key, value] of Object.entries(given)) {
-    const path = `${prefix}${key}`;
-    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
-    if (rule === void 0) {
-      problems.push(`unknown key "${path}"`);
-    } else if (typeof rule === "function") {
-      const expected = rule(value);
-      if (expected === null) result[key] = value;
-      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
-      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isObject(value)) {
-      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
-    } else {
-      const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
-    }
-  }
-  return result;
-}
-function isObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function isNumber(value) {
-  return typeof value === "number" && Number.isFinite(value);
-}
-function describeProblems(problems) {
-  return `${problems.join("; ")}; the defaults apply in their place`;
-}
-function lastPolicyNote(store, worktreeId) {
-  let notes2;
-  try {
-    notes2 = JSON.parse(store.meta.get(notesMetaKey(worktreeId)) ?? "[]");
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(notes2)) return null;
-  const texts = notes2.map((note) => note.text);
-  const last = texts.findLast((text) => typeof text === "string" && text.startsWith(POLICY_FILE));
-  return typeof last === "string" ? last : null;
-}
-
 // src/core/daemon/daemon.ts
+init_policy2();
 async function startDaemon(options) {
   const now = options.now ?? Date.now;
   const desk = prepareFrontDesk();
@@ -9902,7 +10119,7 @@ var Daemon = class {
     try {
       const [{ createDaemonLoop: createDaemonLoop2 }, { createStateSink: createStateSink2, describeFailure: describeFailure2 }, vitest, runnerModule] = await Promise.all([
         Promise.resolve().then(() => (init_daemon_loop(), daemon_loop_exports)),
-        Promise.resolve().then(() => (init_state(), state_exports)),
+        Promise.resolve().then(() => (init_state2(), state_exports)),
         Promise.resolve().then(() => (init_vitest(), vitest_exports)),
         Promise.resolve().then(() => (init_runner(), runner_exports))
       ]);
@@ -10493,6 +10710,7 @@ async function startCommand(args, io) {
 
 // src/cli/status-wait.ts
 import { setTimeout as sleep } from "node:timers/promises";
+init_state2();
 init_store2();
 var STATUS_WAIT_POLL_MS = 250;
 var STATUS_WAIT_SETTLE_MS = 750;
@@ -10513,8 +10731,9 @@ async function waitForStatus(cwd, options) {
       const header = readHeader(store, id, states);
       start ??= states.map(toStartView);
       const transitions = countNews(start, states, header.revision);
-      const quiet = pending(header) === 0 && (final || elapsed() >= settleMs);
-      const outcome = transitions > 0 ? "news" : quiet ? "quiet" : final ? "timeout" : null;
+      const settled = final || elapsed() >= settleMs;
+      const daemon = worktreeLiveness(store.worktrees.get(id), now());
+      const outcome = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : settled && !isPending(header) ? "quiet" : final ? "timeout" : null;
       return outcome === null ? null : { outcome, transitions, result: buildSnapshot(store, root, now()) };
     });
     if (read3 !== null && "available" in read3) {
@@ -10541,9 +10760,6 @@ function countNews(start, states, revision) {
     revision
   }).entries.length;
 }
-function pending(header) {
-  return header.counts.pending + header.testFilesWithoutChecks.pending;
-}
 async function statusWaitCommand(timeoutMs, json3, io) {
   const now = io.now ?? Date.now;
   const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now });
@@ -10556,7 +10772,12 @@ async function statusWaitCommand(timeoutMs, json3, io) {
   const line = `${waitLine(wait.outcome, wait.transitions, wait.result, wait.waitedMs)}
 `;
   if (json3) {
-    io.stdout(`${JSON.stringify(result, null, 2)}
+    const payload = {
+      outcome: wait.outcome,
+      waitedMs: Math.round(wait.waitedMs),
+      transitions: wait.transitions
+    };
+    io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}
 `);
     io.stderr(line);
   } else {
@@ -10573,16 +10794,23 @@ function waitLine(outcome, transitions, snapshot2, waitedMs) {
       return `Returned on quiet: nothing pending ${at} ${after}`;
     case "news":
       return `Returned on news: ${transitions} ${plural2(transitions, "transition")} since the wait started, ${at} ${after}`;
+    case "no-daemon":
+      return `Returned without a daemon: ${noDaemonText(snapshot2.daemon)}; results are as of revision ${snapshot2.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText(snapshot2)} ${at}`;
   }
+}
+function noDaemonText(daemon) {
+  if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
+  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
 }
 function pendingText(snapshot2) {
   const checks = snapshot2.counts.pending;
   const files = snapshot2.testFilesWithoutChecks.pending;
   const parts = [`${checks} ${plural2(checks, "check")}`];
   if (files > 0) parts.push(`${files} test ${plural2(files, "file")} without checks`);
-  return `${parts.join(" and ")} pending`;
+  if (snapshot2.runnerPartPending === true) parts.push(runnerPartText(snapshot2.revision));
+  return parts.length === 1 ? `${parts[0]} pending` : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
 }
 function plural2(count, word) {
   return count === 1 ? word : `${word}s`;

@@ -151,6 +151,39 @@ function formatCheck(check) {
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  env: { allowlist: [] },
+  runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -161,6 +194,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
+  const refinedRevision = readRefined(store, worktreeId);
   return {
     revision,
     counts,
@@ -170,8 +204,21 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
       lastCompletedRevision: last?.revision ?? null
     },
     testFilesListed: keys.length > 0 || last !== null,
-    inheritedCount
+    inheritedCount,
+    refinedRevision,
+    runnerPartPending: refinedRevision !== null && refinedRevision < revision
   };
+}
+function readRefined(store, worktreeId) {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : null;
+}
+function isPending(header) {
+  return header.counts.pending + header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+}
+function runnerPartText(revision) {
+  return `the runner part of revision ${revision}`;
 }
 function fullSuiteText({ revision, fullSuite }) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
@@ -221,36 +268,6 @@ function transitionKind(from, to) {
 
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
-
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/daemon.ts
-var DAEMON_SOCKET_TIMEOUT_MS = 100;
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
@@ -1564,14 +1581,16 @@ function createWorktreeRepo(conn) {
         record.registeredAt,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
-        d?.heartbeatAt ?? null,
+        d?.heartbeatAt ?? record.lastHeartbeatAt ?? null,
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null
       );
     },
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
     setDaemon: (id, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?, daemon_heartbeat_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+           daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
            daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
@@ -1600,6 +1619,7 @@ function createWorktreeRepo(conn) {
 }
 function toRecord(row) {
   const socketPath = strOrNull(row, "daemon_socket");
+  const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {
     id: str(row, "id"),
     root: str(row, "root"),
@@ -1612,7 +1632,8 @@ function toRecord(row) {
       heartbeatAt: num(row, "daemon_heartbeat_at"),
       heartbeatIntervalMs: num(row, "daemon_heartbeat_interval_ms"),
       squealVersion: str(row, "daemon_version")
-    }
+    },
+    ...socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}
   };
 }
 
@@ -1867,7 +1888,7 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = liveness(worktree?.daemon ?? null, now);
+  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
   const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -1888,8 +1909,8 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId)
   };
 }
-function liveness(daemon, now) {
-  if (daemon === null) return { state: "down", since: null };
+function liveness(daemon, now, lastHeartbeatAt) {
+  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
   const age = now - daemon.heartbeatAt;
   if (age <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
@@ -1951,17 +1972,20 @@ function recoveryNote(raw) {
 }
 
 // src/core/delivery/liveness.ts
-function daemonLiveness(record, now) {
-  if (record === null) return { state: "down", since: null };
+function daemonLiveness(record, now, lastHeartbeatAt = null) {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
   if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
   }
   return { state: "down", since: record.heartbeatAt };
 }
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+}
 function readLiveHeader(store, worktreeId, now, states) {
   return {
     ...readHeader(store, worktreeId, states),
-    daemon: daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, now)
+    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now)
   };
 }
 function livenessMetaKey(worktreeId) {
@@ -2015,7 +2039,7 @@ function createDelivery(store, options) {
     return kinds === null ? full : restrictPlan(full, kinds);
   }
   function livenessChange(consumer, at2) {
-    const live = daemonLiveness(store.worktrees.get(consumer.worktreeId)?.daemon ?? null, at2);
+    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at2);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
   function deliver(consumer, heardFrom, kinds = null, liveness2 = false) {
@@ -2100,6 +2124,7 @@ var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
 var STATUS_POINTER = "`squeal status` lists every known failure.";
 var upper = (outcome) => outcome.toUpperCase();
+var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
@@ -2116,7 +2141,8 @@ function headerLine(header) {
   const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
-  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
+  const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
+  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
@@ -2732,7 +2758,7 @@ async function waitForPending(context, waitMs, pollMs) {
   const deadline = performance.now() + waitMs;
   for (; ; ) {
     const header = readHeader(context.store, context.consumer.worktreeId);
-    if (header.counts.pending + header.testFilesWithoutChecks.pending === 0) return;
+    if (!isPending(header)) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
     await sleep2(Math.min(pollMs, left));
@@ -2762,7 +2788,8 @@ function parseHookInput(text) {
     hook_event_name: v.hook_event_name,
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
-    ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}
+    ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
+    ...typeof v.source === "string" ? { source: v.source } : {}
   };
 }
 

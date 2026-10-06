@@ -68,6 +68,24 @@ function baselineFindings(store, worktreeId) {
   return (check, fingerprint) => entries.has(entry(check, fingerprint));
 }
 
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -78,6 +96,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
+  const refinedRevision = readRefined(store, worktreeId);
   return {
     revision,
     counts,
@@ -87,8 +106,15 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
       lastCompletedRevision: last?.revision ?? null
     },
     testFilesListed: keys.length > 0 || last !== null,
-    inheritedCount
+    inheritedCount,
+    refinedRevision,
+    runnerPartPending: refinedRevision !== null && refinedRevision < revision
   };
+}
+function readRefined(store, worktreeId) {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : null;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -134,21 +160,6 @@ function transitionKind(from, to) {
 
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
-
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
@@ -1462,14 +1473,16 @@ function createWorktreeRepo(conn) {
         record.registeredAt,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
-        d?.heartbeatAt ?? null,
+        d?.heartbeatAt ?? record.lastHeartbeatAt ?? null,
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null
       );
     },
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
     setDaemon: (id, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?, daemon_heartbeat_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+           daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
            daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
@@ -1498,6 +1511,7 @@ function createWorktreeRepo(conn) {
 }
 function toRecord(row) {
   const socketPath = strOrNull(row, "daemon_socket");
+  const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {
     id: str(row, "id"),
     root: str(row, "root"),
@@ -1510,7 +1524,8 @@ function toRecord(row) {
       heartbeatAt: num(row, "daemon_heartbeat_at"),
       heartbeatIntervalMs: num(row, "daemon_heartbeat_interval_ms"),
       squealVersion: str(row, "daemon_version")
-    }
+    },
+    ...socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}
   };
 }
 
@@ -1765,7 +1780,7 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = liveness(worktree?.daemon ?? null, now);
+  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
   const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -1786,8 +1801,8 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId)
   };
 }
-function liveness(daemon, now) {
-  if (daemon === null) return { state: "down", since: null };
+function liveness(daemon, now, lastHeartbeatAt) {
+  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
   const age = now - daemon.heartbeatAt;
   if (age <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
@@ -1849,17 +1864,20 @@ function recoveryNote(raw) {
 }
 
 // src/core/delivery/liveness.ts
-function daemonLiveness(record, now) {
-  if (record === null) return { state: "down", since: null };
+function daemonLiveness(record, now, lastHeartbeatAt = null) {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
   if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
   }
   return { state: "down", since: record.heartbeatAt };
 }
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+}
 function readLiveHeader(store, worktreeId, now, states) {
   return {
     ...readHeader(store, worktreeId, states),
-    daemon: daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, now)
+    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now)
   };
 }
 function livenessMetaKey(worktreeId) {
@@ -1913,7 +1931,7 @@ function createDelivery(store, options) {
     return kinds === null ? full : restrictPlan(full, kinds);
   }
   function livenessChange(consumer, at) {
-    const live = daemonLiveness(store.worktrees.get(consumer.worktreeId)?.daemon ?? null, at);
+    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
   function deliver(consumer, heardFrom, kinds = null, liveness2 = false) {
@@ -2096,7 +2114,13 @@ async function unregisterSession(context, sessionId, options) {
     const { locksDir } = storePaths(context.commonDir);
     for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
   }
-  if (errors.length > 0) throw errors[0];
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      `squeal: ${errors.length} errors unregistering session ${sessionId}`
+    );
+  }
   return consumers;
 }
 function same(a, b) {
@@ -2143,7 +2167,8 @@ function parseHookInput(text) {
     hook_event_name: v.hook_event_name,
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
-    ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}
+    ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
+    ...typeof v.source === "string" ? { source: v.source } : {}
   };
 }
 
