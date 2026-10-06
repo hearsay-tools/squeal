@@ -53,7 +53,7 @@ describe("delivery header and status", () => {
       lastCompletedRevision: 0,
     });
     const { revision, counts, testFilesWithoutChecks, fullSuite, daemon } = status;
-    const { testFilesListed, inheritedCount } = status;
+    const { testFilesListed, inheritedCount, refinedRevision, runnerPartPending } = status;
     expect({
       revision,
       counts,
@@ -61,6 +61,8 @@ describe("delivery header and status", () => {
       fullSuite,
       testFilesListed,
       inheritedCount,
+      refinedRevision,
+      runnerPartPending,
       daemon,
     }).toEqual(registration.header);
     expect(registration.header).toMatchObject({ testFilesListed: true, inheritedCount: 1 });

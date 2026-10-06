@@ -393,6 +393,8 @@ describe("register", () => {
       fullSuite: { atCurrentRevision: true, lastCompletedRevision: 1 },
       testFilesListed: true,
       inheritedCount: 0,
+      refinedRevision: null,
+      runnerPartPending: false,
       daemon: { state: "down", since: null },
     });
   });
@@ -406,6 +408,8 @@ describe("register", () => {
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
       testFilesListed: true,
       inheritedCount: 0,
+      refinedRevision: null,
+      runnerPartPending: false,
       daemon: { state: "down", since: null },
     });
     expect(knownFailures).toEqual([]);

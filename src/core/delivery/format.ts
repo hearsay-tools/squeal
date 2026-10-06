@@ -1,4 +1,4 @@
-import { formatCheck, fullSuiteText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { formatCheck, fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS } from "../state/index.js";
 import type {
   CheckId,
   DaemonLiveness,
@@ -33,6 +33,7 @@ const STATUS_POINTER = "`squeal status` lists every known failure.";
 type Shown = KnownOutcome | "resolved";
 
 const upper = (outcome: Shown) => outcome.toUpperCase();
+const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function cap(text: string, max: number): string {
@@ -63,9 +64,13 @@ function headerLine(header: StatusHeader): string {
       ? ""
       : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
+  const runnerPart =
+    header.runnerPartPending === true
+      ? ` ${capitalize(runnerPartText(revision))}; test files it adds are not counted yet.`
+      : "";
   return (
     `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ` +
-    `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed} ` +
+    `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header)}.` +
     livenessSentence(header.daemon, revision)
   );

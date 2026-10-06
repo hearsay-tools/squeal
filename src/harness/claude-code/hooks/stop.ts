@@ -5,7 +5,7 @@ import {
   readHeader,
   readLiveHeader,
 } from "../../../core/delivery/index.js";
-import { toKnownFailure } from "../../../core/state/index.js";
+import { isPending, toKnownFailure } from "../../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../../core/status/index.js";
 import { storePaths } from "../../../core/store/index.js";
 import type { KnownFailure } from "../../../core/types/index.js";
@@ -131,12 +131,16 @@ async function newsText(context: HookContext): Promise<string | null> {
   return `${formatDelta(delta)}\n${knownFailuresLine(failures)}`;
 }
 
-/** Polls the header until nothing is pending at the current revision or `waitMs` passed. */
+/**
+ * Polls the header until nothing is pending at the current revision, the
+ * runner part of the revision included (review wave 4.5, S1), or `waitMs`
+ * passed.
+ */
 async function waitForPending(context: HookContext, waitMs: number, pollMs: number) {
   const deadline = performance.now() + waitMs;
   for (;;) {
     const header = readHeader(context.store, context.consumer.worktreeId);
-    if (header.counts.pending + header.testFilesWithoutChecks.pending === 0) return;
+    if (!isPending(header)) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
     await sleep(Math.min(pollMs, left));

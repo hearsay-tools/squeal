@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isPending } from "../../src/core/state/index.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -74,5 +75,67 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
       running: 0,
       testFiles: { current: 2, pending: 0 },
     });
+  });
+
+  /*
+   * Review wave 4.5, S1 and probe G: a failing test file written during a
+   * tier was in no count until the tier ended, and for a moment after it the
+   * store read "nothing pending" at its revision.
+   */
+  it("never reads nothing pending at the revision of a test file added during a tier", async () => {
+    const repo = createRepo("barrel");
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    await h.scheduler.start();
+    await h.scheduler.idle();
+
+    let tierStarted: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      tierStarted = resolve;
+    });
+    h.runner.beforeRun = (files) => {
+      if (files.some((f) => f.path === "test/barrel.test.ts")) tierStarted();
+    };
+    h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase() + '';\n");
+    await h.batch("src/strings.ts");
+    await started;
+
+    h.write(
+      "test/zz/new.test.ts",
+      'import { expect, it } from "vitest";\n\nit("is new", () => {\n  expect(1).toBe(2);\n});\n',
+    );
+    await h.batch("test/zz/new.test.ts");
+    const added = store.revisions.latest(h.worktreeId)?.number ?? 0;
+    expect(h.header()).toMatchObject({ revision: added, runnerPartPending: true });
+
+    // What a status read or a Stop wait sees until everything settled.
+    const quietWithoutTheFile: number[] = [];
+    let reads = 0;
+    const sample = () => {
+      const header = h.header();
+      reads++;
+      const listed = store.testFileKeys
+        .list(h.worktreeId)
+        .some((row) => row.testFile.path === "test/zz/new.test.ts");
+      if (header.revision >= added && !isPending(header) && !listed) {
+        quietWithoutTheFile.push(header.revision);
+      }
+    };
+    const poll = setInterval(sample, 2);
+    try {
+      await h.scheduler.idle();
+    } finally {
+      clearInterval(poll);
+    }
+    sample();
+
+    expect(reads).toBeGreaterThan(100);
+    expect(quietWithoutTheFile).toEqual([]);
+    expect(h.header()).toMatchObject({ refinedRevision: added, runnerPartPending: false });
+    expect(h.runsOf("test/zz/new.test.ts")).toHaveLength(1);
+    const failing = store.knownStates
+      .list(h.worktreeId)
+      .filter((s) => s.check.testPath === "test/zz/new.test.ts" && s.outcome === "fail");
+    expect(failing).toHaveLength(1);
   });
 });

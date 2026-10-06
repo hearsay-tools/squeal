@@ -83,6 +83,20 @@ export interface StatusHeader {
    * reads as 0.
    */
   readonly inheritedCount?: number;
+  /**
+   * The newest revision whose runner part the daemon applied
+   * (`refinedMetaKey`); `null` when no daemon recorded one. Set by
+   * `readHeader`.
+   */
+  readonly refinedRevision?: RevisionNumber | null;
+  /**
+   * `true` while the current revision is ahead of `refinedRevision`: the
+   * runner has not yet listed test files, the affected set or closures for
+   * it, so a test file added at this revision is in no count. Pending work
+   * like `counts.pending` (review wave 4.5, S1; D2 as amended). Set by
+   * `readHeader`; absent reads as `false`.
+   */
+  readonly runnerPartPending?: boolean;
 }
 
 /**

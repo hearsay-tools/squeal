@@ -1,13 +1,14 @@
 import { testFileId } from "../keys/index.js";
-import type {
-  CheckId,
-  CheckKey,
-  CommitSha,
-  RelativePath,
-  ResultRecord,
-  RevisionNumber,
-  TestFileKeyRecord,
-  TestFileRef,
+import {
+  type CheckId,
+  type CheckKey,
+  type CommitSha,
+  type RelativePath,
+  type ResultRecord,
+  type RevisionNumber,
+  refinedMetaKey,
+  type TestFileKeyRecord,
+  type TestFileRef,
 } from "../types/index.js";
 import { Checkpoints } from "./checkpoints.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -227,8 +228,14 @@ export class Ledger {
     }
   }
 
-  /** Writes what this round of work owes the store and the sink, in one transaction. */
-  commit(): void {
+  /**
+   * Writes what this round of work owes the store and the sink, in one
+   * transaction. `refined` is the revision whose runner part this commit
+   * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
+   * spec 001 D2 as amended), so headers stop counting that runner part as
+   * pending in the same transaction that applies it.
+   */
+  commit(options: { readonly refined?: RevisionNumber } = {}): void {
     const { store, sink, worktreeId } = this.context;
     const revision = this.revision.number;
     const rows: TestFileKeyRecord[] = [];
@@ -262,6 +269,9 @@ export class Ledger {
       // Each file is attributed to the checkpoint that requested it (review S9).
       for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
         sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
+      }
+      if (options.refined !== undefined) {
+        store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
       }
     });
   }
