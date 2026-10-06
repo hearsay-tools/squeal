@@ -11,6 +11,7 @@ import { storePaths } from "../../../core/store/index.js";
 import type { KnownFailure } from "../../../core/types/index.js";
 import type { HookContext } from "../context.js";
 import { ensureIfStale } from "../ensure.js";
+import { isFork } from "../fork.js";
 import {
   additionalContext,
   type Handler,
@@ -62,8 +63,12 @@ export function stopBusyTimeoutMs(waitMs: number): number {
  * existing (review wave 3, S1). A subagent that stops without a block can
  * receive nothing more, so SubagentStop unregisters its consumer after
  * delivering (S6).
+ *
+ * Lessons, defect 9: the SubagentStop of one of Claude Code's internal forks
+ * never blocks and delivers nothing, because a fork is not a consumer.
  */
 export const stop: Handler = (input, location, deps) => {
+  if (isFork(input)) return forkStop(input, location, deps);
   const policy = readHookPolicy(location.root).stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext(
@@ -100,6 +105,16 @@ export const stop: Handler = (input, location, deps) => {
     { busyTimeoutMs: stopBusyTimeoutMs(wait) },
   );
 };
+
+/**
+ * A fork registers nothing, so its SubagentStop unregisters only a consumer an
+ * older build registered for its agent id; no daemon ensure, no output.
+ */
+const forkStop: Handler = (input, location, deps) =>
+  withContext(input, location, deps, async (context) => {
+    if (isRegistered(context)) await finishSubagent(context);
+    return null;
+  });
 
 /** Failures not observed at this revision: their re-run is pending, or they have no current result. */
 function earlier(failures: readonly KnownFailure[]): readonly KnownFailure[] {

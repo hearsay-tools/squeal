@@ -1,6 +1,7 @@
 import { formatRegistration } from "../../../core/delivery/index.js";
 import { usesSqueal } from "../context.js";
 import { ensure, settle } from "../ensure.js";
+import { isFork } from "../fork.js";
 import { additionalContext, type Handler, isRegistered, withContext } from "../hook.js";
 import { unregisterSession } from "../sweep.js";
 
@@ -22,12 +23,15 @@ import { unregisterSession } from "../sweep.js";
  * still registered keeps its view too, so nothing it was not told yet is
  * seeded away, and the hook says nothing. `clear` and a missing source do not
  * sweep either.
+ *
+ * Lessons, defect 9: the SubagentStart of one of Claude Code's internal forks
+ * does nothing, since a fork is not a consumer.
  */
 /** Sources after which no earlier run of the session id goes on. */
 const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
 
 export const sessionStart: Handler = async (input, location, deps) => {
-  if (!usesSqueal(location)) return null;
+  if (isFork(input) || !usesSqueal(location)) return null;
   let ensured = false;
   const outcome = await withContext(input, location, deps, async (context) => {
     // The store is open already: its daemon record spares the probe a second open (S8).
