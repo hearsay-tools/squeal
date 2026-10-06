@@ -1,5 +1,13 @@
 import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
-import type { FileChange, InvalidatedPath, Revision, TestFileRef } from "../types/index.js";
+import type {
+  AffectedTestFiles,
+  FileChange,
+  InvalidatedPath,
+  RelativePath,
+  Revision,
+  RunnerAdapter,
+  TestFileRef,
+} from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
@@ -81,11 +89,12 @@ function reloadPolicy(
  *   failed listing. A failed listing keeps the previous list: nothing is
  *   retired because of it;
  * - closures are fetched again from the runner for files whose content key
- *   moved, the union of `closuresToReresolve` and `runner.affected` (review:
+ *   moved, the union of `closuresToReresolve` and the affected set (review:
  *   a rekey alone misses a newly created import target or snapshot), every
  *   file of a recreated project, and every blocked file;
  * - untracked closure paths are hashed before keying (review B2);
- * - every file whose key may have moved is settled: lookup, then queue;
+ * - every file whose key may have moved is settled: lookup, then queue,
+ *   with the runner's direct importers in the `direct` class (D5 step 4);
  * - a failed environment, invalidation or closure call blocks the files of
  *   its project; with none, the files a previous failure blocked are settled
  *   anew.
@@ -133,15 +142,29 @@ export async function applyRevision(
   pick(content.rekeyed);
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
-  pick(
-    (await tryRunner(context, `affected (${listPaths(paths)})`, () => runner.affected(paths))) ??
-      [],
+  const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>
+    affectedOf(runner, paths),
   );
+  pick(affected?.direct ?? []);
+  pick(affected?.transitive ?? []);
+  const direct = new Set((affected?.direct ?? []).map(testFileId));
 
   touchKeys(await resolveClosures(context, [...reresolve.values()], failures));
   touch(reresolve.values());
-  ledger.settle(touched.values(), changed);
+  ledger.settle(touched.values(), changed, { direct });
   settleFailures(ledger, failures, retrying, changed);
+}
+
+/**
+ * `runner.affectedDetailed`, or `runner.affected` with every file transitive
+ * for a runner without it. Spec 001 D5 step 4: direct importers run first.
+ */
+function affectedOf(
+  runner: RunnerAdapter,
+  paths: readonly RelativePath[],
+): Promise<AffectedTestFiles> {
+  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
+  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
 }
 
 /**

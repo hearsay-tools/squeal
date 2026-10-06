@@ -1,5 +1,12 @@
 import { testFileId } from "../keys/index.js";
-import type { CheckId, CheckKey, PendingPhase, TestFileRef, Validity } from "../types/index.js";
+import type {
+  CheckId,
+  CheckKey,
+  PendingPhase,
+  ResultRecord,
+  TestFileRef,
+  Validity,
+} from "../types/index.js";
 
 /** What the scheduler knows about one test file of its worktree. */
 export interface FileState {
@@ -13,6 +20,12 @@ export interface FileState {
   checks: CheckId[];
   /** Whether any of those results is a `fail`. D5 runs these first. */
   failing: boolean;
+  /**
+   * Last known run time: the sum of `durationMs` over the results last
+   * applied, from this worktree's run or a lookup hit. `null` when unknown.
+   * D5 step 4 runs the shortest first within a class.
+   */
+  durationMs: number | null;
   phase: PendingPhase | null;
   /** Key of the tier in flight that holds this file. */
   runningKey: CheckKey | null;
@@ -43,6 +56,7 @@ export function newFileState(ref: TestFileRef): FileState {
     resultKey: null,
     checks: [],
     failing: false,
+    durationMs: null,
     phase: null,
     runningKey: null,
     unknownKey: null,
@@ -76,4 +90,10 @@ export function classify(file: FileState): Validity {
 export function checkId(check: CheckId): string {
   const name = check.kind === "test" ? check.fullName : "";
   return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
+
+/** A file's run time from its results; `null` without results. */
+export function durationOf(results: readonly ResultRecord[]): number | null {
+  if (results.length === 0) return null;
+  return results.reduce((sum, result) => sum + result.durationMs, 0);
 }

@@ -9,8 +9,8 @@ describe("RunQueue", () => {
   it("orders by priority, then by first queued, then by project and path", () => {
     const queue = new RunQueue();
     queue.add(ref("test/d.test.ts"), Priority.neverRun);
-    queue.add(ref("test/c.test.ts"), Priority.affected);
-    queue.add(ref("test/b.test.ts"), Priority.affected);
+    queue.add(ref("test/c.test.ts"), Priority.transitive);
+    queue.add(ref("test/b.test.ts"), Priority.transitive);
     queue.add(ref("test/a.test.ts"), Priority.failing);
     expect(queue.ordered().map((r) => r.path)).toEqual([
       "test/a.test.ts",
@@ -22,8 +22,8 @@ describe("RunQueue", () => {
 
   it("keeps one entry per test file with the most urgent priority and its first position", () => {
     const queue = new RunQueue();
-    queue.add(ref("test/a.test.ts"), Priority.affected);
-    queue.add(ref("test/b.test.ts"), Priority.affected);
+    queue.add(ref("test/a.test.ts"), Priority.transitive);
+    queue.add(ref("test/b.test.ts"), Priority.transitive);
     queue.add(ref("test/a.test.ts"), Priority.neverRun);
     expect(queue.size).toBe(2);
     expect(queue.ordered().map((r) => r.path)).toEqual(["test/a.test.ts", "test/b.test.ts"]);
@@ -31,11 +31,42 @@ describe("RunQueue", () => {
     expect(queue.ordered().map((r) => r.path)).toEqual(["test/b.test.ts", "test/a.test.ts"]);
   });
 
+  it("runs the shortest last known duration first within a class, unknown durations last", () => {
+    const queue = new RunQueue();
+    const durations = new Map<string, number>([
+      ["test/slow.test.ts", 47_000],
+      ["test/fast.test.ts", 12],
+      ["test/mid.test.ts", 900],
+      ["test/direct-slow.test.ts", 5_000],
+    ]);
+    queue.add(ref("test/unknown.test.ts"), Priority.transitive);
+    queue.add(ref("test/slow.test.ts"), Priority.transitive);
+    queue.add(ref("test/fast.test.ts"), Priority.transitive);
+    queue.add(ref("test/mid.test.ts"), Priority.transitive);
+    queue.add(ref("test/direct-slow.test.ts"), Priority.direct);
+    expect(queue.ordered((r) => durations.get(r.path) ?? null).map((r) => r.path)).toEqual([
+      // A class always wins over a duration.
+      "test/direct-slow.test.ts",
+      "test/fast.test.ts",
+      "test/mid.test.ts",
+      "test/slow.test.ts",
+      "test/unknown.test.ts",
+    ]);
+    // Without durations: priority, then first queued.
+    expect(queue.ordered().map((r) => r.path)).toEqual([
+      "test/direct-slow.test.ts",
+      "test/unknown.test.ts",
+      "test/slow.test.ts",
+      "test/fast.test.ts",
+      "test/mid.test.ts",
+    ]);
+  });
+
   it("tells projects apart and remembers a forced entry", () => {
     const queue = new RunQueue();
-    queue.add(ref("test/a.test.ts", "unit"), Priority.affected);
-    queue.add(ref("test/a.test.ts", "e2e"), Priority.affected, true);
-    queue.add(ref("test/a.test.ts", "e2e"), Priority.affected);
+    queue.add(ref("test/a.test.ts", "unit"), Priority.transitive);
+    queue.add(ref("test/a.test.ts", "e2e"), Priority.transitive, true);
+    queue.add(ref("test/a.test.ts", "e2e"), Priority.transitive);
     expect(queue.size).toBe(2);
     expect(queue.isForced(ref("test/a.test.ts", "e2e"))).toBe(true);
     expect(queue.isForced(ref("test/a.test.ts", "unit"))).toBe(false);
@@ -59,11 +90,30 @@ describe("priorityOf (D5 step 4)", () => {
     const affected = newFileState(ref("test/a.test.ts"));
     affected.resultKey = "k-old";
     expect(priorityOf(direct, changed)).toBe(Priority.direct);
-    expect(priorityOf(affected, changed)).toBe(Priority.affected);
+    expect(priorityOf(affected, changed)).toBe(Priority.transitive);
+  });
+
+  it("puts a direct importer from the runner's module graph before transitive ones (lessons defect 3)", () => {
+    const importer = newFileState(ref("test/a.test.ts"));
+    importer.resultKey = "k-old";
+    const viaBarrel = newFileState(ref("test/c.test.ts"));
+    viaBarrel.resultKey = "k-old";
+    const direct = new Set([importer.id]);
+    expect(priorityOf(importer, changed, direct)).toBe(Priority.direct);
+    expect(priorityOf(viaBarrel, changed, direct)).toBe(Priority.transitive);
+    // A new test file of the edited module is direct too, never-run or not.
+    expect(priorityOf(newFileState(ref("test/a.test.ts")), changed, direct)).toBe(Priority.direct);
+    const failing = newFileState(ref("test/a.test.ts"));
+    failing.failing = true;
+    expect(priorityOf(failing, changed, direct)).toBe(Priority.failing);
   });
 
   it("puts never-run files last", () => {
     expect(priorityOf(newFileState(ref("test/a.test.ts")), changed)).toBe(Priority.neverRun);
+  });
+
+  it("names the classes of spec 001 D5 step 4, most urgent first", () => {
+    expect(Priority).toEqual({ failing: 0, direct: 1, transitive: 2, neverRun: 3 });
   });
 });
 

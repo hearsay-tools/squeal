@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
-import type { CheckId, CheckKey, TestFileRef } from "../types/index.js";
+import type { CheckId, TestFileRef } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
-import type { FileState } from "./files.js";
+import { durationOf, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
 import { readEnvironments, resolveClosures } from "./revision.js";
@@ -93,7 +93,12 @@ export async function bootstrap(context: SchedulerContext, ledger: Ledger): Prom
 
   for (const file of misses) {
     const previous = previousKeys.get(file.id)?.key ?? null;
-    if (previous !== null && hasResults(context, previous)) file.resultKey = previous;
+    if (previous === null) continue;
+    // `usedAt` 0 never advances last-used: reading a duration is not a lookup hit (D8).
+    const results = store.results.byKey(previous, 0);
+    if (results.length === 0) continue;
+    file.resultKey = previous;
+    file.durationMs = durationOf(results);
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
   ledger.checkpoints.start(
@@ -137,8 +142,4 @@ function restore(file: FileState, known: Known | undefined): void {
   if (!known) return;
   file.checks = [...known.checks];
   file.failing = known.failing;
-}
-
-function hasResults(context: SchedulerContext, key: CheckKey): boolean {
-  return context.store.results.checksForKey(key).length > 0;
 }
