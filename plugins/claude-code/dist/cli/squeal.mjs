@@ -5481,9 +5481,9 @@ var init_readdirp = __esm({
       }
       // Synchronous in dirent mode; returns a promise only when stats are needed.
       _formatEntry(dirent, path) {
-        const basename5 = this._isDirent ? dirent.name : dirent;
-        const fullPath = pjoin(path, basename5);
-        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename5 };
+        const basename6 = this._isDirent ? dirent.name : dirent;
+        const fullPath = pjoin(path, basename6);
+        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename6 };
         if (this._isDirent) {
           entry2.dirent = dirent;
           return entry2;
@@ -6024,9 +6024,9 @@ var init_handler = __esm({
       _watchWithNodeFs(path, listener) {
         const opts = this.fsw.options;
         const directory = sp.dirname(path);
-        const basename5 = sp.basename(path);
+        const basename6 = sp.basename(path);
         const parent = this.fsw._getWatchedDir(directory);
-        parent.add(basename5);
+        parent.add(basename6);
         const absolutePath = sp.resolve(path);
         const options = {
           persistent: opts.persistent
@@ -6036,7 +6036,7 @@ var init_handler = __esm({
         let closer;
         if (opts.usePolling) {
           const enableBin = opts.interval !== opts.binaryInterval;
-          options.interval = enableBin && isBinaryPath(basename5) ? opts.binaryInterval : opts.interval;
+          options.interval = enableBin && isBinaryPath(basename6) ? opts.binaryInterval : opts.interval;
           closer = setFsWatchFileListener(path, absolutePath, options, {
             listener,
             rawEmitter: this.fsw._emitRaw
@@ -6059,10 +6059,10 @@ var init_handler = __esm({
           return;
         }
         const dirname13 = sp.dirname(file);
-        const basename5 = sp.basename(file);
+        const basename6 = sp.basename(file);
         const parent = this.fsw._getWatchedDir(dirname13);
         let prevStats = stats;
-        if (parent.has(basename5))
+        if (parent.has(basename6))
           return;
         const listener = async (path, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
@@ -6087,9 +6087,9 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname13, basename5);
+              this.fsw._remove(dirname13, basename6);
             }
-          } else if (parent.has(basename5)) {
+          } else if (parent.has(basename6)) {
             const at = newStats.atimeMs;
             const mt = newStats.mtimeMs;
             if (!at || at <= mt || mt !== prevStats.mtimeMs) {
@@ -7774,7 +7774,7 @@ var init_daemon_loop = __esm({
 
 // src/runners/vitest/graph.ts
 import { existsSync as existsSync8 } from "node:fs";
-import { dirname as dirname11, extname as extname2, join as join20, resolve as resolve9 } from "node:path";
+import { basename as basename4, dirname as dirname11, extname as extname2, join as join20, resolve as resolve9 } from "node:path";
 async function importClosure(project, entries) {
   const files = /* @__PURE__ */ new Set();
   const missing = /* @__PURE__ */ new Set();
@@ -7831,6 +7831,19 @@ function resolutionCandidates(target, extensions) {
     ...twins
   ];
 }
+function resolutionBases(path, extensions) {
+  const ext = extname2(path);
+  const bases = [path];
+  if (ext === "") return bases;
+  if (extensions.includes(ext)) {
+    bases.push(path.slice(0, -ext.length));
+    if (basename4(path) === `index${ext}`) bases.push(dirname11(path));
+  }
+  for (const [js, twins] of Object.entries(TYPESCRIPT_TWINS)) {
+    if (twins.includes(ext)) bases.push(path.slice(0, -ext.length) + js);
+  }
+  return bases;
+}
 function isMissingTarget(closure, path) {
   if (closure.missing.has(path)) return true;
   const ext = extname2(path);
@@ -7850,7 +7863,7 @@ var init_graph = __esm({
 });
 
 // src/runners/vitest/project.ts
-import { basename as basename4, dirname as dirname12, join as join21 } from "node:path";
+import { basename as basename5, dirname as dirname12, join as join21 } from "node:path";
 function configFiles(vitest) {
   const files = /* @__PURE__ */ new Set();
   for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
@@ -7886,7 +7899,7 @@ function snapshotPath(project, testFile) {
   if (resolveSnapshotPath) {
     return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
   }
-  return join21(dirname12(testFile), "__snapshots__", `${basename4(testFile)}.snap`);
+  return join21(dirname12(testFile), "__snapshots__", `${basename5(testFile)}.snap`);
 }
 function resolveExtensions(project) {
   return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
@@ -8341,18 +8354,49 @@ var init_run = __esm({
   }
 });
 
+// src/runners/vitest/stale.ts
+function staleTransforms(vitest, added, deleted) {
+  const stale = new Set(deleted);
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      const extensions = environment.config.resolve.extensions;
+      const targets = new Set(deleted);
+      for (const path of added) {
+        for (const base of resolutionBases(path, extensions)) {
+          for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
+        }
+      }
+      for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
+        if (stale.has(file)) continue;
+        for (const module of modules) {
+          const result = cachedTransform(module);
+          if (!result) continue;
+          const deps = [...result.deps ?? [], ...result.dynamicDeps ?? []];
+          if (deps.some((dep) => targets.has(depToPath(dep, file, project.config.root) ?? ""))) {
+            stale.add(file);
+            break;
+          }
+        }
+      }
+    }
+  }
+  return stale;
+}
+function cachedTransform(module) {
+  if (module.transformResult) return module.transformResult;
+  const state = module.invalidationState;
+  return typeof state === "object" && state !== null ? state : null;
+}
+var init_stale = __esm({
+  "src/runners/vitest/stale.ts"() {
+    "use strict";
+    init_graph();
+  }
+});
+
 // src/runners/vitest/adapter.ts
 async function testSpecifications(vitest) {
   return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
-}
-function invalidateAll(vitest) {
-  const files = /* @__PURE__ */ new Set();
-  for (const project of vitest.projects) {
-    for (const environment of Object.values(project.vite.environments)) {
-      for (const file of environment.moduleGraph.fileToModulesMap.keys()) files.add(file);
-    }
-  }
-  for (const file of files) vitest.invalidateFile(file);
 }
 var VITEST_ADAPTER_VERSION, VitestAdapter;
 var init_adapter = __esm({
@@ -8365,6 +8409,7 @@ var init_adapter = __esm({
     init_reporter();
     init_results2();
     init_run();
+    init_stale();
     VITEST_ADAPTER_VERSION = "2";
     VitestAdapter = class {
       /**
@@ -8436,7 +8481,9 @@ var init_adapter = __esm({
           for (const p of abs) vitest.invalidateFile(p.abs);
           const structural = abs.filter((p) => p.kind !== "change");
           if (structural.length > 0) {
-            invalidateAll(vitest);
+            const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
+            const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
+            for (const file of staleTransforms(vitest, added, deleted)) vitest.invalidateFile(file);
             const testGlob = structural.some(
               (p) => vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => ""))
             );
