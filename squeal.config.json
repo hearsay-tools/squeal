@@ -1,0 +1,12 @@
+{
+  "inputs": {
+    "test/harness/plugin.test.ts": [
+      "plugins/claude-code/**",
+      "src/**/*.ts",
+      ".claude-plugin/**",
+      "package.json"
+    ],
+    "test/e2e/*.test.ts": ["plugins/claude-code/**"],
+    "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"]
+  }
+}
