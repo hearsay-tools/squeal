@@ -2,7 +2,12 @@ export { checkKey } from "./check-key.js";
 export {
   assembleClosure,
   CLOSURE_METHOD,
+  createDeclaredInputs,
+  type DeclaredInputs,
+  inputGlobs,
+  isInputList,
   normalizeRelativePath,
+  sameInputs,
   selectDeclaredInputs,
 } from "./closure.js";
 export {
