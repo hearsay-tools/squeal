@@ -22,7 +22,11 @@ export interface Policy {
     /** Spec 001 D5: "the baseline is a lookup [...] followed by a run of the misses, or lookup only, per policy." */
     readonly onStart: "lookup-then-run-missing" | "lookup-only";
   };
-  /** Spec 001 D11: "extra closure globs, for fixtures read at runtime." Default `[]`. */
+  /**
+   * Spec 001 D11: "extra closure globs for fixtures read at runtime, either a
+   * list applied to every test file or a map from test-file glob to input
+   * globs so one runtime read does not re-key the whole suite." Default `[]`.
+   */
   readonly inputs: readonly string[];
   readonly env: {
     /** Spec 001 D11: "environment variables included in the environment hash." Default `[]`. */
@@ -52,12 +56,24 @@ export interface Policy {
   };
 }
 
+/**
+ * Policy `inputs`: input globs for every test file, or test-file glob to the
+ * input globs of the test files it matches (spec 001 D3, D11). Globs are
+ * worktree-relative, compiled by `globToRegExp` in src/core/keys.
+ */
+export type PolicyInputs = readonly string[] | Readonly<Record<string, readonly string[]>>;
+
+/** True when `A` and `B` are the same type. */
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
 type DeepPartial<T> = {
-  readonly [K in keyof T]?: T[K] extends readonly unknown[]
+  readonly [K in keyof T]?: Same<T[K], PolicyInputs> extends true
     ? T[K]
-    : T[K] extends object
-      ? DeepPartial<T[K]>
-      : T[K];
+    : T[K] extends readonly unknown[]
+      ? T[K]
+      : T[K] extends object
+        ? DeepPartial<T[K]>
+        : T[K];
 };
 
 /** Contents of `squeal.config.json`. Spec 001 D11: "all keys optional". */

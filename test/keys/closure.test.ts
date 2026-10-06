@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   assembleClosure,
+  createDeclaredInputs,
+  inputGlobs,
   normalizeRelativePath,
+  sameInputs,
   selectDeclaredInputs,
 } from "../../src/core/keys/index.js";
 import type { RunnerClosure } from "../../src/core/types/index.js";
@@ -32,6 +35,83 @@ describe("selectDeclaredInputs", () => {
       "test/data/b.json",
     ]);
     expect(selectDeclaredInputs([], files)).toEqual([]);
+  });
+
+  it("applies a list to every test file", () => {
+    const files = ["fixtures/x.txt", "src/a.ts"];
+    expect(selectDeclaredInputs(["fixtures/**"], files, "test/a.test.ts")).toEqual([
+      "fixtures/x.txt",
+    ]);
+    expect(selectDeclaredInputs(["fixtures/**"], files, "test/b.test.ts")).toEqual([
+      "fixtures/x.txt",
+    ]);
+  });
+
+  describe("with a map from test-file glob to input globs (D3, D11 as amended)", () => {
+    const files = ["dist/a.mjs", "dist/b.mjs", "fixtures/x.txt", "fixtures/y.json", "src/a.ts"];
+    const inputs = {
+      "test/harness/plugin.test.ts": ["dist/**"],
+      "test/**/*.json.test.ts": ["fixtures/*.json"],
+      "test/{a,b}.test.ts": ["fixtures/x.txt", "fixtures/*.json"],
+    };
+
+    it("applies only the input globs whose test-file glob matches the test file", () => {
+      expect(selectDeclaredInputs(inputs, files, "test/harness/plugin.test.ts")).toEqual([
+        "dist/a.mjs",
+        "dist/b.mjs",
+      ]);
+      expect(selectDeclaredInputs(inputs, files, "test/deep/y.json.test.ts")).toEqual([
+        "fixtures/y.json",
+      ]);
+      expect(selectDeclaredInputs(inputs, files, "test/a.test.ts")).toEqual([
+        "fixtures/x.txt",
+        "fixtures/y.json",
+      ]);
+      expect(selectDeclaredInputs(inputs, files, "test/other.test.ts")).toEqual([]);
+    });
+
+    it("selects every rule's inputs when no test file is named", () => {
+      expect(selectDeclaredInputs(inputs, files)).toEqual([
+        "dist/a.mjs",
+        "dist/b.mjs",
+        "fixtures/x.txt",
+        "fixtures/y.json",
+      ]);
+    });
+
+    it("answers per test file from one pass over the files", () => {
+      const declared = createDeclaredInputs(inputs, files);
+      expect(declared.for("test/harness/plugin.test.ts")).toEqual(["dist/a.mjs", "dist/b.mjs"]);
+      expect(declared.for("test/b.test.ts")).toEqual(["fixtures/x.txt", "fixtures/y.json"]);
+      expect(declared.for("src/a.ts")).toEqual([]);
+      expect(declared.all).toEqual([
+        "dist/a.mjs",
+        "dist/b.mjs",
+        "fixtures/x.txt",
+        "fixtures/y.json",
+      ]);
+    });
+  });
+});
+
+describe("inputGlobs", () => {
+  it("lists every input glob of either shape, for telling whether a path is a declared input", () => {
+    expect(inputGlobs(["a/**", "b/*"])).toEqual(["a/**", "b/*"]);
+    expect(inputGlobs({ "test/a.test.ts": ["a/**"], "test/b.test.ts": ["b/*", "a/**"] })).toEqual([
+      "a/**",
+      "b/*",
+    ]);
+  });
+});
+
+describe("sameInputs", () => {
+  it("compares lists in order and maps by their entries in any key order", () => {
+    expect(sameInputs(["a"], ["a"])).toBe(true);
+    expect(sameInputs(["a", "b"], ["b", "a"])).toBe(false);
+    expect(sameInputs({ x: ["a"], y: ["b"] }, { y: ["b"], x: ["a"] })).toBe(true);
+    expect(sameInputs({ x: ["a"] }, { x: ["b"] })).toBe(false);
+    expect(sameInputs({ x: ["a"] }, ["a"])).toBe(false);
+    expect(sameInputs([], {})).toBe(false);
   });
 });
 
