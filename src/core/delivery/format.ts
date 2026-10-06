@@ -1,4 +1,4 @@
-import { formatCheck, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { formatCheck, fullSuiteText, SUMMARY_MAX_CHARS } from "../state/index.js";
 import type {
   CheckId,
   DaemonLiveness,
@@ -48,20 +48,25 @@ function at(location: SourceLocation): string {
   return `at ${location.path}:${location.line}:${location.column}`;
 }
 
+/** Spec 001 D7 as amended: the daemon has not listed the test files, so zero counts are not complete. */
+const NOT_LISTED_SENTENCE =
+  "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+
 function headerLine(header: StatusHeader): string {
-  const { revision, counts, testFilesWithoutChecks: files, fullSuite } = header;
-  const suite = fullSuite.atCurrentRevision
-    ? `completed at revision ${revision}`
-    : fullSuite.lastCompletedRevision === null
-      ? "not completed at any revision"
-      : `not completed at revision ${revision}, last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const { revision, counts, testFilesWithoutChecks: files } = header;
+  const inherited =
+    (header.inheritedCount ?? 0) === 0
+      ? ""
+      : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks =
     files.pending + files.unknown === 0
       ? ""
       : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
+  const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   return (
     `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ` +
-    `${counts.stale} stale, ${counts.unknown} unknown.${withoutChecks} Full suite: ${suite}.` +
+    `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed} ` +
+    `Full-suite checkpoint: ${fullSuiteText(header)}.` +
     livenessSentence(header.daemon, revision)
   );
 }

@@ -354,6 +354,8 @@ describe("register", () => {
       counts: { current: 1, pending: 0, stale: 1, unknown: 0 },
       testFilesWithoutChecks: { pending: 0, unknown: 0 },
       fullSuite: { atCurrentRevision: true, lastCompletedRevision: 1 },
+      testFilesListed: true,
+      inheritedCount: 0,
       daemon: { state: "down", since: null },
     });
   });
@@ -365,9 +367,33 @@ describe("register", () => {
       counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 0, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
+      testFilesListed: true,
+      inheritedCount: 0,
       daemon: { state: "down", since: null },
     });
     expect(knownFailures).toEqual([]);
+  });
+
+  it("says the test files are not listed while no key and no completed checkpoint exist (lessons, defect 4)", async () => {
+    store.testFileKeys.remove(WT, [FILE]);
+    expect((await delivery.register(C1)).header.testFilesListed).toBe(false);
+
+    const cp = store.checkpoints.start({
+      id: "cp-empty",
+      worktreeId: WT,
+      revision: 0,
+      kind: "baseline",
+      testFiles: [],
+      startedAt: 1,
+    });
+    store.checkpoints.finish(cp.id, "completed", 2);
+    // A project with no test files at all is listed once its baseline completed.
+    expect((await delivery.register(C2)).header.testFilesListed).toBe(true);
+  });
+
+  it("counts current inherited results", async () => {
+    apply(result(A, "pass", { worktreeId: OTHER, commit: "beef" }), result(B, "pass"));
+    expect((await delivery.register(C1)).header.inheritedCount).toBe(1);
   });
 
   it("counts test files without checks: never-run as unknown, queued and running as pending", async () => {

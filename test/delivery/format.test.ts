@@ -77,7 +77,7 @@ describe("formatDelta", () => {
     expect(formatDelta(delta([regression, recovery]))).toBe(
       [
         "SQUEAL · 2 checks changed at revision 184",
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full suite: not completed at revision 184, last completed at revision 170.",
+        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
         "",
         "FAIL  tests/auth/login.test.ts > login > expired token",
         "      PASS -> FAIL",
@@ -215,14 +215,14 @@ describe("formatDelta", () => {
     expect(mixed).toContain("      baseline finding, first observed: FAIL");
   });
 
-  it("states the full-suite result", () => {
+  it("states the full-suite checkpoint as a request, not a coverage state (lessons, surprise 7)", () => {
     const at = (fullSuite: StatusHeader["fullSuite"]) =>
       formatDelta({ ...delta([regression]), header: { ...header, fullSuite } }).split("\n")[1];
     expect(at({ atCurrentRevision: true, lastCompletedRevision: 184 })).toContain(
-      "Full suite: completed at revision 184.",
+      "Full-suite checkpoint: completed at revision 184.",
     );
     expect(at({ atCurrentRevision: false, lastCompletedRevision: null })).toContain(
-      "Full suite: not completed at any revision.",
+      "Full-suite checkpoint: none completed at any revision.",
     );
   });
 
@@ -232,11 +232,39 @@ describe("formatDelta", () => {
         "\n",
       )[1];
     expect(line({ pending: 0, unknown: 0 })).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full suite: not completed at revision 184, last completed at revision 170.",
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
     );
     expect(line({ pending: 2, unknown: 1 })).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Test files without checks: 2 pending, 1 unknown. Full suite: not completed at revision 184, last completed at revision 170.",
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Test files without checks: 2 pending, 1 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
     );
+  });
+
+  it("says when the daemon has not listed the test files yet (lessons, defect 4)", () => {
+    const line = (h: StatusHeader) =>
+      formatDelta({ ...delta([regression]), header: h }).split("\n")[1];
+    const fresh: StatusHeader = {
+      revision: 0,
+      counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 0 },
+      fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
+      testFilesListed: false,
+    };
+    expect(line(fresh)).toBe(
+      "Revision 0: 0 current, 0 pending, 0 stale, 0 unknown. " +
+        "The daemon has not listed this worktree's test files yet; these counts are not complete. " +
+        "Full-suite checkpoint: none completed at any revision.",
+    );
+    expect(line({ ...header, testFilesListed: true })).toBe(line(header));
+  });
+
+  it("counts inherited current results, only when there are any", () => {
+    const line = (inheritedCount: number) =>
+      formatDelta({ ...delta([regression]), header: { ...header, inheritedCount } }).split("\n")[1];
+    expect(line(30)).toBe(
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Inherited: 30 of 47 current. " +
+        "Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
+    );
+    expect(line(0)).toBe(formatDelta(delta([regression])).split("\n")[1]);
   });
 
   it(`caps the message at ${MESSAGE_CAP_CHARS} characters and counts what is left out`, () => {
@@ -292,7 +320,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
     });
     expect(text.split("\n")[1]).toBe(
       "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
-        "Full suite: not completed at revision 184, last completed at revision 170. " +
+        "Full-suite checkpoint: none completed at revision 184; last completed at revision 170. " +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
   });
@@ -308,7 +336,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
     expect(formatDelta({ ...delta([]), header: down, liveness: down.daemon })).toBe(
       "SQUEAL · no daemon is validating at revision 184\n" +
         "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
-        "Full suite: not completed at revision 184, last completed at revision 170. " +
+        "Full-suite checkpoint: none completed at revision 184; last completed at revision 170. " +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
     const alive = { state: "alive" as const, lastHeartbeatAt: since };
@@ -326,11 +354,24 @@ describe("formatRegistration", () => {
     knownFailures,
   });
 
+  it("names inherited results and unlisted test files in the registration header", () => {
+    const text = formatRegistration({
+      ...registration([]),
+      header: { ...header, inheritedCount: 47, testFilesListed: true },
+    });
+    expect(text.split("\n")[1]).toContain(" Inherited: 47 of 47 current. ");
+    const fresh = formatRegistration({
+      ...registration([]),
+      header: { ...header, testFilesListed: false },
+    });
+    expect(fresh).toContain("The daemon has not listed this worktree's test files yet");
+  });
+
   it("renders the header and every known failure", () => {
     expect(formatRegistration(registration([failure(1)]))).toBe(
       [
         "SQUEAL · registered at revision 184",
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full suite: not completed at revision 184, last completed at revision 170.",
+        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
         "Known failures: 1",
         "",
         "FAIL  tests/f1.test.ts > case 1",
