@@ -41,7 +41,8 @@ export interface SquealRepo {
   policy(policy: PolicyFile): void;
   /**
    * The daemon record hooks judge liveness by: `alive` (the default, a heartbeat
-   * now with an hour's interval), `stale` (heartbeat at `staleSince`), `none`.
+   * now with an hour's interval), `stale` (heartbeat at `staleSince`), `none`
+   * (no daemon ever ran: no record and no last heartbeat).
    */
   daemon(state: "alive" | "stale" | "none", staleSince?: number): void;
 }
@@ -50,29 +51,28 @@ export function squealRepo(): SquealRepo {
   const repo = fakeRepo();
   const store = seedStore(repo);
   const worktreeId = repo.mainId;
-  store.worktrees.upsert({
+  const row = {
     id: worktreeId,
     root: repo.main,
     commonDir: repo.commonDir,
     isMain: true,
     registeredAt: 1,
     daemon: null,
-  });
+  };
+  store.worktrees.upsert(row);
   setKey(store, "k1", { file: FILE, worktreeId });
+  // `none`: no daemon ever ran, so no last heartbeat either (`setDaemon(null)` would keep it).
   const daemon: SquealRepo["daemon"] = (state, staleSince = 1) =>
-    store.worktrees.setDaemon(
-      worktreeId,
-      state === "none"
-        ? null
-        : {
-            // Nobody listens here; the hooks' socket probe falls back to the runtime dir.
-            socketPath: `/tmp/squeal-test-${worktreeId}.sock`,
-            startedAt: 1,
-            heartbeatAt: state === "alive" ? Date.now() : staleSince,
-            heartbeatIntervalMs: state === "alive" ? 3_600_000 : 5_000,
-            squealVersion: "0.0.0-test",
-          },
-    );
+    state === "none"
+      ? store.worktrees.upsert(row)
+      : store.worktrees.setDaemon(worktreeId, {
+          // Nobody listens here; the hooks' socket probe falls back to the runtime dir.
+          socketPath: `/tmp/squeal-test-${worktreeId}.sock`,
+          startedAt: 1,
+          heartbeatAt: state === "alive" ? Date.now() : staleSince,
+          heartbeatIntervalMs: state === "alive" ? 3_600_000 : 5_000,
+          squealVersion: "0.0.0-test",
+        });
   daemon("alive");
   const sink = createStateSink(store);
   let revision = 0;
