@@ -90,6 +90,42 @@ export function selectDeclaredInputs(
   return [...(testFile === undefined ? declared.all : declared.for(testFile))];
 }
 
+/** Entries of policy `inputs` that select nothing. */
+export interface UnmatchedInputs {
+  /** Map keys whose test-file glob matches no test file, sorted. */
+  readonly testGlobs: readonly string[];
+  /** Input globs, of either shape, that match no file, sorted. */
+  readonly inputGlobs: readonly string[];
+}
+
+/**
+ * The entries of `inputs` that select nothing among `testFiles` and `files`.
+ * Globs match worktree-relative paths from the start of the path to its end
+ * (`globToRegExp`), so `"plugin.test.ts"` matches only a file at the root.
+ * Review wave 4.5, S5: such an entry was accepted silently.
+ */
+export function unmatchedInputs(
+  inputs: PolicyInputs,
+  testFiles: Iterable<RelativePath>,
+  files: Iterable<RelativePath>,
+): UnmatchedInputs {
+  const known = [...files];
+  const matchesNone = (glob: string, paths: readonly RelativePath[]) => {
+    const matches = createInputMatcher([glob]);
+    return !paths.some((path) => matches(path));
+  };
+  const tests = [...testFiles];
+  const testGlobs = isInputList(inputs)
+    ? []
+    : Object.keys(inputs).filter((glob) => matchesNone(glob, tests));
+  return {
+    testGlobs: testGlobs.sort(compare),
+    inputGlobs: inputGlobs(inputs)
+      .filter((glob) => matchesNone(glob, known))
+      .sort(compare),
+  };
+}
+
 /** Every input glob of either shape, without duplicates: what makes a path a declared input. */
 export function inputGlobs(inputs: PolicyInputs): string[] {
   return isInputList(inputs) ? [...inputs] : [...new Set(Object.values(inputs).flat())];

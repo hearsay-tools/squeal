@@ -84,7 +84,7 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | `stop.requireFullSuite` | `false` | Keep the agent going at Stop until a full-suite run completed at the current revision. Blocks once per stop. |
 | `stop.waitMs` | `0` | At Stop, wait this long for pending checks of the current revision. Capped at 1500 ms by the 2 s hook timeout. |
 | `baseline.onStart` | `"lookup-then-run-missing"` | On daemon start, reuse stored results and run the rest, or `"lookup-only"`. |
-| `inputs` | `[]` | Extra files (globs) that test files read at runtime, so a change to them re-runs those tests. A list applies to every test file. A map from test-file glob to input globs applies to the matching test files only, for example `{"test/harness/plugin.test.ts": ["plugins/claude-code/dist/**"]}`. |
+| `inputs` | `[]` | Extra files (globs) that test files read at runtime, so a change to them re-runs those tests. A list applies to every test file. A map from test-file glob to input globs applies to the matching test files only, for example `{"test/harness/plugin.test.ts": ["plugins/claude-code/dist/**"]}`. Keys and globs match worktree-relative paths from the start of the path to its end: `"plugin.test.ts"` matches only a file at the root, `"**/plugin.test.ts"` one in any directory. A key that matches no test file, or a glob that matches no file, gets a note in `squeal status`. |
 | `env.allowlist` | `[]` | Environment variables whose values are part of a result's identity. |
 | `runner.tierSize` | `4` | Test files per run. |
 | `runner.timeoutMs` | `600000` | Limit per run; `null` for none. |

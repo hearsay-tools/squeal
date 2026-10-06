@@ -1,4 +1,6 @@
 import { stripVTControlCharacters } from "node:util";
+import { POLICY_FILE } from "../daemon/policy.js";
+import type { UnmatchedInputs } from "../keys/index.js";
 import {
   type DaemonNote,
   MAX_PERSISTED_NOTES,
@@ -47,4 +49,27 @@ function parse(raw: string | null): DaemonNote[] {
 export function listPaths(paths: readonly RelativePath[], max = 5): string {
   const shown = paths.slice(0, max).join(", ");
   return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
+}
+
+/**
+ * One note per policy `inputs` entry that selects nothing, in the shape of
+ * the daemon's policy notes (review wave 4.5, S5). The matching rule goes
+ * with a key, the usual mistake: a bare file name matches a file at the root
+ * only.
+ */
+export function unmatchedInputNotes(unmatched: UnmatchedInputs): string[] {
+  return [
+    ...unmatched.testGlobs.map(
+      (glob) =>
+        `${POLICY_FILE}: inputs key "${glob}" matches no test file; keys and input globs ` +
+        "match worktree-relative paths from the start, so write " +
+        `"**/${glob}" for a file in any directory`,
+    ),
+    ...unmatched.inputGlobs.map((glob) => `${POLICY_FILE}: inputs glob "${glob}" matches no file`),
+  ];
+}
+
+/** Texts of the worktree's persisted notes, to skip one an earlier daemon already wrote. */
+export function persistedNoteTexts(store: Store, worktreeId: WorktreeId): Set<string> {
+  return new Set(parse(store.meta.get(notesMetaKey(worktreeId))).map((note) => note.text));
 }
