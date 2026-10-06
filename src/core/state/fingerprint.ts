@@ -10,12 +10,15 @@ export const SUMMARY_MAX_CHARS = 300;
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
 
 /*
- * Parts of a first line that change between runs of the same failure. Values
- * of an assertion are kept: "expected 1 to be 2" and "expected 1 to be 3" are
- * different failures (vision: "FAIL -> FAIL: quiet, unless the failure itself
- * changed"). Spec 001 D6: "normalization removes times, durations, addresses,
- * UUIDs, hex identifiers of 16 or more characters and temp or cache directory
- * paths".
+ * Parts of a first line that change between runs of the same failure. Other
+ * values of an assertion are kept: "expected 1 to be 2" and "expected 1 to be
+ * 3" are different failures (vision: "FAIL -> FAIL: quiet, unless the failure
+ * itself changed"). Spec 001 D6: "normalization removes times, durations,
+ * addresses, UUIDs, hex identifiers of 16 or more characters and temp or
+ * cache directory paths". These rules apply inside assertion values too, so
+ * an assertion on a hash or a UUID reads as the same failure whichever wrong
+ * hash it received (review wave 4.5, N7): a changed wrong hash is not
+ * delivered as a changed failure.
  */
 const VOLATILE: readonly [RegExp, string][] = [
   [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
