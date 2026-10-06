@@ -15,6 +15,7 @@ function testFileId(ref) {
 // src/core/state/fingerprint.ts
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
+var SUMMARY_MAX_CHARS = 300;
 var VOLATILE = [
   [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
   [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
@@ -68,8 +69,18 @@ function baselineFindings(store, worktreeId) {
   return (check, fingerprint) => entries.has(entry(check, fingerprint));
 }
 
+// src/core/state/check-name.ts
+var FILE_LEVEL = " (file-level)";
+function formatCheck(check) {
+  const project = check.project === "" ? "" : `[${check.project}] `;
+  return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
+}
+
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
 
 // src/core/types/delivery.ts
 var MAIN_AGENT = "main";
@@ -117,6 +128,13 @@ function readRefined(store, worktreeId) {
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
+function runnerPartText(revision) {
+  return `the runner part of revision ${revision}`;
+}
+function fullSuiteText({ revision, fullSuite }) {
+  if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
+  return fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
+}
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
   const counts = { pending: 0, unknown: 0 };
@@ -163,37 +181,7 @@ function transitionKind(from, to) {
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-function waiterLockPath(locksDir, consumer) {
-  const id = createHash("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join(locksDir, `waiter-${id}.sqlite`);
-}
-function removeWaiterLock(locksDir, consumer) {
-  const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync(path)) return;
-  const db = lock(path);
-  if (db === null) return;
-  try {
-    rmSync(path, { force: true });
-  } finally {
-    db.close();
-  }
-}
-function lock(path) {
-  const db = new DatabaseSync(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-    return db;
-  } catch {
-    db.close();
-    return null;
-  }
-}
 
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
@@ -272,8 +260,8 @@ function planDelta(input) {
 }
 
 // src/core/store/open.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync2, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
+import { join as join3 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
@@ -342,14 +330,14 @@ function rollback(db) {
 }
 
 // src/core/store/paths.ts
-import { createHash as createHash2 } from "node:crypto";
+import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync as realpathSync2 } from "node:fs";
-import { isAbsolute, join as join2, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 function worktreeIdFor(root) {
-  return createHash2("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
+  return createHash("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
 }
 function resolveCommonDir(root) {
-  const dotGit = join2(root, ".git");
+  const dotGit = join(root, ".git");
   const stat = lstatOrNull(dotGit);
   if (stat === null) return null;
   if (stat.isDirectory()) return realpathSync2(dotGit);
@@ -358,19 +346,19 @@ function resolveCommonDir(root) {
   if (!match?.[1]) return null;
   const gitdir = resolve(root, match[1]);
   if (lstatOrNull(gitdir) === null) return null;
-  const commondirFile = join2(gitdir, "commondir");
+  const commondirFile = join(gitdir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync2(gitdir);
   const commondir = readFileSync(commondirFile, "utf8").trim();
   const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync2(common);
 }
 function storePaths(commonDir) {
-  const dir = join2(commonDir, "squeal");
+  const dir = join(commonDir, "squeal");
   return {
     dir,
-    database: join2(dir, "store.sqlite"),
-    runsDir: join2(dir, "runs"),
-    locksDir: join2(dir, "locks")
+    database: join(dir, "store.sqlite"),
+    runsDir: join(dir, "runs"),
+    locksDir: join(dir, "locks")
   };
 }
 function lstatOrNull(path) {
@@ -674,8 +662,8 @@ function flag(value) {
 }
 
 // src/core/store/prune.ts
-import { existsSync as existsSync2, rmSync as rmSync2 } from "node:fs";
-import { join as join3, resolve as resolve2, sep } from "node:path";
+import { existsSync, rmSync } from "node:fs";
+import { join as join2, resolve as resolve2, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -697,7 +685,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync2(join3(worktree.root, ".git"))) continue;
+    if (existsSync(join2(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -794,7 +782,7 @@ function pragmaNumber(conn, name) {
 function removeRunLog(paths, logDir) {
   const runsDir = resolve2(paths.runsDir);
   const target = resolve2(logDir);
-  if (target.startsWith(runsDir + sep)) rmSync2(target, { recursive: true, force: true });
+  if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
 }
 
 // src/core/store/repos/consumers.ts
@@ -832,25 +820,25 @@ function createConsumerRepo(conn) {
      * with the current known state on registration, so entries left by an
      * earlier registration of the same consumer are dropped.
      */
-    register: (consumer, at) => conn.transaction(() => {
+    register: (consumer, at2) => conn.transaction(() => {
       unregister(consumer);
       conn.run(
         `INSERT INTO consumers (worktree_id, session_id, agent_id, registered_at, last_seen_at)
            VALUES (?, ?, ?, ?, ?)`,
         ...consumerParams(consumer),
-        at,
-        at
+        at2,
+        at2
       );
-      return { consumer, registeredAt: at, lastSeenAt: at, lastDeliveredAt: null };
+      return { consumer, registeredAt: at2, lastSeenAt: at2, lastDeliveredAt: null };
     }),
-    touch: (consumer, at, delivered) => {
+    touch: (consumer, at2, delivered) => {
       conn.run(
         `UPDATE consumers SET last_seen_at = ?,
            last_delivered_at = CASE WHEN ? THEN ? ELSE last_delivered_at END
          WHERE ${WHERE_CONSUMER}`,
-        at,
+        at2,
         delivered ? 1 : 0,
-        at,
+        at2,
         ...consumerParams(consumer)
       );
     },
@@ -920,7 +908,7 @@ function toView2(row) {
 }
 
 // src/core/store/repos/results.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 var OUTCOMES2 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
@@ -995,7 +983,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text = JSON.stringify(errors);
-  const id = createHash3("sha256").update(JSON.stringify([summary, text])).digest("hex");
+  const id = createHash2("sha256").update(JSON.stringify([summary, text])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -1045,8 +1033,8 @@ function createRunRepo(conn) {
       );
       return { ...record, endedAt: null, end: null };
     },
-    finish: (id, end, at) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
+    finish: (id, end, at2) => {
+      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at2, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
@@ -1082,8 +1070,8 @@ function createCheckpointRepo(conn) {
       );
       return { ...record, completedAt: null, end: null };
     },
-    finish: (id, end, at) => {
-      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at, id);
+    finish: (id, end, at2) => {
+      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at2, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
@@ -1528,10 +1516,10 @@ function createWorktreeRepo(conn) {
         id
       );
     },
-    heartbeat: (id, at) => {
+    heartbeat: (id, at2) => {
       conn.run(
         "UPDATE worktrees SET daemon_heartbeat_at = ? WHERE id = ? AND daemon_socket IS NOT NULL",
-        at,
+        at2,
         id
       );
     },
@@ -1612,9 +1600,9 @@ function isStoreOpenFailure(value) {
 }
 function openStore(commonDir, options = {}) {
   const paths = storePaths(commonDir);
-  if (!existsSync3(paths.database)) {
+  if (!existsSync2(paths.database)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync2(paths.dir, { recursive: true });
+    mkdirSync(paths.dir, { recursive: true });
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
@@ -1665,57 +1653,57 @@ function isCorruption(error) {
   return typeof code === "number" && [11, 26].includes(code & 255);
 }
 function recover(paths, options) {
-  mkdirSync2(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync2(join4(paths.locksDir, "store-recovery.sqlite"));
+  mkdirSync(paths.locksDir, { recursive: true });
+  const lock = new DatabaseSync2(join3(paths.locksDir, "store-recovery.sqlite"));
   try {
-    lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
-    lock2.exec("BEGIN EXCLUSIVE");
+    lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
+    lock.exec("BEGIN EXCLUSIVE");
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
-    const at = now();
-    const movedTo = moveAside(paths.database, at);
+    const at2 = now();
+    const movedTo = moveAside(paths.database, at2);
     const fresh = connect(paths, { ...options, checkIntegrity: false });
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
-      const note = JSON.stringify({ at, movedTo, reason: again.corrupt });
+      const note = JSON.stringify({ at: at2, movedTo, reason: again.corrupt });
       fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
     }
     return fresh;
   } finally {
-    rollback(lock2);
-    lock2.close();
+    rollback(lock);
+    lock.close();
   }
 }
-function moveAside(database, at) {
-  let movedTo = `${database}.corrupt-${at}`;
-  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at}-${n}`;
+function moveAside(database, at2) {
+  let movedTo = `${database}.corrupt-${at2}`;
+  for (let n = 1; existsSync2(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
   renameSync(database, movedTo);
-  if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
-  rmSync3(`${database}-shm`, { force: true });
+  if (existsSync2(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
+  rmSync2(`${database}-shm`, { force: true });
   return movedTo;
 }
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync2, statSync } from "node:fs";
-import { join as join5, resolve as resolve3 } from "node:path";
+import { join as join4, resolve as resolve3 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = worktreeGitDir(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join5(gitDir, "HEAD"));
+  let value = read2(join4(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join5(gitDir, ref)) ?? read2(join5(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join4(gitDir, ref)) ?? read2(join4(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function worktreeGitDir(root) {
-  const dotGit = join5(root, ".git");
+  const dotGit = join4(root, ".git");
   try {
     if (statSync(dotGit).isDirectory()) return dotGit;
   } catch (error) {
@@ -1726,7 +1714,7 @@ function worktreeGitDir(root) {
   return line?.[1] === void 0 ? null : resolve3(root, line[1]);
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join4(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -1757,21 +1745,21 @@ function readDaemonNotes(store, worktreeId) {
 }
 function toNote(item) {
   if (typeof item !== "object" || item === null) return [];
-  const { at, revision, text } = item;
-  if (typeof at !== "number" || typeof text !== "string") return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  return [{ at, revision, text }];
+  return [{ at: at2, revision, text }];
 }
 
 // src/core/status/open.ts
-import { existsSync as existsSync4, realpathSync as realpathSync3 } from "node:fs";
-import { dirname, join as join6, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync3, realpathSync as realpathSync3 } from "node:fs";
+import { dirname, join as join5, resolve as resolve4 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function findWorktreeRoot(path) {
   let dir = resolve4(path);
-  if (existsSync4(dir)) dir = realpathSync3(dir);
+  if (existsSync3(dir)) dir = realpathSync3(dir);
   for (; ; ) {
-    if (existsSync4(join6(dir, ".git"))) return dir;
+    if (existsSync3(join5(dir, ".git"))) return dir;
     const parent = dirname(dir);
     if (parent === dir) return null;
     dir = parent;
@@ -1890,8 +1878,8 @@ function breakdown(states, keys) {
 function recoveryNote(raw) {
   if (raw === null) return null;
   try {
-    const { at, movedTo } = JSON.parse(raw);
-    const when = typeof at === "number" ? ` at ${new Date(at).toISOString()}` : "";
+    const { at: at2, movedTo } = JSON.parse(raw);
+    const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
     const where = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
     return `store was recovered from corruption${when}; the baseline was lost${where}`;
   } catch {
@@ -1966,8 +1954,8 @@ function createDelivery(store, options) {
     });
     return kinds === null ? full : restrictPlan(full, kinds);
   }
-  function livenessChange(consumer, at) {
-    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at);
+  function livenessChange(consumer, at2) {
+    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at2);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
   function deliver(consumer, heardFrom, kinds = null, liveness2 = false) {
@@ -1979,21 +1967,21 @@ function createDelivery(store, options) {
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
-      const at = now();
+      const at2 = now();
       const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at, kinds);
+      const delta = plan(consumer, states, at2, kinds);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const changed = liveness2 ? livenessChange(consumer, at) : null;
+      const changed = liveness2 ? livenessChange(consumer, at2) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
       const delivered = delta.entries.length > 0 || changed !== null;
-      if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
+      if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
       if (!delivered) return null;
       const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
-        header: readLiveHeader(store, consumer.worktreeId, at, states),
+        header: readLiveHeader(store, consumer.worktreeId, at2, states),
         label,
         entries: delta.entries,
         ...changed === null ? {} : { liveness: changed }
@@ -2002,14 +1990,14 @@ function createDelivery(store, options) {
   }
   return {
     register: async (consumer) => store.transaction(() => {
-      const at = now();
-      store.consumers.register(consumer, at);
+      const at2 = now();
+      store.consumers.register(consumer, at2);
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
         consumer,
-        states.map((s) => toView(s, at))
+        states.map((s) => toView(s, at2))
       );
-      const header = readLiveHeader(store, consumer.worktreeId, at, states);
+      const header = readLiveHeader(store, consumer.worktreeId, at2, states);
       tellLiveness(store, consumer, header.daemon?.state ?? null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -2046,12 +2034,92 @@ function createDelivery(store, options) {
   };
 }
 
+// src/core/delivery/format.ts
+var MESSAGE_CAP_CHARS = 1e4;
+var OVERFLOW_RESERVE = 200;
+var INDENT = "      ";
+var STATUS_POINTER = "`squeal status` lists every known failure.";
+var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+function checkName(check) {
+  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
+}
+function at(location2) {
+  return `at ${location2.path}:${location2.line}:${location2.column}`;
+}
+var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+function headerLine(header) {
+  const { revision, counts, testFilesWithoutChecks: files } = header;
+  const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
+  const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
+  const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
+  const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
+  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
+}
+function livenessSentence(daemon, revision) {
+  if (daemon === void 0 || daemon.state === "alive") return "";
+  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  return ` ${since}; results are as of revision ${revision}.`;
+}
+function block(head, lines, outcomes) {
+  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
+  return { text: [head, ...body].join("\n"), outcomes };
+}
+function assemble(head, blocks, overflow) {
+  let out = head;
+  for (const [i, b] of blocks.entries()) {
+    const next = `${out}
+
+${b.text}`;
+    const last = i === blocks.length - 1;
+    if (next.length <= MESSAGE_CAP_CHARS - (last ? 0 : OVERFLOW_RESERVE)) {
+      out = next;
+      continue;
+    }
+    return cap(`${out}
+
+${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
+  }
+  return out;
+}
+function formatRegistration(registration) {
+  const { header, knownFailures } = registration;
+  const head = [
+    `SQUEAL \xB7 registered at revision ${header.revision}`,
+    headerLine(header),
+    `Known failures: ${knownFailures.length}`
+  ].join("\n");
+  const blocks = knownFailures.map(
+    (f) => block(
+      `FAIL  ${checkName(f.check)}`,
+      [
+        f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
+        f.location === null ? null : at(f.location),
+        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
+      ],
+      ["fail"]
+    )
+  );
+  return assemble(
+    head,
+    blocks,
+    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`
+  );
+}
+
 // src/harness/claude-code/context.ts
+import { existsSync as existsSync4 } from "node:fs";
+import { join as join6 } from "node:path";
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
   const commonDir = resolveCommonDir(root);
   return commonDir === null ? null : { root, commonDir };
+}
+function usesSqueal(location2) {
+  return existsSync4(storePaths(location2.commonDir).database) || existsSync4(join6(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
@@ -2078,6 +2146,183 @@ function openContext(input, location2, options = {}) {
   }
 }
 
+// src/harness/claude-code/ensure.ts
+import { setTimeout as sleep2 } from "node:timers/promises";
+
+// src/core/daemon/ensure.ts
+import { spawn } from "node:child_process";
+import { existsSync as existsSync5 } from "node:fs";
+
+// src/core/daemon/client.ts
+import { createConnection } from "node:net";
+function requestDaemon(socketPath, request, timeoutMs) {
+  return new Promise((resolve6, reject) => {
+    const socket = createConnection(socketPath);
+    let buffer = "";
+    let settled = false;
+    const settle2 = (error, response) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve6(response);
+    };
+    const timer = setTimeout(
+      () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      timeoutMs
+    );
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
+`));
+    socket.on("data", (chunk) => {
+      buffer += chunk;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
+      try {
+        settle2(null, JSON.parse(buffer.slice(0, end)));
+      } catch {
+        settle2(failure("EPROTO", `malformed answer from ${socketPath}`));
+      }
+    });
+    socket.on(
+      "error",
+      (error) => settle2(failure(error.code ?? "EIO", error.message))
+    );
+    socket.on(
+      "close",
+      () => settle2(failure("ECONNRESET", `${socketPath} closed without an answer`))
+    );
+  });
+}
+function failure(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+// src/core/daemon/paths.ts
+import { tmpdir as tmpdir2 } from "node:os";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join7, resolve as resolve5 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? join7(tempDir(env), userDirName());
+}
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name = `squeal-${worktreeId}.sock`;
+  const path = join7(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join7("/tmp", userDirName(), name);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : null;
+}
+function tempDir(env) {
+  if (process.platform === "win32") return tmpdir2();
+  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
+  const dir = isAbsolute2(given) ? given : "/tmp";
+  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
+}
+function userDirName() {
+  return `squeal-${currentUid()}`;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/daemon/ensure.ts
+async function probeDaemon(root, timeoutMs, options = {}) {
+  let socketPath;
+  try {
+    socketPath = socketPathFor(worktreeIdFor(root), options.env);
+  } catch (error) {
+    return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
+  }
+  const record = options.record === void 0 ? recordedDaemon(root) : options.record;
+  const now = options.now ?? Date.now;
+  if (record !== null && record.socketPath !== socketPath && daemonLiveness(record, now()).state === "alive") {
+    const recorded = await ping(record.socketPath, timeoutMs);
+    if (recorded.state !== "absent") return recorded;
+  }
+  return ping(socketPath, timeoutMs);
+}
+async function ping(socketPath, timeoutMs) {
+  try {
+    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    if (response.ok && response.type === "ping") return { state: "alive", ping: response };
+    return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ECONNREFUSED") return { state: "absent", code };
+    return { state: "unresponsive", reason: error.message };
+  }
+}
+function recordedDaemon(root) {
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return null;
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    if (isStoreOpenFailure(store)) return null;
+    try {
+      return store.worktrees.get(worktreeIdFor(root))?.daemon ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return null;
+  }
+}
+async function ensureDaemon(root, options = {}) {
+  const probe = await probeDaemon(
+    root,
+    options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS,
+    options
+  );
+  if (probe.state === "alive") return "alive";
+  if (probe.state === "unresponsive") return "unavailable";
+  const cli = daemonCliEntry(options.cli, options.env);
+  if (cli === null || !existsSync5(cli)) return "unavailable";
+  try {
+    const child = spawn(process.execPath, [cli, "daemon", root], {
+      cwd: root,
+      detached: true,
+      stdio: "ignore"
+    });
+    child.on("error", () => {
+    });
+    child.unref();
+    return "spawned";
+  } catch {
+    return "unavailable";
+  }
+}
+function daemonCliEntry(cli, env = process.env) {
+  const override = env.SQUEAL_CLI;
+  if (override !== void 0 && override !== "") return override;
+  return cli ?? null;
+}
+
+// src/harness/claude-code/ensure.ts
+var SOCKET_TIMEOUT_MS = 100;
+var SPAWN_SETTLE_MS = 750;
+var SETTLE_POLL_MS = 25;
+function ensure(location2, deps, record) {
+  return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
+    socketTimeoutMs: SOCKET_TIMEOUT_MS,
+    ...deps.cli === void 0 ? {} : { cli: deps.cli },
+    ...record === void 0 ? {} : { record }
+  });
+}
+async function settle(context, deps) {
+  const deadline = performance.now() + SPAWN_SETTLE_MS;
+  const now = deps.now ?? Date.now;
+  for (; ; ) {
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    if (daemonLiveness(record, now()).state === "alive") return;
+    const left = deadline - performance.now();
+    if (left <= 0) return;
+    await sleep2(Math.min(SETTLE_POLL_MS, left));
+  }
+}
+
 // src/harness/claude-code/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
@@ -2093,58 +2338,41 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-
-// src/harness/claude-code/sweep.ts
-async function unregisterSession(context, sessionId, options) {
-  const { store, delivery } = context;
-  const worktrees = /* @__PURE__ */ new Set([
-    context.consumer.worktreeId,
-    ...store.worktrees.list().map((w) => w.id)
-  ]);
-  const consumers = [...worktrees].flatMap(
-    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same(consumer, options.except))
-  );
-  const errors = [];
-  const attempt = async (fn) => {
-    try {
-      await fn();
-    } catch (error) {
-      errors.push(error);
+function additionalContext(input, text) {
+  return {
+    output: {
+      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
     }
   };
-  for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
-  if (options.removeLocks) {
-    const { locksDir } = storePaths(context.commonDir);
-    for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
-  }
-  if (errors.length === 1) throw errors[0];
-  if (errors.length > 1) {
-    throw new AggregateError(
-      errors,
-      `squeal: ${errors.length} errors unregistering session ${sessionId}`
-    );
-  }
-  return consumers;
 }
-function same(a, b) {
-  return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
+function isRegistered(context) {
+  return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/hooks/session-end.ts
-var sessionEnd = async (input, location2, deps) => {
-  const locations = [location2];
-  const project = deps.env.CLAUDE_PROJECT_DIR;
-  const fromProject = project === void 0 || project === "" ? null : locate(project);
-  if (fromProject !== null && fromProject.commonDir !== location2.commonDir) {
-    locations.push(fromProject);
-  }
-  for (const at of locations) {
-    await withContext(input, at, deps, async (context) => {
-      await unregisterSession(context, input.session_id, { removeLocks: true });
+// src/harness/claude-code/hooks/waiter.ts
+var WAITER_HOOK_TIMEOUT_S = 3600;
+var WAITER_TIMEOUT_MS = (WAITER_HOOK_TIMEOUT_S - 60) * 1e3;
+function isInteractive(env) {
+  return env.CLAUDE_CODE_SESSION_ATTENDED === "1" && env.CLAUDE_CODE_ENTRYPOINT !== "sdk-cli";
+}
+
+// src/harness/claude-code/hooks/user-prompt-submit.ts
+var userPromptSubmit = (input, location2, deps) => {
+  if (!usesSqueal(location2)) return Promise.resolve(null);
+  return withContext(input, location2, deps, async (context) => {
+    const now = (deps.now ?? Date.now)();
+    if (isRegistered(context)) {
+      context.store.consumers.touch(context.consumer, now, false);
       return null;
-    });
-  }
-  return null;
+    }
+    if (!isInteractive(deps.env)) return null;
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    if (daemonLiveness(record, now).state !== "alive") {
+      if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
+    }
+    const registration = await context.delivery.register(context.consumer);
+    return registration.knownFailures.length > 0 ? additionalContext(input, formatRegistration(registration)) : null;
+  });
 };
 
 // src/harness/claude-code/main.ts
@@ -2227,5 +2455,5 @@ function waiterTimeout(value) {
   return value !== void 0 && Number.isInteger(ms) && ms > 0 ? { waiterTimeoutMs: ms } : {};
 }
 
-// src/harness/claude-code/entries/session-end.ts
-await runMain("session-end", sessionEnd);
+// src/harness/claude-code/entries/user-prompt-submit.ts
+await runMain("user-prompt-submit", userPromptSubmit);

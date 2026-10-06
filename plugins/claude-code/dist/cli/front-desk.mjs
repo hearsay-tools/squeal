@@ -10,6 +10,7 @@ var PAYLOAD_SCHEMA_VERSION = 1;
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/daemon/protocol.ts
 var MAX_LINE_BYTES = 64 * 1024;
