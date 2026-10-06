@@ -34,12 +34,22 @@ afterEach(async () => {
   for (const p of projects) rmSync(p.root, { recursive: true, force: true });
 });
 
-/** Copies `test/fixtures/vitest/<name>` and opens an adapter on the copy. Closed after each test. */
-export async function openFixture(name = "basic"): Promise<FixtureProject> {
+/**
+ * Copies `test/fixtures/vitest/<name>`, writes `files` into the copy, and
+ * opens an adapter on it. Closed after each test.
+ */
+export async function openFixture(
+  name = "basic",
+  files: Readonly<Record<string, string>> = {},
+): Promise<FixtureProject> {
   const root = join(scratchDir, `${name}-${randomUUID()}`);
   mkdirSync(scratchDir, { recursive: true });
   cpSync(join(fixturesDir, name), root, { recursive: true });
   const at = (path: string) => join(root, path);
+  for (const [path, content] of Object.entries(files)) {
+    mkdirSync(dirname(at(path)), { recursive: true });
+    writeFileSync(at(path), content);
+  }
   try {
     const adapter = await createVitestAdapter({ root });
     const project: FixtureProject = {
