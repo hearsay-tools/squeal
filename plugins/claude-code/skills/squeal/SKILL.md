@@ -1,95 +1,26 @@
 ---
 name: squeal
-description: Use before claiming a coding task is complete, done or passing in a repository that uses Squeal (it has squeal.config.json or SQUEAL messages appear), and when a SQUEAL message reports a failing check. Explains squeal status, squeal why and squeal run --all, and how to read pending, stale, unknown and inherited counts.
+description: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the Vitest tests; this says how to read its reports and when to wait for one.
 ---
 
 # Squeal
 
-Squeal runs the project's Vitest tests in the background while you edit. It reports only changes: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. Those reports arrive as system reminders that start with `SQUEAL ·`. No report means nothing changed while a daemon validates. It does not mean everything passes.
+Squeal runs this repository's Vitest tests in the background after every edit. It reports only changes, in messages that start with `SQUEAL ·`: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently.
 
-While you work, reports arrive after tool calls, in the order they happened, each with the header of the revision it reports; a report at the end of your turn comes from Stop. Once you have stopped, Squeal wakes you only with the results of checks that were still pending when you stopped. That report is labelled as a hook of the event that armed the waiter (SessionStart, Stop or UserPromptSubmit), not of anything that just happened. Every other change, such as an edit made by someone else while you were idle, arrives with the next prompt. Each header names the files its revision changed, for example `Revision 21 (changed src/math.ts):`, so a report says which edit it is about.
+## Steps
 
-A header that says `No daemon has validated since <time>` (or `No daemon is running`) means nothing is being validated: the results are as of the revision it names, and no report will come until a daemon runs again. The hooks start one; `squeal status` shows whether it is back. A report says once when the daemon stops and once when it validates again.
+1. **Keep working; read the reports instead of running Vitest.** Results arrive with your next tool call, as SQUEAL messages. No message means nothing changed, not that everything passes. Done when you have read every FAIL in every SQUEAL message that arrived.
+2. **On a FAIL**, read its first error line and location. When they are not enough, run the message's last line, `Full output: squeal why "<name>"`, for the full output and history. After your fix the recovery arrives as `FAIL -> PASS`. Done when each FAIL is fixed or you can say why it stays.
+3. **Wait only when you need a result before your next step**, for example before saying the task is done. By default results arrive with your next tool call, so keep working. When you need them now, run `squeal status --wait 60000`: it returns as soon as nothing is pending or a check changed. Done when its first line says `Returned on quiet` or `Returned on news`.
+4. **Before saying the task is done**, claim only what the latest header or `squeal status` shows. `Known failures: 0` with checks pending means "no known failures yet"; say what is still pending, and whether a full-suite checkpoint completed at the current revision. Done when every claim about tests matches a line of `squeal status`.
+5. **Run tests yourself only** when a header says no daemon is validating, a result is unknown, or the repository's own gate (CI, a pre-commit hook, the task) requires a run. Squeal covers only the Vitest tests: run typecheck, build and other suites as the repository says.
 
-You do not need to run the test suite yourself to learn the state. Pull it.
+## Reading a header
 
-## Before you say a task is complete
+Every SQUEAL message starts with a header such as `Revision 21 (changed src/math.ts): 40 current, 3 pending, 0 stale, 0 unknown.` The files in parentheses are the files changed since your last report. They say what changed, not what caused a failure: a failure can come from any earlier edit, or from none of yours.
 
-Run `squeal status` and read it. Claim only what it shows.
+## Reference
 
-```text
-Revision: 187
-Known failures: 0
-Affected checks: 47 passed, 3 running, 12 queued
-Full-suite checkpoint: none completed at revision 187; last completed at revision 170
-```
-
-- **Known failures: 0** with pending checks means "no known failures yet". Say that, not "all tests pass".
-- If checks are pending, the current revision is not fully validated. Wait for them with `squeal status --wait <ms>` (below), or say what is still pending.
-- If no full-suite checkpoint completed at the current revision, say so. `squeal run --all` requests one. A checkpoint is a request, not a coverage state: without one, current results are still current.
-
-`squeal status --json` gives the same snapshot as a versioned JSON object.
-
-## Waiting for pending checks
-
-Do not wait with `sleep` and poll. Run:
-
-```sh
-squeal status --wait 60000
-```
-
-It returns as soon as nothing is pending at the current revision, or as soon as a check changed (a new failure or a recovery), and at the latest after the given milliseconds. Then it prints status. Its first line says why it returned: `Returned on quiet`, `Returned on news`, `Returned without a daemon` or `Returned on timeout`, with the revision and the time waited. The exit code is 0 in all four cases. After a timeout, checks are still pending: say so, or wait again. Keep the limit below your shell tool's own timeout. With `--json`, stdout is the snapshot with a `wait` field (`outcome` is `quiet`, `news`, `no-daemon` or `timeout`) and the line goes to stderr.
-
-Pending includes the runner part of a revision: until the daemon has listed the test files for the latest edit, the header says `The runner part of revision N is pending` and a test file you just added is not counted yet.
-
-It reads the store only and starts no daemon. Without a daemon nothing gets validated, so it does not report quiet: it returns `Returned without a daemon: no daemon has validated since <time>; results are as of revision N`. Results are then as old as that revision, whatever the files hold now; run `squeal start` and wait again. It returns no sooner than 750 ms after it starts, so a revision for an edit you just made is recorded first and a daemon a hook just started can report in.
-
-## Reading the counts
-
-Every SQUEAL message and `squeal status` carry a header like `Revision 12: 40 current, 3 pending, 1 stale, 2 unknown.` In a SQUEAL message it names what the revision changed: `Revision 12 (changed src/math.ts, src/parse.ts and 2 more): ...`.
-
-- **revision**: Squeal's counter of workspace changes. It is not a git commit.
-- **current**: the result was produced from exactly the files as they are now.
-- **pending**: a run for the current files is queued or running. The outcome shown is the last one known.
-- **stale**: a result exists, but for older file contents. Nothing is queued for it yet.
-- **unknown**: no trusted result: never run, or the runner crashed or timed out (the reason is in the message).
-- **Test files without checks**: test files that have not produced any check yet, counted as pending or unknown.
-- **The daemon has not listed this worktree's test files yet**: nothing has been looked at, so zero counts are not complete. Status prints `Affected checks: none counted` until the listing is done.
-- **inherited**: a current result reused from another worktree whose files were byte-identical. It is as current as your own. The header says `Inherited: 30 of 40 current.`; status names the worktree and commit it came from.
-
-## Looking into one check
-
-`squeal why "<check name>"` prints the history and provenance of one check and the path to its last run log. Use the name exactly as a SQUEAL message or `squeal status` printed it, for example:
-
-```sh
-squeal why "src/math.test.ts > math > adds"
-```
-
-Any unique part of the name also works. The run log holds the full output; SQUEAL messages carry only the first error line and its location.
-
-## Explicit checkpoint
-
-`squeal run --all` queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in headers and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
-
-## When an edit is denied
-
-With policy `interrupt.onRegression` on (the default), the first file edit after a new regression is denied once. The denial lists the failing checks and says the edit was not applied. The same edit can be re-issued; the same regression does not deny twice.
-
-## Policy keys
-
-`squeal.config.json` at the repository root, committed. Every key is optional; `squeal init` writes all of them with their defaults.
-
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `interrupt.onRegression` | `true` | Deny one edit when a check newly fails. |
-| `stop.blockOnKnownFailures` | `false` | Keep the agent going at Stop while failures exist at the current revision. Failures whose re-run is still pending are named as pending, with the revision they last failed at, and do not block. Blocks once per stop. |
-| `stop.requireFullSuite` | `false` | Keep the agent going at Stop until a full-suite run completed at the current revision. Blocks once per stop. |
-| `stop.waitMs` | `0` | At Stop, wait this long for pending checks of the current revision. Capped at 1500 ms by the 2 s hook timeout. |
-| `baseline.onStart` | `"lookup-then-run-missing"` | On daemon start, reuse stored results and run the rest, or `"lookup-only"`. |
-| `inputs` | `[]` | Extra files (globs) that test files read at runtime, so a change to them re-runs those tests. A list applies to every test file. A map from test-file glob to input globs applies to the matching test files only, for example `{"test/harness/plugin.test.ts": ["plugins/claude-code/dist/**"]}`. Keys and globs match worktree-relative paths from the start of the path to its end: `"plugin.test.ts"` matches only a file at the root, `"**/plugin.test.ts"` one in any directory. A key that matches no test file, or a glob that matches no file, gets a note in `squeal status`. |
-| `env.allowlist` | `[]` | Environment variables whose values are part of a result's identity. |
-| `runner.tierSize` | `4` | Test files per run. |
-| `runner.timeoutMs` | `600000` | Limit per run; `null` for none. |
-| `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
-| `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
-| `store.maxSizeMb` | `null` | Size cap of the store; `null` for none. |
+- `references/reports.md`: when reports arrive (after tool calls, at Stop, waking you when idle, with the next prompt) and what every header count and sentence means: pending, stale, unknown, inherited, test files without checks, no daemon validating. Read it when a header says something the steps do not cover.
+- `references/commands.md`: what `squeal status`, `squeal why` and `squeal run --all` print, and what to do when a wait returns on timeout or without a daemon. Read it when a command's output is not what step 3 or 4 expects.
+- `references/policy.md`: an edit denied after a regression, a Stop kept going by policy, and every key of `squeal.config.json`. Read it when Squeal denies an edit or blocks a stop, or before changing the config.
