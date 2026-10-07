@@ -6,15 +6,15 @@ Common to every row: the scope and done-when are the board row in `docs/board.md
 
 ## 001-67 runner interface: one note channel, one `affected`
 
-Use /worker. Shape: finish. Seam: `src/core/types/runner.ts` (`InvalidateResult.notes`, `RunReport.notes`, `affectedDetailed`). Own: `src/core/types/runner.ts`, `src/core/scheduler/refinement.ts`, `src/core/scheduler/tiers.ts`, `src/core/daemon/runner.ts`, `src/core/daemon/daemon.ts` (the `note` option only), `src/runners/vitest/adapter.ts`, `src/runners/vitest/index.ts`, their tests. Leave `src/core/scheduler/scheduler.ts` and every `notes.ts` to 001-68, and `src/core/daemon/paths.ts` to 001-69.
+Use /worker. Shape: finish. Seam: `src/core/types/runner.ts` (`InvalidateResult.notes`, `RunReport.notes`, `affectedDetailed`). Own: `src/core/types/runner.ts`, `src/core/scheduler/refinement.ts`, `src/core/scheduler/tiers.ts`, `src/core/daemon/runner.ts`, `src/core/daemon/daemon.ts` (the `note` option only), `src/runners/vitest/adapter.ts`, `src/runners/vitest/index.ts`, their tests. Also own `test/scheduler/helpers.ts` (`recording()` drops the `affectedDetailed` wrapper; `openHarness` passes `createVitestAdapter` a note sink that persists through the notes module) and `test/scheduler/ordering.test.ts` (wrap `affected` instead of `affectedDetailed`), in one standalone commit naming this agreement. Leave `src/core/scheduler/scheduler.ts` and every `notes.ts` to 001-68, and `src/core/daemon/paths.ts` to 001-69.
 
 ## 001-68 one module for persisted daemon notes
 
-Use /worker. Shape: finish. Seam: a new `src/core/notes.ts` from `src/core/status/notes.ts`. Own: `src/core/notes.ts`, `src/core/scheduler/notes.ts`, `src/core/scheduler/scheduler.ts`, `src/core/daemon/notes.ts`, `src/core/status/notes.ts`, `test/scheduler/`, `test/status/`, notes tests under `test/daemon/`. Leave `refinement.ts`, `tiers.ts`, `daemon.ts` to 001-67.
+Use /worker. Shape: finish. Seam: a new `src/core/notes.ts` from `src/core/status/notes.ts`. Own: `src/core/notes.ts`, `src/core/scheduler/notes.ts`, `src/core/scheduler/scheduler.ts`, `src/core/daemon/notes.ts`, `src/core/status/notes.ts`, `src/core/types/scheduler.ts` and `src/core/scheduler/status.ts` (dropping `SchedulerStatus.notes`, agreed), `test/scheduler/` except `helpers.ts` and `ordering.test.ts` (001-67), `test/status/`, notes tests under `test/daemon/`. Leave `refinement.ts`, `tiers.ts`, `daemon.ts` to 001-67.
 
 ## 001-69 the git layout read in one place
 
-Use /worker. Shape: finish. Seam: a new `src/core/fs/git-layout.ts`. Own: `src/core/fs/`, `src/core/store/paths.ts`, `src/core/daemon/paths.ts` (git parts only: `linkedWorktreeDir`, `worktreeIdFor`, the inline `gitdir:` read), `src/core/status/git-head.ts`, `src/core/status/open.ts`, `src/core/watcher/paths.ts`, `src/cli/init.ts`, `src/cli/daemon-access.ts`, `src/harness/claude-code/context.ts` (imports only), their tests. Hooks stay dependency-free; the hook p95 test must still pass.
+Use /worker. Shape: finish. Seam: a new `src/core/fs/git-layout.ts`. Own: `src/core/fs/`, `src/core/store/paths.ts`, `src/core/daemon/paths.ts` (git parts only: `linkedWorktreeDir`, `worktreeIdFor`, the inline `gitdir:` read), `src/core/status/git-head.ts`, `src/core/status/open.ts`, `src/core/watcher/paths.ts`, `src/cli/init.ts`, `src/cli/daemon-access.ts`, `src/harness/claude-code/context.ts` (imports only), their tests. Decided: the definitions move to `src/core/fs/git-layout.ts` and the owned files re-export them unchanged (`store/paths.ts`, `daemon/paths.ts`, `status/open.ts`); no importer outside the row changes; 001-74 retargets imports and drops the re-exports. Hooks stay dependency-free; the hook p95 test must still pass.
 
 ## 001-76 the plugin version moves with every shipped change
 
@@ -29,3 +29,19 @@ Seam: `package.json` `version` is the one source. First edit: the build writes i
 Own: `package.json` (version and scripts), the plugin build script, `plugins/claude-code/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.github/workflows/ci.yml`, `plugins/claude-code/README.md`, `test/harness/plugin.test.ts` (version assertions only), a new script under `scripts/` if needed, and the process sentence in `docs/process.md` and `.claude/skills/coordinator/SKILL.md` §6 plus its `.agents/skills/` mirror (bump the patch version in the bundle commit).
 
 Done when: plugin and package versions match by test; CI fails on a dist change without a bump (shown by a test of the check script or a dry run against two commits); the README says how to update an installed plugin.
+
+## 001-65 temp directory keyed by a stored repository identity
+
+Use /worker. Shape: repair. Third round on the 001-61 slice, authorized by the human.
+
+Outcome: no daemon can empty or remove another daemon's temp directory, whether another repository reuses the worktree path or the same path is deleted and re-cloned within the exit window.
+
+Read: `reviews/wave-7.7.md` B1, N1, N2, N4; `research/daemon-under-harnesses.md` Q4 and line 62 (re-clone in place); spec D10.
+
+Decided by the human: key the temp directory by a stored identity, not a path. On first start the daemon writes a random id to `<common-dir>/squeal/repository-id` (atomic create, kept if present) and names the temp directory `/tmp/squeal-<uid>/tmp/<hash of repository-id and root>/`. A re-clone gets a new id.
+
+Seam: `src/core/daemon/scratch.ts`. Then N1 (cap the leftover sweep or empty it after the socket is up), N2 (someone else's `/tmp/squeal-<uid>` disables only the temp dir: fall back to a per-daemon `mkdtemp` and persist one note), N4 (reflow two comments).
+
+Own: `src/core/daemon/scratch.ts`, `src/core/daemon/open.ts`, `src/core/daemon/daemon.ts` (shutdown only), `test/daemon/scratch*.test.ts`, `scratch-helpers.ts`, D10 in `spec.md`, one `status.md` line. Leave `src/core/daemon/paths.ts` git parts (001-69 is done by then; rebase if needed).
+
+Done when: a test with two repositories at one path keeps both temp directories; a test that deletes and re-clones at the same path while the old daemon runs keeps the new one's; the sweep is no longer before the socket for a large leftover; the full suite passes.
