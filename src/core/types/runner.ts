@@ -167,7 +167,10 @@ export interface RunReport {
   readonly durationMs: number;
   /**
    * Test files that ran to completion; the rest of the tier has no reliable
-   * result. Empty when `end` is `crashed`: nothing in the run is trusted (D12).
+   * result. One adapter's `crashed` report lists none: nothing in that run is
+   * trusted (D12). The composite runner (spec 003 D7) keeps the completed files
+   * of its other parts, since the scheduler trusts a file only when it is listed
+   * here, whatever `end` says.
    */
   readonly completedFiles: readonly TestFileRef[];
   readonly results: readonly CheckRunResult[];
