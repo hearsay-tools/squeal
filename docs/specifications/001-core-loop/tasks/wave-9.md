@@ -60,7 +60,7 @@ Use /worker. Shape: survey, then slice. Seam: `src/core/keys/resolution.ts` `clo
 
 ## 001-72 table
 
-Measured by `test/runners/vitest/reresolution-survey.test.ts` (commit of this table; replaced by `reresolution.test.ts` after). Each row is the `basic` fixture plus the scenario's files, with every test file's closure fetched and every test file run, then one add or delete through `invalidate`. "Heuristic" is `closuresToReresolve`, "rekeyed" the test files whose closure holds the changed path (`KeyIndex.rekey` through `content.rekeyed`), "affected" is `affected([path])` as `fetchRunnerPart` calls it. "Moved" is the test files whose closure, fetched again, differs; "missed" is moved but neither rekeyed nor affected. `basic` stands for `each`, `math` and `strings`, whose closures hold `src/` paths. The `resolution.test.ts` rows are replayed on real files as R1 to R4; its declared-input row cannot reach the call, which passes only changes that are not declared inputs (`refinement.ts:114`).
+Measured by `test/runners/vitest/reresolution-survey.test.ts` (commit of this table; replaced by `reresolution.test.ts` after). Each row is the `basic` fixture plus the scenario's files, with every test file's closure fetched and every test file run, then one add or delete through `invalidate`. "Heuristic" is `closuresToReresolve`, "rekeyed" the test files whose closure holds the changed path (`KeyIndex.rekey` through `content.rekeyed`), "affected" is `affected([path])` as `fetchRunnerPart` calls it. "Moved" is the test files whose closure, fetched again on the same warm instance, differs; "missed" is moved but neither rekeyed nor affected. The ground truth is a fresh instance on the same root, and the two disagree when the runner keeps a stale transform (`reviews/wave-9.md` P1): such a runner-side miss shows here as "moved: none, missed: none". `basic` stands for `each`, `math` and `strings`, whose closures hold `src/` paths. The `resolution.test.ts` rows are replayed on real files as R1 to R4; its declared-input row cannot reach the call, which passes only changes that are not declared inputs (`refinement.ts:114`).
 
 | Row | Change | Heuristic | Rekeyed | Affected | Heuristic only | Moved | Missed |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -75,8 +75,8 @@ Measured by `test/runners/vitest/reresolution-survey.test.ts` (commit of this ta
 | structural: new file shadows a `package.json` directory | add `src/pkg.ts` | pkg, basic | none | pkg | basic | pkg | none |
 | **structural: new `package.json` re-points a directory** | add `src/pkg/package.json` | pkg | none | none | **pkg** | pkg | **pkg** |
 | **reverse of the row above** | delete `src/pkg/package.json` | pkg | none | none | **pkg** | pkg | **pkg** |
-| structural: alias, `tsconfig` paths | add `src/later.ts` | later, basic | none | later | basic | later | none |
-| structural: glob in a virtual module, an inlined dependency | add `src/plugins/b.ts` | none | none | none | none | none | none |
+| structural: alias (`tsconfig` paths not measured) | add `src/later.ts` | later, basic | none | later | basic | later | none |
+| structural: glob in a virtual module, an inlined dependency | add `src/plugins/b.ts` | not measured | not measured | not measured | not measured | not measured | not measured |
 | structural: `package.json` `main` entry appears (`lib.ts`, `lib/`) | add `src/pkg/lib.ts` | pkg | none | pkg | none | pkg | none |
 | R1 (resolution: directory a file was added to) | add `src/a.js` beside `src/a.ts` | a, basic | none | a | basic | a | none |
 | R1, deleted from | delete `src/a.js` | a, basic | a | none | basic | a | none |
@@ -86,6 +86,8 @@ Measured by `test/runners/vitest/reresolution-survey.test.ts` (commit of this ta
 | R4 (resolution: worktree root) | add `root.js` beside `root.ts` | root | none | root | none | root | none |
 
 Outcome: keep. Adding or deleting a `package.json` re-points the directory it sits in, and only `closuresToReresolve` re-resolves its importers: the manifest is in no closure and in no module graph, so `rekey` and `affected` both miss it, while the directory's `index` or entry is in the closure and in that directory. Every other moved closure is covered by `rekey` or `affected`; the heuristic's other picks re-fetch closures that do not move. Editing a `package.json` `main` (a content change) moves nothing in any rule, the fetched closure included: Vite keeps the importer's transform. That is outside this row and is reported to the coordinator.
+
+Corrections from `reviews/wave-9.md` (N1, N2, applied by 001-79). The survey had no scenario for the glob row or for `tsconfig` paths, so they are marked not measured; both fit the alias and virtual-module mechanics. Two `package.json` cases move a closure that no rule above reported: a deleted manifest whose entry lies below its directory (P2a, P2a2), and an edited `main` (P1, P3c), which the warm "moved" column cannot show. 001-79 picks both: the heuristic re-resolves every closure below the manifest's directory, and an edited manifest stales its directory's importers in the runner (`reresolution.test.ts`).
 
 ## Batch 3
 
