@@ -5,7 +5,9 @@ description: Use before claiming a coding task is complete, done or passing in a
 
 # Squeal
 
-Squeal runs the project's Vitest tests in the background while you edit. It reports only changes: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. Those reports arrive as system reminders that start with `SQUEAL ·`, after a tool call or when you are idle. No report means nothing changed while a daemon validates. It does not mean everything passes.
+Squeal runs the project's Vitest tests in the background while you edit. It reports only changes: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. Those reports arrive as system reminders that start with `SQUEAL ·`. No report means nothing changed while a daemon validates. It does not mean everything passes.
+
+While you work, reports arrive after tool calls, in the order they happened, each with the header of the revision it reports; a report at the end of your turn comes from Stop. Once you have stopped, Squeal wakes you only with the results of checks that were still pending when you stopped. That report is labelled as a hook of the event that armed the waiter (SessionStart, Stop or UserPromptSubmit), not of anything that just happened. Every other change, such as an edit made by someone else while you were idle, arrives with the next prompt. Each header names the files its revision changed, for example `Revision 21 (changed src/math.ts):`, so a report says which edit it is about.
 
 A header that says `No daemon has validated since <time>` (or `No daemon is running`) means nothing is being validated: the results are as of the revision it names, and no report will come until a daemon runs again. The hooks start one; `squeal status` shows whether it is back. A report says once when the daemon stops and once when it validates again.
 
@@ -44,7 +46,7 @@ It reads the store only and starts no daemon. Without a daemon nothing gets vali
 
 ## Reading the counts
 
-Every SQUEAL message and `squeal status` carry a header like `Revision 12: 40 current, 3 pending, 1 stale, 2 unknown.`
+Every SQUEAL message and `squeal status` carry a header like `Revision 12: 40 current, 3 pending, 1 stale, 2 unknown.` In a SQUEAL message it names what the revision changed: `Revision 12 (changed src/math.ts, src/parse.ts and 2 more): ...`.
 
 - **revision**: Squeal's counter of workspace changes. It is not a git commit.
 - **current**: the result was produced from exactly the files as they are now.
