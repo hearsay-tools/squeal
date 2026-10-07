@@ -96,11 +96,11 @@ describe("recovering runner: a broken config is a state, never an exit (review B
       () => adapter.run([], { runId: "r", logDir: "/tmp/r", timeoutMs: null }),
     ]) {
       await expect(call()).rejects.toThrow(
-        "Vitest could not start: vitest.config.ts: Unexpected token",
+        "vitest could not start: vitest.config.ts: Unexpected token",
       );
     }
     expect(f.attempts()).toBe(1);
-    expect(failures).toEqual(["Vitest could not start: vitest.config.ts: Unexpected token"]);
+    expect(failures).toEqual(["vitest could not start: vitest.config.ts: Unexpected token"]);
   });
 
   it("forwards affected with its direct and transitive split (spec 001 D5 step 4)", async () => {
@@ -129,7 +129,7 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     const f = factory(["\u001b[31m[PARSE_ERROR] \u001b[0mUnexpected token\n"]);
     const { adapter, failures } = runner(f);
     await adapter.open();
-    expect(failures).toEqual(["Vitest could not start: [PARSE_ERROR] Unexpected token"]);
+    expect(failures).toEqual(["vitest could not start: [PARSE_ERROR] Unexpected token"]);
   });
 
   it("reports a changed error, not the same one twice", async () => {
@@ -140,8 +140,8 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     await expect(adapter.invalidate(change)).rejects.toThrow("still broken");
     expect(f.attempts()).toBe(3);
     expect(failures).toEqual([
-      "Vitest could not start: broken",
-      "Vitest could not start: still broken",
+      "vitest could not start: broken",
+      "vitest could not start: still broken",
     ]);
   });
 
