@@ -1,0 +1,11 @@
+{
+  "session_id": "01a1185a-4716-7c01-b1ca-853a7eeea04c",
+  "turn_id": "01a1185a-eb43-7a10-b50d-ad4317188252",
+  "transcript_path": "/tmp/p16/codex/sessions/2026/10/07/rollout-2026-10-07T23-52-54-01a1185a-eb11-7ad3-9c79-ff5c7b0691eb.jsonl",
+  "cwd": "/tmp/p16/r3b",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_use_id": "exec-9044ca69-e6d1-4eb6-b4cc-2841c920dac4"
+}

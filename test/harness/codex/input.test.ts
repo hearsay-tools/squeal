@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseCodexInput } from "../../../src/harness/codex/input.js";
-import { codexInput, codexRecorded, fixtureNames, MODES } from "./helpers.js";
+import { isUnservedThread, parseCodexInput } from "../../../src/harness/codex/input.js";
+import { codexInput, codexRecorded, type FixtureDir, fixtureNames, MODES } from "./helpers.js";
+
+const DIRS: readonly FixtureDir[] = [...MODES, "review"];
 
 describe("parseCodexInput", () => {
-  it.each(MODES.flatMap((mode) => fixtureNames(mode).map((name) => [mode, name] as const)))(
+  it.each(DIRS.flatMap((mode) => fixtureNames(mode).map((name) => [mode, name] as const)))(
     "reads %s %s with the fields Squeal uses",
     (mode, name) => {
       const raw = codexInput(mode, name, "/repo");
@@ -18,6 +20,7 @@ describe("parseCodexInput", () => {
         "tool_name",
         "stop_hook_active",
         "source",
+        "transcript_path",
       ];
       expect(input).toEqual(
         Object.fromEntries(keep.flatMap((k) => (k in raw ? [[k, raw[k]]] : []))),
@@ -57,5 +60,31 @@ describe("parseCodexInput", () => {
       tool_name: 3,
     });
     expect(parseCodexInput(text)).toEqual({ session_id: "s", cwd: "/r", hook_event_name: "Stop" });
+  });
+});
+
+describe("isUnservedThread (D2 as amended)", () => {
+  const unserved = (mode: FixtureDir, name: string, overrides: object = {}) => {
+    const input = parseCodexInput(codexRecorded(mode, name, "/r", overrides));
+    if (input === null) throw new Error(`${mode} ${name} does not parse`);
+    return isUnservedThread(input);
+  };
+
+  it.each(DIRS.flatMap((mode) => fixtureNames(mode).map((name) => [mode, name] as const)))(
+    "%s %s is unserved only if it is the review thread's",
+    (mode, name) => {
+      expect(unserved(mode, name)).toBe(name.startsWith("review-"));
+    },
+  );
+
+  it("serves a main-thread input with no transcript path, or an empty one", () => {
+    expect(unserved("review", "review-post-tool-use", { transcript_path: undefined })).toBe(false);
+    expect(unserved("review", "review-post-tool-use", { transcript_path: "" })).toBe(false);
+    expect(unserved("review", "review-post-tool-use", { transcript_path: null })).toBe(false);
+  });
+
+  it("serves a subagent, whose transcript path ends in its own id", () => {
+    expect(unserved("exec", "subagent-post-tool-use")).toBe(false);
+    expect(unserved("exec", "subagent-post-tool-use", { agent_id: undefined })).toBe(true);
   });
 });

@@ -19,6 +19,24 @@ export interface CodexHookInput {
   readonly stop_hook_active?: boolean;
   /** SessionStart: `startup`, `resume`, `fork`, `clear` or `compact`. */
   readonly source?: string;
+  /** The thread's rollout file, named `rollout-<time>-<thread id>.jsonl`. */
+  readonly transcript_path?: string;
+}
+
+/**
+ * A thread Codex runs under the parent's `session_id` without naming it, such
+ * as an inline `/review` (spec 002 D2 as amended, `lessons.md` defect 2): no
+ * `agent_id`, and a `transcript_path` whose file name ends in the thread's own
+ * id rather than `<session_id>.jsonl`. It is not a consumer: its hooks
+ * register, deliver, deny and change nothing, as 001 D9 treats Claude Code's
+ * forks. An input with no `transcript_path` is the main thread.
+ */
+export function isUnservedThread(input: CodexHookInput): boolean {
+  return (
+    input.agent_id === undefined &&
+    input.transcript_path !== undefined &&
+    !input.transcript_path.endsWith(`${input.session_id}.jsonl`)
+  );
 }
 
 /** Parses hook stdin; `null` for anything that is not a hook input object. */
@@ -44,5 +62,8 @@ export function parseCodexInput(text: string): CodexHookInput | null {
     ...(typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {}),
     ...(typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}),
     ...(typeof v.source === "string" ? { source: v.source } : {}),
+    ...(typeof v.transcript_path === "string" && v.transcript_path !== ""
+      ? { transcript_path: v.transcript_path }
+      : {}),
   };
 }

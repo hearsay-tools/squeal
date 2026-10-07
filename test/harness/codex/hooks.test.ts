@@ -6,7 +6,14 @@ import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER } from "../../../src/harness/shared/primer.js";
 import { check } from "../../state/helpers.js";
 import { FILE, type SquealRepo, squealRepo } from "../helpers.js";
-import { allFixtures, codexInput, codexRecorded, HOOK_OF_EVENT, type Mode } from "./helpers.js";
+import {
+  allFixtures,
+  codexInput,
+  codexRecorded,
+  HOOK_OF_EVENT,
+  type Mode,
+  sessionOf,
+} from "./helpers.js";
 
 /*
  * Spec 002 D3 on recorded Codex input: every event under `codex exec`, a
@@ -44,7 +51,9 @@ async function regressed(mode: Mode, name: string): Promise<SquealRepo> {
   const r = squealRepo();
   r.apply(r.pass());
   const input = codexInput(mode, name, r.root);
-  const session = { session_id: input.session_id };
+  // A subagent's transcript is its own; its session's is the main thread's.
+  const session =
+    typeof input.agent_id === "string" ? { session_id: input.session_id } : sessionOf(mode, name);
   expect(await run(r, mode, "session-start", session)).not.toEqual(SILENT);
   if (typeof input.agent_id === "string" && input.hook_event_name !== "SubagentStart") {
     await run(r, "exec", "subagent-start", { ...session, agent_id: input.agent_id });

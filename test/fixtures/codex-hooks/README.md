@@ -7,6 +7,7 @@ Copied whole from the probe logs of spec 002 (`docs/specifications/002-codex-ada
 - `exec/`: `codex-hooks/logs/q2-exec-all-events.jsonl` (a `codex exec` run with shell calls, one `apply_patch` and one subagent; `subagent-*` are the subagent's own events, carrying `agent_id` and `agent_type`), and `stop-hook-active.json`, the second Stop of `codex-hooks/logs/q5-stop-blockonce.hooks.jsonl`.
 - `tui/`: `codex-hooks/logs/q2-interactive-tui.jsonl` (the TUI in tmux: an Escape mid-tool gave `interrupt.json` with no Stop, `/compact` gave `session-start-compact.json` at the next prompt, `/exit` gave `session-end.json`).
 - `app-server/`: `codex-hooks/logs/q5b-appserver-interrupt.hooks.jsonl` (a `thread/start`, `turn/start`, `turn/interrupt` run, then stdin EOF).
+- `review/`: `proof/logs/n4inline2.stdin.jsonl`, one app-server thread with an inline `/review` (`review/start`, `delivery: "inline"`) between its two turns (002-16, `lessons.md` defect 2). `review-*` are the review thread's own hooks: the parent's `session_id`, no `agent_id`, and a `transcript_path` ending in the review thread's id; `user-prompt-submit-after-review.json` is the main thread's next turn. The log kept each prompt's first 80 characters and no `tool_input` or `tool_response`; its `dt` and the `prompt: null` it added to other events are dropped.
 
 Reconstructed from recorded key sets and ids, values following the recorded files above:
 
