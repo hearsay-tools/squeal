@@ -64,6 +64,70 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+function bootstrappedMetaKey(worktreeId) {
+  return `daemon-bootstrapped:${worktreeId}`;
+}
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  env: { allowlist: [] },
+  runner: { tierSize: 4, timeoutMs: 6e5 },
+  nodeTest: [],
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+
+// src/core/types/state.ts
+var REGRESSION_KINDS = ["first-seen-fail", "pass-to-fail"];
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
+// src/core/notes.ts
+function readDaemonNotes(store, worktreeId) {
+  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+}
+function parseList(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function toNote(item) {
+  if (typeof item !== "object" || item === null) return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  if (revision !== null && typeof revision !== "number") return [];
+  return [{ at: at2, revision, text }];
+}
+
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute2, posix } from "node:path";
+
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -136,77 +200,9 @@ function splitTopLevel(body) {
   return parts;
 }
 
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/daemon.ts
-function bootstrappedMetaKey(worktreeId) {
-  return `daemon-bootstrapped:${worktreeId}`;
-}
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5 },
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-function refinedMetaKey(worktreeId) {
-  return `refined.${worktreeId}`;
-}
-
-// src/core/types/state.ts
-var REGRESSION_KINDS = ["first-seen-fail", "pass-to-fail"];
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
-
-// src/core/notes.ts
-function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
-}
-function parseList(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-function toNote(item) {
-  if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
-  if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text }];
-}
-
-// src/core/daemon/policy.ts
-var POLICY_FILE = "squeal.config.json";
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
-var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var inputs = (v) => {
-  const isList = strings(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
-    return "an array of strings, or an object from test-file glob to an array of strings";
-  }
-  const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  for (const glob of globs) {
+// src/core/daemon/policy-node-test.ts
+function compiles(globs2) {
+  for (const glob of globs2) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -214,6 +210,74 @@ var inputs = (v) => {
     }
   }
   return null;
+}
+var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+var insideRoot = (v) => {
+  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+};
+var FIELDS = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  node: nonEmptyString,
+  argv: strings,
+  env: variables,
+  include: globs,
+  exclude: globs
+};
+var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+function nodeTestProjects(value, path) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry2, index) => {
+    const at2 = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at2, kept);
+    if (problem === null) kept.push(withDefaults(entry2));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function entryProblem(entry2, at2, kept) {
+  if (!isRecord(entry2))
+    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  for (const key of Object.keys(entry2)) {
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(FIELDS)) {
+    const given = entry2[key];
+    if (given === void 0 && !REQUIRED.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at2}.${key}" ${why}; ${skipped}`;
+  }
+  if (kept.some((project) => project.name === named)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  }
+  return null;
+}
+
+// src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings2(v) === null;
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs2);
 };
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
 var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
@@ -228,11 +292,12 @@ var SHAPE = {
   stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
-  env: { allowlist: strings },
+  env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger)
   },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
@@ -275,7 +340,10 @@ function merge(shape, defaults, given, prefix, problems) {
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
-      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
     } else if (!isRecord(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
@@ -2843,13 +2911,25 @@ function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
-// src/harness/claude-code/fork.ts
-var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
-function isFork(input) {
-  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
+// src/harness/shared/text.ts
+function denialSentence(toolName) {
+  return `Squeal policy interrupt.onRegression denied this ${toolName} call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.`;
 }
 
-// src/harness/claude-code/context.ts
+// src/harness/shared/deny.ts
+async function denyOnRegression(context, call) {
+  if (!call.edit || !readPolicy(context.root).interrupt.onRegression) {
+    resumeTurn(context.store, context.consumer);
+    return null;
+  }
+  const delta = await context.delivery.peek(context.consumer, { kinds: REGRESSION_KINDS });
+  if (delta === null) return null;
+  return `${formatDelta(delta)}
+
+${denialSentence(call.toolName)}`;
+}
+
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -2881,7 +2961,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -2897,9 +2977,10 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
   }
 }
 
-// src/harness/claude-code/text.ts
-function denialSentence(toolName) {
-  return `Squeal policy interrupt.onRegression denied this ${toolName} call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.`;
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
 }
 
 // src/harness/claude-code/hooks/pre-tool-use.ts
@@ -2907,21 +2988,18 @@ var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "NotebookEdit"]);
 var preToolUse = async (input, location2, deps) => {
   if (isFork(input)) return null;
   return withContext(input, location2, deps, async (context) => {
-    const edit = EDIT_TOOLS.has(input.tool_name ?? "");
-    if (!edit || !readPolicy(location2.root).interrupt.onRegression) {
-      resumeTurn(context.store, context.consumer);
-      return null;
-    }
-    const delta = await context.delivery.peek(context.consumer, { kinds: REGRESSION_KINDS });
-    if (delta === null) return null;
+    const toolName = input.tool_name ?? "";
+    const reason = await denyOnRegression(context, {
+      edit: EDIT_TOOLS.has(toolName),
+      toolName: input.tool_name ?? "tool"
+    });
+    if (reason === null) return null;
     return {
       output: {
         hookSpecificOutput: {
           hookEventName: "PreToolUse",
           permissionDecision: "deny",
-          permissionDecisionReason: `${formatDelta(delta)}
-
-${denialSentence(input.tool_name ?? "tool")}`
+          permissionDecisionReason: reason
         }
       }
     };

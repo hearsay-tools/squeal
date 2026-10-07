@@ -2409,7 +2409,10 @@ function forget(store, consumer) {
   writeTurn(store, consumer, null);
 }
 
-// src/harness/claude-code/context.ts
+// src/core/delivery/format.ts
+var MESSAGE_CAP_CHARS = 1e4;
+
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -2441,7 +2444,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -2457,7 +2460,16 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
   }
 }
 
-// src/harness/claude-code/sweep.ts
+// src/harness/shared/primer.ts
+var PRIMER = [
+  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
+  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+  "Squeal does not cover typecheck, build or other test suites."
+].join(" ");
+var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
+
+// src/harness/shared/sweep.ts
 async function unregisterSession(context, sessionId, options) {
   const { store, delivery } = context;
   const worktrees = /* @__PURE__ */ new Set([
@@ -2493,6 +2505,16 @@ function same(a, b) {
   return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
 }
 
+// src/harness/shared/session.ts
+async function endSession(input, locations, deps) {
+  for (const at of locations) {
+    await withContext(input, at, deps, async (context) => {
+      await unregisterSession(context, input.session_id, { removeLocks: true });
+      return null;
+    });
+  }
+}
+
 // src/harness/claude-code/hooks/session-end.ts
 var sessionEnd = async (input, location2, deps) => {
   const locations = [location2];
@@ -2501,12 +2523,7 @@ var sessionEnd = async (input, location2, deps) => {
   if (fromProject !== null && fromProject.commonDir !== location2.commonDir) {
     locations.push(fromProject);
   }
-  for (const at of locations) {
-    await withContext(input, at, deps, async (context) => {
-      await unregisterSession(context, input.session_id, { removeLocks: true });
-      return null;
-    });
-  }
+  await endSession(input, locations, deps);
   return null;
 };
 

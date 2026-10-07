@@ -1,4 +1,4 @@
-// src/harness/claude-code/hooks/stop.ts
+// src/harness/shared/stop.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/daemon/policy.ts
@@ -66,6 +66,68 @@ function dotGit(root) {
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+function bootstrappedMetaKey(worktreeId) {
+  return `daemon-bootstrapped:${worktreeId}`;
+}
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  env: { allowlist: [] },
+  runner: { tierSize: 4, timeoutMs: 6e5 },
+  nodeTest: [],
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
+// src/core/notes.ts
+function readDaemonNotes(store, worktreeId) {
+  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+}
+function parseList(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function toNote(item) {
+  if (typeof item !== "object" || item === null) return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  if (revision !== null && typeof revision !== "number") return [];
+  return [{ at: at2, revision, text }];
+}
+
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute2, posix } from "node:path";
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -139,75 +201,9 @@ function splitTopLevel(body) {
   return parts;
 }
 
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/daemon.ts
-var DAEMON_SOCKET_TIMEOUT_MS = 100;
-function bootstrappedMetaKey(worktreeId) {
-  return `daemon-bootstrapped:${worktreeId}`;
-}
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5 },
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-function refinedMetaKey(worktreeId) {
-  return `refined.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
-
-// src/core/notes.ts
-function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
-}
-function parseList(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-function toNote(item) {
-  if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
-  if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text }];
-}
-
-// src/core/daemon/policy.ts
-var POLICY_FILE = "squeal.config.json";
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
-var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var inputs = (v) => {
-  const isList = strings(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
-    return "an array of strings, or an object from test-file glob to an array of strings";
-  }
-  const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  for (const glob of globs) {
+// src/core/daemon/policy-node-test.ts
+function compiles(globs2) {
+  for (const glob of globs2) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -215,6 +211,74 @@ var inputs = (v) => {
     }
   }
   return null;
+}
+var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+var insideRoot = (v) => {
+  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+};
+var FIELDS = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  node: nonEmptyString,
+  argv: strings,
+  env: variables,
+  include: globs,
+  exclude: globs
+};
+var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+function nodeTestProjects(value, path) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry2, index) => {
+    const at2 = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at2, kept);
+    if (problem === null) kept.push(withDefaults(entry2));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function entryProblem(entry2, at2, kept) {
+  if (!isRecord(entry2))
+    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  for (const key of Object.keys(entry2)) {
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(FIELDS)) {
+    const given = entry2[key];
+    if (given === void 0 && !REQUIRED.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at2}.${key}" ${why}; ${skipped}`;
+  }
+  if (kept.some((project) => project.name === named)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  }
+  return null;
+}
+
+// src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings2(v) === null;
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs2);
 };
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
 var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
@@ -229,11 +293,12 @@ var SHAPE = {
   stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
-  env: { allowlist: strings },
+  env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger)
   },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
@@ -276,7 +341,10 @@ function merge(shape, defaults, given, prefix, problems) {
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
-      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
     } else if (!isRecord(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
@@ -2948,7 +3016,7 @@ function failure(code, message) {
 }
 
 // src/core/daemon/paths.ts
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join8 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute3, join as join8 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
@@ -2963,7 +3031,7 @@ function userTmpDir(uid = currentUid()) {
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : null;
+  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
@@ -3051,7 +3119,7 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/harness/claude-code/ensure.ts
+// src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
 function ensure(location2, deps, record) {
   return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
@@ -3066,13 +3134,7 @@ async function ensureIfStale(context, deps) {
   await ensure(context, deps, record);
 }
 
-// src/harness/claude-code/fork.ts
-var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
-function isFork(input) {
-  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
-}
-
-// src/harness/claude-code/context.ts
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -3104,7 +3166,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 var HOOK_TIMEOUT_MS = 2e3;
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
@@ -3120,18 +3182,11 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-function additionalContext(input, text) {
-  return {
-    output: {
-      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
-    }
-  };
-}
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/text.ts
+// src/harness/shared/text.ts
 var LISTED_FAILURES = 10;
 function headerLine2(consumer, header) {
   const text = formatRegistration({
@@ -3184,15 +3239,14 @@ function fullSuiteReason(header) {
   return `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ${header.revision}; ${before}. \`squeal run --all\` starts one.`;
 }
 
-// src/harness/claude-code/hooks/stop.ts
+// src/harness/shared/stop.ts
 var STOP_WAIT_CAP_MS = 1500;
 var STOP_MARGIN_MS = 250;
 var STOP_POLL_MS = 100;
 function stopBusyTimeoutMs(waitMs) {
   return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
 }
-var stop = (input, location2, deps) => {
-  if (isFork(input)) return forkStop(input, location2, deps);
+function stopTurn(input, location2, deps) {
   const policy = readPolicy(location2.root).stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext(
@@ -3210,7 +3264,7 @@ var stop = (input, location2, deps) => {
       const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
       const current = failures.filter((f) => f.validity === "current");
       const reasons = [];
-      if (input.stop_hook_active !== true) {
+      if (!input.stopHookActive) {
         if (policy.blockOnKnownFailures && current.length > 0) {
           reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
         }
@@ -3220,21 +3274,23 @@ var stop = (input, location2, deps) => {
       }
       if (reasons.length > 0) {
         const text = news ?? statusText(consumer, header, failures.length);
-        return { output: { decision: "block", reason: `${reasons.join("\n")}
+        return { block: `${reasons.join("\n")}
 
-${text}` } };
+${text}` };
       }
       if (input.agent_id !== void 0) await finishSubagent(context);
       else if (news === null) await context.delivery.endTurn(consumer);
-      return news === null ? null : additionalContext(input, news);
+      return news === null ? null : { news };
     },
     { busyTimeoutMs: stopBusyTimeoutMs(wait) }
   );
-};
-var forkStop = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
-  if (isRegistered(context)) await finishSubagent(context);
-  return null;
-});
+}
+async function stopFork(input, location2, deps) {
+  await withContext(input, location2, deps, async (context) => {
+    if (isRegistered(context)) await finishSubagent(context);
+    return null;
+  });
+}
 function earlier(failures) {
   return failures.filter((f) => f.validity !== "current");
 }
@@ -3264,6 +3320,37 @@ async function waitForPending(context, waitMs, pollMs) {
     await sleep2(Math.min(pollMs, left));
   }
 }
+
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
+}
+
+// src/harness/claude-code/hook.ts
+function additionalContext(input, text) {
+  return {
+    output: {
+      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
+    }
+  };
+}
+
+// src/harness/claude-code/hooks/stop.ts
+var stop = async (input, location2, deps) => {
+  if (isFork(input)) {
+    await stopFork(input, location2, deps);
+    return null;
+  }
+  const outcome = await stopTurn(
+    { ...input, stopHookActive: input.stop_hook_active === true },
+    location2,
+    deps
+  );
+  if (outcome === null) return null;
+  if ("block" in outcome) return { output: { decision: "block", reason: outcome.block } };
+  return additionalContext(input, outcome.news);
+};
 
 // src/harness/claude-code/main.ts
 import { readFileSync as readFileSync4 } from "node:fs";

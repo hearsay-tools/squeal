@@ -1,4 +1,4 @@
-// src/harness/claude-code/hooks/waiter.ts
+// src/harness/shared/waiter.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/fs/errors.ts
@@ -2695,7 +2695,7 @@ function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
-// src/harness/claude-code/context.ts
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -2727,7 +2727,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -2746,36 +2746,30 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/hooks/waiter.ts
-var WAITER_HOOK_TIMEOUT_S = 3600;
-var WAITER_TIMEOUT_MS = (WAITER_HOOK_TIMEOUT_S - 60) * 1e3;
+// src/harness/shared/waiter.ts
 var REGISTRATION_GRACE_MS = 1e4;
 var WAIT_CHUNK_MS = 1e3;
 var REGISTRATION_POLL_MS = 100;
-function isInteractive(env) {
-  return env.CLAUDE_CODE_SESSION_ATTENDED === "1" && env.CLAUDE_CODE_ENTRYPOINT !== "sdk-cli";
-}
-var waiter = async (input, location2, deps) => {
-  if (input.agent_id !== void 0 || !isInteractive(deps.env)) return null;
+function waitIdle(input, location2, deps, timeoutMs) {
   return withContext(input, location2, deps, async (context) => {
     const lock2 = acquireWaiterLock(storePaths(location2.commonDir).locksDir, context.consumer);
     if (lock2 === null) return null;
     let gone = false;
     try {
-      const outcome = await waitForDelta(context, deps);
+      const outcome = await waitForDelta(context, timeoutMs);
       gone = outcome === "unregistered";
       if (outcome === null) {
         context.store.consumers.touch(context.consumer, (deps.now ?? Date.now)(), false);
       }
-      return outcome === "unregistered" || outcome === null ? null : { stderr: formatDelta(outcome), exitCode: 2 };
+      return outcome === "unregistered" || outcome === null ? null : formatDelta(outcome);
     } finally {
       lock2.release(gone);
     }
   });
-};
-async function waitForDelta(context, deps) {
+}
+async function waitForDelta(context, timeoutMs) {
   const started = performance.now();
-  const deadline = started + (deps.waiterTimeoutMs ?? WAITER_TIMEOUT_MS);
+  const deadline = started + timeoutMs;
   let seen = false;
   for (; ; ) {
     const left = deadline - performance.now();
@@ -2792,6 +2786,18 @@ async function waitForDelta(context, deps) {
     if (delta !== null) return delta;
   }
 }
+
+// src/harness/claude-code/hooks/waiter.ts
+var WAITER_HOOK_TIMEOUT_S = 3600;
+var WAITER_TIMEOUT_MS = (WAITER_HOOK_TIMEOUT_S - 60) * 1e3;
+function isInteractive(env) {
+  return env.CLAUDE_CODE_SESSION_ATTENDED === "1" && env.CLAUDE_CODE_ENTRYPOINT !== "sdk-cli";
+}
+var waiter = async (input, location2, deps) => {
+  if (input.agent_id !== void 0 || !isInteractive(deps.env)) return null;
+  const text = await waitIdle(input, location2, deps, deps.waiterTimeoutMs ?? WAITER_TIMEOUT_MS);
+  return text === null ? null : { stderr: text, exitCode: 2 };
+};
 
 // src/harness/claude-code/main.ts
 import { readFileSync as readFileSync3 } from "node:fs";

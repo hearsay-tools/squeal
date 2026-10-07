@@ -1,4 +1,4 @@
-// src/harness/claude-code/context.ts
+// src/harness/shared/context.ts
 import { existsSync as existsSync5 } from "node:fs";
 import { join as join7 } from "node:path";
 
@@ -2538,7 +2538,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
   );
 }
 
-// src/harness/claude-code/context.ts
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -2573,7 +2573,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/ensure.ts
+// src/harness/shared/ensure.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
@@ -2730,7 +2730,7 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/harness/claude-code/ensure.ts
+// src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
 var SPAWN_SETTLE_MS = 750;
 var SETTLE_POLL_MS = 25;
@@ -2753,13 +2753,7 @@ async function settle(context, deps) {
   }
 }
 
-// src/harness/claude-code/fork.ts
-var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
-function isFork(input) {
-  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
-}
-
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -2774,18 +2768,11 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-function additionalContext(input, text) {
-  return {
-    output: {
-      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
-    }
-  };
-}
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/primer.ts
+// src/harness/shared/primer.ts
 var PRIMER = [
   "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
   "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
@@ -2799,7 +2786,7 @@ function withPrimer(registration2) {
 ${PRIMER}`;
 }
 
-// src/harness/claude-code/sweep.ts
+// src/harness/shared/sweep.ts
 async function unregisterSession(context, sessionId, options) {
   const { store, delivery } = context;
   const worktrees = /* @__PURE__ */ new Set([
@@ -2835,19 +2822,17 @@ function same(a, b) {
   return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
 }
 
-// src/harness/claude-code/hooks/session-start.ts
+// src/harness/shared/session.ts
 var SWEEP_SOURCES = /* @__PURE__ */ new Set(["startup", "resume"]);
-var sessionStart = async (input, location2, deps) => {
-  if (isFork(input) || !usesSqueal(location2)) return null;
+async function startSession(input, location2, deps) {
+  if (!usesSqueal(location2)) return null;
   let ensured = false;
-  const outcome = await withContext(input, location2, deps, async (context) => {
+  const text = await withContext(input, location2, deps, async (context) => {
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
     ensured = true;
     if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     const main = input.agent_id === void 0;
-    if (main && input.source === "compact" && isRegistered(context)) {
-      return additionalContext(input, PRIMER);
-    }
+    if (main && input.source === "compact" && isRegistered(context)) return PRIMER;
     if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
@@ -2856,10 +2841,32 @@ var sessionStart = async (input, location2, deps) => {
     }
     const atStart = input.source !== "compact";
     const registration2 = await context.delivery.register(context.consumer, { atStart });
-    return additionalContext(input, withPrimer(registration2));
+    return withPrimer(registration2);
   });
   if (!ensured) await ensure(location2, deps);
-  return outcome;
+  return text;
+}
+
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
+}
+
+// src/harness/claude-code/hook.ts
+function additionalContext(input, text) {
+  return {
+    output: {
+      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
+    }
+  };
+}
+
+// src/harness/claude-code/hooks/session-start.ts
+var sessionStart = async (input, location2, deps) => {
+  if (isFork(input)) return null;
+  const text = await startSession(input, location2, deps);
+  return text === null ? null : additionalContext(input, text);
 };
 
 // src/harness/claude-code/main.ts

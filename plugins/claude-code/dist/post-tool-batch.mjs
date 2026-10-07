@@ -2267,7 +2267,7 @@ function createDelivery(store, options) {
     const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at2);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
-  function deliver(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
+  function deliver2(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
     const select = (states) => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
@@ -2367,12 +2367,12 @@ function createDelivery(store, options) {
         forget(store, consumer);
       });
     },
-    onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    onToolBoundary: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);
-      return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
+      return deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
-    startTurn: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    startTurn: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
     endTurn: async (consumer) => {
       store.transaction(() => {
         if (store.consumers.get(consumer) === null) return;
@@ -2384,7 +2384,7 @@ function createDelivery(store, options) {
       const deadline = performance.now() + timeoutMs;
       for (; ; ) {
         if (signal?.aborted) return null;
-        const delta = deliver(consumer, { heardFrom: false, idle: true });
+        const delta = deliver2(consumer, { heardFrom: false, idle: true });
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
@@ -2833,7 +2833,7 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/harness/claude-code/ensure.ts
+// src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
 function ensure(location2, deps, record) {
   return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
@@ -2848,13 +2848,7 @@ async function ensureIfStale(context, deps) {
   await ensure(context, deps, record);
 }
 
-// src/harness/claude-code/fork.ts
-var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
-function isFork(input) {
-  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
-}
-
-// src/harness/claude-code/context.ts
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -2886,7 +2880,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -2901,18 +2895,11 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-function additionalContext(input, text) {
-  return {
-    output: {
-      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
-    }
-  };
-}
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/primer.ts
+// src/harness/shared/primer.ts
 var PRIMER = [
   "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
   "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
@@ -2926,17 +2913,38 @@ function withPrimer(registration2) {
 ${PRIMER}`;
 }
 
+// src/harness/shared/deliver.ts
+async function deliver(context, deps) {
+  await ensureIfStale(context, deps);
+  if (!isRegistered(context)) {
+    const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
+    return withPrimer(registration2);
+  }
+  const delta = await context.delivery.onToolBoundary(context.consumer);
+  return delta === null ? null : formatDelta(delta);
+}
+
+// src/harness/claude-code/fork.ts
+var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
+function isFork(input) {
+  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
+}
+
+// src/harness/claude-code/hook.ts
+function additionalContext(input, text) {
+  return {
+    output: {
+      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
+    }
+  };
+}
+
 // src/harness/claude-code/hooks/post-tool-batch.ts
 var postToolBatch = async (input, location2, deps) => {
   if (isFork(input)) return null;
   return withContext(input, location2, deps, async (context) => {
-    await ensureIfStale(context, deps);
-    if (!isRegistered(context)) {
-      const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
-      return additionalContext(input, withPrimer(registration2));
-    }
-    const delta = await context.delivery.onToolBoundary(context.consumer);
-    return delta === null ? null : additionalContext(input, formatDelta(delta));
+    const text = await deliver(context, deps);
+    return text === null ? null : additionalContext(input, text);
   });
 };
 

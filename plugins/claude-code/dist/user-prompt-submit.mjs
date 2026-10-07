@@ -2679,7 +2679,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
   );
 }
 
-// src/harness/claude-code/context.ts
+// src/harness/shared/context.ts
 import { existsSync as existsSync4 } from "node:fs";
 import { join as join6 } from "node:path";
 function locate(cwd) {
@@ -2716,7 +2716,7 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/claude-code/ensure.ts
+// src/harness/shared/ensure.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
@@ -2873,7 +2873,7 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/harness/claude-code/ensure.ts
+// src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
 var SPAWN_SETTLE_MS = 750;
 var SETTLE_POLL_MS = 25;
@@ -2896,7 +2896,7 @@ async function settle(context, deps) {
   }
 }
 
-// src/harness/claude-code/hook.ts
+// src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -2911,18 +2911,11 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-function additionalContext(input, text) {
-  return {
-    output: {
-      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
-    }
-  };
-}
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/claude-code/primer.ts
+// src/harness/shared/primer.ts
 var PRIMER = [
   "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
   "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
@@ -2936,6 +2929,34 @@ function withPrimer(registration2) {
 ${PRIMER}`;
 }
 
+// src/harness/shared/prompt.ts
+function submitPrompt(input, location2, deps, options) {
+  if (!usesSqueal(location2)) return Promise.resolve(null);
+  return withContext(input, location2, deps, async (context) => {
+    const now = (deps.now ?? Date.now)();
+    if (isRegistered(context)) {
+      const delta = await context.delivery.startTurn(context.consumer);
+      return delta === null ? null : formatDelta(delta);
+    }
+    if (!options.register) return null;
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    if (daemonLiveness(record, now).state !== "alive") {
+      if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
+    }
+    const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
+    return withPrimer(registration2);
+  });
+}
+
+// src/harness/claude-code/hook.ts
+function additionalContext(input, text) {
+  return {
+    output: {
+      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
+    }
+  };
+}
+
 // src/harness/claude-code/hooks/waiter.ts
 var WAITER_HOOK_TIMEOUT_S = 3600;
 var WAITER_TIMEOUT_MS = (WAITER_HOOK_TIMEOUT_S - 60) * 1e3;
@@ -2944,22 +2965,9 @@ function isInteractive(env) {
 }
 
 // src/harness/claude-code/hooks/user-prompt-submit.ts
-var userPromptSubmit = (input, location2, deps) => {
-  if (!usesSqueal(location2)) return Promise.resolve(null);
-  return withContext(input, location2, deps, async (context) => {
-    const now = (deps.now ?? Date.now)();
-    if (isRegistered(context)) {
-      const delta = await context.delivery.startTurn(context.consumer);
-      return delta === null ? null : additionalContext(input, formatDelta(delta));
-    }
-    if (!isInteractive(deps.env)) return null;
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (daemonLiveness(record, now).state !== "alive") {
-      if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
-    }
-    const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
-    return additionalContext(input, withPrimer(registration2));
-  });
+var userPromptSubmit = async (input, location2, deps) => {
+  const text = await submitPrompt(input, location2, deps, { register: isInteractive(deps.env) });
+  return text === null ? null : additionalContext(input, text);
 };
 
 // src/harness/claude-code/main.ts
