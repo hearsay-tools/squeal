@@ -3136,9 +3136,9 @@ function listPaths(paths, max = 5) {
   const shown = paths.slice(0, max).join(", ");
   return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
 }
-function unmatchedInputNotes(unmatched) {
+function unmatchedInputNotes(unmatched, testFiles) {
   return [
-    ...unmatched.testGlobs.map(
+    ...(testFiles === 0 ? [] : unmatched.testGlobs).map(
       (glob) => `${POLICY_FILE}: inputs key "${glob}" matches no test file; keys and input globs match worktree-relative paths from the start, so write "**/${glob}" for a file in any directory`
     ),
     ...unmatched.inputGlobs.map((glob) => `${POLICY_FILE}: inputs glob "${glob}" matches no file`)
@@ -3181,7 +3181,10 @@ function reloadPolicy(context, ledger, changes) {
   context.policy = policy;
   const applied = context.keys.setPolicy(policy);
   const testFiles = [...ledger.files.values()].map((file) => file.ref.path);
-  for (const text of unmatchedInputNotes(context.keys.unmatchedInputs(testFiles))) {
+  for (const text of unmatchedInputNotes(
+    context.keys.unmatchedInputs(testFiles),
+    testFiles.length
+  )) {
     context.note(text);
   }
   return applied;
@@ -3815,7 +3818,8 @@ async function bootstrap(context, ledger) {
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
   const persisted = persistedNoteTexts(store, worktreeId);
-  for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFilePaths(ledger)))) {
+  const testFiles = testFilePaths(ledger);
+  for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
     if (!persisted.has(text)) context.note(text);
   }
 }
@@ -9055,7 +9059,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.6";
+  if (true) return "0.1.7";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
