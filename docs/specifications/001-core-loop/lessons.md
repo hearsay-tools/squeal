@@ -736,6 +736,8 @@ Every hook met 80 ms p95 in every run except PostToolBatch in run 2 (102 ms afte
 
 Not closed. With Squeal's Stop as the only Stop hook, every report arrived in order, through PostToolBatch or the next prompt, with a current header that named the changed files (cases 1 to 4). It still fails when another Stop hook continues the turn after Squeal's silent Stop. Squeal then records the agent as idle until the continuation's first PostToolBatch or edit. If a waited-for result lands in that window, the waiter speaks mid-turn. Its message reaches the model only after the running tool call, behind any newer PostToolBatch report, labelled with the event that armed the waiter (case 5b). Any loop or verification Stop hook installed beside Squeal makes this the normal path. Narrowing it further is a design choice: match PreToolUse on every tool (one hook process per tool call), or have the waiter read the transcript tail for a blocked Stop before it prints.
 
+Closed 2026-10-07 for case 5b by task 001-93 (decided by the human: PreToolUse on every tool). The continuation's first tool call puts the consumer back in a turn before it runs, so a result that lands during the call waits for the next PostToolBatch; `test/harness/turn.test.ts` case (5b) runs a silent Stop, a PreToolUse for `Bash`, the waited file's result and the PostToolBatch on recorded input. Not re-checked in an attended session. A narrower window remains: a waited result that lands between the other hook's block and the continuation's first tool call (1.5 s in case 5) still wakes the waiter mid-turn.
+
 ## Report volume and provenance
 
 2026-10-07, feedback from an agent working a `cezar` worktree with Squeal 0.1.x, relayed by the human.
