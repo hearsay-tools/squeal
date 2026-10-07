@@ -686,6 +686,54 @@ Closed 2026-10-07 by an attended probe with the plugin at 0.1.6 (001-61, 001-63,
 
 14. **Mid-turn, the idle waiter delivers out of order and unattributed.** A waiter message written mid-turn lands only at the next tool boundary (research `claude-code-integration.md` Q4 b, c), which is where PostToolBatch delivers with a fresh header. So it adds an older header after a newer one and a label naming the event that armed it. Neither message says what the revision changed.
 
+### Attended check after wave 10
+
+Task 001-87, 2026-10-07. Squeal at commit `98d6597`: plugin 0.1.9 (001-85, 001-88, 001-89 landed; `dist` built at `8152fa0`), loaded from this checkout's `plugins/claude-code` with `--plugin-dir`. The question: does the turn state of 001-85 and 001-89 deliver in order in a real attended session, and does the 001-88 primer stop the agent running Vitest itself?
+
+| Item | Value |
+| --- | --- |
+| Claude Code | 2.1.292, `DISABLE_AUTOUPDATER=1`, `--setting-sources project --strict-mcp-config --permission-mode acceptEdits`, the allow-list of the first run plus `Bash(sed:*)`, `--debug hooks --debug-file`, model `claude-sonnet-5-5`; `CLAUDE*` and `CEZ_*` variables removed, `TMPDIR` under the scratch directory |
+| Fixture | `/tmp/sq87/fix`, new: modules `money`, `invoice`, `format`, `slug`, 4 test files, 25 tests, Vitest 5.0.3, `git init`, `squeal init` with every default (`stop.waitMs: 0`, `stop.blockOnKnownFailures: false`); its `.claude/settings.json` deleted. `test/money.test.ts` holds one 8 s test, so an edit of `src/money.ts` keeps `money.test.ts` and `invoice.test.ts` pending for about 9 s. |
+| Sessions | A1: plugin hooks only. A2: plus a project Stop hook that blocks the first Stop of each turn and asks for `sleep 15`, standing in for another plugin's loop hook (review S2). Outside edits from a shell beside tmux. |
+| Drivers | tmux on its own socket, a 250 ms store logger (revision, counts, consumers, the `turn:` row of `meta`), transcripts and debug logs. Scratch under `/tmp/sq87`. |
+| Machine | Same host, load average 4.5 to 20 |
+| Cost | $0.71 (A1 $0.46, A2 $0.25, the debug logs' turn-end cost records) |
+
+| Case | Steps (UTC) | Observed | Verdict |
+| --- | --- | --- | --- |
+| 1. Idle wake for a check pending at Stop (A1) | Prompt: change `percentOf` to `Math.trunc`, reply "done". Edit 12:41:10.1, Stop 12:41:11.5. | The silent Stop recorded `invoice.test.ts` and `money.test.ts` at their pending keys, revision 4. The failure was recorded at 12:41:18.69. The waiter's message was in the transcript at 12:41:18.78, header `Revision 4 (changed src/money.ts, test/money.test.ts)` (every path since the registration at revision 0, the last revision the agent was told about). The agent reported the failure and asked whether to update the test. The woken turn's Stop recorded nothing pending. | holds |
+| 2. Break during `sleep 20` from outside (A1) | `sleep 20` started 12:43:45.97; `src/slug.ts` broken 12:43:51.48. | 3 failures recorded at revision 8 by 12:43:52.0, with the turn `in-turn`. The waiter printed nothing. Tool result 12:44:06.037; PostToolBatch context 12:44:06.130, the only message: `Revision 8 (changed src/slug.ts): 31 current, 0 pending`. The agent said it had not touched `src/slug.ts`. | holds |
+| 2b. The agent's own edit, then `sleep 20` in a second call, the shape of the `cezar` incident (A1) | `git checkout -- src/slug.ts` 12:44:34.5; `sleep 20` 12:44:36.4 to 12:44:56.46. | The restore resolved by lookup at revision 9 at 12:44:34.7, after the first call's PostToolBatch. PostToolBatch after `sleep 20` delivered the 3 recoveries once, 102 ms after the tool result. | holds |
+| 3. Outside edits while idle, to files not pending at Stop (A1) | After case 1's woken turn (nothing pending at its Stop): `git checkout src/money.ts` 12:42:04.97 (revision 5), `src/format.ts` broken 12:42:08.98 (revision 6). | 5 transitions in `money.test.ts` and `format.test.ts`, recorded by 12:42:13.5. The turn stayed `idle` with no waited file, and no wake came in 37 s. `money.test.ts` had been pending at the Stop before last, so the trim of review S3 held. The next prompt (12:42:51.12) carried all 5 at 12:42:51.233, header `Revision 6 (changed src/money.ts, src/format.ts)`. A restore at revision 7 (by lookup) also did not wake; the next prompt carried its 4 recoveries. | holds |
+| 4. Esc during `sleep 20`, then a prompt (A1) | `sleep 20` started 12:45:31.66; `src/slug.ts` broken 12:45:38.23 (revision 10, by lookup at 12:45:38.5); Esc 12:45:42.24. | No PostToolBatch for the rejected call. The turn stayed `in-turn` and the armed waiter printed nothing for 39 s. The prompt "If anything is failing in src/slug.ts, fix it" at 12:46:21.3 carried the 3 failures at 12:46:22.382, 1.5 s before the model's first tool call (a Read at 12:46:23.849). The agent fixed the file from that report. | holds |
+| 5. Another Stop hook continues the turn (A2, review S2) | Prompt: change `percentOf` to content Squeal had never seen, reply "done". Edit 12:48:56.4; both Stop hooks ran at 12:48:57.5; the other one blocked; the continuation's `sleep 15` ran 12:48:58.98 to 12:49:14.07. | Squeal's Stop was silent, so it set `idle`, waiting on `money.test.ts` and `invoice.test.ts`. The waiter (SessionStart's) woke at 12:49:04.99, mid-turn. Claude Code queued its message and fed it after the tool result, at 12:49:14.26, after a PostToolBatch that printed nothing. Its header was still current, so nothing arrived out of order that time. | the waiter speaks mid-turn |
+| 5b. Same, with a newer revision before the boundary (A2) | Same prompt with another unseen body, edit 12:50:31.2, `sleep 15` 12:50:33.9 to 12:50:48.98. As soon as the waiter printed (12:50:39.83, revision 16), `src/slug.ts` was broken from outside (revision 17, recorded 12:50:40.6). | PostToolBatch delivered revision 17 at 12:50:49.078 (`changed src/slug.ts`, 3 failures). The waiter's revision 16 message (`changed src/money.ts`, labelled `Stop hook blocking error from command "UserPromptSubmit"`) followed at 12:50:49.174. An older header arrived after a newer one: defect 14's order, 96 ms apart (90 ms in `cezar`). The agent named both reports. It called the money failure "still failing", though the prompt's own context had reported it passing at revision 15. | defect 14 reproduces |
+
+Evidence and notes:
+
+1. **Why case 5 escapes 001-89's correction.** A tool boundary puts an idle consumer back in a turn. But Squeal's PreToolUse matches only `Edit|Write|NotebookEdit`, and PostToolBatch runs only after the batch ends. So a continuation whose first call is a long Bash command leaves the consumer `idle` until the call ends or the waiter speaks (12:48:57.7 to 12:49:05.1 in the store logger). Squeal's Stop does not see the other hook's decision. In the transcript, each Stop that the other hook blocked has a `stop_hook_summary` with `preventedContinuation: false` and the block's reason in `hookErrors`, followed by a `hook_blocking_error` attachment.
+2. **The primer arrived and was followed.** On a new store, SessionStart only spawned the daemon. The first prompt's UserPromptSubmit registration carried the header and the primer (12:39:47.080). In A2 the SessionStart registration carried both (12:47:29.568). The agent never loaded the skill and never ran Vitest, in 11 turns across 2 sessions. In the two turns where a natural task asked for an edit, it ran `squeal status --wait 60000` once, before reporting. The first turn opened with "Squeal validates in the background; I'll wait for the result before reporting", which is the primer's advice. The case prompts said "don't check tests" or "don't run anything", so only those two turns test the habit.
+3. **Defect 8 did not reproduce on 2.1.292.** Both `/exit`s ran SessionEnd (`SessionEnd:prompt_input_exit … completed with status 0` at 12:47:20.209 and 12:51:28.582), and the consumer row was gone within 0.3 s. Claude Code still killed the armed waiter (`status code 137`).
+4. **Hook cost inside Claude Code.** These are Claude Code's own `durationMs`, spawn included, at load 4.5 to 10. Squeal's Stop: 14 runs, 71 to 107 ms, p50 93 ms. PostToolBatch when delivering: 79 to 94 ms (n=4). SessionStart registering with the primer: 129 ms (n=1). Claude Code records no duration for a hook that prints nothing, so a quiet PostToolBatch or silent UserPromptSubmit has no figure here. The bundled table follows.
+
+Bundled hooks, `test/harness/latency.test.ts` on the committed 0.1.9 `dist` (best of up to 3 rounds of 20 cold runs, a store of 500 checks), at load 20 at the end of the run, so nothing was asserted:
+
+| Hook | p50 ms | p95 ms | max ms |
+| --- | --- | --- | --- |
+| session-start (with the primer) | 120 | 148 | 528 |
+| post-tool-batch | 78 | 100 | 101 |
+| pre-tool-use | 80 | 86 | 92 |
+| stop, speaking | 81 | 99 | 100 |
+| stop, silent (ends the turn) | 96 | 110 | 116 |
+| user-prompt-submit, delivering | 89 | 111 | 119 |
+| user-prompt-submit, silent | 97 | 134 | 200 |
+| session-end | 84 | 91 | 98 |
+| waiter (Node start baseline) | 57 | 72 | 80 |
+
+### Defect 14 after wave 10
+
+Not closed. With Squeal's Stop as the only Stop hook, every report arrived in order, through PostToolBatch or the next prompt, with a current header that named the changed files (cases 1 to 4). It still fails when another Stop hook continues the turn after Squeal's silent Stop. Squeal then records the agent as idle until the continuation's first PostToolBatch or edit. If a waited-for result lands in that window, the waiter speaks mid-turn. Its message reaches the model only after the running tool call, behind any newer PostToolBatch report, labelled with the event that armed the waiter (case 5b). Any loop or verification Stop hook installed beside Squeal makes this the normal path. Narrowing it further is a design choice: match PreToolUse on every tool (one hook process per tool call), or have the waiter read the transcript tail for a blocked Stop before it prints.
+
 ## Report volume and provenance
 
 2026-10-07, feedback from an agent working a `cezar` worktree with Squeal 0.1.x, relayed by the human.
