@@ -23,6 +23,7 @@ import { priorityOf } from "./queue.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import {
+  abandonFullSuite,
   executeTier,
   queueFullSuite,
   recordTier,
@@ -148,16 +149,18 @@ class TierScheduler implements Scheduler {
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
     const force = request.force === true;
     // An install the next reconciliation pass would find ends the wait first; still waiting,
-    // every file is unkeyed and the checkpoint ends `abandoned`.
+    // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
     if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
+        if (this.#awaitingInstall) return abandonFullSuite(ledger);
         if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
         return queueFullSuite(ledger, force);
       })) ??
       (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
+        if (this.#awaitingInstall) return abandonFullSuite(ledger);
         await retryRunner(context, ledger);
         return queueFullSuite(ledger, force);
       }));

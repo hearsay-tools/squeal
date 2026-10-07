@@ -125,3 +125,26 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     expect(h.header().awaitingInstall).toBeUndefined();
   });
 });
+
+describe("scheduler: run --all while waiting (review wave 11, B1)", SLOW, () => {
+  it("records the checkpoint abandoned, and the header claims no listing and no full suite", async () => {
+    const repo = createRepo("basic");
+    writeFileSync(
+      join(repo.main, "package.json"),
+      JSON.stringify({ name: "fresh", type: "module", devDependencies: { vitest: "*" } }),
+    );
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+
+    const record = await h.scheduler.requestFullSuite();
+    await h.scheduler.idle();
+    expect(store.checkpoints.get(record.id)?.end).toBe("abandoned");
+    expect(h.runner.runs).toEqual([]);
+    const header = h.header();
+    expect(header.fullSuite.atCurrentRevision).toBe(false);
+    expect(header.testFilesListed).toBe(false);
+    expect(header.awaitingInstall).toBe(true);
+  });
+});
