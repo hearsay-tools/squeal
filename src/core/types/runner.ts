@@ -60,6 +60,12 @@ export interface PackageImport {
   readonly from: RelativePath;
   /** `name` or `@scope/name`, without a subpath. */
   readonly name: string;
+  /**
+   * The import reads the package's own `package.json` and loads no code, so
+   * the package's version keys it even when it ships no runtime file
+   * (task 001-109, review wave-11b N2).
+   */
+  readonly manifest?: boolean;
 }
 
 /**

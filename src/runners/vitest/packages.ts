@@ -63,8 +63,11 @@ function installedEntry(
   const rel = paths.toRelative(file);
   const at = rel === null ? -1 : rel.lastIndexOf(NODE_MODULES);
   if (rel === null || at === -1 || (at > 0 && rel[at - 1] !== "/")) return null;
-  const name = packageName(rel.slice(at + NODE_MODULES.length));
-  return name === null ? "unnamed" : { from: rel.slice(0, Math.max(0, at - 1)), name };
+  const rest = rel.slice(at + NODE_MODULES.length);
+  const name = packageName(rest);
+  if (name === null) return "unnamed";
+  const from = rel.slice(0, Math.max(0, at - 1));
+  return rest === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
 }
 
 /**
