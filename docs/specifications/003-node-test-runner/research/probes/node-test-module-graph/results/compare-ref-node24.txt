@@ -1,0 +1,54 @@
+
+== oxc  modules=38 edges=47 total=8ms parse=4ms resolve=2ms
+   missing (observed, not static): 1 paths [ 'packages/core/src/edge/var-target.ts' ]
+   extra (static, not observed): 1 paths [ 'packages/core/src/edge/shape.ts' ]
+   unresolved: 0 []
+   glob dynamic imports: 1 [ 'packages/core/src/edge/computed.ts: ./plugins/*.ts' ]
+   computed dynamic imports: 1 [ 'packages/core/src/edge/computed-var.ts: import(p)' ]
+
+== enhanced  modules=38 edges=47 total=46ms parse=2ms resolve=28ms
+   missing (observed, not static): 1 paths [ 'packages/core/src/edge/var-target.ts' ]
+   extra (static, not observed): 1 paths [ 'packages/core/src/edge/shape.ts' ]
+   unresolved: 0 []
+   glob dynamic imports: 1 [ 'packages/core/src/edge/computed.ts: ./plugins/*.ts' ]
+   computed dynamic imports: 1 [ 'packages/core/src/edge/computed-var.ts: import(p)' ]
+
+== ts  modules=28 edges=28 total=22ms parse=1ms resolve=20ms
+   missing (observed, not static): 13 paths [
+  'packages/core/src/edge/dir/index.ts',
+  'packages/core/src/edge/imports-target.ts',
+  'packages/core/src/edge/paths-target.ts',
+  'packages/core/src/edge/reexported.ts',
+  'packages/core/src/edge/var-target.ts',
+  'packages/util/src/index.ts',
+  'packages/util/src/str.ts',
+  'packages/util/src/u000.ts',
+  'packages/util/src/u001.ts',
+  'packages/util/src/u002.ts',
+  'packages/util/src/u003.ts',
+  'packages/core/src/m001.ts',
+  'packages/core/src/m000.ts'
+]
+   extra (static, not observed): 1 paths [ 'packages/core/src/edge/shape.ts' ]
+   unresolved: 5 [
+  '1x ~/m001 (import: unresolved)',
+  '2x ./m000 (import: unresolved)',
+  '1x ~/m004 (import: unresolved)',
+  '1x ./paths-target (import: unresolved)'
+]
+   glob dynamic imports: 1 [ 'packages/core/src/edge/computed.ts: ./plugins/*.ts' ]
+   computed dynamic imports: 1 [ 'packages/core/src/edge/computed-var.ts: import(p)' ]
+
+== ts-bundler  modules=38 edges=47 total=19ms parse=1ms resolve=16ms
+   missing (observed, not static): 1 paths [ 'packages/core/src/edge/var-target.ts' ]
+   extra (static, not observed): 1 paths [ 'packages/core/src/edge/shape.ts' ]
+   unresolved: 0 []
+   glob dynamic imports: 1 [ 'packages/core/src/edge/computed.ts: ./plugins/*.ts' ]
+   computed dynamic imports: 1 [ 'packages/core/src/edge/computed-var.ts: import(p)' ]
+
+== hand  modules=38 edges=47 total=7ms parse=1ms resolve=5ms
+   missing (observed, not static): 1 paths [ 'packages/core/src/edge/var-target.ts' ]
+   extra (static, not observed): 1 paths [ 'packages/core/src/edge/shape.ts' ]
+   unresolved: 0 []
+   glob dynamic imports: 1 [ 'packages/core/src/edge/computed.ts: ./plugins/*.ts' ]
+   computed dynamic imports: 1 [ 'packages/core/src/edge/computed-var.ts: import(p)' ]

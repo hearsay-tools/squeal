@@ -1,0 +1,15 @@
+tsx on v24.21.0:
+ts importer  {"./src/a.js":"a.ts","./src/b":"b.ts","./src/d":"d.ts"}
+mjs importer {"./src/a.js":"a.js","./src/c.js (only c.ts)":"c.ts"}
+main.ts  oxc        ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.ts  enhanced   ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.ts  ts-bundler ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.ts  hand       ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.mjs oxc        ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.mjs enhanced   ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.mjs ts-bundler ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+main.mjs hand       ./src/a.js -> src/a.ts, ./src/b -> src/b.ts, ./src/d -> src/d.ts
+
+Without tsx (native type stripping), main.ts on 24.21.0 and 22.23.3:
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../fixtures/prec/src/b' imported from .../fixtures/prec/main.ts
+An explicit "./src/c.ts" specifier loads natively on both.
