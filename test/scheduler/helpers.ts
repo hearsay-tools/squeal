@@ -6,12 +6,9 @@ import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createDelivery, readHeader } from "../../src/core/delivery/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
+import { appendNote } from "../../src/core/notes.js";
 import { statCandidates } from "../../src/core/revision/index.js";
-import {
-  appendNote,
-  createScheduler,
-  type SchedulerOptions,
-} from "../../src/core/scheduler/index.js";
+import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
 import {
   isStoreOpenFailure,
   openStore,
