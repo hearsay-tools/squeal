@@ -336,10 +336,11 @@ class Daemon {
 
   /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
-   * the tier in flight, abandons the open checkpoint), `runner.close()`,
-   * the temp directory, `setDaemon(null)`, `store.close()`. Then the socket, which closing
-   * unlinks, and last the lock, so a successor never sees this daemon's
-   * socket go away after binding its own.
+   * the tier in flight, abandons the open checkpoint), `runner.close()`, the
+   * temp directory once its leftovers are gone, `setDaemon(null)`,
+   * `store.close()`. Then the socket, which closing unlinks, and last the
+   * lock, so a successor never sees this daemon's socket go away after
+   * binding its own.
    */
   #shutdown(reason: DaemonExitReason, code: 0 | 1, text: string): Promise<DaemonExit> {
     this.#exit ??= (async () => {
@@ -350,7 +351,10 @@ class Daemon {
       const { store, worktreeId, lock } = this.opened;
       await this.#step("loop.close", () => this.#loop?.close());
       await this.#step("runner.close", () => this.#runner?.close());
-      await this.#step("temp dir removal", () => removeScratch(this.opened.scratch));
+      await this.#step("temp dir removal", async () => {
+        await this.opened.leftovers;
+        removeScratch(this.opened.scratch);
+      });
       await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
