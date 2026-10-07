@@ -3287,9 +3287,9 @@ var init_store2 = __esm({
 import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 function appendNote(store, worktreeId, note) {
   const key = notesMetaKey(worktreeId);
-  const plain = { ...note, text: stripVTControlCharacters2(note.text) };
+  const plain2 = { ...note, text: stripVTControlCharacters2(note.text) };
   store.transaction(() => {
-    store.meta.set(key, JSON.stringify(withNote(store.meta.get(key), plain)));
+    store.meta.set(key, JSON.stringify(withNote(store.meta.get(key), plain2)));
   });
 }
 function withNote(raw, note) {
@@ -7689,10 +7689,10 @@ var init_chokidar = __esm({
         });
         return watchList;
       }
-      emitWithAll(event, args) {
-        this.emit(event, ...args);
-        if (event !== EVENTS.ERROR)
-          this.emit(EVENTS.ALL, event, ...args);
+      emitWithAll(event2, args) {
+        this.emit(event2, ...args);
+        if (event2 !== EVENTS.ERROR)
+          this.emit(EVENTS.ALL, event2, ...args);
       }
       // Common helpers
       // --------------
@@ -7704,7 +7704,7 @@ var init_chokidar = __esm({
        * @param stats arguments to be passed with event
        * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
        */
-      async _emit(event, path, stats) {
+      async _emit(event2, path, stats) {
         if (this.closed)
           return;
         const opts = this.options;
@@ -7722,8 +7722,8 @@ var init_chokidar = __esm({
           return this;
         }
         if (opts.atomic) {
-          if (event === EVENTS.UNLINK) {
-            this._pendingUnlinks.set(path, [event, ...args]);
+          if (event2 === EVENTS.UNLINK) {
+            this._pendingUnlinks.set(path, [event2, ...args]);
             setTimeout(() => {
               this._pendingUnlinks.forEach((entry2, path2) => {
                 this.emit(...entry2);
@@ -7733,35 +7733,35 @@ var init_chokidar = __esm({
             }, typeof opts.atomic === "number" ? opts.atomic : 100);
             return this;
           }
-          if (event === EVENTS.ADD && this._pendingUnlinks.has(path)) {
-            event = EVENTS.CHANGE;
+          if (event2 === EVENTS.ADD && this._pendingUnlinks.has(path)) {
+            event2 = EVENTS.CHANGE;
             this._pendingUnlinks.delete(path);
           }
         }
-        if (awf && (event === EVENTS.ADD || event === EVENTS.CHANGE) && this._readyEmitted) {
+        if (awf && (event2 === EVENTS.ADD || event2 === EVENTS.CHANGE) && this._readyEmitted) {
           const awfEmit = (err, stats2) => {
             if (err) {
-              event = EVENTS.ERROR;
+              event2 = EVENTS.ERROR;
               args[0] = err;
-              this.emitWithAll(event, args);
+              this.emitWithAll(event2, args);
             } else if (stats2) {
               if (args.length > 1) {
                 args[1] = stats2;
               } else {
                 args.push(stats2);
               }
-              this.emitWithAll(event, args);
+              this.emitWithAll(event2, args);
             }
           };
-          this._awaitWriteFinish(path, awf.stabilityThreshold, event, awfEmit);
+          this._awaitWriteFinish(path, awf.stabilityThreshold, event2, awfEmit);
           return this;
         }
-        if (event === EVENTS.CHANGE) {
+        if (event2 === EVENTS.CHANGE) {
           const isThrottled = !this._throttle(EVENTS.CHANGE, path, 50);
           if (isThrottled)
             return this;
         }
-        if (opts.alwaysStat && stats === void 0 && (event === EVENTS.ADD || event === EVENTS.ADD_DIR || event === EVENTS.CHANGE)) {
+        if (opts.alwaysStat && stats === void 0 && (event2 === EVENTS.ADD || event2 === EVENTS.ADD_DIR || event2 === EVENTS.CHANGE)) {
           const fullPath = opts.cwd ? sp2.join(opts.cwd, path) : path;
           let stats2;
           try {
@@ -7772,7 +7772,7 @@ var init_chokidar = __esm({
             return;
           args.push(stats2);
         }
-        this.emitWithAll(event, args);
+        this.emitWithAll(event2, args);
         return this;
       }
       /**
@@ -7831,7 +7831,7 @@ var init_chokidar = __esm({
        * @param event
        * @param awfEmit Callback to be called when ready for event to be emitted.
        */
-      _awaitWriteFinish(path, threshold, event, awfEmit) {
+      _awaitWriteFinish(path, threshold, event2, awfEmit) {
         const awf = this.options.awaitWriteFinish;
         if (typeof awf !== "object")
           return;
@@ -7870,7 +7870,7 @@ var init_chokidar = __esm({
             cancelWait: () => {
               writes.delete(path);
               clearTimeout(timeoutHandler);
-              return event;
+              return event2;
             }
           });
           timeoutHandler = setTimeout(awaitWriteFinishFn, pollInterval);
@@ -7953,8 +7953,8 @@ var init_chokidar = __esm({
         if (this.options.cwd)
           relPath = sp2.relative(this.options.cwd, path);
         if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
-          const event = this._pendingWrites.get(relPath).cancelWait();
-          if (event === EVENTS.ADD)
+          const event2 = this._pendingWrites.get(relPath).cancelWait();
+          if (event2 === EVENTS.ADD)
             return;
         }
         this._watched.delete(path);
@@ -8070,8 +8070,8 @@ var init_chokidar_backend = __esm({
           followSymlinks: false,
           atomic: false
         });
-        watcher.on("all", (event, path) => {
-          const kind = KINDS2[event];
+        watcher.on("all", (event2, path) => {
+          const kind = KINDS2[event2];
           if (kind) listener.onHints([{ path, kind }]);
         });
         watcher.on("error", (error) => {
@@ -8169,8 +8169,8 @@ function callback(listener, keep) {
       return;
     }
     const hints = [];
-    for (const event of events) {
-      if (keep(event.path)) hints.push({ path: event.path, kind: KINDS3[event.type] });
+    for (const event2 of events) {
+      if (keep(event2.path)) hints.push({ path: event2.path, kind: KINDS3[event2.type] });
     }
     if (hints.length > 0) listener.onHints(hints);
   };
@@ -9730,11 +9730,11 @@ async function invalidateStructural(vitest, paths, note) {
   }
 }
 async function dropPackageData(vitest, manifest, kind) {
-  const event = kind === "add" ? "create" : kind === "delete" ? "delete" : "update";
+  const event2 = kind === "add" ? "create" : kind === "delete" ? "delete" : "update";
   const dir = dirname16(manifest);
   for (const project of vitest.projects) {
     for (const environment of Object.values(project.vite.environments)) {
-      await environment.pluginContainer.watchChange(manifest, { event });
+      await environment.pluginContainer.watchChange(manifest, { event: event2 });
       const cache = environment.config.packageCache;
       if (kind !== "add" || !(cache instanceof Map)) continue;
       for (const key of [...cache.keys()]) {
@@ -26344,12 +26344,12 @@ var init_observed = __esm({
 });
 
 // src/runners/node-test/run/process.ts
-import { spawn as spawn2 } from "node:child_process";
+import { spawn as spawn3 } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 function startGroup(options) {
   const out = openSync(options.stdout, "a");
   const err = openSync(options.stderr, "a");
-  const child = spawn2(options.command, options.args, {
+  const child = spawn3(options.command, options.args, {
     cwd: options.cwd,
     env: options.env,
     detached: true,
@@ -26460,14 +26460,14 @@ function readFileStream(stream, paths) {
   const isWrapper = (data2) => data2.nesting === 0 && data2.name === stream.arg && data2.entryFile === void 0;
   const wrapper = stream.events.find((e) => e.type === "test:complete" && isWrapper(e.data));
   const summary = stream.events.some((e) => e.type === "test:summary" && e.data.file === null);
-  const reported = stream.events.filter((e) => (e.type === "test:pass" || e.type === "test:fail") && !isWrapper(e.data)).map((event) => ({
-    event,
-    name: event.data.name ?? "",
-    nesting: event.data.nesting ?? 0,
-    testId: event.data.testId,
-    parentId: event.data.parentId,
-    suite: event.data.details?.type === "suite",
-    line: event.data.line ?? null
+  const reported = stream.events.filter((e) => (e.type === "test:pass" || e.type === "test:fail") && !isWrapper(e.data)).map((event2) => ({
+    event: event2,
+    name: event2.data.name ?? "",
+    nesting: event2.data.nesting ?? 0,
+    testId: event2.data.testId,
+    parentId: event2.data.parentId,
+    suite: event2.data.details?.type === "suite",
+    line: event2.data.line ?? null
   }));
   const results2 = identify(reported).map(
     ({ test, fullName, ancestors }) => toResult2(stream.testFile, test.event, fullName, ancestors, paths)
@@ -26481,33 +26481,33 @@ function readFileStream(stream, paths) {
     durationMs: wrapper?.data.details?.duration_ms ?? null
   };
 }
-function outcome(event) {
-  const { skip, todo, details } = event.data;
+function outcome(event2) {
+  const { skip, todo, details } = event2.data;
   if (skip !== void 0 || todo !== void 0) return "skip";
-  if (event.type === "test:pass") return "pass";
+  if (event2.type === "test:pass") return "pass";
   return details?.error?.failureType === "subtestsFailed" ? "pass" : "fail";
 }
-function toResult2(testFile, event, fullName, ancestors, paths) {
-  const result = outcome(event);
-  const { data: data2 } = event;
+function toResult2(testFile, event2, fullName, ancestors, paths) {
+  const result = outcome(event2);
+  const { data: data2 } = event2;
   const file = typeof data2.file === "string" ? paths.toRelative(data2.file) : null;
   return {
     check: { kind: "test", project: testFile.project, testPath: testFile.path, fullName },
     outcome: result,
     durationMs: data2.details?.duration_ms ?? 0,
     location: data2.line === void 0 ? null : { path: file ?? testFile.path, line: data2.line, column: data2.column ?? 1 },
-    errors: result === "fail" ? failureErrors(event, ancestors, paths) : []
+    errors: result === "fail" ? failureErrors(event2, ancestors, paths) : []
   };
 }
-function failureErrors(event, ancestors, paths) {
-  const own = toCheckError2(event.data.details?.error, paths);
-  if (event.data.details?.error?.failureType !== "cancelledByParent") return [own];
+function failureErrors(event2, ancestors, paths) {
+  const own = toCheckError2(event2.data.details?.error, paths);
+  if (event2.data.details?.error?.failureType !== "cancelledByParent") return [own];
   const causes = ancestors.filter((a) => ownFailure(a.event)).reverse();
   return [own, ...causes.map((a) => toCheckError2(a.event.data.details?.error, paths))];
 }
-function ownFailure(event) {
-  const type = event.data.details?.error?.failureType;
-  return event.type === "test:fail" && type !== "subtestsFailed" && type !== "cancelledByParent";
+function ownFailure(event2) {
+  const type = event2.data.details?.error?.failureType;
+  return event2.type === "test:fail" && type !== "subtestsFailed" && type !== "cancelledByParent";
 }
 function fileErrors(stream, reported, wrapper, paths) {
   const stderr = stream.events.filter((e) => e.type === "test:stderr").map((e) => e.data.message ?? "").join("");
@@ -27138,7 +27138,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.21";
+  if (true) return "0.1.22";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -27848,13 +27848,13 @@ var CONTEXT_EVENTS = /* @__PURE__ */ new Set([
   "SubagentStart"
 ]);
 var DEFAULT_CONTEXT_LIMIT = 2500;
-function eventLabel(event) {
-  const label2 = LABELS[event];
-  if (label2 === void 0) throw new Error(`unknown Codex hook event "${event}"`);
+function eventLabel(event2) {
+  const label2 = LABELS[event2];
+  if (label2 === void 0) throw new Error(`unknown Codex hook event "${event2}"`);
   return label2;
 }
-function hookHash(event, matcher, handler) {
-  const short = event === "SessionEnd" || event === "Interrupt";
+function hookHash(event2, matcher, handler) {
+  const short = event2 === "SessionEnd" || event2 === "Interrupt";
   const timeout = short ? Math.min(Math.max(handler.timeout ?? 1, 1), 3) : Math.max(handler.timeout ?? 600, 1);
   const normalized = {
     type: "command",
@@ -27863,24 +27863,24 @@ function hookHash(event, matcher, handler) {
     async: handler.async ?? false
   };
   if (handler.statusMessage !== void 0) normalized.statusMessage = handler.statusMessage;
-  const limit = CONTEXT_EVENTS.has(event) ? handler.additionalContextLimit : void 0;
+  const limit = CONTEXT_EVENTS.has(event2) ? handler.additionalContextLimit : void 0;
   if (limit !== void 0 && limit !== DEFAULT_CONTEXT_LIMIT) {
     normalized.additionalContextLimit = limit;
   }
-  const identity = { event_name: eventLabel(event), hooks: [normalized] };
-  if (matcher !== void 0 && !NO_MATCHER.has(event)) identity.matcher = matcher;
+  const identity = { event_name: eventLabel(event2), hooks: [normalized] };
+  if (matcher !== void 0 && !NO_MATCHER.has(event2)) identity.matcher = matcher;
   const digest = createHash7("sha256").update(JSON.stringify(canonical(identity))).digest("hex");
   return `sha256:${digest}`;
 }
 function hookHashes(file, keySource) {
   const trust = [];
-  for (const [event, groups] of Object.entries(file.hooks)) {
+  for (const [event2, groups] of Object.entries(file.hooks)) {
     groups.forEach((group, g2) => {
       group.hooks.forEach((handler, h) => {
         if (handler.type !== "command") return;
         trust.push({
-          key: `${keySource}:${eventLabel(event)}:${g2}:${h}`,
-          hash: hookHash(event, group.matcher, handler)
+          key: `${keySource}:${eventLabel(event2)}:${g2}:${h}`,
+          hash: hookHash(event2, group.matcher, handler)
         });
       });
     });
@@ -27917,8 +27917,8 @@ function launcherConfig(pluginRoot, hooks) {
     throw new Error(`plugin path ${JSON.stringify(pluginRoot)} contains a shell metacharacter`);
   }
   const expanded = {};
-  for (const [event, groups] of Object.entries(hooks.hooks)) {
-    expanded[event] = groups.map((group) => ({
+  for (const [event2, groups] of Object.entries(hooks.hooks)) {
+    expanded[event2] = groups.map((group) => ({
       ...group,
       hooks: group.hooks.map((h) => ({
         ...h,
@@ -27927,7 +27927,7 @@ function launcherConfig(pluginRoot, hooks) {
     }));
   }
   const config = {};
-  for (const [event, groups] of Object.entries(expanded)) config[`hooks.${event}`] = groups;
+  for (const [event2, groups] of Object.entries(expanded)) config[`hooks.${event2}`] = groups;
   config["hooks.state"] = Object.fromEntries(
     hookHashes({ hooks: expanded }, LAUNCHER_KEY_SOURCE).map(({ key, hash: hash2 }) => [
       key,
@@ -27937,11 +27937,270 @@ function launcherConfig(pluginRoot, hooks) {
   return config;
 }
 
+// src/cli/codex/trust.ts
+init_fs();
+import { spawn as spawn2 } from "node:child_process";
+import { createInterface } from "node:readline";
+var CODEX_APP_SERVER_TIMEOUT_MS = 1e4;
+var AppServerError = class extends Error {
+};
+async function trustCodexHooks(io, root, options) {
+  let server = null;
+  try {
+    server = new AppServer(
+      root,
+      io.env ?? process.env,
+      options.timeoutMs ?? CODEX_APP_SERVER_TIMEOUT_MS
+    );
+    await server.request("initialize", {
+      clientInfo: { name: "squeal", title: null, version: "0" }
+    });
+    server.notify("initialized", {});
+    const hooks = await listHooks(server, root, options.pluginId);
+    if (hooks.length === 0) {
+      io.stderr(
+        [
+          `squeal init: Codex lists no hooks of ${options.pluginId}; install the plugin first:`,
+          ...options.installCommands.map((c) => `  ${c}`),
+          ""
+        ].join("\n")
+      );
+      return 1;
+    }
+    const pending = hooks.filter(
+      (h) => h.trustStatus === "untrusted" || h.trustStatus === "modified"
+    );
+    if (pending.length === 0) {
+      io.stdout(
+        `squeal init: every hook of ${options.pluginId} is trusted in Codex; nothing to do
+`
+      );
+      return 0;
+    }
+    io.stdout(
+      [
+        `squeal init: Codex has not trusted ${pending.length} hooks of ${options.pluginId}:`,
+        ...pending.flatMap((h) => [
+          `  ${event(h).padEnd(16)}  ${h.trustStatus.padEnd(9)}  ${h.currentHash}`,
+          `    ${h.command}`
+        ]),
+        ""
+      ].join("\n")
+    );
+    if (!options.yes) {
+      if (options.ask === null) {
+        io.stderr(
+          "squeal init: no terminal to ask on; rerun with --yes to trust them, or use /hooks in the Codex TUI; nothing changed\n"
+        );
+        return 1;
+      }
+      const answer2 = await options.ask(`Have Codex trust these ${pending.length} hooks? [y/N] `);
+      if (!/^y(es)?$/i.test(answer2.trim())) {
+        io.stderr("squeal init: not trusted; nothing changed\n");
+        return 1;
+      }
+    }
+    const written = await server.request("config/batchWrite", {
+      edits: pending.map((h) => ({
+        keyPath: `hooks.state."${h.key}".trusted_hash`,
+        value: h.currentHash,
+        mergeStrategy: "replace"
+      })),
+      reloadUserConfig: true
+    });
+    const filePath = isRecord(written) && typeof written.filePath === "string" ? written.filePath : null;
+    const after = await listHooks(server, root, options.pluginId);
+    io.stdout(
+      [
+        `squeal init: Codex wrote the trust${filePath === null ? "" : ` to ${filePath}`}; its hooks now:`,
+        ...after.map((h) => `  ${event(h).padEnd(16)}  ${h.trustStatus}`),
+        ""
+      ].join("\n")
+    );
+    if (after.every((h) => h.trustStatus === "trusted")) return 0;
+    io.stderr(`squeal init: Codex still lists hooks of ${options.pluginId} that are not trusted
+`);
+    return 1;
+  } catch (error) {
+    if (!(error instanceof AppServerError)) throw error;
+    io.stderr(`squeal init: ${error.message}
+`);
+    return 1;
+  } finally {
+    await server?.close();
+  }
+}
+function terminalAsk() {
+  if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) return null;
+  return (question) => new Promise((resolve11) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    let answered = false;
+    rl.on("close", () => {
+      if (!answered) resolve11("");
+    });
+    rl.question(question, (answer2) => {
+      answered = true;
+      rl.close();
+      resolve11(answer2);
+    });
+  });
+}
+function event(hook) {
+  return `${hook.eventName.charAt(0).toUpperCase()}${hook.eventName.slice(1)}`;
+}
+async function listHooks(server, root, pluginId) {
+  const result = await server.request("hooks/list", { cwds: [root] });
+  const data2 = isRecord(result) ? result.data : void 0;
+  if (!Array.isArray(data2))
+    throw new AppServerError("codex app-server answered hooks/list without data");
+  const hooks = [];
+  for (const entry2 of data2) {
+    const listed = isRecord(entry2) && Array.isArray(entry2.hooks) ? entry2.hooks : [];
+    for (const hook of listed) {
+      if (!isRecord(hook) || hook.pluginId !== pluginId) continue;
+      const { key, eventName, command, currentHash, trustStatus } = hook;
+      if (typeof key !== "string" || typeof eventName !== "string" || typeof command !== "string" || typeof currentHash !== "string" || typeof trustStatus !== "string") {
+        throw new AppServerError(
+          `codex app-server listed a hook of ${pluginId} in a shape Squeal does not know`
+        );
+      }
+      if (!hooks.some((h) => h.key === key)) {
+        hooks.push({ key, eventName, command, currentHash, trustStatus, pluginId });
+      }
+    }
+  }
+  return hooks;
+}
+var AppServer = class {
+  constructor(cwd, env, timeoutMs) {
+    this.timeoutMs = timeoutMs;
+    this.child = spawn2("codex", ["app-server"], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    let fail = () => {
+    };
+    this.failed = new Promise((_, reject) => {
+      fail = (error) => {
+        this.failure ??= error;
+        reject(this.failure);
+      };
+    });
+    this.failed.catch(() => {
+    });
+    this.exited = new Promise((resolve11) => this.child.on("close", () => resolve11()));
+    this.child.on("error", (error) => {
+      fail(
+        new AppServerError(
+          error.code === "ENOENT" ? "codex is not on PATH; install the Codex CLI, or trust the hooks with /hooks in the Codex TUI" : `cannot start codex app-server: ${error.message}`
+        )
+      );
+    });
+    this.child.on("close", (code, signal) => {
+      const why2 = this.lastStderr === "" ? "" : `: ${this.lastStderr}`;
+      fail(new AppServerError(`codex app-server exited (${signal ?? `code ${code}`})${why2}`));
+    });
+    this.child.stdin.on("error", () => {
+    });
+    this.child.stderr.setEncoding("utf8");
+    this.child.stderr.on("data", (text2) => {
+      const lines = text2.split("\n").map(plain).filter((l) => l !== "");
+      this.lastStderr = lines.at(-1) ?? this.lastStderr;
+    });
+    this.child.stdout.setEncoding("utf8");
+    this.child.stdout.on("data", (text2) => {
+      this.buffer += text2;
+      let end = this.buffer.indexOf("\n");
+      while (end !== -1) {
+        const line = this.buffer.slice(0, end).trim();
+        this.buffer = this.buffer.slice(end + 1);
+        end = this.buffer.indexOf("\n");
+        if (line === "") continue;
+        let message2;
+        try {
+          message2 = JSON.parse(line);
+        } catch {
+          fail(
+            new AppServerError(
+              `codex app-server wrote a line that is not JSON: ${line.slice(0, 120)}`
+            )
+          );
+          return;
+        }
+        if (isRecord(message2) && message2.method === void 0 && typeof message2.id === "number") {
+          this.pending.get(message2.id)?.(message2);
+        }
+      }
+    });
+  }
+  timeoutMs;
+  child;
+  pending = /* @__PURE__ */ new Map();
+  nextId = 1;
+  buffer = "";
+  lastStderr = "";
+  /** Set once the process failed to start, exited or spoke out of protocol; every request rejects with it. */
+  failure = null;
+  failed;
+  exited;
+  notify(method, params) {
+    this.child.stdin.write(`${JSON.stringify({ method, params })}
+`);
+  }
+  /** The `result` of `method`, or an `AppServerError` on an error answer, an exit or silence. */
+  async request(method, params) {
+    if (this.failure !== null) throw this.failure;
+    const id = this.nextId++;
+    let timer;
+    const answered = new Promise(
+      (resolve11) => this.pending.set(id, resolve11)
+    );
+    const silent = new Promise((_, reject) => {
+      timer = setTimeout(
+        () => reject(
+          new AppServerError(
+            `codex app-server did not answer ${method} within ${Math.round(this.timeoutMs / 1e3)} s`
+          )
+        ),
+        this.timeoutMs
+      );
+    });
+    this.child.stdin.write(`${JSON.stringify({ id, method, params })}
+`);
+    try {
+      const message2 = await Promise.race([answered, silent, this.failed]);
+      if (message2.error !== void 0) {
+        const reason2 = isRecord(message2.error) ? message2.error.message : message2.error;
+        throw new AppServerError(`codex app-server refused ${method}: ${String(reason2)}`);
+      }
+      return message2.result;
+    } finally {
+      clearTimeout(timer);
+      this.pending.delete(id);
+    }
+  }
+  /** Ends stdin, then SIGTERM, then SIGKILL after a second; resolves once the process is gone. */
+  async close() {
+    if (this.child.exitCode !== null || this.child.signalCode !== null || this.child.pid === void 0) {
+      return;
+    }
+    this.child.stdin.end();
+    this.child.kill("SIGTERM");
+    const killer = setTimeout(() => this.child.kill("SIGKILL"), 1e3);
+    await this.exited;
+    clearTimeout(killer);
+  }
+};
+function plain(line) {
+  return line.replace(/\u001b\[[0-9;]*m/g, "").trim();
+}
+
 // src/cli/codex/init.ts
 var CODEX_MARKETPLACE_SOURCE = "hearsay-tools/squeal";
 var CODEX_PLUGIN_ID = "squeal@squeal";
+var CODEX_INSTALL_COMMANDS = [
+  `codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
+  `codex plugin add ${CODEX_PLUGIN_ID}`
+];
 var CODEX_TRUST_STEP = `open the Codex TUI, run /hooks and trust the hooks of ${CODEX_PLUGIN_ID}`;
-function initCodex(io) {
+function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
   const cwd = io.cwd ?? process.cwd();
   const root = findWorktreeRoot(cwd);
   if (root === null) {
@@ -27971,13 +28230,19 @@ function initCodex(io) {
       ...seed.notes,
       ...seed.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)],
       "Each user installs the Codex plugin once; Codex writes its own config:",
-      `  codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
-      `  codex plugin add ${CODEX_PLUGIN_ID}`,
+      ...CODEX_INSTALL_COMMANDS.map((c) => `  ${c}`),
       `Then trust its hooks once: ${CODEX_TRUST_STEP}. Codex skips untrusted hooks silently.`,
       ""
     ].join("\n")
   );
-  return 0;
+  if (!options.trust) return 0;
+  return trustCodexHooks(io, root, {
+    pluginId: CODEX_PLUGIN_ID,
+    installCommands: CODEX_INSTALL_COMMANDS,
+    yes: options.yes,
+    ask: deps.ask === void 0 ? terminalAsk() : deps.ask,
+    ...deps.timeoutMs === void 0 ? {} : { timeoutMs: deps.timeoutMs }
+  });
 }
 function printLauncherConfig(io, pluginRoot = findCodexPlugin()) {
   if (pluginRoot === null) {
@@ -29361,9 +29626,9 @@ function ownSignals(onSignal) {
   const originals = METHODS2.map((name) => [name, process[name]]);
   for (const signal of OWNED) process.on(signal, onSignal);
   for (const [name, original] of originals) {
-    const guarded = function(event, ...rest) {
-      if (OWNED.has(event)) return process;
-      return Reflect.apply(original, this, [event, ...rest]);
+    const guarded = function(event2, ...rest) {
+      if (OWNED.has(event2)) return process;
+      return Reflect.apply(original, this, [event2, ...rest]);
     };
     process[name] = guarded;
   }
@@ -29424,19 +29689,23 @@ ${INIT_USAGE}`);
     return 2;
   }
   if (parsed.harness === "codex") {
-    return parsed.printLauncherConfig ? printLauncherConfig(io) : initCodex(io);
+    return parsed.printLauncherConfig ? printLauncherConfig(io) : initCodex(io, { trust: parsed.trust, yes: parsed.yes });
   }
   return initClaudeCode(io);
 }
 var INIT_USAGE = `Usage: squeal init [--harness claude-code]
-       squeal init --harness codex [--print-launcher-config]
+       squeal init --harness codex [--print-launcher-config | --trust [--yes]]
 `;
 function parseInitArgs(args) {
   let harness = "claude-code";
   let printLauncher = false;
+  let trust = false;
+  let yes = false;
   for (let i2 = 0; i2 < args.length; i2++) {
     const arg = args[i2];
     if (arg === "--print-launcher-config") printLauncher = true;
+    else if (arg === "--trust") trust = true;
+    else if (arg === "--yes") yes = true;
     else if (arg.startsWith("--harness=")) harness = arg.slice("--harness=".length);
     else if (arg === "--harness") {
       const value = args[++i2];
@@ -29448,7 +29717,10 @@ function parseInitArgs(args) {
     return `unknown harness "${harness}": claude-code or codex`;
   }
   if (printLauncher && harness !== "codex") return "--print-launcher-config needs --harness codex";
-  return { harness, printLauncherConfig: printLauncher };
+  if (trust && harness !== "codex") return "--trust needs --harness codex";
+  if (yes && !trust) return "--yes needs --trust";
+  if (trust && printLauncher) return "--trust and --print-launcher-config are separate commands";
+  return { harness, printLauncherConfig: printLauncher, trust, yes };
 }
 function initClaudeCode(io) {
   const cwd = io.cwd ?? process.cwd();
@@ -29575,7 +29847,7 @@ import { basename as basename11, dirname as dirname20, join as join43 } from "no
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
-import { spawn as spawn3 } from "node:child_process";
+import { spawn as spawn4 } from "node:child_process";
 import { existsSync as existsSync15, mkdirSync as mkdirSync10 } from "node:fs";
 init_fs();
 init_open();
@@ -29691,7 +29963,7 @@ async function ensureDaemon(root, options = {}) {
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
     mkdirSync10(cwd, { recursive: true });
-    const child = spawn3(process.execPath, [cli, "daemon", root], {
+    const child = spawn4(process.execPath, [cli, "daemon", root], {
       cwd,
       detached: true,
       stdio: "ignore"
@@ -30203,10 +30475,12 @@ Usage:
   squeal why <check> [--json]   History and provenance of one check
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
-  squeal init --harness codex [--print-launcher-config]
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
                                 Write squeal.config.json and print the Codex plugin
                                 install and trust steps; or print the hooks and their
-                                trust as thread/start config for a launcher
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
