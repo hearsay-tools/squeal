@@ -30,6 +30,8 @@ Started: 2026-10-07
 
 - 2026-10-07, wave 2 (003-16), 0.1.21: the daemon validates node:test projects. One `createRecoveringRunner` per `nodeTest` entry, opened at start so the graph builds off the hook path; run logs under `<logDir>/node-test/<name>`; children get the daemon's `TMPDIR`, `TMP`, `TEMP`. D3 amended: an observed-only path is written to the `meta` key and to the test file's stored closure in one transaction, so a worktree keying from stored closures at start counts it. Decided by the worker and accepted: a missing project Node is handled inside the adapter (`runnerVersion` `unavailable`, one note, its runs `crashed`, rechecked each batch, recreated when it appears), because the composite rejects a call as a whole when one adapter rejects; the plugin bundle check filters builtins with `isBuiltin`, since bundled enhanced-resolve requires bare builtin names. The CLI bundle grew from 422 to 504 kB.
 
+- 2026-10-07, 0.1.22 (coordinator): `test/integration/node-test.test.ts` settles only when `runnerPartPending` is false. Under load it read an observed-only path's edit as settled before the refinement re-keyed the test file through `affected`, and saw no run. Product behaviour unchanged: status reported the runner part as pending throughout. For 003-17: the scheduler's in-memory closure gains an observed path only at the next refinement, so between a run that observes a path and that refinement, an edit of the path is scheduled by the refinement, not the revision's content re-key.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
