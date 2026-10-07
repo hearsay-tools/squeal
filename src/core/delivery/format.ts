@@ -13,6 +13,14 @@ import type {
   TransitionEntry,
 } from "../types/index.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
+import {
+  change,
+  installSentences,
+  loadLine,
+  recoveryProvenance,
+  seenLine,
+  touchesLine,
+} from "./provenance.js";
 
 /*
  * Human rendering of deltas and registrations, a separate layer over the
@@ -86,7 +94,8 @@ function headerLine(header: StatusHeader): string {
     `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ` +
     `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header)}.` +
-    livenessSentence(header.daemon, revision)
+    livenessSentence(header.daemon, revision) +
+    installSentences(header)
   );
 }
 
@@ -104,34 +113,6 @@ function livenessSentence(daemon: DaemonLiveness | undefined, revision: number):
   return ` ${since}; results are as of revision ${revision}.`;
 }
 
-function change(entry: TransitionEntry): string {
-  switch (entry.kind) {
-    case "first-seen-fail": {
-      const line = entry.from === null ? "first observed: FAIL" : `${upper(entry.from)} -> FAIL`;
-      return entry.baseline === true ? `baseline finding, ${line}` : line;
-    }
-    case "fail-changed":
-      return "FAIL -> FAIL, failure changed";
-    default:
-      return `${entry.from === null ? "NONE" : upper(entry.from)} -> ${upper(entry.to)}`;
-  }
-}
-
-function provenance(entry: TransitionEntry, revision: number): string | null {
-  const parts: string[] = [];
-  if (entry.validity === "stale") parts.push(`stale, observed at revision ${entry.observedAt}`);
-  if (entry.validity === "pending") {
-    parts.push(`observed at revision ${entry.observedAt}, revision ${revision} pending`);
-  }
-  if (entry.origin.kind === "inherited") {
-    const commit =
-      entry.origin.commit === null ? "no commit" : `commit ${entry.origin.commit.slice(0, 12)}`;
-    const from = entry.originRoot ?? `worktree ${entry.origin.worktreeId}`;
-    parts.push(`inherited from ${from} at ${commit}`);
-  }
-  return parts.length === 0 ? null : parts.join("; ");
-}
-
 interface Block {
   readonly text: string;
   readonly outcomes: readonly Shown[];
@@ -142,14 +123,16 @@ function block(head: string, lines: readonly (string | null)[], outcomes: Shown[
   return { text: [head, ...body].join("\n"), outcomes };
 }
 
+/** Task 001-91: a failure says who saw it, whether the changes reach it, and a timeout's load. */
 function entryBlock(entry: TransitionEntry, revision: number): Block {
+  const failed = entry.to === "fail";
   return block(
     `${upper(entry.to)}  ${checkName(entry.check)}`,
     [
-      change(entry),
+      failed ? seenLine(entry, revision) : change(entry),
       entry.summary === null ? null : cap(entry.summary, SUMMARY_MAX_CHARS),
       entry.location === null ? null : at(entry.location),
-      provenance(entry, revision),
+      ...(failed ? [touchesLine(entry), loadLine(entry)] : [recoveryProvenance(entry, revision)]),
     ],
     [entry.to],
   );
@@ -255,7 +238,7 @@ export function formatDelta(delta: Delta): string {
     entries.length === 0
       ? livenessTitle(delta.liveness, header.revision)
       : delta.label === "baseline"
-        ? `SQUEAL · baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}`
+        ? `SQUEAL · Squeal's run at start (baseline) found ${plural(entries.length, "failing check")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
