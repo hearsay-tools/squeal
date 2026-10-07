@@ -247,7 +247,7 @@ class Daemon {
         import("../daemon-loop/index.js"),
         import("../state/index.js"),
         import("../../runners/vitest/index.js"),
-        import("../../runners/node-test/adapter.js"),
+        import("./node-test-runners.js"),
         import("./runner.js"),
         import("./composite-runner.js"),
         import("../scheduler/index.js"),
@@ -274,15 +274,26 @@ class Daemon {
               around,
             })
           : null;
+      const nodeTestRunners = nodeTest.createNodeTestRunners(configured, {
+        root,
+        store,
+        tempDir: this.opened.scratch.tempDir,
+        tierSize: () => this.#policy.runner.tierSize,
+        note: (text) => this.#note(text),
+      });
       const runner = createCompositeRunner([
         ...(vitestRunner === null ? [] : [vitestRunner]),
-        ...configured.map((project) => nodeTest.createNodeTestAdapter(project)),
+        ...nodeTestRunners,
       ]);
       this.#vitest = vitestRunner;
       this.#runner = runner;
       // Task 001-100: while no dependencies are installed nothing loads Vitest, so the
       // first call after the install imports it from the worktree's own `node_modules`.
-      if (!(await awaitsInstall(root))) await vitestRunner?.open();
+      // The node:test graphs build here too, off the hook path (review wave 1, inputs).
+      await Promise.all([
+        ...((await awaitsInstall(root)) ? [] : [vitestRunner?.open()]),
+        ...nodeTestRunners.map((r) => r.open()),
+      ]);
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop({
         root,
