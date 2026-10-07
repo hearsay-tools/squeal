@@ -8,7 +8,9 @@ import type { StatusSnapshot } from "../../src/core/types/index.js";
  * only at quiet points, where nothing is pending and no file is changing.
  */
 
-const HEADER = /Revision (\d+): (\d+) current, (\d+) pending, (\d+) stale, (\d+) unknown\./;
+// 001-85: the revision may be followed by "(changed a.ts, b.ts and 2 more)".
+const HEADER =
+  /Revision (\d+)(?: \(changed [^)]*\))?: (\d+) current, (\d+) pending, (\d+) stale, (\d+) unknown\./;
 
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */
 export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {
