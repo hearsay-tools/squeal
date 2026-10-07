@@ -776,3 +776,11 @@ At 16:52 a `Write` of a markdown plan file was denied by `interrupt.onRegression
 
 21. **A daemon cannot start in a repository whose `node_modules` is a symlink.** `squeal start` printed "Daemon: running", then the daemon exited: `git check-ignore -z --stdin exited 128 ... fatal: pathspec 'node_modules/.package-lock.json' is beyond a symbolic link`. `git check-ignore` rejects the whole batch for one path under a symlinked directory, so every later hook spawns a daemon that dies the same way: the repository is never validated and each hook pays a spawn. Worktrees that link a shared `node_modules` are common, and cezarion#917 may produce them.
 22. **A hung daemon leaves edits unannounced.** With the daemon SIGSTOPped, an edit got no report and no "no daemon is validating" line at the tool boundary, unlike the dead-daemon case. The only signal was a clause in a registration header, and the agent summarised the session's Squeal messages as "Known failures: 0".
+
+## Torn status reads
+
+2026-10-08, reported by the spec 002/003 coordinator from its row 002-20, with an opt-in red test `test/e2e/torn-status.test.ts` (`SQUEAL_PROBE_TORN_STATUS=1`, landing in its 0.1.24).
+
+### Defects
+
+23. **Status reads can pair a new revision with the previous revision's states.** `buildSnapshot` (`src/core/status/snapshot.ts`, behind `squeal status --json`) reads the latest revision, then the known states and test-file keys, then `readHeader` reads the latest revision again, with no read transaction. The daemon writes a revision, its re-key and its pending state in one transaction; if it commits between the reads, status shows the new revision with nothing pending and the old result current. `squeal status --wait` (`src/cli/status-wait.ts`) and Stop's `waitForPending` (`src/harness/shared/stop.ts`) have the same race and can call "nothing pending" too early. Rare at calm load (0 of 750 snapshots over 5 edits); with a 30 ms window widened after the states read, 12 of 12 edits, for both plugins. Delivery already reads inside `store.transaction` and is consistent.
