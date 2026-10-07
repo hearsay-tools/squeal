@@ -72,11 +72,11 @@ describe("closuresToReresolve", () => {
     expect(closuresToReresolve([add("src/foo/inner/package.json")], build(), none)).toEqual([]);
   });
 
-  it("picks only importers of root files for the root package.json", () => {
-    // A package importing itself by name is not modelled.
-    expect(paths(closuresToReresolve([edit("package.json")], build(), none))).toEqual([
-      "test/root.test.ts",
-    ]);
+  it("picks every test file for the root package.json", () => {
+    // Reviews/wave-9b.md S2: its `imports`, or the package imported by its own name.
+    for (const change of [add("package.json"), del("package.json"), edit("package.json")]) {
+      expect(closuresToReresolve([change], build(), none)).toHaveLength(5);
+    }
   });
 
   it("picks importers of a directory that a new file of the same name shadows", () => {

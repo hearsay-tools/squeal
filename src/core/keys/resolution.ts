@@ -26,8 +26,11 @@ import { directoryOf, type ReverseIndex, testFileId } from "./reverse-index.js";
  * name, now resolves to its `index` or to another entry, which may lie below
  * `dir` (`"main": "lib/entry.ts"`). The manifest is in no closure and no
  * module graph, so neither `KeyIndex.rekey` nor the runner's `affected` sees
- * it (task 001-72, reviews/wave-9.md S1, S2). At the worktree root, `below`
- * covers only root files: a package importing itself by name is not modelled.
+ * it (task 001-72, reviews/wave-9.md S1, S2). The root `package.json` picks
+ * every test file: its `imports` and the package imported by its own name
+ * can resolve anywhere (reviews/wave-9b.md S2). The runner re-transforms
+ * nothing for an edit that changes no resolution field, so the closures are
+ * fetched warm.
  *
  * An added or deleted declared input (`isDeclaredInput`) joins or leaves every
  * closure, so every test file is picked. Other content changes are not
@@ -53,6 +56,7 @@ export function closuresToReresolve(
     if (edited && base !== "package.json") continue;
     if (!edited && isDeclaredInput(change.path)) return index.testFiles();
     if (base === "package.json") {
+      if (dir === "") return index.testFiles();
       pick(index.below(dir));
       continue;
     }
