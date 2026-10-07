@@ -47,7 +47,7 @@ describe("ChangeFeed batches into reconcile", () => {
       timings: { reconcileIntervalMs: 60_000 },
     });
     await feed.start();
-    expect(batches.map((b) => b.trigger)).toEqual(["start"]);
+    expect(batches.map((b) => b.trigger)).toEqual(["interval"]);
     expect(revisions).toEqual([null]);
   });
   afterEach(async () => {
