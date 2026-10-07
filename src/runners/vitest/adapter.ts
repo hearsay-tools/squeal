@@ -28,7 +28,7 @@ import {
   snapshotPath,
 } from "./project.js";
 import { createSquealReporter, RunCollector } from "./reporter.js";
-import { checkNames, compareRefs } from "./results.js";
+import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 import { invalidateStructural } from "./stale.js";
 
@@ -199,20 +199,7 @@ export class VitestAdapter implements RunnerAdapter {
       const spec = project.createSpecification(this.paths.toAbsolute(testFile.path));
       const [module] = await vitest.parseSpecifications([spec]);
       if (!module) return [];
-      const names = checkNames(module.children.allTests());
-      return [...module.children.allTests()].map((test) => ({
-        check: {
-          kind: "test",
-          project: testFile.project,
-          testPath: testFile.path,
-          fullName: names.get(test.id) ?? test.fullName,
-        },
-        // Research Q2: `test.each` parses to one entry with a `-dynamic` id.
-        templated: test.options.each === true || test.id.endsWith("-dynamic"),
-        location: test.location
-          ? { path: testFile.path, line: test.location.line, column: test.location.column }
-          : null,
-      }));
+      return enumeratedChecks(module, testFile);
     });
   }
 
