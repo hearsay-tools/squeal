@@ -25,11 +25,7 @@ export function runBundle(
   stdin: string,
   env: Readonly<Record<string, string>> = {},
 ): Promise<BundleRun> {
-  return runNode(
-    ["--disable-warning=ExperimentalWarning", join(DIST, `${name}.mjs`)],
-    stdin,
-    env,
-  );
+  return runNode(["--disable-warning=ExperimentalWarning", join(DIST, `${name}.mjs`)], stdin, env);
 }
 
 /** Runs `node <args>` in `cwd` with a minimal environment plus `env`, stdin piped, timed. */
