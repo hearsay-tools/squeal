@@ -200,7 +200,6 @@ export function recordTier(
     ledger.markUnknown(unknown, reason);
     ledger.commit();
   });
-  for (const note of report.notes ?? []) context.note(note);
   return [...changedOnDisk];
 }
 

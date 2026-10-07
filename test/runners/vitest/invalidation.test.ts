@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_TEST_FILES, openFixture, paths, ref, SLOW } from "./helpers.js";
+import { ALL_TEST_FILES, all, openFixture, paths, ref, SLOW } from "./helpers.js";
 
 // One test per invalidation case in research vitest-internals Q5.
 describe("vitest adapter: invalidation (research Q5)", SLOW, () => {
@@ -23,7 +23,7 @@ describe("vitest adapter: invalidation (research Q5)", SLOW, () => {
       "test/math.test.ts",
       "test/strings.test.ts",
     ]);
-    expect(await fx.adapter.affected(["src/deep.ts"])).toEqual([]);
+    expect(all(await fx.adapter.affected(["src/deep.ts"]))).toEqual([]);
   });
 
   it("a deleted source file yields a file-level error", async () => {
@@ -60,7 +60,7 @@ describe("vitest adapter: invalidation (research Q5)", SLOW, () => {
     expect(paths(await fx.adapter.testFiles())).toEqual(
       ALL_TEST_FILES.filter((p) => p !== "test/strings.test.ts"),
     );
-    expect(await fx.adapter.affected(["test/strings.test.ts", "src/strings.ts"])).toEqual([]);
+    expect(all(await fx.adapter.affected(["test/strings.test.ts", "src/strings.ts"]))).toEqual([]);
   });
 
   it("a new test file appears in testFiles() and affected()", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RunReport } from "../../../src/core/types/index.js";
 import { resolutionBases, resolutionCandidates } from "../../../src/runners/vitest/graph.js";
-import { openFixture, paths, ref, SLOW } from "./helpers.js";
+import { all, openFixture, paths, ref, SLOW } from "./helpers.js";
 
 const outcomes = (report: RunReport) => report.results.map((r) => r.outcome);
 
@@ -115,7 +115,7 @@ describe("vitest adapter: targeted invalidation on add and delete", SLOW, () => 
     await fx.adapter.invalidate([{ path: "src/util.ts", kind: "add" }]);
 
     expect(paths(await fx.adapter.affected(["src/util.ts"]))).toEqual(["test/util.test.ts"]);
-    expect(await fx.adapter.affected(["src/util/index.ts"])).toEqual([]);
+    expect(all(await fx.adapter.affected(["src/util/index.ts"]))).toEqual([]);
     expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
   });
 
@@ -234,7 +234,7 @@ describe("vitest adapter: an add re-resolves every resolution path", SLOW, () =>
     await fx.adapter.invalidate([{ path: "src/pkg.ts", kind: "add" }]);
 
     expect(paths(await fx.adapter.affected(["src/pkg.ts"]))).toEqual(["test/pkg.test.ts"]);
-    expect(await fx.adapter.affected(["src/pkg/lib.ts"])).toEqual([]);
+    expect(all(await fx.adapter.affected(["src/pkg/lib.ts"]))).toEqual([]);
     expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
   });
 
@@ -351,7 +351,7 @@ describe("vitest adapter: an add re-resolves past the scan and the index fallbac
     fx.write("src/plugins/b.ts", "export const name = 'b';\n");
     await fx.adapter.invalidate([{ path: "src/plugins/b.ts", kind: "add" }]);
 
-    expect(await fx.adapter.affected(["src/plugins/b.ts"])).toEqual([]);
+    expect(all(await fx.adapter.affected(["src/plugins/b.ts"]))).toEqual([]);
     expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
   });
 

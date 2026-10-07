@@ -9,7 +9,11 @@ import { FALLBACK_NOTE } from "../../../src/runners/vitest/stale.js";
 import { openFixture, paths, ref, SLOW } from "./helpers.js";
 
 /** An adapter whose Vitest instance the test can reach. */
-async function exposed(root: string, onStart: (vitest: Vitest) => void) {
+async function exposed(
+  root: string,
+  onStart: (vitest: Vitest) => void,
+  note: (text: string) => void = () => {},
+) {
   const real = await loadVitest(realpathSync(root));
   const node = {
     ...real,
@@ -19,7 +23,7 @@ async function exposed(root: string, onStart: (vitest: Vitest) => void) {
       return vitest;
     },
   } as VitestNode;
-  const adapter = new VitestAdapter(new WorktreePaths(realpathSync(root)), node);
+  const adapter = new VitestAdapter(new WorktreePaths(realpathSync(root)), node, note);
   await adapter.open();
   return adapter;
 }
@@ -69,10 +73,15 @@ describe("vitest adapter: soft invalidation and its fallback", SLOW, () => {
 
   it("without invalidationState an add drops every transform and notes it once", async () => {
     let vitest: Vitest | null = null;
+    const notes: string[] = [];
     const fx = await openFixture("basic", {}, (root) =>
-      exposed(root, (v) => {
-        vitest = v;
-      }),
+      exposed(
+        root,
+        (v) => {
+          vitest = v;
+        },
+        (text) => notes.push(text),
+      ),
     );
     expect(paths(await fx.adapter.affected(["src/strings.ts"]))).toEqual(["test/strings.test.ts"]);
     for (const project of (vitest as Vitest | null)?.projects ?? []) {
@@ -87,8 +96,8 @@ describe("vitest adapter: soft invalidation and its fallback", SLOW, () => {
     // Edited on disk but not invalidated: only a dropped cache sees the new import.
     fx.write("src/math.ts", fx.read("src/math.ts").replace("\n", '\nimport "./strings.ts";\n'));
     fx.write("src/unrelated.ts", "export const unrelated = 1;\n");
-    const first = await fx.adapter.invalidate([{ path: "src/unrelated.ts", kind: "add" }]);
-    expect(first.notes).toEqual([FALLBACK_NOTE]);
+    await fx.adapter.invalidate([{ path: "src/unrelated.ts", kind: "add" }]);
+    expect(notes).toEqual([FALLBACK_NOTE]);
     expect(paths(await fx.adapter.affected(["src/strings.ts"]))).toEqual([
       "test/each.test.ts",
       "test/math.test.ts",
@@ -96,7 +105,7 @@ describe("vitest adapter: soft invalidation and its fallback", SLOW, () => {
     ]);
 
     fx.remove("src/unrelated.ts");
-    const second = await fx.adapter.invalidate([{ path: "src/unrelated.ts", kind: "delete" }]);
-    expect(second.notes).toBeUndefined();
+    await fx.adapter.invalidate([{ path: "src/unrelated.ts", kind: "delete" }]);
+    expect(notes).toEqual([FALLBACK_NOTE]);
   });
 });

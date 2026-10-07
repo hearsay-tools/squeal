@@ -5,6 +5,7 @@ import type { SerializedError } from "vitest/node";
 import { type DaemonNote, notesMetaKey } from "../../../src/core/types/index.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { isRunnerFailure } from "../../../src/runners/vitest/broken.js";
+import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import {
@@ -93,7 +94,12 @@ describe("isRunnerFailure", () => {
 
 describe("vitest adapter: a broken runner environment", SLOW, () => {
   it("a temp directory removed under a live instance is a crash, then the recreated instance passes", async () => {
-    const { value: fx, tmp } = await withTempDir(() => openFixture());
+    const notes: string[] = [];
+    const { value: fx, tmp } = await withTempDir(() =>
+      openFixture("basic", {}, (root) =>
+        createVitestAdapter({ root, note: (text) => notes.push(text) }),
+      ),
+    );
     const files = [ref("test/math.test.ts"), ref("test/strings.test.ts")];
     const first = await fx.adapter.run(files, fx.runOptions());
     expect(first.results.map((r) => r.outcome)).toEqual(["pass", "pass", "pass", "pass"]);
@@ -106,7 +112,7 @@ describe("vitest adapter: a broken runner environment", SLOW, () => {
     expect(broken.failure).toMatch(
       /^the Vitest instance failed to load modules and is recreated: Error: ENOENT/,
     );
-    expect(broken.notes).toEqual([broken.failure]);
+    expect(notes).toEqual([broken.failure]);
     expect(broken.failure).not.toContain(fx.root);
 
     const after = await fx.adapter.run(files, fx.runOptions());
@@ -208,9 +214,12 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     );
     expect(a.scheduler.status().testFiles.unknown).toBeGreaterThan(0);
     const notes = JSON.parse(store.meta.get(notesMetaKey(a.worktreeId)) ?? "[]") as DaemonNote[];
-    expect(notes.map((n) => n.text)).toContainEqual(
-      expect.stringMatching(/^the Vitest instance failed to load modules and is recreated: /),
+    // One note per broken instance, written by the adapter alone.
+    const brokenNotes = notes.filter((n) =>
+      n.text.startsWith("the Vitest instance failed to load modules and is recreated: "),
     );
+    expect(brokenNotes).toHaveLength(crashed.size);
+    expect(crashed.size).toBe(1);
 
     const keys = ALL_TEST_FILES.map((path) => a.keyOf(path));
     const stored = keys.flatMap((key) => store.results.byKey(key));

@@ -1,10 +1,8 @@
 import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
 import type {
-  AffectedTestFiles,
   ProjectName,
   RelativePath,
   Revision,
-  RunnerAdapter,
   RunnerClosure,
   RunnerEnvironment,
   TestFileRef,
@@ -79,7 +77,6 @@ export async function fetchRunnerPart(
     () => runner.invalidate(changes.map(toInvalidatedPath)),
     (reason) => failed(failures, null, reason),
   );
-  for (const note of invalidated?.notes ?? []) context.note(note);
   const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);
   const environments =
     recreated.size > 0 || content.environment || retrying
@@ -117,7 +114,7 @@ export async function fetchRunnerPart(
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
   const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>
-    affectedOf(runner, paths),
+    runner.affected(paths),
   );
   pick(affected?.direct ?? []);
   pick(affected?.transitive ?? []);
@@ -191,16 +188,4 @@ export async function applyRunnerPart(
   ledger.settle(touched.values(), changed, { direct: part.direct });
   settleFailures(ledger, part.failures, part.retrying, changed);
   return stale;
-}
-
-/**
- * `runner.affectedDetailed`, or `runner.affected` with every file transitive
- * for a runner without it. Spec 001 D5 step 4: direct importers run first.
- */
-function affectedOf(
-  runner: RunnerAdapter,
-  paths: readonly RelativePath[],
-): Promise<AffectedTestFiles> {
-  if (runner.affectedDetailed) return runner.affectedDetailed(paths);
-  return runner.affected(paths).then((transitive) => ({ direct: [], transitive }));
 }

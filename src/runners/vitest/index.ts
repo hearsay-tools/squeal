@@ -9,6 +9,12 @@ export { VITEST_ADAPTER_VERSION } from "./adapter.js";
 export interface VitestAdapterOptions {
   /** Worktree root. Spec 001 D4: one Vitest instance per worktree. */
   readonly root: AbsolutePath;
+  /**
+   * Records a fact the adapter worked around as a status note (D7): the
+   * fallback to full invalidation, a broken instance it recreates. Dropped
+   * when absent.
+   */
+  readonly note?: (text: string) => void;
 }
 
 /**
@@ -18,7 +24,7 @@ export interface VitestAdapterOptions {
  */
 export async function createVitestAdapter(options: VitestAdapterOptions): Promise<RunnerAdapter> {
   const root = realpathSync(options.root);
-  const adapter = new VitestAdapter(new WorktreePaths(root), await loadVitest(root));
+  const adapter = new VitestAdapter(new WorktreePaths(root), await loadVitest(root), options.note);
   await adapter.open();
   return adapter;
 }
