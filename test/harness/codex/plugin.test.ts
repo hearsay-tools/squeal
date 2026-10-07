@@ -72,9 +72,15 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
   }, 60_000);
 
   it("gives every bundle a require for CommonJS dependencies, and each parses (003-12)", () => {
-    const bundles = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter((f) =>
+    const files = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter((f) =>
       f.endsWith(".mjs"),
     );
+    // dist/node-test/ holds the node:test reporter and recorder, copied verbatim
+    // (spec 003 D5): dependency-free, loaded by the project's Node, not bundled.
+    const runtime = files.filter((f) => f.startsWith("node-test/")).sort();
+    expect(runtime).toEqual(["node-test/recorder.mjs", "node-test/reporter.mjs"]);
+    for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
+    const bundles = files.filter((f) => !f.startsWith("node-test/"));
     expect(bundles).toHaveLength(CONTRACT.length + 2);
     for (const file of bundles) {
       const path = join(built.dir, file);
