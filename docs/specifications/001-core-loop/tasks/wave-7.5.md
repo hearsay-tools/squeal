@@ -57,3 +57,17 @@ Seam: where the adapter turns a file-level error into a check result. First edit
 Own: `src/runners/vitest/`, `test/runners/vitest/`, `test/fixtures/vitest/`, `src/core/scheduler/` only if recreation needs a trigger there, D5 and D8 paragraphs in `spec.md`, one dated line in `status.md`. No store schema change: if you need one, ask first. Leave `lessons.md` (001-54) and `reviews/` (001-59) alone. Do not run `npm run build` or touch `plugins/claude-code/dist`.
 
 Done when: a fixture whose Vitest temp directory is removed under a running instance yields `unknown` and no stored result, then passes after recreation; a second worktree with the same keys inherits nothing from it; an install into a worktree with no `node_modules` recreates the instance; a test file with a real import error still records `fail`.
+
+## 001-60 last add-rule gaps
+
+Use /worker. Shape: repair. Third round on the 001-53 slice, authorized by the human; a /reviewer follows.
+
+Outcome: the two add cases `reviews/wave-7.5.md` proved stale re-run and re-resolve as `invalidateAll` did.
+
+Read: `reviews/wave-7.5.md` B1, B2 and their fix steps; spec D4 (3).
+
+Seam: B1 in `src/runners/vitest/dynamic.ts`: drop the `/node_modules/` skip; a source that cannot be read counts as expanding. B2 in `src/runners/vitest/stale.ts`: for each added path walk ancestor directories up to the project root (root excluded); for each `package.json`, read `main`, `module`, and a string `exports` or `exports["."]`; if `join(dir, entry)` is among `resolutionBases(added)`, stale importers under `${dir}/`.
+
+Own: `src/runners/vitest/`, `test/runners/vitest/`, `test/fixtures/vitest/`, D4 (3) in `spec.md`, one dated line in `status.md`. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: the review's virtual-module, inlined-dependency and `package.json` `main` rows are tests in `structural.test.ts` asserting `affected` and the run outcome; `structural-cost.test.ts` keeps its `cold / 4` guard; D4 names both cases.
