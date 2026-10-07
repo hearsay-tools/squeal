@@ -1,0 +1,68 @@
+Added plugin `squeal-codex` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14
+
+== hooks/list after install (0.1.14)
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:0:0 sha256:3a83d005564fa32bf14a63dc3ce4b39bffa7fb6d241666f40726ca0175d55140 untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:1:0 sha256:87d90eabdad68722196150ce1ca2b47a9f2bdbec9d6998609ff004553816b891 untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:d92e2ebce5f27901d69f49c9bdff8c7b77b1af3235858468bc00a9637390b772 untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_start:0:0 sha256:6de2cf829e4b3f4b8519cbe32de7fbbb24ab1f6560a2c9d935ce8bcad81bb2c6 untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_end:0:0 sha256:4d875c449ffbcffe8cb6e10b2d2cc131515fa7ff8a391aaf744b9a807e4eddc5 untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:user_prompt_submit:0:0 sha256:11f3ffa90b39747bff79f4f92139dfec49af4d84809799d1bdc64d41c6a8892b untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:subagent_start:0:0 sha256:22f150d3c01cbb150c806d086fc9bd8289736ee6151ab39fefb29e60206f23ce untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:stop:0:0 sha256:e456141f10a878ce8e35d47c86c5f87b8a5fd33513ce5a38ad72c27658727b3a untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:interrupt:0:0 sha256:a55cb08529fb30fa202ce4244dbd0ca425cf74b255f61c0914aee426a8d915ba untrusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+
+== computed by hash.mjs from the source hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_start:0:0 sha256:6de2cf829e4b3f4b8519cbe32de7fbbb24ab1f6560a2c9d935ce8bcad81bb2c6
+squeal-codex@squeal:hooks/hooks.json:user_prompt_submit:0:0 sha256:11f3ffa90b39747bff79f4f92139dfec49af4d84809799d1bdc64d41c6a8892b
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:0:0 sha256:3a83d005564fa32bf14a63dc3ce4b39bffa7fb6d241666f40726ca0175d55140
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:1:0 sha256:87d90eabdad68722196150ce1ca2b47a9f2bdbec9d6998609ff004553816b891
+squeal-codex@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:d92e2ebce5f27901d69f49c9bdff8c7b77b1af3235858468bc00a9637390b772
+squeal-codex@squeal:hooks/hooks.json:stop:0:0 sha256:e456141f10a878ce8e35d47c86c5f87b8a5fd33513ce5a38ad72c27658727b3a
+squeal-codex@squeal:hooks/hooks.json:subagent_start:0:0 sha256:22f150d3c01cbb150c806d086fc9bd8289736ee6151ab39fefb29e60206f23ce
+squeal-codex@squeal:hooks/hooks.json:session_end:0:0 sha256:4d875c449ffbcffe8cb6e10b2d2cc131515fa7ff8a391aaf744b9a807e4eddc5
+squeal-codex@squeal:hooks/hooks.json:interrupt:0:0 sha256:a55cb08529fb30fa202ce4244dbd0ca425cf74b255f61c0914aee426a8d915ba
+
+== diff listed vs computed (key + hash)
+all match
+
+== write [hooks.state] from computed hashes into the scratch config.toml
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:0:0 sha256:3a83d005564fa32bf14a63dc3ce4b39bffa7fb6d241666f40726ca0175d55140 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:1:0 sha256:87d90eabdad68722196150ce1ca2b47a9f2bdbec9d6998609ff004553816b891 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:d92e2ebce5f27901d69f49c9bdff8c7b77b1af3235858468bc00a9637390b772 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_start:0:0 sha256:6de2cf829e4b3f4b8519cbe32de7fbbb24ab1f6560a2c9d935ce8bcad81bb2c6 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_end:0:0 sha256:4d875c449ffbcffe8cb6e10b2d2cc131515fa7ff8a391aaf744b9a807e4eddc5 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:user_prompt_submit:0:0 sha256:11f3ffa90b39747bff79f4f92139dfec49af4d84809799d1bdc64d41c6a8892b trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:subagent_start:0:0 sha256:22f150d3c01cbb150c806d086fc9bd8289736ee6151ab39fefb29e60206f23ce trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:stop:0:0 sha256:e456141f10a878ce8e35d47c86c5f87b8a5fd33513ce5a38ad72c27658727b3a trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:interrupt:0:0 sha256:a55cb08529fb30fa202ce4244dbd0ca425cf74b255f61c0914aee426a8d915ba trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14/hooks/hooks.json
+
+== bump version to 0.1.15, same hooks.json, codex plugin add again
+Added plugin `squeal-codex` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15
+0.1.15
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:0:0 sha256:3a83d005564fa32bf14a63dc3ce4b39bffa7fb6d241666f40726ca0175d55140 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:1:0 sha256:87d90eabdad68722196150ce1ca2b47a9f2bdbec9d6998609ff004553816b891 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:d92e2ebce5f27901d69f49c9bdff8c7b77b1af3235858468bc00a9637390b772 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_start:0:0 sha256:6de2cf829e4b3f4b8519cbe32de7fbbb24ab1f6560a2c9d935ce8bcad81bb2c6 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_end:0:0 sha256:4d875c449ffbcffe8cb6e10b2d2cc131515fa7ff8a391aaf744b9a807e4eddc5 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:user_prompt_submit:0:0 sha256:11f3ffa90b39747bff79f4f92139dfec49af4d84809799d1bdc64d41c6a8892b trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:subagent_start:0:0 sha256:22f150d3c01cbb150c806d086fc9bd8289736ee6151ab39fefb29e60206f23ce trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:stop:0:0 sha256:e456141f10a878ce8e35d47c86c5f87b8a5fd33513ce5a38ad72c27658727b3a trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:interrupt:0:0 sha256:a55cb08529fb30fa202ce4244dbd0ca425cf74b255f61c0914aee426a8d915ba trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.15/hooks/hooks.json
+
+== change one hook command (PostToolUse), version 0.1.16
+Added plugin `squeal-codex` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:0:0 sha256:3a83d005564fa32bf14a63dc3ce4b39bffa7fb6d241666f40726ca0175d55140 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:pre_tool_use:1:0 sha256:87d90eabdad68722196150ce1ca2b47a9f2bdbec9d6998609ff004553816b891 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:02344b1bc27040fd4c71edd63fcff9aca0dcf7cfb35edffcf00caa195f8a9a8e modified $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_start:0:0 sha256:6de2cf829e4b3f4b8519cbe32de7fbbb24ab1f6560a2c9d935ce8bcad81bb2c6 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:session_end:0:0 sha256:4d875c449ffbcffe8cb6e10b2d2cc131515fa7ff8a391aaf744b9a807e4eddc5 trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:user_prompt_submit:0:0 sha256:11f3ffa90b39747bff79f4f92139dfec49af4d84809799d1bdc64d41c6a8892b trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:subagent_start:0:0 sha256:22f150d3c01cbb150c806d086fc9bd8289736ee6151ab39fefb29e60206f23ce trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:stop:0:0 sha256:e456141f10a878ce8e35d47c86c5f87b8a5fd33513ce5a38ad72c27658727b3a trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+squeal-codex@squeal:hooks/hooks.json:interrupt:0:0 sha256:a55cb08529fb30fa202ce4244dbd0ca425cf74b255f61c0914aee426a8d915ba trusted $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.16/hooks/hooks.json
+
+== recompute after the change
+squeal-codex@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:02344b1bc27040fd4c71edd63fcff9aca0dcf7cfb35edffcf00caa195f8a9a8e
