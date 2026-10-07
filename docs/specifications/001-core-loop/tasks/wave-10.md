@@ -97,3 +97,19 @@ Done when: tests show 31 recoveries with 2 still failing as one summary plus the
 ## 001-92 review of 001-91
 
 Use /reviewer. Range `c2196e3..b5581e0`, the 001-91 commits plus the coordinator's e2e assertion fix. Output `reviews/wave-10b.md`. Outcome: whether the collapsed reports and the attribution are true at every edge. Probe: inherited results (whose changes does "touches your changes" compare against), a test file whose closure was never collected, retired checks collapsing beside recoveries, 6 recoveries with 6 still failing (tie), the 10,000-character cap with 40 failures and 300 recoveries, the no-dependencies note on a worktree mid-install, a timeout recorded by 0.1.9 (no load field) read by 0.1.10, and whether the registration revision survives SessionStart `resume` and `compact`. Do not re-check "What fits" from earlier reviews.
+
+## 001-93 any tool call marks the agent in a turn
+
+Use /worker. Shape: slice. Decided by the human: PreToolUse on every tool.
+
+Outcome: when another plugin's Stop hook continues a turn after Squeal's silent Stop, the continuation's first tool call puts the consumer back in a turn before it runs, so the waiter never speaks mid-turn (`lessons.md` "Defect 14 after wave 10", case 5b) and no repository without Squeal pays a Node start per tool call.
+
+Read: `lessons.md` "Attended check after wave 10" and "Defect 14 after wave 10"; spec D9 (PreToolUse, turn state); `plugins/claude-code/hooks/hooks.json`; `src/harness/claude-code/hooks/pre-tool-use.ts`, `src/core/delivery/turn.ts`.
+
+Seam: `hooks.json`, the PreToolUse matcher. Then `pre-tool-use.ts`: for every tool, an idle consumer goes back in a turn (the same correction PostToolBatch does since 001-89), in one small transaction; the deny-once policy stays on `Edit|Write|NotebookEdit` only; a fork stays ignored.
+
+Fast path: the PreToolUse command in `hooks.json` first runs a POSIX `sh` test that exits 0 with no output unless the project uses Squeal: `squeal.config.json` at `$CLAUDE_PROJECT_DIR`, or `<git dir>/squeal` for a main checkout, or, for a linked worktree, the common dir its `.git` file names (`gitdir:` then `commondir`). No Node, no `git` process. Apply the same fast path to PostToolBatch if it is cheap to share.
+
+Own: `plugins/claude-code/hooks/hooks.json`, `src/harness/claude-code/hooks/pre-tool-use.ts`, `src/harness/claude-code/` helpers it needs, `src/core/delivery/turn.ts` (only if the correction needs a new entry point), tests under `test/harness/` (pre-tool-use, plugin manifest, latency), `test/e2e/` only if the manifest test lives there, D9 in `spec.md`, one `status.md` line, and a dated line closing defect 14 in `lessons.md` if the tests show case 5b fixed. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: a recorded-JSON test runs a silent Stop, then a PreToolUse for `Bash`, then a result for a waited file, and the waiter stays silent while the next PostToolBatch delivers it; the deny-once policy still fires only on edits; the fast path exits 0 silently in a repository with neither config nor store (main checkout and linked worktree), measured under 10 ms p95, and runs the hook where Squeal is used (main checkout, linked worktree, config only); the latency test gains a PreToolUse-on-Bash case.
