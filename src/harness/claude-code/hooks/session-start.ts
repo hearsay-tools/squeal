@@ -57,7 +57,9 @@ export const sessionStart: Handler = async (input, location, deps) => {
         except: context.consumer,
       });
     }
-    const registration = await context.delivery.register(context.consumer);
+    // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
+    const atStart = input.source !== "compact";
+    const registration = await context.delivery.register(context.consumer, { atStart });
     return additionalContext(input, withPrimer(registration));
   });
   if (!ensured) await ensure(location, deps);
