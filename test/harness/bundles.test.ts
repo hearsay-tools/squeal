@@ -128,6 +128,11 @@ describe("bundled waiter", () => {
       ...env,
       SQUEAL_CLI: quietCli().cli,
     });
+    // 001-85: the waiter wakes only an idle agent, for checks pending when
+    // its turn ended, so the re-run is queued and a silent Stop ends the turn.
+    r.queue("k2");
+    const stop = await runBundle("stop", recorded("stop", r.root), { ...env, ...INTERACTIVE });
+    expect(stop.stdout).toBe("");
     const waiting = runBundle("waiter", recorded("stop", r.root), { ...env, ...INTERACTIVE });
     await sleep(300);
     r.apply(r.fail());
@@ -135,7 +140,7 @@ describe("bundled waiter", () => {
     const out = await waiting;
     expect(out.code).toBe(2);
     expect(out.stdout).toBe("");
-    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed at revision 2\n[\s\S]*PASS -> FAIL/);
+    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed at revision \d+[\s\S]*PASS -> FAIL/);
   });
 
   it("exits 0 silently on timeout", async () => {
