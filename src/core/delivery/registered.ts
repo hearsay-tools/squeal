@@ -15,9 +15,10 @@ import { readAll, readSlot, slot, writeSlot } from "./slots.js";
  * Where "your changes" start (task 001-91, D6): the revision a consumer
  * registered at. Task 001-94 (review wave 10b): a consumer still registered
  * keeps it (B1); one that left and comes back within `CONSUMER_EXPIRY_MS`
- * keeps it too, minus the revisions made while it was away (N4); and none is
- * recorded before the daemon's start scan, whose `start` revision holds
- * changes made while no daemon ran (B2).
+ * keeps it too, minus the revisions made while it was away (N4). Task 001-96
+ * (review wave 10c B1, S1): a `start` revision is never the agent's
+ * (`changedAfter`), and "none of your changes" needs the daemon that was
+ * live and past its start scan at registration (`seesEveryChange`).
  */
 
 /** A revision range `(after, upTo]` that is not the consumer's: it was not registered. */
@@ -27,6 +28,11 @@ type Gap = readonly [after: RevisionNumber, upTo: RevisionNumber];
 export interface Registration {
   readonly since: RevisionNumber;
   readonly gaps: readonly Gap[];
+  /**
+   * The `startedAt` of the live daemon whose bootstrap marker was written
+   * when the consumer registered; absent when none was.
+   */
+  readonly scanned?: EpochMs;
 }
 
 /** A registration of a consumer that left, kept until `leftTime + CONSUMER_EXPIRY_MS`. */
@@ -52,50 +58,78 @@ const isGap = (value: unknown): value is Gap =>
 function toRegistration(value: unknown): Registration | null {
   if (isNumber(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber(value.since) || !Array.isArray(value.gaps)) return null;
-  return value.gaps.every(isGap) ? { since: value.since, gaps: value.gaps } : null;
+  if (!value.gaps.every(isGap)) return null;
+  const r = { since: value.since, gaps: value.gaps };
+  return isNumber(value.scanned) ? { ...r, scanned: value.scanned } : r;
 }
 
-/** A bare number when nothing is left out: the form 0.1.10 hooks read. */
-const stored = (r: Registration): unknown => (r.gaps.length === 0 ? r.since : r);
+/** A bare number when nothing else is kept: the form 0.1.10 hooks read. */
+const stored = (r: Registration): unknown =>
+  r.gaps.length === 0 && r.scanned === undefined ? r.since : r;
 
-/** `consumer`'s registration; `null` when none was recorded (0.1.9 or older, or before the start scan). */
+/** `consumer`'s registration; `null` when none was recorded (0.1.9 or older, or 0.1.12 before the start scan). */
 export function registration(store: Store, consumer: Consumer): Registration | null {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
 
-/** Whether the live daemon `alive` describes has finished its start scan. */
-export function bootstrapped(store: Store, worktreeId: WorktreeId, alive: boolean): boolean {
+/** The `startedAt` of the live daemon when it has written its bootstrap marker, else `null`. */
+export function scannedDaemon(
+  store: Store,
+  worktreeId: WorktreeId,
+  alive: boolean,
+): EpochMs | null {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (!alive || daemon === null) return false;
+  if (!alive || daemon === null) return null;
   const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
-  return marker !== null && Number(marker) === daemon.startedAt;
+  return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
+}
+
+/**
+ * Whether every change since `r` registered is in a revision. A daemon's
+ * start scan hashes the files it has no hash for without a revision (a new
+ * worktree's every file, a file created while no daemon ran), so an agent
+ * edit made before a start scan after registration can be in none. True only
+ * while the daemon that had finished its start scan at registration is the
+ * one recorded; "none of your changes" needs it (task 001-96).
+ */
+export function seesEveryChange(store: Store, worktreeId: WorktreeId, r: Registration): boolean {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return r.scanned !== undefined && daemon?.startedAt === r.scanned;
 }
 
 /**
  * Records where a newly registered `consumer`'s changes start: after
  * `revision`, or after its parked registration with `(leftAt, revision]`
- * left out. Before the start scan nothing is recorded. Call inside the
- * registration's transaction, and only for a consumer not registered before.
+ * left out, with `scanned` (`scannedDaemon`). Call inside the registration's
+ * transaction, and only for a consumer not registered before.
  */
 export function tellRegistered(
   store: Store,
   consumer: Consumer,
   revision: RevisionNumber,
-  { at, bootstrapped }: { readonly at: EpochMs; readonly bootstrapped: boolean },
+  { at, scanned }: { readonly at: EpochMs; readonly scanned: EpochMs | null },
 ): void {
   const parked = unpark(store, consumer, at);
-  let next: Registration | null = null;
-  if (bootstrapped) next = parked === null ? { since: revision, gaps: [] } : back(parked, revision);
-  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, next && stored(next));
+  const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
+  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
 }
 
-/** A parked registration taken up at `revision`: what changed while it was away is left out. */
-function back(parked: Parked, revision: RevisionNumber): Registration {
+function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
+  return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
+}
+
+/**
+ * A parked registration taken up at `revision`: what changed while it was
+ * away is left out. It keeps `scanned` only when the same daemon is live
+ * and scanned now: another one's start scan may have seeded an edit.
+ */
+function back(parked: Parked, revision: RevisionNumber, scanned: EpochMs | null): Registration {
   const away: Gap = [parked.leftAt, revision];
-  return {
+  const r = {
     since: parked.since,
     gaps: revision > parked.leftAt ? [...parked.gaps, away] : parked.gaps,
   };
+  return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
 
 /**
@@ -140,17 +174,37 @@ function writeParked(store: Store, consumer: Consumer, at: EpochMs, value: Parke
   store.meta.set(key, JSON.stringify(next));
 }
 
-/** The paths revisions after `r.since` up to `revision` changed, gaps left out, in one query (N3). */
+/**
+ * What revisions after `r.since` up to `revision` changed, gaps left out, in
+ * one query (N3). `changed` holds the paths of revisions the daemon saw as
+ * they happened. `unknown` holds the paths of `start` revisions, including
+ * `r.since` when it is one: a start scan records what changed while no
+ * daemon ran, and absorbs an edit made before it ran, so whose they are is
+ * not known (task 001-96, review wave 10c B1).
+ */
 export function changedAfter(
   store: Store,
   worktreeId: WorktreeId,
   r: Registration,
   revision: RevisionNumber,
-): ReadonlySet<RelativePath> {
-  const paths = new Set<RelativePath>();
-  for (const { number, changes } of store.revisions.range(worktreeId, r.since, revision)) {
+): Changed {
+  const changed = new Set<RelativePath>();
+  const unknown = new Set<RelativePath>();
+  for (const { number, trigger, changes } of store.revisions.range(
+    worktreeId,
+    Math.max(r.since - 1, 0),
+    revision,
+  )) {
     if (r.gaps.some(([after, upTo]) => number > after && number <= upTo)) continue;
-    for (const change of changes) paths.add(change.path);
+    const start = trigger === "start";
+    if (number === r.since && !start) continue;
+    for (const change of changes) (start ? unknown : changed).add(change.path);
   }
-  return paths;
+  return { changed, unknown };
+}
+
+/** `changedAfter`'s answer. */
+export interface Changed {
+  readonly changed: ReadonlySet<RelativePath>;
+  readonly unknown: ReadonlySet<RelativePath>;
 }
