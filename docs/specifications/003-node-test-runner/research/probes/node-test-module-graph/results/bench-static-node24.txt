@@ -1,0 +1,38 @@
+node v24.21.0, 201 test files, 7 runs each
+oxc        modules 903 edges 2515 | cold median 46.9 ms (min 42.1, max 64.0) | re-resolve all, parses kept, resolver cache cleared median 32.6 ms (min 30.3, max 35.5) | warm median 23.3 ms (min 19.6, max 24.8)
+enhanced   modules 903 edges 2515 | cold median 186.9 ms (min 166.5, max 282.5) | re-resolve all, parses kept, resolver cache cleared median 164.6 ms (min 148.9, max 197.7) | warm median 110.9 ms (min 103.0, max 161.7)
+ts-bundler modules 903 edges 2515 | cold median 97.0 ms (min 92.9, max 129.6) | re-resolve all, parses kept, resolver cache cleared median 81.5 ms (min 78.4, max 91.8) | warm median 44.5 ms (min 43.0, max 47.6)
+hand       modules 903 edges 2515 | cold median 237.0 ms (min 223.4, max 255.4) | re-resolve all, parses kept, resolver cache cleared median 217.5 ms (min 208.0, max 230.9) | warm median 212.1 ms (min 208.5, max 216.8)
+
+parse only, 902 files, 184 KiB (sources in memory):
+  es-module-lexer    median 1.9 ms (min 1.4, max 2.4)
+  strip+lexer        median 25.2 ms (min 20.5, max 68.2)
+  oxc-parser         median 8.0 ms (min 7.1, max 9.4)
+  ts.preProcessFile  median 3.6 ms (min 3.2, max 9.9)
+one-file edit (oxc, warm): median 0.0 ms (min 0.0, max 0.1)
+one-file edit (enhanced, warm): median 0.1 ms (min 0.1, max 4.8)
+one-file edit (ts-bundler, warm): median 0.0 ms (min 0.0, max 0.1)
+one-file edit (hand, warm): median 0.2 ms (min 0.2, max 0.4)
+
+structural changes (test files whose closure differs from a fresh build):
+  oxc        delete src/m010.ts: edit changes 6 modules' edges, 200 test closures | kept cache wrong: 6 modules, 200 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 29 ms
+  oxc        add src/edge/paths-target/index.ts shadowing nothing, then delete paths-target.ts: edit changes 6 modules' edges, 1 test closures | kept cache wrong: 6 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 29 ms
+  oxc        edit packages/util/package.json exports ./str -> ./src/u299.ts: edit changes 102 modules' edges, 1 test closures | kept cache wrong: 102 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 37 ms
+  oxc        edit packages/core/tsconfig.json paths gains ~/m220 -> ./src/m000.ts: edit changes 1 modules' edges, 0 test closures | kept cache wrong: 1 modules, 0 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 31 ms
+  enhanced   delete src/m010.ts: edit changes 6 modules' edges, 200 test closures | kept cache wrong: 6 modules, 200 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 164 ms
+  enhanced   add src/edge/paths-target/index.ts shadowing nothing, then delete paths-target.ts: edit changes 6 modules' edges, 1 test closures | kept cache wrong: 6 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 154 ms
+  enhanced   edit packages/util/package.json exports ./str -> ./src/u299.ts: edit changes 102 modules' edges, 1 test closures | kept cache wrong: 102 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 179 ms
+  enhanced   edit packages/core/tsconfig.json paths gains ~/m220 -> ./src/m000.ts: edit changes 1 modules' edges, 0 test closures | kept cache wrong: 1 modules, 0 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 167 ms
+  ts-bundler delete src/m010.ts: edit changes 6 modules' edges, 200 test closures | kept cache wrong: 6 modules, 200 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 91 ms
+  ts-bundler add src/edge/paths-target/index.ts shadowing nothing, then delete paths-target.ts: edit changes 6 modules' edges, 1 test closures | kept cache wrong: 6 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 80 ms
+  ts-bundler edit packages/util/package.json exports ./str -> ./src/u299.ts: edit changes 102 modules' edges, 1 test closures | kept cache wrong: 102 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 89 ms
+  ts-bundler edit packages/core/tsconfig.json paths gains ~/m220 -> ./src/m000.ts: edit changes 1 modules' edges, 0 test closures | kept cache wrong: 1 modules, 0 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 82 ms
+  hand       delete src/m010.ts: edit changes 6 modules' edges, 200 test closures | kept cache wrong: 0 modules, 0 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 220 ms
+  hand       add src/edge/paths-target/index.ts shadowing nothing, then delete paths-target.ts: edit changes 6 modules' edges, 1 test closures | kept cache wrong: 0 modules, 0 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 224 ms
+  hand       edit packages/util/package.json exports ./str -> ./src/u299.ts: edit changes 102 modules' edges, 1 test closures | kept cache wrong: 102 modules, 1 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 283 ms
+  hand       edit packages/core/tsconfig.json paths gains ~/m220 -> ./src/m000.ts: edit changes 1 modules' edges, 0 test closures | kept cache wrong: 1 modules, 0 tests | cleared cache wrong: 0 modules, 0 tests | re-resolve 218 ms
+
+reverse index: built in 47.2 ms, 903 paths, 112360 (path, test file) entries
+  leaf m000.ts: direct 2, transitive 198; index lookup median 0.0 ms (min 0.0, max 3.3); reverse BFS median 0.1 ms (min 0.1, max 2.0) (same set: true)
+  top m699.ts: direct 11, transitive 0; index lookup median 0.0 ms (min 0.0, max 0.0); reverse BFS median 0.0 ms (min 0.0, max 0.0) (same set: true)
+  10 random files: direct 3, transitive 197; index lookup median 0.0 ms (min 0.0, max 0.7); reverse BFS median 0.1 ms (min 0.1, max 0.9) (same set: true)

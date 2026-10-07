@@ -1,0 +1,51 @@
+Console output copied from the runs on 2026-10-07, Linux x64, 24 cores, load average 6 to 50 (shared machine).
+
+## observe.mjs, fixtures/big (201 unit test files, 903 reachable modules)
+{"node":"v24.21.0","isolation":"process","recorder":"sync","processes":201,"testFiles":201,"wallMs":10549}
+{"node":"v22.23.3","isolation":"process","recorder":"sync","processes":201,"testFiles":201,"wallMs":14658}
+files 201 differ 22 vs 24: 0 closure size min/median/max 34 554 649
+{"node":"v24.21.0","isolation":"--isolation=none","recorder":"sync","processes":1,"testFiles":201,"wallMs":1246}
+differs from process isolation: 0 [] preload none: [ 'scripts/test-git-env.mjs' ]
+{"node":"v22.23.3","isolation":"--isolation=none","recorder":"sync","processes":1,"testFiles":201,"wallMs":1441}
+differs from process isolation: 0 [] preload none: [ 'scripts/test-git-env.mjs' ]
+
+## observe.mjs, fixtures/ref, recorder after tsx vs recorder first (Node 24.21.0)
+preload last: [ 'scripts/test-git-env.mjs' ] first: [ 'scripts/lib/git-env-helper.mjs', 'scripts/test-git-env.mjs' ]
+test-file closures: identical in both orders
+
+## sync (module.registerHooks) vs async (module.register) recorder, fixtures/ref, edge.test.ts
+24.21.0 edge.test closure async 26 sync 28 async misses [ 'packages/core/src/edge/legacy-dep.cjs', 'packages/core/src/edge/legacy.cjs' ]
+22.23.3 edge.test closure async 26 sync 28 async misses [ 'packages/core/src/edge/legacy-dep.cjs', 'packages/core/src/edge/legacy.cjs' ]
+
+## probe-v8-coverage.mjs, fixtures/ref (5 test files, process isolation); same result on 24.21.0 and 22.23.3
+coverage files: 11 (5 test processes, 5 with no project files, 1 from the grandchild spawned by spawner.ts)
+grandchild coverage file lists packages/core/src/edge/child-script.mjs, child-dep.mjs (pid only, no link to its test file)
+in observed, not in V8 coverage: []
+in V8 coverage, not in observed: [ [ 'scripts/test-git-env.mjs', 5 ], [ 'scripts/lib/git-env-helper.mjs', 5 ] ]
+
+## --experimental-test-coverage, test:coverage events, edge.test.ts + t000.test.ts, fixtures/ref
+24.21.0 --test-isolation=process  event 1 nesting 0 file null files 37 util 6 scripts 2 tests 0
+24.21.0 --test-isolation=none     event 1 nesting 0 file null files 38 util 6 scripts 2 tests 0
+22.23.3 --experimental-test-isolation=process  event 1 nesting 0 file null files 39 util 6 scripts 2 tests 2
+22.23.3 --experimental-test-isolation=none     event 1 nesting 0 file null files 40 util 6 scripts 2 tests 2
+(22.23.3 rejects --test-isolation: "bad option"; it accepts --experimental-test-isolation)
+
+## probe-watch-report.mjs (WATCH_REPORT_DEPENDENCIES=1 + IPC, isolation none); same counts on 24.21.0 and 22.23.3
+1 file:  import 51 urls, 28 project; require: legacy.cjs, legacy-dep.cjs; preload included; computed var-target included
+2 files: import 58 urls, 35 project (union, no per-file attribution)
+
+## bench-observe.sh: 201-file suite wall time, fixtures/big
+v24.21.0 run=1 isolation=process base=7894ms recorder=8061ms v8cov=15314ms load=20.38
+v24.21.0 run=1 isolation=none base=1220ms recorder=1227ms v8cov=1325ms load=18.91
+v24.21.0 run=2 isolation=process base=7982ms recorder=8541ms v8cov=9061ms load=23.68
+v24.21.0 run=2 isolation=none base=1186ms recorder=1279ms v8cov=1425ms load=22.10
+v24.21.0 run=3 isolation=process base=9032ms recorder=8440ms v8cov=10291ms load=28.95
+v24.21.0 run=3 isolation=none base=1273ms recorder=1311ms v8cov=1525ms load=26.87
+v22.23.3 run=1 isolation=process base=9519ms recorder=10087ms v8cov=18574ms load=35.54
+v22.23.3 run=1 isolation=none base=1750ms recorder=1735ms v8cov=1802ms load=33.10
+v22.23.3 run=2 isolation=process base=9524ms recorder=9439ms v8cov=10977ms load=34.80
+v22.23.3 run=2 isolation=none base=1549ms recorder=1866ms v8cov=1822ms load=32.42
+
+## probe-require-cache.mjs, edge.test.ts run directly (node --import ... test/unit/edge.test.ts); same on 24.21.0 and 22.23.3
+require.cache project entries: ["packages/core/src/edge/legacy.cjs","packages/core/src/edge/legacy-dep.cjs"]
+  packages/core/src/edge/legacy.cjs children: ["packages/core/src/edge/legacy-dep.cjs"]

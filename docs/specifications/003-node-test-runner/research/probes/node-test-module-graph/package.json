@@ -1,0 +1,15 @@
+{
+  "name": "node-test-module-graph-probes",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway probes for research/node-test-module-graph.md. Not product code.",
+  "devDependencies": {
+    "enhanced-resolve": "^5.26.0",
+    "es-module-lexer": "^3.0.3",
+    "oxc-parser": "^0.153.0",
+    "oxc-resolver": "^11.24.2",
+    "ts6": "npm:typescript@^6.0.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
