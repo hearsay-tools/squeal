@@ -52,6 +52,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 9 (001-72, `tasks/wave-9.md` "001-72 table"): `closuresToReresolve` stays. Measured on every row of `structural.test.ts` and `resolution.test.ts`, it is the only rule that re-resolves an importer of a directory whose `package.json` was added or deleted; every other closure that moves is reported by `rekey` or `affected`, and its other picks re-fetch closures that do not move. D3 names the case; `test/runners/vitest/reresolution.test.ts` pins it. Editing a `package.json` `main` re-resolves nothing in any rule, the importer's transform included; not addressed here.
 
+- 2026-10-07, wave 9 (001-65, from `reviews/wave-7.7.md` B1, N1, N2, N4, and `research/daemon-under-harnesses.md` on a re-clone in place): D10 amended. The temp directory is `/tmp/squeal-<uid>/tmp/<key>/`, the key a hash of the repository id in `<common-dir>/squeal/repository-id` (random, written once) and the root, so another repository at a reused path, or a re-clone in place, never shares it with a daemon still running there. A leftover is moved aside and removed in the background; a refused `/tmp/squeal-<uid>` makes the daemon use a private `mkdtemp` with one note instead of exiting. Not fixed here: at the same path the old daemon's exit also unlinks the newcomer's socket (libuv unlinks a pipe on close), which leaves the newcomer unreachable until it exits.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
