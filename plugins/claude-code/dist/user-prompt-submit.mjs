@@ -73,6 +73,9 @@ import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
 
 // src/core/text.ts
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
 function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
@@ -267,8 +270,8 @@ var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
 function isBaselineEntry(e) {
   return e.kind !== "fail-retired" && e.baseline === true;
 }
-function restrictPlan(plan, kinds) {
-  const entries = plan.entries.filter((e) => kinds.has(e.kind));
+function restrictPlan(plan, keep) {
+  const entries = plan.entries.filter(keep);
   const ids = new Set(entries.map((e) => checkIdentity(e.check)));
   return {
     entries,
@@ -1909,9 +1912,12 @@ function worktreeLiveness(worktree, now) {
   return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
 function readLiveHeader(store, worktreeId, now, states) {
+  const header = readHeader(store, worktreeId, states);
+  const revision = header.revision === 0 ? null : store.revisions.get(worktreeId, header.revision);
   return {
-    ...readHeader(store, worktreeId, states),
-    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now)
+    ...header,
+    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
+    changedPaths: revision?.changes.map((c) => c.path) ?? []
   };
 }
 function livenessMetaKey(worktreeId) {
@@ -1946,13 +1952,80 @@ function tellLiveness(store, consumer, state) {
   store.meta.set(livenessMetaKey(consumer.worktreeId), JSON.stringify(next));
 }
 
+// src/core/delivery/turn.ts
+function turnMetaKey(worktreeId) {
+  return `turn:${worktreeId}`;
+}
+var START_IDLE = { turn: "idle", testFiles: [], newTestFiles: false };
+var IN_TURN = { turn: "in-turn" };
+var slot2 = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll2(store, worktreeId) {
+  const raw = store.meta.get(turnMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function parse(value) {
+  if (!isRecord(value)) return START_IDLE;
+  if (value.turn === "in-turn") return IN_TURN;
+  const files = Array.isArray(value.testFiles) ? value.testFiles : [];
+  return {
+    turn: "idle",
+    testFiles: files.filter((f) => typeof f === "string"),
+    newTestFiles: value.newTestFiles === true
+  };
+}
+function readTurn(store, consumer) {
+  return parse(readAll2(store, consumer.worktreeId)[slot2(consumer)]);
+}
+function writeTurn(store, consumer, state) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot2(r.consumer))
+  );
+  const all = readAll2(store, consumer.worktreeId);
+  const next = {};
+  for (const [key, value] of Object.entries(all)) {
+    if (registered.has(key)) next[key] = value;
+  }
+  if (state === null) delete next[slot2(consumer)];
+  else next[slot2(consumer)] = state;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(turnMetaKey(consumer.worktreeId), JSON.stringify(next));
+}
+function startTurn(store, consumer) {
+  writeTurn(store, consumer, IN_TURN);
+}
+function endTurn(store, consumer, states, undelivered) {
+  const keys = store.testFileKeys.list(consumer.worktreeId);
+  const files = /* @__PURE__ */ new Set();
+  for (const s of states) if (s.validity === "pending") files.add(testFileKeyOf(s.check));
+  for (const k of keys) if (k.key !== null && k.pending !== null) files.add(testFileId(k.testFile));
+  for (const e of undelivered) files.add(testFileKeyOf(e.check));
+  const header = readHeader(store, consumer.worktreeId, states, keys);
+  writeTurn(store, consumer, {
+    turn: "idle",
+    testFiles: [...files].sort(),
+    newTestFiles: header.runnerPartPending === true
+  });
+}
+function waitedFor(state, entry2) {
+  if (state.turn !== "idle") return false;
+  if (state.testFiles.includes(testFileKeyOf(entry2.check))) return true;
+  return state.newTestFiles && entry2.kind !== "fail-retired" && entry2.from === null;
+}
+
 // src/core/delivery/delivery.ts
 var DEFAULT_POLL_INTERVAL_MS = 250;
 var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
 function createDelivery(store, options) {
   const now = options.now ?? Date.now;
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-  function plan(consumer, states, toldAt, kinds) {
+  function plan(consumer, states, toldAt, keep) {
     const full = planDelta({
       view: store.views.list(consumer),
       states,
@@ -1962,24 +2035,33 @@ function createDelivery(store, options) {
       revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
       history: (check) => store.transitions.history(consumer.worktreeId, check)
     });
-    return kinds === null ? full : restrictPlan(full, kinds);
+    return keep === null ? full : restrictPlan(full, keep);
   }
   function livenessChange(consumer, at2) {
     const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at2);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
-  function deliver(consumer, heardFrom, kinds = null, liveness2 = false) {
+  function deliver(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
+    const select = () => {
+      if (!idle) return keep;
+      const turn = readTurn(store, consumer);
+      return turn.turn === "idle" ? (entry2) => waitedFor(turn, entry2) : "silent";
+    };
     if (!heardFrom) {
       if (store.consumers.get(consumer) === null) return null;
+      const only = select();
+      if (only === "silent") return null;
       const states = store.knownStates.list(consumer.worktreeId);
       const quiet = !liveness2 || livenessChange(consumer, now()) === null;
-      if (quiet && isEmpty(plan(consumer, states, now(), kinds))) return null;
+      if (quiet && isEmpty(plan(consumer, states, now(), only))) return null;
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
+      const only = select();
+      if (only === "silent") return null;
       const at2 = now();
       const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at2, kinds);
+      const delta = plan(consumer, states, at2, only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(consumer, at2) : null;
@@ -1987,6 +2069,7 @@ function createDelivery(store, options) {
       const delivered = delta.entries.length > 0 || changed !== null;
       if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
       if (!delivered) return null;
+      if (idle) startTurn(store, consumer);
       const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -2009,6 +2092,7 @@ function createDelivery(store, options) {
       );
       const header = readLiveHeader(store, consumer.worktreeId, at2, states);
       tellLiveness(store, consumer, header.daemon?.state ?? null);
+      writeTurn(store, consumer, null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
@@ -2020,15 +2104,31 @@ function createDelivery(store, options) {
       store.transaction(() => {
         store.consumers.unregister(consumer);
         tellLiveness(store, consumer, null);
+        writeTurn(store, consumer, null);
       });
     },
-    onToolBoundary: async (consumer) => deliver(consumer, true, null, true),
-    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
+    onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    peek: async (consumer, { kinds }) => {
+      const only = new Set(kinds);
+      return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
+    },
+    startTurn: async (consumer) => store.transaction(() => {
+      const delta = deliver(consumer, { heardFrom: true, liveness: true });
+      if (store.consumers.get(consumer) !== null) startTurn(store, consumer);
+      return delta;
+    }),
+    endTurn: async (consumer) => {
+      store.transaction(() => {
+        if (store.consumers.get(consumer) === null) return;
+        const states = store.knownStates.list(consumer.worktreeId);
+        endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
+      });
+    },
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
       for (; ; ) {
         if (signal?.aborted) return null;
-        const delta = deliver(consumer, false);
+        const delta = deliver(consumer, { heardFrom: false, idle: true });
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
@@ -2049,6 +2149,7 @@ var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
 var STATUS_POINTER = "`squeal status` lists every known failure.";
+var upper = (outcome) => outcome.toUpperCase();
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 function checkName(check) {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
@@ -2057,22 +2158,92 @@ function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
 }
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+var CHANGED_PATHS_SHOWN = 3;
+function changedText(paths) {
+  if (paths === void 0 || paths.length === 0) return "";
+  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).join(", ");
+  const more = paths.length - CHANGED_PATHS_SHOWN;
+  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
+}
 function headerLine(header) {
   const { revision, counts, testFilesWithoutChecks: files } = header;
   const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
-  return `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.`;
 }
+function change(entry2) {
+  switch (entry2.kind) {
+    case "first-seen-fail": {
+      const line = entry2.from === null ? "first observed: FAIL" : `${upper(entry2.from)} -> FAIL`;
+      return entry2.baseline === true ? `baseline finding, ${line}` : line;
+    }
+    case "fail-changed":
+      return "FAIL -> FAIL, failure changed";
+    default:
+      return `${entry2.from === null ? "NONE" : upper(entry2.from)} -> ${upper(entry2.to)}`;
+  }
+}
+function provenance(entry2, revision) {
+  const parts = [];
+  if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
+  if (entry2.validity === "pending") {
+    parts.push(`observed at revision ${entry2.observedAt}, revision ${revision} pending`);
+  }
+  if (entry2.origin.kind === "inherited") {
+    const commit = entry2.origin.commit === null ? "no commit" : `commit ${entry2.origin.commit.slice(0, 12)}`;
+    const from = entry2.originRoot ?? `worktree ${entry2.origin.worktreeId}`;
+    parts.push(`inherited from ${from} at ${commit}`);
+  }
+  return parts.length === 0 ? null : parts.join("; ");
+}
 function block(head, lines, outcomes) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), outcomes };
+}
+function entryBlock(entry2, revision) {
+  return block(
+    `${upper(entry2.to)}  ${checkName(entry2.check)}`,
+    [
+      change(entry2),
+      entry2.summary === null ? null : cap(entry2.summary, SUMMARY_MAX_CHARS),
+      entry2.location === null ? null : at(entry2.location),
+      provenance(entry2, revision)
+    ],
+    [entry2.to]
+  );
+}
+function retiredBlock(entry2) {
+  return block(
+    `RESOLVED  ${checkName(entry2.check)}`,
+    ["FAIL -> no longer reported by the runner"],
+    ["resolved"]
+  );
+}
+function unknownBlocks(entries) {
+  const byReason = /* @__PURE__ */ new Map();
+  for (const e of entries) {
+    const reason = e.summary ?? "no trusted result";
+    byReason.set(reason, [...byReason.get(reason) ?? [], e]);
+  }
+  return [...byReason].map(([reason, group]) => {
+    const files = [...new Set(group.map((e) => e.check.testPath))];
+    const from = (outcome) => group.filter((e) => e.from === outcome).length;
+    const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper(o)} -> UNKNOWN (${from(o)})`);
+    const listed = files.slice(0, 5).join(", ");
+    const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
+    return block(
+      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files.length, "test file")}`,
+      [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
+      group.map(() => "unknown")
+    );
+  });
 }
 function assemble(head, blocks, overflow) {
   let out = head;
@@ -2090,6 +2261,27 @@ ${b.text}`;
 ${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
   }
   return out;
+}
+function formatDelta(delta) {
+  const { header, entries } = delta;
+  const changed = entries.filter((e) => e.kind !== "fail-retired");
+  const retired = entries.filter((e) => e.kind === "fail-retired");
+  const title = entries.length === 0 ? livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+  const blocks = [
+    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
+    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
+    ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
+    ...retired.map(retiredBlock)
+  ];
+  return assemble(`${title}
+${headerLine(header)}`, blocks, (left) => {
+    const outcomes = left.flatMap((b) => b.outcomes);
+    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper(o)}`);
+    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
+  });
+}
+function livenessTitle(liveness2, revision) {
+  return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 function formatRegistration(registration) {
   const { header, knownFailures } = registration;
@@ -2372,8 +2564,8 @@ var userPromptSubmit = (input, location2, deps) => {
   return withContext(input, location2, deps, async (context) => {
     const now = (deps.now ?? Date.now)();
     if (isRegistered(context)) {
-      context.store.consumers.touch(context.consumer, now, false);
-      return null;
+      const delta = await context.delivery.startTurn(context.consumer);
+      return delta === null ? null : additionalContext(input, formatDelta(delta));
     }
     if (!isInteractive(deps.env)) return null;
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
@@ -2381,6 +2573,7 @@ var userPromptSubmit = (input, location2, deps) => {
       if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     }
     const registration = await context.delivery.register(context.consumer);
+    await context.delivery.startTurn(context.consumer);
     return additionalContext(input, formatRegistration(registration));
   });
 };

@@ -9059,7 +9059,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.7";
+  if (true) return "0.1.8";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10008,6 +10008,40 @@ function tellLiveness(store, consumer, state) {
   store.meta.set(livenessMetaKey(consumer.worktreeId), JSON.stringify(next));
 }
 
+// src/core/delivery/turn.ts
+init_fs();
+init_keys();
+init_state2();
+function turnMetaKey(worktreeId) {
+  return `turn:${worktreeId}`;
+}
+var slot2 = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll2(store, worktreeId) {
+  const raw = store.meta.get(turnMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function writeTurn(store, consumer, state) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot2(r.consumer))
+  );
+  const all = readAll2(store, consumer.worktreeId);
+  const next = {};
+  for (const [key, value] of Object.entries(all)) {
+    if (registered.has(key)) next[key] = value;
+  }
+  if (state === null) delete next[slot2(consumer)];
+  else next[slot2(consumer)] = state;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(turnMetaKey(consumer.worktreeId), JSON.stringify(next));
+}
+
 // src/core/delivery/delivery.ts
 function expireConsumers(store, now = Date.now(), options = {}) {
   const expired = [...store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS))];
@@ -10022,6 +10056,7 @@ function expireConsumers(store, now = Date.now(), options = {}) {
       if (record === null || !idle(record, cutoff)) return false;
       store.consumers.unregister(consumer);
       tellLiveness(store, consumer, null);
+      writeTurn(store, consumer, null);
       return true;
     });
     if (!gone) continue;
