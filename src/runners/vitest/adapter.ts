@@ -154,7 +154,7 @@ export class VitestAdapter implements RunnerAdapter {
         return { recreatedProjects: [...names].sort() };
       }
       for (const p of abs) vitest.invalidateFile(p.abs);
-      invalidateStructural(vitest, abs, this.#note);
+      await invalidateStructural(vitest, abs, this.#note);
       return { recreatedProjects: [] };
     });
   }
