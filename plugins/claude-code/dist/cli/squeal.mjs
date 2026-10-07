@@ -762,6 +762,7 @@ function closuresToReresolve(changes, index, isDeclaredInput) {
     if (edited && base !== "package.json") continue;
     if (!edited && isDeclaredInput(change.path)) return index.testFiles();
     if (base === "package.json") {
+      if (dir === "") return index.testFiles();
       pick(index.below(dir));
       continue;
     }
@@ -8488,13 +8489,16 @@ var init_dynamic = __esm({
 import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename as basename8, dirname as dirname14, join as join25 } from "node:path";
-function invalidateStructural(vitest, paths, note) {
-  const structural = paths.filter((p) => p.kind !== "change" || isPackageJson(p.abs));
+async function invalidateStructural(vitest, paths, note) {
+  const manifests = paths.filter((p) => isPackageJson(p.abs));
+  for (const p of manifests) await dropPackageData(vitest, p.abs, p.kind);
+  const moved = new Set(manifests.filter((p) => resolutionMoved(vitest, p)));
+  const structural = paths.filter((p) => p.kind !== "change" || moved.has(p));
   if (structural.length > 0) {
     const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
     const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-    const manifests = structural.filter((p) => p.kind === "change").map((p) => p.abs);
-    const stale = staleTransforms(vitest, added, deleted, manifests);
+    const edited = structural.filter((p) => p.kind === "change").map((p) => p.abs);
+    const stale = staleTransforms(vitest, added, deleted, edited);
     for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
     if (stale === null && !fellBack.has(vitest)) {
       fellBack.add(vitest);
@@ -8506,6 +8510,38 @@ function invalidateStructural(vitest, paths, note) {
     if (testGlob) vitest.clearSpecificationsCache();
   }
 }
+async function dropPackageData(vitest, manifest, kind) {
+  const event = kind === "add" ? "create" : kind === "delete" ? "delete" : "update";
+  const dir = dirname14(manifest);
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      await environment.pluginContainer.watchChange(manifest, { event });
+      const cache = environment.config.packageCache;
+      if (kind !== "add" || !(cache instanceof Map)) continue;
+      for (const key of [...cache.keys()]) {
+        if (key === `fnpd_${dir}` || typeof key === "string" && key.startsWith(`fnpd_${dir}/`)) {
+          cache.delete(key);
+        }
+      }
+    }
+  }
+}
+function resolutionMoved(vitest, manifest) {
+  let recorded2 = manifestFields.get(vitest);
+  if (!recorded2) {
+    recorded2 = /* @__PURE__ */ new Map();
+    manifestFields.set(vitest, recorded2);
+  }
+  const before = recorded2.get(manifest.abs);
+  const after = manifest.kind === "delete" ? null : resolutionFields(manifest.abs);
+  if (after === null) recorded2.delete(manifest.abs);
+  else recorded2.set(manifest.abs, after);
+  return manifest.kind !== "change" || before === void 0 || before !== after;
+}
+function resolutionFields(manifest) {
+  const fields = readManifest(manifest);
+  return fields === null ? null : JSON.stringify(RESOLUTION_FIELDS.map((field) => fields[field]));
+}
 function staleTransforms(vitest, added, deleted, manifests = []) {
   const stale = /* @__PURE__ */ new Set();
   const gone = new Set(deleted);
@@ -8513,7 +8549,8 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set(deleted);
-      const directories = [...added, ...deleted, ...manifests].filter(isPackageJson).map((p) => `${dirname14(p)}/`);
+      const scopes = [...added, ...deleted, ...manifests].filter(isPackageJson).map((p) => `${dirname14(p)}/`);
+      const directories = [...scopes];
       for (const path of added) {
         const bases = resolutionBases(path, extensions);
         for (const base of bases) {
@@ -8536,7 +8573,7 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
           const result = cachedTransform(module);
           if (!result) continue;
           const deps = [...result.deps ?? [], ...result.dynamicDeps ?? []];
-          if (deps.some((dep) => reresolves(dep, file)) || added.length > 0 && expandsFromDisk(file, result)) {
+          if (deps.length > 0 && scopes.some((dir) => file.startsWith(dir)) || deps.some((dep) => reresolves(dep, file)) || added.length > 0 && expandsFromDisk(file, result)) {
             stale.add(file);
             break;
           }
@@ -8557,17 +8594,20 @@ function entryDirectories(path, bases, root) {
   return found;
 }
 function packageEntries(manifest) {
-  let fields;
-  try {
-    fields = JSON.parse(readFileSync7(manifest, "utf8"));
-  } catch {
-    return [];
-  }
-  if (!isRecord(fields)) return [];
+  const fields = readManifest(manifest);
+  if (fields === null) return [];
   const dot = isRecord(fields.exports) ? fields.exports["."] : fields.exports;
   return [fields.main, fields.module, dot].filter(
     (entry2) => typeof entry2 === "string"
   );
+}
+function readManifest(manifest) {
+  try {
+    const fields = JSON.parse(readFileSync7(manifest, "utf8"));
+    return isRecord(fields) ? fields : null;
+  } catch {
+    return null;
+  }
 }
 function isUnresolvedBare(dep) {
   return !dep.startsWith("/") && !dep.startsWith(".") && !dep.startsWith("\0") && !dep.includes(":") && !isBuiltin(dep);
@@ -8594,7 +8634,7 @@ function cachedFiles(vitest) {
   }
   return files;
 }
-var tracksSoftInvalidation, fellBack, isPackageJson, FALLBACK_NOTE;
+var tracksSoftInvalidation, fellBack, manifestFields, RESOLUTION_FIELDS, isPackageJson, FALLBACK_NOTE;
 var init_stale = __esm({
   "src/runners/vitest/stale.ts"() {
     "use strict";
@@ -8603,6 +8643,8 @@ var init_stale = __esm({
     init_graph();
     tracksSoftInvalidation = /* @__PURE__ */ new WeakMap();
     fellBack = /* @__PURE__ */ new WeakSet();
+    manifestFields = /* @__PURE__ */ new WeakMap();
+    RESOLUTION_FIELDS = ["name", "main", "module", "browser", "exports", "imports"];
     isPackageJson = (path) => basename8(path) === "package.json";
     FALLBACK_NOTE = "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
   }
@@ -8724,7 +8766,7 @@ var init_adapter = __esm({
             return { recreatedProjects: [...names].sort() };
           }
           for (const p of abs) vitest.invalidateFile(p.abs);
-          invalidateStructural(vitest, abs, this.#note);
+          await invalidateStructural(vitest, abs, this.#note);
           return { recreatedProjects: [] };
         });
       }
@@ -8998,7 +9040,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.4";
+  if (true) return "0.1.5";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
