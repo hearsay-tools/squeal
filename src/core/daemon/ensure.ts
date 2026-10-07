@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { daemonLiveness } from "../delivery/liveness.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
-import { resolveCommonDir, worktreeIdFor } from "../store/paths.js";
+import { resolveCommonDir, storePaths, worktreeIdFor } from "../store/paths.js";
 import {
   type AbsolutePath,
   DAEMON_SOCKET_TIMEOUT_MS,
@@ -117,6 +117,9 @@ function recordedDaemon(root: AbsolutePath): DaemonRecord | null {
  * The daemon runs `node <cli> daemon <root>` with the caller's Node and
  * environment ("inherits the environment of the hook that started it with no
  * additions", D11). `<cli>` is `SQUEAL_CLI` when set, else `options.cli`.
+ * Its working directory is the store directory, never the root, so a
+ * harness can remove the worktree under a live daemon (D10, lessons defect
+ * 13); the daemon takes its own temp directory once it holds the lock.
  */
 export async function ensureDaemon(
   root: AbsolutePath,
@@ -132,8 +135,12 @@ export async function ensureDaemon(
   const cli = daemonCliEntry(options.cli, options.env);
   if (cli === null || !existsSync(cli)) return "unavailable";
   try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return "unavailable";
+    const cwd = storePaths(commonDir).dir;
+    mkdirSync(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root], {
-      cwd: root,
+      cwd,
       detached: true,
       stdio: "ignore",
     });

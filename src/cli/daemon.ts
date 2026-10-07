@@ -6,7 +6,8 @@ const USAGE = "usage: squeal daemon <root>\n";
 
 /**
  * `squeal daemon <root>`: the daemon of one worktree, in the foreground.
- * Hooks start it detached (spec 001 D10). Logs to stderr. Exit code 0 when
+ * Hooks start it detached (spec 001 D10). It moves out of the root and
+ * into its own temp directory however it was started. Logs to stderr. Exit code 0 when
  * it stopped normally or another daemon serves the worktree, 1 when it could
  * not serve.
  */
@@ -23,7 +24,7 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
   };
   const restore = ownSignals(() => stop());
   try {
-    const daemon = await startDaemon({ root, log });
+    const daemon = await startDaemon({ root, log, ownsProcess: true });
     if ("reason" in daemon) {
       log(daemon.message);
       return daemon.code;

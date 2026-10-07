@@ -17,6 +17,7 @@ import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js
 import { linkedWorktreeDir, prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import type { RecoveringRunner } from "./runner.js";
+import { adoptScratch, inRootWhileRunning } from "./scratch.js";
 import { squealVersion } from "./version.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
@@ -24,8 +25,14 @@ export type { DaemonTimings } from "./lifecycle.js";
 export interface DaemonOptions {
   /** The worktree root; resolved with realpath. */
   readonly root: string;
-  /** For the runtime dir of the socket (D1). Default `process.env`. */
+  /** For the runtime dir of the socket (D1). Default `process.env` as it was before `ownsProcess`. */
   readonly env?: NodeJS.ProcessEnv;
+  /**
+   * The process is this daemon's (`squeal daemon`): it leaves the root as its
+   * working directory and takes its temp directory under the store (D10,
+   * `adoptScratch`). A daemon started inside a test leaves its process alone.
+   */
+  readonly ownsProcess?: boolean;
   readonly now?: () => EpochMs;
   /** One line per event, for the foreground process's stderr. */
   readonly log?: (line: string) => void;
@@ -67,7 +74,10 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
   }
   let daemon: Daemon;
   try {
-    daemon = new Daemon(opened, options);
+    // The socket's runtime dir comes from the environment hooks share, read before it changes.
+    const env = options.env ?? { ...process.env };
+    if (options.ownsProcess) adoptScratch(opened.scratch);
+    daemon = new Daemon(opened, { ...options, env });
   } catch (error) {
     desk.discard();
     return abandon(opened, now, options.log, `daemon exited: could not start: ${message(error)}`);
@@ -236,6 +246,9 @@ class Daemon {
         onFailure: (text) =>
           this.#note(`${text}; every check of this worktree is unknown until the config loads`),
         onRecovered: () => this.#note("Vitest started after the config changed"),
+        around: this.options.ownsProcess
+          ? inRootWhileRunning(root, this.opened.scratch)
+          : undefined,
       });
       this.#runner = runner;
       await runner.open();
