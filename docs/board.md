@@ -206,6 +206,8 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-106 review of 001-104 and 001-105 | done, FAIL with B1 to B3 (`reviews/wave-11b.md`) | `/reviewer`: can a key now survive a dependency change that could alter a result. | `reviews/wave-11b.md` committed. |
 | 001-109 per-package keys see every package a result can depend on | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | `reviews/wave-11b.md` B1 (config-named packages), B2 (bare `require`, `require.resolve`), B3 decided by the human: opaque packages (a dependency that reaches `child_process`, `worker_threads` or `module` sends its importers to the whole-lockfile key), S1 to S3, N1 to N4. | The review's proofs are tests; `cezar` share re-measured and reported. |
 | 001-110 re-review of 001-109 | planned | `/reviewer` on gpt-6.1-sol, last round on the 001-105 slice. | `reviews/wave-11d.md` committed. |
+| 001-111 a symlinked node_modules does not stop the daemon | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 21 (found by 002-16): `git check-ignore` rejects a batch with a path beyond a symlink and the daemon dies at start. | A symlinked-`node_modules` fixture validates and reads its installed lockfile. |
+| 001-112 a hung daemon is said at every boundary | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 22 (found by 002-16): a SIGSTOPped daemon left edits unannounced. An edit at a boundary while no daemon validates gets one "Not validated" line. | SIGSTOP test says it; SIGCONT recovers; dead-daemon case unchanged. |
 
 ## Feature 002: Codex adapter
 
