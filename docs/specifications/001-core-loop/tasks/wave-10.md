@@ -125,3 +125,35 @@ Use /worker. Shape: repair. Outcome: "touches your changes" names only files the
 ## 001-95 re-review of 001-94, and review of 001-90
 
 Use /reviewer. Output `reviews/wave-10c.md`, two sections. (1) 001-94, `b787492..192c187`: are `reviews/wave-10b.md` B1, B2, S1, S2 closed, and does the B2 wait change SessionStart's latency (measure), and how often a real repository's first session gets no attribution (the worker measured the start-scan marker at 581 to 613 ms on a 5-file fixture against a 750 ms wait). Second and last round on this slice: blockers go to the human. (2) 001-90 (`38f85eb`, `109cb33`), first review: `squeal remove` deletes the store and temp directories. Probe: a daemon that restarts between stop and delete, a worktree whose path is gone, a store mid-write by a hook, `--config` in a linked worktree, permissions on another user's `/tmp/squeal-<uid>`, and that nothing outside `<common-dir>/squeal/` and this repository's temp keys is ever deleted.
+
+## After 001-95
+
+The human chose a redesign for attribution (`reviews/wave-10c.md` B1, S1 and the SessionStart regression) and the `squeal remove` fixes now. 001-96 and 001-97 run in parallel on disjoint files; 001-98 reviews 001-96 only.
+
+## 001-96 attribution starts at the daemon's start revision, with no SessionStart wait
+
+Use /worker. Shape: repair (design changed by the human).
+
+Outcome: attribution appears on real repositories from the first tool call after the daemon's start revision exists, never counts a start revision as the agent's, says nothing when it cannot be sure, and SessionStart is back to its 0.1.11 latency.
+
+Read: `reviews/wave-10c.md` (B1, S1, the measurement table), `reviews/wave-10b.md` B2; spec D6, D9, D10; `src/core/delivery/attribution.ts`, `delivery.ts`, `registered.ts`; `src/harness/claude-code/ensure.ts` (`settle`), `hooks/session-start.ts`; `src/core/daemon/daemon.ts` (the bootstrap marker).
+
+Decided:
+- Remove the SessionStart wait for the bootstrap marker, and the marker if nothing else needs it. SessionStart when spawning returns to 0.1.11's cost (131 to 184 ms on the review's machine).
+- A consumer registers with no registration revision. The first later hook that runs for it (PreToolUse, PostToolBatch, UserPromptSubmit, Stop) and finds this worktree's latest `start` revision recorded sets the registration revision to it, in the hook's existing transaction. A consumer that keeps its registration (resume, compact, 001-94's parked revision) keeps it.
+- No `start` revision ever counts as the agent's changes. When a failing test's imports include any file changed by a `start` revision after the registration revision, or by the start revision that the registration revision is, show neither attribution line. This covers a daemon restart (B1) and an agent edit made before the start revision was recorded and absorbed into it (the first-tool-call case the human asked about).
+- Without a registration revision, neither line appears.
+
+Seam: `src/core/delivery/attribution.ts` (the start-revision rule), then `delivery.ts` (lazy registration revision), then remove the wait in `ensure.ts` / `session-start.ts` and the marker in `daemon.ts`.
+
+Own: `src/core/delivery/`, `src/harness/claude-code/ensure.ts`, `hooks/session-start.ts`, `hooks/pre-tool-use.ts`, `hooks/post-tool-batch.ts`, `hooks/user-prompt-submit.ts`, `hooks/stop.ts` (only where the lazy write needs a call), `src/core/daemon/daemon.ts` (marker removal only), `src/core/types/` (additive or removal of the marker type), tests under `test/delivery/`, `test/harness/`, `test/daemon/`, `plugins/claude-code/skills/squeal/references/reports.md`, D6 and D9 in `spec.md`, one `status.md` line. Leave `src/cli/` alone (001-97). Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: tests show (1) a session that spawns the daemon gets attribution on the first PostToolBatch after the start revision exists; (2) the review's restart probe shows neither line for a file the next daemon's start revision changed; (3) an agent edit made before the start revision was recorded, then failing, shows neither line, never "none of your changes"; (4) no registration revision means no line; (5) resume and compact keep the revision; (6) the latency test's SessionStart-with-spawn case is back under 200 ms p95 at low load and PostToolBatch, PreToolUse and UserPromptSubmit stay within 80 ms p95.
+
+## 001-97 squeal remove fixes
+
+Use /worker. Shape: repair. Outcome: `squeal remove` never exits 1 after deleting anything without saying what it deleted, and `--config` in a linked worktree says what config remains. Read: `reviews/wave-10c.md` section 2, S2 and S3 (fix steps); spec D7. Seam: `src/cli/remove.ts`. S2: delete the temp directories before the store, or catch the failure and print what was removed and what was not, with an exit code `commands.md` documents. S3: in a linked worktree, `--config` says whether the main checkout's config remains and will start Squeal again. Own: `src/cli/remove.ts`, `test/cli/remove.test.ts`, `plugins/claude-code/skills/squeal/references/commands.md` (the `remove` entry), D7 sentence, one `status.md` line. Do not run `npm run build` or touch `plugins/claude-code/dist`. Done when: the review's two probes are tests; the documented exit codes match the behaviour.
+
+## 001-98 review of 001-96
+
+Use /reviewer. Range: 001-96's commits as landed. Output `reviews/wave-10d.md`. Outcome: whether attribution can now say anything false, and whether the first tool call after a session starts behaves (no wrong line, no added latency). Probe: the review wave-10c restart probe; an edit in the first 500 ms of a session; a session registered before the start revision and resumed after it; two sessions on one worktree; a real clone of squeal and of cezar (how soon attribution starts); SessionStart and PostToolBatch p95 at low load.
