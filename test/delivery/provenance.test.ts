@@ -137,15 +137,22 @@ describe("install context in the header (task 001-91)", () => {
     expect(formatRegistration(registration)).toContain(note);
   });
 
-  it("says the results follow an install when the installed lockfile changed", () => {
-    const after = delta([failure], { changedPaths: ["node_modules/.package-lock.json"] });
+  it("says the results follow an install when the changes wrote an installed lockfile", () => {
+    const after = delta([failure], { installedLockfile: "node_modules/.package-lock.json" });
     expect(second(after)).toContain(
       "These results follow a dependency install (node_modules/.package-lock.json changed).",
     );
-    const nested = delta([failure], {
-      changedPaths: ["src/a.ts", "pkg/node_modules/.yarn-state.yml"],
-    });
+    const nested = delta([failure], { installedLockfile: "pkg/node_modules/.yarn-state.yml" });
     expect(second(nested)).toContain("(pkg/node_modules/.yarn-state.yml changed)");
     expect(second(delta([failure], { changedPaths: ["src/a.ts"] }))).not.toContain("install");
+  });
+
+  it("never says both that none is installed and that the results follow an install (S1)", () => {
+    const both = delta([failure], {
+      dependenciesInstalled: false,
+      installedLockfile: "node_modules/.package-lock.json",
+    });
+    expect(second(both)).toContain("No dependencies are installed");
+    expect(second(both)).not.toContain("follow a dependency install");
   });
 });
