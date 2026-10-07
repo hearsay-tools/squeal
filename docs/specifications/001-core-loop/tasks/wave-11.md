@@ -105,3 +105,21 @@ Use /reviewer. Range: the 001-104 and 001-105 commits on `main` (`806484f`, `3f1
 ## 001-108 re-review of 001-107
 
 Use /reviewer. Range: 001-107's six commits on `main` (ending `9e9219e` as rebased), plus build `c61a98e`. Output `reviews/wave-11c.md`. Last round on the 001-100 slice: report blockers plainly; the human decides on more. Outcome: are `reviews/wave-11.md` B1, S1 to S3, N1 to N5 closed. Probe: the B1 probe; `npm ci` under a running daemon in a validated worktree (no stored failure, nothing pushed as PASS -> FAIL, no deny) including a fixture whose tests resolve Vitest from the repository; the starvation bound under constant edits; bun, yarn PnP and pnpm worktrees; workspaces with partial installs; a SIGKILL during the wait.
+
+## 001-109 per-package keys see every package a result can depend on
+
+Use /worker. Shape: repair. First repair round on the 001-105 slice; 001-110 re-reviews it.
+
+Outcome: no package bump that can change a test's result leaves its key in place.
+
+Read: `reviews/wave-11b.md` (B1 to B3, S1 to S3, N1 to N4; each has fix steps); `research/per-package-keys.md`; spec D3, D4.
+
+Decided:
+- **B1:** packages the Vitest config or a docblock names as a string (test `environment`, `@vitest-environment`, `snapshotSerializers`, reporters and similar resolvable package names in the resolved config) enter the environment-wide package set.
+- **B2:** a per-file source scan, as D4 rule 3 does, adds bare `require("x")` targets to the file's packages, and `require.resolve`, `createRequire` or a computed `require` sends the file to the whole-lockfile fallback.
+- **B3 (human, 2026-10-07): opaque packages.** A package whose own code, or that of any package in its lockfile closure, reaches `child_process`, `worker_threads` or `module` (detected once per installed package version by a source scan of its files, cached by `location@version#integrity`) makes every test file that imports it fall back to the whole-lockfile key. Re-measure `cezar`'s share and report it, even if it falls below 300 of 632.
+- **S1** (the stale note once per lockfile state, not per restart), **S2** (001-107's install stamp also triggers re-reading the package keys under a running daemon), **S3** (D3 states exactly what the fallback covers), **N1 to N4**.
+
+Seam: `src/runners/vitest/packages.ts` and `src/core/keys/packages.ts`. Own: `src/core/keys/`, `src/runners/vitest/packages.ts`, `graph.ts`, `src/core/scheduler/lockfiles.ts` and `install-stamp.ts` (S2 only), `src/core/types/` (additive), tests under `test/keys/`, `test/runners/vitest/`, `test/fixtures/vitest/packages/`, D3 and D4 in `spec.md`, one `status.md` line, the measurement notes under `tasks/001-105/`. Leave `src/runners/node-test/` and `src/core/daemon/` to the 002/003 coordinator. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the review's three proofs are tests that failed before (environment package, `snapshotSerializers`, bare `require`, `require.resolve`, a package that spawns a child loading another package); a package scan is cached and its cost on `cezar`'s ~470 packages is measured; the `cezar` share is measured and reported; S1 and S2 have tests.
