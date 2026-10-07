@@ -95,8 +95,8 @@ export class KeyIndex {
   /**
    * Sets the environment hash of each project in `environments` and the
    * installed-dependency segment of each of their test files, then re-keys
-   * every test file once, so no key passes through a mix of old and new
-   * inputs (task 001-105).
+   * once each test file whose project hash or segment moved, so no key
+   * passes through a mix of old and new inputs (task 001-105).
    */
   setInstalled(
     environments: ReadonlyMap<ProjectName, EnvironmentHash>,
