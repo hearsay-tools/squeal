@@ -122,7 +122,11 @@ describe("scheduler: installed lockfile (N3, N8)", SLOW, () => {
     expect(h.scheduler.extraFiles()).toContain("packages/app/node_modules/.package-lock.json");
     const before = h.keyOf("test/plain.test.ts");
 
-    h.write("packages/app/node_modules/.package-lock.json", '{"packages":{"left-pad":"1.3.0"}}\n');
+    // A listed package with no folder: npm would not trust the file, so every key moves (001-105).
+    h.write(
+      "packages/app/node_modules/.package-lock.json",
+      '{"packages":{"node_modules/left-pad":{"version":"1.3.0"}}}\n',
+    );
     await h.batch("packages/app/node_modules/.package-lock.json");
     await h.scheduler.idle();
     expect(h.keyOf("test/plain.test.ts")).not.toBe(before);
