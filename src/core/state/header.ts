@@ -30,6 +30,10 @@ import { testFileKeyOf } from "./derive.js";
  * when its baseline completes. The runner part of the current revision is
  * pending while the refined revision the daemon recorded (`refinedMetaKey`)
  * is behind it (review wave 4.5, S1).
+ *
+ * While the worktree waits for an install (`awaitingInstallMetaKey`) nothing
+ * was listed or run at the current revision: no checkpoint counts as a
+ * listing or as a full suite at it (review wave 11, B1).
  */
 export function readHeader(
   store: Store,
@@ -46,21 +50,20 @@ export function readHeader(
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
+  const awaiting = store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true";
   return {
     revision,
     counts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
-      atCurrentRevision: last !== null && last.revision === revision,
+      atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
     },
-    testFilesListed: keys.length > 0 || last !== null,
+    testFilesListed: keys.length > 0 || (!awaiting && last !== null),
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
-    ...(store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true"
-      ? { awaitingInstall: true }
-      : {}),
+    ...(awaiting ? { awaitingInstall: true } : {}),
   };
 }
 

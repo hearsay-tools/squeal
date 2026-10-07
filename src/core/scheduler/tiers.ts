@@ -205,6 +205,18 @@ export function recordTier(
  * `unknown` file is always work to do": an unkeyed file, or one blocked by a
  * runner failure, is requested too and ends the checkpoint `abandoned`.
  */
+/**
+ * `run --all` while the worktree waits for an install: nothing can be listed
+ * or keyed, so the checkpoint over the files an earlier daemon listed is
+ * abandoned at once and never claims a full suite (review wave 11, B1).
+ */
+export function abandonFullSuite(ledger: Ledger): CheckpointRecord {
+  const files = [...ledger.files.values()].map((file) => file.ref);
+  const record = ledger.checkpoints.abandon(randomUUID(), "run-all", ledger.revision.number, files);
+  ledger.commit();
+  return record;
+}
+
 export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord {
   const id = randomUUID();
   const files = [...ledger.files.values()];

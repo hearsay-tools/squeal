@@ -71,6 +71,30 @@ export class Checkpoints {
     return record;
   }
 
+  /**
+   * Records a checkpoint that cannot run, abandoned at once and never
+   * `completed`, even with no files: a `run --all` while the worktree waits
+   * for an install (review wave 11, B1). Abandons the open one first.
+   */
+  abandon(
+    id: string,
+    kind: CheckpointKind,
+    revision: RevisionNumber,
+    testFiles: readonly TestFileRef[],
+  ): CheckpointRecord {
+    this.finish("abandoned");
+    const record = this.store.checkpoints.start({
+      id,
+      worktreeId: this.worktreeId,
+      revision,
+      kind,
+      testFiles,
+      startedAt: this.now(),
+    });
+    this.store.checkpoints.finish(id, "abandoned", this.now());
+    return record;
+  }
+
   /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
   done(ref: TestFileRef, by: string | null): void {
     const active = this.#active;
