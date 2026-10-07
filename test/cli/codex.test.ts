@@ -9,6 +9,8 @@ import { findCodexPlugin, launcherConfig, readPluginHooks } from "../../src/cli/
 import { type CliIo, main } from "../../src/cli/main.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { runCodexHook } from "../../src/harness/codex/index.js";
+import { codexRecorded } from "../harness/codex/helpers.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 
@@ -202,7 +204,9 @@ describe("squeal init --harness codex --print-launcher-config", () => {
 
 describe("squeal status in a Codex shell (spec 002 D6)", () => {
   const LINE =
-    /^Codex: Squeal's hooks have not run in this session \(no consumer for CODEX_SESSION_ID thread-1\)\..*\/hooks/m;
+    /^Codex: no Squeal consumer is registered for this session in this worktree \(CODEX_SESSION_ID thread-1\)\..*\/hooks/m;
+  /** A claim the line cannot know: the hooks may have run before the store existed (S1). */
+  const FALSE_CAUSE = /have not run|did not run|never ran/;
 
   function storeRepo(sessions: string[]) {
     const repo = fakeRepo();
@@ -227,6 +231,26 @@ describe("squeal status in a Codex shell (spec 002 D6)", () => {
     const { stdout } = run(["status"], fakeRepo().main, { CODEX_SESSION_ID: "thread-1" });
     expect(stdout).toMatch(/^Status unavailable/);
     expect(stdout).toMatch(LINE);
+  });
+
+  it("names no false cause after hooks ran in a first session with no store (review S1)", async () => {
+    const repo = fakeRepo();
+    writeFileSync(join(repo.main, "squeal.config.json"), "{}\n");
+    const session = { session_id: "thread-1" };
+    const deps = { env: {}, ensureDaemon: async () => "alive" as const };
+    for (const [hook, fixture, extra] of [
+      ["session-start", "session-start", {}],
+      ["user-prompt-submit", "user-prompt-submit", {}],
+      ["pre-tool-use", "pre-tool-use", { tool_name: "Bash" }],
+    ] as const) {
+      const input = codexRecorded("exec", fixture, repo.main, { ...session, ...extra });
+      expect(await runCodexHook(hook, input, deps)).toEqual({ stdout: "", stderr: "" });
+    }
+    // The daemon has created the store by the time the agent runs `squeal status`.
+    seedStore(repo).close();
+    const { stdout } = run(["status"], repo.main, { CODEX_SESSION_ID: "thread-1" });
+    expect(stdout).toMatch(LINE);
+    expect(stdout).not.toMatch(FALSE_CAUSE);
   });
 
   it("stays silent when the session is registered, outside Codex, and in --json", () => {
