@@ -7494,11 +7494,11 @@ function createPattern(matcher) {
       if (matcher.path === string)
         return true;
       if (matcher.recursive) {
-        const relative9 = sp2.relative(matcher.path, string);
-        if (!relative9) {
+        const relative10 = sp2.relative(matcher.path, string);
+        if (!relative10) {
           return false;
         }
-        return !relative9.startsWith("..") && !sp2.isAbsolute(relative9);
+        return !relative10.startsWith("..") && !sp2.isAbsolute(relative10);
       }
       return false;
     };
@@ -8136,13 +8136,13 @@ var init_chokidar = __esm({
        * @param directory within which the following item is located
        * @param item      base path of item/directory
        */
-      _remove(directory, item, isDirectory2) {
+      _remove(directory, item, isDirectory3) {
         const path = sp2.join(directory, item);
         const fullPath = sp2.resolve(path);
-        isDirectory2 = isDirectory2 != null ? isDirectory2 : this._watched.has(path) || this._watched.has(fullPath);
+        isDirectory3 = isDirectory3 != null ? isDirectory3 : this._watched.has(path) || this._watched.has(fullPath);
         if (!this._throttle("remove", path, 100))
           return;
-        if (!isDirectory2 && this._watched.size === 1) {
+        if (!isDirectory3 && this._watched.size === 1) {
           this.add(directory, item, true);
         }
         const wp = this._getWatchedDir(path);
@@ -8164,7 +8164,7 @@ var init_chokidar = __esm({
         }
         this._watched.delete(path);
         this._watched.delete(fullPath);
-        const eventName = isDirectory2 ? EVENTS.UNLINK_DIR : EVENTS.UNLINK;
+        const eventName = isDirectory3 ? EVENTS.UNLINK_DIR : EVENTS.UNLINK;
         if (wasTracked && !this._isIgnored(path))
           this._emit(eventName, path);
         this._closePath(path);
@@ -10597,6 +10597,119 @@ var init_adapter_environment = __esm({
     PROBE_TIMEOUT_MS = 3e4;
     PROBE = 'process.stdout.write(process.version + "\\n" + process.execPath + "\\n")';
     NODE_UNAVAILABLE = "unavailable";
+  }
+});
+
+// src/runners/node-test/adapter-observed.ts
+var Observed;
+var init_adapter_observed = __esm({
+  "src/runners/node-test/adapter-observed.ts"() {
+    "use strict";
+    init_fs();
+    Observed = class {
+      constructor(graph, store, note) {
+        this.graph = graph;
+        this.store = store;
+        this.note = note;
+        this.refresh();
+        this.grown.clear();
+        this.preloadsGrew = false;
+      }
+      graph;
+      store;
+      note;
+      tests = /* @__PURE__ */ new Map();
+      preloadSet = /* @__PURE__ */ new Set();
+      /** Test files whose set another worktree grew, not yet reported by `affected`. */
+      grown = /* @__PURE__ */ new Set();
+      /** Another worktree grew the preload set since the last `invalidate`. */
+      preloadsGrew = false;
+      /** The preload paths the last `environment()` returned, so the scheduler keyed. */
+      keyed = /* @__PURE__ */ new Set();
+      /** Merges what the store holds now; another worktree's additions are reported next. */
+      refresh() {
+        if (this.store === void 0) return;
+        let tests;
+        let preloads;
+        try {
+          tests = this.store.read();
+          preloads = this.store.readPreloads();
+        } catch (error) {
+          this.note(`could not read observed paths: ${String(error)}`);
+          return;
+        }
+        for (const [testFile, paths] of Object.entries(tests)) {
+          if (this.addTest(testFile, paths).length > 0) this.grown.add(testFile);
+        }
+        if (this.addPreloads(preloads).length > 0) this.preloadsGrew = true;
+      }
+      /** The observed-only paths of one test file. */
+      of(testFile) {
+        return this.tests.get(testFile);
+      }
+      /** The preloads' observed-only paths, sorted, as the environment returns them now. */
+      preloads() {
+        this.keyed = new Set(this.preloadSet);
+        return [...this.preloadSet].sort(compare);
+      }
+      /** Test files another worktree's observations re-key, once each. */
+      takeGrown(listed) {
+        const out = [...this.grown].filter((f) => listed.has(f)).sort(compare);
+        this.grown.clear();
+        return out;
+      }
+      /**
+       * True when the scheduler must read the environment again: another
+       * worktree grew the preload set, or `changed` holds an observed preload
+       * path the last environment did not carry.
+       */
+      takeRecreate(changed) {
+        const recreate = this.preloadsGrew || changed.some((p) => this.preloadSet.has(p) && !this.keyed.has(p));
+        this.preloadsGrew = false;
+        return recreate;
+      }
+      /** D3, D5: what each completed, listed file and its preloads loaded beyond the static graph. */
+      record(seen, listed) {
+        const tests = {};
+        const preloadStatic = new Set(this.graph.preloads().paths);
+        const preloads = /* @__PURE__ */ new Set();
+        for (const { testFile, paths, preloadPaths } of seen) {
+          if (!listed.has(testFile.path)) continue;
+          for (const path of preloadPaths) if (!preloadStatic.has(path)) preloads.add(path);
+          const closure = new Set(this.graph.closure(testFile.path).paths);
+          const added = this.addTest(
+            testFile.path,
+            paths.filter((p) => !closure.has(p))
+          );
+          if (added.length > 0) tests[testFile.path] = added;
+        }
+        const addedPreloads = this.addPreloads([...preloads]);
+        if (this.store === void 0) return;
+        try {
+          if (Object.keys(tests).length > 0) this.store.write(tests);
+          if (addedPreloads.length > 0) this.store.writePreloads(addedPreloads);
+        } catch (error) {
+          this.note(`could not store observed paths: ${String(error)}`);
+        }
+      }
+      /** Adds paths to one test file's set; returns the new ones. */
+      addTest(testFile, paths) {
+        const known2 = this.tests.get(testFile) ?? /* @__PURE__ */ new Set();
+        const added = paths.filter((p) => !known2.has(p));
+        if (added.length === 0) return [];
+        for (const path of added) known2.add(path);
+        this.tests.set(testFile, known2);
+        this.graph.recordObserved(testFile, [...known2]);
+        return added;
+      }
+      addPreloads(paths) {
+        const added = paths.filter((p) => !this.preloadSet.has(p));
+        if (added.length === 0) return [];
+        for (const path of added) this.preloadSet.add(path);
+        this.graph.recordObservedPreloads([...this.preloadSet]);
+        return added;
+      }
+    };
   }
 });
 
@@ -16775,6 +16888,125 @@ var init_glob2 = __esm({
   }
 });
 
+// src/runners/node-test/graph/code-ranges.ts
+function codeAt(source) {
+  const ranges = nonCode(source);
+  return (offset2) => {
+    let lo = 0;
+    let hi = ranges.length;
+    while (lo < hi) {
+      const mid = lo + hi >>> 1;
+      const [start, end] = ranges[mid];
+      if (offset2 < start) hi = mid;
+      else if (offset2 >= end) lo = mid + 1;
+      else return false;
+    }
+    return true;
+  };
+}
+function nonCode(source) {
+  const ranges = [];
+  const templates = [];
+  let previous = "";
+  let word = "";
+  let inWord = false;
+  let i2 = 0;
+  const lineEnd = (from) => {
+    const at2 = source.indexOf("\n", from);
+    return at2 === -1 ? source.length : at2;
+  };
+  const close = (from, quote, line) => {
+    let j = from;
+    while (j < source.length) {
+      const char = source[j];
+      if (char === "\\") j += 2;
+      else if (char === quote) return j + 1;
+      else if (line && char === "\n") return j;
+      else j++;
+    }
+    return source.length;
+  };
+  const template = (from) => {
+    let j = from;
+    while (j < source.length) {
+      const char = source[j];
+      if (char === "\\") j += 2;
+      else if (char === "`") return j + 1;
+      else if (char === "$" && source[j + 1] === "{") {
+        templates.push(0);
+        return j + 2;
+      } else j++;
+    }
+    return source.length;
+  };
+  const regex = (from) => {
+    let j = from;
+    let inClass = false;
+    while (j < source.length) {
+      const char = source[j];
+      if (char === "\\") j += 2;
+      else if (char === "\n") return j;
+      else if (char === "[" || char === "]") {
+        inClass = char === "[";
+        j++;
+      } else if (char === "/" && !inClass) {
+        j++;
+        while (j < source.length && WORD.test(source[j])) j++;
+        return j;
+      } else j++;
+    }
+    return source.length;
+  };
+  while (i2 < source.length) {
+    const char = source[i2];
+    const next = source[i2 + 1];
+    let end = -1;
+    if (char === "/" && next === "/") end = lineEnd(i2);
+    else if (char === "/" && next === "*") {
+      const at2 = source.indexOf("*/", i2 + 2);
+      end = at2 === -1 ? source.length : at2 + 2;
+    } else if (char === '"' || char === "'") end = close(i2 + 1, char, true);
+    else if (char === "`") end = template(i2 + 1);
+    else if (char === "/" && (BEFORE_REGEX.has(previous) || previous === "" || KEYWORDS.has(word)))
+      end = regex(i2 + 1);
+    else if (char === "}" && templates.length > 0 && templates.at(-1) === 0) {
+      templates.pop();
+      end = template(i2 + 1);
+    }
+    if (end !== -1) {
+      ranges.push([i2, end]);
+      i2 = end;
+      const comment = char === "/" && (next === "/" || next === "*");
+      if (!comment) previous = "a";
+      word = "";
+      inWord = false;
+      continue;
+    }
+    if (templates.length > 0) {
+      if (char === "{") templates[templates.length - 1] = (templates.at(-1) ?? 0) + 1;
+      else if (char === "}") templates[templates.length - 1] = (templates.at(-1) ?? 1) - 1;
+    }
+    const space = /\s/.test(char);
+    if (WORD.test(char)) word = inWord ? word + char : char;
+    else if (!space) word = "";
+    inWord = WORD.test(char);
+    if (!space) previous = char;
+    i2++;
+  }
+  return ranges;
+}
+var BEFORE_REGEX, KEYWORDS, WORD;
+var init_code_ranges = __esm({
+  "src/runners/node-test/graph/code-ranges.ts"() {
+    "use strict";
+    BEFORE_REGEX = new Set("(,=:[!&|?{};+-*%<>~^".split(""));
+    KEYWORDS = new Set(
+      "return typeof instanceof in of new delete void throw case do else yield await".split(" ")
+    );
+    WORD = /[\w$]/;
+  }
+});
+
 // src/runners/node-test/graph/parse.ts
 function parseModule(source, name) {
   const specifiers = [];
@@ -16806,8 +17038,11 @@ function parseModule(source, name) {
     if (match2[2] !== void 0) specifiers.push({ specifier: match2[2], kind: "require" });
     literal2.add(match2.index);
   }
+  let code = null;
   for (const match2 of source.matchAll(REQUIRE_CALL)) {
-    if (!literal2.has(match2.index)) {
+    if (literal2.has(match2.index)) continue;
+    code ??= codeAt(source);
+    if (code(match2.index)) {
       incomplete.push(
         `require() with a computed specifier at ${name}:${position(source, match2.index)}`
       );
@@ -16829,6 +17064,7 @@ var init_parse = __esm({
   "src/runners/node-test/graph/parse.ts"() {
     "use strict";
     init_lexer();
+    init_code_ranges();
     parserReady = init();
     PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
     REQUIRE2 = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
@@ -16982,6 +17218,8 @@ var init_graph2 = __esm({
       outsidePreloads = [];
       /** Paths a run loaded outside the static closure, per test file (D3, D5). */
       observed = /* @__PURE__ */ new Map();
+      /** Paths the preloads loaded at run time outside their static closure (review wave 2, B1). */
+      observedPreloads = /* @__PURE__ */ new Set();
       /** Cold build, or a full re-resolve after a reset. */
       build(testFiles) {
         this.testFiles = testFiles.map((f) => this.abs(f));
@@ -17022,7 +17260,8 @@ var init_graph2 = __esm({
        * D4: `direct` is every changed test file and every test file that imports
        * a changed path in one hop (or read it, or probed it as a candidate);
        * `transitive` the other test files whose closure holds a changed path or
-       * whose last run loaded it; every test file when a preload's closure holds one.
+       * whose last run loaded it; every test file when a preload's closure holds
+       * one or a preload loaded it at run time.
        */
       affected(changed) {
         const index = this.current();
@@ -17030,7 +17269,9 @@ var init_graph2 = __esm({
         const transitive = /* @__PURE__ */ new Set();
         for (const path of changed.map((p) => this.abs(p))) {
           if (index.test(path) !== void 0) direct.add(path);
-          if (index.has(index.preload, path)) for (const file of this.testFiles) transitive.add(file);
+          if (index.has(index.preload, path) || this.observedPreloads.has(path)) {
+            for (const file of this.testFiles) transitive.add(file);
+          }
           for (const file of index.holders(path)) {
             const node = this.table.node(file);
             const oneHop = node !== void 0 && (node.deps.has(path) || node.reads.has(path) || node.candidates.has(path));
@@ -17043,6 +17284,17 @@ var init_graph2 = __esm({
       }
       recordObserved(testFile, paths) {
         this.observed.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
+      }
+      recordObservedPreloads(paths) {
+        this.observedPreloads = new Set(paths.map((p) => this.abs(p)));
+      }
+      /** Each test file whose static closure is incomplete, with its reasons, in listing order. */
+      incompleteClosures() {
+        const index = this.current();
+        return this.testFiles.flatMap((file) => {
+          const reasons = index.incomplete(index.test(file) ?? new Uint32Array());
+          return reasons.length === 0 ? [] : [[this.rel(file), reasons]];
+        });
       }
       /** The `.js`/`.ts` pairs that the modules of current closures meet under tsx. */
       pairs() {
@@ -17764,9 +18016,9 @@ var require_CachedInputFileSystem = __commonJS({
         const stat6 = this._statBackend.provide;
         this.stat = /** @type {FileSystem["stat"]} */
         stat6;
-        const statSync2 = this._statBackend.provideSync;
+        const statSync3 = this._statBackend.provideSync;
         this.statSync = /** @type {SyncFileSystem["statSync"]} */
-        statSync2;
+        statSync3;
         this._readdirBackend = createBackend(
           duration2,
           this.fileSystem.readdir,
@@ -21283,8 +21535,8 @@ var require_fileURLToPath = __commonJS({
         return `\\\\${hostname}${pathname}`;
       }
       const letter = (pathname.codePointAt(1) || 0) | 32;
-      const sep12 = pathname.charAt(2);
-      if (letter < CHAR_LOWERCASE_A || letter > CHAR_LOWERCASE_Z || sep12 !== ":") {
+      const sep13 = pathname.charAt(2);
+      if (letter < CHAR_LOWERCASE_A || letter > CHAR_LOWERCASE_Z || sep13 !== ":") {
         throw new TypeError("File URL path must be absolute");
       }
       return pathname.slice(1);
@@ -26303,7 +26555,7 @@ function createResolver(chain, root) {
       return false;
     }
   };
-  const isDirectory2 = (path) => {
+  const isDirectory3 = (path) => {
     try {
       return fileSystem.statSync(path).isDirectory();
     } catch {
@@ -26445,7 +26697,7 @@ function createResolver(chain, root) {
       const read3 = dependency.includes(NODE_MODULES2) ? real2(dependency) : dependency;
       if (read3 !== null && read3 !== path && inWorktree(read3)) reads.add(read3);
     }
-    const candidates = path === null ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory2(p)) : [];
+    const candidates = path === null ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory3(p)) : [];
     return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(specifier, path) };
   }
   function pairOf(specifier, path) {
@@ -26500,6 +26752,8 @@ async function createNodeTestGraph(options) {
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
     recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
+    recordObservedPreloads: (paths) => graph.recordObservedPreloads(paths),
+    incompleteClosures: () => graph.incompleteClosures(),
     notes: () => [
       ...loaderNotes(),
       ...graph.pairs().map(
@@ -26617,8 +26871,8 @@ function projectPaths(urls, paths) {
     if (!url.startsWith("file:")) continue;
     const file = fileURLToPath5(url.replace(/[?#].*$/, ""));
     if (!paths.isProjectFile(file)) continue;
-    const relative9 = paths.toRelative(file);
-    if (relative9 !== null) out.add(relative9);
+    const relative10 = paths.toRelative(file);
+    if (relative10 !== null) out.add(relative10);
   }
   return [...out].sort(compare);
 }
@@ -26964,15 +27218,10 @@ var init_run2 = __esm({
   }
 });
 
-// src/runners/node-test/adapter.ts
-import { realpathSync as realpathSync8 } from "node:fs";
+// src/runners/node-test/adapter-project.ts
 import { join as join41 } from "node:path";
-async function createNodeTestAdapter(project, options) {
-  const root = realpathSync8(options.root);
-  const cwd = projectCwd(root, project);
-  const note = options.note ?? (() => {
-  });
-  const label2 = `node-test project ${JSON.stringify(project.name)}`;
+async function openProject(context) {
+  const { project, root, cwd, options, note } = context;
   const ref2 = (path) => ({ project: project.name, path });
   let files = listTestFiles2(root, project);
   const [graph, firstProbe] = await Promise.all([
@@ -26980,47 +27229,32 @@ async function createNodeTestAdapter(project, options) {
     probeNode(project, cwd)
   ]);
   let probe = firstProbe;
-  if (!probe.ok)
-    note(`${label2}: ${probe.error}; every check of the project is unknown until it runs`);
-  const observed = /* @__PURE__ */ new Map();
-  for (const [testFile, paths] of Object.entries(options.observed?.read() ?? {})) {
-    observed.set(testFile, new Set(paths));
-    graph.recordObserved(testFile, paths);
-  }
+  if (!probe.ok) note(`${probe.error}; every check of the project is unknown until it runs`);
+  const observed = new Observed(graph, options.observed, note);
   const noted = /* @__PURE__ */ new Set();
+  const once = (text2) => {
+    if (noted.has(text2)) return;
+    noted.add(text2);
+    note(text2);
+  };
   const notes2 = () => {
-    for (const text2 of graph.notes()) {
-      if (noted.has(text2)) continue;
-      noted.add(text2);
-      note(`${label2}: ${text2.replace(/^node-test: /, "")}`);
+    for (const text2 of graph.notes()) once(text2.replace(/^node-test: /, ""));
+    for (const reason2 of graph.preloads().incomplete) once(`preload closure incomplete: ${reason2}`);
+    const incomplete = graph.incompleteClosures();
+    if (incomplete.length > 0) {
+      const named = incomplete.slice(0, NAMED_INCOMPLETE).map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
+      const more = incomplete.length > NAMED_INCOMPLETE ? ", ..." : "";
+      once(
+        `${incomplete.length} test file(s) with an incomplete static closure, keyed by what their runs load: ${named.join(", ")}${more}`
+      );
     }
   };
   notes2();
-  const record = (seen) => {
-    const listed = new Set(files);
-    const additions = {};
-    for (const { testFile, paths } of seen) {
-      if (!listed.has(testFile.path)) continue;
-      const known2 = observed.get(testFile.path) ?? /* @__PURE__ */ new Set();
-      const closure = new Set(graph.closure(testFile.path).paths);
-      const added = paths.filter((p) => !closure.has(p) && !known2.has(p));
-      if (added.length === 0) continue;
-      for (const path of added) known2.add(path);
-      observed.set(testFile.path, known2);
-      graph.recordObserved(testFile.path, [...known2]);
-      additions[testFile.path] = added;
-    }
-    if (Object.keys(additions).length === 0 || options.observed === void 0) return;
-    try {
-      options.observed.write(additions);
-    } catch (error) {
-      note(`${label2}: could not store observed paths: ${String(error)}`);
-    }
-  };
   return {
     name: "node-test",
-    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    adapterVersion: context.adapterVersion,
     async invalidate(paths) {
+      observed.refresh();
       graph.invalidate(paths);
       if (paths.some((p) => p.kind !== "change")) {
         const next = listTestFiles2(root, project);
@@ -27030,29 +27264,40 @@ async function createNodeTestAdapter(project, options) {
         }
       }
       notes2();
-      if (probe.ok) return { recreatedProjects: [] };
-      probe = await probeNode(project, cwd);
-      if (!probe.ok) return { recreatedProjects: [] };
-      note(`${label2}: ${project.node ?? "node"} runs again (${probe.version})`);
-      return { recreatedProjects: [project.name] };
+      const recreate = observed.takeRecreate(paths.map((p) => p.path));
+      if (!probe.ok) {
+        probe = await probeNode(project, cwd);
+        if (probe.ok) {
+          note(`${project.node ?? "node"} runs again (${probe.version})`);
+          return { recreatedProjects: [project.name] };
+        }
+      }
+      return { recreatedProjects: recreate ? [project.name] : [] };
     },
     async affected(changed) {
+      observed.refresh();
       const { direct, transitive } = graph.affected(changed);
-      return { direct: direct.map(ref2), transitive: transitive.map(ref2) };
+      const grown = observed.takeGrown(new Set(files)).filter((f) => !direct.includes(f));
+      const rest = [.../* @__PURE__ */ new Set([...transitive, ...grown])].sort(compare);
+      return { direct: direct.map(ref2), transitive: rest.map(ref2) };
     },
     async closure(testFile) {
+      observed.refresh();
       const closure = graph.closure(testFile.path);
-      const extra = observed.get(testFile.path);
+      const extra = observed.of(testFile.path);
       const paths = extra === void 0 ? closure.paths : [.../* @__PURE__ */ new Set([...closure.paths, ...extra])];
       return { testFile, paths: [...paths].sort(compare) };
     },
     enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
     testFiles: async () => files.map(ref2),
-    environment: async () => [
-      projectEnvironment2(root, project, probe, graph.preloads().paths, NODE_TEST_ADAPTER_VERSION)
-    ],
+    async environment() {
+      const preloads = [.../* @__PURE__ */ new Set([...graph.preloads().paths, ...observed.preloads()])];
+      return [
+        projectEnvironment2(root, project, probe, preloads.sort(compare), context.adapterVersion)
+      ];
+    },
     async run(testFiles, runOptions) {
-      if (!probe.ok) return unavailable2(`${label2}: ${probe.error}`);
+      if (!probe.ok) return unavailable2(`${context.label}: ${probe.error}`);
       const tempDir = options.tempDir;
       const { report: report2, observed: seen } = await runNodeTest({
         root,
@@ -27063,7 +27308,7 @@ async function createNodeTestAdapter(project, options) {
         ...options.concurrency === void 0 ? {} : { concurrency: options.concurrency() },
         ...tempDir === void 0 ? {} : { env: { ...process.env, TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir } }
       });
-      record(seen);
+      observed.record(seen, new Set(files));
       return report2;
     },
     close: async () => {
@@ -27080,17 +27325,111 @@ function unavailable2(failure2) {
     failure: failure2
   };
 }
-var NODE_TEST_ADAPTER_VERSION;
-var init_adapter2 = __esm({
-  "src/runners/node-test/adapter.ts"() {
+var NAMED_INCOMPLETE;
+var init_adapter_project = __esm({
+  "src/runners/node-test/adapter-project.ts"() {
     "use strict";
     init_fs();
     init_adapter_environment();
     init_adapter_files();
+    init_adapter_observed();
     init_enumerate();
     init_graph3();
     init_run2();
-    NODE_TEST_ADAPTER_VERSION = "1";
+    NAMED_INCOMPLETE = 3;
+  }
+});
+
+// src/runners/node-test/adapter.ts
+import { realpathSync as realpathSync8, statSync as statSync2 } from "node:fs";
+import { relative as relative9, sep as sep12 } from "node:path";
+async function createNodeTestAdapter(project, options) {
+  const root = realpathSync8(options.root);
+  const cwd = projectCwd(root, project);
+  const where2 = slashes3(relative9(root, cwd)) || ".";
+  const label2 = `node-test project ${JSON.stringify(project.name)}`;
+  const note = options.note ?? (() => {
+  });
+  const context = {
+    project,
+    root,
+    cwd,
+    label: label2,
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    options,
+    note: (text2) => note(`${label2}: ${text2}`)
+  };
+  let inner = null;
+  let failure2 = null;
+  const attempt = async () => {
+    const previous = failure2?.text;
+    if (!isDirectory2(cwd)) {
+      failure2 = { text: `cwd ${where2} is not a directory`, missing: true };
+    } else {
+      try {
+        inner = await openProject(context);
+        failure2 = null;
+        return true;
+      } catch (error) {
+        const reason2 = error instanceof Error ? error.message : String(error);
+        failure2 = { text: `its module graph cannot be built: ${reason2}`, missing: false };
+      }
+    }
+    if (failure2.text !== previous) {
+      context.note(`${failure2.text}; the project is skipped until that changes`);
+    }
+    return false;
+  };
+  await attempt();
+  const mayFix = (paths) => failure2?.missing === true ? isDirectory2(cwd) : where2 === "." || paths.some((p) => p.path.startsWith(`${where2}/`));
+  const broken = () => failure2?.text ?? "not started";
+  return {
+    name: "node-test",
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    async invalidate(paths) {
+      if (inner !== null) return inner.invalidate(paths);
+      if (!mayFix(paths) || !await attempt()) return { recreatedProjects: [] };
+      context.note(`${where2} builds again; the project started`);
+      return { recreatedProjects: [project.name] };
+    },
+    affected: async (changed) => inner === null ? { direct: [], transitive: [] } : inner.affected(changed),
+    async closure(testFile) {
+      if (inner === null) throw new Error(`${label2}: ${broken()}`);
+      return inner.closure(testFile);
+    },
+    enumerate: async (testFile) => inner === null ? [] : inner.enumerate(testFile),
+    testFiles: async () => inner === null ? [] : inner.testFiles(),
+    environment: async () => inner === null ? [
+      projectEnvironment2(
+        root,
+        project,
+        { ok: false, error: broken() },
+        [],
+        NODE_TEST_ADAPTER_VERSION
+      )
+    ] : inner.environment(),
+    run: async (testFiles, runOptions) => inner === null ? unavailable2(`${label2}: ${broken()}`) : inner.run(testFiles, runOptions),
+    close: async () => inner?.close()
+  };
+}
+function isDirectory2(path) {
+  try {
+    return statSync2(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+function slashes3(path) {
+  return path.split(sep12).join("/");
+}
+var NODE_TEST_ADAPTER_VERSION;
+var init_adapter2 = __esm({
+  "src/runners/node-test/adapter.ts"() {
+    "use strict";
+    init_adapter_environment();
+    init_adapter_files();
+    init_adapter_project();
+    NODE_TEST_ADAPTER_VERSION = "2";
   }
 });
 
@@ -27218,15 +27557,29 @@ var node_test_runners_exports = {};
 __export(node_test_runners_exports, {
   createNodeTestRunners: () => createNodeTestRunners,
   nodeTestObservedMetaKey: () => nodeTestObservedMetaKey,
+  nodeTestObservedPreloadsMetaKey: () => nodeTestObservedPreloadsMetaKey,
   observedStore: () => observedStore
 });
 function nodeTestObservedMetaKey(project) {
   return `nodeTest.observed.${project}`;
 }
+function nodeTestObservedPreloadsMetaKey(project) {
+  return `nodeTest.observedPreloads.${project}`;
+}
 function observedStore(store, project) {
   const key = nodeTestObservedMetaKey(project);
+  const preloadKey = nodeTestObservedPreloadsMetaKey(project);
+  const read3 = cachedRead(store, key, parseObserved);
+  const readPreloads = cachedRead(store, preloadKey, parsePaths);
   return {
-    read: () => parseObserved(store.meta.get(key)),
+    read: read3,
+    readPreloads,
+    writePreloads(additions) {
+      store.transaction(() => {
+        const merged = /* @__PURE__ */ new Set([...parsePaths(store.meta.get(preloadKey)), ...additions]);
+        store.meta.set(preloadKey, JSON.stringify([...merged].sort(compare)));
+      });
+    },
     write(additions) {
       store.transaction(() => {
         const merged = new Map(
@@ -27249,6 +27602,23 @@ function observedStore(store, project) {
       });
     }
   };
+}
+function cachedRead(store, key, parse5) {
+  let last = null;
+  return () => {
+    const raw = store.meta.get(key);
+    if (last === null || last.raw !== raw) last = { raw, value: parse5(raw) };
+    return last.value;
+  };
+}
+function parsePaths(raw) {
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
 }
 function parseObserved(raw) {
   if (raw === null) return {};
@@ -27431,7 +27801,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.23";
+  if (true) return "0.1.24";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -27930,11 +28300,16 @@ function seedNodeTest(root) {
       if (parsed !== null) found.push({ dir, script, parsed });
     }
   }
-  const counts = /* @__PURE__ */ new Map();
-  for (const { script } of found) counts.set(script, (counts.get(script) ?? 0) + 1);
+  const all = /* @__PURE__ */ new Map();
+  const seeded = /* @__PURE__ */ new Map();
+  for (const { script, parsed } of found) {
+    all.set(script, (all.get(script) ?? 0) + 1);
+    if (typeof parsed !== "string") seeded.set(script, (seeded.get(script) ?? 0) + 1);
+  }
   const projects = [];
   const templates = [];
   for (const { dir, script, parsed } of found) {
+    const counts = typeof parsed === "string" ? all : seeded;
     const name = dir !== "" && (counts.get(script) ?? 0) > 1 ? `${dir}:${script}` : script;
     const where2 = manifestPath(dir);
     const cwd = dir === "" ? {} : { cwd: dir };
@@ -30049,16 +30424,20 @@ function initClaudeCode(io) {
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
   );
   let seed = { projects: [], notes: [], templates: [] };
+  const suggest = !writeConfig && lacksNodeTest(configPath);
   try {
-    if (writeConfig) seed = seedNodeTest(root);
+    if (writeConfig || suggest) seed = seedNodeTest(root);
   } catch (error) {
-    io.stderr(
-      `squeal init: could not read package.json scripts: ${reason(error)}; nothing changed
+    if (writeConfig) {
+      io.stderr(
+        `squeal init: could not read package.json scripts: ${reason(error)}; nothing changed
 `
-    );
-    return 1;
+      );
+      return 1;
+    }
+    lines.push(`could not read package.json scripts to suggest nodeTest: ${reason(error)}`);
   }
-  lines.push(...seed.notes);
+  lines.push(...suggest ? seed.notes.filter((n) => !n.startsWith(SEEDED)) : seed.notes);
   const next = { ...settings.value };
   const marketplaceEntries = marketplaces;
   if (MARKETPLACE_NAME in marketplaceEntries) {
@@ -30102,12 +30481,25 @@ function initClaudeCode(io) {
   io.stdout(
     [
       ...lines.map((line) => `squeal init: ${line}`),
+      ...suggest && seed.projects.length > 0 ? [
+        "squeal.config.json has no nodeTest; to validate these node:test suites, add:",
+        JSON.stringify({ nodeTest: seed.projects }, null, 2)
+      ] : [],
       ...seed.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)],
       `Each collaborator installs the plugin once: claude plugin install ${PLUGIN_ID} --scope project`,
       ""
     ].join("\n")
   );
   return 0;
+}
+var SEEDED = "seeded nodeTest project";
+function lacksNodeTest(path) {
+  try {
+    const value = JSON.parse(readFileSync16(path, "utf8"));
+    return isRecord(value) && !("nodeTest" in value);
+  } catch {
+    return false;
+  }
 }
 function restorer(path, text2) {
   return () => {
