@@ -58,7 +58,8 @@ describe("hooks/hooks.json", () => {
       "UserPromptSubmit  user-prompt-submit.mjs ",
       "UserPromptSubmit  waiter.mjs rewake",
       "PostToolBatch  post-tool-batch.mjs ",
-      "PreToolUse Edit|Write|NotebookEdit pre-tool-use.mjs ",
+      // Task 001-93: every tool call, so a turn another Stop hook continued is a turn again.
+      "PreToolUse  pre-tool-use.mjs ",
       "Stop  stop.mjs ",
       "Stop  waiter.mjs rewake",
       "SubagentStop  stop.mjs ",
@@ -66,13 +67,16 @@ describe("hooks/hooks.json", () => {
     ]);
   });
 
-  it("runs each bundle under the plugin root with node and no shell", () => {
-    for (const { hook } of all) {
+  it("runs each bundle under the plugin root with node, the per-tool hooks behind sh", () => {
+    // Task 001-93: hooks that fire per tool call first test for Squeal in sh (fast-path.test.ts).
+    const PER_TOOL = new Set(["PreToolUse", "PostToolBatch"]);
+    for (const { event, hook } of all) {
       expect(hook.type).toBe("command");
-      expect(hook.command).toBe("node");
-      expect(hook.args).toHaveLength(2);
-      expect(hook.args[0]).toBe("--disable-warning=ExperimentalWarning");
-      expect(hook.args[1]).toMatch(/^\$\{CLAUDE_PLUGIN_ROOT\}\/dist\/[a-z-]+\.mjs$/);
+      const node = PER_TOOL.has(event) ? hook.args.slice(3) : [hook.command, ...hook.args];
+      expect(hook.command, event).toBe(PER_TOOL.has(event) ? "sh" : "node");
+      expect(node, event).toHaveLength(3);
+      expect(node.slice(0, 2)).toEqual(["node", "--disable-warning=ExperimentalWarning"]);
+      expect(node[2]).toMatch(/^\$\{CLAUDE_PLUGIN_ROOT\}\/dist\/[a-z-]+\.mjs$/);
       expect(existsSync(join(PLUGIN, "dist", bundleOf(hook) ?? ""))).toBe(true);
     }
   });

@@ -1,5 +1,5 @@
 {
-  "description": "Squeal: validation transitions at tool boundaries, status at Stop. Every hook exits 0 silently in a repository without Squeal.",
+  "description": "Squeal: validation transitions at tool boundaries, status at Stop. Every hook exits 0 silently in a repository without Squeal; the per-tool hooks check for squeal.config.json or a store in sh before Node starts.",
   "hooks": {
     "SessionStart": [
       {
@@ -71,8 +71,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
+            "command": "sh",
             "args": [
+              "-c",
+              "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; { s \"$CLAUDE_PROJECT_DIR\" || s \"$PWD\"; } 2>/dev/null || exit 0; exec \"$@\"",
+              "squeal",
+              "node",
               "--disable-warning=ExperimentalWarning",
               "${CLAUDE_PLUGIN_ROOT}/dist/post-tool-batch.mjs"
             ],
@@ -83,12 +87,15 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node",
+            "command": "sh",
             "args": [
+              "-c",
+              "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; { s \"$CLAUDE_PROJECT_DIR\" || s \"$PWD\"; } 2>/dev/null || exit 0; exec \"$@\"",
+              "squeal",
+              "node",
               "--disable-warning=ExperimentalWarning",
               "${CLAUDE_PLUGIN_ROOT}/dist/pre-tool-use.mjs"
             ],
