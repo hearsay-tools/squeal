@@ -53,6 +53,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       inputs: ["fixtures/**/*.json"],
       env: { allowlist: ["TZ"] },
       runner: { tierSize: 2, timeoutMs: null },
+      nodeTest: [],
       daemon: { idleExitMinutes: 0.5 },
       store: { retentionDays: 3, maxSizeMb: 200 },
     });

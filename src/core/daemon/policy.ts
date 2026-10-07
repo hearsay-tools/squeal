@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMissing, isRecord } from "../fs/index.js";
-import { globToRegExp } from "../keys/glob.js";
 import { readDaemonNotes } from "../notes.js";
+import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import {
   DEFAULT_POLICY,
   type LoadedPolicy,
@@ -16,10 +16,15 @@ export const POLICY_FILE = "squeal.config.json";
 
 /**
  * Checks one leaf value; returns what was expected when the value does not
- * fit, or a whole `problem` when the value has the right type but cannot be
- * used.
+ * fit, a whole `problem` when the value has the right type but cannot be
+ * used, or the part of a list it keeps with one problem per dropped entry.
  */
-type Leaf = (value: unknown) => string | { readonly problem: string } | null;
+type Leaf = (value: unknown) => string | { readonly problem: string } | Kept | null;
+/** What a list leaf keeps of its value, and why it dropped the rest. */
+interface Kept {
+  readonly kept: unknown;
+  readonly problems: readonly string[];
+}
 interface Shape {
   readonly [key: string]: Leaf | Shape;
 }
@@ -40,15 +45,9 @@ const inputs: Leaf = (v) => {
   const globs = isList
     ? (v as string[])
     : Object.entries(v as Record<string, string[]>).flatMap(([test, input]) => [test, ...input]);
-  for (const glob of globs) {
-    try {
-      globToRegExp(glob);
-    } catch (error) {
-      return { problem: `has a glob Squeal cannot use: ${(error as Error).message}` };
-    }
-  }
-  return null;
+  return compiles(globs);
 };
+
 const atLeastZero: Leaf = (v) => (isNumber(v) && v >= 0 ? null : "a number >= 0");
 const aboveZero: Leaf = (v) => (isNumber(v) && v > 0 ? null : "a number > 0");
 const positiveInteger: Leaf = (v) =>
@@ -75,6 +74,7 @@ const SHAPE: Shape = {
     tierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger),
   },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
 };
@@ -137,7 +137,10 @@ function merge(
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
-      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
     } else if (!isRecord(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
