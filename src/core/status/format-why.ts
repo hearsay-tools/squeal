@@ -1,4 +1,5 @@
 import { formatCheck } from "../state/index.js";
+import { plural } from "../text.js";
 import type {
   KnownOutcome,
   KnownState,
@@ -7,7 +8,7 @@ import type {
   WhyResult,
   WhyResultEntry,
 } from "../types/index.js";
-import { formatUnavailable, plural, shortCommit } from "./format-status.js";
+import { formatUnavailable, shortCommit } from "./format-status.js";
 
 const INDENT = "        ";
 
@@ -62,7 +63,7 @@ function knownState(why: WhyReport, s: KnownState | null): string[] {
 function history(transitions: readonly Transition[]): string[] {
   if (transitions.length === 0) return ["History: no transitions in this worktree"];
   return [
-    `History (${transitions.length} ${plural(transitions.length, "transition")}, oldest first):`,
+    `History (${plural(transitions.length, "transition")}, oldest first):`,
     ...transitions.map(
       (t) => `  revision ${t.revision}  ${new Date(t.at).toISOString()}  ${transitionText(t)}`,
     ),

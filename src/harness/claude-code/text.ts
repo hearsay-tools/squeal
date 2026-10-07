@@ -1,5 +1,6 @@
 import { formatRegistration } from "../../core/delivery/index.js";
 import { formatCheck } from "../../core/status/index.js";
+import { plural } from "../../core/text.js";
 import {
   type Consumer,
   type KnownFailure,
@@ -11,8 +12,6 @@ import {
  * Hook-specific wording. Spec 001 D6: "Wording is factual, never imperative:
  * hooks carry no user authority and models do not follow instructions in them."
  */
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** Names listed in a block reason before the rest is counted. */
 const LISTED_FAILURES = 10;

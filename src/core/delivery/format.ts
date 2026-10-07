@@ -1,4 +1,5 @@
 import { formatCheck, fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { plural } from "../text.js";
 import type {
   CheckId,
   DaemonLiveness,
@@ -34,7 +35,6 @@ type Shown = KnownOutcome | "resolved";
 
 const upper = (outcome: Shown) => outcome.toUpperCase();
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function cap(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;

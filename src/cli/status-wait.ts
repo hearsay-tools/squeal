@@ -8,6 +8,7 @@ import {
   STATUS_BUSY_TIMEOUT_MS,
   withStatusStore,
 } from "../core/status/index.js";
+import { plural } from "../core/text.js";
 import type {
   AbsolutePath,
   DaemonLiveness,
@@ -205,7 +206,7 @@ function waitLine(
     case "quiet":
       return `Returned on quiet: nothing pending ${at} ${after}`;
     case "news":
-      return `Returned on news: ${transitions} ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
+      return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
     case "no-daemon":
       return `Returned without a daemon: ${noDaemonText(snapshot.daemon)}; results are as of revision ${snapshot.revision}`;
     case "timeout":
@@ -222,14 +223,10 @@ function noDaemonText(daemon: DaemonLiveness): string {
 function pendingText(snapshot: StatusSnapshot): string {
   const checks = snapshot.counts.pending;
   const files = snapshot.testFilesWithoutChecks.pending;
-  const parts = [`${checks} ${plural(checks, "check")}`];
-  if (files > 0) parts.push(`${files} test ${plural(files, "file")} without checks`);
+  const parts = [plural(checks, "check")];
+  if (files > 0) parts.push(`${plural(files, "test file")} without checks`);
   if (snapshot.runnerPartPending === true) parts.push(runnerPartText(snapshot.revision));
   return parts.length === 1
     ? `${parts[0]} pending`
     : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
-}
-
-function plural(count: number, word: string): string {
-  return count === 1 ? word : `${word}s`;
 }
