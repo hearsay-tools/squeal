@@ -75,6 +75,21 @@ describe("squeal init --harness codex", () => {
     expect(stdout).toContain("/hooks");
   });
 
+  it("seeds nodeTest from the repository's node --test scripts, as squeal init does (spec 003 D1)", () => {
+    const repo = fakeRepo();
+    writeFileSync(
+      join(repo.main, "package.json"),
+      `${JSON.stringify({ scripts: { "test:unit": "node --import tsx --test test/unit/*.test.ts" } })}\n`,
+    );
+    const { code, stdout } = run(["init", "--harness", "codex"], repo.main);
+    expect(code).toBe(0);
+    const config = JSON.parse(readFileSync(join(repo.main, "squeal.config.json"), "utf8"));
+    expect(config.nodeTest).toEqual([
+      { name: "test:unit", argv: ["--import", "tsx"], include: ["test/unit/*.test.ts"] },
+    ]);
+    expect(stdout).toContain("test:unit");
+  });
+
   it("keeps an existing squeal.config.json", () => {
     const repo = fakeRepo();
     writeFileSync(join(repo.main, "squeal.config.json"), "{}\n");

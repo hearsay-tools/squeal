@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { findWorktreeRoot } from "../../core/fs/index.js";
 import { DEFAULT_POLICY } from "../../core/types/index.js";
 import type { CliIo } from "../main.js";
+import { type NodeTestSeed, seedNodeTest } from "../node-test-seed.js";
 import { findCodexPlugin, launcherConfig, readPluginHooks } from "./launcher.js";
 
 /*
@@ -32,8 +33,14 @@ export function initCodex(io: CliIo): number {
   }
   const configPath = join(root, "squeal.config.json");
   const writeConfig = !existsSync(configPath);
+  // Spec 003 D1: a new config gets the node:test projects of the repository's own scripts, as `squeal init` does.
+  let seed: NodeTestSeed = { projects: [], notes: [], templates: [] };
   try {
-    if (writeConfig) writeFileSync(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}\n`);
+    if (writeConfig) {
+      seed = seedNodeTest(root);
+      const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
+      writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     io.stderr(`squeal init: could not write ${configPath}: ${reason}; nothing changed\n`);
@@ -42,6 +49,10 @@ export function initCodex(io: CliIo): number {
   io.stdout(
     [
       `squeal init: ${writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"}`,
+      ...seed.notes,
+      ...(seed.templates.length === 0
+        ? []
+        : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)]),
       "Each user installs the Codex plugin once; Codex writes its own config:",
       `  codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
       `  codex plugin add ${CODEX_PLUGIN_ID}`,
