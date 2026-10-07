@@ -7,7 +7,7 @@ import type { CodexHookName } from "../../../src/harness/codex/index.js";
 import { check, result } from "../../state/helpers.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";
 import { type SquealRepo, squealRepo } from "../helpers.js";
-import { buildCodexBundles, codexInput, codexRecorded } from "./helpers.js";
+import { buildCodexBundles, codexInput, codexRecorded, sessionOf } from "./helpers.js";
 
 /*
  * Spec 002 goal 7: "Per-tool hooks at calm load: 80 ms p95 for the Node
@@ -26,6 +26,8 @@ const FILES = 50;
 const CHECKS_PER_FILE = 10;
 
 const SESSION = String(codexInput("exec", "session-start", "/").session_id);
+/** Moves the app-server `interrupt` record into the exec session, transcript included (D2). */
+const IN_SESSION = sessionOf("exec", "session-start");
 const AGENT = String(codexInput("exec", "subagent-start", "/").agent_id);
 
 function p95(samples: readonly number[]): number {
@@ -122,8 +124,7 @@ describe("bundled Codex hook latency", () => {
     const r = seeded();
     const dir = runtimeDir();
     await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`));
-    const input = (c: Case) =>
-      codexRecorded(c.mode ?? "exec", c.fixture, r.root, { session_id: SESSION });
+    const input = (c: Case) => codexRecorded(c.mode ?? "exec", c.fixture, r.root, IN_SESSION);
     const env = { XDG_RUNTIME_DIR: dir };
     await runBundle("session-start", input(CASES[0] as Case), env, dist);
 

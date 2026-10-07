@@ -8,7 +8,7 @@ import { CODEX_HOOKS, type CodexHookName } from "../../../src/harness/codex/inde
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, outsideGit, quietCli, runBundle, runtimeDir } from "../bundle-helpers.js";
 import { SUBTRACTS, squealRepo } from "../helpers.js";
-import { buildCodexBundles, codexInput, codexRecorded, type Mode } from "./helpers.js";
+import { buildCodexBundles, codexRecorded, type Mode, sessionOf } from "./helpers.js";
 
 /*
  * Spec 002 goal 7 and D3 on the bundles: built into a directory of their own
@@ -32,7 +32,8 @@ const FIXTURE: Record<CodexHookName, readonly [Mode, string]> = {
   interrupt: ["app-server", "interrupt"],
   "session-end": ["exec", "session-end"],
 };
-const SESSION = String(codexInput("exec", "session-start", "/").session_id);
+/** Moves the app-server `interrupt` record into the exec session, transcript included (D2). */
+const IN_SESSION = sessionOf("exec", "session-start");
 
 let dist = "";
 let cleanup = () => {};
@@ -43,7 +44,7 @@ afterAll(() => cleanup());
 
 function bundle(name: CodexHookName, cwd: string, env: Record<string, string> = {}) {
   const [mode, fixture] = FIXTURE[name];
-  const input = codexRecorded(mode, fixture, cwd, { session_id: SESSION });
+  const input = codexRecorded(mode, fixture, cwd, IN_SESSION);
   return runBundle(name, input, env, dist);
 }
 
