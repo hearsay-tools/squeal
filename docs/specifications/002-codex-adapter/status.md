@@ -29,6 +29,9 @@ Started: 2026-10-07
 
 - 2026-10-07, 002-17, 0.1.22: `squeal init --harness codex --trust [--yes]` lists the Squeal hooks Codex has not trusted (untrusted or modified), asks one yes/no question (default no; no terminal and no `--yes` changes nothing and exits 1), and on yes has Codex trust exactly those through app-server `config/batchWrite`; Squeal opens no file under `CODEX_HOME`. A live test installs the plugin from the checkout into a scratch `CODEX_HOME` and shows every hook trusted with no bypass flag. Row 002-20 filed for an intermittent Codex transitions e2e failure.
 
+- 2026-10-07, 002-16 (`lessons.md`): the plugin works in real Codex sessions: six proof items proven under `codex exec` and app-server threads driven as Cezar drives them, 142 hook runs with none failed or timed out and the slowest 375 ms; no agent ran Vitest itself, each re-issued a denied edit. Defects 1 (symlinked `node_modules`) and 3 (a hung daemon is silent at the boundary) are core, rows 001-111 and 001-112 of the other coordinator. Defect 2 amends D2: an inline `/review` thread carries the parent's `session_id` and no `agent_id`, and only its `transcript_path` file name (ending in its own thread id) and `turn_id` differ, so a hook whose transcript file name does not end in the `session_id` is not a consumer (row 002-21). N5 not measured at calm load (load 7 to 41; Stop p95 74 to 86 ms at load 9 to 17). Note for 002-19: the TUI's managed app-server downloaded and ran Codex 0.161.0.
+- 2026-10-08, 003-24's S2 bound and 002-21 decided by the coordinator; 002-19 waits for 002-21.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.

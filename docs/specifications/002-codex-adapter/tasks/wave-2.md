@@ -53,3 +53,31 @@ Owns: `src/cli/codex/trust.ts`, the `--trust` and `--yes` wiring in `src/cli/cod
 Done when: unit tests against a stub app-server (a script speaking the JSON-RPC lines) cover yes, no, `--yes`, no terminal, nothing to trust, plugin missing, `codex` missing, a silent app-server; a live test, skipped when `codex` is not on `PATH`, installs the plugin from this checkout into a scratch `CODEX_HOME` with `codex plugin marketplace add` and `codex plugin add`, runs `--trust --yes`, and shows every Squeal hook `trusted` in `hooks/list`, with the scratch `CODEX_HOME/config.toml` changed only by Codex, a scratch `HOME/.codex` untouched, and no bypass flag anywhere; lint, typecheck, full suite green. Never touch the real `~/.codex`. Do not run `npm run build`.
 
 Use /worker.
+
+## 002-21 inline `/review` threads are not consumers
+
+Outcome: a Codex thread that runs under the main agent's `session_id` without an `agent_id`, such as an inline `/review`, never takes, marks or blocks on the main agent's reports.
+
+Read: `lessons.md` defect 2 and its N4 section (the field table), spec 002 D2 as amended, `src/harness/codex/` (input, handlers, hook), 001 D9 on forks.
+
+Shape: repair. Seam: `src/harness/codex/input.ts`, one predicate `isUnservedThread(input)`: `agent_id` absent, `transcript_path` present, and its file name not ending in `<session_id>.jsonl`. Then every handler returns no output and touches no store for such an input (UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionStart, SessionEnd, Interrupt). Fixtures under `test/fixtures/codex-hooks/review/` built from `research/probes/proof/logs/n4inline2.stdin.jsonl` (trim prompts).
+
+Owns: `src/harness/codex/**`, `test/harness/codex/**`, `test/fixtures/codex-hooks/**`. Leave alone: `src/harness/shared/**` and `src/core/delivery/**` (the other coordinator's 001-112 is running there), `plugins/**`, `test/e2e/**` (002-20).
+
+Done when: with an undelivered `PASS -> FAIL` for `(session_id, main)`, the review thread's recorded UserPromptSubmit, PreToolUse on `apply_patch` and PostToolUse print nothing and leave it undelivered, and the main thread's next PostToolUse delivers it; a main-thread input without `transcript_path` behaves as today; the bundled hooks' p95 test is unchanged; lint, typecheck, full suite green. Do not run `npm run build`.
+
+Use /worker.
+
+## 002-20 Codex transitions e2e flake
+
+Outcome: `test/e2e/transitions.test.ts` for Codex passes under load, with the cause of its intermittent failure named.
+
+Read: the board row, `attachments/codex-transitions-flake.txt`, `test/e2e/harness.ts` (`settle`, `edit`), `test/integration/node-test.test.ts` `settle` (fixed in 0.1.22 for the same shape), 001 D2 on `runnerPartPending`.
+
+Shape: repair. Reproduce first: run the file under load (for example several copies of the suite or a CPU burner beside it) until the Codex case fails, and record what the store holds at that moment (revisions, runs and their revisions). Then fix the cause in the harness if it is the harness, and name it; if it is the product, stop and report to the coordinator with the evidence instead of fixing.
+
+Owns: `test/e2e/**`. Leave alone: everything under `src/` and `plugins/`.
+
+Done when: the cause is named with evidence; the Codex and Claude Code transitions cases pass 10 times in a row under load; lint, typecheck, full suite green.
+
+Use /worker.
