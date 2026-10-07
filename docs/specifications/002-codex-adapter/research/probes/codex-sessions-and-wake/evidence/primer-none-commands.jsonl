@@ -1,0 +1,4 @@
+{"command":"/bin/bash -lc \"pwd; rg --files -g 'AGENTS.md' -g 'add.js' -g '*test*' -g 'package.json'; git status --short\""}
+{"command":"/bin/bash -lc 'cat add.js add.test.js package.json; for p in /AGENTS.md /tmp/AGENTS.md /tmp/csw/AGENTS.md /tmp/csw/p-none/AGENTS.md; do if [ -f \"$p\" ]; then cat \"$p\"; fi; done'"}
+{"command":"/bin/bash -lc 'npm test'"}
+{"command":"/bin/bash -lc 'npm test; git diff --check; git diff -- add.js'"}

@@ -1,0 +1,33 @@
+{"ms":612,"mark":"thread 01a1172f-c8be-7f30-b830-f1feabbf83a2"}
+{"ms":690,"method":"turn/started","hook":null,"turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":828,"method":"hook/started","hook":"sessionStart","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":1024,"method":"hook/started","hook":"userPromptSubmit","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":5485,"method":"hook/started","hook":"preToolUse","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":5786,"method":"hook/started","hook":"postToolUse","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":10209,"method":"hook/started","hook":"preToolUse","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":10507,"method":"hook/started","hook":"postToolUse","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":13516,"method":"hook/started","hook":"stop","turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":13741,"method":"turn/completed","hook":null,"turn":"01a1172f-c99e-75f0-b6c6-90d516d50733"}
+{"ms":13741,"mark":"turn 1 completed; idle"}
+{"ms":13758,"mark":"inject_items sent"}
+{"ms":28762,"mark":"turn started on its own while idle (inject + async hook): no"}
+{"ms":29233,"mark":"codex queue returned after 470 ms: Queued message 01a11730-3913-7451-8c79-5422162d983c for thread 01a1172f-c8be-7f30-b830-f1feabbf83a2."}
+{"ms":30309,"method":"thread/queue/changed","hook":null,"turn":null}
+{"ms":30325,"method":"thread/queue/changed","hook":null,"turn":null}
+{"ms":30329,"method":"turn/started","hook":null,"turn":"01a11730-3d9b-7fc0-9f2d-8eb37ad1786b"}
+{"ms":30329,"mark":"queued turn started: 1566 ms after codex queue"}
+{"ms":30455,"method":"hook/started","hook":"userPromptSubmit","turn":"01a11730-3d9b-7fc0-9f2d-8eb37ad1786b"}
+{"ms":34539,"method":"hook/started","hook":"stop","turn":"01a11730-3d9b-7fc0-9f2d-8eb37ad1786b"}
+{"ms":34665,"method":"turn/completed","hook":null,"turn":"01a11730-3d9b-7fc0-9f2d-8eb37ad1786b"}
+{"ms":34665,"mark":"queued turn completed"}
+{"ms":34688,"method":"turn/started","hook":null,"turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":34812,"method":"hook/started","hook":"userPromptSubmit","turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":38561,"method":"hook/started","hook":"preToolUse","turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":38917,"mark":"turn/steer accepted"}
+{"ms":40308,"method":"thread/queue/changed","hook":null,"turn":null}
+{"ms":44806,"method":"hook/started","hook":"postToolUse","turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":44950,"method":"hook/started","hook":"userPromptSubmit","turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":49486,"method":"hook/started","hook":"stop","turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":49688,"method":"turn/completed","hook":null,"turn":"01a11730-4ea2-7630-b9c9-392b1326e34f"}
+{"ms":49688,"mark":"turn 4 completed"}
+{"ms":49970,"mark":"app-server exited"}

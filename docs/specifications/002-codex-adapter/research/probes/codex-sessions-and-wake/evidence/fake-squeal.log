@@ -1,0 +1,9 @@
+1791391358258 squeal status
+1791391362471 squeal status --wait 60000
+1791391362805 squeal status --wait 60000
+1791391367301 squeal --help
+1791391367385 squeal status --wait 60000
+1791391375919 squeal status --wait 60000
+1791391379308 squeal status --wait 60000
+1791391380782 squeal status --wait 60000
+1791391387377 squeal status --help

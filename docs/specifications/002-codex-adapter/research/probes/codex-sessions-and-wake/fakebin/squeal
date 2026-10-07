@@ -1,0 +1,4 @@
+#!/bin/sh
+# Throwaway stand-in for `squeal status`: logs the call and prints a passing snapshot.
+echo "$(date +%s%3N) squeal $*" >> /tmp/csw/logs/fake-squeal.log
+echo "Revision: 1"; echo "Daemon: validating, heartbeat 1 s ago"; echo "Known failures: 0"; echo "Checks: 1 current, 0 pending, 0 stale, 0 unknown"

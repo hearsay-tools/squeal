@@ -1,0 +1,9 @@
+{"type":"userMessage","text":"Run this shell command and report its output verbatim: env | grep -E '^CODEX_(SESSION|THREAD)_ID'"}
+{"type":"agentMessage","text":"Using the using-superpowers skill to check the required workflow, then running your command.\n"}
+{"type":"agentMessage","text":"```text\nCODEX_SESSION_ID=01a1172f-c8be-7f30-b830-f1feabbf83a2\nCODEX_THREAD_ID=01a1172f-c8be-7f30-b830-f1feabbf83a2\n```"}
+{"type":"userMessage","text":"Reply in one line: QUEUED-OK, then the name of any test file reported to you as failing in this conversation, or NONE, then any probe nonce (ASYNC-...) you were given, or NONE."}
+{"type":"agentMessage","text":"QUEUED-OK tests/add.test.js ASYNC-7781"}
+{"type":"userMessage","text":"Run the shell command `sleep 6; echo slept`, then reply with one line: the output, and any note you received while the command ran."}
+{"type":"agentMessage","text":"I’ll run the command and include any note received while it runs.\n"}
+{"type":"userMessage","text":"Note: steer nonce STEER-9020."}
+{"type":"agentMessage","text":"slept; Note: steer nonce STEER-9020."}

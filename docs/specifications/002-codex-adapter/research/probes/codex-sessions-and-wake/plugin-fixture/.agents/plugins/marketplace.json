@@ -1,0 +1,12 @@
+{
+  "name": "squeal-probe-local",
+  "interface": { "displayName": "Squeal probe (throwaway)" },
+  "plugins": [
+    {
+      "name": "squeal-probe",
+      "source": { "source": "local", "path": "./plugins/squeal-probe" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

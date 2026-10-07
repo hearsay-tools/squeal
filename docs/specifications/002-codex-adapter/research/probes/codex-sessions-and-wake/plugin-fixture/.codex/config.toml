@@ -1,0 +1,2 @@
+[plugins."squeal-probe@squeal-probe-local"]
+enabled = true
