@@ -180,7 +180,7 @@ Outcome: a symlinked directory that git does not ignore is observed like any pro
 
 Read: `reviews/wave-11f.md` (B1 has the fixture and fix steps; S1, S2); spec D2; `src/core/watcher/` as 001-111 left it.
 
-Decided: classify a path beyond a symlinked directory by the ignore status of the symlink's own path (checked with `check-ignore` on the link itself, which git accepts): ignored link, ignored subtree; not ignored, its descendants are candidates and the watcher observes the link's target. A batch git refuses is still split. S1: a Bash call whose revision changed nothing says nothing extra; S2 as the review proposes.
+Decided: classify a path beyond a symlinked directory by the ignore status of the symlink's own path (checked with `check-ignore` on the link itself, which git accepts): ignored link, ignored subtree; not ignored, its descendants are candidates and the watcher observes the link's target. A batch git refuses is still split. S1 and S2 as the review proposes: keep the conservative trigger and reword the line so it does not claim an edit happened ("any change this call made has no result"); an unrecognised named tool counts as possibly editing.
 
 Own: `src/core/watcher/`, `src/harness/shared/` (S1, S2 only; ask before `src/harness/codex/`), tests under `test/watcher/`, `test/daemon/`, `test/harness/`, D2 and D9 sentences in `spec.md`, one `status.md` line. Leave `src/core/scheduler/`, `src/core/daemon/` (001-113), `src/core/status/` (001-116) and `src/runners/vitest/`, `src/core/keys/` (001-117) alone. Do not run `npm run build` or touch any `dist`. Commit as you go.
 
