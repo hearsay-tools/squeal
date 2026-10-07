@@ -7,6 +7,57 @@ function isMissing(error) {
   return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
 }
 
+// src/core/fs/git-layout.ts
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
+function findWorktreeRoot(path) {
+  let dir = resolve(path);
+  if (existsSync(dir)) dir = realpathSync(dir);
+  for (; ; ) {
+    if (existsSync(join(dir, ".git"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function worktreeIdFor(root) {
+  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+}
+function gitDirOf(root) {
+  return dotGit(root)?.gitDir ?? null;
+}
+function resolveCommonDir(root) {
+  const entry2 = dotGit(root);
+  if (entry2 === null) return null;
+  if (!entry2.isFile) return realpathSync(entry2.gitDir);
+  const { gitDir } = entry2;
+  if (lstatOrNull(gitDir) === null) return null;
+  const commondirFile = join(gitDir, "commondir");
+  if (lstatOrNull(commondirFile) === null) return realpathSync(gitDir);
+  const commondir = readFileSync(commondirFile, "utf8").trim();
+  const common = isAbsolute(commondir) ? commondir : resolve(gitDir, commondir);
+  return lstatOrNull(common) === null ? null : realpathSync(common);
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+function dotGit(root) {
+  const path = join(root, ".git");
+  const stat = lstatOrNull(path);
+  if (stat === null) return null;
+  if (stat.isDirectory()) return { gitDir: path, isFile: false };
+  if (!stat.isFile()) return null;
+  const match = GITDIR_LINE.exec(readFileSync(path, "utf8"));
+  return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
+}
+
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -88,7 +139,7 @@ function testFileId(ref) {
 }
 
 // src/core/state/fingerprint.ts
-import { realpathSync } from "node:fs";
+import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
 var SUMMARY_MAX_CHARS = 300;
 var VOLATILE = [
@@ -109,7 +160,7 @@ function tempPrefixes() {
   const dir = tmpdir().replace(/\/+$/, "");
   let real = dir;
   try {
-    real = realpathSync(dir);
+    real = realpathSync2(dir);
   } catch {
   }
   return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
@@ -271,17 +322,17 @@ function transitionKind(from, to) {
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { createHash as createHash2 } from "node:crypto";
+import { existsSync as existsSync2, mkdirSync, rmSync } from "node:fs";
+import { join as join2 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
-  const id = createHash("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join(locksDir, `waiter-${id}.sqlite`);
+  const id = createHash2("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  return join2(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync(path)) return;
+  if (!existsSync2(path)) return;
   const db = lock(path);
   if (db === null) return;
   try {
@@ -379,9 +430,30 @@ function planDelta(input) {
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
+// src/core/notes.ts
+function readDaemonNotes(store, worktreeId) {
+  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+}
+function parseList(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function toNote(item) {
+  if (typeof item !== "object" || item === null) return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  if (revision !== null && typeof revision !== "number") return [];
+  return [{ at: at2, revision, text }];
+}
+
 // src/core/store/open.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
+import { join as join5 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
@@ -450,44 +522,15 @@ function rollback(db) {
 }
 
 // src/core/store/paths.ts
-import { createHash as createHash2 } from "node:crypto";
-import { lstatSync, readFileSync, realpathSync as realpathSync2 } from "node:fs";
-import { isAbsolute, join as join2, resolve } from "node:path";
-function worktreeIdFor(root) {
-  return createHash2("sha256").update(realpathSync2(root)).digest("hex").slice(0, 16);
-}
-function resolveCommonDir(root) {
-  const dotGit = join2(root, ".git");
-  const stat = lstatOrNull(dotGit);
-  if (stat === null) return null;
-  if (stat.isDirectory()) return realpathSync2(dotGit);
-  if (!stat.isFile()) return null;
-  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
-  if (!match?.[1]) return null;
-  const gitdir = resolve(root, match[1]);
-  if (lstatOrNull(gitdir) === null) return null;
-  const commondirFile = join2(gitdir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync2(gitdir);
-  const commondir = readFileSync(commondirFile, "utf8").trim();
-  const common = isAbsolute(commondir) ? commondir : resolve(gitdir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync2(common);
-}
+import { join as join3 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join2(commonDir, "squeal");
+  const dir = join3(commonDir, "squeal");
   return {
     dir,
-    database: join2(dir, "store.sqlite"),
-    runsDir: join2(dir, "runs"),
-    locksDir: join2(dir, "locks")
+    database: join3(dir, "store.sqlite"),
+    runsDir: join3(dir, "runs"),
+    locksDir: join3(dir, "locks")
   };
-}
-function lstatOrNull(path) {
-  try {
-    return lstatSync(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
 }
 
 // src/core/store/schema.ts
@@ -782,8 +825,8 @@ function flag(value) {
 }
 
 // src/core/store/prune.ts
-import { existsSync as existsSync2, rmSync as rmSync2 } from "node:fs";
-import { join as join3, resolve as resolve2, sep } from "node:path";
+import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
+import { join as join4, resolve as resolve2, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -805,7 +848,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync2(join3(worktree.root, ".git"))) continue;
+    if (existsSync3(join4(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -1720,7 +1763,7 @@ function isStoreOpenFailure(value) {
 }
 function openStore(commonDir, options = {}) {
   const paths = storePaths(commonDir);
-  if (!existsSync3(paths.database)) {
+  if (!existsSync4(paths.database)) {
     if (options.create === false) return { reason: "missing" };
     mkdirSync2(paths.dir, { recursive: true });
   }
@@ -1774,7 +1817,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync2(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync2(join4(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync2(join5(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -1797,44 +1840,33 @@ function recover(paths, options) {
 }
 function moveAside(database, at2) {
   let movedTo = `${database}.corrupt-${at2}`;
-  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
+  for (let n = 1; existsSync4(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
   renameSync(database, movedTo);
-  if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
+  if (existsSync4(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync3(`${database}-shm`, { force: true });
   return movedTo;
 }
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync2, statSync } from "node:fs";
-import { join as join5, resolve as resolve3 } from "node:path";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join6 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
-  const gitDir = worktreeGitDir(root);
+  const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join5(gitDir, "HEAD"));
+  let value = read2(join6(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join5(gitDir, ref)) ?? read2(join5(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join6(gitDir, ref)) ?? read2(join6(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
-function worktreeGitDir(root) {
-  const dotGit = join5(root, ".git");
-  try {
-    if (statSync(dotGit).isDirectory()) return dotGit;
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  const line = /^gitdir:\s*(.+?)\s*$/m.exec(read2(dotGit) ?? "");
-  return line?.[1] === void 0 ? null : resolve3(root, line[1]);
-}
 function packed(commonDir, ref) {
-  for (const line of (read2(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join6(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -1849,42 +1881,8 @@ function read2(path) {
   }
 }
 
-// src/core/status/notes.ts
-var MAX_NOTES = MAX_PERSISTED_NOTES;
-function readDaemonNotes(store, worktreeId) {
-  const raw = store.meta.get(notesMetaKey(worktreeId));
-  if (raw === null) return [];
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  if (!Array.isArray(parsed)) return [];
-  return parsed.flatMap(toNote).slice(-MAX_NOTES);
-}
-function toNote(item) {
-  if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
-  if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text }];
-}
-
 // src/core/status/open.ts
-import { existsSync as existsSync4, realpathSync as realpathSync3 } from "node:fs";
-import { dirname, join as join6, resolve as resolve4 } from "node:path";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
-function findWorktreeRoot(path) {
-  let dir = resolve4(path);
-  if (existsSync4(dir)) dir = realpathSync3(dir);
-  for (; ; ) {
-    if (existsSync4(join6(dir, ".git"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
 function unavailable(reason, detail) {
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -2322,7 +2320,7 @@ import { existsSync as existsSync5, mkdirSync as mkdirSync3 } from "node:fs";
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
-  return new Promise((resolve6, reject) => {
+  return new Promise((resolve3, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled = false;
@@ -2332,7 +2330,7 @@ function requestDaemon(socketPath, request, timeoutMs) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve6(response);
+      else resolve3(response);
     };
     const timer = setTimeout(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -2367,7 +2365,7 @@ function failure(code, message) {
 
 // src/core/daemon/paths.ts
 import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join7, resolve as resolve5 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join7 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? join7(tempDir(env), userDirName());
 }
