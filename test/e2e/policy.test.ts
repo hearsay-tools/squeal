@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatCheck } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
@@ -6,7 +8,8 @@ import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, SLOW, until } from "./harness
 
 /*
  * Spec 001 D9 policy hooks, end to end, and review wave 3 S1: PreToolUse
- * denies one edit on a regression and leaves recoveries for PostToolBatch;
+ * denies one edit on a `PASS -> FAIL` and leaves recoveries and first-seen
+ * failures for PostToolBatch (task 001-101);
  * Stop with `stop.blockOnKnownFailures` blocks only on failures current at
  * the revision and names failures whose re-run is in flight as pending.
  */
@@ -67,6 +70,19 @@ describe("PreToolUse with interrupt.onRegression", () => {
     expect(await e.hook("pre-tool-use", e.main)).toMatchObject({ code: 0, stdout: "" });
     const fixed = await e.hook("post-tool-batch", e.main);
     expect(fixed.text).toContain(`PASS  ${ADDS}\n      FAIL -> PASS`);
+  }, 240_000);
+  it("never denies for a failing test file the agent wrote (task 001-101)", async (ctx) => {
+    const e = fixture(ctx);
+    await registered(e);
+    const DIVIDES = "test/divide.test.ts > divides";
+    writeFileSync(
+      join(e.main, "test", "divide.test.ts"),
+      'import { expect, it } from "vitest";\n\nit("divides", () => {\n  expect(6 / 2).toBe(4);\n});\n',
+    );
+    await e.settle(e.main, "the new failing test", failingOnly(DIVIDES));
+    expect(await e.hook("pre-tool-use", e.main)).toMatchObject({ code: 0, stdout: "" });
+    const told = await e.hook("post-tool-batch", e.main);
+    expect(told.text).toContain(`FAIL  ${DIVIDES}\n      first observed: FAIL`);
   }, 240_000);
 });
 
