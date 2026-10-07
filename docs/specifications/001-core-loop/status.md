@@ -99,6 +99,8 @@ Started: 2026-10-02
 
 - 2026-10-08, wave 11 (001-113, `reviews/wave-11c.md` B1, B2, S1; the restart decided by the human): D5 and D10 amended. The wait under a running daemon is removed: when the install goes while the daemon runs (a revision touching an installed lockfile or the root `package.json`, every reconciliation pass, the check before each tier), at the root or in a declaring workspace, the scheduler abandons the open checkpoint, drops the queue and runner parts, records nothing from the tier in flight, and the daemon persists "dependencies were removed under a running daemon (a reinstall); this daemon exits and the next session starts a fresh one", clears its record and exits 0. The next daemon queues as edits the paths of its start revision and of every revision after the refined one. The install stamp covers each declaring workspace while the root holds no install (S1). Additive types: `SchedulerOptions.onReinstall`, `DaemonExitReason` `"reinstalled"`, `REINSTALL_NOTE` (types/daemon.ts by the worker).
 
+- 2026-10-08, wave 11 (001-116, `lessons.md` defect 23, from 002-20; the read transaction decided by the coordinator): D7 amended. `squeal status`, `--json`, each `--wait` poll, the delivery status builder and each poll of Stop's wait read inside one deferred `BEGIN` ... `COMMIT`, so a revision committed with its re-key between two reads no longer shows as the new revision with nothing pending. New helper `readTransaction` in `src/core/store/` (additive); no type changes.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
