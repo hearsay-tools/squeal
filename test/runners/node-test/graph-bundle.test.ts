@@ -13,17 +13,6 @@ import { bundleOptions } from "../../../src/harness/claude-code/build.js";
  * neither.
  */
 
-/**
- * enhanced-resolve is CommonJS and `require`s Node builtins, which esbuild's
- * ESM output cannot serve without a `require` in scope. Agreed with the
- * coordinator (request 006ae93b): 002-12 adds this banner to `bundleOptions`;
- * until it lands the test falls back to it, and only when the shipped options
- * carry none.
- */
-const REQUIRE_BANNER = {
-  js: 'import { createRequire as __squealCreateRequire } from "node:module";\nconst require = __squealCreateRequire(import.meta.url);',
-};
-
 const scratch = mkdtempSync(join(tmpdir(), "squeal-node-test-graph-bundle-"));
 const edge = resolve(import.meta.dirname, "../../fixtures/node-test/edge");
 
@@ -33,10 +22,11 @@ describe("node-test graph: bundle", () => {
   it("inlines both dependencies and builds a closure with no node_modules", {
     timeout: 60_000,
   }, async () => {
+    // The shipped options carry the createRequire banner enhanced-resolve needs (002-12, request 006ae93b).
     const options = bundleOptions(scratch);
+    expect(options.banner?.js).toContain("createRequire");
     const result = await build({
       ...options,
-      banner: options.banner ?? REQUIRE_BANNER,
       entryPoints: [{ in: "src/runners/node-test/graph/index.ts", out: "graph" }],
     });
     const inputs = Object.keys(result.metafile?.inputs ?? {});
