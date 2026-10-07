@@ -19,6 +19,7 @@ export {
   findInstalledLockfile,
   type InstalledLockfile,
   installedDependenciesFingerprint,
+  isInstalledLockfile,
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
 export { type ClosureUpdate, type KeyChange, KeyIndex } from "./key-index.js";

@@ -113,6 +113,16 @@ const LOCKFILES: readonly { readonly path: string; readonly patches: string | nu
   { path: "bun.lockb", patches: "patches" },
 ];
 
+/**
+ * Whether a worktree-relative path is an installed lockfile
+ * `installedDependenciesFingerprint` reads, at the root or in a project
+ * below it. Task 001-91: reports say when no dependencies are installed and
+ * when a revision changed the installed lockfile.
+ */
+export function isInstalledLockfile(path: string): boolean {
+  return LOCKFILES.some((format) => path === format.path || path.endsWith(`/${format.path}`));
+}
+
 /** An installed lockfile and the patches directory its package manager applies. */
 export interface InstalledLockfile {
   readonly path: AbsolutePath;
