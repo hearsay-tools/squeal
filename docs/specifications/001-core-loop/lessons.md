@@ -716,19 +716,21 @@ Evidence and notes:
 3. **Defect 8 did not reproduce on 2.1.292.** Both `/exit`s ran SessionEnd (`SessionEnd:prompt_input_exit … completed with status 0` at 12:47:20.209 and 12:51:28.582), and the consumer row was gone within 0.3 s. Claude Code still killed the armed waiter (`status code 137`).
 4. **Hook cost inside Claude Code.** These are Claude Code's own `durationMs`, spawn included, at load 4.5 to 10. Squeal's Stop: 13 runs, 12 of them silent, 71 to 107 ms, p50 93 ms. PostToolBatch when delivering: 79 to 94 ms (n=4). SessionStart registering with the primer: 129 ms (n=1). Claude Code records every Stop hook's duration, but a PostToolBatch or UserPromptSubmit duration only when the hook prints, so a quiet PostToolBatch or a silent UserPromptSubmit has no figure here. The bundled table follows.
 
-Bundled hooks, `test/harness/latency.test.ts` on the committed 0.1.9 `dist` (best of up to 3 rounds of 20 cold runs, a store of 500 checks), at load 20 at the end of the run, so nothing was asserted:
+Bundled hooks, `test/harness/latency.test.ts` on the committed 0.1.9 `dist`: 3 runs from 13:33:12 to 13:34:02, each the best of up to 3 rounds of 20 cold runs against a store of 500 checks. The script waited 40 minutes for load below 4 and never saw it; the lowest load seen was 6.15, and the runs ran at load 15 to 22, so nothing was asserted. The waiter's 36 to 38 ms p50, which is Node start, shows how little the load inflated these runs. An earlier run at load 20 measured that baseline at 57 ms and every hook 20 to 40 ms slower.
 
-| Hook | p50 ms | p95 ms | max ms |
-| --- | --- | --- | --- |
-| session-start (with the primer) | 120 | 148 | 528 |
-| post-tool-batch | 78 | 100 | 101 |
-| pre-tool-use | 80 | 86 | 92 |
-| stop, speaking | 81 | 99 | 100 |
-| stop, silent (ends the turn) | 96 | 110 | 116 |
-| user-prompt-submit, delivering | 89 | 111 | 119 |
-| user-prompt-submit, silent | 97 | 134 | 200 |
-| session-end | 84 | 91 | 98 |
-| waiter (Node start baseline) | 57 | 72 | 80 |
+| Hook | p50 ms | p95 ms |
+| --- | --- | --- |
+| session-start (with the primer) | 64 to 69 | 71 to 79 |
+| post-tool-batch | 57 to 81 | 61 to 102 |
+| pre-tool-use | 53 to 58 | 56 to 65 |
+| stop, speaking | 66 to 69 | 71 to 78 |
+| stop, silent (ends the turn) | 67 to 71 | 72 to 78 |
+| user-prompt-submit, delivering | 58 to 62 | 65 to 71 |
+| user-prompt-submit, silent | 56 to 61 | 61 to 67 |
+| session-end | 45 to 58 | 50 to 76 |
+| waiter (Node start baseline) | 36 to 38 | 39 to 41 |
+
+Every hook met 80 ms p95 in every run except PostToolBatch in run 2 (102 ms after 3 rounds; 61 and 66 ms in the other two). The silent Stop, the path review S5 asked about, was 72 to 78 ms.
 
 ### Defect 14 after wave 10
 
