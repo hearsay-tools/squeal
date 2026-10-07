@@ -99,7 +99,7 @@ describe.runIf(process.platform === "linux")(
         10_000,
         "the service gone with the daemon",
       );
-      expect(existsSync(daemonTempDir(repo.commonDir, repo.worktreeId))).toBe(false);
+      expect(existsSync(daemonTempDir(repo.commonDir, repo.root))).toBe(false);
     });
   },
 );

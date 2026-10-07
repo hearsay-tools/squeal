@@ -14,7 +14,7 @@ import {
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
-import { prepareScratch, removeScratch } from "../../src/core/daemon/scratch.js";
+import { daemonScratch, prepareScratch, removeScratch } from "../../src/core/daemon/scratch.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { git } from "../hash/git-repo.js";
 import {
@@ -104,7 +104,7 @@ describe.runIf(process.platform === "linux")(
       // directory and the daemon's temp directory as their `os.tmpdir()`.
       expect((await resultOf(repo, spawned, "test/cwd.test.ts")).outcome).toBe("pass");
       expect((await resultOf(repo, spawned, "test/tmp.test.ts")).outcome).toBe("pass");
-      const tempDir = daemonTempDir(repo.commonDir, repo.worktreeId);
+      const tempDir = daemonTempDir(repo.commonDir, repo.root);
       expect(tempDir).toMatch(/^\/tmp\/squeal-\d+\/tmp\/[0-9a-f]+$/);
       expect(readdirSync(tempDir).some((name) => name.startsWith("x-"))).toBe(true);
       expect(readdirSync(callerTmp)).toEqual([]);
@@ -133,7 +133,7 @@ describe.runIf(process.platform === "linux")(
 
     it("answers on its socket within a hook's budget, empties its temp directory when it starts, and removes it on squeal stop", async () => {
       const repo = linkedFixture(cleanups, {});
-      const tempDir = daemonTempDir(repo.commonDir, repo.worktreeId);
+      const tempDir = daemonTempDir(repo.commonDir, repo.root);
       // A daemon that died left its files.
       mkdirSync(tempDir, { recursive: true });
       writeFileSync(join(tempDir, "left-by-a-dead-daemon"), "");
@@ -156,7 +156,7 @@ describe.runIf(process.platform === "linux")(
   },
 );
 
-describe("prepareScratch and removeScratch (review wave 7.6, B1 and S1)", () => {
+describe("prepareScratch and removeScratch (review wave 7.6, B1 and S1; wave 7.7, N1 and N2)", () => {
   function scratchIn() {
     const base = realpathSync(mkdtempSync("/tmp/sq-scratch-"));
     cleanups.push(() => rmSync(base, { recursive: true, force: true }));
@@ -164,24 +164,85 @@ describe("prepareScratch and removeScratch (review wave 7.6, B1 and S1)", () => 
     return { workDir: "/", userDir, tempDir: join(userDir, "tmp", "0123456789abcdef") };
   }
 
-  it("make the user directory private and the temp directory empty, then remove the temp directory", () => {
+  it("make the user directory private and the temp directory empty, then remove the temp directory", async () => {
     const scratch = scratchIn();
-    prepareScratch(scratch);
+    const prepared = prepareScratch(scratch);
+    expect(prepared.scratch).toEqual(scratch);
+    expect(prepared.refusal).toBeNull();
     expect(statSync(scratch.userDir).mode & 0o777).toBe(0o700);
     expect(readdirSync(scratch.tempDir)).toEqual([]);
+    await prepared.leftovers;
     removeScratch(scratch);
     expect(existsSync(scratch.tempDir)).toBe(false);
     expect(existsSync(scratch.userDir)).toBe(true);
   });
 
-  it("refuse a user directory that others can enter", () => {
+  it("move a leftover aside and remove it after returning, so its size never delays the socket", async () => {
+    const scratch = scratchIn();
+    mkdirSync(scratch.userDir, { mode: 0o700 });
+    mkdirSync(scratch.tempDir, { recursive: true });
+    for (let i = 0; i < 50; i++) writeFileSync(join(scratch.tempDir, `left-${i}`), "");
+    const prepared = prepareScratch(scratch);
+    expect(readdirSync(scratch.tempDir)).toEqual([]);
+    const aside = readdirSync(join(scratch.userDir, "tmp")).filter((n) => n.includes(".old-"));
+    expect(aside).toHaveLength(1);
+    expect(readdirSync(join(scratch.userDir, "tmp", aside[0] ?? ""))).toHaveLength(50);
+    await prepared.leftovers;
+    expect(readdirSync(join(scratch.userDir, "tmp"))).toEqual(["0123456789abcdef"]);
+  });
+
+  it("remove what was moved aside with the temp directory", () => {
+    const scratch = scratchIn();
+    mkdirSync(`${scratch.tempDir}.old-dead`, { recursive: true });
+    mkdirSync(scratch.tempDir);
+    removeScratch(scratch);
+    expect(readdirSync(join(scratch.userDir, "tmp"))).toEqual([]);
+  });
+
+  it("refuse a user directory that others can enter, and use a private directory of the daemon's own", async () => {
     const scratch = scratchIn();
     mkdirSync(scratch.userDir);
     chmodSync(scratch.userDir, 0o755);
-    expect(() => prepareScratch(scratch)).toThrow(
-      /temp directory .*squeal-user has mode 755, not 700; refusing to use it/,
+    const first = prepareScratch(scratch);
+    expect(first.refusal).toMatch(
+      /^temp directory .*squeal-user has mode 755, not 700; refusing to use it; using .*squeal-user-0123456789abcdef-\w{6} instead$/,
     );
-    expect(existsSync(scratch.tempDir)).toBe(false);
+    const fallback = first.scratch.tempDir;
+    expect(fallback.startsWith(`${scratch.userDir}-0123456789abcdef-`)).toBe(true);
+    expect(statSync(fallback).mode & 0o777).toBe(0o700);
+    expect(readdirSync(fallback)).toEqual([]);
+    expect(existsSync(join(scratch.userDir, "tmp"))).toBe(false);
+
+    // A daemon that died left its fallback; the next one of the key removes it.
+    const second = prepareScratch(scratch);
+    await second.leftovers;
+    expect(existsSync(fallback)).toBe(false);
+    removeScratch(second.scratch);
+    expect(existsSync(second.scratch.tempDir)).toBe(false);
+  });
+});
+
+describe("daemonScratch: the temp directory's key (review wave 7.7, B1)", () => {
+  function commonDir(): string {
+    const dir = realpathSync(mkdtempSync("/tmp/sq-common-"));
+    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+    return dir;
+  }
+
+  it("is stable for one repository and root, and differs for another root", () => {
+    const common = commonDir();
+    const first = daemonScratch(common, "/work/a").tempDir;
+    expect(daemonScratch(common, "/work/a").tempDir).toBe(first);
+    expect(daemonScratch(common, "/work/b").tempDir).not.toBe(first);
+    expect(readFileSync(join(common, "squeal/repository-id"), "utf8")).toMatch(/^[0-9a-f]{32}\n$/);
+  });
+
+  it("differs for another repository at the same root, and for one cloned again in place", () => {
+    const common = commonDir();
+    const first = daemonScratch(common, "/work/a").tempDir;
+    expect(daemonScratch(commonDir(), "/work/a").tempDir).not.toBe(first);
+    rmSync(join(common, "squeal"), { recursive: true });
+    expect(daemonScratch(common, "/work/a").tempDir).not.toBe(first);
   });
 });
 

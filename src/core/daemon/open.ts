@@ -12,7 +12,13 @@ import type {
 } from "../types/index.js";
 import { acquireDaemonLock, type DaemonLock } from "./lock.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
-import { type DaemonScratch, daemonScratch, prepareScratch, removeScratch } from "./scratch.js";
+import {
+  type DaemonScratch,
+  daemonScratch,
+  type PreparedScratch,
+  prepareScratch,
+  removeScratch,
+} from "./scratch.js";
 
 /** What a daemon owns once it won its worktree. */
 export interface OpenedDaemon {
@@ -23,6 +29,8 @@ export interface OpenedDaemon {
   readonly lock: DaemonLock;
   /** Working and temp directory outside the root, the temp directory emptied under the lock. */
   readonly scratch: DaemonScratch;
+  /** Background removal of earlier daemons' temp files; shutdown waits for it. */
+  readonly leftovers: Promise<void>;
 }
 
 /** The daemon may wait longer on the store than a hook (spec 001 D8: a busy timeout on every connection). */
@@ -32,9 +40,9 @@ export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
  * Daemon start up to the open store: realpath of the root; the common dir
  * from git (D1); the worktree id; the exclusive lock (D10), losers exit;
  * the store with `integrity_check` (D12), exiting with a note on a newer
- * schema (D8); then the temp directory, emptied (D10, lessons defect 13). Spec 001 D10 as amended after the wave 3 review: the
- * daemon takes the lock "before opening the store, so losers never run the
- * integrity check".
+ * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
+ * Spec 001 D10 as amended after the wave 3 review: the daemon takes the
+ * lock "before opening the store, so losers never run the integrity check".
  */
 export async function openDaemon(
   rootArgument: string,
@@ -88,39 +96,52 @@ export async function openDaemon(
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
   }
   // After the store, so a start that fails on it leaves no temp directory behind.
-  const scratch = daemonScratch(commonDir, worktreeId);
-  const daemon = { root, commonDir, worktreeId, store, lock, scratch };
+  let prepared: PreparedScratch;
   try {
-    prepareScratch(scratch);
+    prepared = prepareScratch(daemonScratch(commonDir, root));
   } catch (error) {
-    return abandon(
-      daemon,
-      now,
-      undefined,
-      `could not prepare ${scratch.tempDir}: ${message(error)}`,
-    );
+    // Nothing of the temp directory was made.
+    const text = `could not prepare a temp directory: ${message(error)}`;
+    return giveUp({ worktreeId, store, lock }, now, () => {}, text);
   }
-  return daemon;
+  const { scratch, refusal, leftovers } = prepared;
+  if (refusal !== null) {
+    writeNote(store, worktreeId, { at: now(), revision: null, text: refusal }, () => {});
+  }
+  return { root, commonDir, worktreeId, store, lock, scratch, leftovers };
 }
 
-/** A start that failed before the daemon owned anything else: a note, then the store, the temp directory and the lock go. */
-export function abandon(
+/**
+ * A start that failed before the daemon owned anything else: a note, then
+ * the temp directory, once its leftovers are gone, the store and the lock.
+ */
+export async function abandon(
   opened: OpenedDaemon,
   now: () => EpochMs,
   log: ((line: string) => void) | undefined,
   text: string,
-): DaemonExit {
+): Promise<DaemonExit> {
   const report = log ?? (() => {});
+  await opened.leftovers;
+  try {
+    removeScratch(opened.scratch);
+  } catch (error) {
+    report(`shutdown: temp dir removal failed: ${message(error)}`);
+  }
+  return giveUp(opened, now, report, text);
+}
+
+function giveUp(
+  opened: Pick<OpenedDaemon, "worktreeId" | "store" | "lock">,
+  now: () => EpochMs,
+  report: (line: string) => void,
+  text: string,
+): DaemonExit {
   writeNote(opened.store, opened.worktreeId, { at: now(), revision: null, text }, report);
   try {
     opened.store.close();
   } catch (error) {
     report(`shutdown: store.close failed: ${message(error)}`);
-  }
-  try {
-    removeScratch(opened.scratch);
-  } catch (error) {
-    report(`shutdown: temp dir removal failed: ${message(error)}`);
   }
   opened.lock.release();
   return exit("start-failed", 1, text);
