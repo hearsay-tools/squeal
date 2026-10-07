@@ -10,7 +10,8 @@ import { priorityOf } from "./queue.js";
 import { readEnvironments, resolveClosures } from "./revision.js";
 
 /**
- * Daemon start in a worktree.
+ * Daemon start in a worktree: `scan`, then `baseline`, at once or, while no
+ * dependencies are installed, at the install (task 001-100).
  *
  * Spec 001 D5: "On daemon start in a worktree, the baseline is a lookup (step
  * 3 for all test files) followed by a run of the misses, or lookup only, per
@@ -38,16 +39,23 @@ import { readEnvironments, resolveClosures } from "./revision.js";
  * commit records that revision as refined (D2 as amended). Policy `inputs`
  * entries that select nothing get a note each, unless an earlier start
  * persisted the same one (review wave 4.5, S5).
+ *
+ * `scan` is step 1, which needs no runner: the `start` revision and the
+ * revision the ledger starts at.
  */
-export async function bootstrap(context: SchedulerContext, ledger: Ledger): Promise<void> {
-  const { store, keys, runner, worktreeId, policy } = context;
+export async function scan(context: SchedulerContext, ledger: Ledger): Promise<void> {
+  const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
   const revision = (await keys.bootstrap(context.head)) ?? latest;
   ledger.revision =
     revision === null
       ? { number: 0, ...(await context.head()) }
       : { number: revision.number, head: revision.head, dirty: revision.dirty };
+}
 
+/** Steps 2 to 4: environments, listing, keys, lookup and the baseline checkpoint. */
+export async function baseline(context: SchedulerContext, ledger: Ledger): Promise<void> {
+  const { store, keys, runner, worktreeId, policy } = context;
   const failures: Failures = new Map();
   await readEnvironments(context, failures);
   const listed = await tryRunner(context, "testFiles", () => runner.testFiles());
