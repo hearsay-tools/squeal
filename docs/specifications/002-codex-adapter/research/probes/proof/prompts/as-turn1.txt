@@ -1,0 +1,1 @@
+Change `greet` in src/greet.js so that it takes an optional second parameter `greeting`, defaulting to "hi", and returns `${greeting} ${name}`. Keep the change minimal. When you are done, say what you changed and whether anything is broken.

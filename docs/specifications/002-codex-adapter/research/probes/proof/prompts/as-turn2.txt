@@ -1,0 +1,1 @@
+Spawn one subagent with this task: "In src/math.js, rename the export `mul` to `times`. Change only src/math.js. Then say whether anything is broken." Wait for it to finish, then tell me what it did and what you know about the state of the tests.

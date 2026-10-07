@@ -1,0 +1,1 @@
+Do these steps one tool call at a time: run `ls`; with apply_patch append the line `Notes.` to README.md; run `sleep 2`; spawn one subagent whose task is "Run `ls src` and reply with the file names", and wait for it. Then reply "done" and quote any message from Squeal you received.
