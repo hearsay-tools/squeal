@@ -11,7 +11,9 @@ codex plugin marketplace add hearsay-tools/squeal
 codex plugin add squeal@squeal
 ```
 
-Then trust the hooks once: open the TUI, run `/hooks`, and trust the hooks of `squeal@squeal`. Codex skips untrusted hooks without a word, so until then Squeal says nothing; `squeal status` run in a Codex shell says so when it finds no consumer for `CODEX_SESSION_ID`.
+`hearsay-tools/squeal` is a private repository today, and whether `codex plugin marketplace add` fetches it with the user's git credentials is unverified; until the repository is public, a user without access adds the marketplace from a local clone instead: `codex plugin marketplace add /path/to/squeal`.
+
+Then trust the hooks once: open the TUI, run `/hooks`, and trust the hooks of `squeal@squeal`. Codex skips untrusted hooks without a word, so until then Squeal says nothing. `squeal status` run in a Codex shell adds a line when it finds no consumer for `CODEX_SESSION_ID` in this worktree, and names the trust step; in the session that created the store the hooks may have run and not registered yet, so the line names no cause it cannot know.
 
 In the project, `squeal init --harness codex` writes `squeal.config.json` with every default policy key if it is absent, and prints the commands above. It writes nothing under `~/.codex`. The agent's `squeal` comes from the npm package: Codex does not put a plugin's `bin/` on the shell's `PATH`.
 
@@ -21,7 +23,7 @@ Codex trusts a hook by a SHA-256 over its declaration, with the command text bef
 
 ## Launchers
 
-A launcher that starts threads through `codex app-server`, as Cezar does, can declare and trust the hooks itself: `squeal init --harness codex --print-launcher-config` prints a JSON object for `thread/start` `config` with one `hooks.<Event>` key per event, commands pointing at this directory by absolute path (launcher hooks get no `PLUGIN_ROOT`), and a `hooks.state` table whose keys are `/<session-flags>/config.toml:<event>:<group>:<handler>`. Its hashes come from a port of Codex 0.160.1's; a Codex upgrade may change the format, and `test/cli/codex-hash.test.ts` names the version it was checked against. The group indexes assume the launcher declares no other hook for the same event before Squeal's.
+A launcher that starts threads through `codex app-server`, as Cezar does, can declare and trust the hooks itself: `squeal init --harness codex --print-launcher-config` prints a JSON object for `thread/start` `config` with one `hooks.<Event>` key per event, commands pointing at this directory by absolute path (launcher hooks get no `PLUGIN_ROOT`), and a `hooks.state` table whose keys are `/<session-flags>/config.toml:<event>:<group>:<handler>`. Its hashes come from a port of Codex 0.160.1's; a Codex upgrade may change the format, and `test/cli/codex-hash.test.ts` names the version it was checked against. The group indexes assume the launcher declares no other hook for the same event before Squeal's. The commands name the checkout that ran the command, so print the config from a stable checkout or install, never from a temporary worktree: once that directory is removed, every hook fails to start, and the hashes change with the path.
 
 ## Contents
 

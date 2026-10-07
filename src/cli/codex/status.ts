@@ -14,6 +14,11 @@ import { CODEX_TRUST_STEP } from "./init.js";
  * The line `squeal status` adds when `CODEX_SESSION_ID` is set and no consumer
  * of that session is registered in this worktree, or no store exists; `null`
  * otherwise, including when the store cannot be read.
+ *
+ * Review wave 1, S1: it states what is known and no cause. In the session
+ * that creates the store, its hooks run before the store exists and register
+ * nothing, and PreToolUse never registers; the session may be registered in
+ * another worktree of the repository (N6). Only then does it name the trust step.
  */
 export function codexStatusLine(
   cwd: AbsolutePath,
@@ -27,7 +32,10 @@ export function codexStatusLine(
   if (registered === true) return null;
   if (registered !== false && registered.reason !== "no-store") return null;
   return (
-    `Codex: Squeal's hooks have not run in this session (no consumer for CODEX_SESSION_ID ${session}). ` +
-    `If the plugin is installed, ${CODEX_TRUST_STEP}; otherwise run squeal init --harness codex.\n`
+    `Codex: no Squeal consumer is registered for this session in this worktree (CODEX_SESSION_ID ${session}). ` +
+    "Either Squeal's hooks do not run in it, or none has registered it yet: hooks that ran before " +
+    "the store existed register nothing, and the next prompt or tool result does. " +
+    `If the hooks do not run and the plugin is installed, ${CODEX_TRUST_STEP}; ` +
+    "without the plugin, run squeal init --harness codex.\n"
   );
 }
