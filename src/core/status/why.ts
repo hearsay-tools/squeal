@@ -1,5 +1,5 @@
+import { worktreeIdFor } from "../fs/index.js";
 import { formatCheck, parseCheck } from "../state/index.js";
-import { worktreeIdFor } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckId,

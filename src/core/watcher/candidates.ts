@@ -1,11 +1,11 @@
 import type { Dirent, Stats } from "node:fs";
 import { lstat, readdir } from "node:fs/promises";
-import { isMissing, toAbsolute, toRelative } from "../fs/index.js";
+import { hasGitEntry, isMissing, toAbsolute, toRelative } from "../fs/index.js";
 import type { AbsolutePath, CandidatePath, FileStat, RelativePath } from "../types/index.js";
 import { mapConcurrent } from "./concurrency.js";
 import type { Exclusions } from "./exclusions.js";
 import { checkIgnored } from "./git.js";
-import { hasGitEntry, isGitMetadata, selfAndAncestors } from "./paths.js";
+import { isGitMetadata, selfAndAncestors } from "./paths.js";
 
 /** What the assembly needs to know about the worktree at the time of one batch. */
 export interface CandidateContext {

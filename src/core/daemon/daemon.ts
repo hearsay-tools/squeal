@@ -1,4 +1,5 @@
 import type { DaemonLoop } from "../daemon-loop/index.js";
+import { linkedWorktreeDir } from "../fs/index.js";
 import type {
   AbsolutePath,
   CheckpointRecord,
@@ -14,7 +15,7 @@ import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { type DaemonTimings, startTimers } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
-import { linkedWorktreeDir, prepareSocketDir, socketPathFor } from "./paths.js";
+import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { expectAgrees, headerRevision } from "./agree.js";
 import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION, STRINGS } from "./harness.js";

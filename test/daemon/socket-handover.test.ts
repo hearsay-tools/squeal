@@ -2,7 +2,7 @@ import { realpathSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
-import { worktreeIdFor } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import {

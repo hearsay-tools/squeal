@@ -16,13 +16,13 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import {
   checkPrivateDir,
-  linkedWorktreeDir,
   prepareSocketDir,
   runtimeDir,
   socketPathFor,
   userTmpDir,
 } from "../../src/core/daemon/paths.js";
 import { createDaemonServer, type DaemonServer } from "../../src/core/daemon/server.js";
+import { linkedWorktreeDir } from "../../src/core/fs/index.js";
 import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/index.js";
 
 const uid = process.getuid?.() ?? 0;

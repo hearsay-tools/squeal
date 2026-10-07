@@ -6,11 +6,5 @@ export {
   type OpenStoreOptions,
   openStore,
 } from "./open.js";
-export {
-  lockFileFor,
-  resolveCommonDir,
-  type StorePaths,
-  storePaths,
-  worktreeIdFor,
-} from "./paths.js";
+export { lockFileFor, type StorePaths, storePaths } from "./paths.js";
 export { SCHEMA_VERSION } from "./schema.js";

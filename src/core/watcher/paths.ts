@@ -17,5 +17,3 @@ export function isGitMetadata(path: RelativePath): boolean {
     path === ".git" || path.startsWith(".git/") || path.includes("/.git/") || path.endsWith("/.git")
   );
 }
-
-export { hasGitEntry } from "../fs/index.js";

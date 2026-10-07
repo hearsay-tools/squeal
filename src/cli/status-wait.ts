@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { planDelta, readHeader, worktreeLiveness } from "../core/delivery/index.js";
+import { worktreeIdFor } from "../core/fs/index.js";
 import { isPending, runnerPartText } from "../core/state/index.js";
 import {
   buildSnapshot,
@@ -7,7 +8,6 @@ import {
   STATUS_BUSY_TIMEOUT_MS,
   withStatusStore,
 } from "../core/status/index.js";
-import { worktreeIdFor } from "../core/store/index.js";
 import type {
   AbsolutePath,
   DaemonLiveness,

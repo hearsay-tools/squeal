@@ -1,7 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
-import { runGit } from "../fs/index.js";
-import { isStoreOpenFailure, lockFileFor, openStore, worktreeIdFor } from "../store/index.js";
+import { runGit, worktreeIdFor } from "../fs/index.js";
+import { isStoreOpenFailure, lockFileFor, openStore } from "../store/index.js";
 import type {
   AbsolutePath,
   DaemonExit,

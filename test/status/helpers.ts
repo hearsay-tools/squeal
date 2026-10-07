@@ -1,6 +1,6 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { worktreeIdFor } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { CheckId, KnownState, Store, TestCheckId } from "../../src/core/types/index.js";
 import { open, tempDir } from "../store/helpers.js";
 
