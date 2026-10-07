@@ -663,3 +663,15 @@ Those results were stored under keys computed after the install, so they matched
 ### Defects
 
 12. **A broken runner environment is stored as test failures and inherited by every worktree with the same keys.** A file-level error raised by the runner's own module loading (here, a missing transform copy in Vitest's temp directory) is recorded as a file-level `fail` under the check's key. D5 and D8 keep crashes out of the store because an `unknown` under a key would be inherited as a hit; this is the same harm through `fail`. Related: the daemon keeps a Vitest instance loaded from another `node_modules` across a dependency install in the worktree; and a baseline taken before the install reports failures that read as the agent's to fix.
+
+## A daemon that pins its worktree
+
+2026-10-07, found by the coordinator while retiring Cezar workers on this repository. `worker destroy` came back `incomplete` four times, naming the worktree's Squeal daemon as a process that still held the worktree or its scratch directory. Each time it took a `squeal stop` before the destroy went through.
+
+`/proc/<pid>` for every running daemon shows the cause. Each one's working directory is its worktree root, because `src/core/daemon/ensure.ts` spawns it with `cwd: root`. Its open files are all under `<common-dir>/squeal/`, so the working directory is the only thing it holds inside the root. It also inherits the environment of the hook that spawned it, `TMPDIR` included. For a Cezar worker that is the task's scratch directory, `.ai/cezar/tmp/<id>/`, so Vitest's temp directory lives in a directory another tool owns and removes. Defect 12's missing temp directory had exactly that shape (`.ai/cezar/tmp/c257b736…/…/ssr/<sha1>`). This is likely what deleted it, though not proven.
+
+D10 ends a daemon when its root is deleted. A harness that will not delete a directory a live process sits in never gets to delete it, so the daemon stays until its 60-minute idle exit.
+
+### Defects
+
+13. **A daemon pins its worktree and runs Vitest out of its spawner's temp directory.** The daemon's working directory is the worktree root, and its `TMPDIR` is whatever the spawning hook had. A harness that refuses to remove a directory held by a live process can therefore not retire the worktree until the idle exit, and a harness that cleans its own scratch directory deletes Vitest's temp directory under a live instance (defect 12).

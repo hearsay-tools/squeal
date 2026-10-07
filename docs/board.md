@@ -122,6 +122,12 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 |---|---|---|---|
 | 001-58 runner-environment failures are not test results | done (brief in `specifications/001-core-loop/tasks/wave-7.5.md`) | Defect 12: establish what deleted the Vitest temp directory under a live instance (an `npm ci` or `git checkout` in the worktree, or an instance's own `close()`), then make a file-level error raised by the runner's module loading a runner failure (D5: files `unknown`, a note, nothing stored under a key, the instance recreated), never a `fail`. Recreate the instance when the worktree's installed lockfile appears or changes, so a daemon never keeps running Vitest from another `node_modules`. Amend D5 and D8. | A fixture whose Vitest temp directory is removed under a running daemon yields `unknown` and no stored result, then passes after recreation. A second worktree with the same keys inherits nothing from it. An install into a worktree that had no `node_modules` recreates the instance. |
 
+### Wave 7.6b: daemon placement (from `specifications/001-core-loop/lessons.md` defect 13)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-61 the daemon holds nothing inside its worktree or its spawner's scratch | running (brief in `specifications/001-core-loop/tasks/wave-7.6.md`) | Defect 13: spawn and run the daemon with a working directory outside the worktree root, and with its own temp directory under `<common-dir>/squeal/tmp/<worktree-hash>/` rather than the inherited `TMPDIR`, cleaned on start. Confirm Vitest and Vite take `root` from the config, not `process.cwd()`. Amend D10. | A daemon started for a worktree has a working directory outside it and no open file or temp directory under the root or the caller's `TMPDIR`; deleting the root makes it exit (D10); the adapter and e2e suites pass with the daemon started from elsewhere. |
+
 ### Wave 8: first quality pass (after waves 7.5 and 7.6 land)
 
 | Task | Status | Scope | Done when |
