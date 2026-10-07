@@ -78,4 +78,25 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
       });
     });
   }
+  it("an install in place under a running scheduler runs only the test file whose package changed", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    for (const [path, content] of Object.entries(TESTS))
+      writeFileSync(join(repo.main, path), content);
+    writeInstall(repo.main, FIRST);
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const runs = h.runner.runs.length;
+    const before = new Map(ALL_TEST_FILES.map((path) => [path, h.keyOf(path)]));
+
+    writeInstall(repo.main, SECOND);
+    await h.batch("node_modules/.package-lock.json");
+    await h.scheduler.idle();
+
+    expect(h.runner.runs.slice(runs).flatMap((r) => r.files.map((f) => f.path))).toEqual([
+      "test/bumped.test.ts",
+    ]);
+    for (const [path, key] of before) expect(h.keyOf(path)).toBe(key);
+  });
 });
