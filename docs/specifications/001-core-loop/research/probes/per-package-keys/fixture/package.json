@@ -1,0 +1,26 @@
+{
+  "name": "ppk-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "child-pkg": "file:tarballs/child-pkg-1.0.0.tgz",
+    "computed-target": "file:tarballs/computed-target-1.0.0.tgz",
+    "data-pkg": "file:tarballs/data-pkg-1.0.0.tgz",
+    "dyn": "file:tarballs/dyn-1.0.0.tgz",
+    "ext-cjs": "file:tarballs/ext-cjs-1.0.0.tgz",
+    "ext-esm": "file:tarballs/ext-esm-1.0.0.tgz",
+    "ext-trans": "file:tarballs/ext-trans-1.0.0.tgz",
+    "gs-pkg": "file:tarballs/gs-pkg-1.0.0.tgz",
+    "inl": "file:tarballs/inl-1.0.0.tgz",
+    "inl-trans": "file:tarballs/inl-trans-1.0.0.tgz",
+    "phantom": "file:tarballs/phantom-1.0.0.tgz",
+    "plugin-pkg": "file:tarballs/plugin-pkg-1.0.0.tgz",
+    "setup-pkg": "file:tarballs/setup-pkg-1.0.0.tgz",
+    "vitest": "5.0.3"
+  },
+  "overrides": {
+    "ext-trans": "file:tarballs/ext-trans-1.0.0.tgz",
+    "inl-trans": "file:tarballs/inl-trans-1.0.0.tgz",
+    "computed-target": "file:tarballs/computed-target-1.0.0.tgz"
+  }
+}
