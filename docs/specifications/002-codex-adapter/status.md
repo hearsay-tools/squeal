@@ -23,6 +23,8 @@ Started: 2026-10-07
 
 - 2026-10-07, review 002-14 (`reviews/wave-1.md`, PASS at 626b616): no blocker. S2 amends D3, SubagentStart injects the header and primer, `hooks.json` unchanged so no re-trust. S1 (the status line names a cause it cannot know), S3 (drift test timeout and Buffer comparison), N1 to N3 (launcher path and private marketplace source in the README, SessionEnd sweeping every location) are row 002-18; N4 (internal review threads with no `agent_id`) and N5 (Stop p95 76 ms against 80) are watched in 002-16. Latency verified: every Codex hook under 80 ms p95 at load 3.9, fast path 3.1 ms.
 
+- 2026-10-07, wave 2 (002-18, 002-15), 0.1.19: SubagentStart injects the header and primer (D3 as amended); the status line names no cause it cannot know, and the optional silent PreToolUse registration was not taken, since it would register a consumer before it hears the primer; N3 accepted: Codex SessionEnd sweeps only its `cwd` (Codex gives it nothing else, `CLAUDE_PROJECT_DIR` is foreign there, the rollout format is unverified), and the next SessionStart sweep or expiry catches a consumer left in another repository. The e2e suite runs every scenario for both plugins, Codex hooks through `bash -c` from the archived `hooks.json` in the thread's `cwd`; the one Codex skip is `bin/squeal`, which Codex does not ship (D1). `squeal init --harness codex` seeds `nodeTest` like `squeal init`.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
