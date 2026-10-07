@@ -17,3 +17,13 @@ Seam: `src/core/daemon/scratch.ts`. First edit: the new temp location. Then S1 (
 Own: `src/core/daemon/`, `src/runners/vitest/stale.ts` (N1 only), `test/daemon/`, `test/runners/vitest/structural.test.ts` (N1 row only), D4 and D10 in `spec.md`, `status.md`. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
 
 Done when: with a real daemon, `git rev-parse` fails inside `mkdtemp(os.tmpdir())` in a test it runs; the esbuild-plugin fixture shows `git worktree remove` succeeding and the daemon exiting; the temp directory is gone after `squeal stop` and after removal; N1 is a test; the daemon is ready within the hooks' spawn budget; the full suite passes.
+
+## 001-64 re-review of 001-63
+
+Use /reviewer. Range `09bfc7c..57671b7`. Output `reviews/wave-7.7.md`. Second and last round on the 001-61 slice: report blockers plainly; the human decides whether a third is bought.
+
+Outcome: whether `reviews/wave-7.6.md` B1, B2 (as decided: option b, D10 amended), S1, S2, N1 to N5 are closed, and whether the new temp location opened anything.
+
+Read: `reviews/wave-7.6.md`; spec D10 and D4 as amended; `src/core/daemon/scratch.ts`, `paths.ts` (`preparePrivateDir`), `open.ts`, `daemon.ts`; `test/daemon/scratch*.test.ts`, `scratch-helpers.ts`.
+
+Probe at least: the B1 probe with a real daemon; `/tmp/squeal-<uid>` pre-created by another user, as a symlink, or with loose mode; two worktrees' daemons sharing `/tmp/squeal-<uid>/tmp`; a daemon killed with SIGKILL (leftovers reaped at next start); the start order change (store before temp dir) against the hooks' spawn budget; whether D10's option (b) wording matches what the esbuild fixture shows. Do not re-check what `reviews/wave-7.6.md` lists under "What fits".
