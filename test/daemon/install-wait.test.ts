@@ -87,7 +87,14 @@ describe("squeal daemon in a worktree without installed dependencies (D5, defect
     // The install: this repository's Vitest, linked, and the installed lockfile.
     mkdirSync(join(repo.root, "node_modules"));
     symlinkSync(join(repoRoot, "node_modules/vitest"), join(repo.root, "node_modules/vitest"));
-    writeFileSync(join(repo.root, "node_modules/.package-lock.json"), "{}");
+    writeFileSync(
+      join(repo.root, "node_modules/.package-lock.json"),
+      JSON.stringify({
+        packages: {
+          "node_modules/vitest": { link: true, resolved: join(repoRoot, "node_modules/vitest") },
+        },
+      }),
+    );
     // The agent's next edit is reconciled with it.
     appendFileSync(join(repo.root, "src/math.ts"), "// edited after the install\n");
     const header = await waitFor(
