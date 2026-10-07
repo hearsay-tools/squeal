@@ -14,6 +14,8 @@ export interface RecoveringRunnerOptions {
   readonly onFailure: (message: string) => void;
   /** A creation attempt worked after a failure. */
   readonly onRecovered?: () => void;
+  /** Wraps every call that reaches the adapter, creation included (the working directory, D10). */
+  readonly around?: (<T>(call: () => Promise<T>) => Promise<T>) | undefined;
 }
 
 /** A runner whose creation may fail and be retried. */
@@ -48,6 +50,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   let retry = false;
   let creating: Promise<RunnerAdapter> | null = null;
   let closed = false;
+  const around = options.around ?? ((call) => call());
 
   const attempt = (): Promise<RunnerAdapter> => {
     retry = false;
@@ -87,41 +90,46 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
-    async open() {
-      try {
-        await adapter();
-        return true;
-      } catch {
-        return false;
-      }
-    },
+    open: () =>
+      around(async () => {
+        try {
+          await adapter();
+          return true;
+        } catch {
+          return false;
+        }
+      }),
     retry() {
       retry = true;
     },
-    async invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
-      if (inner !== null || closed) return (await adapter()).invalidate(paths);
-      retry = true;
-      const fresh = await adapter();
-      const projects = new Set((await fresh.environment()).map((e) => e.project));
-      return { recreatedProjects: [...projects].sort() };
-    },
-    affected: async (changedPaths) => (await adapter()).affected(changedPaths),
-    async affectedDetailed(changedPaths) {
-      const current = await adapter();
-      if (current.affectedDetailed) return current.affectedDetailed(changedPaths);
-      return { direct: [], transitive: await current.affected(changedPaths) };
-    },
-    closure: async (testFile: TestFileRef) => (await adapter()).closure(testFile),
-    enumerate: async (testFile: TestFileRef) => (await adapter()).enumerate(testFile),
-    testFiles: async () => (await adapter()).testFiles(),
-    environment: async () => (await adapter()).environment(),
-    run: async (testFiles, runOptions) => (await adapter()).run(testFiles, runOptions),
-    async close() {
-      if (closed) return;
-      closed = true;
-      await creating?.catch(() => {});
-      await inner?.close();
-    },
+    invalidate: (paths: readonly InvalidatedPath[]) =>
+      around(async (): Promise<InvalidateResult> => {
+        if (inner !== null || closed) return (await adapter()).invalidate(paths);
+        retry = true;
+        const fresh = await adapter();
+        const projects = new Set((await fresh.environment()).map((e) => e.project));
+        return { recreatedProjects: [...projects].sort() };
+      }),
+    affected: (changedPaths) => around(async () => (await adapter()).affected(changedPaths)),
+    affectedDetailed: (changedPaths) =>
+      around(async () => {
+        const current = await adapter();
+        if (current.affectedDetailed) return current.affectedDetailed(changedPaths);
+        return { direct: [], transitive: await current.affected(changedPaths) };
+      }),
+    closure: (testFile: TestFileRef) => around(async () => (await adapter()).closure(testFile)),
+    enumerate: (testFile: TestFileRef) => around(async () => (await adapter()).enumerate(testFile)),
+    testFiles: () => around(async () => (await adapter()).testFiles()),
+    environment: () => around(async () => (await adapter()).environment()),
+    run: (testFiles, runOptions) =>
+      around(async () => (await adapter()).run(testFiles, runOptions)),
+    close: () =>
+      around(async () => {
+        if (closed) return;
+        closed = true;
+        await creating?.catch(() => {});
+        await inner?.close();
+      }),
   };
 }
 
