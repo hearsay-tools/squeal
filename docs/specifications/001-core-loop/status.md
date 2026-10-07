@@ -1,6 +1,6 @@
 # 001 Core validation loop: status
 
-Stage: shipped (2026-10-06: the dogfooding re-run in `lessons.md`, section "Re-run after waves 4.5 and 4.6", found goals 1 to 7 holding with Claude Code and no new blocker; open, not blocking: lessons defects 8, 9 and 10, and macOS verification before any public release)
+Stage: shipped (2026-10-06: the dogfooding re-run in `lessons.md`, section "Re-run after waves 4.5 and 4.6", found goals 1 to 7 holding with Claude Code and no new blocker; open, not blocking: macOS verification before any public release)
 Started: 2026-10-02
 
 ## Decisions so far
@@ -38,7 +38,9 @@ Started: 2026-10-02
 
 - 2026-10-06, wave 6.5 (001-50, from `reviews/wave-6.md` S1, S2, N2, N4): UserPromptSubmit injects the registration whenever it registers; a SubagentStop with no registration gets the fork behaviour, which covers forks under `--agent`; PostToolBatch and PreToolUse ignore forks (D9). Confirmed in an attended session (001-51, `lessons.md` "Attended check after wave 6.5"); defects 8 to 10 are closed.
 
-- 2026-10-06, wave 7 (001-53, `lessons.md` defect 11): an add or delete invalidates only the transforms whose imports it can re-resolve, the deleted path's importers and the importers of a target that has the added path among its resolution candidates, instead of every cached transform (D4). On a 1,000-module fixture, `affected` after an add costs 13 to 17 ms against 10 to 13 ms warm locally, and 33 ms against 14 ms warm on CI, where the add's fixed cost (re-globbing test files, transforming the new file) is about 20 ms; corrected by 001-56 from "1.3 to 1.5 times the warm walk", a one-machine figure (`reviews/wave-7.md` S1). The `cezar` probe in `lessons.md` has not been re-run.
+- 2026-10-07, wave 7.6 (001-54, `lessons.md` "Re-run after 001-56"): on `cezar` an added test file starts its run 1.3 to 1.5 s after the revision (was 8.9 to 11.3 s), so defect 11 is closed.
+
+- 2026-10-06, wave 7 (001-53, `lessons.md` defect 11): an add or delete invalidates only the transforms whose imports it can re-resolve, the deleted path's importers and the importers of a target that has the added path among its resolution candidates, instead of every cached transform (D4). On a 1,000-module fixture, `affected` after an add costs 13 to 17 ms against 10 to 13 ms warm locally, and 33 ms against 14 ms warm on CI, where the add's fixed cost (re-globbing test files, transforming the new file) is about 20 ms; corrected by 001-56 from "1.3 to 1.5 times the warm walk", a one-machine figure (`reviews/wave-7.md` S1). The `cezar` probe was re-run by 001-54 (below).
 
 - 2026-10-07, wave 7.5 (001-56, from `reviews/wave-7.md` B1, S1, S2, N1, N3, N4): an add also stales unresolved non-relative imports (alias, `tsconfig` `paths`, package), modules whose source on disk uses `import.meta.glob` or a template-literal dynamic import (a cached scan, chosen over a `createVitest` plugin that Vitest does not pass to projects with their own Vite server), resolved imports under a directory the added path shadows, and imports under the directory of an added or deleted `package.json`; a Vite without `invalidationState` falls back to invalidating every transform, with one note (D4). Figures in D4 give local and CI numbers. `Object.keys(import.meta.glob(...))` compiles to keys without imports, so its matched files are not in the closure (D3 gap, not a staleness one, the same under `invalidateAll`).
 
