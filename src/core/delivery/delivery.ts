@@ -88,7 +88,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    * regressions and waking an idle agent to say the daemon stopped helps no
    * one (review wave 3, S2). `idle` is the waiter's (task 001-85): nothing
    * unless the consumer is idle, only entries it waited for, and a delivery
-   * starts a turn, since it wakes the agent.
+   * starts a turn, since it wakes the agent. A consumer heard from is in a
+   * turn, delivered to or not (task 001-89, review wave 10 S2): a tool call
+   * corrects an idle state a Stop that was not the last word, or a failed
+   * UserPromptSubmit, left behind.
    */
   function deliver(
     consumer: Consumer,
@@ -110,6 +113,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
+      if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
       const only = select();
       if (only === "silent") return null;
       const at = now();
@@ -139,7 +143,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   }
 
   return {
-    register: async (consumer) =>
+    register: async (consumer, { inTurn = false } = {}) =>
       store.transaction(() => {
         const at = now();
         store.consumers.register(consumer, at);
@@ -150,7 +154,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         );
         const header = readLiveHeader(store, consumer.worktreeId, at, states);
         tellLiveness(store, consumer, header.daemon?.state ?? null);
-        writeTurn(store, consumer, null);
+        if (inTurn) startTurn(store, consumer);
+        else writeTurn(store, consumer, null);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
@@ -174,12 +179,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
 
-    startTurn: async (consumer) =>
-      store.transaction(() => {
-        const delta = deliver(consumer, { heardFrom: true, liveness: true });
-        if (store.consumers.get(consumer) !== null) startTurn(store, consumer);
-        return delta;
-      }),
+    startTurn: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
 
     endTurn: async (consumer) => {
       store.transaction(() => {

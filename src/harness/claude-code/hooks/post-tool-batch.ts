@@ -18,7 +18,7 @@ export const postToolBatch: Handler = async (input, location, deps) => {
   return withContext(input, location, deps, async (context) => {
     await ensureIfStale(context, deps);
     if (!isRegistered(context)) {
-      const registration = await context.delivery.register(context.consumer);
+      const registration = await context.delivery.register(context.consumer, { inTurn: true });
       return additionalContext(input, formatRegistration(registration));
     }
     const delta = await context.delivery.onToolBoundary(context.consumer);

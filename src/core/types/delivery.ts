@@ -1,5 +1,4 @@
 import type { CheckId } from "./check.js";
-import type { CheckKey } from "./keys.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -8,6 +7,7 @@ import type {
   SourceLocation,
   WorktreeId,
 } from "./common.js";
+import type { CheckKey } from "./keys.js";
 import type {
   DiagnosticFingerprint,
   KnownOutcome,

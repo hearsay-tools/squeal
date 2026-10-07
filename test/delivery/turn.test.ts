@@ -48,6 +48,38 @@ describe("turn state", () => {
     expect(readTurn(store, C1)).toEqual(START_IDLE);
   });
 
+  it("registers in a turn in one transaction, so a result landing after it stays undelivered (S1)", async () => {
+    store.revisions.append({
+      worktreeId: WT,
+      createdAt: 1,
+      head: null,
+      dirty: true,
+      trigger: "watch",
+      changes: [],
+    });
+    const sink = createStateSink(store);
+    sink.applyResults(WT, 1, [result(check("a"), "pass")], { checkpointId: null });
+    await delivery.register(C1, { inTurn: true });
+    expect(readTurn(store, C1).turn).toBe("in-turn");
+
+    sink.applyResults(WT, 1, [result(check("a"), "fail")], { checkpointId: null });
+    expect((await delivery.onToolBoundary(C1))?.entries.map((e) => e.kind)).toEqual([
+      "pass-to-fail",
+    ]);
+  });
+
+  it("puts an idle consumer heard from in a turn, by a tool boundary or a peek (S2)", async () => {
+    await delivery.register(C1);
+    await delivery.endTurn(C1);
+    expect(readTurn(store, C1).turn).toBe("idle");
+    expect(await delivery.onToolBoundary(C1)).toBeNull();
+    expect(readTurn(store, C1).turn).toBe("in-turn");
+
+    await delivery.endTurn(C1);
+    expect(await delivery.peek(C1, { kinds: ["pass-to-fail"] })).toBeNull();
+    expect(readTurn(store, C1).turn).toBe("in-turn");
+  });
+
   it("waits for checks first observed when the runner part of the revision was pending", async () => {
     await delivery.register(C1);
     store.revisions.append({
