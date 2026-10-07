@@ -132,3 +132,11 @@ Use /worker. Shape: finish (the board row is the scope). Also: retarget every im
 ## 001-80 review of 001-79
 
 Use /reviewer. Range: the 001-79 commits as landed, `eae3f46..48182dc` filtered to `(001-79` in the subject. Output `reviews/wave-9b.md`. Outcome: whether `reviews/wave-9.md` S1 and S2 are closed, and whether picking `below(dir)` on any manifest change re-runs too much (cost on the 1,000-module fixture, a root `package.json` edit). Probe: a `package.json` edit that changes only `scripts` (should it re-run anything?), `exports` maps, a nested workspace. Do not re-check "What fits" from earlier reviews.
+
+## Batch 6
+
+001-74 and the 001-80 review landed (version 0.1.4). `reviews/wave-9b.md` passed 001-79 with S1 to S3 should-fix; they become 001-81. S2 decided by the coordinator: option (b).
+
+## 001-81 manifest edits: Vite's package cache, the root, and edits that change no resolution field
+
+Use /worker. Shape: repair. Outcome: every `package.json` change that alters how an import resolves re-runs its tests on the warm instance, and one that alters nothing re-transforms nothing. Read: `reviews/wave-9b.md` S1, S2, S3, N1, N2 (each has fix steps); spec D3, D4. Seam: `src/runners/vitest/stale.ts` `invalidateStructural`. S1: for each added, deleted or edited manifest, make each environment's Vite drop its package data (`pluginContainer.watchChange(abs, { event })` or the public equivalent; find which works by experiment and say in the report). S2, decided (b): when the root manifest's resolution fields changed, `closuresToReresolve` picks every test file. S3: a per-instance map of each manifest's resolution fields (`name`, `main`, `module`, `browser`, `exports`, `imports`); a `change` whose fields are unchanged skips the directory rule; an unknown previous value stales as today. Own: `src/runners/vitest/stale.ts`, `adapter.ts` (`invalidate` only), `src/core/keys/resolution.ts`, `test/keys/resolution.test.ts`, `test/runners/vitest/reresolution.test.ts`, `structural*.test.ts`, D3 and D4 sentences (with N1's cost figure), one `status.md` line. Done when: the review's E5, E6 and E7 are tests with the run outcome asserted; a `scripts`-only edit after one recorded edit keeps the next `affected` near `afterEdit` on the cost fixture; P1 and P3c still pass.
