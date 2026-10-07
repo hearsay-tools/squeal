@@ -195,7 +195,11 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     const before = h.keyOf("test/plain.test.ts");
     expect(h.scheduler.extraFiles()).toContain("node_modules/.package-lock.json");
 
-    h.write("node_modules/.package-lock.json", '{"packages":{"left-pad":"1.3.0"}}\n');
+    // A listed package with no folder: npm would not trust the file, so every key moves (001-105).
+    h.write(
+      "node_modules/.package-lock.json",
+      '{"packages":{"node_modules/left-pad":{"version":"1.3.0"}}}\n',
+    );
     await h.batch("node_modules/.package-lock.json");
     await h.scheduler.idle();
 
