@@ -1,0 +1,25 @@
+ FAIL  test/e2e/transitions.test.ts > transitions on PostToolUse, codex > delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/e2e/transitions.test.ts:59:71
+     57|     const still = await e.edit(e.main, "math", MATH("-"), failing);
+     58|     expect(still.revision).toBeGreaterThan(broken.revision);
+     59|     expect(e.runs(e.main).some((r) => r.revision === still.revision)).…
+       |                                                                       ^
+     60|     expect((await e.hook("post-tool-batch", e.main)).stdout).toBe("");
+     61|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 171 passed (172)
+      Tests  1 failed | 1459 passed | 8 skipped (1468)
+   Start at  23:33:26
+   Duration  77.33s (tests 96%, transform 3%, import 1%)
+

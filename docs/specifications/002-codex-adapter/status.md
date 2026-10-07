@@ -27,6 +27,8 @@ Started: 2026-10-07
 
 - 2026-10-07, decided by the human: build the trust command (row 002-17, `squeal init --harness codex --trust`), and install the plugin into the real `~/.codex` with its hooks trusted for dogfooding with a Cezar Codex worker (row 002-19). The coordinator orders 002-19 after 002-16's scratch proof and 002-17, so a defective plugin never reaches every Codex session on the machine.
 
+- 2026-10-07, 002-17, 0.1.22: `squeal init --harness codex --trust [--yes]` lists the Squeal hooks Codex has not trusted (untrusted or modified), asks one yes/no question (default no; no terminal and no `--yes` changes nothing and exits 1), and on yes has Codex trust exactly those through app-server `config/batchWrite`; Squeal opens no file under `CODEX_HOME`. A live test installs the plugin from the checkout into a scratch `CODEX_HOME` and shows every hook trusted with no bypass flag. Row 002-20 filed for an intermittent Codex transitions e2e failure.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
