@@ -19,6 +19,8 @@ import type { ContentRekey } from "./revision.js";
 interface RunnerTask {
   run(): Promise<void>;
   cancel(): void;
+  /** The runner part of a revision, which a wait for an install drops (`dropRefinements`). */
+  readonly refine?: true;
 }
 
 /** What the runner work needs from its scheduler. */
@@ -52,7 +54,23 @@ export class RunnerWork {
 
   /** Queues the runner part of `revision`. */
   queueRefine(revision: Revision, content: ContentRekey): void {
-    this.#tasks.push({ run: () => this.#refine(revision, content), cancel: () => {} });
+    this.#tasks.push({
+      run: () => this.#refine(revision, content),
+      cancel: () => {},
+      refine: true,
+    });
+  }
+
+  /**
+   * Drops the queued runner parts: the worktree waits for an install, which
+   * makes no runner call, and the baseline at the install lists, keys and
+   * resolves everything again (task 001-107). The wait records the latest
+   * revision as refined. A `run --all` queued behind the tier stays.
+   */
+  dropRefinements(): void {
+    const kept = this.#tasks.filter((task) => task.refine !== true);
+    this.#tasks.splice(0, this.#tasks.length, ...kept);
+    this.#carried.clear();
   }
 
   /**

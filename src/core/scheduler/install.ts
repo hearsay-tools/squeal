@@ -2,7 +2,7 @@ import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { isMissing } from "../fs/index.js";
-import { findInstalledLockfile } from "../keys/index.js";
+import { findInstalledLockfile, isInstalledLockfile } from "../keys/index.js";
 import {
   type AbsolutePath,
   awaitingInstallMetaKey,
@@ -110,10 +110,13 @@ async function statOrNull(path: AbsolutePath): Promise<Stats | null> {
 }
 
 /**
- * Starts the wait, after the stat cache's bootstrap and before any runner
- * call. The test files an earlier daemon listed become `unknown` with
- * `AWAITING_INSTALL_REASON`; nothing is listed, keyed or queued. One note,
- * unless an earlier start persisted it. The header says so from the meta key.
+ * Starts the wait: after the stat cache's bootstrap and before any runner
+ * call, or while the daemon runs, when the install goes (task 001-107,
+ * review wave 11 S1: `npm ci` removes `node_modules` first). The test files
+ * an earlier daemon listed, or this one, become `unknown` with
+ * `AWAITING_INSTALL_REASON`; nothing is listed, keyed or queued, and the
+ * open checkpoint is abandoned. One note, unless an earlier start persisted
+ * it. The header says so from the meta key.
  */
 export function startWaiting(
   context: SchedulerContext,
@@ -121,6 +124,10 @@ export function startWaiting(
   missing: MissingInstall,
 ): void {
   const { store, worktreeId } = context;
+  ledger.checkpoints.finish("abandoned");
+  ledger.queue.clear();
+  // A tier in flight finds its files replaced and records nothing for them (`recordTier`).
+  ledger.files.clear();
   const files = store.testFileKeys.list(worktreeId).map((row) => ledger.addFile(row.testFile));
   ledger.markUnknown(
     files.map((file) => ({ file, key: null })),
@@ -137,8 +144,9 @@ export function startWaiting(
 
 /**
  * A batch while waiting: its revision is recorded with nothing left for the
- * runner, so no header counts a runner part as pending. Returns whether the
- * wait goes on. When it ends, the ledger forgets the files `startWaiting`
+ * runner, so no header counts a runner part as pending, and its paths are
+ * added to `changed`, which the baseline reads as edits (review wave 11,
+ * S2). Returns whether the wait goes on. When it ends, the ledger forgets the files `startWaiting`
  * added, so the baseline retires the ones a listing no longer holds; the
  * caller runs it, as today's recreate starts validation after an install.
  */
@@ -146,9 +154,13 @@ export async function reconcileWaiting(
   context: SchedulerContext,
   ledger: Ledger,
   batch: CandidateBatch,
+  changed: Set<RelativePath>,
 ): Promise<boolean> {
   const applied = await reconcileBatch(context, ledger, batch);
-  if (applied !== null) ledger.commit({ refined: applied.revision.number });
+  if (applied !== null) {
+    ledger.commit({ refined: applied.revision.number });
+    for (const change of applied.revision.changes) changed.add(change.path);
+  }
   const missing = await missingInstall(context.root);
   if (missing !== null) {
     const { store, worktreeId } = context;
@@ -157,6 +169,15 @@ export async function reconcileWaiting(
   }
   ledger.files.clear();
   return false;
+}
+
+/**
+ * Whether a revision's change to `path` can end the install of the root: an
+ * installed lockfile (D3) or the root `package.json`. The scheduler then
+ * decides the wait again (task 001-107).
+ */
+export function touchesInstall(path: RelativePath): boolean {
+  return path === "package.json" || isInstalledLockfile(path);
 }
 
 /** Ends the wait in the store; the caller runs the baseline next. */

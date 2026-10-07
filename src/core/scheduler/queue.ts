@@ -77,6 +77,10 @@ export class RunQueue {
     this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
   }
 
+  clear(): void {
+    this.#entries.clear();
+  }
+
   remove(ref: TestFileRef): boolean {
     return this.#entries.delete(testFileId(ref));
   }
