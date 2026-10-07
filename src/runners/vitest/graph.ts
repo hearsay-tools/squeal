@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { builtinModules } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
@@ -13,7 +14,25 @@ export interface ImportClosure {
    * written, possibly none).
    */
   readonly missing: ReadonlySet<AbsolutePath>;
+  /**
+   * Package specifiers Vite left as written, by importing file: a package it
+   * did not resolve. Task 001-105: keyed as Node would look them up.
+   */
+  readonly bare: ReadonlyMap<AbsolutePath, ReadonlySet<string>>;
+  /** Node builtins the walked files import, without `node:` or a subpath. */
+  readonly builtins: ReadonlySet<string>;
 }
+
+/** One hop of the transform graph out of a project file. */
+interface ImportTargets {
+  readonly targets: readonly AbsolutePath[];
+  readonly bare: readonly string[];
+  readonly builtins: readonly string[];
+}
+
+const BUILTINS: ReadonlySet<string> = new Set(
+  builtinModules.map((name) => name.split("/")[0] ?? name),
+);
 
 /**
  * Transitive static and dynamic imports of `entries` in the project's `ssr`
@@ -30,6 +49,8 @@ export async function importClosure(
 ): Promise<ImportClosure> {
   const files = new Set<AbsolutePath>();
   const missing = new Set<AbsolutePath>();
+  const bare = new Map<AbsolutePath, ReadonlySet<string>>();
+  const builtins = new Set<string>();
 
   const visit = async (file: AbsolutePath): Promise<void> => {
     if (files.has(file) || missing.has(file)) return;
@@ -39,11 +60,14 @@ export async function importClosure(
     }
     files.add(file);
     if (file.includes("node_modules")) return;
-    await Promise.all((await importTargets(project, file)).map(visit));
+    const hop = await importTargets(project, file);
+    if (hop.bare.length > 0) bare.set(file, new Set(hop.bare));
+    for (const name of hop.builtins) builtins.add(name);
+    await Promise.all(hop.targets.map(visit));
   };
 
   await Promise.all(entries.map(visit));
-  return { files, missing };
+  return { files, missing, bare, builtins };
 }
 
 /**
@@ -58,14 +82,16 @@ export async function directImports(
 ): Promise<ImportClosure> {
   const files = new Set<AbsolutePath>();
   const missing = new Set<AbsolutePath>();
-  for (const target of await importTargets(project, file)) {
+  const hop = await importTargets(project, file);
+  for (const target of hop.targets) {
     (existsSync(target) ? files : missing).add(target);
   }
-  return { files, missing };
+  const bare = new Map(hop.bare.length > 0 ? [[file, new Set(hop.bare)]] : []);
+  return { files, missing, bare, builtins: new Set(hop.builtins) };
 }
 
 /** One hop of the transform graph: the import targets of an existing project file. */
-async function importTargets(project: TestProject, file: AbsolutePath): Promise<AbsolutePath[]> {
+async function importTargets(project: TestProject, file: AbsolutePath): Promise<ImportTargets> {
   const environment = project.vite.environments.ssr;
   if (!environment) {
     throw new Error(`vitest adapter: project "${project.name}" has no ssr environment`);
@@ -78,13 +104,44 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
   } catch {
     // A syntax error: the file stays in the closure and its run reports
     // the error as a file-level error. Its imports are unknown until fixed.
-    return [];
+    return NO_TARGETS;
   }
-  if (!transformed) return [];
-  const deps = [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])];
-  return deps
-    .map((dep) => depToPath(dep, file, project.config.root))
-    .filter((target): target is AbsolutePath => target !== null);
+  if (!transformed) return NO_TARGETS;
+  const targets: AbsolutePath[] = [];
+  const bare: string[] = [];
+  const builtins: string[] = [];
+  for (const dep of [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])]) {
+    const target = depToPath(dep, file, project.config.root);
+    if (target !== null) {
+      targets.push(target);
+      continue;
+    }
+    const builtin = builtinOf(dep);
+    if (builtin !== null) builtins.push(builtin);
+    else {
+      const name = packageName(dep);
+      if (name !== null) bare.push(name);
+    }
+  }
+  return { targets, bare, builtins };
+}
+
+const NO_TARGETS: ImportTargets = { targets: [], bare: [], builtins: [] };
+
+/** The builtin a specifier names (`node:fs/promises`, `fs`), without `node:` or a subpath. */
+export function builtinOf(specifier: string): string | null {
+  const path = specifier.split("?")[0] ?? specifier;
+  if (path.startsWith("node:")) return path.slice("node:".length).split("/")[0] ?? null;
+  const first = path.split("/")[0] ?? path;
+  return BUILTINS.has(first) && !path.includes(":") ? first : null;
+}
+
+/** The package a bare specifier names (`@s/p/sub` is `@s/p`), or `null` for anything else. */
+export function packageName(specifier: string): string | null {
+  const path = specifier.split("?")[0] ?? specifier;
+  if (path === "" || /^[./\\\0#]/.test(path) || path.includes(":")) return null;
+  const match = /^(?:@[^/]+\/)?[^/]+/.exec(path);
+  return match?.[0] ?? null;
 }
 
 /** A transform dependency as a filesystem path, or `null` for virtual and bare ids. */
