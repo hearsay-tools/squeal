@@ -1,6 +1,7 @@
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { writeTurn } from "../../src/core/delivery/turn.js";
 import { check, result } from "../state/helpers.js";
 import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
@@ -57,6 +58,8 @@ interface Case {
   /** Row label when `hook` runs in more than one case; a case named "(silent)" must print nothing. */
   readonly name?: string;
   readonly input: string;
+  /** Fields over the recorded input. */
+  readonly overrides?: object;
   readonly env?: Readonly<Record<string, string>>;
   /** Untimed work before each run. */
   readonly before?: (r: SquealRepo, run: number) => void;
@@ -69,6 +72,14 @@ const CASES: readonly Case[] = [
   { hook: "session-start", input: "session-start" },
   { hook: "post-tool-batch", input: "post-tool-batch", before: flip },
   { hook: "pre-tool-use", input: "pre-tool-use", before: flip },
+  // Task 001-93: every tool call, its costliest path putting a consumer left idle in a turn.
+  {
+    hook: "pre-tool-use",
+    name: "pre-tool-use (Bash, silent)",
+    input: "pre-tool-use",
+    overrides: { tool_name: "Bash", tool_input: { command: "sleep 15" } },
+    before: (r) => r.store.transaction(() => writeTurn(r.store, r.consumer(), null)),
+  },
   { hook: "stop", input: "stop", before: flip },
   // Nothing to deliver: Stop ends the turn (task 001-85), recording what the waiter waits for.
   { hook: "stop", name: "stop (silent)", input: "stop" },
@@ -105,7 +116,7 @@ describe("bundled hook latency", () => {
         const samples: number[] = [];
         for (let run = 0; run < RUNS; run++) {
           c.before?.(r, run);
-          const out = await runBundle(c.hook, recorded(c.input, r.root), {
+          const out = await runBundle(c.hook, recorded(c.input, r.root, c.overrides), {
             XDG_RUNTIME_DIR: dir,
             ...c.env,
           });
