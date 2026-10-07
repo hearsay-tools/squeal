@@ -1,9 +1,8 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
-import { isMissing } from "../fs/index.js";
+import { isMissing, mapConcurrent } from "../fs/index.js";
 import type { AbsolutePath, EpochMs, FileHash, FileStat, RelativePath } from "../types/index.js";
 import { hashFile, type ObjectFormat } from "./blob.js";
-import { mapConcurrent } from "./concurrency.js";
 import { readCleanIndexHashes } from "./git-index.js";
 import { isRacy, type StatCache, sameStat } from "./stat-cache.js";
 
