@@ -102,7 +102,9 @@ function entryDirectories(
   for (let dir = dirname(path); dir.startsWith(`${root}/`); dir = dirname(dir)) {
     const manifest = join(dir, "package.json");
     if (!existsSync(manifest)) continue;
-    if (packageEntries(manifest).some((entry) => bases.includes(join(dir, entry)))) found.push(dir);
+    // `join` keeps a trailing slash; `"main": "lib/"` names `lib` (reviews/wave-7.6.md N1).
+    const named = packageEntries(manifest).map((entry) => join(dir, entry).replace(/\/+$/, ""));
+    if (named.some((entry) => bases.includes(entry))) found.push(dir);
   }
   return found;
 }
