@@ -1,4 +1,5 @@
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
+import { readDaemonNotes } from "../notes.js";
 import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
 import { META_STORE_RECOVERED, worktreeIdFor } from "../store/index.js";
 import {
@@ -18,7 +19,6 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { readGitHead } from "./git-head.js";
-import { readDaemonNotes } from "./notes.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 
 export interface StatusOptions extends StatusStoreOptions {

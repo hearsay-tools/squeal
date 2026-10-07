@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMissing } from "../fs/index.js";
 import { globToRegExp } from "../keys/glob.js";
+import { readDaemonNotes } from "../notes.js";
 import {
   DEFAULT_POLICY,
   type LoadedPolicy,
-  notesMetaKey,
   type Policy,
   type Store,
   type WorktreeId,
@@ -165,15 +165,6 @@ export function describeProblems(problems: readonly string[]): string {
 
 /** Text of the newest persisted note about `squeal.config.json`, or `null`. */
 export function lastPolicyNote(store: Store, worktreeId: WorktreeId): string | null {
-  let notes: unknown;
-  try {
-    notes = JSON.parse(store.meta.get(notesMetaKey(worktreeId)) ?? "[]");
-  } catch {
-    // Notes that do not parse are replaced by the next note (`appendNote`).
-    return null;
-  }
-  if (!Array.isArray(notes)) return null;
-  const texts = notes.map((note) => (note as { text?: unknown }).text);
-  const last = texts.findLast((text) => typeof text === "string" && text.startsWith(POLICY_FILE));
-  return typeof last === "string" ? last : null;
+  const texts = readDaemonNotes(store, worktreeId).map((note) => note.text);
+  return texts.findLast((text) => text.startsWith(POLICY_FILE)) ?? null;
 }
