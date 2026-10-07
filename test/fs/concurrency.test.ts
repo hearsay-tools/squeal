@@ -1,11 +1,11 @@
-import { setTimeout as delay } from "node:timers/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { mapConcurrent } from "../../src/core/fs/index.js";
 
 describe("mapConcurrent", () => {
   it("keeps input order while calls finish out of order", async () => {
     const out = await mapConcurrent([30, 10, 20, 0], async (ms, i) => {
-      await delay(ms);
+      await sleep(ms);
       return `${i}:${ms}`;
     });
     expect(out).toEqual(["0:30", "1:10", "2:20", "3:0"]);
@@ -19,7 +19,7 @@ describe("mapConcurrent", () => {
       async (i) => {
         inFlight++;
         peak = Math.max(peak, inFlight);
-        await delay(i % 3);
+        await sleep(i % 3);
         inFlight--;
       },
       8,

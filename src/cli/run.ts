@@ -1,8 +1,9 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { resolveCommonDir } from "../core/fs/index.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, CheckpointRecord, RunAllResponse } from "../core/types/index.js";
-import { askDaemon, daemonSocket, delay, worktreeRoot } from "./daemon-access.js";
+import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 
 const USAGE = "usage: squeal run --all [--force] [--wait]\n";
@@ -77,7 +78,7 @@ async function recorded(
       );
       return null;
     }
-    await delay(POLL_MS);
+    await sleep(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId,
@@ -110,6 +111,6 @@ async function ended(
     if (end !== null) return end;
     // A killed daemon never ends its checkpoint; check that it is still there now and then.
     if (polls % 20 === 19 && (await askDaemon(socketPath, { type: "ping" })) === null) return null;
-    await delay(250);
+    await sleep(250);
   }
 }
