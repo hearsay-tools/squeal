@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { isBuiltin } from "node:module";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { describe, expect, it } from "vitest";
@@ -158,7 +159,7 @@ describe("bundles", () => {
       const metafile = result.metafile as Metafile;
       for (const [path, output] of Object.entries(metafile.outputs)) {
         const packages = output.imports
-          .filter((i) => !i.path.startsWith("node:"))
+          .filter((i) => !isBuiltin(i.path))
           .map((i) => `${i.kind} ${i.path}`);
         // Squeal's own @parcel/watcher is tried first, lazily; the project's is the fallback.
         const allowed = path.endsWith("cli/squeal.mjs") ? ["dynamic-import @parcel/watcher"] : [];
