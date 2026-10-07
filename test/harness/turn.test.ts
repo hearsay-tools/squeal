@@ -88,6 +88,8 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
       turn: "idle",
       testFiles: ["\0src/math.test.ts"],
       newTestFiles: false,
+      keys: { "\0src/math.test.ts": "k2" },
+      revision: 2,
     });
 
     const waiter = await waiterAround(r, () => r.apply(r.fail()), 5_000);
@@ -162,6 +164,37 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     const waiter = await waiterAround(r, () => r.apply(r.fail()));
     expect(waiter).toEqual(SILENT);
     expect(context(await hook("post-tool-batch", r))).toContain("PASS -> FAIL");
+  });
+
+  it.each([
+    ["an edit made from outside", (r: SquealRepo) => r.queue("k3")],
+    ["a re-run under the same key", () => {}],
+  ])(
+    "idle: once a pending file's result lands quiet, %s never wakes (review wave 10, P1)",
+    async (_, edit) => {
+      const r = await inTurn();
+      r.queue("k2");
+      await hook("stop", r);
+
+      expect(await waiterAround(r, () => r.apply(r.pass()))).toEqual(SILENT);
+      expect(readTurn(r.store, r.consumer())).toMatchObject({ turn: "idle", testFiles: [] });
+
+      edit(r);
+      const waiter = await waiterAround(r, () => r.apply(r.fail()));
+      expect(waiter).toEqual(SILENT);
+      expect(context(await hook("user-prompt-submit", r))).toContain("PASS -> FAIL");
+    },
+  );
+
+  it("idle: a pending file whose key an outside edit changed is no longer waited for (S3)", async () => {
+    const r = await inTurn();
+    r.queue("k2");
+    await hook("stop", r);
+    expect(readTurn(r.store, r.consumer())).toMatchObject({ keys: { "\0src/math.test.ts": "k2" } });
+
+    r.queue("k3");
+    const waiter = await waiterAround(r, () => r.apply(r.fail()));
+    expect(waiter).toEqual(SILENT);
   });
 
   it("a session starts idle and waiting for nothing", async () => {

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDelivery } from "../../src/core/delivery/index.js";
-import { readTurn, START_IDLE, turnMetaKey, waitedFor } from "../../src/core/delivery/turn.js";
+import {
+  readTurn,
+  START_IDLE,
+  trimmed,
+  turnMetaKey,
+  waitedFor,
+} from "../../src/core/delivery/turn.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import {
   type Consumer,
@@ -94,10 +100,43 @@ describe("turn state", () => {
     await delivery.endTurn(C1);
 
     const turn = readTurn(store, C1);
-    expect(turn).toEqual({ turn: "idle", testFiles: [], newTestFiles: true });
-    expect(waitedFor(turn, entry())).toBe(true);
-    expect(waitedFor(turn, entry({ kind: "pass-to-fail", from: "pass" }))).toBe(false);
-    expect(waitedFor(START_IDLE, entry())).toBe(false);
+    expect(turn).toEqual({
+      turn: "idle",
+      testFiles: [],
+      newTestFiles: true,
+      keys: {},
+      revision: 1,
+    });
+    const none = new Map();
+    expect(waitedFor(turn, entry({ observedAt: 1 }), none)).toBe(true);
+    expect(waitedFor(turn, entry({ kind: "pass-to-fail", from: "pass" }), none)).toBe(false);
+    // A check first observed at a later revision comes from an edit made after the turn (S3).
+    expect(waitedFor(turn, entry({ observedAt: 2 }), none)).toBe(false);
+    expect(waitedFor(START_IDLE, entry({ observedAt: 1 }), none)).toBe(false);
+  });
+
+  it("trims the files whose result is no longer owed, and keeps a row without keys working (S3)", () => {
+    const keyRow = (path: string, key: string, pending: "queued" | null) => ({
+      worktreeId: WT,
+      testFile: { project: "", path },
+      key,
+      revision: 1,
+      pending,
+    });
+    const [a, b, c] = ["\0a.test.ts", "\0b.test.ts", "\0c.test.ts"];
+    const state = {
+      turn: "idle" as const,
+      testFiles: [a, b, c],
+      newTestFiles: false,
+      keys: { [a]: "ka", [b]: "kb", [c]: "kc" },
+    };
+    // a still queued at its key; b landed; c queued again at a later key.
+    const keys = [keyRow("a.test.ts", "ka", "queued"), keyRow("b.test.ts", "kb", null)];
+    keys.push(keyRow("c.test.ts", "kc2", "queued"));
+    expect(trimmed(state, [], keys)).toEqual({ ...state, testFiles: [a], keys: { [a]: "ka" } });
+    const { keys: _, ...older } = state;
+    expect(trimmed(older, [], keys)).toEqual({ ...older, testFiles: [a, c] });
+    expect(trimmed({ ...older, testFiles: [a] }, [], keys)).toBeNull();
   });
 
   it("keeps one row per worktree and drops consumers no longer registered", async () => {

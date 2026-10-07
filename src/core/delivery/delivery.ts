@@ -13,12 +13,21 @@ import {
   PAYLOAD_SCHEMA_VERSION,
   type StatusBuilder,
   type Store,
+  type TurnState,
   WAITERLESS_EXPIRY_MS,
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { readLiveHeader, tellLiveness, toldLiveness, worktreeLiveness } from "./liveness.js";
-import { endTurn, readTurn, startTurn, waitedFor, writeTurn } from "./turn.js";
+import {
+  currentKeys,
+  endTurn,
+  readTurn,
+  startTurn,
+  trimmed,
+  waitedFor,
+  writeTurn,
+} from "./turn.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -37,6 +46,11 @@ interface DeliverOptions {
   readonly keep?: ((entry: DeltaEntry) => boolean) | null;
   readonly liveness?: boolean;
   readonly idle?: boolean;
+}
+
+interface Selection {
+  readonly only: ((entry: DeltaEntry) => boolean) | null;
+  readonly trim: TurnState | null;
 }
 
 const isEmpty = (plan: DeltaPlan) =>
@@ -97,35 +111,46 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     consumer: Consumer,
     { heardFrom, keep = null, liveness = false, idle = false }: DeliverOptions,
   ): Delta | null {
-    const select = (): ((entry: DeltaEntry) => boolean) | null | "silent" => {
-      if (!idle) return keep;
+    /** What to deliver, and for the waiter the turn state trimmed of what is no longer owed. */
+    const select = (states: readonly KnownState[]): Selection | "silent" => {
+      if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
-      return turn.turn === "idle" ? (entry) => waitedFor(turn, entry) : "silent";
+      if (turn.turn !== "idle") return "silent";
+      const keys = store.testFileKeys.list(consumer.worktreeId);
+      const current = currentKeys(keys);
+      return {
+        only: (entry) => waitedFor(turn, entry, current),
+        trim: trimmed(turn, states, keys),
+      };
     };
     if (!heardFrom) {
       // Read-only first: an idle waiter takes no write lock until there is something to write.
       if (store.consumers.get(consumer) === null) return null;
-      const only = select();
-      if (only === "silent") return null;
       const states = store.knownStates.list(consumer.worktreeId);
+      const selection = select(states);
+      if (selection === "silent") return null;
       const quiet = !liveness || livenessChange(consumer, now()) === null;
-      if (quiet && isEmpty(plan(consumer, states, now(), only))) return null;
+      const empty = isEmpty(plan(consumer, states, now(), selection.only));
+      if (quiet && empty && selection.trim === null) return null;
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
-      const only = select();
-      if (only === "silent") return null;
       const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at, only);
+      const selection = select(states);
+      if (selection === "silent") return null;
+      const delta = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness ? livenessChange(consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
       const delivered = delta.entries.length > 0 || changed !== null;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
-      if (!delivered) return null;
+      if (!delivered) {
+        if (selection.trim !== null) writeTurn(store, consumer, selection.trim);
+        return null;
+      }
       if (idle) startTurn(store, consumer);
       const label =
         delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
