@@ -7,7 +7,6 @@ import {
   type DeltaEntry,
   type DeltaKind,
   type HarnessDelivery,
-  REGRESSION_KINDS,
   type ResultRecord,
   type StateSink,
   type Store,
@@ -22,6 +21,7 @@ const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const C2: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "sub-1" };
 const A = check("a");
 const B = check("b");
+const REGRESSION_KINDS: readonly DeltaKind[] = ["first-seen-fail", "pass-to-fail"];
 
 /** `baseline` of a transition entry; retired entries have none. */
 const baselineOf = (e: DeltaEntry) => ("baseline" in e ? e.baseline : undefined);
@@ -94,11 +94,25 @@ describe("onToolBoundary", () => {
     ]);
   });
 
-  it("reads an untold failure after a crash from the unknown state it followed", async () => {
+  it("reads a failure after a pass and a crash as PASS -> FAIL, told the crash or not (task 001-101)", async () => {
     await delivery.register(C1);
     apply(pass());
+    await delivery.register(C2);
     sink.markUnknown(WT, 9, [FILE], "runner crashed");
+    expect(await kindsFor(C2)).toEqual(["to-unknown"]);
     apply(fail());
+    for (const consumer of [C1, C2]) {
+      expect((await delivery.onToolBoundary(consumer))?.entries).toMatchObject([
+        { kind: "pass-to-fail", from: "pass", to: "fail" },
+      ]);
+    }
+  });
+
+  it("reads a failure after an earlier failure and a crash from the unknown state", async () => {
+    await delivery.register(C1);
+    apply(fail("one"));
+    sink.markUnknown(WT, 9, [FILE], "runner crashed");
+    apply(fail("two"));
     expect((await delivery.onToolBoundary(C1))?.entries).toMatchObject([
       { kind: "first-seen-fail", from: "unknown", to: "fail" },
     ]);

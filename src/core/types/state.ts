@@ -95,14 +95,6 @@ export type TransitionKind =
   | "to-unknown";
 
 /**
- * Kinds that count as a regression for PreToolUse denial.
- *
- * Spec 001 D9: "an undelivered regression (first-seen fail or `pass ->
- * fail`)". "Recoveries never deny."
- */
-export const REGRESSION_KINDS: readonly TransitionKind[] = ["first-seen-fail", "pass-to-fail"];
-
-/**
  * One recorded transition. Audit log only.
  *
  * Spec 001 D6: "A **transition** is recorded, per worktree, whenever a new

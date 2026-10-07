@@ -1,13 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDelivery, daemonLiveness, livenessMetaKey } from "../../src/core/delivery/index.js";
 import { createStateSink } from "../../src/core/state/index.js";
-import {
-  type Consumer,
-  type HarnessDelivery,
-  REGRESSION_KINDS,
-  type StateSink,
-  type Store,
-} from "../../src/core/types/index.js";
+import type { Consumer, HarnessDelivery, StateSink, Store } from "../../src/core/types/index.js";
 import { check, freshStore, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus } from "./fakes.js";
 
@@ -142,7 +136,7 @@ describe("a liveness change", () => {
     await delivery.register(C1);
     clock += 3 * INTERVAL;
 
-    expect(await delivery.peek(C1, { kinds: REGRESSION_KINDS })).toBeNull();
+    expect(await delivery.peek(C1, { kinds: ["pass-to-fail"] })).toBeNull();
     expect(await delivery.waitForDelta(C1, { timeoutMs: 20 })).toBeNull();
     expect(await delivery.onToolBoundary(C1)).toMatchObject({ liveness: { state: "down" } });
   });
