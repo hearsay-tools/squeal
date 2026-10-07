@@ -99,9 +99,11 @@ export interface StatusHeader {
    */
   readonly runnerPartPending?: boolean;
   /**
-   * The paths the current revision changed, from its revision record (task
-   * 001-85: every report says what its revision changed). Set by
-   * `readLiveHeader`; absent or empty names nothing.
+   * The paths changed since the revision this consumer was last told about,
+   * a union over the revision records after it up to the current one; the
+   * current revision's paths when it is the one last told (task 001-89,
+   * review wave 10 S4 (b); task 001-85 named only the current revision's).
+   * Set by `readLiveHeader`; absent or empty names nothing.
    */
   readonly changedPaths?: readonly RelativePath[];
 }

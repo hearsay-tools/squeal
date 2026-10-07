@@ -1,4 +1,5 @@
 import type { CheckId } from "./check.js";
+import type { CheckKey } from "./keys.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -168,7 +169,31 @@ export type TurnState =
       readonly turn: "idle";
       readonly testFiles: readonly string[];
       readonly newTestFiles: boolean;
+      /**
+       * Task 001-89 (review wave 10, S3): the key each of `testFiles` was
+       * pending at. A file is waited for only while its key is still that
+       * one, so an edit made later, from outside the turn, never wakes the
+       * agent. Absent for a file (or a state an older build wrote): waited
+       * for until the next turn.
+       */
+      readonly keys?: Readonly<Record<string, CheckKey | null>>;
+      /**
+       * Task 001-89: the revision the turn ended at; with `newTestFiles`,
+       * only checks observed at or before it are waited for. Absent: any.
+       */
+      readonly revision?: RevisionNumber;
     };
+
+/** Options of `HarnessDelivery.register`. */
+export interface RegisterOptions {
+  /**
+   * Task 001-89 (review wave 10, S1): the consumer registers in a turn (a
+   * prompt or a tool call registered it), in the same transaction, so no
+   * result can land between the registration and the turn. Default `false`:
+   * it starts idle, waiting for nothing.
+   */
+  readonly inTurn?: boolean;
+}
 
 export interface WaitOptions {
   /** Silent expiry. Spec 001 D9: "Its `timeout` is explicit and long; expiry is silent". */
@@ -188,7 +213,7 @@ export interface WaitOptions {
  * SubagentStart and SessionEnd need (D9); they are not push or pull channels.
  */
 export interface HarnessDelivery {
-  register(consumer: Consumer): Promise<Registration>;
+  register(consumer: Consumer, options?: RegisterOptions): Promise<Registration>;
   unregister(consumer: Consumer): Promise<void>;
 
   /**
