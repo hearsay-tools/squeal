@@ -3006,8 +3006,8 @@ function ensure(location2, deps, record) {
 }
 async function ensureIfStale(context, deps) {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return;
-  await ensure(context, deps, record);
+  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return "fresh";
+  return ensure(context, deps, record);
 }
 
 // src/harness/shared/context.ts
