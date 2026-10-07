@@ -47,6 +47,17 @@ export function refinedMetaKey(worktreeId: WorktreeId): string {
   return `refined.${worktreeId}`;
 }
 
+/**
+ * `meta` key that is `"true"` while the daemon of a worktree waits for an
+ * install: the root `package.json` declares dependencies and the root has no
+ * installed lockfile, so nothing is listed or run (spec 001 D5 as amended,
+ * task 001-100, defect 18). Any other value, or none, is not waiting. The
+ * one source for that state: headers, status and hooks read it here.
+ */
+export function awaitingInstallMetaKey(worktreeId: WorktreeId): string {
+  return `awaiting-install.${worktreeId}`;
+}
+
 /** A `squeal run --all` request. Spec 001 D5. */
 export interface FullSuiteRequest {
   /** Run every test file, even those with a result under their current key. */
