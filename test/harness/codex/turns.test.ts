@@ -10,8 +10,8 @@ import {
   runCodexHook,
 } from "../../../src/harness/codex/index.js";
 import { CONTEXT_CAP_CHARS } from "../../../src/harness/codex/output.js";
-import { PRIMER } from "../../../src/harness/shared/primer.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
+import { PRIMER } from "../../../src/harness/shared/primer.js";
 import { outsideGit } from "../bundle-helpers.js";
 import { type SquealRepo, SUBTRACTS, squealRepo } from "../helpers.js";
 import { codexInput, codexRecorded } from "./helpers.js";
