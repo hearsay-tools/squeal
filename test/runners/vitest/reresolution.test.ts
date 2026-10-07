@@ -210,3 +210,34 @@ describe("re-resolution after a package.json is added, deleted or edited", SLOW,
     expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["pass"]);
   });
 });
+
+/*
+ * Reviews/wave-9b.md S3: an edit that changes no resolution field stales
+ * nothing, and records the fields, so the next edit that does still moves.
+ */
+describe("re-resolution after package.json edits that change no resolution field", SLOW, () => {
+  it("keeps the entry for a scripts edit and follows the next main edit", async () => {
+    const manifest = "src/pkg/package.json";
+    const withScripts = (entry: string, script: string) =>
+      json({ name: "a", main: entry, scripts: { gen: script } });
+    const fx = await openFixture("basic", {
+      ...module("src/pkg/lib.ts"),
+      ...module("src/pkg/other.ts"),
+      "src/uses.ts": 'export { which } from "./pkg";\n',
+      [manifest]: withScripts("lib.ts", "one"),
+      [pkg.path]: readsTest("../src/uses.ts", "src/pkg/other.ts"),
+    });
+    const edit = async (content: string) => {
+      fx.write(manifest, content);
+      await fx.adapter.invalidate([{ path: manifest, kind: "change" }]);
+      return (await fx.adapter.closure(pkg)).paths;
+    };
+    expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["fail"]);
+    expect(await edit(withScripts("lib.ts", "two"))).toContain("src/pkg/lib.ts");
+    expect(await edit(withScripts("lib.ts", "three"))).toContain("src/pkg/lib.ts");
+    const moved = await edit(withScripts("other.ts", "three"));
+    expect(moved).toContain("src/pkg/other.ts");
+    expect(moved).not.toContain("src/pkg/lib.ts");
+    expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["pass"]);
+  });
+});
