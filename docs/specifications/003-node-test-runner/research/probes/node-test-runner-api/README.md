@@ -40,3 +40,7 @@ Their canonical URLs are in the findings. Sources are not vendored here.
 
 After both versions, run `node summarize.mjs` to regenerate `evidence.md`, then
 `node check-results.mjs` to check the main observations against the saved records.
+
+## Raw records
+
+The raw per-case records (`results/v22.23.3.json`, `results/v24.21.0.json`, about 1.8 MB together) were dropped at integration (coordinator, 2026-10-07) to keep the repository small; `evidence.md` and `verification.md` summarize them, and `probe.mjs` regenerates them.

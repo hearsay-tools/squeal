@@ -11,9 +11,13 @@ Started: 2026-10-07
 - Cezar drives Codex through `codex app-server` (JSON-RPC over stdio), not `codex exec`. Both paths must work; the research says what each exposes.
 - Codex has no idle wake (001 research, `claude-code-integration.md` section 7, docs only). The vision accepts pull at the next turn; whether any channel wakes an idle Codex session is a research question, not a goal.
 
-## Open questions (research phase)
+## Research
 
-See `research/README.md`.
+Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
+
+## Open questions
+
+The findings' open questions, until `spec.md` is written.
 
 ## Links
 
