@@ -1,0 +1,59 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/0e887270-1a62-462e-9d42-d7e4649a3207
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/0e887270-1a62-462e-9d42-d7e4649a3207/test/fixtures/scheduler/.tmp/f184e845-3d8e-4ff8-bd35-2ed741e08baa/main/.git/worktrees/staged/gitdir
+ ❯ test/daemon/scratch.test.ts (9 tests | 1 failed) 21890ms
+   ❯ squeal daemon: nothing held inside the root or the spawner's temp dir (spec 001 D10) (2)
+     × answers on its socket within a hook's budget, empties its temp directory when it starts and removes the leftover after, and removes it on squeal stop 6992ms
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/0e887270-1a62-462e-9d42-d7e4649a3207/test/fixtures/scheduler/.tmp/94ce41b5-e487-4d91-995d-358b00643feb/main/.git/worktrees/staged/gitdir
+ ❯ test/daemon/lifecycle.test.ts (11 tests | 1 failed) 127104ms
+   ❯ squeal daemon: singleton and restart (spec 001 D10) (8)
+     × exits after the idle period with no registered consumers, leaving a note 60160ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/daemon/lifecycle.test.ts > squeal daemon: singleton and restart (spec 001 D10) > exits after the idle period with no registered consumers, leaving a note
+Error: daemon ready not met in 60000 ms
+notes: ["daemon stopped: idle for 1.8 s with no registered consumers"]
+daemon pid 2610137: exit code 0, signal null
+stderr (last 2,000 characters): squeal daemon: daemon stopped: idle for 1.8 s with no registered consumers
+squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/worktrees/0e887270-1a62-462e-9d42-d7e4649a3207/test/fixtures/scheduler/.tmp/35ce1ecb-abdb-4efe-866e-27a4d3205f88/main on /tmp/sq-NdQJWK/squeal-2e319cb7aacca3a3.sock
+squeal daemon: daemon stopped: idle for 1.8 s with no registered consumers
+
+ ❯ waitReady test/daemon/helpers.ts:216:11
+    214|     );
+    215|   } catch (error) {
+    216|     throw new Error(`${(error as Error).message}\n${diagnose(repo, spa…
+       |           ^
+    217|   }
+    218| }
+ ❯ test/daemon/lifecycle.test.ts:79:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/daemon/scratch.test.ts > squeal daemon: nothing held inside the root or the spawner's temp dir (spec 001 D10) > answers on its socket within a hook's budget, empties its temp directory when it starts and removes the leftover after, and removes it on squeal stop
+AssertionError: expected [ 'XaiyGUvYSNWFX19toz6sn' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "XaiyGUvYSNWFX19toz6sn",
++ ]
+
+ ❯ test/daemon/scratch.test.ts:137:36
+    135|       if (!LOADED) expect(answeredMs).toBeLessThan(2_000);
+    136|       await waitReady(repo, spawned);
+    137|       expect(readdirSync(tempDir)).toEqual([]);
+       |                                    ^
+    138|       // Review wave 7.7, N1: moved aside and removed in the backgroun…
+    139|       await waitFor(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 132 passed (134)
+      Tests  2 failed | 1043 passed | 7 skipped (1052)
+   Start at  18:29:56
+   Duration  165.41s (tests 91%, transform 6%, import 2%)

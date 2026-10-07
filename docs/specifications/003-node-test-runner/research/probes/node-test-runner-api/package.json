@@ -1,0 +1,6 @@
+{
+  "name": "throwaway-node-runner-api-probes",
+  "private": true,
+  "type": "module",
+  "dependencies": { "tsx": "4.21.0" }
+}
