@@ -68,7 +68,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
       ).toEqual([]);
       for (const imported of output.imports) expect(imported.path, name).toMatch(/^node:/);
     }
-  });
+  }, 60_000);
 
   it("puts no CLAUDE_* variable name in a hook bundle (D4)", () => {
     for (const name of CONTRACT) {

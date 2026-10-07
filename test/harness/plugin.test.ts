@@ -18,6 +18,8 @@ import { tempDir } from "../store/helpers.js";
 import { expectSameFiles, runtimeDir } from "./bundle-helpers.js";
 
 const PLUGIN = join(REPO_ROOT, "plugins/claude-code");
+/** For tests that run esbuild over every bundle: the full suite runs several at once. */
+const BUILD = { timeout: 60_000 };
 const readJson = (path: string): unknown => JSON.parse(readFileSync(join(PLUGIN, path), "utf8"));
 
 interface HookCommand {
@@ -124,7 +126,7 @@ describe("plugin manifest", () => {
 });
 
 describe("bundles", () => {
-  it("are committed exactly as `npm run build` produces them", async () => {
+  it("are committed exactly as `npm run build` produces them", BUILD, async () => {
     const outdir = tempDir("squeal-bundles-");
     await buildDist(CLAUDE_CODE_PLUGIN, outdir);
     expectSameFiles(PLUGIN_DIST, outdir, ".mjs");
@@ -148,20 +150,24 @@ describe("bundles", () => {
     expect(existsSync(join(PLUGIN_DIST, "cli/front-desk.mjs"))).toBe(true);
   });
 
-  it("load Vitest and @parcel/watcher only from the project, never statically (B2, N11)", async () => {
-    const result = await build({ ...bundleOptions(tempDir("squeal-bundles-")), write: false });
-    const metafile = result.metafile as Metafile;
-    for (const [path, output] of Object.entries(metafile.outputs)) {
-      const packages = output.imports
-        .filter((i) => !i.path.startsWith("node:"))
-        .map((i) => `${i.kind} ${i.path}`);
-      // Squeal's own @parcel/watcher is tried first, lazily; the project's is the fallback.
-      const allowed = path.endsWith("cli/squeal.mjs") ? ["dynamic-import @parcel/watcher"] : [];
-      expect(packages, path).toEqual(allowed);
-    }
-  });
+  it(
+    "load Vitest and @parcel/watcher only from the project, never statically (B2, N11)",
+    BUILD,
+    async () => {
+      const result = await build({ ...bundleOptions(tempDir("squeal-bundles-")), write: false });
+      const metafile = result.metafile as Metafile;
+      for (const [path, output] of Object.entries(metafile.outputs)) {
+        const packages = output.imports
+          .filter((i) => !i.path.startsWith("node:"))
+          .map((i) => `${i.kind} ${i.path}`);
+        // Squeal's own @parcel/watcher is tried first, lazily; the project's is the fallback.
+        const allowed = path.endsWith("cli/squeal.mjs") ? ["dynamic-import @parcel/watcher"] : [];
+        expect(packages, path).toEqual(allowed);
+      }
+    },
+  );
 
-  it("need nothing at runtime but Node built-ins", async () => {
+  it("need nothing at runtime but Node built-ins", BUILD, async () => {
     const result = await build({ ...bundleOptions(tempDir("squeal-bundles-")), write: false });
     const metafile = result.metafile as Metafile;
     // The CLI bundle carries the daemon and therefore the pure-JS watcher dependency; the hook
