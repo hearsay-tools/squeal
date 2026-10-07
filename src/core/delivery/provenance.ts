@@ -65,14 +65,17 @@ export function recoveryProvenance(entry: TransitionEntry, revision: number): st
   return parts.length === 0 ? null : parts.join("; ");
 }
 
+/** What the attribution lines count: changes in the worktree, anyone's (review wave 10d, N1). */
+const CHANGED_HERE = "files changed here since this session started";
+
 /** Whether the failure's imports hold a file changed since registration; `null` when not known. */
 export function touchesLine(entry: TransitionEntry): string | null {
   const paths = entry.changesInClosure;
   if (paths === undefined) return null;
-  if (paths.length === 0) return "none of your changes are in its imports";
+  if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
   const more = paths.length - TOUCHED_SHOWN;
   const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `touches your changes: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `touches ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
 /** The load a timed-out test ran under; `null` for any other failure. */

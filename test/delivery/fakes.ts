@@ -24,7 +24,7 @@ export function fixedStatus(
 
 /**
  * A live daemon in `worktreeId` that finished its start scan, so a
- * registration may be told "none of your changes" (task 001-96).
+ * registration may be told "none of the files changed here" (task 001-96).
  * `scanned: false` leaves the bootstrap marker out.
  */
 export function liveDaemon(

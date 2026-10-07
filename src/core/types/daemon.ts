@@ -162,7 +162,7 @@ export interface DaemonExit {
  * of the daemon that finished its start scan (`bootstrap`). The scan hashes
  * files it has no hash for without a revision, so an edit made before it
  * can be in no revision; a consumer registered while the marker matches the
- * live daemon may be told "none of your changes" while that daemon lives
+ * live daemon may be told "none of the files changed here" while that daemon lives
  * (task 001-96, review wave 10c). No hook waits for it.
  */
 export function bootstrappedMetaKey(worktreeId: WorktreeId): string {

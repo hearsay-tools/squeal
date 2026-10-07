@@ -76,7 +76,7 @@ function closureFor(store: Store, worktreeId: WorktreeId) {
  * this worktree's (`closureFor`); an inherited result is read against this
  * worktree's changes, the ones the agent made. A closure that holds a path a
  * `start` revision changed gets neither line: those changes may or may not
- * be the agent's (`changedAfter`, task 001-96). "None of your changes" also
+ * be the agent's (`changedAfter`, task 001-96). "None of the files changed here" also
  * needs `seesEveryChange`.
  */
 export function attribute(
