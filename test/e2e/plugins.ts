@@ -112,14 +112,20 @@ const CODEX: Plugin = {
   bin: false,
   run: (copy, hook, root, overrides, env) => {
     const [mode, name] = CODEX_INPUT[hook];
-    const input = {
+    const input: Record<string, unknown> = {
       ...codexFixture(mode, name),
       session_id: CODEX_SESSION,
-      // The thread's own transcript: one named for another session is an unserved thread (002 D2).
-      transcript_path: codexFixture("app-server", "session-start").transcript_path,
       cwd: root,
       ...overrides,
     };
+    // The thread's own transcript, named for the session the input carries: one named for
+    // another session is an unserved thread (002 D2), so a test that overrides session_id
+    // alone, as the second worktree's does, gets a matching transcript.
+    if (!("transcript_path" in overrides)) {
+      input.transcript_path = String(
+        codexFixture("app-server", "session-start").transcript_path,
+      ).replace(`${CODEX_SESSION}.jsonl`, `${String(input.session_id)}.jsonl`);
+    }
     return runShell(codexCommand(copy, CODEX_EVENT[hook]), JSON.stringify(input), root, {
       // The `node` of the command is the one running this suite, so Node 22 and 24 each test themselves.
       PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
