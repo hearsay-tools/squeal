@@ -66,6 +66,8 @@ Started: 2026-10-02
 - 2026-10-07, wave 9 (001-75, `quality/2026-10.md` X1): `runner.maxConcurrentRuns` dropped from D11, the policy type, its default, the loader and the skill. No code read it: a project that set it to 4 got one run at a time and no note. A config that still sets it gets one `unknown key "runner.maxConcurrentRuns"` note, as for any other unknown key; `squeal init` no longer writes it.
 - 2026-10-07, wave 9 (001-75, `quality/2026-10.md` X2): `Scheduler.status()` returns only `revision`, which the daemon stamps on its notes. Its test-file and check counts, queue sizes, run, lookup and discard counters are gone with the ledger counters behind them: nothing outside tests read them, and the counts classified a file pending during a forced re-run while the store kept its result current. The scheduler tests read the store instead (`readHeader`, the `runs` and `results` tables). No spec change.
 
+- 2026-10-07, wave 10 (001-85, `lessons.md` defect 14): D6 and D9 amended. Each consumer has a turn state in `meta` (no timers, no schema step): UserPromptSubmit or a waiter wake puts it in a turn and the prompt carries the undelivered delta; a silent main-agent Stop makes it idle with the test files pending at that moment; a speaking Stop keeps the turn. `HarnessDelivery.waitForDelta` delivers only to an idle consumer, only entries of those test files, and adds `startTurn` and `endTurn`. Headers name the revision's changed paths, three then "and N more". Bundled hook p95 with this change built outside `dist` (`SQUEAL_TEST_DIST`), load 4.8 so not asserted: Stop 68 ms, UserPromptSubmit 62 ms, PostToolBatch 61 ms.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
