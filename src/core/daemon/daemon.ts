@@ -273,7 +273,8 @@ class Daemon {
       });
       this.#loop = loop;
       await loop.start();
-      // Past the start scan: registrations from here on record where an agent's changes start.
+      // Past the start scan: a registration at a session's start from here on records this
+      // daemon as scanned, which "none of the files changed here" needs (D6).
       store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
       // Idle counts from ready: the baseline is work, and the hook that spawned
       // this daemon registers its consumer while it runs.
