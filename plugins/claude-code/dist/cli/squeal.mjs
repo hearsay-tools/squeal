@@ -722,10 +722,15 @@ function closuresToReresolve(changes, index, isDeclaredInput) {
     for (const ref of refs) picked.set(testFileId(ref), ref);
   };
   for (const change of changes) {
-    if (change.oldHash !== null && change.newHash !== null) continue;
-    if (isDeclaredInput(change.path)) return index.testFiles();
     const dir = directoryOf(change.path);
     const base = posix3.basename(change.path);
+    const edited = change.oldHash !== null && change.newHash !== null;
+    if (edited && base !== "package.json") continue;
+    if (!edited && isDeclaredInput(change.path)) return index.testFiles();
+    if (base === "package.json") {
+      pick(index.below(dir));
+      continue;
+    }
     const dot = base.lastIndexOf(".");
     const name = dot > 0 ? base.slice(0, dot) : base;
     pick(index.inDirectory(dir));
@@ -759,6 +764,7 @@ var init_keys = __esm({
 // src/core/state/fingerprint.ts
 import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
+import { stripVTControlCharacters } from "node:util";
 function tempPrefixes() {
   const dir = tmpdir().replace(/\/+$/, "");
   let real = dir;
@@ -772,7 +778,7 @@ function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function firstLine(text) {
-  const line = text.replace(ANSI, "").split(/\r?\n/).find((l) => l.trim() !== "");
+  const line = stripVTControlCharacters(text).split(/\r?\n/).find((l) => l.trim() !== "");
   return (line ?? "").trim().replace(/\s+/g, " ");
 }
 function normalize(line) {
@@ -802,12 +808,11 @@ function describeFailure(errors, fallback) {
     summary: cap(summary, SUMMARY_MAX_CHARS)
   };
 }
-var SUMMARY_MAX_CHARS, ANSI, VOLATILE;
+var SUMMARY_MAX_CHARS, VOLATILE;
 var init_fingerprint = __esm({
   "src/core/state/fingerprint.ts"() {
     "use strict";
     SUMMARY_MAX_CHARS = 300;
-    ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
     VOLATILE = [
       [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
       [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
@@ -1007,7 +1012,7 @@ var init_policy = __esm({
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
       env: { allowlist: [] },
-      runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
+      runner: { tierSize: 4, timeoutMs: 6e5 },
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null }
     };
@@ -1077,17 +1082,17 @@ var init_types = __esm({
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
-  const counts2 = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
   let inheritedCount = 0;
   for (const state of states) {
-    counts2[state.validity]++;
+    counts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
   return {
     revision,
-    counts: counts2,
+    counts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
       atCurrentRevision: last !== null && last.revision === revision,
@@ -1116,12 +1121,12 @@ function fullSuiteText({ revision, fullSuite }) {
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts2 = { pending: 0, unknown: 0 };
+  const counts = { pending: 0, unknown: 0 };
   for (const row of keys) {
     if (withChecks.has(testFileId(row.testFile))) continue;
-    counts2[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
+    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
   }
-  return counts2;
+  return counts;
 }
 function hasKey(row) {
   return row.key !== null;
@@ -2826,10 +2831,10 @@ var init_store2 = __esm({
 });
 
 // src/core/notes.ts
-import { stripVTControlCharacters } from "node:util";
+import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 function appendNote(store, worktreeId, note) {
   const key = notesMetaKey(worktreeId);
-  const plain = { ...note, text: stripVTControlCharacters(note.text) };
+  const plain = { ...note, text: stripVTControlCharacters2(note.text) };
   store.transaction(() => {
     store.meta.set(key, JSON.stringify(withNote(store.meta.get(key), plain)));
   });
@@ -2968,8 +2973,7 @@ var init_policy2 = __esm({
       env: { allowlist: strings },
       runner: {
         tierSize: positiveInteger,
-        timeoutMs: orNull(positiveInteger),
-        maxConcurrentRuns: positiveInteger
+        timeoutMs: orNull(positiveInteger)
       },
       daemon: { idleExitMinutes: aboveZero },
       store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
@@ -3760,7 +3764,6 @@ async function bootstrap(context, ledger) {
     recheck.map((file) => file.ref),
     failures
   );
-  ledger.counters.misses -= recheck.length;
   const misses = [
     ...first.filter((file) => !fromStore.has(file.id)),
     ...lookup(recheck.map((file) => file.ref))
@@ -4338,15 +4341,6 @@ var init_ledger = __esm({
       broken = false;
       /** The last test file listing failed; the next revision lists again. */
       listingFailed = false;
-      counters = {
-        hits: 0,
-        misses: 0,
-        discarded: 0,
-        started: 0,
-        completed: 0,
-        crashed: 0,
-        timedOut: 0
-      };
       #dirty = /* @__PURE__ */ new Set();
       #removed = [];
       #applied = [];
@@ -4403,12 +4397,10 @@ var init_ledger = __esm({
           }
           const hits = this.context.store.results.byKey(key, this.context.now());
           if (hits.length > 0) {
-            this.counters.hits++;
             const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
             this.applyResults(file, key, hits, checkpointId);
             continue;
           }
-          this.counters.misses++;
           misses.push(file);
           if (file.blocked !== null) {
             this.queue.remove(ref);
@@ -4472,7 +4464,6 @@ var init_ledger = __esm({
        * while the file ran; it is not counted (review S5).
        */
       discard(file, key) {
-        this.counters.discarded++;
         file.discards = file.key === key ? file.discards + 1 : 0;
         if (file.discards >= MAX_DISCARDS) {
           this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
@@ -4775,46 +4766,6 @@ var init_runner_work = __esm({
   }
 });
 
-// src/core/scheduler/status.ts
-function statusOf(ledger) {
-  const testFiles = counts();
-  const checks = counts();
-  let running = 0;
-  for (const file of ledger?.files.values() ?? []) {
-    const validity = classify2(file);
-    testFiles[validity]++;
-    checks[validity] += file.checks.length;
-    if (file.phase === "running") running++;
-  }
-  const c = ledger?.counters;
-  const active = ledger?.checkpoints.active ?? null;
-  return {
-    revision: ledger?.revision.number ?? 0,
-    testFiles,
-    checks,
-    queued: ledger?.queue.size ?? 0,
-    running,
-    runs: {
-      started: c?.started ?? 0,
-      completed: c?.completed ?? 0,
-      crashed: c?.crashed ?? 0,
-      timedOut: c?.timedOut ?? 0
-    },
-    lookups: { hits: c?.hits ?? 0, misses: c?.misses ?? 0 },
-    discarded: c?.discarded ?? 0,
-    checkpoint: active === null ? null : { id: active.record.id, kind: active.record.kind, remaining: active.remaining }
-  };
-}
-function counts() {
-  return { current: 0, pending: 0, stale: 0, unknown: 0 };
-}
-var init_status = __esm({
-  "src/core/scheduler/status.ts"() {
-    "use strict";
-    init_files();
-  }
-});
-
 // src/core/scheduler/records.ts
 function fileCheck(ref) {
   return { kind: "file", project: ref.project, testPath: ref.path };
@@ -4928,7 +4879,6 @@ function selectTier(context, ledger) {
     if (!ledger.queue.isForced(ref)) {
       const hits = store.results.byKey(key, context.now());
       if (hits.length > 0) {
-        ledger.counters.hits++;
         ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
         continue;
       }
@@ -4956,7 +4906,6 @@ function selectTier(context, ledger) {
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = /* @__PURE__ */ new Set();
-  ledger.counters.started++;
   store.transaction(() => {
     store.runs.start({
       id: runId,
@@ -4998,10 +4947,6 @@ function recordTier(context, ledger, tier, report2, changedOnDisk) {
   const duringRun = ledger.tierChanges ?? /* @__PURE__ */ new Set();
   ledger.tierChanges = null;
   const completed = new Set(report2.completedFiles.map(testFileId));
-  const counters = ledger.counters;
-  if (report2.end === "completed") counters.completed++;
-  else if (report2.end === "crashed") counters.crashed++;
-  else counters.timedOut++;
   const provenance = {
     worktreeId,
     revision: tier.revision.number,
@@ -5106,7 +5051,6 @@ var init_scheduler2 = __esm({
     init_queue();
     init_revision();
     init_runner_work();
-    init_status();
     init_tiers();
     TierScheduler = class {
       constructor(options) {
@@ -5214,7 +5158,7 @@ var init_scheduler2 = __esm({
         return record;
       }
       status() {
-        return statusOf(this.#ledger);
+        return { revision: this.#ledger?.revision.number ?? 0 };
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
@@ -8554,11 +8498,12 @@ import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:
 import { isBuiltin } from "node:module";
 import { basename as basename8, dirname as dirname14, join as join25 } from "node:path";
 function invalidateStructural(vitest, paths, note) {
-  const structural = paths.filter((p) => p.kind !== "change");
+  const structural = paths.filter((p) => p.kind !== "change" || isPackageJson(p.abs));
   if (structural.length > 0) {
     const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
     const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-    const stale = staleTransforms(vitest, added, deleted);
+    const manifests = structural.filter((p) => p.kind === "change").map((p) => p.abs);
+    const stale = staleTransforms(vitest, added, deleted, manifests);
     for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
     if (stale === null && !fellBack.has(vitest)) {
       fellBack.add(vitest);
@@ -8570,14 +8515,14 @@ function invalidateStructural(vitest, paths, note) {
     if (testGlob) vitest.clearSpecificationsCache();
   }
 }
-function staleTransforms(vitest, added, deleted) {
+function staleTransforms(vitest, added, deleted, manifests = []) {
   const stale = /* @__PURE__ */ new Set();
   const gone = new Set(deleted);
   for (const project of vitest.projects) {
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set(deleted);
-      const directories = [...added, ...deleted].filter(isPackageJson).map((p) => `${dirname14(p)}/`);
+      const directories = [...added, ...deleted, ...manifests].filter(isPackageJson).map((p) => `${dirname14(p)}/`);
       for (const path of added) {
         const bases = resolutionBases(path, extensions);
         for (const base of bases) {
@@ -8905,7 +8850,7 @@ var init_adapter = __esm({
 
 // src/runners/vitest/paths.ts
 import { sep as sep5 } from "node:path";
-import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
+import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 var WorktreePaths;
 var init_paths4 = __esm({
   "src/runners/vitest/paths.ts"() {
@@ -8928,7 +8873,7 @@ var init_paths4 = __esm({
       }
       /** Spec 001 D4: "Stack paths are relativized before storage." Also strips ANSI colours. */
       relativizeText(text) {
-        return stripVTControlCharacters2(text).replaceAll(`file://${this.root}/`, "").replaceAll(`${this.root}/`, "").replaceAll(this.root, ".");
+        return stripVTControlCharacters3(text).replaceAll(`file://${this.root}/`, "").replaceAll(`${this.root}/`, "").replaceAll(this.root, ".");
       }
       location(file, line, column) {
         const path = this.toRelative(file);
@@ -8966,6 +8911,7 @@ var runner_exports = {};
 __export(runner_exports, {
   createRecoveringRunner: () => createRecoveringRunner
 });
+import { stripVTControlCharacters as stripVTControlCharacters4 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
   let error = null;
@@ -8989,7 +8935,7 @@ function createRecoveringRunner(options) {
         reported = null;
         return created;
       } catch (cause) {
-        error = new Error(`Vitest could not start: ${messageOf(cause)}`, { cause });
+        error = new Error(`${options.name} could not start: ${messageOf(cause)}`, { cause });
         if (error.message !== reported && !closed) {
           reported = error.message;
           options.onFailure(error.message);
@@ -9045,13 +8991,11 @@ function createRecoveringRunner(options) {
 }
 function messageOf(error) {
   const text = error instanceof Error ? error.message : String(error);
-  return text.replace(ANSI_COLOUR, "").trim();
+  return stripVTControlCharacters4(text).trim();
 }
-var ANSI_COLOUR;
 var init_runner = __esm({
   "src/core/daemon/runner.ts"() {
     "use strict";
-    ANSI_COLOUR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
   }
 });
 
@@ -9062,7 +9006,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.2";
+  if (true) return "0.1.3";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

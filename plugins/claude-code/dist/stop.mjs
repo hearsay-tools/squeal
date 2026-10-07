@@ -1,6 +1,10 @@
 // src/harness/claude-code/hooks/stop.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
+// src/core/daemon/policy.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join2 } from "node:path";
+
 // src/core/fs/errors.ts
 function isMissing(error) {
   const code = error?.code;
@@ -130,6 +134,158 @@ function splitTopLevel(body) {
   return parts;
 }
 
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  env: { allowlist: [] },
+  runner: { tierSize: 4, timeoutMs: 6e5 },
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
+// src/core/notes.ts
+function readDaemonNotes(store, worktreeId) {
+  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+}
+function parseList(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function toNote(item) {
+  if (typeof item !== "object" || item === null) return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  if (revision !== null && typeof revision !== "number") return [];
+  return [{ at: at2, revision, text }];
+}
+
+// src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings(v) === null;
+  if (!isList && !(isObject(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  for (const glob of globs) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
+    }
+  }
+  return null;
+};
+var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
+};
+var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean },
+  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+  baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
+  inputs,
+  env: { allowlist: strings },
+  runner: {
+    tierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger)
+  },
+  daemon: { idleExitMinutes: aboveZero },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+};
+function loadPolicy(root) {
+  let text;
+  try {
+    text = readFileSync2(join2(root, POLICY_FILE), "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return defaultsBecause(`not valid JSON (${error.message})`);
+  }
+  if (!isObject(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
+  }
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged, problems };
+}
+function readPolicy(root) {
+  return loadPolicy(root).policy;
+}
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isObject(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
+  }
+  return result;
+}
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -201,40 +357,6 @@ function formatCheck(check) {
   const project = check.project === "" ? "" : `[${check.project}] `;
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
-
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/daemon.ts
-var DAEMON_SOCKET_TIMEOUT_MS = 100;
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5, maxConcurrentRuns: 1 },
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-function refinedMetaKey(worktreeId) {
-  return `refined.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
@@ -324,11 +446,11 @@ import { setTimeout as sleep } from "node:timers/promises";
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash2 } from "node:crypto";
 import { existsSync as existsSync2, mkdirSync, rmSync } from "node:fs";
-import { join as join2 } from "node:path";
+import { join as join3 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
   const id = createHash2("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join2(locksDir, `waiter-${id}.sqlite`);
+  return join3(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
@@ -430,30 +552,9 @@ function planDelta(input) {
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
-// src/core/notes.ts
-function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
-}
-function parseList(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-function toNote(item) {
-  if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
-  if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text }];
-}
-
 // src/core/store/open.ts
 import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
@@ -522,14 +623,14 @@ function rollback(db) {
 }
 
 // src/core/store/paths.ts
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join3(commonDir, "squeal");
+  const dir = join4(commonDir, "squeal");
   return {
     dir,
-    database: join3(dir, "store.sqlite"),
-    runsDir: join3(dir, "runs"),
-    locksDir: join3(dir, "locks")
+    database: join4(dir, "store.sqlite"),
+    runsDir: join4(dir, "runs"),
+    locksDir: join4(dir, "locks")
   };
 }
 
@@ -769,7 +870,7 @@ function bool(row, column) {
 function json(row, column) {
   return JSON.parse(str(row, column));
 }
-function oneOf(row, column, values) {
+function oneOf2(row, column, values) {
   const value = str(row, column);
   if (!values.includes(value)) {
     throw new TypeError(`squeal store: ${column} has unexpected value ${value}`);
@@ -777,7 +878,7 @@ function oneOf(row, column, values) {
   return value;
 }
 function oneOfOrNull(row, column, values) {
-  return row[column] === null ? null : oneOf(row, column, values);
+  return row[column] === null ? null : oneOf2(row, column, values);
 }
 function locationParams(location2) {
   return [location2?.path ?? null, location2?.line ?? null, location2?.column ?? null];
@@ -798,7 +899,7 @@ function checkParams(check) {
 function checkFrom(row) {
   const project = str(row, "check_project");
   const testPath = str(row, "check_test_path");
-  if (oneOf(row, "check_kind", ["test", "file"]) === "file") {
+  if (oneOf2(row, "check_kind", ["test", "file"]) === "file") {
     return { kind: "file", project, testPath };
   }
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
@@ -826,7 +927,7 @@ function flag(value) {
 
 // src/core/store/prune.ts
 import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
-import { join as join4, resolve as resolve2, sep } from "node:path";
+import { join as join5, resolve as resolve2, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -848,7 +949,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync3(join4(worktree.root, ".git"))) continue;
+    if (existsSync3(join5(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -1064,7 +1165,7 @@ function createViewRepo(conn) {
 function toView2(row) {
   return {
     check: checkFrom(row),
-    outcome: oneOf(row, "outcome", OUTCOMES),
+    outcome: oneOf2(row, "outcome", OUTCOMES),
     fingerprint: strOrNull(row, "fingerprint"),
     toldAt: num(row, "told_at")
   };
@@ -1159,7 +1260,7 @@ function toResult(row) {
   return {
     check: checkFrom(row),
     key: str(row, "key"),
-    outcome: oneOf(row, "outcome", OUTCOMES2),
+    outcome: oneOf2(row, "outcome", OUTCOMES2),
     durationMs: num(row, "duration_ms"),
     location: location(row),
     fingerprint: strOrNull(row, "fingerprint"),
@@ -1255,7 +1356,7 @@ function toCheckpoint(row) {
     id: str(row, "id"),
     worktreeId: str(row, "worktree_id"),
     revision: num(row, "revision"),
-    kind: oneOf(row, "kind", CHECKPOINT_KINDS),
+    kind: oneOf2(row, "kind", CHECKPOINT_KINDS),
     testFiles: json(row, "test_files"),
     startedAt: num(row, "started_at"),
     completedAt: numOrNull(row, "completed_at"),
@@ -1346,8 +1447,8 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf(row, "outcome", OUTCOMES3),
-    validity: oneOf(row, "validity", VALIDITIES),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
     commit: strOrNull(row, "commit_sha"),
@@ -1394,9 +1495,9 @@ function toTransition(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    kind: oneOf(row, "kind", KINDS),
+    kind: oneOf2(row, "kind", KINDS),
     from: oneOfOrNull(row, "from_outcome", OUTCOMES3),
-    to: oneOf(row, "to_outcome", OUTCOMES3),
+    to: oneOf2(row, "to_outcome", OUTCOMES3),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -1449,7 +1550,7 @@ function toTestFile(row) {
       testFile,
       paths: json(row, "closure_paths"),
       complete: bool(row, "complete"),
-      method: oneOf(row, "method", METHODS)
+      method: oneOf2(row, "method", METHODS)
     },
     updatedAt: num(row, "updated_at"),
     updatedBy: str(row, "updated_by")
@@ -1575,7 +1676,7 @@ function toRevision(row) {
     createdAt: num(row, "created_at"),
     head: strOrNull(row, "head"),
     dirty: bool(row, "dirty"),
-    trigger: oneOf(row, "trigger", TRIGGERS),
+    trigger: oneOf2(row, "trigger", TRIGGERS),
     changes: json(row, "changes")
   };
 }
@@ -1817,7 +1918,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync2(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync2(join5(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync2(join6(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -1848,25 +1949,25 @@ function moveAside(database, at2) {
 }
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join6 } from "node:path";
+import { readFileSync as readFileSync3 } from "node:fs";
+import { join as join7 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join6(gitDir, "HEAD"));
+  let value = read2(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join6(gitDir, ref)) ?? read2(join6(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join6(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -1874,7 +1975,7 @@ function packed(commonDir, ref) {
 }
 function read2(path) {
   try {
-    return readFileSync2(path, "utf8").trim();
+    return readFileSync3(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -2364,18 +2465,18 @@ function failure(code, message) {
 }
 
 // src/core/daemon/paths.ts
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join7 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join8 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join7(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join7(userTmpDir(), name);
+  const path = join8(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join7("/tmp", `squeal-${uid}`);
+  return join8("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -2545,106 +2646,6 @@ function additionalContext(input, text) {
 }
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
-}
-
-// src/core/daemon/policy.ts
-import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join8 } from "node:path";
-var POLICY_FILE = "squeal.config.json";
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
-var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var inputs = (v) => {
-  const isList = strings(v) === null;
-  if (!isList && !(isObject(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
-    return "an array of strings, or an object from test-file glob to an array of strings";
-  }
-  const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  for (const glob of globs) {
-    try {
-      globToRegExp(glob);
-    } catch (error) {
-      return { problem: `has a glob Squeal cannot use: ${error.message}` };
-    }
-  }
-  return null;
-};
-var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
-var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
-var orNull = (leaf) => (v) => {
-  const expected = v === null ? null : leaf(v);
-  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
-};
-var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
-var SHAPE = {
-  interrupt: { onRegression: boolean },
-  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
-  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
-  inputs,
-  env: { allowlist: strings },
-  runner: {
-    tierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger),
-    maxConcurrentRuns: positiveInteger
-  },
-  daemon: { idleExitMinutes: aboveZero },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
-};
-function loadPolicy(root) {
-  let text;
-  try {
-    text = readFileSync3(join8(root, POLICY_FILE), "utf8");
-  } catch (error) {
-    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
-    return defaultsBecause(`could not be read: ${String(error)}`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return defaultsBecause(`not valid JSON (${error.message})`);
-  }
-  if (!isObject(parsed)) {
-    return defaultsBecause(
-      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
-    );
-  }
-  const problems = [];
-  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  return { policy: merged, problems };
-}
-function readPolicy(root) {
-  return loadPolicy(root).policy;
-}
-function defaultsBecause(problem) {
-  return { policy: DEFAULT_POLICY, problems: [problem] };
-}
-function merge(shape, defaults, given, prefix, problems) {
-  const result = { ...defaults };
-  for (const [key, value] of Object.entries(given)) {
-    const path = `${prefix}${key}`;
-    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
-    if (rule === void 0) {
-      problems.push(`unknown key "${path}"`);
-    } else if (typeof rule === "function") {
-      const expected = rule(value);
-      if (expected === null) result[key] = value;
-      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
-      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isObject(value)) {
-      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
-    } else {
-      const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
-    }
-  }
-  return result;
-}
-function isObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function isNumber(value) {
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 // src/harness/claude-code/text.ts
