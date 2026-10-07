@@ -1,17 +1,19 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type BuildOptions, build } from "esbuild";
 
 /*
  * Bundles every hook entry point and the CLI into one file each under
- * plugins/claude-code/dist/ (spec 001 D9: hook scripts are dependency-free).
+ * plugins/claude-code/dist/ (spec 001 D9: hook scripts are dependency-free),
+ * and writes the root version into the plugin's manifests (001-76).
  * Run by `npm run build`; self-contained so Node runs it with type stripping.
  */
 
 /** Repository root: this file is src/harness/claude-code/build.ts. */
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
-export const PLUGIN_DIST = join(REPO_ROOT, "plugins/claude-code/dist");
+export const PLUGIN_DIR = join(REPO_ROOT, "plugins/claude-code");
+export const PLUGIN_DIST = join(PLUGIN_DIR, "dist");
 
 /** Hook bundle names: one per file in src/harness/claude-code/entries/. */
 export function hookEntries(): string[] {
@@ -27,6 +29,22 @@ export function rootVersion(): string {
     version: string;
   };
   return manifest.version;
+}
+
+/**
+ * Plugin files that carry the root version, relative to the plugin directory. Claude Code
+ * updates an installed plugin only when the manifest's version changes (001-76).
+ */
+export const VERSIONED_PLUGIN_FILES = [".claude-plugin/plugin.json", "package.json"] as const;
+
+/** Writes `version` into each of {@link VERSIONED_PLUGIN_FILES} under `pluginDir`, keeping the rest. */
+export function writePluginVersions(pluginDir: string, version = rootVersion()): void {
+  for (const file of VERSIONED_PLUGIN_FILES) {
+    const path = join(pluginDir, file);
+    const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    if (manifest.version === version) continue;
+    writeFileSync(path, `${JSON.stringify({ ...manifest, version }, null, 2)}\n`);
+  }
 }
 
 export function bundleOptions(outdir: string): BuildOptions {
@@ -59,5 +77,6 @@ export function bundleOptions(outdir: string): BuildOptions {
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  writePluginVersions(PLUGIN_DIR);
   await build(bundleOptions(PLUGIN_DIST));
 }

@@ -4,6 +4,7 @@ import {
   constants,
   copyFileSync,
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
 } from "node:fs";
@@ -15,6 +16,8 @@ import {
   hookEntries,
   PLUGIN_DIST,
   REPO_ROOT,
+  VERSIONED_PLUGIN_FILES,
+  writePluginVersions,
 } from "../../src/harness/claude-code/build.js";
 import { WAITER_HOOK_TIMEOUT_S } from "../../src/harness/claude-code/index.js";
 import { tempDir } from "../store/helpers.js";
@@ -99,6 +102,19 @@ describe("plugin manifest", () => {
       expect.objectContaining({ name: plugin.name, source: "./plugins/claude-code" }),
     ]);
     expect(existsSync(join(PLUGIN, ".claude-plugin/marketplace.json"))).toBe(false);
+    // 001-76: the manifest's version decides updates and wins over the entry's; one place only.
+    expect(marketplace.plugins[0]).not.toHaveProperty("version");
+  });
+
+  it("gets its version written by the build from the root package (001-76)", () => {
+    const dir = tempDir("squeal-plugin-version-");
+    mkdirSync(join(dir, ".claude-plugin"));
+    for (const file of VERSIONED_PLUGIN_FILES) copyFileSync(join(PLUGIN, file), join(dir, file));
+    writePluginVersions(dir, "9.8.7");
+    for (const file of VERSIONED_PLUGIN_FILES) {
+      const written = JSON.parse(readFileSync(join(dir, file), "utf8")) as Record<string, unknown>;
+      expect(written, file).toEqual({ ...(readJson(file) as object), version: "9.8.7" });
+    }
   });
 
   it("puts an executable squeal on the plugin path that runs the bundled CLI", () => {
