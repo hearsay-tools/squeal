@@ -25,7 +25,14 @@ tl $S/*01a11840-f30b-7820-ab9c-8c3a380edd4a.jsonl "$(cat $L/as1.t0)" > "$O/as1.r
 tl $S/*01a11849-ed21-7a00-a829-eaaec6b40757.jsonl "$(cat $L/as2.t0)" > "$O/as2.main.timeline.txt"
 tl $S/*01a11843-9015-7ff1-87cb-c9954f55236d.jsonl "$(cat $L/n4inline.t0)" > "$O/n4inline.main.timeline.txt"
 tl $S/*01a11843-c375-70b1-aedb-8be359068163.jsonl "$(cat $L/n4inline.t0)" > "$O/n4inline.review.timeline.txt"
-jq -c --argjson t0 "$(cat $L/n4inline.t0)" '{dt: (.t-$t0), event: .stdin.hook_event_name, session_id: .stdin.session_id, agent_id: .stdin.agent_id, turn_id: .stdin.turn_id, tool: .stdin.tool_name, transcript: (.stdin.transcript_path // "" | split("/") | last)}' $L/n4inline.stdin.jsonl > "$O/n4inline.stdin.jsonl"
+# The first inline run's stdin log was overwritten by the detached run; n4inline2 repeats it.
+for r in n4inline2 n4detached; do
+  jq -c --argjson t0 "$(cat $L/$r.t0)" '{dt: (.t-$t0)} + (.stdin | del(.tool_input, .tool_response, .last_assistant_message) | .prompt |= (if . then .[0:80] else . end))' $L/$r.stdin.jsonl > "$O/$r.stdin.jsonl"
+done
+store n4inline2; hooks n4inline2; cp $L/n4inline2.out.txt "$O/n4inline2.out.txt"
+for f in $S/*01a1185a-4716-7c01-b1ca-853a7eeea04c.jsonl $S/*01a1185a-eb11-7ad3-9c79-ff5c7b0691eb.jsonl; do
+  head -1 "$f" | jq -c '.payload | del(.base_instructions, .instructions, .git)'
+done > "$O/n4inline2.session-meta.jsonl"
 cp $L/n4detached.out.txt "$O/n4detached.out.txt"
 node "$B/hook-stats.mjs" $L/as1.as.jsonl $L/as2.as.jsonl $L/n4inline.as.jsonl $L/nd-r9.as.jsonl $L/nd-r5.as.jsonl $L/nd-r6.as.jsonl > "$O/hook-durations-all.txt"
 for f in $L/latency-*.txt; do [ -f "$f" ] && grep -v '^$' "$f" > "$O/$(basename "$f")"; done

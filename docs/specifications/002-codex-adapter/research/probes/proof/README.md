@@ -20,4 +20,4 @@ Run on 2026-10-07 against Codex CLI 0.160.1, model `gpt-6.1-sol` through the hos
 - `bin/watch.mjs`: polls `<repo>/.git/squeal/store.sqlite` every 100 ms and prints consumers, views, transitions and the revision on change.
 - `bin/timeline.mjs`: a readable timeline of one Codex rollout. `bin/hook-stats.mjs`: hook durations from `hook/completed`. `bin/collect.sh`: copies trimmed evidence into `logs/`.
 - `prompts/`: the prompts, verbatim.
-- `logs/`: evidence, named by run (`exec1`, `as1`, `as2`, `n4inline`, `n4detached`, `nd-r9`, `nd-r5`, `nd-r6`). `*.store.jsonl` times are ms after the run started; `*.hooks.jsonl` are Codex's `hook/completed` notifications; `*.timeline.txt` are rollouts with the system preamble cut and the encrypted `spawn_agent` message replaced.
+- `logs/`: evidence, named by run (`exec1`, `as1`, `as2`, `n4inline`, `n4inline2`, `n4detached`, `nd-r9`, `nd-r5`, `nd-r6`). `*.store.jsonl` times are ms after the run started; `*.hooks.jsonl` are Codex's `hook/completed` notifications; `*.timeline.txt` are rollouts with the system preamble cut and the encrypted `spawn_agent` message replaced.
