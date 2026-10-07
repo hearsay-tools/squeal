@@ -767,3 +767,12 @@ At 16:52 a `Write` of a markdown plan file was denied by `interrupt.onRegression
 20. **A fresh worktree costs two full suites.** One before the install, one after, with nothing inherited when its lockfile differs from any validated worktree's. Under a harness that refuses to remove a held directory, the second run's Vitest workers hold the worktree for its whole duration (D10 option b).
 
 2026-10-07, later: the false failures of `reviews/wave-11.md` S1 crossed worktrees. The coordinator's `npm ci` under this worktree's daemon stored FAIL for 10 checks in `test/scheduler/` (their fixtures resolve Vitest from the repository's `node_modules`, which `npm ci` had just deleted, so the tests themselves failed and 001-58's runner-failure rule did not apply). The spec 002/003 coordinator's worktree, at identical content and lockfile, inherited them at its revision 45, while the same files passed there when run directly. 001-107 closes the cause (a tier that overlaps an install change stores nothing); the stored results were overwritten by `squeal run --all --force` in a healthy worktree. Inherited failures are as trustworthy as the run that stored them: open question 1 now has a failure-side example.
+
+## Found by the Codex proof (spec 002)
+
+2026-10-07, reported by the spec 002/003 coordinator from its proof row 002-16; evidence in `specifications/002-codex-adapter/lessons.md` "Defects" 1 and 3 and `research/probes/proof/logs/` on that branch.
+
+### Defects
+
+21. **A daemon cannot start in a repository whose `node_modules` is a symlink.** `squeal start` printed "Daemon: running", then the daemon exited: `git check-ignore -z --stdin exited 128 ... fatal: pathspec 'node_modules/.package-lock.json' is beyond a symbolic link`. `git check-ignore` rejects the whole batch for one path under a symlinked directory, so every later hook spawns a daemon that dies the same way: the repository is never validated and each hook pays a spawn. Worktrees that link a shared `node_modules` are common, and cezarion#917 may produce them.
+22. **A hung daemon leaves edits unannounced.** With the daemon SIGSTOPped, an edit got no report and no "no daemon is validating" line at the tool boundary, unlike the dead-daemon case. The only signal was a clause in a registration header, and the agent summarised the session's Squeal messages as "Known failures: 0".
