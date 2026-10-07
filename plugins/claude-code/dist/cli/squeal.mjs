@@ -965,19 +965,19 @@ function read(store, worktreeId) {
 }
 function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
   if (transitions.length === 0) return;
-  const baseline = checkpointId !== null && store.checkpoints.get(checkpointId)?.kind === "baseline";
+  const baseline2 = checkpointId !== null && store.checkpoints.get(checkpointId)?.kind === "baseline";
   const current = read(store, worktreeId);
-  if (!baseline && current === null) return;
-  const fresh = baseline && current?.checkpointId !== checkpointId;
+  if (!baseline2 && current === null) return;
+  const fresh = baseline2 && current?.checkpointId !== checkpointId;
   const entries2 = new Set(fresh ? [] : current?.entries);
   const touched = new Set(transitions.map((t) => checkIdentity(t.check)));
   for (const e of entries2) if (touched.has(e.slice(0, e.lastIndexOf("\0")))) entries2.delete(e);
-  if (baseline) {
+  if (baseline2) {
     for (const t of transitions) {
       if (t.kind === "first-seen-fail") entries2.add(entry(t.check, t.toFingerprint));
     }
   }
-  const id = baseline ? checkpointId : current?.checkpointId ?? "";
+  const id = baseline2 ? checkpointId : current?.checkpointId ?? "";
   const next = { checkpointId: id, entries: [...entries2] };
   store.meta.set(metaKey(worktreeId), JSON.stringify(next));
 }
@@ -1078,6 +1078,9 @@ function notesMetaKey(worktreeId) {
 function refinedMetaKey(worktreeId) {
   return `refined.${worktreeId}`;
 }
+function awaitingInstallMetaKey(worktreeId) {
+  return `awaiting-install.${worktreeId}`;
+}
 var MAX_PERSISTED_NOTES;
 var init_scheduler = __esm({
   "src/core/types/scheduler.ts"() {
@@ -1153,7 +1156,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     testFilesListed: keys.length > 0 || last !== null,
     inheritedCount,
     refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision
+    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    ...store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true" ? { awaitingInstall: true } : {}
   };
 }
 function readRefined(store, worktreeId) {
@@ -3152,216 +3156,6 @@ var init_files = __esm({
   }
 });
 
-// src/core/scheduler/context.ts
-async function tryRunner(context, subject, call, onFailure) {
-  try {
-    return await call();
-  } catch (error) {
-    const reason2 = `runner ${subject} failed: ${error instanceof Error ? error.message : String(error)}`;
-    context.note(reason2);
-    onFailure?.(reason2);
-    return null;
-  }
-}
-var NOTHING_CHANGED;
-var init_context = __esm({
-  "src/core/scheduler/context.ts"() {
-    "use strict";
-    NOTHING_CHANGED = /* @__PURE__ */ new Set();
-  }
-});
-
-// src/core/scheduler/failures.ts
-function failed(failures, project, reason2) {
-  if (!failures.has(project)) failures.set(project, reason2);
-}
-function settleFailures(ledger, failures, retrying, changed) {
-  if (failures.size > 0) block(ledger, failures);
-  else if (retrying) ledger.settle(unblock(ledger), changed);
-}
-function block(ledger, failures) {
-  const every = failures.get(null);
-  const byReason = /* @__PURE__ */ new Map();
-  for (const file of ledger.files.values()) {
-    const reason2 = every ?? failures.get(file.ref.project);
-    if (reason2 === void 0 || file.blocked !== null) continue;
-    file.blocked = reason2;
-    if (!ledger.queue.isForced(file.ref)) ledger.queue.remove(file.ref);
-    const files = byReason.get(reason2);
-    if (files) files.push(file);
-    else byReason.set(reason2, [file]);
-  }
-  for (const [reason2, files] of byReason) {
-    ledger.markUnknown(
-      files.map((file) => ({ file, key: file.key })),
-      reason2
-    );
-  }
-  ledger.broken = true;
-}
-function unblock(ledger) {
-  const refs = [];
-  for (const file of ledger.files.values()) {
-    if (file.blocked === null) continue;
-    file.blocked = null;
-    file.unknownKey = null;
-    ledger.touch(file);
-    refs.push(file.ref);
-  }
-  ledger.broken = false;
-  return refs;
-}
-var init_failures = __esm({
-  "src/core/scheduler/failures.ts"() {
-    "use strict";
-  }
-});
-
-// src/core/scheduler/notes.ts
-function listPaths(paths, max = 5) {
-  const shown = paths.slice(0, max).join(", ");
-  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
-}
-function unmatchedInputNotes(unmatched, testFiles) {
-  return [
-    ...(testFiles === 0 ? [] : unmatched.testGlobs).map(
-      (glob) => `${POLICY_FILE}: inputs key "${glob}" matches no test file; keys and input globs match worktree-relative paths from the start, so write "**/${glob}" for a file in any directory`
-    ),
-    ...unmatched.inputGlobs.map((glob) => `${POLICY_FILE}: inputs glob "${glob}" matches no file`)
-  ];
-}
-function persistedNoteTexts(store, worktreeId) {
-  return new Set(readDaemonNotes(store, worktreeId).map((note) => note.text));
-}
-var init_notes2 = __esm({
-  "src/core/scheduler/notes.ts"() {
-    "use strict";
-    init_policy2();
-    init_notes();
-  }
-});
-
-// src/core/scheduler/revision.ts
-function toInvalidatedPath(change2) {
-  const kind = change2.oldHash === null ? "add" : change2.newHash === null ? "delete" : "change";
-  return { path: change2.path, kind };
-}
-function rekeyContent(context, ledger, revision) {
-  const { keys } = context;
-  const changes = revision.changes;
-  const touched = [];
-  const policy = reloadPolicy(context, ledger, changes);
-  touched.push(...policy.changes.map((c) => c.testFile));
-  const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
-  touched.push(...rekeyed);
-  const declared = keys.updateDeclaredInputs(changes);
-  if (declared !== null) touched.push(...declared.map((c) => c.testFile));
-  const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
-  if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, new Set(changes.map((c) => c.path)));
-  return { rekeyed, environment: inputs2 || policy.environment };
-}
-function reloadPolicy(context, ledger, changes) {
-  const policy = context.reloadPolicy(changes);
-  if (policy === null) return { changes: [], environment: false };
-  context.policy = policy;
-  const applied = context.keys.setPolicy(policy);
-  const testFiles = [...ledger.files.values()].map((file) => file.ref.path);
-  for (const text of unmatchedInputNotes(
-    context.keys.unmatchedInputs(testFiles),
-    testFiles.length
-  )) {
-    context.note(text);
-  }
-  return applied;
-}
-async function retryRunner(context, ledger) {
-  if (!ledger.broken) return;
-  const failures = /* @__PURE__ */ new Map();
-  const touched = (await readEnvironments(context, failures)).map((c) => c.testFile);
-  const listed = await listTestFiles(context, ledger);
-  const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
-  const refs = [...listed, ...blocked];
-  touched.push(...(await resolveClosures(context, refs, failures)).map((c) => c.testFile), ...refs);
-  ledger.settle(touched, NOTHING_CHANGED);
-  settleFailures(ledger, failures, true, NOTHING_CHANGED);
-}
-async function readEnvironments(context, failures) {
-  const environments = await tryRunner(
-    context,
-    "environment",
-    () => context.runner.environment(),
-    (reason2) => failed(failures, null, reason2)
-  );
-  return environments === null ? [] : context.keys.setEnvironments(environments);
-}
-async function listTestFiles(context, ledger) {
-  const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
-  return applyListing(context, ledger, listed);
-}
-function applyListing(context, ledger, listed) {
-  ledger.listingFailed = listed === null;
-  if (listed === null) return [];
-  const ids = new Set(listed.map(testFileId));
-  for (const file of [...ledger.files.values()]) {
-    if (!ids.has(file.id)) ledger.removeFile(file);
-  }
-  for (const ref of listed) {
-    if (!ledger.file(ref)) ledger.addFile(ref);
-  }
-  return listed.filter((ref) => !context.keys.index.closure(ref));
-}
-async function resolveClosures(context, refs, failures) {
-  const changes = [];
-  const resolved = [];
-  for (const ref of refs) {
-    const keyChanges = await resolveClosure(
-      context,
-      ref,
-      (reason2) => failed(failures, ref.project, reason2)
-    );
-    if (keyChanges === null) continue;
-    changes.push(...keyChanges);
-    resolved.push(ref);
-  }
-  changes.push(...await context.keys.trackUntracked());
-  storeClosures(context, resolved);
-  return changes;
-}
-async function resolveClosure(context, ref, onFailure) {
-  const closure = await tryRunner(
-    context,
-    `closure of ${ref.path}`,
-    () => context.runner.closure(ref),
-    onFailure
-  );
-  return closure === null ? null : context.keys.setClosure(closure);
-}
-function storeClosures(context, refs) {
-  const { store, keys } = context;
-  store.transaction(() => {
-    for (const ref of refs) {
-      const closure = keys.index.closure(ref);
-      if (!closure) continue;
-      store.testFiles.put({
-        testFile: ref,
-        closure,
-        updatedAt: context.now(),
-        updatedBy: context.worktreeId
-      });
-    }
-  });
-}
-var init_revision = __esm({
-  "src/core/scheduler/revision.ts"() {
-    "use strict";
-    init_keys();
-    init_context();
-    init_failures();
-    init_notes2();
-  }
-});
-
 // src/core/hash/blob.ts
 import { createHash as createHash8 } from "node:crypto";
 import { constants } from "node:fs";
@@ -3716,10 +3510,220 @@ var init_reconcile = __esm({
 });
 
 // src/core/revision/index.ts
-var init_revision2 = __esm({
+var init_revision = __esm({
   "src/core/revision/index.ts"() {
     "use strict";
     init_reconcile();
+  }
+});
+
+// src/core/scheduler/context.ts
+async function tryRunner(context, subject, call, onFailure) {
+  try {
+    return await call();
+  } catch (error) {
+    const reason2 = `runner ${subject} failed: ${error instanceof Error ? error.message : String(error)}`;
+    context.note(reason2);
+    onFailure?.(reason2);
+    return null;
+  }
+}
+var NOTHING_CHANGED;
+var init_context = __esm({
+  "src/core/scheduler/context.ts"() {
+    "use strict";
+    NOTHING_CHANGED = /* @__PURE__ */ new Set();
+  }
+});
+
+// src/core/scheduler/failures.ts
+function failed(failures, project, reason2) {
+  if (!failures.has(project)) failures.set(project, reason2);
+}
+function settleFailures(ledger, failures, retrying, changed) {
+  if (failures.size > 0) block(ledger, failures);
+  else if (retrying) ledger.settle(unblock(ledger), changed);
+}
+function block(ledger, failures) {
+  const every = failures.get(null);
+  const byReason = /* @__PURE__ */ new Map();
+  for (const file of ledger.files.values()) {
+    const reason2 = every ?? failures.get(file.ref.project);
+    if (reason2 === void 0 || file.blocked !== null) continue;
+    file.blocked = reason2;
+    if (!ledger.queue.isForced(file.ref)) ledger.queue.remove(file.ref);
+    const files = byReason.get(reason2);
+    if (files) files.push(file);
+    else byReason.set(reason2, [file]);
+  }
+  for (const [reason2, files] of byReason) {
+    ledger.markUnknown(
+      files.map((file) => ({ file, key: file.key })),
+      reason2
+    );
+  }
+  ledger.broken = true;
+}
+function unblock(ledger) {
+  const refs = [];
+  for (const file of ledger.files.values()) {
+    if (file.blocked === null) continue;
+    file.blocked = null;
+    file.unknownKey = null;
+    ledger.touch(file);
+    refs.push(file.ref);
+  }
+  ledger.broken = false;
+  return refs;
+}
+var init_failures = __esm({
+  "src/core/scheduler/failures.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/scheduler/notes.ts
+function listPaths(paths, max = 5) {
+  const shown = paths.slice(0, max).join(", ");
+  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
+}
+function unmatchedInputNotes(unmatched, testFiles) {
+  return [
+    ...(testFiles === 0 ? [] : unmatched.testGlobs).map(
+      (glob) => `${POLICY_FILE}: inputs key "${glob}" matches no test file; keys and input globs match worktree-relative paths from the start, so write "**/${glob}" for a file in any directory`
+    ),
+    ...unmatched.inputGlobs.map((glob) => `${POLICY_FILE}: inputs glob "${glob}" matches no file`)
+  ];
+}
+function persistedNoteTexts(store, worktreeId) {
+  return new Set(readDaemonNotes(store, worktreeId).map((note) => note.text));
+}
+var init_notes2 = __esm({
+  "src/core/scheduler/notes.ts"() {
+    "use strict";
+    init_policy2();
+    init_notes();
+  }
+});
+
+// src/core/scheduler/revision.ts
+function toInvalidatedPath(change2) {
+  const kind = change2.oldHash === null ? "add" : change2.newHash === null ? "delete" : "change";
+  return { path: change2.path, kind };
+}
+function rekeyContent(context, ledger, revision) {
+  const { keys } = context;
+  const changes = revision.changes;
+  const touched = [];
+  const policy = reloadPolicy(context, ledger, changes);
+  touched.push(...policy.changes.map((c) => c.testFile));
+  const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
+  touched.push(...rekeyed);
+  const declared = keys.updateDeclaredInputs(changes);
+  if (declared !== null) touched.push(...declared.map((c) => c.testFile));
+  const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
+  if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
+  ledger.settle(touched, new Set(changes.map((c) => c.path)));
+  return { rekeyed, environment: inputs2 || policy.environment };
+}
+function reloadPolicy(context, ledger, changes) {
+  const policy = context.reloadPolicy(changes);
+  if (policy === null) return { changes: [], environment: false };
+  context.policy = policy;
+  const applied = context.keys.setPolicy(policy);
+  const testFiles = [...ledger.files.values()].map((file) => file.ref.path);
+  for (const text of unmatchedInputNotes(
+    context.keys.unmatchedInputs(testFiles),
+    testFiles.length
+  )) {
+    context.note(text);
+  }
+  return applied;
+}
+async function retryRunner(context, ledger) {
+  if (!ledger.broken) return;
+  const failures = /* @__PURE__ */ new Map();
+  const touched = (await readEnvironments(context, failures)).map((c) => c.testFile);
+  const listed = await listTestFiles(context, ledger);
+  const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
+  const refs = [...listed, ...blocked];
+  touched.push(...(await resolveClosures(context, refs, failures)).map((c) => c.testFile), ...refs);
+  ledger.settle(touched, NOTHING_CHANGED);
+  settleFailures(ledger, failures, true, NOTHING_CHANGED);
+}
+async function readEnvironments(context, failures) {
+  const environments = await tryRunner(
+    context,
+    "environment",
+    () => context.runner.environment(),
+    (reason2) => failed(failures, null, reason2)
+  );
+  return environments === null ? [] : context.keys.setEnvironments(environments);
+}
+async function listTestFiles(context, ledger) {
+  const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
+  return applyListing(context, ledger, listed);
+}
+function applyListing(context, ledger, listed) {
+  ledger.listingFailed = listed === null;
+  if (listed === null) return [];
+  const ids = new Set(listed.map(testFileId));
+  for (const file of [...ledger.files.values()]) {
+    if (!ids.has(file.id)) ledger.removeFile(file);
+  }
+  for (const ref of listed) {
+    if (!ledger.file(ref)) ledger.addFile(ref);
+  }
+  return listed.filter((ref) => !context.keys.index.closure(ref));
+}
+async function resolveClosures(context, refs, failures) {
+  const changes = [];
+  const resolved = [];
+  for (const ref of refs) {
+    const keyChanges = await resolveClosure(
+      context,
+      ref,
+      (reason2) => failed(failures, ref.project, reason2)
+    );
+    if (keyChanges === null) continue;
+    changes.push(...keyChanges);
+    resolved.push(ref);
+  }
+  changes.push(...await context.keys.trackUntracked());
+  storeClosures(context, resolved);
+  return changes;
+}
+async function resolveClosure(context, ref, onFailure) {
+  const closure = await tryRunner(
+    context,
+    `closure of ${ref.path}`,
+    () => context.runner.closure(ref),
+    onFailure
+  );
+  return closure === null ? null : context.keys.setClosure(closure);
+}
+function storeClosures(context, refs) {
+  const { store, keys } = context;
+  store.transaction(() => {
+    for (const ref of refs) {
+      const closure = keys.index.closure(ref);
+      if (!closure) continue;
+      store.testFiles.put({
+        testFile: ref,
+        closure,
+        updatedAt: context.now(),
+        updatedBy: context.worktreeId
+      });
+    }
+  });
+}
+var init_revision2 = __esm({
+  "src/core/scheduler/revision.ts"() {
+    "use strict";
+    init_keys();
+    init_context();
+    init_failures();
+    init_notes2();
   }
 });
 
@@ -3758,8 +3762,73 @@ async function reconcileBatch(context, ledger, batch) {
 var init_batch = __esm({
   "src/core/scheduler/batch.ts"() {
     "use strict";
-    init_revision2();
     init_revision();
+    init_revision2();
+  }
+});
+
+// src/core/scheduler/install.ts
+import { readFile as readFile2 } from "node:fs/promises";
+import { join as join18 } from "node:path";
+async function awaitsInstall(root) {
+  if (!declaresDependencies(await readManifest(root))) return false;
+  return await findInstalledLockfile(root, root) === null;
+}
+function declaresDependencies(manifest) {
+  if (!isRecord(manifest)) return false;
+  if (DEPENDENCY_FIELDS.some((field) => nonEmpty(manifest[field]))) return true;
+  const workspaces = manifest.workspaces;
+  return nonEmpty(isRecord(workspaces) ? workspaces.packages : workspaces);
+}
+function nonEmpty(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return isRecord(value) && Object.keys(value).length > 0;
+}
+async function readManifest(root) {
+  try {
+    return JSON.parse(await readFile2(join18(root, "package.json"), "utf8"));
+  } catch (error) {
+    if (isMissing(error) || error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+function startWaiting(context, ledger) {
+  const { store, worktreeId } = context;
+  const files = store.testFileKeys.list(worktreeId).map((row) => ledger.addFile(row.testFile));
+  ledger.markUnknown(
+    files.map((file) => ({ file, key: null })),
+    AWAITING_INSTALL_REASON
+  );
+  store.transaction(() => {
+    store.meta.set(awaitingInstallMetaKey(worktreeId), "true");
+    ledger.commit({ refined: ledger.revision.number });
+  });
+  if (!persistedNoteTexts(store, worktreeId).has(AWAITING_INSTALL_NOTE)) {
+    context.note(AWAITING_INSTALL_NOTE);
+  }
+}
+async function reconcileWaiting(context, ledger, batch) {
+  const applied = await reconcileBatch(context, ledger, batch);
+  if (applied !== null) ledger.commit({ refined: applied.revision.number });
+  if (await awaitsInstall(context.root)) return true;
+  ledger.files.clear();
+  return false;
+}
+function stopWaiting(context) {
+  context.store.meta.set(awaitingInstallMetaKey(context.worktreeId), "false");
+}
+var AWAITING_INSTALL_REASON, AWAITING_INSTALL_NOTE, DEPENDENCY_FIELDS;
+var init_install = __esm({
+  "src/core/scheduler/install.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    init_types();
+    init_batch();
+    init_notes2();
+    AWAITING_INSTALL_REASON = "no dependencies are installed in this worktree";
+    AWAITING_INSTALL_NOTE = `${AWAITING_INSTALL_REASON}; Squeal lists and runs no tests until an install`;
+    DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies"];
   }
 });
 
@@ -3791,17 +3860,19 @@ var init_queue = __esm({
       }
       /**
        * Queues a test file, or raises the priority of its entry. A `forced` entry
-       * (`run --all --force`) runs even when its key has a result.
+       * (`run --all --force`) runs even when its key has a result. A `recent`
+       * entry stays recent until it leaves the queue.
        */
-      add(ref, priority, forced = false) {
+      add(ref, priority, forced = false, recent = false) {
         const id = testFileId(ref);
         const entry2 = this.#entries.get(id);
         if (entry2) {
           entry2.priority = Math.min(entry2.priority, priority);
           entry2.forced ||= forced;
+          entry2.recent ||= recent;
           return;
         }
-        this.#entries.set(id, { ref, priority, seq: this.#seq++, forced });
+        this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
       }
       remove(ref) {
         return this.#entries.delete(testFileId(ref));
@@ -3810,10 +3881,13 @@ var init_queue = __esm({
         return this.#entries.get(testFileId(ref))?.forced ?? false;
       }
       /**
-       * Priority, then shortest last known duration with unknown ones last, then
-       * first queued, then project and path. Spec 001 D5 step 4: "within a class,
-       * shortest last known duration first, so a slow integration file never
-       * delays the edited module's own unit test."
+       * Recent entries first, then priority, then shortest last known duration
+       * with unknown ones last, then first queued, then project and path. Spec
+       * 001 D5 step 4 as amended (task 001-100, defect 19): work an edit caused
+       * runs ahead of the baseline, an environment change or `run --all`, "within
+       * each group D5's order stands"; "within a class, shortest last known
+       * duration first, so a slow integration file never delays the edited
+       * module's own unit test."
        */
       ordered(durationOf2 = () => null) {
         const durations = /* @__PURE__ */ new Map();
@@ -3822,7 +3896,7 @@ var init_queue = __esm({
         }
         const duration2 = (entry2) => durations.get(entry2) ?? Number.POSITIVE_INFINITY;
         return [...this.#entries.values()].sort(
-          (a, b) => a.priority - b.priority || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
+          (a, b) => Number(b.recent) - Number(a.recent) || a.priority - b.priority || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
         ).map((entry2) => entry2.ref);
       }
     };
@@ -3831,11 +3905,14 @@ var init_queue = __esm({
 
 // src/core/scheduler/bootstrap.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-async function bootstrap(context, ledger) {
-  const { store, keys, runner, worktreeId, policy } = context;
+async function scan(context, ledger) {
+  const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
   const revision = await keys.bootstrap(context.head) ?? latest;
   ledger.revision = revision === null ? { number: 0, ...await context.head() } : { number: revision.number, head: revision.head, dirty: revision.dirty };
+}
+async function baseline(context, ledger) {
+  const { store, keys, runner, worktreeId, policy } = context;
   const failures = /* @__PURE__ */ new Map();
   await readEnvironments(context, failures);
   const listed = await tryRunner(context, "testFiles", () => runner.testFiles());
@@ -3940,7 +4017,7 @@ var init_bootstrap = __esm({
     init_files();
     init_notes2();
     init_queue();
-    init_revision();
+    init_revision2();
   }
 });
 
@@ -4002,7 +4079,7 @@ var init_git2 = __esm({
 });
 
 // src/core/scheduler/lockfiles.ts
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 var Lockfiles;
 var init_lockfiles = __esm({
   "src/core/scheduler/lockfiles.ts"() {
@@ -4023,7 +4100,7 @@ var init_lockfiles = __esm({
         this.#moved.clear();
         const fingerprints = /* @__PURE__ */ new Map();
         for (const environment of environments) {
-          const root = environment.root === void 0 || environment.root === "" ? this.root : join18(this.root, environment.root);
+          const root = environment.root === void 0 || environment.root === "" ? this.root : join19(this.root, environment.root);
           this.#projects.set(environment.project, { root, lockfile: await this.#find(root) });
           fingerprints.set(
             environment.project,
@@ -4090,7 +4167,7 @@ var init_keying = __esm({
     init_fs();
     init_hash();
     init_keys();
-    init_revision2();
+    init_revision();
     init_git2();
     init_lockfiles();
     PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
@@ -4486,10 +4563,17 @@ var init_ledger = __esm({
        * needed." A key that already has this worktree's results, that the tier in
        * flight runs, or that crashed (D12) needs nothing. Forced entries stay
        * queued. Returns the misses.
+       *
+       * A miss is queued as recent when `changed` holds the test file or a path
+       * of its closure, or the runner named it a direct importer: work an edit
+       * caused, which runs ahead of the rest (D5 step 4 as amended, task
+       * 001-100). An environment input is in no closure, so the files an install
+       * or a config change re-keys are not.
        */
       settle(refs, changed, options = {}) {
         const misses = [];
         const seen = /* @__PURE__ */ new Set();
+        const recent = this.#recent(changed, options.direct);
         for (const ref of refs) {
           const file = this.file(ref);
           if (!file || seen.has(file.id)) continue;
@@ -4516,10 +4600,19 @@ var init_ledger = __esm({
             this.queue.remove(ref);
             this.#syncPhase(file);
           } else if (options.queueMisses !== false) {
-            this.enqueue(file, priorityOf(file, changed, options.direct));
+            this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
           }
         }
         return misses;
+      }
+      /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */
+      #recent(changed, direct) {
+        const ids = new Set(direct);
+        if (changed.size === 0) return ids;
+        for (const ref of this.context.keys.index.reverse.referencing(changed))
+          ids.add(testFileId(ref));
+        for (const file of this.files.values()) if (changed.has(file.ref.path)) ids.add(file.id);
+        return ids;
       }
       /**
        * Makes `results` the current results of `file` under `key`: from a run of
@@ -4542,8 +4635,8 @@ var init_ledger = __esm({
         this.#syncPhase(file);
         this.checkpoints.done(file.ref, checkpointId);
       }
-      enqueue(file, priority, forced = false) {
-        this.queue.add(file.ref, priority, forced);
+      enqueue(file, priority, forced = false, recent = false) {
+        this.queue.add(file.ref, priority, forced, recent);
         this.#syncPhase(file);
       }
       /** The tier holding these files starts or ends. */
@@ -4767,7 +4860,7 @@ var init_refinement = __esm({
     init_context();
     init_failures();
     init_notes2();
-    init_revision();
+    init_revision2();
   }
 });
 
@@ -4967,13 +5060,13 @@ var init_stability = __esm({
   "src/core/scheduler/stability.ts"() {
     "use strict";
     init_hash();
-    init_revision2();
+    init_revision();
   }
 });
 
 // src/core/scheduler/tiers.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 function selectTier(context, ledger) {
   const { store, keys, policy } = context;
   const picked = [];
@@ -5005,7 +5098,7 @@ function selectTier(context, ledger) {
   const runId = randomUUID3();
   const tier = {
     runId,
-    logDir: join19(context.runsDir, runId),
+    logDir: join20(context.runsDir, runId),
     revision: ledger.revision,
     checkpointId,
     files: picked,
@@ -5150,16 +5243,17 @@ var init_scheduler2 = __esm({
     "use strict";
     init_hash();
     init_notes();
-    init_revision2();
+    init_revision();
     init_state2();
     init_batch();
     init_bootstrap();
     init_context();
+    init_install();
     init_keying();
     init_ledger();
     init_mutex();
     init_queue();
-    init_revision();
+    init_revision2();
     init_runner_work();
     init_tiers();
     TierScheduler = class {
@@ -5182,6 +5276,8 @@ var init_scheduler2 = __esm({
       #closed = false;
       /** The pump stopped on an error; idle until the next batch or request. */
       #stalled = false;
+      /** No runner call until an install (`awaitsInstall`, task 001-100). */
+      #awaitingInstall = false;
       async start() {
         await this.#lock.run(async () => {
           if (this.#context) throw new Error("squeal scheduler: started twice");
@@ -5217,7 +5313,10 @@ var init_scheduler2 = __esm({
           };
           const ledger = new Ledger(context);
           this.#ledger = ledger;
-          await bootstrap(context, ledger);
+          await scan(context, ledger);
+          this.#awaitingInstall = await awaitsInstall(options.root);
+          if (this.#awaitingInstall) startWaiting(context, ledger);
+          else await this.#baseline(context, ledger);
           this.#context = context;
         });
         this.#pump();
@@ -5240,12 +5339,22 @@ var init_scheduler2 = __esm({
         if (this.#closed) return;
         await this.#lock.run(async () => {
           const { context, ledger } = this.#started();
+          if (this.#awaitingInstall) {
+            this.#awaitingInstall = await reconcileWaiting(context, ledger, batch);
+            if (!this.#awaitingInstall) await this.#baseline(context, ledger);
+            return;
+          }
           const applied = await reconcileBatch(context, ledger, batch);
           if (applied === null) return;
           const { revision, content } = applied;
           this.#runnerWork.queueRefine(revision, content);
         });
         this.#pump();
+      }
+      /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
+      async #baseline(context, ledger) {
+        stopWaiting(context);
+        await baseline(context, ledger);
       }
       /**
        * Queues the checkpoint at once, unless it needs the runner: while a
@@ -5255,6 +5364,7 @@ var init_scheduler2 = __esm({
        */
       async requestFullSuite(request = {}) {
         const force = request.force === true;
+        if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
         const record = await this.#lock.run(() => {
           const { ledger } = this.#started();
           if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
@@ -5285,7 +5395,10 @@ var init_scheduler2 = __esm({
         this.#closed = true;
         await this.#pumping;
         this.#runnerWork.cancel();
-        await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
+        await this.#lock.run(() => {
+          this.#ledger?.checkpoints.finish("abandoned");
+          if (this.#awaitingInstall) stopWaiting(this.options);
+        });
         for (const resolve7 of this.#idle.splice(0)) resolve7();
       }
       /**
@@ -5394,11 +5507,20 @@ var init_scheduler2 = __esm({
 });
 
 // src/core/scheduler/index.ts
+var scheduler_exports = {};
+__export(scheduler_exports, {
+  AWAITING_INSTALL_REASON: () => AWAITING_INSTALL_REASON,
+  awaitsInstall: () => awaitsInstall,
+  classify: () => classify2,
+  createScheduler: () => createScheduler,
+  toInvalidatedPath: () => toInvalidatedPath
+});
 var init_scheduler3 = __esm({
   "src/core/scheduler/index.ts"() {
     "use strict";
     init_files();
-    init_revision();
+    init_install();
+    init_revision2();
     init_scheduler2();
   }
 });
@@ -7365,7 +7487,7 @@ var init_parcel_backend = __esm({
 
 // src/core/watcher/backend.ts
 import { createRequire } from "node:module";
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 import { pathToFileURL } from "node:url";
 function createWatcherBackend(platform) {
   return platform === "darwin" ? createParcelBackend(loadParcel) : chokidarBackend;
@@ -7376,7 +7498,7 @@ async function loadParcel(root) {
   } catch (own) {
     let resolved;
     try {
-      resolved = createRequire(join22(root, "package.json")).resolve("@parcel/watcher");
+      resolved = createRequire(join23(root, "package.json")).resolve("@parcel/watcher");
     } catch {
       throw own;
     }
@@ -7868,7 +7990,7 @@ var init_daemon_loop = __esm({
 
 // src/runners/vitest/graph.ts
 import { existsSync as existsSync10 } from "node:fs";
-import { basename as basename6, dirname as dirname13, extname as extname2, join as join23, resolve as resolve6 } from "node:path";
+import { basename as basename6, dirname as dirname13, extname as extname2, join as join24, resolve as resolve6 } from "node:path";
 async function importClosure(project, entries2) {
   const files = /* @__PURE__ */ new Set();
   const missing = /* @__PURE__ */ new Set();
@@ -7913,7 +8035,7 @@ function depToPath(dep, importer, root) {
   const path = dep.split("?")[0] ?? dep;
   if (path.startsWith("/@fs/")) return path.slice("/@fs".length);
   if (path.startsWith("/@")) return null;
-  if (path.startsWith("/")) return join23(root, path);
+  if (path.startsWith("/")) return join24(root, path);
   if (path.startsWith("./") || path.startsWith("../")) return resolve6(dirname13(importer), path);
   return null;
 }
@@ -7923,7 +8045,7 @@ function resolutionCandidates(target, extensions) {
   return [
     target,
     ...extensions.map((e) => `${target}${e}`),
-    ...extensions.map((e) => join23(target, `index${e}`)),
+    ...extensions.map((e) => join24(target, `index${e}`)),
     ...twins
   ];
 }
@@ -7959,7 +8081,7 @@ var init_graph = __esm({
 });
 
 // src/runners/vitest/project.ts
-import { basename as basename7, dirname as dirname14, join as join24 } from "node:path";
+import { basename as basename7, dirname as dirname14, join as join25 } from "node:path";
 function configFiles(vitest) {
   const files = /* @__PURE__ */ new Set();
   for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
@@ -7995,7 +8117,7 @@ function snapshotPath(project, testFile) {
   if (resolveSnapshotPath) {
     return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
   }
-  return join24(dirname14(testFile), "__snapshots__", `${basename7(testFile)}.snap`);
+  return join25(dirname14(testFile), "__snapshots__", `${basename7(testFile)}.snap`);
 }
 function resolveExtensions(project) {
   return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
@@ -8417,12 +8539,12 @@ var init_environment2 = __esm({
 
 // src/runners/vitest/load.ts
 import { createRequire as createRequire2 } from "node:module";
-import { join as join25 } from "node:path";
+import { join as join26 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 async function loadVitest(root) {
   let resolved;
   try {
-    resolved = createRequire2(join25(root, "package.json")).resolve("vitest/node");
+    resolved = createRequire2(join26(root, "package.json")).resolve("vitest/node");
   } catch (error) {
     const reason2 = error instanceof Error ? error.message.split("\n")[0] : String(error);
     throw new Error(
@@ -8439,7 +8561,7 @@ var init_load = __esm({
 
 // src/runners/vitest/run.ts
 import { mkdirSync as mkdirSync7, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join26 } from "node:path";
+import { join as join27 } from "node:path";
 async function execute(vitest, specs, timeoutMs, collector) {
   const run = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
@@ -8531,12 +8653,12 @@ function writeRunLog(options, collector, report2) {
     `end: ${report2.end}${report2.failure ? ` (${report2.failure})` : ""}, ${report2.durationMs} ms`,
     ""
   ];
-  const logFile = join26(options.logDir, "vitest.log");
+  const logFile = join27(options.logDir, "vitest.log");
   writeFileSync3(logFile, `${[...header, ...collector.log].join("\n")}
 `);
   collector.logFile = logFile;
   writeFileSync3(
-    join26(options.logDir, "report.json"),
+    join27(options.logDir, "report.json"),
     `${JSON.stringify({ runId: options.runId, report: report2 }, null, 2)}
 `
   );
@@ -8586,7 +8708,7 @@ var init_dynamic = __esm({
 // src/runners/vitest/stale.ts
 import { existsSync as existsSync12, readFileSync as readFileSync8 } from "node:fs";
 import { isBuiltin } from "node:module";
-import { basename as basename8, dirname as dirname15, join as join27 } from "node:path";
+import { basename as basename8, dirname as dirname15, join as join28 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
   const manifests = paths.filter((p) => isPackageJson(p.abs));
   for (const p of manifests) await dropPackageData(vitest, p.abs, p.kind);
@@ -8637,7 +8759,7 @@ function resolutionMoved(vitest, manifest) {
   return manifest.kind !== "change" || before === void 0 || before !== after;
 }
 function resolutionFields(manifest) {
-  const fields = readManifest(manifest);
+  const fields = readManifest2(manifest);
   if (fields === null) return null;
   const kept = Object.keys(fields).filter((field) => !IGNORED_FIELDS.has(field)).sort().map((field) => [field, fields[field]]);
   return JSON.stringify(kept);
@@ -8686,22 +8808,22 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
 function entryDirectories(path, bases, root) {
   const found = [];
   for (let dir = dirname15(path); dir.startsWith(`${root}/`); dir = dirname15(dir)) {
-    const manifest = join27(dir, "package.json");
+    const manifest = join28(dir, "package.json");
     if (!existsSync12(manifest)) continue;
-    const named = packageEntries(manifest).map((entry2) => join27(dir, entry2).replace(/\/+$/, ""));
+    const named = packageEntries(manifest).map((entry2) => join28(dir, entry2).replace(/\/+$/, ""));
     if (named.some((entry2) => bases.includes(entry2))) found.push(dir);
   }
   return found;
 }
 function packageEntries(manifest) {
-  const fields = readManifest(manifest);
+  const fields = readManifest2(manifest);
   if (fields === null) return [];
   const dot = isRecord(fields.exports) ? fields.exports["."] : fields.exports;
   return [fields.main, fields.module, dot].filter(
     (entry2) => typeof entry2 === "string"
   );
 }
-function readManifest(manifest) {
+function readManifest2(manifest) {
   try {
     const fields = JSON.parse(readFileSync8(manifest, "utf8"));
     return isRecord(fields) ? fields : null;
@@ -9092,7 +9214,7 @@ __export(runner_exports, {
   vitestDetected: () => vitestDetected
 });
 import { readdirSync as readdirSync2, readFileSync as readFileSync9 } from "node:fs";
-import { join as join28 } from "node:path";
+import { join as join29 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters4 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -9185,7 +9307,7 @@ function vitestDetected(root) {
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync9(join28(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync9(join29(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -9344,7 +9466,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.16";
+  if (true) return "0.1.17";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10466,8 +10588,19 @@ function beforeFailing(history2, state) {
   if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
     return null;
   }
-  const entered = history2.findLast((t) => t.kind !== "fail-changed");
-  return entered?.from == null ? null : { outcome: entered.from, fingerprint: entered.fromFingerprint };
+  const at = history2.findLastIndex((t) => t.kind !== "fail-changed");
+  const entered = history2[at];
+  if (entered?.from == null) return null;
+  const passed = entered.from === "unknown" ? passBeforeUnknown(history2, at) : null;
+  return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
+}
+function passBeforeUnknown(history2, end) {
+  for (let i = end - 1; i >= 0 && history2[i]?.to === "unknown"; i--) {
+    const from = history2[i]?.from;
+    if (from === "pass") return { outcome: "pass", fingerprint: null };
+    if (from !== "unknown") return null;
+  }
+  return null;
 }
 var RANK = {
   "pass-to-fail": 0,
@@ -10492,16 +10625,17 @@ function planDelta(input) {
     const id = checkIdentity(state.check);
     const before = told.get(id) ?? null;
     told.delete(id);
-    const prior = before === null && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
-    const kind = transitionKind(before ?? prior, state);
+    const prior = (before === null || before.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
+    const from = before === null || prior?.outcome === "pass" ? prior : before;
+    const kind = transitionKind(from, state);
     if (before === null || kind !== null) writes.push(toView2(state, input.toldAt));
     if (kind === null) continue;
-    const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
+    const baseline2 = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
     const originRoot = state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
     entries2.push({
       check: state.check,
       kind,
-      from: (before ?? prior)?.outcome ?? null,
+      from: from?.outcome ?? null,
       to: state.outcome,
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
@@ -10509,7 +10643,7 @@ function planDelta(input) {
       ...originRoot === null ? {} : { originRoot },
       summary: state.summary,
       location: state.location,
-      ...baseline ? { baseline } : {}
+      ...baseline2 ? { baseline: baseline2 } : {}
     });
   }
   for (const view of told.values()) {
@@ -11188,14 +11322,16 @@ var Daemon = class {
         vitest,
         nodeTest,
         runnerModule,
-        { createCompositeRunner: createCompositeRunner2 }
+        { createCompositeRunner: createCompositeRunner2 },
+        { awaitsInstall: awaitsInstall2 }
       ] = await Promise.all([
         Promise.resolve().then(() => (init_daemon_loop(), daemon_loop_exports)),
         Promise.resolve().then(() => (init_state2(), state_exports)),
         Promise.resolve().then(() => (init_vitest(), vitest_exports)),
         Promise.resolve().then(() => (init_adapter2(), adapter_exports)),
         Promise.resolve().then(() => (init_runner(), runner_exports)),
-        Promise.resolve().then(() => (init_composite_runner(), composite_runner_exports))
+        Promise.resolve().then(() => (init_composite_runner(), composite_runner_exports)),
+        Promise.resolve().then(() => (init_scheduler3(), scheduler_exports))
       ]);
       const { storePaths: storePaths2 } = await Promise.resolve().then(() => (init_store2(), store_exports));
       const around = this.options.ownsProcess ? inRootWhileRunning(root, this.opened.scratch) : void 0;
@@ -11216,7 +11352,7 @@ var Daemon = class {
       ]);
       this.#vitest = vitestRunner;
       this.#runner = runner;
-      await vitestRunner?.open();
+      if (!await awaitsInstall2(root)) await vitestRunner?.open();
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop2({
         root,
@@ -11385,7 +11521,7 @@ async function daemonCommand(args, io) {
 init_fs();
 init_types();
 import { existsSync as existsSync13, mkdirSync as mkdirSync8, readFileSync as readFileSync10, rmSync as rmSync6, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join29 } from "node:path";
+import { join as join30 } from "node:path";
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 var MARKETPLACE_SOURCE = {
@@ -11434,7 +11570,7 @@ function initClaudeCode(io) {
 `);
     return 1;
   }
-  const settingsPath = join29(root, ".claude", "settings.json");
+  const settingsPath = join30(root, ".claude", "settings.json");
   const settings = readSettings(settingsPath);
   if (typeof settings === "string") {
     io.stderr(`squeal init: ${settings}; nothing changed
@@ -11454,7 +11590,7 @@ function initClaudeCode(io) {
     }
   }
   const lines = [];
-  const configPath = join29(root, "squeal.config.json");
+  const configPath = join30(root, "squeal.config.json");
   const writeConfig = !existsSync13(configPath);
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
@@ -11480,7 +11616,7 @@ function initClaudeCode(io) {
   } : restorer(settingsPath, settings.text);
   try {
     if (text !== settings.text) {
-      mkdirSync8(join29(root, ".claude"), { recursive: true });
+      mkdirSync8(join30(root, ".claude"), { recursive: true });
       writeFileSync4(settingsPath, text);
     }
   } catch (error) {
@@ -11534,7 +11670,7 @@ function readSettings(path) {
 
 // src/cli/remove.ts
 import { existsSync as existsSync15, lstatSync as lstatSync4, readdirSync as readdirSync3, rmSync as rmSync7 } from "node:fs";
-import { basename as basename9, dirname as dirname16, join as join30 } from "node:path";
+import { basename as basename9, dirname as dirname16, join as join31 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
@@ -11719,7 +11855,7 @@ async function removeCommand(args, io, options = {}) {
     return 1;
   }
   const storeDir = storePaths(commonDir).dir;
-  const configPath = join30(root, "squeal.config.json");
+  const configPath = join31(root, "squeal.config.json");
   const removed = [];
   const failed2 = [];
   const remove = (path, line) => {
@@ -11797,7 +11933,7 @@ async function isTracked(root, path) {
 }
 async function otherConfigs(root) {
   const out = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
-  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join30(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync15(path));
+  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join31(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync15(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -11821,7 +11957,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   const held = [];
   const deadline = Date.now() + waitMs;
   for (const name of names) {
-    const lockPath = join30(locksDir, name);
+    const lockPath = join31(locksDir, name);
     for (; ; ) {
       const lock2 = acquireDaemonLock(lockPath);
       if (lock2 !== null) {
@@ -11838,7 +11974,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   return held;
 }
 function tempDirs(commonDir, worktrees) {
-  if (!existsSync15(join30(storePaths(commonDir).dir, "repository-id"))) return [];
+  if (!existsSync15(join31(storePaths(commonDir).dir, "repository-id"))) return [];
   const uid = currentUid();
   const dirs = [];
   for (const { root } of worktrees) {
@@ -11868,7 +12004,7 @@ function isOwnDir(path, uid, prefix) {
   return stat5?.isDirectory() === true && stat5.uid === uid;
 }
 function entries(dir) {
-  return safeList2(dir).map((name) => join30(dir, name));
+  return safeList2(dir).map((name) => join31(dir, name));
 }
 function safeList2(dir) {
   try {
