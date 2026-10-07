@@ -1,16 +1,18 @@
-import { lstat } from "node:fs/promises";
-import { isMissing, runGit, splitNul, toAbsolute } from "../fs/index.js";
+import { runGit, splitNul } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
-import { selfAndAncestors } from "./paths.js";
+import { ignoredAsDirectories, SymlinkProbe } from "./links.js";
 
 /**
  * Paths among `paths` that git ignores. One `git check-ignore --stdin` call.
  * Tracked files are never reported, even when a pattern matches them.
  *
- * A path beyond a symlinked directory counts as ignored without asking git,
- * which rejects the whole batch for it: git can never track such a path, so it
- * is watched only as an extra file. A batch git rejects anyway is split until
- * the path it names stands alone, and that path counts as ignored too.
+ * Git refuses a path beyond a symlinked directory and can never track one, so
+ * such a path takes the class of the outermost link above it, which git does
+ * accept: when git ignores the link, or a directory at the link's path (a
+ * linked `node_modules` under `node_modules/`), the path is ignored; otherwise
+ * the link is a project directory and the path is not ignored. A batch git
+ * rejects anyway is split until the path it names stands alone, and that path
+ * counts as ignored.
  *
  * Spec 001 D2: "at batch time, run the paths through one `git check-ignore
  * --stdin`".
@@ -19,14 +21,45 @@ export async function checkIgnored(
   root: AbsolutePath,
   paths: readonly RelativePath[],
 ): Promise<Set<RelativePath>> {
-  const links = new SymlinkProbe(root);
-  const ignored = new Set<RelativePath>();
-  const asked: RelativePath[] = [];
+  const probe = new SymlinkProbe(root);
+  const beyond = new Map<RelativePath, RelativePath>();
+  const asked = new Set<RelativePath>();
   for (const path of paths) {
-    if (await links.isBeyond(path)) ignored.add(path);
-    else asked.push(path);
+    const link = await probe.linkAbove(path);
+    if (link === null) asked.add(path);
+    else beyond.set(path, link);
   }
-  for (const path of await checkIgnoredBatch(root, asked)) ignored.add(path);
+  const links = new Set(beyond.values());
+  const answered = new Set(await checkIgnoredBatch(root, [...new Set([...asked, ...links])]));
+  const ignoredLinks = await ignoredAsDirectories(
+    root,
+    [...links].filter((link) => !answered.has(link)),
+  );
+  for (const link of links) {
+    if (answered.has(link)) ignoredLinks.add(link);
+  }
+  const ignored = new Set<RelativePath>();
+  for (const path of paths) {
+    const link = beyond.get(path);
+    if (link === undefined ? answered.has(path) : ignoredLinks.has(link)) ignored.add(path);
+  }
+  return ignored;
+}
+
+/**
+ * The symlinked directories among `links` whose subtree is ignored, by the
+ * rule `checkIgnored` applies to the paths beyond them.
+ */
+export async function ignoredLinks(
+  root: AbsolutePath,
+  links: readonly RelativePath[],
+): Promise<Set<RelativePath>> {
+  const answered = new Set(await checkIgnoredBatch(root, links));
+  const ignored = await ignoredAsDirectories(
+    root,
+    links.filter((link) => !answered.has(link)),
+  );
+  for (const link of answered) ignored.add(link);
   return ignored;
 }
 
@@ -53,36 +86,6 @@ async function checkIgnoredBatch(
       ...(await checkIgnoredBatch(root, paths.slice(0, half))),
       ...(await checkIgnoredBatch(root, paths.slice(half))),
     ];
-  }
-}
-
-/** Caches "is this directory a symlink" for one `checkIgnored` call. */
-class SymlinkProbe {
-  private readonly cache = new Map<RelativePath, Promise<boolean>>();
-
-  constructor(private readonly root: AbsolutePath) {}
-
-  /** True when a directory above `path`, below the root, is a symlink. */
-  async isBeyond(path: RelativePath): Promise<boolean> {
-    const dirs = [...selfAndAncestors(path)].slice(1);
-    for (const dir of dirs.reverse()) {
-      let hit = this.cache.get(dir);
-      if (!hit) {
-        hit = isSymlink(toAbsolute(this.root, dir));
-        this.cache.set(dir, hit);
-      }
-      if (await hit) return true;
-    }
-    return false;
-  }
-}
-
-async function isSymlink(abs: AbsolutePath): Promise<boolean> {
-  try {
-    return (await lstat(abs)).isSymbolicLink();
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
   }
 }
 

@@ -20,6 +20,7 @@ import {
 import { Debouncer } from "./debounce.js";
 import { Exclusions } from "./exclusions.js";
 import { type GitStatus, gitStatus } from "./git.js";
+import { LinkedWatches } from "./linked-watch.js";
 import { buildWatchSpec, sameWatchSpec } from "./watch-spec.js";
 
 export interface ChangeFeedOptions {
@@ -84,6 +85,9 @@ class Feed implements ChangeFeed {
   private readonly debouncer: Debouncer<AbsolutePath>;
   private extraFiles: RelativePath[];
   private sub: WatchSubscription | null = null;
+  private linked: LinkedWatches | null = null;
+  /** The symlinked directories the last reconciliation observed. */
+  private linkedDirs = new Set<RelativePath>();
   private queue: Promise<void> = Promise.resolve();
   private idleTimer: NodeJS.Timeout | null = null;
   private closed = false;
@@ -100,11 +104,13 @@ class Feed implements ChangeFeed {
     this.root = await realpath(this.root);
     const status = await gitStatus(this.root);
     this.spec = await buildWatchSpec(this.root, this.extraFiles, status);
-    this.sub = await this.backend.watch(this.spec, {
-      onHints: (hints) => this.onHints(hints),
-      onDropped: (reason) => this.onLost(() => this.options.onDropped?.(reason)),
-      onError: (error) => this.onLost(() => this.options.onError(error)),
-    });
+    const listener = {
+      onHints: (hints: readonly WatchHint[]) => this.onHints(hints),
+      onDropped: (reason: string) => this.onLost(() => this.options.onDropped?.(reason)),
+      onError: (error: Error) => this.onLost(() => this.options.onError(error)),
+    };
+    this.sub = await this.backend.watch(this.spec, listener);
+    this.linked = new LinkedWatches(this.root, this.backend, listener);
     // Review wave 10d, S1: `start` is the stat cache's bootstrap revision only (`keys.bootstrap`),
     // whose changes were made while no daemon ran. This pass holds what changed while this
     // daemon started, an agent's edit among them, so it is an ordinary reconciliation.
@@ -128,6 +134,7 @@ class Feed implements ChangeFeed {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     await this.sub?.close();
     await this.queue;
+    await this.linked?.close();
   }
 
   private onHints(hints: readonly WatchHint[]): void {
@@ -147,18 +154,23 @@ class Feed implements ChangeFeed {
     void this.enqueue(async () => {
       const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
       let widened = specChanged ? await this.rebuildSpec() : false;
-      const { paths: candidates, ignoredDirs } = await candidatesFromHints(this.context(), paths);
-      if (ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
-      if (candidates.length > 0) await this.emit({ trigger: "watch", paths: candidates });
-      // Paths that were excluded until now were never watched; git status finds them.
-      if (widened) await this.reconcileNow("watch");
+      const hinted = await candidatesFromHints(this.context(), paths);
+      if (hinted.ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
+      if (hinted.paths.length > 0) await this.emit({ trigger: "watch", paths: hinted.paths });
+      // Paths that were excluded until now were never watched; git status finds them. So does
+      // the walk of a linked directory, which appeared, or went, with a link of this batch.
+      const relinked =
+        hinted.linkedDirs.length > 0 || hinted.paths.some((p) => this.linkedDirs.has(p.path));
+      if (widened || relinked) await this.reconcileNow("watch");
     });
   }
 
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
     const status = await gitStatus(this.root);
     await this.rebuildSpec(status);
-    const paths = await candidatesForReconcile(this.context(), status.paths);
+    const { paths, linkedDirs } = await candidatesForReconcile(this.context(), status.paths);
+    this.linkedDirs = new Set(linkedDirs.keys());
+    await this.linked?.update(linkedDirs);
     await this.emit({ trigger, paths });
   }
 
