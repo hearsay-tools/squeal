@@ -6,6 +6,7 @@ import type {
   AffectedTestFiles,
   RunnerAdapter,
   RunOptions,
+  RunReport,
   TestFileRef,
 } from "../../../src/core/types/index.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
@@ -98,3 +99,14 @@ export const ALL_TEST_FILES = [
   "test/math.test.ts",
   "test/strings.test.ts",
 ];
+
+export const outcomes = (report: RunReport) => report.results.map((r) => r.outcome);
+
+/** A test file that imports `which` from `specifier` and expects it to be `expected`. */
+export const readsTest = (specifier: string, expected: string) =>
+  [
+    'import { expect, it } from "vitest";',
+    `import { which } from "${specifier}";`,
+    `it("reads ${expected}", () => expect(which).toBe("${expected}"));`,
+    "",
+  ].join("\n");
