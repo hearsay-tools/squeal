@@ -33,12 +33,18 @@ export function ensure(
 /**
  * PostToolBatch and Stop (D9, review wave 3 S2): ensure the daemon when the
  * recorded heartbeat is older than two intervals. A store read while the
- * daemon lives; the socket only when it does not.
+ * daemon lives; the socket only when it does not. `fresh` when the heartbeat
+ * is; `unavailable` when no daemon validates and none was started: a daemon
+ * that holds the lock and does not answer (SIGSTOPped, lessons defect 22), or
+ * no CLI to spawn.
  */
-export async function ensureIfStale(context: HookContext, deps: HookDeps): Promise<void> {
+export async function ensureIfStale(
+  context: HookContext,
+  deps: HookDeps,
+): Promise<EnsureDaemonResult | "fresh"> {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return;
-  await ensure(context, deps, record);
+  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return "fresh";
+  return ensure(context, deps, record);
 }
 
 /**
