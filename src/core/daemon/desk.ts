@@ -9,7 +9,7 @@ import { createDaemonServer } from "./server.js";
 /** The daemon's socket, answering for the main thread. */
 export interface FrontDesk {
   setPhase(phase: DaemonPhase): void;
-  /** Closes the socket, which unlinks it, and stops the worker. */
+  /** Closes the socket, which unlinks it while it is still the one bound, and stops the worker. */
   close(): Promise<void>;
 }
 
