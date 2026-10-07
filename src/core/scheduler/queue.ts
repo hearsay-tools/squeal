@@ -18,6 +18,15 @@ export type Priority = (typeof Priority)[keyof typeof Priority];
 const NO_DIRECT_IMPORTERS: ReadonlySet<string> = new Set();
 
 /**
+ * The starvation bound (task 001-107, review wave 11 N3; D5 step 4 as
+ * amended): after this many tiers in a row of recent work only while the
+ * backlog waited, the next tier is the backlog's. Recent work keeps at least
+ * four tiers in five while edits keep coming; the backlog moves by one tier
+ * in five.
+ */
+export const RECENT_TIERS_PER_BACKLOG_TIER = 4;
+
+/**
  * The class of a file at a revision that changed `changed`. `direct` holds the
  * `testFileId`s of the runner's direct importers; a revision whose runner part
  * has not run yet has none, and the runner part raises them (`RunQueue.add`).
@@ -51,6 +60,8 @@ interface Entry {
 export class RunQueue {
   readonly #entries = new Map<string, Entry>();
   #seq = 0;
+  /** Tiers in a row that took recent entries only while others waited. */
+  #recentTiers = 0;
 
   get size(): number {
     return this.#entries.size;
@@ -79,6 +90,7 @@ export class RunQueue {
 
   clear(): void {
     this.#entries.clear();
+    this.#recentTiers = 0;
   }
 
   remove(ref: TestFileRef): boolean {
@@ -89,6 +101,16 @@ export class RunQueue {
     return this.#entries.get(testFileId(ref))?.forced ?? false;
   }
 
+  isRecent(ref: TestFileRef): boolean {
+    return this.#entries.get(testFileId(ref))?.recent ?? false;
+  }
+
+  /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */
+  tierSelected(tookBacklog: boolean): void {
+    const waiting = [...this.#entries.values()].some((entry) => !entry.recent);
+    this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
+  }
+
   /**
    * Recent entries first, then priority, then shortest last known duration
    * with unknown ones last, then first queued, then project and path. Spec
@@ -96,9 +118,11 @@ export class RunQueue {
    * runs ahead of the baseline, an environment change or `run --all`, "within
    * each group D5's order stands"; "within a class, shortest last known
    * duration first, so a slow integration file never delays the edited
-   * module's own unit test."
+   * module's own unit test." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
+   * recent entries only (`tierSelected`), the backlog comes first once.
    */
   ordered(durationOf: DurationOf = () => null): TestFileRef[] {
+    const first = this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER ? -1 : 1;
     const durations = new Map<Entry, number>();
     for (const entry of this.#entries.values()) {
       durations.set(entry, durationOf(entry.ref) ?? Number.POSITIVE_INFINITY);
@@ -107,7 +131,7 @@ export class RunQueue {
     return [...this.#entries.values()]
       .sort(
         (a, b) =>
-          Number(b.recent) - Number(a.recent) ||
+          first * (Number(b.recent) - Number(a.recent)) ||
           a.priority - b.priority ||
           byDuration(duration(a), duration(b)) ||
           a.seq - b.seq ||
