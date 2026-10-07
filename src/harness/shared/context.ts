@@ -12,7 +12,16 @@ import {
   MAIN_AGENT,
   type Store,
 } from "../../core/types/index.js";
-import type { HookInput } from "./input.js";
+
+/**
+ * The hook input fields that name a consumer. Claude Code and Codex both send
+ * `session_id`, and `agent_id` for subagent events and events fired inside a
+ * subagent.
+ */
+export interface ConsumerInput {
+  readonly session_id: string;
+  readonly agent_id?: string;
+}
 
 /** Where a hook runs: the worktree containing `cwd` and its git common dir. */
 export interface HookLocation {
@@ -59,7 +68,7 @@ export interface ContextOptions {
  * Spec 001 D9 consumer: `(worktree, session id, agent id or "main")`.
  */
 export function openContext(
-  input: HookInput,
+  input: ConsumerInput,
   location: HookLocation,
   options: ContextOptions = {},
 ): HookContext | null {

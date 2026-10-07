@@ -1,4 +1,4 @@
-import type { HookDeps } from "./hook.js";
+import type { HookDeps } from "../shared/hook.js";
 import { postToolBatch } from "./hooks/post-tool-batch.js";
 import { preToolUse } from "./hooks/pre-tool-use.js";
 import { sessionEnd } from "./hooks/session-end.js";
