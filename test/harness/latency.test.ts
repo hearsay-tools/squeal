@@ -9,7 +9,9 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * Spec 001 D9: PostToolBatch "budget 80 ms p95 (about 50 ms Node start plus a
  * store read)". Every bundled hook is held to it: rounds of 20 cold runs, a
  * real store with 50 test files of 10 checks, and a transition before every
- * run so delivering hooks deliver. Other test files spawn processes at the
+ * run so delivering hooks deliver. Stop and UserPromptSubmit also run silent,
+ * with nothing to deliver (review wave 10, S5): a silent Stop ends the turn,
+ * its most expensive path. Other test files spawn processes at the
  * same time, so a hook passes when one of up to 3 rounds meets the budget;
  * the table reports the best round. Above load average 8 nothing is asserted.
  */
@@ -52,6 +54,8 @@ function seeded(): SquealRepo {
 
 interface Case {
   readonly hook: string;
+  /** Row label when `hook` runs in more than one case; a case named "(silent)" must print nothing. */
+  readonly name?: string;
   readonly input: string;
   readonly env?: Readonly<Record<string, string>>;
   /** Untimed work before each run. */
@@ -66,8 +70,11 @@ const CASES: readonly Case[] = [
   { hook: "post-tool-batch", input: "post-tool-batch", before: flip },
   { hook: "pre-tool-use", input: "pre-tool-use", before: flip },
   { hook: "stop", input: "stop", before: flip },
+  // Nothing to deliver: Stop ends the turn (task 001-85), recording what the waiter waits for.
+  { hook: "stop", name: "stop (silent)", input: "stop" },
   // Task 001-85: a prompt starts a turn and carries the delta.
   { hook: "user-prompt-submit", input: "user-prompt-submit", before: flip },
+  { hook: "user-prompt-submit", name: "user-prompt-submit (silent)", input: "user-prompt-submit" },
   {
     hook: "session-end",
     input: "session-end",
@@ -103,13 +110,14 @@ describe("bundled hook latency", () => {
             ...c.env,
           });
           expect(out.code, `${c.hook}: ${out.stderr}`).toBe(0);
+          if (c.name?.endsWith("(silent)")) expect(out.stdout, c.name).toBe("");
           samples.push(out.ms);
         }
         if (best === null || p95(samples) < p95(best)) best = samples;
       }
       const sorted = [...(best ?? [])].sort((x, y) => x - y);
       rows.push({
-        hook: c.hook,
+        hook: c.name ?? c.hook,
         rounds,
         p50: Math.round(sorted[Math.floor(RUNS / 2)] ?? 0),
         p95: Math.round(p95(sorted)),
