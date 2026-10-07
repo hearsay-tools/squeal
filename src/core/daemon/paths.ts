@@ -1,7 +1,6 @@
-import { chmodSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
-import { isMissing } from "../fs/index.js";
+import { dirname, isAbsolute, join } from "node:path";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 
 /**
@@ -103,23 +102,7 @@ export function userTmpDir(uid: number = currentUid()): AbsolutePath {
   return join("/tmp", `squeal-${uid}`);
 }
 
-/**
- * The `<common-dir>/worktrees/<name>` entry of a linked worktree: the
- * `gitdir:` of its `.git` file. `null` for a main worktree, whose `.git` is a
- * directory. Spec 001 D10: the daemon exits "when
- * `<common-dir>/worktrees/<name>` disappears".
- */
-export function linkedWorktreeDir(root: AbsolutePath): AbsolutePath | null {
-  const dotGit = join(root, ".git");
-  try {
-    if (!lstatSync(dotGit).isFile()) return null;
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"));
-  return match?.[1] ? resolve(root, match[1]) : null;
-}
+export { linkedWorktreeDir } from "../fs/index.js";
 
 function xdgRuntimeDir(env: NodeJS.ProcessEnv): AbsolutePath | null {
   const xdg = env.XDG_RUNTIME_DIR;

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { findWorktreeRoot } from "../core/status/index.js";
+import { findWorktreeRoot } from "../core/fs/index.js";
 import { DEFAULT_POLICY } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 
