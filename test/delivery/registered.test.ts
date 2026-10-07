@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import {
@@ -260,5 +260,24 @@ describe("whose closure a failure is read against (S2)", () => {
     storedBy(WT, ["src/a.test.ts", "src/x.ts"]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
     expect((await failing()).text).toContain("touches your changes: src/x.ts");
+  });
+});
+
+describe("the revisions since registration (review wave 10b, N3)", () => {
+  it("are read in one query, however many there are", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    await delivery.register(C1);
+    for (let i = 0; i < 3_000; i++) edit([`src/f${i % 50}.ts`]);
+    apply(edit(["src/x.ts"]), result(A, "fail"));
+    const get = vi.spyOn(store.revisions, "get");
+    const range = vi.spyOn(store.revisions, "range");
+    const started = performance.now();
+    const { entry } = await failing();
+    const elapsed = performance.now() - started;
+    expect(entry.changesInClosure).toEqual(["src/x.ts"]);
+    expect(get).not.toHaveBeenCalled();
+    // The attribution's and the header's changed paths, one query each.
+    expect(range).toHaveBeenCalledTimes(2);
+    console.log(`N3: delivery with 3,002 revisions since registration: ${elapsed.toFixed(1)} ms`);
   });
 });
