@@ -106,38 +106,63 @@ function createHandlers(context) {
 }
 
 // src/core/daemon/server.ts
-import { chmodSync, mkdirSync, rmSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { createServer } from "node:net";
-import { dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 var IDLE_CONNECTION_MS = 2e3;
 async function createDaemonServer(socketPath, handle) {
   mkdirSync(dirname(socketPath), { recursive: true, mode: 448 });
-  rmSync(socketPath, { force: true });
   const connections = /* @__PURE__ */ new Set();
   const server2 = createServer((socket) => {
     connections.add(socket);
     socket.on("close", () => connections.delete(socket));
     serve(socket, handle);
   });
-  await new Promise((resolve, reject) => {
-    server2.once("error", reject);
-    server2.listen(socketPath, () => {
-      server2.off("error", reject);
-      resolve();
-    });
-  });
-  chmodSync(socketPath, 384);
+  const bound = await bindAt(server2, socketPath);
   let closing = null;
   return {
     socketPath,
     close() {
       closing ??= new Promise((resolve) => {
+        if (stillBound(socketPath, bound)) rmSync(socketPath, { force: true });
         server2.close(() => resolve());
         for (const socket of connections) socket.destroy();
       });
       return closing;
     }
   };
+}
+async function bindAt(server2, socketPath) {
+  const name = `.${randomBytes(8).toString("hex")}`.slice(
+    0,
+    Math.max(2, basename(socketPath).length)
+  );
+  const staging = join(dirname(socketPath), name);
+  await new Promise((resolve, reject) => {
+    server2.once("error", reject);
+    server2.listen(staging, () => {
+      server2.off("error", reject);
+      resolve();
+    });
+  });
+  try {
+    chmodSync(staging, 384);
+    const { dev, ino } = statSync(staging);
+    renameSync(staging, socketPath);
+    return { dev, ino };
+  } catch (error) {
+    await new Promise((resolve) => server2.close(() => resolve()));
+    throw error;
+  }
+}
+function stillBound(socketPath, bound) {
+  try {
+    const { dev, ino } = statSync(socketPath);
+    return dev === bound.dev && ino === bound.ino;
+  } catch {
+    return false;
+  }
 }
 function serve(socket, handle) {
   let buffer = "";
