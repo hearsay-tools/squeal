@@ -242,7 +242,7 @@ class Daemon {
       const runner = runnerModule.createRecoveringRunner({
         name: "vitest",
         adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-        create: () => vitest.createVitestAdapter({ root }),
+        create: () => vitest.createVitestAdapter({ root, note: (text) => this.#note(text) }),
         onFailure: (text) =>
           this.#note(`${text}; every check of this worktree is unknown until the config loads`),
         onRecovered: () => this.#note("Vitest started after the config changed"),

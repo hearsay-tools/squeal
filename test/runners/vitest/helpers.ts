@@ -2,8 +2,14 @@ import { randomUUID } from "node:crypto";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { afterEach } from "vitest";
-import type { RunnerAdapter, RunOptions, TestFileRef } from "../../../src/core/types/index.js";
+import type {
+  AffectedTestFiles,
+  RunnerAdapter,
+  RunOptions,
+  TestFileRef,
+} from "../../../src/core/types/index.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
+import { compareRefs } from "../../../src/runners/vitest/results.js";
 
 const fixturesDir = resolve(import.meta.dirname, "../../fixtures/vitest");
 
@@ -79,7 +85,12 @@ export async function openFixture(
 
 export const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 
-export const paths = (refs: readonly TestFileRef[]) => refs.map((r) => r.path);
+/** Every affected test file, direct and transitive, sorted. */
+export const all = (affected: AffectedTestFiles): TestFileRef[] =>
+  [...affected.direct, ...affected.transitive].sort(compareRefs);
+
+export const paths = (refs: readonly TestFileRef[] | AffectedTestFiles) =>
+  ("direct" in refs ? all(refs) : refs).map((r) => r.path);
 
 export const ALL_TEST_FILES = [
   "test/each.test.ts",

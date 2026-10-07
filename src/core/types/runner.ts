@@ -4,12 +4,12 @@ import type { TestFileRef } from "./keys.js";
 
 /**
  * A changed path handed to the runner. The kind tells the adapter whether
- * cached transforms and specification caches must be dropped.
+ * other cached transforms and specification caches must be dropped.
  *
  * Spec 001 D4: "`invalidate(paths)`: calls `invalidateFile` for each changed
- * path; on any add or delete invalidates every cached transform [...]; calls
- * `clearSpecificationsCache()` when a path matching a test glob was added or
- * removed".
+ * path. An add or delete also invalidates the cached transforms it can make
+ * wrong, and only those [...]. Calls `clearSpecificationsCache()` when a path
+ * matching a test glob was added or removed".
  */
 export interface InvalidatedPath {
   readonly path: RelativePath;
@@ -23,8 +23,6 @@ export interface InvalidateResult {
    * instance when the config file or one of its dependencies changed".
    */
   readonly recreatedProjects: readonly ProjectName[];
-  /** Facts the adapter worked around, recorded as status notes (D7), e.g. a fallback it took. */
-  readonly notes?: readonly string[];
 }
 
 /**
@@ -102,7 +100,7 @@ export interface CheckRunResult {
 
 /**
  * The test files a change affects, split by distance in the runner's module
- * graph. `affected(changedPaths)` is the union.
+ * graph.
  *
  * Spec 001 D5 step 4 as amended: "test files that import a changed path
  * directly according to the runner's module graph, then transitively
@@ -182,11 +180,6 @@ export interface RunReport {
    * leaves the file's duration to the sum of its test cases.
    */
   readonly fileDurations?: readonly FileDuration[];
-  /**
-   * Facts about the run recorded as status notes (D7), e.g. a runner failure
-   * that recreated the instance (D5). Optional, like `InvalidateResult.notes`.
-   */
-  readonly notes?: readonly string[];
 }
 
 /**
@@ -209,15 +202,11 @@ export interface RunnerAdapter {
    * Spec 001 D4: "`affected(changedPaths) -> test files`: the `related` walk
    * [...]. Squeal adds what Vitest's walk misses: all test files of a project
    * when a setup file, its closure, `globalSetup`, or the config changed; the
-   * owning test file when a `.snap` changed."
+   * owning test file when a `.snap` changed." Split into direct importers
+   * and the rest (D5 step 4); a runner that cannot tell them apart returns
+   * every file as transitive.
    */
-  affected(changedPaths: readonly RelativePath[]): Promise<readonly TestFileRef[]>;
-
-  /**
-   * `affected`, split into direct importers and the rest (D5 step 4). Optional:
-   * the scheduler treats every file of a runner without it as transitive.
-   */
-  affectedDetailed?(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles>;
+  affected(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles>;
 
   /** Spec 001 D4: "`closure(testFile) -> paths`". */
   closure(testFile: TestFileRef): Promise<RunnerClosure>;

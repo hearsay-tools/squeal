@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { openFixture, paths, ref, SLOW } from "./helpers.js";
+import { all, openFixture, paths, ref, SLOW } from "./helpers.js";
 
 describe("vitest adapter: edge cases", SLOW, () => {
   it("answers affected() while a test file has a syntax error", async () => {
@@ -100,13 +100,13 @@ describe("vitest adapter: projects", SLOW, () => {
       ref("test/both.test.ts", "unit"),
       ref("test/value.unit.test.ts", "unit"),
     ]);
-    expect(await fx.adapter.affected(["src/value.ts"])).toEqual([
+    expect(all(await fx.adapter.affected(["src/value.ts"]))).toEqual([
       ref("test/both.test.ts", "setup"),
       ref("test/both.test.ts", "unit"),
       ref("test/value.unit.test.ts", "unit"),
     ]);
     // A setup dependency affects only the project that declares the setup file.
-    expect(await fx.adapter.affected(["src/only-setup.ts"])).toEqual([
+    expect(all(await fx.adapter.affected(["src/only-setup.ts"]))).toEqual([
       ref("test/both.test.ts", "setup"),
     ]);
 

@@ -63,16 +63,20 @@ export class VitestAdapter implements RunnerAdapter {
   #closed = false;
   /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
   readonly #fellBack = new WeakSet<Vitest>();
+  readonly #note: (text: string) => void;
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
    * come from Squeal's Vitest, so loading this module loads no Vitest.
+   * `note` records a fact the adapter worked around as a status note (D7).
    */
   constructor(
     readonly paths: WorktreePaths,
     vitest: VitestNode,
+    note: (text: string) => void = () => {},
   ) {
     this.#node = vitest;
+    this.#note = note;
   }
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
@@ -151,7 +155,6 @@ export class VitestAdapter implements RunnerAdapter {
         return { recreatedProjects: [...names].sort() };
       }
       for (const p of abs) vitest.invalidateFile(p.abs);
-      const notes: string[] = [];
       const structural = abs.filter((p) => p.kind !== "change");
       if (structural.length > 0) {
         // Spec 001 D4: an add or delete re-transforms only the importers whose
@@ -162,39 +165,27 @@ export class VitestAdapter implements RunnerAdapter {
         for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
         if (stale === null && !this.#fellBack.has(vitest)) {
           this.#fellBack.add(vitest);
-          notes.push(FALLBACK_NOTE);
+          this.#note(FALLBACK_NOTE);
         }
         const testGlob = structural.some((p) =>
           vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),
         );
         if (testGlob) vitest.clearSpecificationsCache();
       }
-      return { recreatedProjects: [], ...(notes.length > 0 ? { notes } : {}) };
+      return { recreatedProjects: [] };
     });
   }
 
-  affected(changedPaths: readonly RelativePath[]): Promise<readonly TestFileRef[]> {
+  affected(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles> {
     return this.#serial(async (vitest) => {
-      const { direct, transitive } = await this.#affected(vitest, changedPaths);
-      return [...direct, ...transitive].sort(compareRefs);
+      const specs = await testSpecifications(vitest);
+      const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
+      const { direct, transitive } = await affectedTestFiles(vitest, specs, changed);
+      return {
+        direct: direct.map((s) => this.#ref(s)).sort(compareRefs),
+        transitive: transitive.map((s) => this.#ref(s)).sort(compareRefs),
+      };
     });
-  }
-
-  affectedDetailed(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles> {
-    return this.#serial((vitest) => this.#affected(vitest, changedPaths));
-  }
-
-  async #affected(
-    vitest: Vitest,
-    changedPaths: readonly RelativePath[],
-  ): Promise<AffectedTestFiles> {
-    const specs = await testSpecifications(vitest);
-    const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
-    const { direct, transitive } = await affectedTestFiles(vitest, specs, changed);
-    return {
-      direct: direct.map((s) => this.#ref(s)).sort(compareRefs),
-      transitive: transitive.map((s) => this.#ref(s)).sort(compareRefs),
-    };
   }
 
   closure(testFile: TestFileRef): Promise<RunnerClosure> {
@@ -301,11 +292,9 @@ export class VitestAdapter implements RunnerAdapter {
               collector.note(`close() of a broken instance failed: ${String(error)}`),
             );
         }
-        let report = buildReport(collector, execution, Math.round(performance.now() - started));
+        const report = buildReport(collector, execution, Math.round(performance.now() - started));
         // One persisted note for status, besides the crash's delivered line (D5).
-        if (broken !== null && report.failure !== null) {
-          report = { ...report, notes: [report.failure] };
-        }
+        if (broken !== null && report.failure !== null) this.#note(report.failure);
         writeRunLog(options, collector, report);
         return report;
       } finally {

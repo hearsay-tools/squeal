@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/index.js";
 
-function fakeAdapter(log: string[], detailed = false): RunnerAdapter {
+function fakeAdapter(log: string[]): RunnerAdapter {
   const environment: RunnerEnvironment = {
     project: "unit",
     runnerName: "vitest",
@@ -18,15 +18,7 @@ function fakeAdapter(log: string[], detailed = false): RunnerAdapter {
       log.push("invalidate");
       return { recreatedProjects: [] };
     },
-    affected: async () => [{ project: "unit", path: "a.test.ts" }],
-    ...(detailed
-      ? {
-          affectedDetailed: async () => ({
-            direct: [{ project: "unit", path: "a.test.ts" }],
-            transitive: [],
-          }),
-        }
-      : {}),
+    affected: async () => ({ direct: [{ project: "unit", path: "a.test.ts" }], transitive: [] }),
     closure: async (testFile) => ({ testFile, paths: [testFile.path] }),
     enumerate: async () => [],
     testFiles: async () => {
@@ -49,7 +41,7 @@ function fakeAdapter(log: string[], detailed = false): RunnerAdapter {
 }
 
 /** A factory that fails while `errors` has entries, then builds a fake adapter. */
-function factory(errors: string[], detailed = false) {
+function factory(errors: string[]) {
   const log: string[] = [];
   let attempts = 0;
   return {
@@ -59,7 +51,7 @@ function factory(errors: string[], detailed = false) {
       attempts++;
       const error = errors.shift();
       if (error !== undefined) throw new Error(error);
-      return fakeAdapter(log, detailed);
+      return fakeAdapter(log);
     },
   };
 }
@@ -99,7 +91,6 @@ describe("recovering runner: a broken config is a state, never an exit (review B
       () => adapter.testFiles(),
       () => adapter.environment(),
       () => adapter.affected(["a.ts"]),
-      () => adapter.affectedDetailed?.(["a.ts"]) ?? Promise.resolve("not forwarded"),
       () => adapter.closure({ project: "", path: "a.test.ts" }),
       () => adapter.enumerate({ project: "", path: "a.test.ts" }),
       () => adapter.run([], { runId: "r", logDir: "/tmp/r", timeoutMs: null }),
@@ -112,16 +103,10 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     expect(failures).toEqual(["Vitest could not start: vitest.config.ts: Unexpected token"]);
   });
 
-  it("forwards affectedDetailed, or splits affected for an adapter without it (spec 001 D5 step 4)", async () => {
-    const a = factory([], true);
-    expect(await runner(a).adapter.affectedDetailed?.(["a.ts"])).toEqual({
+  it("forwards affected with its direct and transitive split (spec 001 D5 step 4)", async () => {
+    expect(await runner(factory([])).adapter.affected(["a.ts"])).toEqual({
       direct: [{ project: "unit", path: "a.test.ts" }],
       transitive: [],
-    });
-    const b = factory([]);
-    expect(await runner(b).adapter.affectedDetailed?.(["a.ts"])).toEqual({
-      direct: [],
-      transitive: [{ project: "unit", path: "a.test.ts" }],
     });
   });
 
