@@ -51,11 +51,30 @@ export function refinedMetaKey(worktreeId: WorktreeId): string {
  * `meta` key that is `"true"` while the daemon of a worktree waits for an
  * install: the root `package.json` declares dependencies and the root has no
  * installed lockfile, so nothing is listed or run (spec 001 D5 as amended,
- * task 001-100, defect 18). Any other value, or none, is not waiting. The
- * one source for that state: headers, status and hooks read it here.
+ * task 001-100, defect 18), or the JSON array of the workspaces still
+ * missing theirs while others have one (task 001-107, review wave 11 N2).
+ * Any other value, or none, is not waiting. The one source for that state:
+ * headers, status and hooks read it here (`parseAwaitingInstall`).
  */
 export function awaitingInstallMetaKey(worktreeId: WorktreeId): string {
   return `awaiting-install.${worktreeId}`;
+}
+
+/** The `awaitingInstallMetaKey` value of a wait for `workspaces` (none named: `"true"`). */
+export function awaitingInstallValue(workspaces: readonly string[]): string {
+  return workspaces.length === 0 ? "true" : JSON.stringify(workspaces);
+}
+
+/** The workspaces a stored wait names, or `null` when `raw` is not a wait. */
+export function parseAwaitingInstall(raw: string | null): readonly string[] | null {
+  if (raw === "true") return [];
+  if (raw === null || !raw.startsWith("[")) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A `squeal run --all` request. Spec 001 D5. */

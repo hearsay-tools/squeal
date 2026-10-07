@@ -64,9 +64,25 @@ function at(location: SourceLocation): string {
 const NOT_LISTED_SENTENCE =
   "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 
-/** Spec 001 D5 as amended (task 001-100): the daemon waits for an install. */
-const AWAITING_INSTALL_SENTENCE =
-  "No dependencies are installed in this worktree; Squeal lists and runs no tests until an install.";
+/** Workspaces the wait sentence names before the rest is counted (task 001-107). */
+const MISSING_INSTALLS_SHOWN = 3;
+
+/**
+ * Spec 001 D5 as amended (tasks 001-100, 001-107): the daemon waits for an
+ * install, and names the workspaces still missing theirs when others have
+ * one (review wave 11, N2). `null` when not waiting, and when no daemon is
+ * live: a daemon killed while waiting left the flag (N5).
+ */
+function awaitingInstallSentence(header: StatusHeader): string | null {
+  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
+  const missing = header.missingInstalls ?? [];
+  const more = missing.length - MISSING_INSTALLS_SHOWN;
+  const where =
+    missing.length === 0
+      ? "in this worktree"
+      : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  return `No dependencies are installed ${where}; Squeal lists and runs no tests until an install.`;
+}
 
 /** Paths a header names before the rest is counted (task 001-85). */
 export const CHANGED_PATHS_SHOWN = 3;
@@ -94,12 +110,13 @@ function headerLine(header: StatusHeader): string {
     header.runnerPartPending === true
       ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.`
       : "";
+  const awaiting = awaitingInstallSentence(header);
   return (
     `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ` +
     `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header)}.` +
     livenessSentence(header.daemon, revision) +
-    (header.awaitingInstall === true ? ` ${AWAITING_INSTALL_SENTENCE}` : installSentences(header))
+    (awaiting === null ? installSentences(header) : ` ${awaiting}`)
   );
 }
 
