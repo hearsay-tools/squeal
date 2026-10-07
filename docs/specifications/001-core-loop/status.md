@@ -93,6 +93,8 @@ Started: 2026-10-02
 
 - 2026-10-07, after wave 11: `reviews/wave-10d.md` N4 closed by the spec 002/003 coordinator (0.1.21, `5265b61`): `test/store/helpers.ts` removes temp directories with retries, which ends the ENOTEMPTY race in both bundled-hook tests. The idle-exit test in `test/daemon/lifecycle.test.ts` no longer waits for readiness, which its 1.8 s idle period could outrun under load.
 
+- 2026-10-07, wave 11 (001-111, `lessons.md` defect 21; decided by the worker by experiment): D2 amended. `git check-ignore --stdin` exits 128 for a whole batch when one path lies beyond a symlinked directory (`fatal: pathspec ... is beyond a symbolic link`), so a worktree with a linked `node_modules` killed its daemon at start. Such a path now counts as ignored without asking git, which makes the installed lockfile an extra file, hashed and watched through the link; `node_modules/` does not match the link itself, which git lists as an untracked file. A batch git refuses anyway is halved until the path git names in its refusal stands alone and counts as ignored; a lone path git does not name rethrows, so a broken repository still fails.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
