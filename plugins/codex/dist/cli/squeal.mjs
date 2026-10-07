@@ -7406,9 +7406,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname21 = sp.dirname(file);
+        const dirname22 = sp.dirname(file);
         const basename12 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname21);
+        const parent2 = this.fsw._getWatchedDir(dirname22);
         let prevStats = stats;
         if (parent2.has(basename12))
           return;
@@ -7435,7 +7435,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname21, basename12);
+              this.fsw._remove(dirname22, basename12);
             }
           } else if (parent2.has(basename12)) {
             const at2 = newStats.atimeMs;
@@ -8608,6 +8608,7 @@ var init_backend = __esm({
 
 // src/core/watcher/candidates.ts
 import { lstat as lstat7, readdir as readdir6, realpath as realpath2 } from "node:fs/promises";
+import { dirname as dirname13 } from "node:path";
 async function candidatesFromHints(ctx, absPaths) {
   const nested = new NestedRepoProbe(ctx.root);
   const relPaths = /* @__PURE__ */ new Set();
@@ -8682,7 +8683,7 @@ async function candidatesForReconcile(ctx, statusPaths) {
     if (stat7 !== void 0) out.set(rel, stat7);
   });
   const links = await topLinks(ctx.root, [...out.keys()]);
-  const linkedDirs = await observedLinks(ctx, nested, links);
+  const linkedDirs = await observedLinks(ctx, links);
   for (const link of linkedDirs.keys()) {
     for (const rel of await walkFiles(ctx, nested, link)) {
       out.set(rel, await statOrNull2(ctx.root, rel));
@@ -8701,14 +8702,23 @@ async function topLinks(root, paths) {
   }
   return links;
 }
-async function observedLinks(ctx, nested, links) {
+async function observedLinks(ctx, links) {
   const observed = /* @__PURE__ */ new Map();
   for (const [rel, target] of links) {
-    if (ctx.root === target || ctx.root.startsWith(`${target}/`)) continue;
-    if (!await nested.isInside(rel)) observed.set(rel, target);
+    if (holdsRoot(ctx.root, target)) continue;
+    if (!await inOtherRepository(ctx.root, target)) observed.set(rel, target);
   }
   for (const link of await ignoredLinks(ctx.root, [...observed.keys()])) observed.delete(link);
   return observed;
+}
+async function inOtherRepository(root, target) {
+  for (let dir = target; !holdsRoot(root, dir); dir = dirname13(dir)) {
+    if (await hasGitEntry(dir)) return true;
+  }
+  return false;
+}
+function holdsRoot(root, dir) {
+  return root === dir || root.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
 }
 async function walkFiles(ctx, nested, dir) {
   const files = [];
@@ -9241,7 +9251,7 @@ var init_loads = __esm({
 // src/runners/vitest/graph.ts
 import { existsSync as existsSync10, statSync as statSync2 } from "node:fs";
 import { builtinModules } from "node:module";
-import { basename as basename7, dirname as dirname13, extname as extname2, join as join33, resolve as resolve7 } from "node:path";
+import { basename as basename7, dirname as dirname14, extname as extname2, join as join33, resolve as resolve7 } from "node:path";
 async function importClosure(project, entries2) {
   const files = /* @__PURE__ */ new Set();
   const missing = /* @__PURE__ */ new Set();
@@ -9332,7 +9342,7 @@ function isRelative(specifier) {
   return specifier.startsWith("./") || specifier.startsWith("../") || specifier === "." || specifier === "..";
 }
 function requireTarget(importer, specifier) {
-  const path = resolve7(dirname13(importer), specifier);
+  const path = resolve7(dirname14(importer), specifier);
   const kind = (candidate) => statSync2(candidate, { throwIfNoEntry: false });
   if (kind(path)?.isFile()) return path;
   for (const ext of REQUIRE_EXTENSIONS) if (kind(`${path}${ext}`)?.isFile()) return `${path}${ext}`;
@@ -9362,7 +9372,7 @@ function depToPath(dep, importer, root) {
   if (path.startsWith("/@fs/")) return path.slice("/@fs".length);
   if (path.startsWith("/@")) return null;
   if (path.startsWith("/")) return join33(root, path);
-  if (path.startsWith("./") || path.startsWith("../")) return resolve7(dirname13(importer), path);
+  if (path.startsWith("./") || path.startsWith("../")) return resolve7(dirname14(importer), path);
   return null;
 }
 function resolutionCandidates(target, extensions) {
@@ -9381,7 +9391,7 @@ function resolutionBases(path, extensions) {
   if (ext === "") return bases2;
   if (extensions.includes(ext)) {
     bases2.push(path.slice(0, -ext.length));
-    if (basename7(path) === `index${ext}`) bases2.push(dirname13(path));
+    if (basename7(path) === `index${ext}`) bases2.push(dirname14(path));
   }
   for (const [js, twins] of Object.entries(TYPESCRIPT_TWINS)) {
     if (twins.includes(ext)) bases2.push(path.slice(0, -ext.length) + js);
@@ -9413,7 +9423,7 @@ var init_graph = __esm({
 });
 
 // src/runners/vitest/project.ts
-import { basename as basename8, dirname as dirname14, join as join34 } from "node:path";
+import { basename as basename8, dirname as dirname15, join as join34 } from "node:path";
 function configFiles(vitest) {
   const files = /* @__PURE__ */ new Set();
   for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
@@ -9449,7 +9459,7 @@ function snapshotPath(project, testFile) {
   if (resolveSnapshotPath) {
     return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
   }
-  return join34(dirname14(testFile), "__snapshots__", `${basename8(testFile)}.snap`);
+  return join34(dirname15(testFile), "__snapshots__", `${basename8(testFile)}.snap`);
 }
 function resolveExtensions(project) {
   return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
@@ -10075,7 +10085,7 @@ var init_lexer = __esm({
 
 // src/runners/vitest/packages.ts
 import { readFile as readFile3 } from "node:fs/promises";
-import { dirname as dirname15, isAbsolute as isAbsolute7 } from "node:path";
+import { dirname as dirname16, isAbsolute as isAbsolute7 } from "node:path";
 function closurePackages(graph, paths) {
   const imports = [];
   const builtins = new Set(graph.builtins);
@@ -10085,7 +10095,7 @@ function closurePackages(graph, paths) {
     else if (entry2 !== null) imports.push(entry2);
   }
   for (const [importer, specifiers] of graph.bare) {
-    const from = directoryOf2(dirname15(importer), paths);
+    const from = directoryOf2(dirname16(importer), paths);
     if (from === null) continue;
     for (const specifier of specifiers) {
       const entry2 = bareImport(from, specifier);
@@ -10130,7 +10140,7 @@ async function environmentPackages(project, inputs2, paths) {
   }
   await init;
   for (const file of inputs2.configFiles) {
-    const from = paths.isProjectFile(file) ? directoryOf2(dirname15(file), paths) : null;
+    const from = paths.isProjectFile(file) ? directoryOf2(dirname16(file), paths) : null;
     if (from === null) continue;
     const { specifiers, unnamed } = await loadsOf(file);
     if (unnamed) builtins.add(UNNAMED);
@@ -10354,7 +10364,7 @@ var init_dynamic = __esm({
 // src/runners/vitest/stale.ts
 import { existsSync as existsSync12, readFileSync as readFileSync12 } from "node:fs";
 import { isBuiltin } from "node:module";
-import { basename as basename9, dirname as dirname16, join as join37 } from "node:path";
+import { basename as basename9, dirname as dirname17, join as join37 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
   const manifests = paths.filter((p) => isPackageJson(p.abs));
   for (const p of manifests) await dropPackageData(vitest, p.abs, p.kind);
@@ -10378,7 +10388,7 @@ async function invalidateStructural(vitest, paths, note) {
 }
 async function dropPackageData(vitest, manifest, kind) {
   const event2 = kind === "add" ? "create" : kind === "delete" ? "delete" : "update";
-  const dir = dirname16(manifest);
+  const dir = dirname17(manifest);
   for (const project of vitest.projects) {
     for (const environment of Object.values(project.vite.environments)) {
       await environment.pluginContainer.watchChange(manifest, { event: event2 });
@@ -10417,13 +10427,13 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set(deleted);
-      const scopes = [...added, ...deleted, ...manifests].filter(isPackageJson).map((p) => `${dirname16(p)}/`);
+      const scopes = [...added, ...deleted, ...manifests].filter(isPackageJson).map((p) => `${dirname17(p)}/`);
       const directories = [...scopes];
       for (const path of added) {
         const bases2 = resolutionBases(path, extensions);
         for (const base of bases2) {
           for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
-          if (base !== dirname16(path)) directories.push(`${base}/`);
+          if (base !== dirname17(path)) directories.push(`${base}/`);
         }
         for (const dir of entryDirectories(path, bases2, project.config.root)) {
           directories.push(`${dir}/`);
@@ -10453,7 +10463,7 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
 }
 function entryDirectories(path, bases2, root) {
   const found = [];
-  for (let dir = dirname16(path); dir.startsWith(`${root}/`); dir = dirname16(dir)) {
+  for (let dir = dirname17(path); dir.startsWith(`${root}/`); dir = dirname17(dir)) {
     const manifest = join37(dir, "package.json");
     if (!existsSync12(manifest)) continue;
     const named = packageEntries(manifest).map((entry2) => join37(dir, entry2).replace(/\/+$/, ""));
@@ -17209,11 +17219,11 @@ var init_closures = __esm({
 
 // src/runners/node-test/graph/glob.ts
 import { readdirSync as readdirSync6 } from "node:fs";
-import { dirname as dirname17, extname as extname3, join as join39, resolve as resolve9 } from "node:path";
+import { dirname as dirname18, extname as extname3, join as join39, resolve as resolve9 } from "node:path";
 function expandGlob(glob, importer, tsx) {
   if (!glob.startsWith("./") && !glob.startsWith("../")) return null;
-  const pattern2 = resolve9(dirname17(importer), glob);
-  const dir = dirname17(pattern2);
+  const pattern2 = resolve9(dirname18(importer), glob);
+  const dir = dirname18(pattern2);
   if (dir.includes("*")) return null;
   const base = pattern2.slice(dir.length + 1);
   const ext = extname3(base);
@@ -17821,7 +17831,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname21 = (path) => {
+    var dirname22 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -18246,12 +18256,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname21(strWhat));
+          this.purge(dirname22(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname21(strItem));
+            set.add(dirname22(strItem));
           }
           this.purge(set);
         }
@@ -19729,7 +19739,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname21 = (maybePath) => {
+    var dirname22 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -19758,7 +19768,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname21(maybePath);
+        const result = dirname22(maybePath);
         cache.set(maybePath, result);
         return result;
       };
@@ -19855,7 +19865,7 @@ var require_path = __commonJS({
     module.exports.createCachedDirname = createCachedDirname;
     module.exports.createCachedJoin = createCachedJoin;
     module.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module.exports.dirname = dirname21;
+    module.exports.dirname = dirname22;
     module.exports.getType = getType;
     module.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module.exports.isFileURL = isFileURL;
@@ -26814,7 +26824,7 @@ var require_lib2 = __commonJS({
 });
 
 // src/runners/node-test/graph/tsconfig.ts
-import { dirname as dirname18, isAbsolute as isAbsolute8, join as join41, resolve as resolve10 } from "node:path";
+import { dirname as dirname19, isAbsolute as isAbsolute8, join as join41, resolve as resolve10 } from "node:path";
 function readTsconfigPaths(file, read3) {
   const files = [];
   const load = (config, seen) => {
@@ -26826,7 +26836,7 @@ function readTsconfigPaths(file, read3) {
     let baseUrl = null;
     for (const base of bases2) {
       if (typeof base !== "string") continue;
-      const target = locate(base, dirname18(config), read3);
+      const target = locate(base, dirname19(config), read3);
       if (target === null || seen.has(target)) continue;
       const inherited = load(target, /* @__PURE__ */ new Set([...seen, target]));
       pathsFile = inherited.pathsFile ?? pathsFile;
@@ -26835,7 +26845,7 @@ function readTsconfigPaths(file, read3) {
     const options = json3?.compilerOptions;
     if (isObject(options)) {
       if (isObject(options.paths)) pathsFile = config;
-      if (typeof options.baseUrl === "string") baseUrl = resolve10(dirname18(config), options.baseUrl);
+      if (typeof options.baseUrl === "string") baseUrl = resolve10(dirname19(config), options.baseUrl);
     }
     return { pathsFile, baseUrl };
   };
@@ -26847,11 +26857,11 @@ function locate(specifier, dir, read3) {
     const path = resolve10(dir, specifier);
     return [path, `${path}.json`].find(exists2) ?? null;
   }
-  for (let at2 = dir; ; at2 = dirname18(at2)) {
+  for (let at2 = dir; ; at2 = dirname19(at2)) {
     const base = join41(at2, "node_modules", specifier);
     const found = [base, `${base}.json`, join41(base, "tsconfig.json")].find(exists2);
     if (found !== void 0) return found;
-    if (dirname18(at2) === at2) return null;
+    if (dirname19(at2) === at2) return null;
   }
 }
 function parseJsonc(text2) {
@@ -26892,7 +26902,7 @@ var init_tsconfig = __esm({
 // src/runners/node-test/graph/resolver.ts
 import * as fs from "node:fs";
 import { isBuiltin as isBuiltin2 } from "node:module";
-import { dirname as dirname19, extname as extname4, join as join42, sep as sep10 } from "node:path";
+import { dirname as dirname20, extname as extname4, join as join42, sep as sep10 } from "node:path";
 function createResolver(chain, root) {
   let fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = /* @__PURE__ */ new Map();
@@ -26948,7 +26958,7 @@ function createResolver(chain, root) {
     if (found === void 0) {
       const manifest = join42(dir, "package.json");
       const text2 = readText(manifest);
-      const parent2 = dirname19(dir);
+      const parent2 = dirname20(dir);
       if (text2 !== null) {
         const type = parseJsonc(text2)?.type;
         found = {
@@ -26966,7 +26976,7 @@ function createResolver(chain, root) {
     let found = tsconfigs.get(dir);
     if (found === void 0) {
       const here = join42(dir, "tsconfig.json");
-      const parent2 = dirname19(dir);
+      const parent2 = dirname20(dir);
       found = exists2(here) ? here : dir === root || parent2 === dir ? null : tsconfigFor(parent2);
       tsconfigs.set(dir, found);
     }
@@ -27005,7 +27015,7 @@ function createResolver(chain, root) {
   return {
     resolve(specifier, importer, kind) {
       if (isBuiltin2(specifier)) return BUILTIN;
-      const from = dirname19(importer);
+      const from = dirname20(importer);
       const key = `${from}\0${kind}\0${specifier}`;
       let resolution = resolutions.get(key);
       if (resolution === void 0) {
@@ -27017,7 +27027,7 @@ function createResolver(chain, root) {
     moduleFormat(file) {
       if (COMMONJS.test(file)) return { format: "commonjs", manifest: null };
       if (MODULE.test(file)) return { format: "module", manifest: null };
-      return scopeOf(dirname19(file));
+      return scopeOf(dirname20(file));
     },
     clear() {
       fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
@@ -28155,7 +28165,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.25";
+  if (true) return "0.1.26";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -30885,7 +30895,7 @@ function readSettings(path) {
 
 // src/cli/remove.ts
 import { existsSync as existsSync16, lstatSync as lstatSync5, readdirSync as readdirSync9, rmSync as rmSync7 } from "node:fs";
-import { basename as basename11, dirname as dirname20, join as join47 } from "node:path";
+import { basename as basename11, dirname as dirname21, join as join47 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
@@ -31196,12 +31206,12 @@ function tempDirs(commonDir, worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key = basename11(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname20(scratch.tempDir);
+      const tmp = dirname21(scratch.tempDir);
       dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
       if (existsSync16(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback = `${userTmpDir(uid)}-${key}-`;
-    dirs.push(...entries(dirname20(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
+    dirs.push(...entries(dirname21(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
 }
