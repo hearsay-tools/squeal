@@ -37,10 +37,16 @@ export class Lockfiles {
   /** On-disk package scans by identity, kept across installs (`InstalledGraph`). */
   readonly #scans = new PackageScans();
 
-  /** `note` records a stale hidden lockfile (task 001-104) as a status note, once per change. */
+  /**
+   * `note` records a stale hidden lockfile (task 001-104) as a status note,
+   * once per change. `persisted` tells whether an earlier daemon already
+   * recorded a text, so a restart does not record the same state again
+   * (task 001-109, review wave-11b S1).
+   */
   constructor(
     private readonly root: AbsolutePath,
     private readonly note: (text: string) => void = () => {},
+    private readonly persisted: (text: string) => boolean = () => false,
   ) {}
 
   /**
@@ -72,10 +78,12 @@ export class Lockfiles {
     return keys;
   }
 
+  /** The first read of a lockfile by this daemon skips a note an earlier one recorded. */
   #noteOnce(path: RelativePath, note: string | null): void {
     if (this.#notes.get(path) === note) return;
+    const first = !this.#notes.has(path);
     this.#notes.set(path, note);
-    if (note !== null) this.note(note);
+    if (note !== null && !(first && this.persisted(note))) this.note(note);
   }
 
   /** Every project's lockfile path, once each. */

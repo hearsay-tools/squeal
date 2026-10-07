@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { isMissing } from "../fs/index.js";
 import { findInstalledLockfile } from "../keys/index.js";
 import type { AbsolutePath } from "../types/index.js";
+import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
+import { type Failures, settleFailures } from "./failures.js";
 import { type MissingInstall, missingInstall } from "./install.js";
+import type { Ledger } from "./ledger.js";
+import { readEnvironments } from "./revision.js";
 
 /** What `InstallStamps.check` found before a tier. */
 export interface InstallCheck {
@@ -30,6 +34,8 @@ export interface InstallCheck {
 export class InstallStamps {
   #lockfile: AbsolutePath | null = null;
   #last: InstallCheck | null = null;
+  /** The stamp `takeChange` saw last; `null` before its first call. */
+  #taken: string | null = null;
 
   constructor(private readonly root: AbsolutePath) {}
 
@@ -41,6 +47,19 @@ export class InstallStamps {
     this.#lockfile = (await findInstalledLockfile(this.root, this.root))?.path ?? null;
     this.#last = { stamp: await this.stamp(), missing };
     return this.#last;
+  }
+
+  /**
+   * Whether the install moved since the last call: true once per move, false
+   * at the first call, which follows the environments' read at the start.
+   * Task 001-109 (review wave-11b S2): a package folder added without
+   * rewriting the lockfile creates no revision, since `node_modules` is not
+   * watched, so the environments are read again here (`refreshInstall`).
+   */
+  takeChange(check: InstallCheck): boolean {
+    const moved = this.#taken !== null && this.#taken !== check.stamp;
+    this.#taken = check.stamp;
+    return moved;
   }
 
   /** One directory listing and stats; no file is read. */
@@ -72,4 +91,20 @@ async function statPart(path: AbsolutePath): Promise<string> {
     if (isMissing(error) || (error as NodeJS.ErrnoException).code === "ENOTDIR") return "-";
     throw error;
   }
+}
+
+/**
+ * Reads the environments again after `InstallStamps.takeChange`, so each
+ * project's installed dependencies are read under task 001-104's rule and
+ * every key they move is settled, as a revision changing the lockfile
+ * would. Under the scheduler lock, between tiers. The stamp covers the root
+ * `node_modules` entries only; a folder added deeper waits for a restart
+ * (D3).
+ */
+export async function refreshInstall(context: SchedulerContext, ledger: Ledger): Promise<void> {
+  const failures: Failures = new Map();
+  const touched = (await readEnvironments(context, failures)).map((change) => change.testFile);
+  ledger.settle(touched, NOTHING_CHANGED);
+  settleFailures(ledger, failures, false, NOTHING_CHANGED);
+  ledger.commit();
 }
