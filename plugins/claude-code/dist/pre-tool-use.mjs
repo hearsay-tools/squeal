@@ -3072,9 +3072,17 @@ function parseHookInput(text) {
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
+    ...toolNames(v.tool_calls),
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}
   };
+}
+function toolNames(calls) {
+  if (!Array.isArray(calls)) return {};
+  const names = calls.map(
+    (c) => typeof c === "object" && c !== null ? c.tool_name : void 0
+  );
+  return names.every((n) => typeof n === "string") ? { tool_names: names } : {};
 }
 
 // src/harness/claude-code/run.ts

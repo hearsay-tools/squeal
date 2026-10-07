@@ -2577,6 +2577,10 @@ function livenessSentence(daemon, revision) {
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.`;
 }
+function notValidatedLine(daemon) {
+  const since = daemon.since === null ? "no daemon is running" : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  return `Not validated: ${since}; this edit has no result.`;
+}
 function block(head, lines, outcomes) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), outcomes };
@@ -2888,8 +2892,8 @@ function ensure(location2, deps, record) {
 }
 async function ensureIfStale(context, deps) {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return;
-  await ensure(context, deps, record);
+  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return "fresh";
+  return ensure(context, deps, record);
 }
 
 // src/harness/shared/context.ts
@@ -2958,14 +2962,34 @@ ${PRIMER}`;
 }
 
 // src/harness/shared/deliver.ts
-async function deliver(context, deps) {
-  await ensureIfStale(context, deps);
+var EDITING_TOOLS = /* @__PURE__ */ new Set([
+  "Edit",
+  "Write",
+  "MultiEdit",
+  "NotebookEdit",
+  "Bash",
+  "apply_patch"
+]);
+function mayEdit(toolNames2) {
+  return toolNames2 === void 0 || toolNames2.some((name) => EDITING_TOOLS.has(name));
+}
+async function deliver(context, deps, edited = true) {
+  const ensured = await ensureIfStale(context, deps);
   if (!isRegistered(context)) {
     const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
     return withPrimer(registration2);
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
-  return delta === null ? null : formatDelta(delta);
+  const text = delta === null ? null : formatDelta(delta);
+  const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  if (line === null) return text;
+  return text === null ? `SQUEAL \xB7 ${line}` : `${text}
+${line}`;
+}
+function notValidated(context, deps) {
+  const record = context.store.worktrees.get(context.consumer.worktreeId);
+  const live = worktreeLiveness(record, (deps.now ?? Date.now)());
+  return live.state === "down" ? notValidatedLine(live) : null;
 }
 
 // src/harness/claude-code/fork.ts
@@ -2987,7 +3011,7 @@ function additionalContext(input, text) {
 var postToolBatch = async (input, location2, deps) => {
   if (isFork(input)) return null;
   return withContext(input, location2, deps, async (context) => {
-    const text = await deliver(context, deps);
+    const text = await deliver(context, deps, mayEdit(input.tool_names));
     return text === null ? null : additionalContext(input, text);
   });
 };
@@ -3016,9 +3040,17 @@ function parseHookInput(text) {
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
+    ...toolNames(v.tool_calls),
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}
   };
+}
+function toolNames(calls) {
+  if (!Array.isArray(calls)) return {};
+  const names = calls.map(
+    (c) => typeof c === "object" && c !== null ? c.tool_name : void 0
+  );
+  return names.every((n) => typeof n === "string") ? { tool_names: names } : {};
 }
 
 // src/harness/claude-code/run.ts
