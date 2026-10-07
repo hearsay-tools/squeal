@@ -37,3 +37,15 @@ Owns: `src/cli/node-test-seed.ts`, the seeding call in `src/cli/init.ts`, `test/
 Done when: cezarion's two scripts (`node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/*.test.ts` and the same over `test/e2e/*.test.ts`) seed two entries with the right `cwd`, `argv` and `include`; a piped or chained script is refused with a note; an existing config is never overwritten; lint, typecheck, full suite green.
 
 Use /worker.
+
+## 003-17 review of wave 2
+
+Outcome: `reviews/wave-2.md` in this spec folder, with a verdict on the node:test runner as the daemon now runs it (0.1.21).
+
+Range: the 003 commits of `8c58e12..6fde336` on main: 003-20 (graph follow-ups), 003-23 and the Codex init seeding, 003-16 (adapter, daemon wiring, observed store). The 001 and 002 commits in the range are other rows'.
+
+Questions: (1) Can an inherited node:test result pose as current: the observed meta key and the stored-closure write (two daemons writing at once, a worktree started before the write, a path observed in one worktree and absent in another), the first result stored under the pre-observation key, a preload edit? (2) Two runners in one store: can a Vitest and a node:test project with the same test path or project name collide, and does the composite keep one adapter's crash or missing Node from making the other's checks unknown? (3) Do 003-20's fixes hold on a real monorepo layout (cezarion's: `packages/<name>`, a root `tsconfig.base.json`, `--import ../../scripts/...`)? Read it at `/home/agent/projects/cezar` without changing it, or copy it under `/tmp`. (4) Is `squeal init` seeding right for cezarion's scripts, and does it never overwrite a config? (5) Daemon start cost with the node:test modules in the bundle, and the first `affected` after a start on a large project.
+
+Rules: change no code; label every finding proven, plausible or unverified, and only a proven break blocks; probes under `/tmp`, never this repository's store or the cezar repository's.
+
+Use /reviewer.
