@@ -8,6 +8,7 @@ import type {
   DaemonPhase,
   EpochMs,
   Policy,
+  RunnerAdapter,
   WorktreeId,
 } from "../types/index.js";
 import { bootstrappedMetaKey, DEFAULT_POLICY } from "../types/index.js";
@@ -95,7 +96,9 @@ class Daemon {
   #phase: DaemonPhase = "starting";
   #policy: Policy = DEFAULT_POLICY;
   #desk: FrontDesk | null = null;
-  #runner: RecoveringRunner | null = null;
+  #runner: RunnerAdapter | null = null;
+  /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
+  #vitest: RecoveringRunner | null = null;
   #loop: DaemonLoop | null = null;
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
@@ -232,27 +235,50 @@ class Daemon {
   async #run(): Promise<void> {
     const { root, worktreeId, store, commonDir } = this.opened;
     try {
-      const [{ createDaemonLoop }, { createStateSink, describeFailure }, vitest, runnerModule] =
-        await Promise.all([
-          import("../daemon-loop/index.js"),
-          import("../state/index.js"),
-          import("../../runners/vitest/index.js"),
-          import("./runner.js"),
-        ]);
+      const [
+        { createDaemonLoop },
+        { createStateSink, describeFailure },
+        vitest,
+        nodeTest,
+        runnerModule,
+        { createCompositeRunner },
+      ] = await Promise.all([
+        import("../daemon-loop/index.js"),
+        import("../state/index.js"),
+        import("../../runners/vitest/index.js"),
+        import("../../runners/node-test/adapter.js"),
+        import("./runner.js"),
+        import("./composite-runner.js"),
+      ]);
       const { storePaths } = await import("../store/index.js");
-      const runner = runnerModule.createRecoveringRunner({
-        name: "vitest",
-        adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-        create: () => vitest.createVitestAdapter({ root, note: (text) => this.#note(text) }),
-        onFailure: (text) =>
-          this.#note(`${text}; every check of this worktree is unknown until the config loads`),
-        onRecovered: () => this.#note("Vitest started after the config changed"),
-        around: this.options.ownsProcess
-          ? inRootWhileRunning(root, this.opened.scratch)
-          : undefined,
-      });
+      const around = this.options.ownsProcess
+        ? inRootWhileRunning(root, this.opened.scratch)
+        : undefined;
+      // Spec 003 D7: one runner per configured or detected runner. Vitest is
+      // built when detected, or when nothing else is configured, so a project
+      // with neither keeps the "project without Vitest" failure note (001 D11).
+      const configured = this.#policy.nodeTest;
+      const vitestRunner =
+        configured.length === 0 || runnerModule.vitestDetected(root)
+          ? runnerModule.createRecoveringRunner({
+              name: "vitest",
+              adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+              create: () => vitest.createVitestAdapter({ root, note: (text) => this.#note(text) }),
+              onFailure: (text) =>
+                this.#note(
+                  `${text}; every check of this worktree is unknown until the config loads`,
+                ),
+              onRecovered: () => this.#note("Vitest started after the config changed"),
+              around,
+            })
+          : null;
+      const runner = createCompositeRunner([
+        ...(vitestRunner === null ? [] : [vitestRunner]),
+        ...configured.map((project) => nodeTest.createNodeTestAdapter(project)),
+      ]);
+      this.#vitest = vitestRunner;
       this.#runner = runner;
-      await runner.open();
+      await vitestRunner?.open();
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop({
         root,
@@ -323,7 +349,7 @@ class Daemon {
       throw new Error("the daemon is not running a scheduler");
     }
     // A runner that never started gets another chance before the checkpoint is planned.
-    this.#runner?.retry();
+    this.#vitest?.retry();
     return this.#loop.scheduler.requestFullSuite({ force });
   }
 

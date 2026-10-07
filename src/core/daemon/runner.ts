@@ -1,4 +1,7 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
+import { isRecord } from "../fs/index.js";
 import type {
   InvalidatedPath,
   InvalidateResult,
@@ -132,4 +135,36 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
 function messageOf(error: unknown): string {
   const text = error instanceof Error ? error.message : String(error);
   return stripVTControlCharacters(text).trim();
+}
+
+/** `vitest.config.*`, `vitest.workspace.*`, `vitest.projects.*` or `vite.config.*`. */
+const VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+
+/**
+ * Whether the worktree at `root` uses Vitest: a Vitest or Vite config file at
+ * the root, or `vitest` among the root manifest's dependencies. Spec 003 D7:
+ * the daemon holds a runner per "configured or detected runner", and the
+ * runner failure "project without Vitest" applies only when none is. The
+ * daemon builds the Vitest runner when this holds or when no other runner is
+ * configured, so a project with neither still gets that failure as a note.
+ */
+export function vitestDetected(root: string): boolean {
+  let names: string[];
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  } catch {
+    return false;
+  }
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
 }

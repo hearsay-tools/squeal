@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMissing, isRecord } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
-import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import {
   DEFAULT_POLICY,
   type LoadedPolicy,
@@ -10,6 +9,7 @@ import {
   type Store,
   type WorktreeId,
 } from "../types/index.js";
+import { compiles, nodeTestProjects } from "./policy-node-test.js";
 
 /** Spec 001 D11: "`squeal.config.json` at the repository root, committed, all keys optional". */
 export const POLICY_FILE = "squeal.config.json";
