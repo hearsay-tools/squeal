@@ -66,6 +66,22 @@ function isRecord(value) {
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
+// src/core/keys/environment.ts
+var LOCKFILES = [
+  { path: "node_modules/.package-lock.json", patches: "patches" },
+  { path: "node_modules/.yarn-state.yml", patches: null },
+  { path: ".pnp.cjs", patches: ".yarn/patches" },
+  { path: ".pnp.js", patches: ".yarn/patches" },
+  { path: "node_modules/.yarn-integrity", patches: "patches" },
+  { path: "node_modules/.pnpm/lock.yaml", patches: null },
+  { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
+  { path: "bun.lock", patches: "patches" },
+  { path: "bun.lockb", patches: "patches" }
+];
+function isInstalledLockfile(path) {
+  return LOCKFILES.some((format) => path === format.path || path.endsWith(`/${format.path}`));
+}
+
 // src/core/keys/reverse-index.ts
 function testFileId(ref) {
   return `${ref.project}\0${ref.path}`;
@@ -288,6 +304,99 @@ function lock(path) {
     db.close();
     return null;
   }
+}
+
+// src/core/delivery/slots.ts
+var slot = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll(store, key) {
+  const raw = store.meta.get(key);
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function readSlot(store, key, consumer) {
+  return readAll(store, key)[slot(consumer)];
+}
+function writeSlot(store, key, consumer, value) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
+  );
+  const all = readAll(store, key);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key, JSON.stringify(next));
+}
+
+// src/core/delivery/attribution.ts
+function registeredMetaKey(worktreeId) {
+  return `revision-registered:${worktreeId}`;
+}
+function registeredRevision(store, consumer) {
+  const at2 = readSlot(store, registeredMetaKey(consumer.worktreeId), consumer);
+  return typeof at2 === "number" ? at2 : null;
+}
+function tellRegistered(store, consumer, revision) {
+  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, revision);
+}
+function changedAfter(store, worktreeId, since, revision) {
+  const paths = /* @__PURE__ */ new Set();
+  for (let n = since + 1; n <= revision; n++) {
+    for (const change2 of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change2.path);
+  }
+  return paths;
+}
+var TIMED_OUT = /timed out in \d+ms/;
+function loadOf(store, worktreeId, entry2) {
+  if (entry2.summary === null || !TIMED_OUT.test(entry2.summary)) return void 0;
+  const from = entry2.origin.kind === "inherited" ? entry2.origin.worktreeId : worktreeId;
+  const result = store.results.listForCheck(entry2.check, 5).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
+  return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
+}
+function attribute(store, consumer, entries, revision) {
+  if (!entries.some((e) => e.to === "fail")) return entries;
+  const since = registeredRevision(store, consumer);
+  const changed = since === null ? null : changedAfter(store, consumer.worktreeId, since, revision);
+  return entries.map((entry2) => {
+    if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
+    const { project, testPath } = entry2.check;
+    const closure = store.testFiles.get({ project, path: testPath })?.closure.paths;
+    const touched = changed === null || closure === void 0 ? void 0 : closure.filter((p) => changed.has(p));
+    const load = loadOf(store, consumer.worktreeId, entry2);
+    return {
+      ...entry2,
+      ...touched === void 0 ? {} : { changesInClosure: touched },
+      ...load === void 0 ? {} : { loadAverage: load }
+    };
+  });
+}
+function dependenciesInstalled(store, worktreeId) {
+  const files = store.fileHashes.list(worktreeId);
+  if (files.length === 0) return void 0;
+  return files.some((f) => isInstalledLockfile(f.path));
+}
+function annotate(store, consumer, entries, header, states) {
+  return {
+    entries: attribute(store, consumer, entries, header.revision),
+    header: withDependencies(
+      store,
+      consumer.worktreeId,
+      header,
+      entries.some((e) => e.to === "fail")
+    ),
+    stillFailing: states.filter((s) => s.outcome === "fail").map((s) => s.check)
+  };
+}
+function withDependencies(store, worktreeId, header, failing) {
+  const installed = failing ? dependenciesInstalled(store, worktreeId) : void 0;
+  return installed === void 0 ? header : { ...header, dependenciesInstalled: installed };
 }
 
 // src/core/delivery/delta.ts
@@ -1941,35 +2050,6 @@ function recoveryNote(raw) {
   }
 }
 
-// src/core/delivery/slots.ts
-var slot = (consumer) => `${consumer.sessionId}
-${consumer.agentId}`;
-function readAll(store, key) {
-  const raw = store.meta.get(key);
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
-function readSlot(store, key, consumer) {
-  return readAll(store, key)[slot(consumer)];
-}
-function writeSlot(store, key, consumer, value) {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
-  );
-  const all = readAll(store, key);
-  const next = {};
-  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
-  if (value === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = value;
-  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
-  store.meta.set(key, JSON.stringify(next));
-}
-
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -2157,15 +2237,23 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const header = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      tellRevision(store, consumer, header.revision);
+      const live = readLiveHeader(store, consumer.worktreeId, at2, states, told);
+      tellRevision(store, consumer, live.revision);
+      const { entries, header, stillFailing } = annotate(
+        store,
+        consumer,
+        delta.entries,
+        live,
+        states
+      );
       const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header,
         label,
-        entries: delta.entries,
+        entries,
+        stillFailing,
         ...changed === null ? {} : { liveness: changed }
       };
     });
@@ -2179,16 +2267,19 @@ function createDelivery(store, options) {
         consumer,
         states.map((s) => toView(s, at2))
       );
-      const header = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const live = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
+      const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       tellLiveness(store, consumer, header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
+      tellRegistered(store, consumer, header.revision);
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header,
-        knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? [])
+        knownFailures
       };
     }),
     unregister: async (consumer) => {
@@ -2232,7 +2323,94 @@ function createDelivery(store, options) {
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
+  tellRegistered(store, consumer, null);
   writeTurn(store, consumer, null);
+}
+
+// src/core/delivery/collapse.ts
+var LISTED_MAX = 5;
+var FILES_SHOWN = 10;
+function checkName(check) {
+  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
+}
+var fileName = (check) => `${check.project === "" ? "" : `[${check.project}] `}${check.testPath}`;
+function nameLines(checks) {
+  if (checks.length <= LISTED_MAX) return checks.map(checkName);
+  const byFile = /* @__PURE__ */ new Map();
+  for (const check of checks) byFile.set(fileName(check), (byFile.get(fileName(check)) ?? 0) + 1);
+  const files = [...byFile].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
+  const lines = files.slice(0, FILES_SHOWN).map(([file, n]) => `${n} in ${file}`);
+  const rest = files.slice(FILES_SHOWN);
+  if (rest.length === 0) return lines;
+  const count = rest.reduce((sum, [, n]) => sum + n, 0);
+  return [...lines, `and ${plural(rest.length, "more test file")} (${plural(count, "check")})`];
+}
+function collapse(head, changed, stillFailing) {
+  if (changed.length <= LISTED_MAX) return null;
+  const changedLines = nameLines(changed);
+  if (stillFailing === void 0) return { head, lines: changedLines };
+  const failingLines = [`still failing: ${stillFailing.length}`, ...nameLines(stillFailing)];
+  return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
+}
+
+// src/core/delivery/provenance.ts
+var upper = (outcome) => outcome.toUpperCase();
+var TOUCHED_SHOWN = 3;
+function change(entry2) {
+  switch (entry2.kind) {
+    case "first-seen-fail":
+      return entry2.from === null ? "first observed: FAIL" : `${upper(entry2.from)} -> FAIL`;
+    case "fail-changed":
+      return "FAIL -> FAIL, failure changed";
+    default:
+      return `${entry2.from === null ? "NONE" : upper(entry2.from)} -> ${upper(entry2.to)}`;
+  }
+}
+function inheritedFrom(entry2) {
+  if (entry2.origin.kind !== "inherited") return null;
+  const commit = entry2.origin.commit === null ? "no commit" : `commit ${entry2.origin.commit.slice(0, 12)}`;
+  return `${entry2.originRoot ?? `worktree ${entry2.origin.worktreeId}`} at ${commit}`;
+}
+function validityText(entry2, revision) {
+  if (entry2.validity === "pending") return `revision ${revision} pending`;
+  return entry2.validity === "stale" ? "stale" : null;
+}
+function seenLine(entry2, revision) {
+  const from = inheritedFrom(entry2);
+  const parts = [
+    change(entry2),
+    from === null ? `seen by Squeal's run at revision ${entry2.observedAt}` : `seen by Squeal's run in ${from}, inherited at revision ${entry2.observedAt}`,
+    entry2.baseline === true ? "at start (baseline)" : null,
+    validityText(entry2, revision)
+  ];
+  return parts.filter((p) => p !== null).join(", ");
+}
+function recoveryProvenance(entry2, revision) {
+  const parts = [];
+  if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
+  if (entry2.validity === "pending") {
+    parts.push(`observed at revision ${entry2.observedAt}, revision ${revision} pending`);
+  }
+  const from = inheritedFrom(entry2);
+  if (from !== null) parts.push(`inherited from ${from}`);
+  return parts.length === 0 ? null : parts.join("; ");
+}
+function touchesLine(entry2) {
+  const paths = entry2.changesInClosure;
+  if (paths === void 0) return null;
+  if (paths.length === 0) return "none of your changes are in its imports";
+  const more = paths.length - TOUCHED_SHOWN;
+  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
+  return `touches your changes: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+}
+function loadLine(entry2) {
+  return entry2.loadAverage === void 0 ? null : `load average ${entry2.loadAverage.toFixed(2)} when it ran`;
+}
+function installSentences(header) {
+  const none = header.dependenciesInstalled === false ? " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install." : "";
+  const lockfile = header.changedPaths?.find(isInstalledLockfile);
+  const install = lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
+  return `${none}${install}`;
 }
 
 // src/core/delivery/format.ts
@@ -2240,11 +2418,8 @@ var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
 var STATUS_POINTER = "`squeal status` lists every known failure.";
-var upper = (outcome) => outcome.toUpperCase();
+var upper2 = (outcome) => outcome.toUpperCase();
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-function checkName(check) {
-  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
-}
 function whyLine(check) {
   const name = checkName(check);
   const quoted = /["$`\\]/.test(name) ? `'${name.replaceAll("'", "'\\''")}'` : `"${name}"`;
@@ -2267,50 +2442,26 @@ function headerLine(header) {
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision) + installSentences(header);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.`;
 }
-function change(entry2) {
-  switch (entry2.kind) {
-    case "first-seen-fail": {
-      const line = entry2.from === null ? "first observed: FAIL" : `${upper(entry2.from)} -> FAIL`;
-      return entry2.baseline === true ? `baseline finding, ${line}` : line;
-    }
-    case "fail-changed":
-      return "FAIL -> FAIL, failure changed";
-    default:
-      return `${entry2.from === null ? "NONE" : upper(entry2.from)} -> ${upper(entry2.to)}`;
-  }
-}
-function provenance(entry2, revision) {
-  const parts = [];
-  if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
-  if (entry2.validity === "pending") {
-    parts.push(`observed at revision ${entry2.observedAt}, revision ${revision} pending`);
-  }
-  if (entry2.origin.kind === "inherited") {
-    const commit = entry2.origin.commit === null ? "no commit" : `commit ${entry2.origin.commit.slice(0, 12)}`;
-    const from = entry2.originRoot ?? `worktree ${entry2.origin.worktreeId}`;
-    parts.push(`inherited from ${from} at ${commit}`);
-  }
-  return parts.length === 0 ? null : parts.join("; ");
-}
 function block(head, lines, outcomes) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), outcomes };
 }
 function entryBlock(entry2, revision) {
+  const failed = entry2.to === "fail";
   return block(
-    `${upper(entry2.to)}  ${checkName(entry2.check)}`,
+    `${upper2(entry2.to)}  ${checkName(entry2.check)}`,
     [
-      change(entry2),
+      failed ? seenLine(entry2, revision) : change(entry2),
       entry2.summary === null ? null : cap(entry2.summary, SUMMARY_MAX_CHARS),
       entry2.location === null ? null : at(entry2.location),
-      provenance(entry2, revision)
+      ...failed ? [touchesLine(entry2), loadLine(entry2)] : [recoveryProvenance(entry2, revision)]
     ],
     [entry2.to]
   );
@@ -2322,6 +2473,33 @@ function retiredBlock(entry2) {
     ["resolved"]
   );
 }
+function collapsedBlock({ head, lines }, outcome, count) {
+  return block(
+    head,
+    lines,
+    Array.from({ length: count }, () => outcome)
+  );
+}
+function recoveryBlocks(entries, delta) {
+  const head = `PASS  ${plural(entries.length, "check")} recovered (FAIL -> PASS)`;
+  const collapsed = collapse(
+    head,
+    entries.map((e) => e.check),
+    delta.stillFailing
+  );
+  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", entries.length)];
+  return entries.map((e) => entryBlock(e, delta.header.revision));
+}
+function retiredBlocks(entries, delta) {
+  const head = `RESOLVED  ${plural(entries.length, "check")} no longer reported by the runner (FAIL -> RESOLVED)`;
+  const collapsed = collapse(
+    head,
+    entries.map((e) => e.check),
+    delta.stillFailing
+  );
+  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", entries.length)];
+  return entries.map(retiredBlock);
+}
 function unknownBlocks(entries) {
   const byReason = /* @__PURE__ */ new Map();
   for (const e of entries) {
@@ -2331,7 +2509,7 @@ function unknownBlocks(entries) {
   return [...byReason].map(([reason, group]) => {
     const files = [...new Set(group.map((e) => e.check.testPath))];
     const from = (outcome) => group.filter((e) => e.from === outcome).length;
-    const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper(o)} -> UNKNOWN (${from(o)})`);
+    const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper2(o)} -> UNKNOWN (${from(o)})`);
     const listed = files.slice(0, 5).join(", ");
     const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
     return block(
@@ -2366,17 +2544,20 @@ function formatDelta(delta) {
   const { header, entries } = delta;
   const changed = entries.filter((e) => e.kind !== "fail-retired");
   const retired = entries.filter((e) => e.kind === "fail-retired");
-  const title = entries.length === 0 ? livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 baseline: ${plural(entries.length, "failing check")} found at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+  const title = entries.length === 0 ? livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's run at start (baseline) found ${plural(entries.length, "failing check")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
-    ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
-    ...retired.map(retiredBlock)
+    ...recoveryBlocks(
+      changed.filter((e) => e.to === "pass"),
+      delta
+    ),
+    ...retiredBlocks(retired, delta)
   ];
   const failed = changed.find((e) => e.to === "fail");
   const overflow = (left) => {
     const outcomes = left.flatMap((b) => b.outcomes);
-    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper(o)}`);
+    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper2(o)}`);
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
   };
   const tail = failed === void 0 ? null : whyLine(failed.check);
