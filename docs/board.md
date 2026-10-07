@@ -134,13 +134,14 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 001-63 daemon temp directory and the runner's children | done (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | B1: Vitest's temp directory moves to a private `/tmp/squeal-<uid>/tmp/<hash>/`, outside every repository. B2, decided (b): keep the root as cwd around runner calls and amend D10 to say a runner-started child may hold the root until the daemon exits. S1 remove the temp directory at shutdown; S2 D4 figures; N1 trailing slash in `entryDirectories`; N2, N3, N4, N5. | A test run by a real daemon makes temp dirs outside any repository; with an esbuild plugin, `git worktree remove` succeeds and the daemon exits; no temp directory left after stop or removal; full suite green. |
-| 001-64 re-review of 001-63 | running (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | `/reviewer` over `09bfc7c..57671b7`, second and last round on the 001-61 slice. | `reviews/wave-7.7.md` committed. |
+| 001-64 re-review of 001-63 | done, FAIL (`reviews/wave-7.7.md`) (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | `/reviewer` over `09bfc7c..57671b7`, second and last round on the 001-61 slice. | `reviews/wave-7.7.md` committed. |
+| 001-65 temp directory named by repository and worktree | planned, awaiting the human (third round on the 001-61 slice) | `reviews/wave-7.7.md` B1: name `/tmp/squeal-<uid>/tmp/<id>/` by a hash of the common dir and the root, so a daemon of another repository at a reused path never removes it; one D10 clause; the `removeScratch` comment. Nits N1 (cap or background the leftover sweep), N2 (someone else's `/tmp/squeal-<uid>` disables only the temp dir, with a note), N4. | A test with two repositories at one path keeps both temp directories; full suite green. |
 
-### Wave 8: first quality pass (after waves 7.5 and 7.6 land)
+### Wave 8: first quality pass
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 001-52 quality scan of spec 001 | planned | `/quality` over `935e251..main` once 001-53 has landed: every wave of 001, targeted invalidation included. Output `docs/specifications/001-core-loop/quality/2026-10.md`. | Findings file committed; the coordinator turns its rows into board rows or drops. |
+| 001-52 quality scan of spec 001 | running (brief in `specifications/001-core-loop/tasks/wave-8.md`) | `/quality` over `935e251..main` once 001-53 has landed: every wave of 001, targeted invalidation included. Output `docs/specifications/001-core-loop/quality/2026-10.md`. | Findings file committed; the coordinator turns its rows into board rows or drops. |
 
 ## Later
 
