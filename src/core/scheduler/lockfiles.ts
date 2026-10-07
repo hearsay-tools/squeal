@@ -1,6 +1,12 @@
 import { join } from "node:path";
 import { toRelative } from "../fs/index.js";
-import { findInstalledLockfile, installedDependenciesFingerprint } from "../keys/index.js";
+import {
+  type DependencyKeys,
+  dependencyKeys,
+  findInstalledLockfile,
+  type InstalledDependencies,
+  installedDependencies,
+} from "../keys/index.js";
 import type { AbsolutePath, ProjectName, RelativePath, RunnerEnvironment } from "../types/index.js";
 
 /** An installed lockfile and its patches directory, relative to the worktree root. */
@@ -25,26 +31,50 @@ export class Lockfiles {
   readonly #projects = new Map<ProjectName, Project>();
   /** Lockfile paths `moved` found, and the projects that read them. */
   readonly #moved = new Map<RelativePath, ProjectName[]>();
+  /** The stale-lockfile note last given per lockfile path, so each is noted once. */
+  readonly #notes = new Map<RelativePath, string | null>();
+  /** Types-only scans by package identity, kept across installs (`InstalledGraph`). */
+  readonly #typesOnly = new Map<string, boolean>();
 
-  constructor(private readonly root: AbsolutePath) {}
+  /** `note` records a stale hidden lockfile (task 001-104) as a status note, once per change. */
+  constructor(
+    private readonly root: AbsolutePath,
+    private readonly note: (text: string) => void = () => {},
+  ) {}
 
-  /** Finds each project's lockfile. Returns each project's installed-dependency fingerprint. */
-  async set(environments: readonly RunnerEnvironment[]): Promise<Map<ProjectName, string>> {
+  /**
+   * Finds each project's lockfile. Returns how each project's installed
+   * dependencies enter its keys (D3, task 001-105). A lockfile several
+   * projects share is read once.
+   */
+  async set(environments: readonly RunnerEnvironment[]): Promise<Map<ProjectName, DependencyKeys>> {
     this.#projects.clear();
     this.#moved.clear();
-    const fingerprints = new Map<ProjectName, string>();
+    const read = new Map<RelativePath | null, InstalledDependencies>();
+    const keys = new Map<ProjectName, DependencyKeys>();
     for (const environment of environments) {
       const root =
         environment.root === undefined || environment.root === ""
           ? this.root
           : join(this.root, environment.root);
-      this.#projects.set(environment.project, { root, lockfile: await this.#find(root) });
-      fingerprints.set(
-        environment.project,
-        await installedDependenciesFingerprint(root, this.root),
-      );
+      const lockfile = await this.#find(root);
+      this.#projects.set(environment.project, { root, lockfile });
+      const path = lockfile?.path ?? null;
+      let installed = read.get(path);
+      if (installed === undefined) {
+        installed = await installedDependencies(root, this.root, this.#typesOnly);
+        read.set(path, installed);
+        if (path !== null) this.#noteOnce(path, installed.note);
+      }
+      keys.set(environment.project, dependencyKeys(installed, environment.packages));
     }
-    return fingerprints;
+    return keys;
+  }
+
+  #noteOnce(path: RelativePath, note: string | null): void {
+    if (this.#notes.get(path) === note) return;
+    this.#notes.set(path, note);
+    if (note !== null) this.note(note);
   }
 
   /** Every project's lockfile path, once each. */
