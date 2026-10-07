@@ -211,6 +211,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-111 a symlinked node_modules does not stop the daemon | done (0.1.23) (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 21 (found by 002-16): `git check-ignore` rejects a batch with a path beyond a symlink and the daemon dies at start. | A symlinked-`node_modules` fixture validates and reads its installed lockfile. |
 | 001-112 a hung daemon is said at every boundary | done (0.1.23) (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 22 (found by 002-16): a SIGSTOPped daemon left edits unannounced. An edit at a boundary while no daemon validates gets one "Not validated" line. | SIGSTOP test says it; SIGCONT recovers; dead-daemon case unchanged. |
 | 001-115 review of 001-111 and 001-112 | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | `/reviewer` on gpt-6.1-sol: can a symlinked directory hide a file, can "Not validated" be missing or false. | `reviews/wave-11f.md` committed. |
+| 001-116 status reads in one transaction | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 23 (found by 002-20): status, `--wait` and Stop's poll read the revision and the states outside one transaction, so they can show a new revision with nothing pending. One deferred read transaction per read. | A deterministic race test is consistent; the opt-in `torn-status` e2e passes. |
 
 ## Feature 002: Codex adapter
 
