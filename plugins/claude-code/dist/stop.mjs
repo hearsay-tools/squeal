@@ -548,30 +548,39 @@ var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every
 function toRegistration(value) {
   if (isNumber2(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber2(value.since) || !Array.isArray(value.gaps)) return null;
-  return value.gaps.every(isGap) ? { since: value.since, gaps: value.gaps } : null;
+  if (!value.gaps.every(isGap)) return null;
+  const r = { since: value.since, gaps: value.gaps };
+  return isNumber2(value.scanned) ? { ...r, scanned: value.scanned } : r;
 }
-var stored = (r) => r.gaps.length === 0 ? r.since : r;
+var stored = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
-function bootstrapped(store, worktreeId, alive) {
+function scannedDaemon(store, worktreeId, alive) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (!alive || daemon === null) return false;
+  if (!alive || daemon === null) return null;
   const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
-  return marker !== null && Number(marker) === daemon.startedAt;
+  return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
 }
-function tellRegistered(store, consumer, revision, { at: at2, bootstrapped: bootstrapped2 }) {
+function seesEveryChange(store, worktreeId, r) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return r.scanned !== void 0 && daemon?.startedAt === r.scanned;
+}
+function tellRegistered(store, consumer, revision, { at: at2, scanned }) {
   const parked = unpark(store, consumer, at2);
-  let next = null;
-  if (bootstrapped2) next = parked === null ? { since: revision, gaps: [] } : back(parked, revision);
-  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, next && stored(next));
+  const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
+  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
 }
-function back(parked, revision) {
+function fresh(since, scanned) {
+  return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
+}
+function back(parked, revision, scanned) {
   const away = [parked.leftAt, revision];
-  return {
+  const r = {
     since: parked.since,
     gaps: revision > parked.leftAt ? [...parked.gaps, away] : parked.gaps
   };
+  return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
 function park(store, consumer, at2) {
   const key = registeredMetaKey(consumer.worktreeId);
@@ -604,12 +613,19 @@ function writeParked(store, consumer, at2, value) {
   store.meta.set(key, JSON.stringify(next));
 }
 function changedAfter(store, worktreeId, r, revision) {
-  const paths = /* @__PURE__ */ new Set();
-  for (const { number, changes } of store.revisions.range(worktreeId, r.since, revision)) {
+  const changed = /* @__PURE__ */ new Set();
+  const unknown = /* @__PURE__ */ new Set();
+  for (const { number, trigger, changes } of store.revisions.range(
+    worktreeId,
+    Math.max(r.since - 1, 0),
+    revision
+  )) {
     if (r.gaps.some(([after, upTo]) => number > after && number <= upTo)) continue;
-    for (const change2 of changes) paths.add(change2.path);
+    const start = trigger === "start";
+    if (number === r.since && !start) continue;
+    for (const change2 of changes) (start ? unknown : changed).add(change2.path);
   }
-  return paths;
+  return { changed, unknown };
 }
 
 // src/core/delivery/attribution.ts
@@ -643,16 +659,18 @@ function attribute(store, consumer, entries, revision) {
   if (!entries.some((e) => e.to === "fail")) return entries;
   const from = registration(store, consumer);
   const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
+  const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
   const closureOf = closureFor(store, consumer.worktreeId);
   return entries.map((entry2) => {
     if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
     const { project, testPath } = entry2.check;
     const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
-    const touched = changed === null || closure === void 0 ? void 0 : closure.filter((p) => changed.has(p));
+    const touched = changed === null || closure === void 0 || closure.some((p) => changed.unknown.has(p)) ? void 0 : closure.filter((p) => changed.changed.has(p));
+    const told = touched?.length === 0 && !sure ? void 0 : touched;
     const load = loadOf(store, consumer.worktreeId, entry2);
     return {
       ...entry2,
-      ...touched === void 0 ? {} : { changesInClosure: touched },
+      ...told === void 0 ? {} : { changesInClosure: told },
       ...load === void 0 ? {} : { loadAverage: load }
     };
   });
@@ -2137,13 +2155,13 @@ function recover(paths, options) {
     const now = options.now ?? Date.now;
     const at2 = now();
     const movedTo = moveAside(paths.database, at2);
-    const fresh = connect(paths, { ...options, checkIntegrity: false });
-    if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
-    if (!isStoreOpenFailure(fresh)) {
+    const fresh2 = connect(paths, { ...options, checkIntegrity: false });
+    if ("corrupt" in fresh2) return { reason: "corrupt", movedTo };
+    if (!isStoreOpenFailure(fresh2)) {
       const note = JSON.stringify({ at: at2, movedTo, reason: again.corrupt });
-      fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
+      fresh2.transaction(() => fresh2.meta.set(META_STORE_RECOVERED, note));
     }
-    return fresh;
+    return fresh2;
   } finally {
     rollback(lock2);
     lock2.close();
@@ -2548,7 +2566,7 @@ function createDelivery(store, options) {
         const alive = header.daemon?.state === "alive";
         tellRegistered(store, consumer, header.revision, {
           at: at2,
-          bootstrapped: bootstrapped(store, consumer.worktreeId, alive)
+          scanned: scannedDaemon(store, consumer.worktreeId, alive)
         });
       }
       if (inTurn) startTurn(store, consumer);

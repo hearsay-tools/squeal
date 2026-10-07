@@ -9077,7 +9077,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.12";
+  if (true) return "0.1.13";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9966,7 +9966,9 @@ var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every
 function toRegistration(value) {
   if (isNumber(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber(value.since) || !Array.isArray(value.gaps)) return null;
-  return value.gaps.every(isGap) ? { since: value.since, gaps: value.gaps } : null;
+  if (!value.gaps.every(isGap)) return null;
+  const r = { since: value.since, gaps: value.gaps };
+  return isNumber(value.scanned) ? { ...r, scanned: value.scanned } : r;
 }
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
@@ -11185,6 +11187,7 @@ async function askDaemon(socketPath, request) {
 
 // src/cli/remove.ts
 var STOP_WAIT_MS = 5e3;
+var PARTIAL_EXIT = 3;
 async function removeCommand(args, io, options = {}) {
   const config = args.includes("--config");
   if (args.some((arg) => arg !== "--config")) {
@@ -11202,6 +11205,16 @@ async function removeCommand(args, io, options = {}) {
   const storeDir = storePaths(commonDir).dir;
   const configPath = join27(root, "squeal.config.json");
   const removed = [];
+  const failed2 = [];
+  const remove = (path, line) => {
+    try {
+      rmSync7(path, { recursive: true, force: true });
+      removed.push(line);
+    } catch (error) {
+      const code = error.code ?? String(error);
+      failed2.push(`${path}: could not delete it (${code}); delete it by hand`);
+    }
+  };
   if (existsSync13(storeDir)) {
     const worktrees = recordedWorktrees(commonDir);
     const stopped = [];
@@ -11216,11 +11229,10 @@ async function removeCommand(args, io, options = {}) {
       return 1;
     }
     try {
-      const temps = tempDirs(commonDir, worktrees);
-      rmSync7(storeDir, { recursive: true, force: true });
-      for (const dir of temps) rmSync7(dir, { recursive: true, force: true });
-      removed.push(`${storeDir} (store, locks, run logs, repository id)`);
-      removed.push(...temps.map((dir) => `${dir} (a daemon's temp directory)`));
+      for (const dir of tempDirs(commonDir, worktrees)) {
+        remove(dir, `${dir} (a daemon's temp directory)`);
+      }
+      remove(storeDir, `${storeDir} (store, locks, run logs, repository id)`);
       if (stopped.length > 0) {
         io.stdout(`Stopped the daemons of:
 ${stopped.map((r) => `  ${r}
@@ -11231,26 +11243,45 @@ ${stopped.map((r) => `  ${r}
     }
   }
   if (config && existsSync13(configPath)) {
-    rmSync7(configPath);
-    removed.push(configPath);
+    const tracked = await isTracked(root, "squeal.config.json");
+    remove(
+      configPath,
+      tracked ? `${configPath} (tracked by git: the deletion is a change to commit)` : configPath
+    );
   }
   io.stdout(
-    removed.length === 0 ? `Nothing to remove: no Squeal store for this repository.
-` : `Removed:
+    removed.length === 0 && failed2.length === 0 ? `Nothing to remove: no Squeal store for this repository.
+` : removed.length === 0 ? "" : `Removed:
 ${removed.map((line) => `  ${line}
 `).join("")}`
   );
   io.stdout("Still there:\n");
+  for (const line of failed2) io.stdout(`  ${line}
+`);
   if (existsSync13(configPath)) {
     io.stdout(
       `  ${configPath}: the next Claude Code session here starts Squeal again. It is committed; delete it, or run squeal remove --config.
 `
     );
   }
+  for (const other of await otherConfigs(root)) {
+    io.stdout(
+      `  ${other}: the next Claude Code session there starts Squeal again. Delete it there, or run squeal remove --config in that worktree.
+`
+    );
+  }
   io.stdout(
     "  The plugin: claude plugin uninstall squeal@squeal --scope project (the scope it was installed with), and the extraKnownMarketplaces and enabledPlugins entries squeal init added to .claude/settings.json.\n"
   );
-  return 0;
+  return failed2.length === 0 ? 0 : PARTIAL_EXIT;
+}
+async function isTracked(root, path) {
+  const out = await runGit(root, ["ls-files", "-z", "--", path]).catch(() => "");
+  return out !== "";
+}
+async function otherConfigs(root) {
+  const out = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
+  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join27(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync13(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -11297,13 +11328,23 @@ function tempDirs(commonDir, worktrees) {
   for (const { root } of worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key = basename9(scratch.tempDir);
-    const tmp = dirname15(scratch.tempDir);
-    dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
-    if (existsSync13(scratch.tempDir)) dirs.push(scratch.tempDir);
+    if (isPrivate(scratch.userDir, uid)) {
+      const tmp = dirname15(scratch.tempDir);
+      dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
+      if (existsSync13(scratch.tempDir)) dirs.push(scratch.tempDir);
+    }
     const fallback = `${userTmpDir(uid)}-${key}-`;
     dirs.push(...entries(dirname15(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
+}
+function isPrivate(dir, uid) {
+  try {
+    checkPrivateDir(dir, uid, "temp directory");
+    return true;
+  } catch {
+    return false;
+  }
 }
 function isOwnDir(path, uid, prefix) {
   if (!path.startsWith(prefix)) return false;
