@@ -239,3 +239,46 @@ describe("scheduler: run --all while waiting (review wave 11, B1)", SLOW, () => 
     expect(header.awaitingInstall).toBe(true);
   });
 });
+
+describe(
+  "scheduler: an edit made during the wait runs first after the install (review wave 11, S2)",
+  SLOW,
+  () => {
+    it("queues the edited module's test file in the first tier of the baseline", async () => {
+      const repo = createRepo("basic");
+      const at = (path: string) => join(repo.main, path);
+      writeFileSync(
+        at("package.json"),
+        JSON.stringify({ name: "fresh", type: "module", devDependencies: { vitest: "*" } }),
+      );
+      const pad = (n: number) => String(n).padStart(2, "0");
+      for (let i = 0; i < 12; i++) {
+        writeFileSync(at(`src/m${pad(i)}.ts`), `export const value = ${i};\n`);
+        writeFileSync(
+          at(`test/f${pad(i)}.test.ts`),
+          [
+            `import { expect, it } from "vitest";`,
+            `import { value } from "../src/m${pad(i)}.ts";`,
+            `it("holds", () => expect(value).toBe(${i}));`,
+            "",
+          ].join("\n"),
+        );
+      }
+      const store = openRepoStore(repo.commonDir);
+      const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      await h.scheduler.start();
+      await h.scheduler.idle();
+      expect(h.header().awaitingInstall).toBe(true);
+
+      // The agent edits, reads that nothing runs until an install, then installs.
+      h.write("src/m09.ts", "export const value = 9; // edited\n");
+      await h.batch("src/m09.ts");
+      h.write("node_modules/.package-lock.json", "{}");
+      await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
+      await h.scheduler.idle();
+
+      expect(h.runner.runs[0]?.files.map((f) => f.path)).toContain("test/f09.test.ts");
+      expect(h.runner.runs.flatMap((r) => r.files)).toHaveLength(17);
+    });
+  },
+);

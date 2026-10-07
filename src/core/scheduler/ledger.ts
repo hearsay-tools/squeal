@@ -118,7 +118,7 @@ export class Ledger {
   ): FileState[] {
     const misses: FileState[] = [];
     const seen = new Set<string>();
-    const recent = this.#recent(changed, options.direct);
+    const recent = this.recentOf(changed, options.direct);
     for (const ref of refs) {
       const file = this.file(ref);
       if (!file || seen.has(file.id)) continue;
@@ -158,7 +158,7 @@ export class Ledger {
   }
 
   /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */
-  #recent(changed: ReadonlySet<RelativePath>, direct?: ReadonlySet<string>): Set<string> {
+  recentOf(changed: ReadonlySet<RelativePath>, direct?: ReadonlySet<string>): Set<string> {
     const ids = new Set(direct);
     if (changed.size === 0) return ids;
     for (const ref of this.context.keys.index.reverse.referencing(changed))

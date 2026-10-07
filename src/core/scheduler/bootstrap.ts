@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
-import type { CheckId, TestFileRef } from "../types/index.js";
+import type { CheckId, RelativePath, TestFileRef } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
@@ -53,8 +53,17 @@ export async function scan(context: SchedulerContext, ledger: Ledger): Promise<v
       : { number: revision.number, head: revision.head, dirty: revision.dirty };
 }
 
-/** Steps 2 to 4: environments, listing, keys, lookup and the baseline checkpoint. */
-export async function baseline(context: SchedulerContext, ledger: Ledger): Promise<void> {
+/**
+ * Steps 2 to 4: environments, listing, keys, lookup and the baseline
+ * checkpoint. `changed` holds the paths revisions changed while the daemon
+ * waited for an install: a miss they edited or whose closure they touch is
+ * queued recent, ahead of the rest (review wave 11, S2; D5 step 4).
+ */
+export async function baseline(
+  context: SchedulerContext,
+  ledger: Ledger,
+  changed: ReadonlySet<RelativePath> = NOTHING_CHANGED,
+): Promise<void> {
   const { store, keys, runner, worktreeId, policy } = context;
   const failures: Failures = new Map();
   await readEnvironments(context, failures);
@@ -122,7 +131,10 @@ export async function baseline(context: SchedulerContext, ledger: Ledger): Promi
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
   } else {
-    for (const file of misses) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+    const recent = ledger.recentOf(changed);
+    for (const file of misses) {
+      ledger.enqueue(file, priorityOf(file, changed), false, recent.has(file.id));
+    }
   }
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   if (failures.size > 0) block(ledger, failures);

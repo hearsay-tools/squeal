@@ -14,7 +14,15 @@ import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
-import { missingInstall, reconcileWaiting, startWaiting, stopWaiting } from "./install.js";
+import {
+  type MissingInstall,
+  missingInstall,
+  reconcileWaiting,
+  startWaiting,
+  stopWaiting,
+  touchesInstall,
+} from "./install.js";
+import { InstallStamps } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
@@ -55,8 +63,13 @@ class TierScheduler implements Scheduler {
   #stalled = false;
   /** No runner call until an install (`awaitsInstall`, task 001-100). */
   #awaitingInstall = false;
+  /** Paths revisions changed during the wait: edits the baseline queues recent (review wave 11, S2). */
+  #waitChanges = new Set<RelativePath>();
+  readonly #install: InstallStamps;
 
-  constructor(private readonly options: SchedulerOptions) {}
+  constructor(private readonly options: SchedulerOptions) {
+    this.#install = new InstallStamps(options.root);
+  }
 
   async start(): Promise<void> {
     await this.#lock.run(async () => {
@@ -125,13 +138,21 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(async () => {
       const { context, ledger } = this.#started();
       if (this.#awaitingInstall) {
-        this.#awaitingInstall = await reconcileWaiting(context, ledger, batch);
+        this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
         if (!this.#awaitingInstall) await this.#baseline(context, ledger);
         return;
       }
       const applied = await reconcileBatch(context, ledger, batch);
       if (applied === null) return;
       const { revision, content } = applied;
+      if (revision.changes.some((change) => touchesInstall(change.path))) {
+        const { missing } = await this.#install.check();
+        if (missing !== null) {
+          this.#wait(context, ledger, missing);
+          for (const change of revision.changes) this.#waitChanges.add(change.path);
+          return;
+        }
+      }
       this.#runnerWork.queueRefine(revision, content);
     });
     this.#pump();
@@ -140,7 +161,21 @@ class TierScheduler implements Scheduler {
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
   async #baseline(context: SchedulerContext, ledger: Ledger): Promise<void> {
     stopWaiting(context);
-    await baseline(context, ledger);
+    const changed = this.#waitChanges;
+    this.#waitChanges = new Set();
+    await baseline(context, ledger, changed);
+  }
+
+  /**
+   * The install went while the daemon runs (`npm ci` removes `node_modules`
+   * first; task 001-107, review wave 11 S1): the wait starts as at a start.
+   * Runner parts not applied yet are dropped, and the tier in flight records
+   * nothing (`recordTier`). Under the lock.
+   */
+  #wait(context: SchedulerContext, ledger: Ledger, missing: MissingInstall): void {
+    this.#awaitingInstall = true;
+    this.#runnerWork.dropRefinements();
+    startWaiting(context, ledger, missing);
   }
 
   /**
@@ -223,10 +258,16 @@ class TierScheduler implements Scheduler {
       try {
         while (!this.#closed) {
           await this.#runnerWork.drain();
-          if (this.#closed) break;
+          if (this.#closed || this.#awaitingInstall) break;
+          const install = await this.#install.check();
           const next = await this.#lock.run(() => {
-            if (this.#runnerWork.size > 0) return "runner-work" as const;
+            if (this.#awaitingInstall) return null;
             const { context, ledger } = this.#started();
+            if (install.missing !== null) {
+              this.#wait(context, ledger, install.missing);
+              return null;
+            }
+            if (this.#runnerWork.size > 0) return "runner-work" as const;
             return selectTier(context, ledger);
           });
           if (next === "runner-work") continue;
@@ -236,8 +277,9 @@ class TierScheduler implements Scheduler {
           const selected: Tier = tier;
           const report = await executeTier(context, selected);
           const changed = await unstableInputs(context, selected);
+          const installMoved = (await this.#install.stamp()) !== install.stamp;
           const moved = await this.#lock.run(() =>
-            recordTier(context, ledger, selected, report, changed),
+            recordTier(context, ledger, selected, report, changed, installMoved),
           );
           tier = null;
           // The watcher may not have reported these yet; reconciling twice is harmless.
@@ -266,7 +308,9 @@ class TierScheduler implements Scheduler {
       const { ledger } = this.#started();
       for (const { file } of tier.files) {
         ledger.setRunning(file, null);
-        if (ledger.files.has(file.id)) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+        if (ledger.files.get(file.id) === file) {
+          ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+        }
       }
       try {
         ledger.commit();
