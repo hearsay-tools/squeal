@@ -28,6 +28,20 @@ import {
  * of whoever started it.
  */
 
+/** Review wave 7.6, B1: passes only when `os.tmpdir()` lies outside every git repository. */
+export const TMP_TEST = `import { execFileSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expect, it } from "vitest";
+it("makes its temp directory outside every repository", () => {
+  const dir = mkdtempSync(join(tmpdir(), "x-"));
+  expect(() =>
+    execFileSync("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir, stdio: "pipe" }),
+  ).toThrow(/not a git repository/);
+});
+`;
+
 export interface LinkedFixture extends FixtureRepo {
   /** The main checkout the linked worktree was added from. */
   readonly mainRoot: string;

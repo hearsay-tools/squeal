@@ -11,7 +11,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { daemonScratch, prepareScratch, removeScratch } from "../../src/core/daemon/scratch.js";
@@ -38,6 +38,7 @@ import {
   linkedFixture,
   resultOf,
   safe,
+  TMP_TEST,
 } from "./scratch-helpers.js";
 
 /*
@@ -60,20 +61,6 @@ const CWD_TEST = `import { existsSync } from "node:fs";
 import { expect, it } from "vitest";
 it("runs in the worktree root", () => {
   expect(existsSync("vitest.config.ts")).toBe(true);
-});
-`;
-
-/** Review wave 7.6, B1: passes only when `os.tmpdir()` lies outside every git repository. */
-const TMP_TEST = `import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { expect, it } from "vitest";
-it("makes its temp directory outside every repository", () => {
-  const dir = mkdtempSync(join(tmpdir(), "x-"));
-  expect(() =>
-    execFileSync("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir, stdio: "pipe" }),
-  ).toThrow(/not a git repository/);
 });
 `;
 
@@ -131,12 +118,14 @@ describe.runIf(process.platform === "linux")(
       expect(existsSync(tempDir)).toBe(false);
     });
 
-    it("answers on its socket within a hook's budget, empties its temp directory when it starts, and removes it on squeal stop", async () => {
+    it("answers on its socket within a hook's budget, empties its temp directory when it starts and removes the leftover after, and removes it on squeal stop", async () => {
       const repo = linkedFixture(cleanups, {});
       const tempDir = daemonTempDir(repo.commonDir, repo.root);
-      // A daemon that died left its files.
-      mkdirSync(tempDir, { recursive: true });
-      writeFileSync(join(tempDir, "left-by-a-dead-daemon"), "");
+      // A daemon that died left its files, too many to remove before the socket.
+      mkdirSync(join(tempDir, "left-by-a-dead-daemon"), { recursive: true });
+      for (let i = 0; i < 2_000; i++) {
+        writeFileSync(join(tempDir, "left-by-a-dead-daemon", String(i)), "");
+      }
 
       const started = Date.now();
       const spawned = spawnCli(built.cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
@@ -147,6 +136,13 @@ describe.runIf(process.platform === "linux")(
       if (!LOADED) expect(answeredMs).toBeLessThan(2_000);
       await waitReady(repo, spawned);
       expect(readdirSync(tempDir)).toEqual([]);
+      // Review wave 7.7, N1: moved aside and removed in the background.
+      await waitFor(
+        () =>
+          readdirSync(dirname(tempDir)).every((name) => !name.startsWith(`${basename(tempDir)}.`)),
+        30_000,
+        "the leftover removed",
+      );
 
       const stop = spawnCli(built.cli, ["stop"], { cwd: repo.root, env: repo.env });
       expect(await stop.exited).toEqual({ code: 0, signal: null });
