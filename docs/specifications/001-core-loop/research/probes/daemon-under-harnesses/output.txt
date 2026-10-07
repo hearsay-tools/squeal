@@ -1,0 +1,19 @@
+node v24.21.0, git git version 2.43.0, probe pid 2210804 {"pid":2210804,"ppid":2210801,"pgid":2210804,"sid":2210801}
+
+## cwd=root (before 001-61)
+controller {"pid":2210822,"ppid":2210804,"pgid":2210822,"sid":2210822} 0::/user.slice/user-1001.slice/user@1001.service/app.slice/cezar.service
+daemon at start {"pid":2210842,"ppid":1269002,"pgid":2210842,"sid":2210842,"cwd":"/home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-yMXA8S/wt","tmpdir":"/home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-yMXA8S/scratch","cgroup":"0::/user.slice/user-1001.slice/user@1001.service/app.slice/cezar.service"}
+daemon now     {"pid":2210842,"ppid":1269002,"pgid":2210842,"sid":2210842} cwd /home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-yMXA8S/wt
+cezarion scan [wt, scratch] before teardown: [2210822,2210842]
+after SIGKILL to controller group 2210822: controller alive=false, daemon alive=true
+cezarion scan [wt, scratch] after teardown: [2210842]
+git worktree remove (no --force): exit 0; dir exists=false; daemon alive=true; daemon cwd now /home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-yMXA8S/wt (deleted)
+
+## cwd=<common-dir>/squeal (after 001-61)
+controller {"pid":2210875,"ppid":2210804,"pgid":2210875,"sid":2210875} 0::/user.slice/user-1001.slice/user@1001.service/app.slice/cezar.service
+daemon at start {"pid":2210892,"ppid":1269002,"pgid":2210892,"sid":2210892,"cwd":"/home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-vmzm3t/repo/.git/squeal","tmpdir":"/home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-vmzm3t/scratch","cgroup":"0::/user.slice/user-1001.slice/user@1001.service/app.slice/cezar.service"}
+daemon now     {"pid":2210892,"ppid":1269002,"pgid":2210892,"sid":2210892} cwd /home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-vmzm3t/repo/.git/squeal
+cezarion scan [wt, scratch] before teardown: [2210875]
+after SIGKILL to controller group 2210875: controller alive=false, daemon alive=true
+cezarion scan [wt, scratch] after teardown: []
+git worktree remove (no --force): exit 0; dir exists=false; daemon alive=true; daemon cwd now /home/agent/projects/squeal/.ai/cezar/tmp/7a90aa96-7833-4ab0-b129-372a755d88b7/squeal-66-vmzm3t/repo/.git/squeal
