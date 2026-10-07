@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   nodeTestObservedMetaKey,
+  nodeTestObservedPreloadsMetaKey,
   observedStore,
 } from "../../../src/core/daemon/node-test-runners.js";
 import { fakeCommonDir, open } from "../../store/helpers.js";
@@ -58,5 +59,19 @@ describe("observedStore", () => {
     // A file the store never closed over is left to its first resolution.
     observedStore(store, "a").write({ "packages/a/test/new.test.ts": ["n.ts"] });
     expect(store.testFiles.get({ project: "a", path: "packages/a/test/new.test.ts" })).toBeNull();
+  });
+
+  it("merges the preloads' paths from two daemons, sorted, and reads a change at once", () => {
+    const store = open(fakeCommonDir());
+    const one = observedStore(store, "a");
+    const two = observedStore(store, "a");
+    expect(one.readPreloads()).toEqual([]);
+    one.writePreloads(["scripts/z.mjs"]);
+    expect(two.readPreloads()).toEqual(["scripts/z.mjs"]);
+    two.writePreloads(["scripts/b.mjs", "scripts/z.mjs"]);
+    expect(one.readPreloads()).toEqual(["scripts/b.mjs", "scripts/z.mjs"]);
+    expect(observedStore(store, "b").readPreloads()).toEqual([]);
+    store.meta.set(nodeTestObservedPreloadsMetaKey("a"), "{not json");
+    expect(one.readPreloads()).toEqual([]);
   });
 });
