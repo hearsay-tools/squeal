@@ -1,6 +1,6 @@
 # 003 node:test runner
 
-Stage and amendments: `status.md`. Research: `research/node-test-runner-api.md`, `research/node-test-module-graph.md` (Node 22.23.3 and 24.21.0, tsx 4.21 to 4.23, Linux). Spec 001 is the reference: its D3 (fingerprints and keys), D5 (scheduler and validity), D6 (state and delivery), D11 (policy) and D12 (errors) hold unless a section here says otherwise. The runner implements `RunnerAdapter` from `src/core/types/runner.ts`.
+Stage: approved 2026-10-07. Amendments: `status.md`. Research: `research/node-test-runner-api.md`, `research/node-test-module-graph.md` (Node 22.23.3 and 24.21.0, tsx 4.21 to 4.23, Linux). Spec 001 is the reference: its D3 (fingerprints and keys), D5 (scheduler and validity), D6 (state and delivery), D11 (policy) and D12 (errors) hold unless a section here says otherwise. The runner implements `RunnerAdapter` from `src/core/types/runner.ts`.
 
 ## Problem
 
@@ -90,10 +90,10 @@ The daemon holds one `RunnerAdapter` per configured or detected runner behind a 
 
 Owner is the coordinator unless noted.
 
-1. tsx loads `a.ts` for `./a.js` from a `.ts` importer and `a.js` from a `.mjs` importer; the resolver picks `a.ts` for both. Vary `extensionAlias` by importer, or note such pairs as an unsupported layout? Decide in wave 1 from the fixture.
-2. `tsconfig.json`: in the closure of the files it resolves for, in the environment hash, or both? Proposed: closure only, through the resolution reads of D3, so it is never counted twice.
-3. The recorder does not follow a test that spawns `node` itself, which e2e suites do. `NODE_OPTIONS` would reach unrelated processes. Proposed: not covered; such suites declare `inputs`, and spec 004 decides their cadence.
-4. Static enumeration of names built in loops or imported from data: how `enumerate` reports what it cannot see. Proposed: one `templated` entry per non-literal call.
+1. Decided 2026-10-07: tsx loads `a.ts` for `./a.js` from a `.ts` importer and `a.js` from a `.mjs` importer, while the resolver picks `a.ts` for both; such pairs are noted as an unsupported layout (one note naming the pair), re-opened only if the wave-1 fixture shows a real project needs them.
+2. Decided 2026-10-07: `tsconfig.json` is in the closure of the files whose resolution read it (D3), never in the environment hash, so it is counted once.
+3. Decided 2026-10-07: a test that spawns `node` itself is not observed past the spawn; `NODE_OPTIONS` would reach unrelated processes. Such suites declare `inputs`, and spec 004 decides their cadence.
+4. Decided 2026-10-07: a `test`, `it`, `describe`, `suite` or `t.test` call with a non-literal name is one `templated` entry until the file has run (D6).
 5. Memory of the reverse closure index at 10,000 modules (112,360 entries at 903). Measure in wave 1; the reverse BFS is the fallback.
 6. Node pin discovery from `.nvmrc`, `engines` or Volta, and a project with no `node` on the daemon's PATH. Later.
 

@@ -193,25 +193,77 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
 ## Feature 002: Codex adapter
 
-Spec: `specifications/002-codex-adapter/spec.md` (not yet written; stage research, see `status.md`). Decided 2026-10-07 with 003 in parallel (ADR 0004).
+Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07. Sections referenced as D1 to D8. Briefs under `specifications/002-codex-adapter/tasks/wave-N.md`.
 
-### Research (parallel, from `specifications/002-codex-adapter/research/README.md`)
+### Research (done)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 002-01 research: codex-hooks | done (`c5b81cb`, `research/codex-hooks.md`) | Topic `codex-hooks`: configuration surfaces and trust, every event's payload under `exec` and interactive, mid-turn `additionalContext` timing, deny and block, Stop semantics, timeouts and per-hook cost, and the sandbox against the store, the socket and a detached daemon. | `research/codex-hooks.md` committed with every question tagged or "not determined, because". |
-| 002-02 research: codex-sessions-and-wake | done (`9952c13`, `research/codex-sessions-and-wake.md`) | Topic `codex-sessions-and-wake`: how Cezar drives Codex through `codex app-server` and what that protocol offers, idle-wake channels (`codex queue`, async hooks, notify), identity in shells, hooks and subagents, plugin packaging and the `squeal init` install path, where the primer lives, worktree lifecycle, and which events fire in non-interactive sessions. | `research/codex-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
+| 002-02 research: codex-sessions-and-wake | done (`9952c13`, `research/codex-sessions-and-wake.md`) | Topic `codex-sessions-and-wake`: how Cezar drives Codex through `codex app-server` and what that protocol offers, idle-wake channels, identity in shells, hooks and subagents, plugin packaging and the install path, where the primer lives, worktree lifecycle, and which events fire in non-interactive sessions. | `research/codex-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
 
-## Feature 003: node:test runner
-
-Spec: `specifications/003-node-test-runner/spec.md` (not yet written; stage research, see `status.md`). Decided 2026-10-07 with 002 in parallel (ADR 0004). The promise holds: only the needed tests run, only the delta is delivered.
-
-### Research (parallel, from `specifications/003-node-test-runner/research/README.md`)
+### Wave 0: foundations (parallel, with 003 wave 0)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 003-01 research: node-test-runner-api | done (`f99f7ba`, Astra, `research/node-test-runner-api.md`) | Topic `node-test-runner-api`: `run()` and the `TestsStream` events, in-process against spawning the project's `node --test` with a custom reporter, enumeration without running, the flags and globs in the project's npm scripts, per-file process cost and `isolation: 'none'`, results in detail, sharp edges. | `research/node-test-runner-api.md` committed with every question tagged or "not determined, because". |
-| 003-02 research: node-test-module-graph | done (`72d96da`, `research/node-test-module-graph.md`) | Topic `node-test-module-graph`: static import graph and resolvers under tsx, observed graph through loader hooks or coverage, which graph the key uses so a fresh worktree can look results up, resolution changes without a transform cache, direct against transitive importers, prior art in Node's own watch mode, Jest and testmon. | `research/node-test-module-graph.md` committed with every question tagged or "not determined, because". |
+| 002-10 shared hook code | running | D5: the harness-neutral logic of `src/harness/claude-code/` (register and inject, deliver, peek and deny, Stop news and turn state, sweep, daemon ensuring) moves to `src/harness/shared/`; the Claude Code entries and hooks import it; what reads Claude Code's stdin fields, output shapes or `CLAUDE_*` stays. No behaviour change; bundles rebuilt at integration. | `test/harness` and `test/e2e` green with no fixture or expectation change; `git diff -M` shows moves; nothing new exported from `src/core`. |
+| 002-11 wave-0 checks | running | `/researcher`: spec open questions 1 (does Codex load a second plugin entry from this repository's `.claude-plugin/marketplace.json`), 2 (is a hook's working directory the thread's `cwd`, under `exec`, app-server and the TUI) and 3 (how a hook's `trusted_hash` is computed, so a launcher can pass `hooks.state` and a plugin update can be re-trusted without the TUI). | `research/wave-0-checks.md` committed, every question tagged or "not determined, because". |
+
+### Wave 1: adapter (parallel, after wave 0; the entry file list is the contract between 002-12 and 002-13)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 002-12 Codex hook entries | planned | D2, D3, D4: `src/harness/codex/` with the stdin parser (`session_id`, `agent_id`, `turn_id`, `cwd`, `tool_name`, `stop_hook_active`, `source`), the output shapes, and entries for SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop, Interrupt and SessionEnd on the shared code of 002-10; the `sh` fast path for PreToolUse and PostToolUse; fixtures under `test/fixtures/codex-hooks/` from the research logs. | Recorded-JSON tests for every event under `exec`, app-server and the TUI; PostToolUse idempotent over three calls with one transition; deny once per regression on `apply_patch`, never on `Bash`; no block under `stop_hook_active`; Interrupt and a silent Stop end the turn; the 8,000-character cap. |
+| 002-13 plugin, build, init and status | planned | D1, D6: `plugins/codex/` (manifest, `hooks/hooks.json` with the budgets, the skill copied at build, committed `dist/`), the build step and CI drift check over both plugins, `squeal init --harness codex` printing the plugin commands and the trust step, `--print-launcher-config`, and the `squeal status` line when `CODEX_SESSION_ID` is set and no consumer of that session exists. | Bundle p95 under 80 ms at calm load and the fast path under 10 ms; exit 0 and silence with no store, no config and a newer schema; `check:version` covers both plugins; init writes nothing under `~/.codex`. |
+| 002-14 review of wave 1 | planned | `/reviewer`: can a Codex hook ever block or speak falsely (stop_hook_active, Interrupt, subagent routing), is the shared-code move behaviour-neutral, and does the install path respect trust. | `reviews/wave-1.md` committed. |
+
+### Wave 2: proof
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 002-15 e2e over both plugins | planned | Testing: `test/e2e` parametrized over the two plugins, each archived from HEAD; transitions, lifecycle, policy and worktrees. | Both plugins green in CI on Node 22 and 24. |
+| 002-16 proof and dogfooding | planned | Testing, proof: in a scratch repository with the plugin installed and trusted, one `codex exec` run and one Cezar-shaped app-server thread show the six proof items; then a Cezar worker on Codex working this repository or cezarion with the plugin, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
+
+## Feature 003: node:test runner
+
+Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sections referenced as D1 to D8. Briefs under `specifications/003-node-test-runner/tasks/wave-N.md`. The promise holds: only the needed tests run, only the delta is delivered; one daemon validates Vitest and node:test projects together.
+
+### Research (done)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 003-01 research: node-test-runner-api | done (`f99f7ba`, Astra, `research/node-test-runner-api.md`) | Topic `node-test-runner-api`: `run()` and the `TestsStream` events, in-process against spawning the project's `node --test`, enumeration without running, the flags and globs in npm scripts, per-file process cost and `isolation: 'none'`, results in detail, sharp edges. | `research/node-test-runner-api.md` committed with every question tagged or "not determined, because". |
+| 003-02 research: node-test-module-graph | done (`72d96da`, `research/node-test-module-graph.md`) | Topic `node-test-module-graph`: static import graph and resolvers under tsx, observed graph through loader hooks or coverage, which graph the key uses, resolution changes without a transform cache, direct against transitive importers, prior art. | `research/node-test-module-graph.md` committed with every question tagged or "not determined, because". |
+
+### Wave 0: foundations (parallel, with 002 wave 0)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 003-10 `nodeTest` policy and the composite runner | running | D1, D7, D8: the `nodeTest` project list in the policy type, loader and `squeal init` default; a composite `RunnerAdapter` over several adapters (concatenate `testFiles` and `environment`, fan out and merge `affected` and `invalidate`, dispatch `run` by project, close each); the daemon builds the Vitest adapter when Vitest is detected and a node:test stub adapter per configured project; the "project without Vitest" note only when no runner is configured or detected. | Policy tests accept a valid list and note a bad entry per 001 D11; composite tests over two fake adapters; a config with `nodeTest` and no Vitest starts a daemon without the note; type changes reported. |
+| 003-11 fixtures | running | Testing: `test/fixtures/node-test/`: a reference-shaped project (`packages/demo`, tsx, one preload, unit and e2e globs in cezarion's script shape), an edge-case test file with every D3 specifier form, the 1,000-module generator moved from the research probe, a README; `tsx` as a devDependency. | Each fixture's own `node --test` run passes, or fails as designed, on the current Node, asserted by one Vitest test; the generator runs under 2 s. |
+
+### Wave 1: the runner (parallel, after wave 0, on disjoint seams under `src/runners/node-test/`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 003-12 graph builder, closure and affected | planned | D3, D4: es-module-lexer plus oxc-resolver configured from the loader chain, the closure definition, the reverse index, one re-resolve rule on add, delete, `package.json` or `tsconfig.json` change; dependencies added. | The spec's graph tests (a) to (f) on Node 22 and 24; cold build under 100 ms at 1,000 modules, re-resolve no slower, a plain edit under five percent. |
+| 003-13 run, reporter, recorder and deadline | planned | D5: the spawned project-Node command line, the NDJSON reporter and the `module.registerHooks` recorder as dependency-free modules, result mapping from the event stream, file-level errors from stderr, completion by wrapper, Squeal's deadline with group kill, observed paths per test file. | Runner tests on recorded streams from both Node versions and on live runs: skip, todo, nesting, duplicates; a syntax error and a missing import as one `FileLevelError`; a busy loop killed at the deadline with the other file kept; a dead process is `crashed`; argv, cwd, env and preloads reach the child. |
+| 003-14 enumeration and identity | planned | D2, D6: full names from nesting on Node 22 and `parentId` on Node 24, the line suffix from source maps, static enumeration with oxc-parser and the `templated` rule. | Identity stable across two runs of the fixture; duplicate names suffixed by original line; enumeration of the edge-case file matches the run's names for literal calls. |
+| 003-15 review of wave 1 | planned | `/reviewer`: can a stale or incomplete closure pose as current (observed paths, re-resolve rule, preload separation), and can a run report a pass it did not see (wrapper matching, timeout, exit code). | `reviews/wave-1.md` committed. |
+
+### Wave 2: assembly and integration
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 003-16 adapter assembly, inheritance and init seeding | planned | D1, D7: `createNodeTestAdapter` replaces the stub, wired through the composite; environment hash per project; `squeal init` seeds `nodeTest` from recognized scripts. | A repository with a Vitest suite and two node:test projects runs a baseline, inherits it into a second worktree with zero runs, and delivers a `PASS -> FAIL` in a node:test file through the Claude Code hooks; init seeds the two cezarion-shaped scripts and refuses a piped one. |
+| 003-17 review of wave 2 | planned | `/reviewer`: two runners in one store, inheritance of incomplete results, init seeding. | `reviews/wave-2.md` committed. |
+
+### Wave 3: proof
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 003-18 e2e | planned | Testing: the shipped plugin against the reference-shaped fixture in `test/e2e`, transitions and lifecycle. | Green in CI on Node 22 and 24. |
+| 003-19 dogfooding on cezarion | planned | Testing, proof: a cezarion worktree with `test:unit` and `test:package` configured and a Cezar worker on Claude Code, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
 
 ## Later
 

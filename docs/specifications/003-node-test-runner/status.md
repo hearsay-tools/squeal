@@ -1,6 +1,6 @@
 # 003 node:test runner: status
 
-Stage: draft (spec written 2026-10-07 from the two findings; awaiting the human's review)
+Stage: approved (2026-10-07, by the human; waves on `docs/board.md`, briefs under `tasks/`)
 Started: 2026-10-07
 
 ## Decisions so far
@@ -11,6 +11,10 @@ Started: 2026-10-07
 - Check keys must be computable in a fresh worktree without running anything (spec 001 goal 4, inherited baselines), so the closure definition has to be deterministic from files alone.
 - Researched and built in parallel with 002 (Codex adapter). The two cross only at `squeal init` and the policy file; that seam is one later row.
 - Slow suites that should run at checkpoints rather than on every revision (the e2e blocker) are spec 004, after this one. This spec makes e2e files runnable; it does not decide when.
+
+## Amendments after approval
+
+- 2026-10-07, at approval: the human confirmed that one daemon validates Vitest and node:test projects of one repository together (goal 8, D7). Open questions decided by the coordinator: 1 (`.js`/`.ts` pairs under tsx are noted as an unsupported layout, re-opened only if the wave-1 fixture shows a real project needs them); 2 (`tsconfig.json` enters the closure through resolution reads only, never the environment hash); 3 (a test that spawns `node` itself is not observed past the spawn; such suites declare `inputs`, and spec 004 decides their cadence); 4 (a non-literal test name is one `templated` entry). 5 is measured in wave 1; 6 is later.
 
 ## Research
 

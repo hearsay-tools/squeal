@@ -1,6 +1,6 @@
 # 002 Codex adapter
 
-Stage and amendments: `status.md`. Research: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md` (Codex CLI 0.160.1, Linux). Spec 001 is the reference: its D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold unless a section here says otherwise.
+Stage: approved 2026-10-07. Amendments: `status.md`. Research: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md` (Codex CLI 0.160.1, Linux). Spec 001 is the reference: its D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold unless a section here says otherwise.
 
 ## Problem
 

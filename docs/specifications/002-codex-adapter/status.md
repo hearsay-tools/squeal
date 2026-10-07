@@ -1,6 +1,6 @@
 # 002 Codex adapter: status
 
-Stage: draft (spec written 2026-10-07 from the two findings; awaiting the human's review)
+Stage: approved (2026-10-07, by the human; waves on `docs/board.md`, briefs under `tasks/`)
 Started: 2026-10-07
 
 ## Decisions so far
@@ -10,6 +10,10 @@ Started: 2026-10-07
 - The adapter implements `HarnessDelivery` from `src/core/types/delivery.ts` as the Claude Code adapter does. Nothing in `src/core` changes for a harness; a finding that seems to need a core change is an open question for the spec, not a decision.
 - Cezar drives Codex through `codex app-server` (JSON-RPC over stdio), not `codex exec`. Both paths must work; the research says what each exposes.
 - Codex has no idle wake (001 research, `claude-code-integration.md` section 7, docs only). The vision accepts pull at the next turn; whether any channel wakes an idle Codex session is a research question, not a goal.
+
+## Amendments after approval
+
+- 2026-10-07, at approval: open questions 1 to 3 are the wave-0 research row 002-11; 4 waits for a host where bubblewrap works; 5 is measured in dogfooding; 6 (a policy-gated `codex queue` wake) stays with the human and is not planned.
 
 ## Research
 
