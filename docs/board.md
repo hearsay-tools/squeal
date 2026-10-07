@@ -191,6 +191,14 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-88 Squeal tells the agent how to use it, in the right place | done, before 001-87 (brief in `specifications/001-core-loop/tasks/wave-10.md`) | Skill description triggers on running tests; steps-first body with `references/`; a SessionStart primer (also after compaction): don't run Vitest to learn what edits did; `status --wait` pointers say results arrive with the next tool call by default; FAIL reports end with one `squeal why` line. | Primer, description, body and pointers as in the brief; hook p95 and the 10,000-character cap hold. |
 | 001-87 attended check of wave 10 | done: defect 14 narrowed, not closed (`lessons.md` "Defect 14 after wave 10") | Attended tmux session on a scratch fixture: idle wake for a pending check, mid-turn break during a long `sleep`, an outside edit while idle, Esc then a prompt; and whether the agent runs Vitest itself or relies on the reports. | Recorded in `lessons.md`; defect 14 closed or named. |
 
+### Wave 11: fresh worktrees (from `specifications/001-core-loop/lessons.md` defects 17 to 20)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-100 no validation without dependencies; the agent's edits run ahead of any backlog | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defects 18, 19: a worktree with no installed lockfile runs and pushes nothing until the install; work from the latest revisions runs ahead of baseline, carried or environment-change work. D5, D10 amended. | Fixture without `node_modules` gets no failure reports, then validates after install; an edit's test file runs ahead of a 200-file backlog. |
+| 001-101 deny-once only for a check that passed here | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 17: PreToolUse denies only a `PASS -> FAIL` of a check seen passing in this worktree; never first-seen or baseline failures, never without dependencies. | Baseline of 59 failures denies nothing; a real regression still denies once. |
+| 001-102 research: key results by the packages a test imports | running (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Defect 20: could a worker with a slightly different lockfile inherit most results soundly. `/researcher`, measured on `cezar`. | `research/per-package-keys.md` with a recommendation. |
+
 ## Feature 002: Codex adapter
 
 Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07. Sections referenced as D1 to D8. Briefs under `specifications/002-codex-adapter/tasks/wave-N.md`.

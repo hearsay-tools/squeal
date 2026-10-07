@@ -750,3 +750,18 @@ Closed 2026-10-07 for case 5b by task 001-93 (decided by the human: PreToolUse o
 
 15. **Recoveries flood a report.** D6 lists every changed check, so an install that fixes 31 checks prints 31 blocks.
 16. **A report does not say where a result came from or whether the agent's changes reach it.** "Baseline finding" names when the daemon found a failure, not that Squeal's own runner saw it, and nothing says whether the failing test imports a file the agent changed, though the store holds every result's closure. Failures caused by a missing install and timeouts under load carry no context either.
+
+## Fresh worktrees and the validation backlog
+
+2026-10-07, from `cezar` task `5062d7f6` (cezarion #890, PR #916), read by the coordinator from the session transcript (16:19 to 18:08 UTC) and that worktree's store. Squeal 0.1.14. The agent used Squeal as the primer asks: it relied on the reports and `squeal why`, waited for RED and GREEN through Squeal, and ran Vitest by hand only twice, when Squeal had not reached its new tests.
+
+The worktree was created from `origin/main` with no `node_modules`. Its tests resolved packages from the parent checkout's `node_modules` (defect 12's shape). For 40 minutes before the agent's `npm ci`, Squeal pushed 8 baseline reports of 1 to 59 failures, attached to unrelated tool calls, nearly all "cannot find package". The install changed the environment hash, every result was discarded, and all 14,908 checks queued again; the worktree's lockfile differed from the main checkout's, so nothing was inherited. The agent's new `session-process.test.ts`, written about 17:00, was first reported at 17:23, behind the backlog, and the agent recorded that its RED proofs would wait for Squeal's queue. At 20:10 the daemon still had 228 running and 1,335 queued. A reviewer worker started in its own fresh worktree ran the same double baseline, and its Vitest workers held that worktree, so `worker destroy` stayed incomplete until the agent ran `squeal stop` (cezarion #914).
+
+At 16:52 a `Write` of a markdown plan file was denied by `interrupt.onRegression`, listing 59 baseline failures under a header that said no dependencies were installed.
+
+### Defects
+
+17. **Deny-once fires on baseline failures.** PreToolUse treats a first-seen failure as a regression, so baseline noise (here, a missing install) denies an unrelated edit. It should deny only a `PASS -> FAIL` of a check that passed in this worktree.
+18. **Squeal validates a worktree that has no installed dependencies.** Every result is environment noise, is pushed to the agent, and is discarded at the install.
+19. **A backlog delays the agent's own edits.** After an environment change the queue holds the whole suite, and D5's order (failing, direct, transitive, never-run) puts a newly written test file behind every known failure of the backlog.
+20. **A fresh worktree costs two full suites.** One before the install, one after, with nothing inherited when its lockfile differs from any validated worktree's. Under a harness that refuses to remove a held directory, the second run's Vitest workers hold the worktree for its whole duration (D10 option b).
