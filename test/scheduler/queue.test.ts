@@ -1,11 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { classify, newFileState } from "../../src/core/scheduler/files.js";
-import { Priority, priorityOf, RunQueue } from "../../src/core/scheduler/queue.js";
+import {
+  Priority,
+  priorityOf,
+  RECENT_TIERS_PER_BACKLOG_TIER,
+  RunQueue,
+} from "../../src/core/scheduler/queue.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
 
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 
 describe("RunQueue", () => {
+  it("bounds starvation: after four recent-only tiers the backlog gets one (review wave 11, N3)", () => {
+    expect(RECENT_TIERS_PER_BACKLOG_TIER).toBe(4);
+    const queue = new RunQueue();
+    for (let i = 0; i < 6; i++) queue.add(ref(`test/backlog${i}.test.ts`), Priority.failing);
+    let edit = 0;
+    const tiers: string[][] = [];
+    for (let t = 0; t < 10; t++) {
+      // Edits keep two recent files queued at every tier boundary, a tier holds two.
+      while ([...queue.ordered()].filter((r) => queue.isRecent(r)).length < 2) {
+        queue.add(ref(`test/recent${edit++}.test.ts`), Priority.direct, false, true);
+      }
+      const tier = queue.ordered().slice(0, 2);
+      const tookBacklog = tier.some((r) => !queue.isRecent(r));
+      for (const r of tier) queue.remove(r);
+      queue.tierSelected(tookBacklog);
+      tiers.push(tier.map((r) => r.path.replace(/^test\/|\.test\.ts$/g, "")));
+    }
+    expect(tiers.map((tier) => tier.every((name) => name.startsWith("backlog")))).toEqual([
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+    ]);
+    expect(tiers[4]).toEqual(["backlog0", "backlog1"]);
+  });
+
   it("orders by priority, then by first queued, then by project and path", () => {
     const queue = new RunQueue();
     queue.add(ref("test/d.test.ts"), Priority.neverRun);

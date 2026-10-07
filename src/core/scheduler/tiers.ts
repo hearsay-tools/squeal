@@ -51,6 +51,7 @@ export interface Tier {
 export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | null {
   const { store, keys, policy } = context;
   const picked: TierFile[] = [];
+  let tookBacklog = false;
   for (const ref of ledger.ordered()) {
     if (picked.length >= policy.runner.tierSize) break;
     const file = ledger.file(ref);
@@ -68,6 +69,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
         continue;
       }
     }
+    tookBacklog ||= !ledger.queue.isRecent(ref);
     ledger.queue.remove(ref);
     const checkpointId = ledger.checkpoints.idFor(ref);
     picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId, forced });
@@ -76,6 +78,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
     ledger.commit();
     return null;
   }
+  ledger.queue.tierSelected(tookBacklog);
 
   const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
   const runId = randomUUID();
