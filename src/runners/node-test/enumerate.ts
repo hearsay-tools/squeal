@@ -10,6 +10,7 @@ import {
   type Super,
 } from "acorn";
 import type { AbsolutePath, EnumeratedCheck, TestFileRef } from "../../core/types/index.js";
+import { NAME_SEPARATOR, suffixDuplicates } from "./identity.js";
 
 /**
  * Static enumeration of one node:test file (spec 003 D6): the checks it
@@ -37,12 +38,13 @@ export function enumerateSource(source: string, testFile: TestFileRef): Enumerat
   const found: Found[] = [];
   const bindings = nodeTestBindings(program);
   visit(program, { prefix: [], context: null }, bindings, source, found);
-  return suffixDuplicates(found).map((entry) => ({
+  const names = suffixDuplicates(found);
+  return found.map((entry, i) => ({
     check: {
       kind: "test",
       project: testFile.project,
       testPath: testFile.path,
-      fullName: entry.fullName,
+      fullName: names[i] ?? entry.fullName,
     },
     templated: entry.templated,
     location: { path: testFile.path, line: entry.line, column: entry.column },
@@ -87,7 +89,7 @@ const NODE_TEST = new Set(["node:test", "test"]);
 function parseStripped(source: string): Program | null {
   let code: string;
   try {
-    code = stripTypeScriptTypes(source, { mode: "strip" });
+    code = quietly(() => stripTypeScriptTypes(source, { mode: "strip" }));
   } catch {
     return null;
   }
@@ -104,6 +106,25 @@ function parseStripped(source: string): Program | null {
     }
   }
   return null;
+}
+
+/**
+ * Runs `strip` with its once-per-process `ExperimentalWarning` dropped, which
+ * would otherwise reach the daemon's stderr (review wave 1, inputs). Other
+ * warnings pass through.
+ */
+function quietly<T>(strip: () => T): T {
+  const emit = process.emitWarning;
+  process.emitWarning = function (this: NodeJS.Process, warning, ...rest: unknown[]) {
+    const text = typeof warning === "string" ? warning : warning.message;
+    if (text.includes("stripTypeScriptTypes")) return;
+    return Reflect.apply(emit, this, [warning, ...rest]);
+  } as typeof process.emitWarning;
+  try {
+    return strip();
+  } finally {
+    process.emitWarning = emit;
+  }
 }
 
 /** The bare names plus every alias, default and namespace import of node:test. */
@@ -162,26 +183,76 @@ function declare(
   const start = call.loc?.start ?? { line: 0, column: -1 };
   const position = { line: start.line, column: start.column + 1 };
   const first = call.arguments[0];
-  const name = first ? literalName(first) : null;
+  const callback = call.arguments.findLast(isFunction);
+  const name = first ? declaredName(first, callback) : null;
   if (name === null) {
     // A non-literal name: one templated entry, its children unknown until the file runs.
     const template = first ? source.slice(first.start, first.end) : "<anonymous>";
-    found.push({ fullName: [...scope.prefix, template].join(" > "), templated: true, ...position });
+    found.push({
+      fullName: [...scope.prefix, template].join(NAME_SEPARATOR),
+      templated: true,
+      ...position,
+    });
     return;
   }
   const prefix = [...scope.prefix, name];
-  if (kind === "test") found.push({ fullName: prefix.join(" > "), templated: false, ...position });
-  const callback = call.arguments.findLast(
-    (arg) => arg.type === "ArrowFunctionExpression" || arg.type === "FunctionExpression",
-  );
-  if (
-    !callback ||
-    (callback.type !== "ArrowFunctionExpression" && callback.type !== "FunctionExpression")
-  )
-    return;
+  if (kind === "test")
+    found.push({ fullName: prefix.join(NAME_SEPARATOR), templated: false, ...position });
+  // A skipped suite or test never runs its callback, so a run reports none of its children.
+  if (!callback || skipped(call)) return;
   const param = callback.params[0];
   const context = param?.type === "Identifier" ? param.name : null;
   visit(callback.body, { prefix, context }, bindings, source, found);
+}
+
+type FunctionArgument = Extract<
+  Expression | SpreadElement,
+  { type: "ArrowFunctionExpression" | "FunctionExpression" }
+>;
+
+function isFunction(arg: Expression | SpreadElement): arg is FunctionArgument {
+  return arg.type === "ArrowFunctionExpression" || arg.type === "FunctionExpression";
+}
+
+/**
+ * The name a run gives the call: a literal first argument; with a function or
+ * an options object first, the function's own name or `<anonymous>`, as
+ * node:test names it (review wave 1, N2). `null` for anything else.
+ */
+function declaredName(
+  first: Expression | SpreadElement,
+  callback: FunctionArgument | undefined,
+): string | null {
+  const literal = literalName(first);
+  if (literal !== null) return literal;
+  if (first !== callback && first.type !== "ObjectExpression") return null;
+  const fn = callback?.type === "FunctionExpression" ? callback.id : null;
+  return fn?.name ?? "<anonymous>";
+}
+
+/**
+ * `.skip` on the callee, or a `skip` option whose value is a truthy literal.
+ * A computed `skip` (`process.platform === "win32"`) may run, so its children stay.
+ */
+function skipped(call: CallExpression): boolean {
+  let callee: Expression | Super = call.callee;
+  while (callee.type === "MemberExpression" && !callee.computed) {
+    if (callee.property.type === "Identifier" && callee.property.name === "skip") return true;
+    callee = callee.object;
+  }
+  return call.arguments.some(
+    (arg) =>
+      arg.type === "ObjectExpression" &&
+      arg.properties.some(
+        (p) =>
+          p.type === "Property" &&
+          !p.computed &&
+          ((p.key.type === "Identifier" && p.key.name === "skip") ||
+            (p.key.type === "Literal" && p.key.value === "skip")) &&
+          p.value.type === "Literal" &&
+          Boolean(p.value.value),
+      ),
+  );
 }
 
 function classify(callee: Expression | Super, scope: Scope, bindings: Bindings): Kind | null {
@@ -203,26 +274,6 @@ function literalName(arg: Expression | SpreadElement): string | null {
   if (arg.type === "TemplateLiteral" && arg.expressions.length === 0)
     return arg.quasis[0]?.value.cooked ?? null;
   return null;
-}
-
-/**
- * Spec 001 D4 and 003 D2: the second and later declarations sharing a full
- * name carry their line, then an ordinal on one line: `name (line 5)`,
- * `name (line 5, 2)`, as `checkNames` in `src/runners/vitest/results.ts`.
- * Local until 003-16 replaces it by `identity.ts`.
- */
-function suffixDuplicates(found: readonly Found[]): Found[] {
-  const used = new Set<string>();
-  return found.map((entry) => {
-    const { fullName, line } = entry;
-    let name = fullName;
-    if (used.has(name)) {
-      name = `${fullName} (line ${line})`;
-      for (let n = 2; used.has(name); n++) name = `${fullName} (line ${line}, ${n})`;
-    }
-    used.add(name);
-    return { ...entry, fullName: name };
-  });
 }
 
 function isNode(value: unknown): value is AnyNode {

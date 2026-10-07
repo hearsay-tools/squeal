@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   realpathSync,
   rmSync,
   writeFileSync,
@@ -37,6 +38,7 @@ const files = (p: NodeTestProject, ...paths: string[]): TestFileRef[] =>
 const run = (
   options: Omit<NodeTestRunOptions, "root" | "logDir" | "timeoutMs"> & {
     timeoutMs?: number | null;
+    logDir?: string;
   },
 ) => runNodeTest({ root: ROOT, logDir: join(logs, randomUUID()), timeoutMs: 30_000, ...options });
 const names = (results: readonly { check: { fullName: string }; outcome: string }[]) =>
@@ -83,12 +85,20 @@ describe("runNodeTest", () => {
   it("kills a busy loop at the deadline and keeps the file that finished", SLOW, async () => {
     const tier = files(edge, "test/busy-loop.test.ts", "test/pass.test.ts");
     const started = performance.now();
-    const { report } = await run({ project: edge, files: tier, timeoutMs: 8_000 });
+    const logDir = join(logs, randomUUID());
+    const { report } = await run({ project: edge, files: tier, timeoutMs: 8_000, logDir });
     expect(performance.now() - started).toBeLessThan(8_000 + 2_000 + 5_000);
     expect(report.end).toBe("timed-out");
     expect(report.failure).toMatch(/deadline of 8000 ms passed with 1 of 2 test files unfinished/);
     expect(report.completedFiles).toEqual(files(edge, "test/pass.test.ts"));
     expect(names(report.results)).toEqual(["passes: pass"]);
+    // Review wave 1, N5: the busy loop's runner and test child, from the recorder's files, are gone.
+    const pids = readdirSync(logDir)
+      .map((name) => /^graph-0-(\d+)\.ndjson$/.exec(name)?.[1])
+      .filter((pid) => pid !== undefined)
+      .map(Number);
+    expect(pids.length).toBeGreaterThan(0);
+    for (const pid of pids) expect(() => process.kill(pid, 0)).toThrow(/ESRCH/);
   });
 
   it("does not start files left in the queue when the deadline passes", SLOW, async () => {

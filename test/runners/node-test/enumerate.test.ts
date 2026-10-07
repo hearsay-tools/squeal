@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -254,7 +254,6 @@ describe("enumerateSource", () => {
       "todo",
       "with options",
       "only",
-      "outer > inner > leaf",
       "parent",
       "parent > child",
       "parent > child > grandchild",
@@ -272,7 +271,36 @@ describe("enumerateSource", () => {
       `nt.test("namespaced", () => {});`,
       `nt.describe.skip("ns suite", () => { nt.it("leaf", () => {}); });`,
     ].join("\n");
-    expect(names(source)).toEqual(["g > c", "default", "namespaced", "ns suite > leaf"]);
+    expect(names(source)).toEqual(["g > c", "default", "namespaced"]);
+  });
+
+  it("does not descend into a skipped suite or test, which a run never enters", () => {
+    const source = [
+      `import { describe, it, test } from "node:test";`,
+      `describe("by option", { skip: true }, () => { it("a", () => {}); });`,
+      `describe("by reason", { skip: "later" }, () => { it("a", () => {}); });`,
+      `describe("computed", { skip: process.platform === "win32" }, () => { it("a", () => {}); });`,
+      `describe.todo("todo", () => { it("a", () => {}); });`,
+      `test.skip("parent", async (t) => { await t.test("child", () => {}); });`,
+    ].join("\n");
+    expect(names(source)).toEqual(["computed > a", "todo > a", "parent"]);
+  });
+
+  it("names a function-only call by the function, as a run does", () => {
+    const source = [
+      `import { test } from "node:test";`,
+      `test(async function named(t) { await t.test("child", () => {}); });`,
+      `test(() => {});`,
+      `test({ skip: false }, function withOptions() {});`,
+    ].join("\n");
+    const checks = enumerateSource(source, ref);
+    expect(checks.map((c) => c.check.fullName)).toEqual([
+      "named",
+      "named > child",
+      "<anonymous>",
+      "withOptions",
+    ]);
+    expect(checks.every((c) => !c.templated)).toBe(true);
   });
 
   it("adds an ordinal to duplicates on one line", () => {
@@ -281,6 +309,25 @@ describe("enumerateSource", () => {
         `import { test } from "node:test";\ntest("a", () => {}); test("a", () => {}); test("a", () => {});`,
       ),
     ).toEqual(["a", "a (line 2)", "a (line 2, 2)"]);
+  });
+
+  it("keeps stripTypeScriptTypes' ExperimentalWarning off the process's stderr", SLOW, () => {
+    const module = resolve(import.meta.dirname, "../../../src/runners/node-test/enumerate.ts");
+    const script = [
+      `const { enumerateSource } = await import(${JSON.stringify(module)});`,
+      `enumerateSource('import { test } from "node:test"; test("a", () => {});', { project: "p", path: "a.ts" });`,
+      `process.emitWarning("still mine", "ExperimentalWarning");`,
+    ].join("\n");
+    const result = spawnSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toMatch(/stripTypeScriptTypes/);
+    expect(result.stderr).toMatch(/still mine/);
   });
 
   it("parses a CommonJS test file", () => {
