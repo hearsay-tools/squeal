@@ -49,3 +49,17 @@ Questions: (1) Can an inherited node:test result pose as current: the observed m
 Rules: change no code; label every finding proven, plausible or unverified, and only a proven break blocks; probes under `/tmp`, never this repository's store or the cezar repository's.
 
 Use /reviewer.
+
+## 003-24 review fixes (wave 2.5)
+
+Outcome: no node:test pass can pose as current through a preload's run-time import, a broken project, or another worktree's observation.
+
+Read: `reviews/wave-2.md` (Blockers, Should-fix, Nits, Inputs), spec 003 D1, D3, D7 as amended, `status.md`.
+
+Shape: repair. Seam: `record` in `src/runners/node-test/adapter.ts:102-122` (B1: each completed file's `preloadPaths` minus `graph.preloads().paths`, persisted per project with the same transactional merge as the observed key, read at start, added to `environment().files` and treated by `affected` as preload paths; each `preloads().incomplete` reason noted once). Then S1 (a project whose `cwd` is absent, or whose graph build throws, degrades inside `createNodeTestAdapter` like a missing Node: no files, `runnerVersion` `unavailable`, one note, recreated when the directory appears). Then S2: the adapter re-reads the observed key on every `invalidate` and when asked for `closure` or `affected`; a test file whose stored observed set grew is reported affected so it re-keys within the next batch, and a periodic re-read (at most the 30 s reconciliation interval, or `recreatedProjects` if that is the only sound path) closes the case with no local edit. Name in a test the rule that makes "B applies A's pass under a key lacking A's observed path" impossible or bounded. Then N1 and N2 (`src/cli/node-test-seed.ts`, `src/cli/init.ts`), N3 (`graph/parse.ts`), N4 (surface a closure's `incomplete` reasons as notes, one per project with a count and the first reasons), and give `enumerate.test.ts`'s 200 ms bound a ratio or a load guard.
+
+Owns: `src/runners/node-test/**`, `src/core/daemon/node-test-runners.ts`, `src/cli/node-test-seed.ts`, the seeding lines of `src/cli/init.ts`, `test/runners/node-test/**`, `test/integration/node-test*.test.ts`, `test/cli/init-node-test.test.ts`, new fixtures under `test/fixtures/node-test/`. Leave alone: `src/core/watcher/`, `src/core/delivery/`, `src/harness/shared/` (001-111, 001-112, other session), `src/harness/codex/` (002-21), `src/core/keys/`, `src/core/scheduler/`.
+
+Done when: the review's three probes (preload computed import, missing `cwd` beside Vitest, two adapters over one store) are tests that fail on `faa202d` and pass; an edit of the preload's helper re-runs the file and a worktree with a different helper misses; lint, typecheck, full suite green on Node 22 and 24. Do not run `npm run build`.
+
+Use /worker.
