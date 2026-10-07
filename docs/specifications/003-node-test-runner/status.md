@@ -22,6 +22,8 @@ Started: 2026-10-07
 
 - 2026-10-07, during wave 1 (coordinator, asked by 003-14 and 003-13): D2 and D5 amended. Suites are never checks; a test with subtests is a check and so is each subtest; a parent failing only by `subtestsFailed` records pass. One `node --test` process per test file, up to the tier size at once, because Node 22 and 24 before 24.18 forward child events in report order and a hung file hid later files' results under one process per tier; completion is an exited process with the wrapper's `test:complete` and the final `test:summary`; the deadline stays per tier. The `RunReport.failure` comment now allows a completed run to name a file that did not complete.
 
+- 2026-10-07, wave 1 (003-12, 003-13, 003-14), 0.1.16, not yet wired into the daemon: `createNodeTestGraph` (closures as bitsets over strongly connected components, about 10 ms to rebuild the index at 1,000 modules; cold build 152 to 168 ms min at load 40, 170 to 379 ms at load 50 to 78, so goal 6 holds at calm load and the cost test asserts ratios), `runNodeTest` (one process per file, `NODE_TEST_CONTEXT` removed), `identify` and `suffixDuplicates`, `enumerate` (acorn after `stripTypeScriptTypes`, which prints one `ExperimentalWarning` per process on Node 22 and 24: 003-16 decides). Dependencies `acorn`, `enhanced-resolve`, `es-module-lexer` are bundled.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
