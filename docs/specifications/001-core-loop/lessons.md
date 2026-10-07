@@ -685,3 +685,16 @@ Closed 2026-10-07 by an attended probe with the plugin at 0.1.6 (001-61, 001-63,
 ### Defects
 
 14. **Mid-turn, the idle waiter delivers out of order and unattributed.** A waiter message written mid-turn lands only at the next tool boundary (research `claude-code-integration.md` Q4 b, c), which is where PostToolBatch delivers with a fresh header. So it adds an older header after a newer one and a label naming the event that armed it. Neither message says what the revision changed.
+
+## Report volume and provenance
+
+2026-10-07, feedback from an agent working a `cezar` worktree with Squeal 0.1.x, relayed by the human.
+
+- Useful: a timeout in a test of a file the agent had changed, flagged while its own `npm test` still ran; and the batch of FAIL -> PASS flips after `npm ci`, which showed the opening 65-failure baseline (inherited from other worktrees, almost all "Cannot find package" with no `node_modules`) was not the branch's.
+- Volume: several reports listed 25 to 35 FAIL -> PASS lines each, often attached to unrelated tool calls. One line plus a short list would carry the same signal.
+- Provenance: a timeout was labelled "baseline finding". The agent could not tell whether it came from its own run or Squeal's, or whether its diff touched the test. It checked by hand: its diff did not, the test passed in its gate's full run and took 596 ms alone. Three full suites were running on the host at the time.
+
+### Defects
+
+15. **Recoveries flood a report.** D6 lists every changed check, so an install that fixes 31 checks prints 31 blocks.
+16. **A report does not say where a result came from or whether the agent's changes reach it.** "Baseline finding" names when the daemon found a failure, not that Squeal's own runner saw it, and nothing says whether the failing test imports a file the agent changed, though the store holds every result's closure. Failures caused by a missing install and timeouts under load carry no context either.
