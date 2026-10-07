@@ -1,0 +1,7 @@
+{
+  "name": "@mono/legacy",
+  "private": true,
+  "dependencies": {
+    "@mono/dual": "*"
+  }
+}

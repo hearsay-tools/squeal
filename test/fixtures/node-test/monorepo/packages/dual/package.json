@@ -1,0 +1,10 @@
+{
+  "name": "@mono/dual",
+  "private": true,
+  "exports": {
+    ".": {
+      "import": "./src/esm.mjs",
+      "require": "./src/cjs.cjs"
+    }
+  }
+}

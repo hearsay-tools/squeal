@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { relative, sep } from "node:path";
 import type { AbsolutePath } from "../../../core/types/index.js";
 import { expandGlob } from "./glob.js";
-import { PARSED_EXTENSION, type ParsedModule, parseModule } from "./parse.js";
+import { PARSED_EXTENSION, type ParsedModule, type ParsedSpecifier, parseModule } from "./parse.js";
 import type { Resolver } from "./resolver.js";
 
 /** One module's resolved edges. */
@@ -93,8 +93,10 @@ export class ModuleTable {
     const candidates = new Set<AbsolutePath>();
     const incomplete = [...parsed.incomplete];
     const pairs: (readonly [AbsolutePath, AbsolutePath])[] = [];
-    for (const { specifier, kind } of parsed.specifiers) {
-      if (kind === "glob") {
+    const format = this.tsx ? this.resolver.moduleFormat(file) : null;
+    if (format?.manifest != null && parsed.specifiers.length > 0) reads.add(format.manifest);
+    for (const { specifier, kind: written, dynamic } of parsed.specifiers) {
+      if (written === "glob") {
         const matches = expandGlob(specifier, file, this.tsx);
         if (matches === null) {
           incomplete.push(
@@ -104,6 +106,9 @@ export class ModuleTable {
         for (const match of matches ?? []) if (this.inWorktree(match)) deps.add(match);
         continue;
       }
+      // S2: a static import tsx compiles to `require` resolves with the `require` conditions.
+      const kind =
+        written === "import" && !dynamic && format?.format === "commonjs" ? "require" : written;
       const resolution = this.resolver.resolve(specifier, file, kind);
       for (const read of resolution.reads) reads.add(read);
       for (const candidate of resolution.candidates) candidates.add(candidate);
@@ -113,7 +118,13 @@ export class ModuleTable {
     return { deps, reads, candidates, incomplete, pairs };
   }
 
-  private inWorktree(path: AbsolutePath): boolean {
+  /** The specifiers `file` was parsed to, for a preload's hooks check. */
+  specifiers(file: AbsolutePath): readonly ParsedSpecifier[] {
+    return this.parsed(file).specifiers;
+  }
+
+  /** Inside the worktree and outside every `node_modules`. */
+  inWorktree(path: AbsolutePath): boolean {
     return path.startsWith(this.root + sep) && !path.includes(`${sep}node_modules${sep}`);
   }
 }

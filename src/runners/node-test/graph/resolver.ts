@@ -4,6 +4,7 @@ import { dirname, extname, join, sep } from "node:path";
 import enhanced from "enhanced-resolve";
 import type { AbsolutePath } from "../../../core/types/index.js";
 import type { LoaderChain } from "./loader-chain.js";
+import { parseJsonc, readTsconfigPaths, type TsconfigPaths } from "./tsconfig.js";
 
 export type EdgeKind = "import" | "require";
 
@@ -20,8 +21,21 @@ export interface Resolution {
   readonly pair: readonly [AbsolutePath, AbsolutePath] | null;
 }
 
+/** How tsx loads one module, and the `package.json` that decided it, if any. */
+export interface ModuleFormat {
+  readonly format: "module" | "commonjs";
+  /** The nearest `package.json` inside the worktree, when its `type` decided the format. */
+  readonly manifest: AbsolutePath | null;
+}
+
 export interface Resolver {
   resolve(specifier: string, importer: AbsolutePath, kind: EdgeKind): Resolution;
+  /**
+   * D3 as amended (S2): tsx compiles `.cts`, `.cjs`, and a `.ts`, `.tsx`,
+   * `.js` or `.jsx` whose nearest `package.json` has no `"type": "module"` to
+   * CommonJS, so its static imports resolve with the `require` conditions.
+   */
+  moduleFormat(file: AbsolutePath): ModuleFormat;
   /** Drops every cached stat, read and resolver (D4: on add, delete, manifest change). */
   clear(): void;
 }
@@ -37,6 +51,9 @@ const TSX_ALIAS: Record<string, string[]> = {
 const NODE_REQUIRE_EXTENSIONS = [".js", ".json", ".node", ".ts", ".cts", ".mts"];
 
 const NODE_MODULES = `${sep}node_modules${sep}`;
+const NODE_MODULES_DIR = `${sep}node_modules`;
+const COMMONJS = /\.c[jt]s$/;
+const MODULE = /\.m[jt]s$/;
 
 const BUILTIN: Resolution = { path: null, builtin: true, reads: [], candidates: [], pair: null };
 
@@ -52,6 +69,8 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
   let tsconfigs = new Map<string, AbsolutePath | null>();
   let realpaths = new Map<string, AbsolutePath | null>();
   let resolutions = new Map<string, Resolution>();
+  let tsconfigPaths = new Map<AbsolutePath, TsconfigPaths>();
+  let scopes = new Map<string, ModuleFormat>();
   const tsx = chain.rules === "tsx";
 
   const exists = (path: string) => {
@@ -80,6 +99,41 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     return found;
   };
+  const readText = (path: string) => {
+    try {
+      return fileSystem.readFileSync(path).toString("utf8");
+    } catch {
+      return null;
+    }
+  };
+  const chainOf = (tsconfig: AbsolutePath) => {
+    let found = tsconfigPaths.get(tsconfig);
+    if (found === undefined) {
+      found = readTsconfigPaths(tsconfig, readText);
+      tsconfigPaths.set(tsconfig, found);
+    }
+    return found;
+  };
+  /** The nearest `package.json` type above `dir`, cached per directory. */
+  const scopeOf = (dir: string): ModuleFormat => {
+    let found = scopes.get(dir);
+    if (found === undefined) {
+      const manifest = join(dir, "package.json");
+      const text = readText(manifest);
+      const parent = dirname(dir);
+      if (text !== null) {
+        const type = parseJsonc(text)?.type;
+        found = {
+          format: type === "module" ? "module" : "commonjs",
+          manifest: inWorktree(manifest) ? manifest : null,
+        };
+      } else {
+        found = parent === dir ? { format: "commonjs", manifest: null } : scopeOf(parent);
+      }
+      scopes.set(dir, found);
+    }
+    return found;
+  };
   const tsconfigFor = (dir: string): AbsolutePath | null => {
     let found = tsconfigs.get(dir);
     if (found === undefined) {
@@ -90,8 +144,21 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     return found;
   };
-  const resolverFor = (tsconfig: AbsolutePath | null, kind: EdgeKind) => {
-    const key = `${tsconfig ?? ""}\0${kind}`;
+  /**
+   * S1: enhanced-resolve reads inherited `paths` relative to the config it
+   * was given, so it is given the config that defines them and the chain's
+   * effective `baseUrl` explicitly; a chain with neither needs no tsconfig.
+   */
+  const tsconfigOption = (paths: TsconfigPaths | null) => {
+    if (paths === null || (paths.pathsFile === null && paths.baseUrl === null)) return {};
+    const configFile = paths.pathsFile ?? paths.files[0];
+    return {
+      tsconfig: { configFile, ...(paths.baseUrl === null ? {} : { baseUrl: paths.baseUrl }) },
+    };
+  };
+  const resolverFor = (paths: TsconfigPaths | null, kind: EdgeKind) => {
+    const option = tsconfigOption(paths);
+    const key = `${JSON.stringify(option)}\0${kind}`;
     let resolver = resolvers.get(key);
     if (resolver === undefined) {
       resolver = enhanced.ResolverFactory.createResolver({
@@ -103,7 +170,7 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
           ? {
               extensions: TSX_EXTENSIONS,
               extensionAlias: TSX_ALIAS,
-              ...(tsconfig === null ? {} : { tsconfig: { configFile: tsconfig } }),
+              ...option,
             }
           : kind === "import"
             ? { extensions: [], fullySpecified: true }
@@ -113,7 +180,14 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     return resolver;
   };
-  const inWorktree = (path: string) => path.startsWith(root + sep) && !path.includes(NODE_MODULES);
+  // An absent `node_modules` directory probed on the way up is no candidate either (N3).
+  function inWorktree(path: string): boolean {
+    return (
+      path.startsWith(root + sep) &&
+      !path.includes(NODE_MODULES) &&
+      !path.endsWith(NODE_MODULES_DIR)
+    );
+  }
 
   return {
     resolve(specifier, importer, kind) {
@@ -128,17 +202,26 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
       }
       return resolution;
     },
+    moduleFormat(file) {
+      if (COMMONJS.test(file)) return { format: "commonjs", manifest: null };
+      if (MODULE.test(file)) return { format: "module", manifest: null };
+      return scopeOf(dirname(file));
+    },
     clear() {
       fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
       resolvers = new Map();
       tsconfigs = new Map();
       realpaths = new Map();
       resolutions = new Map();
+      tsconfigPaths = new Map();
+      scopes = new Map();
     },
   };
 
   function resolveFrom(specifier: string, from: AbsolutePath, kind: EdgeKind): Resolution {
-    const resolver = resolverFor(tsx ? tsconfigFor(from) : null, kind);
+    const tsconfig = tsx ? tsconfigFor(from) : null;
+    const paths = tsconfig === null ? null : chainOf(tsconfig);
+    const resolver = resolverFor(paths, kind);
     const context = {
       fileDependencies: new Set<string>(),
       missingDependencies: new Set<string>(),
@@ -152,7 +235,7 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     // `symlinks: true` already gives the target's real path.
     const path = target === false ? null : target;
-    const reads = new Set<AbsolutePath>();
+    const reads = new Set<AbsolutePath>((paths?.files ?? []).filter(inWorktree));
     for (const dependency of context.fileDependencies) {
       if (!dependency.endsWith(".json") || dependency === target) continue;
       // A manifest read through a workspace symlink counts at its real path.

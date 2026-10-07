@@ -43,7 +43,11 @@ export interface NodeTestGraph {
    * They never enter `closure()`; a change to one makes the file affected.
    */
   recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void;
-  /** Problem notes: an unrecognized loader, a `.js`/`.ts` pair under tsx. */
+  /**
+   * Problem notes: an unrecognized loader (a `--loader`, or a bare preload
+   * outside the worktree's modules), a preload that may register hooks, a
+   * `.js`/`.ts` pair under tsx.
+   */
   notes(): readonly string[];
 }
 
@@ -54,10 +58,13 @@ export async function createNodeTestGraph(options: NodeTestGraphOptions): Promis
   const chain = readLoaderChain(options.argv);
   const graph = new Graph(root, cwd, chain, createResolver(chain, root));
   graph.build(options.testFiles);
-  const loaderNotes = chain.unrecognized.map(
-    (loader) =>
-      `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`,
-  );
+  const loaderNotes = () => [
+    ...chain.unrecognized.map(
+      (loader) =>
+        `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`,
+    ),
+    ...graph.preloadNotes(),
+  ];
   return {
     closure: (testFile) => graph.closure(testFile),
     preloads: () => graph.preloads(),
@@ -66,7 +73,7 @@ export async function createNodeTestGraph(options: NodeTestGraphOptions): Promis
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
     recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
     notes: () => [
-      ...loaderNotes,
+      ...loaderNotes(),
       ...graph
         .pairs()
         .map(

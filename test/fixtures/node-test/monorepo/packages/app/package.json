@@ -1,0 +1,5 @@
+{
+  "name": "@mono/app",
+  "private": true,
+  "type": "module"
+}

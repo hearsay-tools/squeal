@@ -1,0 +1,9 @@
+{
+  // `paths` with no `baseUrl`: TypeScript and tsx resolve them from this file's directory.
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "~/*": ["./packages/app/src/*"],
+    },
+  },
+}

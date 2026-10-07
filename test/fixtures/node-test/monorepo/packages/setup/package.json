@@ -1,0 +1,6 @@
+{
+  "name": "@mono/setup",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs"
+}

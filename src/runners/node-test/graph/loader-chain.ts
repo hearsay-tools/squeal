@@ -12,17 +12,22 @@ export interface LoaderChain {
    * recognize.
    */
   readonly rules: "tsx" | "node";
-  /** `--import` and `--require` values written as paths (`./x.mjs`, `/abs`, `file:`), in order. */
+  /**
+   * Every `--import` and `--require` value other than tsx, paths and bare
+   * specifiers alike, in order; the graph resolves each from `cwd` (D1, S3).
+   */
   readonly preloads: readonly Preload[];
   /** `--conditions` / `-C` values, added to `node` and `import` or `require`. */
   readonly conditions: readonly string[];
-  /** Loaders Squeal does not model, one note each. */
+  /** `--loader` values, which Squeal does not model, one note each. */
   readonly unrecognized: readonly string[];
 }
 
 export interface Preload {
   readonly specifier: string;
   readonly kind: "import" | "require";
+  /** Written as a path (`./x.mjs`, `/abs`, `file:`) rather than a package specifier. */
+  readonly path: boolean;
 }
 
 const TSX = new Set(["tsx", "tsx/esm"]);
@@ -39,10 +44,9 @@ const VALUE_FLAGS: Readonly<Record<string, "import" | "require" | "loader" | "co
 };
 
 /**
- * A bare `--import` or `--require` that is not tsx counts as an unrecognized
- * loader: it may register hooks Squeal cannot see. A path (`./x.mjs`,
- * `/abs`, `file:`) is a project preload whose closure goes to the
- * environment hash.
+ * Every `--import` or `--require` that is not tsx is a preload; whether a
+ * bare one is a project preload or an unrecognized loader depends on where
+ * it resolves, which the graph decides (spec 003 D1, `reviews/wave-1.md` S3).
  */
 export function readLoaderChain(argv: readonly string[]): LoaderChain {
   let tsx = false;
@@ -59,8 +63,8 @@ export function readLoaderChain(argv: readonly string[]): LoaderChain {
     if (value === undefined) break;
     if (role === "condition") conditions.push(value);
     else if (TSX.has(value)) tsx = true;
-    else if (role !== "loader" && isPath(value)) preloads.push({ specifier: value, kind: role });
-    else unrecognized.push(value);
+    else if (role === "loader") unrecognized.push(value);
+    else preloads.push({ specifier: value, kind: role, path: isPath(value) });
   }
   return {
     rules: tsx ? "tsx" : "node",
