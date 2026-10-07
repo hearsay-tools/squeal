@@ -73,6 +73,12 @@ export interface RunnerPackages {
   readonly imports: readonly PackageImport[];
   /** Builtin module names without the `node:` prefix or a subpath (`fs`, not `fs/promises`). */
   readonly builtins: readonly string[];
+  /**
+   * Of an environment's `imports`, the runner's own (`vitest`). Its lockfile
+   * closure starts processes and workers by design, so an opaque package in
+   * it sends no test file to the whole fingerprint (task 001-109).
+   */
+  readonly runner?: readonly PackageImport[];
 }
 
 /**

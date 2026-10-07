@@ -10,8 +10,17 @@ import { type FixtureProject, openFixture, ref, SLOW } from "./helpers.js";
 // each re-keys exactly the test files that use them; bumping @types/node re-keys none of them; a
 // package folder added without rewriting the hidden lockfile re-keys every file. `spawn.test.ts`
 // runs a child process, so it keeps the whole-lockfile fingerprint and re-keys on every bump.
+// Task 001-109 (review wave-11b B1 to B3), each a bump that kept its key before: a package the config
+// names by string (`environment`, `snapshotSerializers`) re-keys every file, one a docblock names
+// its file; a bare `require` keys its package; `require.resolve` and a package that spawns send
+// their files to the whole fingerprint.
 
 const esm = (source: string) => ({ manifest: { type: "module" }, files: { "index.js": source } });
+const environment = (name: string) =>
+  esm(
+    `export default { name: "${name}", viteEnvironment: "ssr", setup() {\n` +
+      `  globalThis.environmentName = "${name}-1";\n  return { teardown() {} };\n} };\n`,
+  );
 
 const PACKAGES: Readonly<Record<string, FixturePackage>> = {
   "node_modules/ext": {
@@ -37,14 +46,48 @@ const PACKAGES: Readonly<Record<string, FixturePackage>> = {
     ...esm('export default function plugin() {\n  return { name: "plugin-pkg" };\n}\n'),
   },
   "node_modules/@types/node": { version: "22.0.0", files: { "index.d.ts": "export {};\n" } },
+  "node_modules/vitest-environment-custom": { version: "1.0.0", ...environment("custom") },
+  "node_modules/vitest-environment-docblock": { version: "1.0.0", ...environment("docblock") },
+  "node_modules/ser-pkg": {
+    version: "1.0.0",
+    files: { "index.js": "module.exports = { test: () => false, serialize: () => '' };\n" },
+  },
+  "node_modules/cjs-pkg": {
+    version: "1.0.0",
+    files: { "index.js": 'exports.cjsValue = "cjs-1";\n' },
+  },
+  "node_modules/data-pkg": { version: "1.0.0", files: { "data.json": '"data-1"\n' } },
+  "node_modules/spawner": {
+    version: "1.0.0",
+    ...esm(
+      'import { execFileSync } from "node:child_process";\n' +
+        "const script = \"process.stdout.write(require('child-pkg'))\";\n" +
+        "export const spawned = () => execFileSync(process.execPath, ['-e', script]).toString();\n",
+    ),
+  },
+  "node_modules/child-pkg": {
+    version: "1.0.0",
+    files: { "index.js": 'module.exports = "child-1";\n' },
+  },
 };
 
 const TEST_FILES = [
+  "test/docblock.test.ts",
   "test/ext.test.ts",
   "test/inl.test.ts",
   "test/plain.test.ts",
+  "test/require.test.ts",
+  "test/resolve.test.ts",
   "test/spawn.test.ts",
+  "test/spawner.test.ts",
 ];
+
+/** Files keyed by the whole fingerprint: a child process, `require.resolve`, a package that spawns. */
+const WHOLE = ["test/resolve.test.ts", "test/spawn.test.ts", "test/spawner.test.ts"];
+
+/** `files` and every whole-fingerprint file, in `TEST_FILES` order, as `rekeyedBy` reports them. */
+const plusWhole = (...files: string[]) =>
+  TEST_FILES.filter((path) => files.includes(path) || WHOLE.includes(path));
 
 const bump = (location: string, version: string) => ({
   ...PACKAGES,
@@ -91,7 +134,24 @@ describe("vitest adapter: per-package dependency keys (001-105)", SLOW, () => {
     expect(spawn.packages?.builtins).toContain("child_process");
     const [environment] = await fx.adapter.environment();
     // Vite resolved the setup file's import to `node_modules/setup-pkg`, looked up from the root.
-    expect(names(environment?.packages)).toEqual([">plugin-pkg", ">setup-pkg", ">vitest"]);
+    expect(names(environment?.packages)).toEqual([
+      ">plugin-pkg",
+      ">ser-pkg",
+      ">setup-pkg",
+      ">vitest",
+      ">vitest-environment-custom",
+    ]);
+  });
+
+  it("reports what a closure loads without an import Vite sees (001-109, B1, B2)", async () => {
+    const fx = await open();
+    const required = await fx.adapter.closure(ref("test/require.test.ts"));
+    expect(names(required.packages)).toEqual(["test>cjs-pkg"]);
+    expect(required.packages?.builtins).not.toContain("module");
+    const resolved = await fx.adapter.closure(ref("test/resolve.test.ts"));
+    expect(resolved.packages?.builtins).toContain("module");
+    const docblock = await fx.adapter.closure(ref("test/docblock.test.ts"));
+    expect(names(docblock.packages)).toEqual([">vitest-environment-docblock"]);
   });
 
   it("re-keys exactly the test files that use a bumped package", async () => {
@@ -101,22 +161,42 @@ describe("vitest adapter: per-package dependency keys (001-105)", SLOW, () => {
     // Restore the install between bumps, so each bump stands alone.
     const restore = () => writeInstall(fx.root, PACKAGES);
 
-    expect(await rekeyed("node_modules/ext-trans", "1.0.1")).toEqual([
-      "test/ext.test.ts",
-      "test/spawn.test.ts",
-    ]);
+    expect(await rekeyed("node_modules/ext-trans", "1.0.1")).toEqual(plusWhole("test/ext.test.ts"));
     restore();
-    expect(await rekeyed("node_modules/inl-trans", "1.0.1")).toEqual([
-      "test/inl.test.ts",
-      "test/spawn.test.ts",
-    ]);
+    expect(await rekeyed("node_modules/inl-trans", "1.0.1")).toEqual(plusWhole("test/inl.test.ts"));
     restore();
     expect(await rekeyed("node_modules/setup-pkg", "1.0.1")).toEqual(TEST_FILES);
     restore();
     expect(await rekeyed("node_modules/plugin-pkg", "1.0.1")).toEqual(TEST_FILES);
     restore();
-    // Types only: no file Node loads. Only the child-process file, keyed by the whole lockfile, moves.
-    expect(await rekeyed("node_modules/@types/node", "24.0.0")).toEqual(["test/spawn.test.ts"]);
+    // Types only: no file Node loads. Only the files keyed by the whole lockfile move.
+    expect(await rekeyed("node_modules/@types/node", "24.0.0")).toEqual(WHOLE);
+  });
+
+  it("re-keys the users of a package loaded without an import Vite sees (001-109)", async () => {
+    const fx = await open();
+    const rekeyed = (location: string, version: string) =>
+      rekeyedBy(fx, () => writeInstall(fx.root, bump(location, version)));
+    const restore = () => writeInstall(fx.root, PACKAGES);
+
+    // B1: named by string in the config, for every file; by a docblock, for its file.
+    expect(await rekeyed("node_modules/vitest-environment-custom", "1.0.1")).toEqual(TEST_FILES);
+    restore();
+    expect(await rekeyed("node_modules/ser-pkg", "1.0.1")).toEqual(TEST_FILES);
+    restore();
+    expect(await rekeyed("node_modules/vitest-environment-docblock", "1.0.1")).toEqual(
+      plusWhole("test/docblock.test.ts"),
+    );
+    restore();
+    // B2: a bare `require` keys its package; `require.resolve` falls back to the whole lockfile.
+    expect(await rekeyed("node_modules/cjs-pkg", "1.0.1")).toEqual(
+      plusWhole("test/require.test.ts"),
+    );
+    restore();
+    expect(await rekeyed("node_modules/data-pkg", "1.0.1")).toEqual(WHOLE);
+    restore();
+    // B3: `spawner` reaches `child_process`, so its importer keys by the whole lockfile.
+    expect(await rekeyed("node_modules/child-pkg", "1.0.1")).toEqual(WHOLE);
   });
 
   it("re-keys every test file when a package folder appears without the hidden lockfile being rewritten", async () => {

@@ -22,11 +22,13 @@ export interface DependencyKeys {
  * of those packages plus the patches, and each test file's key adds the
  * closure of the packages its own closure imports, without the environment's.
  * A test file whose runner reports no packages, or whose closure imports
- * `child_process`, `worker_threads`, `module` or `cluster`, keys by the whole
- * fingerprint, as before. Without a graph (another lockfile format, a stale
- * hidden lockfile) or without environment-wide packages, or when those
- * import such a builtin, the environment hash holds the whole fingerprint
- * and no test file adds anything.
+ * `child_process`, `worker_threads`, `module` or `cluster`, or whose package
+ * set holds an opaque package (one whose code reaches such a builtin; task
+ * 001-109), keys by the whole fingerprint, as before. Without a graph
+ * (another lockfile format, a stale hidden lockfile) or without
+ * environment-wide packages, or when those import such a builtin or hold an
+ * opaque package outside the runner's own closure, the environment hash
+ * holds the whole fingerprint and no test file adds anything.
  */
 export function dependencyKeys(
   installed: InstalledDependencies,
@@ -37,14 +39,19 @@ export function dependencyKeys(
     return { environment: fingerprint, of: () => "" };
   }
   const shared = graph.identities(environment.imports);
+  const runner = new Set(graph.identities(environment.runner ?? []));
+  if (graph.opaque(shared.filter((identity) => !runner.has(identity)))) {
+    return { environment: fingerprint, of: () => "" };
+  }
   const excluded = new Set(shared);
   const whole = `whole:${fingerprint}`;
   return {
     environment: hash([SCOPED_ENCODING, shared, installed.patches]),
-    of: (packages) =>
-      packages === undefined || isOpaque(packages)
-        ? whole
-        : hash([PACKAGES_ENCODING, graph.identities(packages.imports, excluded)]),
+    of: (packages) => {
+      if (packages === undefined || isOpaque(packages)) return whole;
+      const identities = graph.identities(packages.imports, excluded);
+      return graph.opaque(identities) ? whole : hash([PACKAGES_ENCODING, identities]);
+    },
   };
 }
 

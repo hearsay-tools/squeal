@@ -26,6 +26,7 @@ export {
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
 export { type ClosureUpdate, type KeyChange, KeyIndex } from "./key-index.js";
+export { PackageScans } from "./package-scans.js";
 export { InstalledGraph, OPAQUE_BUILTINS } from "./packages.js";
 export { closuresToReresolve } from "./resolution.js";
 export { directoryOf, ReverseIndex, testFileId } from "./reverse-index.js";

@@ -6,6 +6,7 @@ import {
   findInstalledLockfile,
   type InstalledDependencies,
   installedDependencies,
+  PackageScans,
 } from "../keys/index.js";
 import type { AbsolutePath, ProjectName, RelativePath, RunnerEnvironment } from "../types/index.js";
 
@@ -33,8 +34,8 @@ export class Lockfiles {
   readonly #moved = new Map<RelativePath, ProjectName[]>();
   /** The stale-lockfile note last given per lockfile path, so each is noted once. */
   readonly #notes = new Map<RelativePath, string | null>();
-  /** Types-only scans by package identity, kept across installs (`InstalledGraph`). */
-  readonly #typesOnly = new Map<string, boolean>();
+  /** On-disk package scans by identity, kept across installs (`InstalledGraph`). */
+  readonly #scans = new PackageScans();
 
   /** `note` records a stale hidden lockfile (task 001-104) as a status note, once per change. */
   constructor(
@@ -62,7 +63,7 @@ export class Lockfiles {
       const path = lockfile?.path ?? null;
       let installed = read.get(path);
       if (installed === undefined) {
-        installed = await installedDependencies(root, this.root, this.#typesOnly);
+        installed = await installedDependencies(root, this.root, this.#scans);
         read.set(path, installed);
         if (path !== null) this.#noteOnce(path, installed.note);
       }
