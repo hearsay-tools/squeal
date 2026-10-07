@@ -22,7 +22,7 @@ import {
   stopWaiting,
   touchesInstall,
 } from "./install.js";
-import { InstallStamps } from "./install-stamp.js";
+import { InstallStamps, refreshInstall } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
@@ -261,6 +261,14 @@ class TierScheduler implements Scheduler {
           await this.#runnerWork.drain();
           if (this.#closed || this.#awaitingInstall) break;
           const install = await this.#install.check();
+          if (install.missing === null && this.#install.takeChange(install)) {
+            // Task 001-109 (review wave-11b S2, agreed with the coordinator).
+            await this.#lock.run(() => {
+              const { context, ledger } = this.#started();
+              return refreshInstall(context, ledger);
+            });
+            continue;
+          }
           const next = await this.#lock.run(() => {
             if (this.#awaitingInstall) return null;
             const { context, ledger } = this.#started();

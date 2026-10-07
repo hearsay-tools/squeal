@@ -36,6 +36,7 @@ import type {
 } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
 import { Lockfiles } from "./lockfiles.js";
+import { persistedNoteTexts } from "./notes.js";
 
 export interface KeyingOptions {
   readonly root: AbsolutePath;
@@ -88,7 +89,11 @@ export class WorktreeKeys {
     this.#policy = options.policy;
     this.#isDeclared = createInputMatcher(inputGlobs(options.policy.inputs));
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
-    this.#lockfiles = new Lockfiles(options.root, (text) => options.note?.(text));
+    this.#lockfiles = new Lockfiles(
+      options.root,
+      (text) => options.note?.(text),
+      (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
+    );
     this.index = new KeyIndex((path) => this.cache.hashOf(path));
   }
 
@@ -162,7 +167,9 @@ export class WorktreeKeys {
     // Task 001-105: each test file's packages are keyed against the new install.
     return this.index.setInstalled(hashes, (ref) => {
       const runner = this.#runnerClosures.get(testFileId(ref));
-      return runner === undefined ? "" : this.#dependencySegment(runner);
+      // Review wave-11b N1: no closure yet keys by the whole fingerprint, never by no packages.
+      if (runner === undefined) return this.#dependencies.get(ref.project)?.of(undefined) ?? "";
+      return this.#dependencySegment(runner);
     });
   }
 
