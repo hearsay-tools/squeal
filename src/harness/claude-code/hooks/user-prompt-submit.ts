@@ -1,8 +1,9 @@
-import { formatDelta, formatRegistration } from "../../../core/delivery/index.js";
+import { formatDelta } from "../../../core/delivery/index.js";
 import { daemonLiveness } from "../../../core/delivery/liveness.js";
 import { usesSqueal } from "../context.js";
 import { ensure, settle } from "../ensure.js";
 import { additionalContext, type Handler, isRegistered, withContext } from "../hook.js";
+import { withPrimer } from "../primer.js";
 import { isInteractive } from "./waiter.js";
 
 /**
@@ -44,6 +45,6 @@ export const userPromptSubmit: Handler = (input, location, deps) => {
     }
     // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
     const registration = await context.delivery.register(context.consumer, { inTurn: true });
-    return additionalContext(input, formatRegistration(registration));
+    return additionalContext(input, withPrimer(registration));
   });
 };

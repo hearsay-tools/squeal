@@ -44,7 +44,7 @@ describe("UserPromptSubmit", () => {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
         additionalContext: expect.stringMatching(
-          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 0$/,
+          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 0\n\nSqueal runs [^\n]*$/,
         ),
       },
     });
@@ -67,7 +67,7 @@ describe("UserPromptSubmit", () => {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
         additionalContext: expect.stringMatching(
-          /^SQUEAL · registered at revision 3\n[\s\S]*Known failures: 0$/,
+          /^SQUEAL · registered at revision 3\n[\s\S]*Known failures: 0\n\nSqueal runs [^\n]*$/,
         ),
       },
     });

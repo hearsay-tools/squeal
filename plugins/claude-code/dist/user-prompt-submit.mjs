@@ -2616,6 +2616,20 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
+// src/harness/claude-code/primer.ts
+var PRIMER = [
+  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
+  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+  "Squeal does not cover typecheck, build or other test suites."
+].join(" ");
+var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
+function withPrimer(registration) {
+  return `${formatRegistration(registration, REGISTRATION_MAX)}
+
+${PRIMER}`;
+}
+
 // src/harness/claude-code/hooks/waiter.ts
 var WAITER_HOOK_TIMEOUT_S = 3600;
 var WAITER_TIMEOUT_MS = (WAITER_HOOK_TIMEOUT_S - 60) * 1e3;
@@ -2638,7 +2652,7 @@ var userPromptSubmit = (input, location2, deps) => {
       if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     }
     const registration = await context.delivery.register(context.consumer, { inTurn: true });
-    return additionalContext(input, formatRegistration(registration));
+    return additionalContext(input, withPrimer(registration));
   });
 };
 

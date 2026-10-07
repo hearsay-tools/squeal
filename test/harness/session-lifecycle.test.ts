@@ -7,13 +7,13 @@ import { storePaths } from "../../src/core/store/index.js";
 import { type Consumer, MAIN_AGENT } from "../../src/core/types/index.js";
 import { acquireWaiterLock } from "../../src/core/waiter-lock/index.js";
 import type { HookContext } from "../../src/harness/claude-code/context.js";
-import { PRIMER } from "../../src/harness/claude-code/hooks/session-start.js";
 import {
   type HookDeps,
   type HookResult,
   runHook,
   waiterLockPath,
 } from "../../src/harness/claude-code/index.js";
+import { PRIMER } from "../../src/harness/claude-code/primer.js";
 import { unregisterSession } from "../../src/harness/claude-code/sweep.js";
 import { recorded, SESSION, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 
