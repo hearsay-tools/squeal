@@ -134,6 +134,19 @@ function livenessSentence(daemon: DaemonLiveness | undefined, revision: number):
   return ` ${since}; results are as of revision ${revision}.`;
 }
 
+/**
+ * Lessons, defect 22 (task 001-112): a tool boundary that may have edited
+ * while no daemon validates, and none was started, says so, since that edit
+ * gets no result until a daemon validates again.
+ */
+export function notValidatedLine(daemon: DaemonLiveness & { readonly state: "down" }): string {
+  const since =
+    daemon.since === null
+      ? "no daemon is running"
+      : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  return `Not validated: ${since}; this edit has no result.`;
+}
+
 interface Block {
   readonly text: string;
   readonly outcomes: readonly Shown[];
