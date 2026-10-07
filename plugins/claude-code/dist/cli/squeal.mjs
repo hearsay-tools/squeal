@@ -9059,7 +9059,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.8";
+  if (true) return "0.1.9";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9968,8 +9968,36 @@ function planDelta(input) {
 }
 
 // src/core/delivery/liveness.ts
-init_fs();
 init_state2();
+
+// src/core/delivery/slots.ts
+init_fs();
+var slot = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll(store, key) {
+  const raw = store.meta.get(key);
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function writeSlot(store, key, consumer, value) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
+  );
+  const all = readAll(store, key);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key, JSON.stringify(next));
+}
+
+// src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
   if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
@@ -9983,29 +10011,14 @@ function worktreeLiveness(worktree, now) {
 function livenessMetaKey(worktreeId) {
   return `liveness-told:${worktreeId}`;
 }
-var slot = (consumer) => `${consumer.sessionId}
-${consumer.agentId}`;
-function readAll(store, worktreeId) {
-  const raw = store.meta.get(livenessMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
 function tellLiveness(store, consumer, state) {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
-  );
-  const next = {};
-  for (const [key, value] of Object.entries(readAll(store, consumer.worktreeId))) {
-    if (registered.has(key)) next[key] = value;
-  }
-  if (state === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = state;
-  store.meta.set(livenessMetaKey(consumer.worktreeId), JSON.stringify(next));
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, state);
+}
+function revisionMetaKey(worktreeId) {
+  return `revision-told:${worktreeId}`;
+}
+function tellRevision(store, consumer, revision) {
+  writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
 }
 
 // src/core/delivery/turn.ts
@@ -10015,31 +10028,8 @@ init_state2();
 function turnMetaKey(worktreeId) {
   return `turn:${worktreeId}`;
 }
-var slot2 = (consumer) => `${consumer.sessionId}
-${consumer.agentId}`;
-function readAll2(store, worktreeId) {
-  const raw = store.meta.get(turnMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
 function writeTurn(store, consumer, state) {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot2(r.consumer))
-  );
-  const all = readAll2(store, consumer.worktreeId);
-  const next = {};
-  for (const [key, value] of Object.entries(all)) {
-    if (registered.has(key)) next[key] = value;
-  }
-  if (state === null) delete next[slot2(consumer)];
-  else next[slot2(consumer)] = state;
-  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
-  store.meta.set(turnMetaKey(consumer.worktreeId), JSON.stringify(next));
+  writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, state);
 }
 
 // src/core/delivery/delivery.ts
@@ -10055,8 +10045,7 @@ function expireConsumers(store, now = Date.now(), options = {}) {
       const record = store.consumers.get(consumer);
       if (record === null || !idle(record, cutoff)) return false;
       store.consumers.unregister(consumer);
-      tellLiveness(store, consumer, null);
-      writeTurn(store, consumer, null);
+      forget(store, consumer);
       return true;
     });
     if (!gone) continue;
@@ -10064,6 +10053,11 @@ function expireConsumers(store, now = Date.now(), options = {}) {
     expired.push(consumer);
   }
   return expired;
+}
+function forget(store, consumer) {
+  tellLiveness(store, consumer, null);
+  tellRevision(store, consumer, null);
+  writeTurn(store, consumer, null);
 }
 function idle(record, cutoff) {
   return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
