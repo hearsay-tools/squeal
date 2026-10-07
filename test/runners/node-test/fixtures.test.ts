@@ -238,7 +238,9 @@ describe("node:test fixtures under the current Node", () => {
       generate(b);
       const first = digest(a);
       expect(digest(b).hash).toBe(first.hash);
-      const modules = first.files.filter((f) => /^packages\/(core|util)\/src\/[mu]\d+\.ts$/.test(f));
+      const modules = first.files.filter((f) =>
+        /^packages\/(core|util)\/src\/[mu]\d+\.ts$/.test(f),
+      );
       const tests = first.files.filter((f) => f.endsWith(".test.ts"));
       expect([modules.length, tests.length]).toEqual([1_000, 200]);
 
