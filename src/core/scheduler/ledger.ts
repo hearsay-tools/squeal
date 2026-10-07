@@ -104,6 +104,12 @@ export class Ledger {
    * needed." A key that already has this worktree's results, that the tier in
    * flight runs, or that crashed (D12) needs nothing. Forced entries stay
    * queued. Returns the misses.
+   *
+   * A miss is queued as recent when `changed` holds the test file or a path
+   * of its closure, or the runner named it a direct importer: work an edit
+   * caused, which runs ahead of the rest (D5 step 4 as amended, task
+   * 001-100). An environment input is in no closure, so the files an install
+   * or a config change re-keys are not.
    */
   settle(
     refs: Iterable<TestFileRef>,
@@ -112,6 +118,7 @@ export class Ledger {
   ): FileState[] {
     const misses: FileState[] = [];
     const seen = new Set<string>();
+    const recent = this.#recent(changed, options.direct);
     for (const ref of refs) {
       const file = this.file(ref);
       if (!file || seen.has(file.id)) continue;
@@ -144,10 +151,20 @@ export class Ledger {
         this.queue.remove(ref);
         this.#syncPhase(file);
       } else if (options.queueMisses !== false) {
-        this.enqueue(file, priorityOf(file, changed, options.direct));
+        this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
       }
     }
     return misses;
+  }
+
+  /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */
+  #recent(changed: ReadonlySet<RelativePath>, direct?: ReadonlySet<string>): Set<string> {
+    const ids = new Set(direct);
+    if (changed.size === 0) return ids;
+    for (const ref of this.context.keys.index.reverse.referencing(changed))
+      ids.add(testFileId(ref));
+    for (const file of this.files.values()) if (changed.has(file.ref.path)) ids.add(file.id);
+    return ids;
   }
 
   /**
@@ -177,8 +194,8 @@ export class Ledger {
     this.checkpoints.done(file.ref, checkpointId);
   }
 
-  enqueue(file: FileState, priority: Priority, forced = false): void {
-    this.queue.add(file.ref, priority, forced);
+  enqueue(file: FileState, priority: Priority, forced = false, recent = false): void {
+    this.queue.add(file.ref, priority, forced, recent);
     this.#syncPhase(file);
   }
 

@@ -40,6 +40,8 @@ interface Entry {
   priority: Priority;
   readonly seq: number;
   forced: boolean;
+  /** Queued by a revision's edit: its closure changed or it was added (`Ledger.settle`). */
+  recent: boolean;
 }
 
 /**
@@ -60,17 +62,19 @@ export class RunQueue {
 
   /**
    * Queues a test file, or raises the priority of its entry. A `forced` entry
-   * (`run --all --force`) runs even when its key has a result.
+   * (`run --all --force`) runs even when its key has a result. A `recent`
+   * entry stays recent until it leaves the queue.
    */
-  add(ref: TestFileRef, priority: Priority, forced = false): void {
+  add(ref: TestFileRef, priority: Priority, forced = false, recent = false): void {
     const id = testFileId(ref);
     const entry = this.#entries.get(id);
     if (entry) {
       entry.priority = Math.min(entry.priority, priority) as Priority;
       entry.forced ||= forced;
+      entry.recent ||= recent;
       return;
     }
-    this.#entries.set(id, { ref, priority, seq: this.#seq++, forced });
+    this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
   }
 
   remove(ref: TestFileRef): boolean {
@@ -82,10 +86,13 @@ export class RunQueue {
   }
 
   /**
-   * Priority, then shortest last known duration with unknown ones last, then
-   * first queued, then project and path. Spec 001 D5 step 4: "within a class,
-   * shortest last known duration first, so a slow integration file never
-   * delays the edited module's own unit test."
+   * Recent entries first, then priority, then shortest last known duration
+   * with unknown ones last, then first queued, then project and path. Spec
+   * 001 D5 step 4 as amended (task 001-100, defect 19): work an edit caused
+   * runs ahead of the baseline, an environment change or `run --all`, "within
+   * each group D5's order stands"; "within a class, shortest last known
+   * duration first, so a slow integration file never delays the edited
+   * module's own unit test."
    */
   ordered(durationOf: DurationOf = () => null): TestFileRef[] {
     const durations = new Map<Entry, number>();
@@ -96,6 +103,7 @@ export class RunQueue {
     return [...this.#entries.values()]
       .sort(
         (a, b) =>
+          Number(b.recent) - Number(a.recent) ||
           a.priority - b.priority ||
           byDuration(duration(a), duration(b)) ||
           a.seq - b.seq ||
