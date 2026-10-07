@@ -14,7 +14,11 @@ import { directoryOf, type ReverseIndex, testFileId } from "./reverse-index.js";
  * deleted path `dir/name.ext` this picks test files with a closure path:
  *
  * - directly in `dir`: `./name` may now resolve to another extension, and a
- *   template-literal `import()` or `import.meta.glob` over `dir` changes;
+ *   template-literal `import()` or `import.meta.glob` over `dir` changes. For
+ *   `dir/package.json` this is the only rule that reports the importer: the
+ *   directory now resolves to the entry it names instead of its `index`, or
+ *   back, and the manifest is in no closure and no module graph, so neither
+ *   `KeyIndex.rekey` nor the runner's `affected` sees it (task 001-72);
  * - below `dir/name/`: `./name` may now resolve to the file instead of the
  *   directory's index, or back;
  * - directly in the parent of `dir` when `name` is `index`: `./dir` may now

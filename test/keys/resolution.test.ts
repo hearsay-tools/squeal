@@ -32,16 +32,19 @@ describe("closuresToReresolve", () => {
     expect(closuresToReresolve([edit("src/a.ts"), edit("src/new.ts")], build(), none)).toEqual([]);
   });
 
-  it("picks test files importing from the directory a file was added to", () => {
-    // src/a.js beside src/a.ts can change what "./a" resolves to.
-    expect(paths(closuresToReresolve([add("src/a.js")], build(), none))).toEqual([
-      "test/src.test.ts",
+  // Task 001-72: the one case neither `rekey` nor the runner's `affected` reports
+  // (test/runners/vitest/reresolution.test.ts). "./foo" resolved to src/foo/index.ts.
+  it("picks importers of a directory whose package.json was added", () => {
+    // Its `main` may now win over the index.
+    expect(paths(closuresToReresolve([add("src/foo/package.json")], build(), none))).toEqual([
+      "test/foo.test.ts",
     ]);
   });
 
-  it("picks test files importing from the directory a file was deleted from", () => {
-    expect(paths(closuresToReresolve([del("lib/other.ts")], build(), none))).toEqual([
-      "test/lib.test.ts",
+  it("picks importers of a directory whose package.json was deleted", () => {
+    // Its `main` gave way to the index.
+    expect(paths(closuresToReresolve([del("src/foo/package.json")], build(), none))).toEqual([
+      "test/foo.test.ts",
     ]);
   });
 

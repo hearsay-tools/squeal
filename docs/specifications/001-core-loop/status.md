@@ -50,6 +50,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 7.7 (001-63, from `reviews/wave-7.6.md` B1, B2, S1, S2, N1 to N5): D10 amended again. The daemon's temp directory is `/tmp/squeal-<uid>/tmp/<worktree-hash>/`, in a private per-user directory made like the socket fallback, so a test's `mkdtemp(os.tmpdir())` lies outside every repository as under `vitest run`; it is emptied under the lock at start and removed at exit, after the runner closes and before the lock goes. B2 decided as option (b): runner calls keep the root as working directory, and a process the project's tools start during one (esbuild's service under Vite 6 and 7) may hold the root until the daemon exits; `git worktree remove` still succeeds and the daemon then exits (`test/daemon/scratch-children.test.ts`). D4: a `package.json` `main` with a trailing slash names its directory's `index`; the `exports` match is defensive; local figures are 001-60's and CI figures come from run 37579065539.
 
+- 2026-10-07, wave 9 (001-72, `tasks/wave-9.md` "001-72 table"): `closuresToReresolve` stays. Measured on every row of `structural.test.ts` and `resolution.test.ts`, it is the only rule that re-resolves an importer of a directory whose `package.json` was added or deleted; every other closure that moves is reported by `rekey` or `affected`, and its other picks re-fetch closures that do not move. D3 names the case; `test/runners/vitest/reresolution.test.ts` pins it. Editing a `package.json` `main` re-resolves nothing in any rule, the importer's transform included; not addressed here.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
