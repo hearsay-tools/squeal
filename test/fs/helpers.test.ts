@@ -1,6 +1,13 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { compare, isMissing, sameList, toAbsolute, toRelative } from "../../src/core/fs/index.js";
+import {
+  compare,
+  isMissing,
+  isRecord,
+  sameList,
+  toAbsolute,
+  toRelative,
+} from "../../src/core/fs/index.js";
 
 const ROOT = "/repo";
 const errno = (code: string) => Object.assign(new Error(code), { code });
@@ -59,5 +66,14 @@ describe("sameList", () => {
     expect(sameList([], [])).toBe(true);
     expect(sameList(["a", "b"], ["b", "a"])).toBe(false);
     expect(sameList(["a"], ["a", "b"])).toBe(false);
+  });
+});
+
+describe("isRecord", () => {
+  it("is true only for a JSON object", () => {
+    expect(isRecord({ a: 1 })).toBe(true);
+    expect(isRecord([])).toBe(false);
+    expect(isRecord(null)).toBe(false);
+    expect(isRecord("text")).toBe(false);
   });
 });
