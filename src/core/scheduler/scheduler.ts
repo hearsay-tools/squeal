@@ -1,26 +1,22 @@
 import { createFsHasher, type Hasher, readObjectFormat } from "../hash/index.js";
-import { testFileId } from "../keys/index.js";
 import { appendNote } from "../notes.js";
 import { type HeadState, statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
-import {
-  type AbsolutePath,
-  type CandidateBatch,
-  type CheckpointRecord,
-  type EpochMs,
-  type FileChange,
-  type FullSuiteRequest,
-  type Policy,
-  type RelativePath,
-  type Revision,
-  type RunnerAdapter,
-  refinedMetaKey,
-  type Scheduler,
-  type SchedulerStatus,
-  type StateSink,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
+import type {
+  AbsolutePath,
+  CandidateBatch,
+  CheckpointRecord,
+  EpochMs,
+  FileChange,
+  FullSuiteRequest,
+  Policy,
+  RelativePath,
+  RunnerAdapter,
+  Scheduler,
+  SchedulerStatus,
+  StateSink,
+  Store,
+  WorktreeId,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
 import { bootstrap } from "./bootstrap.js";
@@ -31,8 +27,8 @@ import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import { priorityOf } from "./queue.js";
 import type { FailureDescriber } from "./records.js";
-import { applyRunnerPart, fetchRunnerPart } from "./refinement.js";
-import { type ContentRekey, retryRunner } from "./revision.js";
+import { retryRunner } from "./revision.js";
+import { RunnerWork } from "./runner-work.js";
 import { statusOf } from "./status.js";
 import {
   executeTier,
@@ -87,16 +83,6 @@ export interface SchedulerOptions {
   readonly now?: () => EpochMs;
 }
 
-/**
- * Work that calls the runner outside a tier: the refinement of a revision, a
- * `run --all` while a runner failure is outstanding. `run` never rejects;
- * `cancel` settles it when the scheduler closes first.
- */
-interface RunnerTask {
-  run(): Promise<void>;
-  cancel(): void;
-}
-
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
 export function createScheduler(options: SchedulerOptions): Scheduler {
   return new TierScheduler(options);
@@ -105,12 +91,13 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
 class TierScheduler implements Scheduler {
   readonly #lock = new Mutex();
   readonly #idle: (() => void)[] = [];
-  /** Runner work in arrival order, applied between tiers by the pump. */
-  readonly #runnerWork: RunnerTask[] = [];
-  /** A refinement is in its runner phase: shifted off `#runnerWork`, not applied yet. */
-  #refining = false;
-  /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
-  readonly #carried = new Map<string, TestFileRef>();
+  readonly #runnerWork = new RunnerWork({
+    lock: this.#lock,
+    started: () => this.#started(),
+    closed: () => this.#closed,
+    pump: () => this.#pump(),
+    backgroundError: (subject, error) => this.#backgroundError(subject, error),
+  });
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
@@ -166,7 +153,7 @@ class TierScheduler implements Scheduler {
    * Stores the revision a batch creates and returns: the revision row, stat
    * cache, content re-key, `queued` phases and known states, in one
    * transaction. The runner part is queued and applied by the pump after the
-   * tier in flight, in batch order (`#refine`).
+   * tier in flight, in batch order (`RunnerWork`).
    *
    * Spec 001 D2: "Creating a revision never waits on the runner: the store
    * work [...] completes within the debounce window even while a tier is
@@ -183,41 +170,9 @@ class TierScheduler implements Scheduler {
       const applied = await reconcileBatch(context, ledger, batch);
       if (applied === null) return;
       const { revision, content } = applied;
-      this.#runnerWork.push({ run: () => this.#refine(revision, content), cancel: () => {} });
+      this.#runnerWork.queueRefine(revision, content);
     });
     this.#pump();
-  }
-
-  /**
-   * The runner part of one revision, in two phases (review wave 4.5, S3).
-   * The runner phase calls the runner without the lock, so batches are
-   * reconciled meanwhile; the apply phase takes the lock, applies what the
-   * runner said, and commits it with the revision as refined (D2 as
-   * amended). Never rejects: an error is a note, and the revision counts as
-   * refined so no wait hangs on it.
-   */
-  async #refine(revision: Revision, content: ContentRekey): Promise<void> {
-    const { context, ledger } = this.#started();
-    this.#refining = true;
-    try {
-      ledger.refineChanges = new Set();
-      const carried = [...this.#carried.values()];
-      this.#carried.clear();
-      const part = await fetchRunnerPart(context, ledger, revision, content, carried);
-      await this.#lock.run(async () => {
-        const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
-        ledger.refineChanges = null;
-        const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
-        for (const ref of stale) this.#carried.set(testFileId(ref), ref);
-        ledger.commit({ refined: revision.number });
-      });
-    } catch (error) {
-      this.#backgroundError(`could not apply revision ${revision.number}`, error);
-      this.#refinedAfterError(revision.number);
-    } finally {
-      ledger.refineChanges = null;
-      this.#refining = false;
-    }
   }
 
   /**
@@ -231,10 +186,10 @@ class TierScheduler implements Scheduler {
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
-        if (ledger.broken || this.#runnerWork.length > 0 || this.#refining) return null;
+        if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
         return queueFullSuite(ledger, force);
       })) ??
-      (await this.#afterTier(async () => {
+      (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
         await retryRunner(context, ledger);
         return queueFullSuite(ledger, force);
@@ -264,7 +219,7 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return;
     this.#closed = true;
     await this.#pumping;
-    for (const task of this.#runnerWork.splice(0)) task.cancel();
+    this.#runnerWork.cancel();
     await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
     for (const resolve of this.#idle.splice(0)) resolve();
   }
@@ -290,10 +245,10 @@ class TierScheduler implements Scheduler {
       let tier: Tier | null = null;
       try {
         while (!this.#closed) {
-          await this.#drainRunnerWork();
+          await this.#runnerWork.drain();
           if (this.#closed) break;
           const next = await this.#lock.run(() => {
-            if (this.#runnerWork.length > 0) return "runner-work" as const;
+            if (this.#runnerWork.size > 0) return "runner-work" as const;
             const { context, ledger } = this.#started();
             return selectTier(context, ledger);
           });
@@ -324,29 +279,8 @@ class TierScheduler implements Scheduler {
     })();
   }
 
-  /** Applies the queued runner work, oldest first. */
-  async #drainRunnerWork(): Promise<void> {
-    while (!this.#closed) {
-      const task = this.#runnerWork.shift();
-      if (!task) return;
-      await task.run();
-    }
-  }
-
-  /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
-  #afterTier<T>(task: () => Promise<T>): Promise<T> {
-    if (this.#closed) return Promise.reject(new Error("squeal scheduler: closed"));
-    return new Promise<T>((resolve, reject) => {
-      this.#runnerWork.push({
-        run: () => this.#lock.run(task).then(resolve, reject),
-        cancel: () => reject(new Error("squeal scheduler: closed")),
-      });
-      this.#pump();
-    });
-  }
-
   #hasWork(): boolean {
-    return this.#runnerWork.length > 0 || (this.#ledger?.queue.size ?? 0) > 0;
+    return this.#runnerWork.size > 0 || (this.#ledger?.queue.size ?? 0) > 0;
   }
 
   /** Puts the files of a tier that never got recorded back into the queue. */
@@ -379,24 +313,6 @@ class TierScheduler implements Scheduler {
   #started(): { context: SchedulerContext; ledger: Ledger } {
     if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
     return { context: this.#context, ledger: this.#ledger };
-  }
-
-  /**
-   * A refinement that threw is not pending any more: nothing retries it, and
-   * its note says what failed. Its revision is recorded as refined, so waits
-   * do not wait for it forever (D2 as amended).
-   */
-  #refinedAfterError(revision: number): void {
-    const { store, worktreeId } = this.options;
-    try {
-      store.transaction(() => {
-        const key = refinedMetaKey(worktreeId);
-        const previous = Number(store.meta.get(key) ?? Number.NaN);
-        if (!(previous >= revision)) store.meta.set(key, String(revision));
-      });
-    } catch (error) {
-      this.#backgroundError(`could not record revision ${revision} as refined`, error);
-    }
   }
 
   /** An error of work no caller awaits: a note for status, and `onError`. */
