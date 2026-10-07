@@ -1,6 +1,6 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { mapConcurrent } from "../../src/core/watcher/concurrency.js";
-import { delay } from "./helpers.js";
+import { mapConcurrent } from "../../src/core/fs/index.js";
 
 describe("mapConcurrent", () => {
   it("keeps input order while calls finish out of order", async () => {

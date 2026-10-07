@@ -1,12 +1,5 @@
-import { compare } from "../fs/index.js";
-import {
-  type CacheUpdate,
-  type Hasher,
-  isRacy,
-  mapConcurrent,
-  type StatCache,
-  sameStat,
-} from "../hash/index.js";
+import { compare, mapConcurrent } from "../fs/index.js";
+import { type CacheUpdate, type Hasher, isRacy, type StatCache, sameStat } from "../hash/index.js";
 import type {
   CandidateBatch,
   CandidatePath,

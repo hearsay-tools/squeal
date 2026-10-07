@@ -1,11 +1,11 @@
-/** How many paths are stat'ed at once, so a 10k-file pass does not queue 10k filesystem calls. */
-export const STAT_CONCURRENCY = 64;
+/** How many files are stat'ed or read at once, so a 10k-file pass does not queue 10k filesystem calls. */
+export const FILE_CONCURRENCY = 64;
 
 /** `Promise.all` over `items` with at most `limit` calls in flight. Results keep input order. */
 export async function mapConcurrent<T, R>(
   items: Iterable<T>,
   fn: (item: T, index: number) => Promise<R>,
-  limit = STAT_CONCURRENCY,
+  limit = FILE_CONCURRENCY,
 ): Promise<R[]> {
   const list = [...items];
   const results = new Array<R>(list.length);
