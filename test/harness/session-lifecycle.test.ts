@@ -7,6 +7,7 @@ import { storePaths } from "../../src/core/store/index.js";
 import { type Consumer, MAIN_AGENT } from "../../src/core/types/index.js";
 import { acquireWaiterLock } from "../../src/core/waiter-lock/index.js";
 import type { HookContext } from "../../src/harness/claude-code/context.js";
+import { PRIMER } from "../../src/harness/claude-code/hooks/session-start.js";
 import {
   type HookDeps,
   type HookResult,
@@ -211,7 +212,8 @@ describe("SessionStart sweep by source (review wave 4.5, S4)", () => {
       deps(),
     );
 
-    expect(out).toEqual(SILENT);
+    // Task 001-88: only the primer, which compaction dropped.
+    expect(JSON.parse(out.stdout).hookSpecificOutput.additionalContext).toBe(PRIMER);
     expect(sessionsIn(r, r.worktreeId)).toEqual(
       [`${SESSION}/${SUBAGENT}`, `${SESSION}/main`].sort(),
     );
