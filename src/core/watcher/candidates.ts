@@ -1,9 +1,10 @@
 import type { Dirent, Stats } from "node:fs";
-import { lstat, readdir } from "node:fs/promises";
+import { lstat, readdir, realpath } from "node:fs/promises";
 import { hasGitEntry, isMissing, mapConcurrent, toAbsolute, toRelative } from "../fs/index.js";
 import type { AbsolutePath, CandidatePath, FileStat, RelativePath } from "../types/index.js";
 import type { Exclusions } from "./exclusions.js";
-import { checkIgnored } from "./git.js";
+import { checkIgnored, ignoredLinks } from "./git.js";
+import { isLinkedDir, SymlinkProbe } from "./links.js";
 import { isGitMetadata, selfAndAncestors } from "./paths.js";
 
 /** What the assembly needs to know about the worktree at the time of one batch. */
@@ -20,6 +21,14 @@ export interface HintCandidates {
   readonly paths: CandidatePath[];
   /** Directories that appeared and are ignored: the watch spec should exclude them. */
   readonly ignoredDirs: RelativePath[];
+  /** Paths of the batch that are symlinks to directories below the root. */
+  readonly linkedDirs: RelativePath[];
+}
+
+export interface ReconcileCandidates {
+  readonly paths: CandidatePath[];
+  /** Symlinked directories observed like project directories, with the realpath of each target. */
+  readonly linkedDirs: ReadonlyMap<RelativePath, AbsolutePath>;
 }
 
 /**
@@ -55,6 +64,7 @@ export async function candidatesFromHints(
   );
   const out = new Map<RelativePath, FileStat | null>();
   const ignoredDirs: RelativePath[] = [];
+  const linkedDirs: RelativePath[] = [];
   const walked: RelativePath[] = [];
   let tracked: Set<RelativePath> | null = null;
   const trackedSet = () => {
@@ -71,6 +81,9 @@ export async function candidatesFromHints(
         walked.push(...(await walkFiles(ctx, nested, rel)));
       }
       continue;
+    }
+    if (stats?.isSymbolicLink() && (await isLinkedDir(toAbsolute(ctx.root, rel)))) {
+      linkedDirs.push(rel);
     }
     if (ignored.has(rel)) continue;
     out.set(rel, stats ? toFileStat(stats) : null);
@@ -92,14 +105,16 @@ export async function candidatesFromHints(
   for (const [rel, stat] of out) {
     if (stat === null) out.set(rel, await statOrNull(ctx.root, rel));
   }
-  return { paths: sortCandidates(out), ignoredDirs };
+  return { paths: sortCandidates(out), ignoredDirs, linkedDirs };
 }
 
 /**
  * Candidates for a reconciliation pass: what git status reports plus every
- * tracked path and extra file, re-stat'ed. Only `.git` metadata and paths
- * inside nested repositories are dropped; git status already leaves ignored
- * files out, and the caller's tracked paths are trusted.
+ * tracked path and extra file, re-stat'ed, plus every file under a symlinked
+ * directory among them that git does not ignore, which git never lists. Only
+ * `.git` metadata and paths inside nested repositories are dropped; git
+ * status already leaves ignored files out, and the caller's tracked paths are
+ * trusted.
  *
  * Spec 001 D2: "`git status --porcelain` plus a re-stat of every file in the
  * hash cache."
@@ -107,7 +122,7 @@ export async function candidatesFromHints(
 export async function candidatesForReconcile(
   ctx: CandidateContext,
   statusPaths: Iterable<RelativePath>,
-): Promise<CandidatePath[]> {
+): Promise<ReconcileCandidates> {
   const nested = new NestedRepoProbe(ctx.root);
   const all = new Set<RelativePath>([...statusPaths, ...ctx.trackedPaths(), ...ctx.extraFiles]);
   const paths = [...all].filter((rel) => !isGitMetadata(rel));
@@ -123,7 +138,38 @@ export async function candidatesForReconcile(
     const stat = stats[i];
     if (stat !== undefined) out.set(rel, stat);
   });
-  return sortCandidates(out);
+  const linkedDirs = await observedLinks(ctx, nested, [...out.keys()]);
+  for (const link of linkedDirs.keys()) {
+    for (const rel of await walkFiles(ctx, nested, link)) {
+      out.set(rel, await statOrNull(ctx.root, rel));
+    }
+  }
+  return { paths: sortCandidates(out), linkedDirs };
+}
+
+/**
+ * The symlinked directories among `paths`, below the root and beyond no other
+ * link, that are observed like project directories: git ignores neither the
+ * link nor a directory at its path, no `.git` entry makes the target another
+ * repository, and the target is neither the root nor a directory above it.
+ * Links inside a target are not followed, so no walk loops.
+ */
+async function observedLinks(
+  ctx: CandidateContext,
+  nested: NestedRepoProbe,
+  paths: readonly RelativePath[],
+): Promise<Map<RelativePath, AbsolutePath>> {
+  const probe = new SymlinkProbe(ctx.root);
+  const links = new Map<RelativePath, AbsolutePath>();
+  for (const rel of paths) {
+    const abs = toAbsolute(ctx.root, rel);
+    if (!(await isLinkedDir(abs)) || (await probe.linkAbove(rel)) !== null) continue;
+    const target = await realpath(abs).catch(() => null);
+    if (target === null || ctx.root === target || ctx.root.startsWith(`${target}/`)) continue;
+    if (!(await nested.isInside(rel))) links.set(rel, target);
+  }
+  for (const link of await ignoredLinks(ctx.root, [...links.keys()])) links.delete(link);
+  return links;
 }
 
 /** Caches "does this directory hold a `.git` entry" for one batch. */
