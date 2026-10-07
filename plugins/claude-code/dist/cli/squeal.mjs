@@ -243,9 +243,9 @@ function globToRegExp(glob) {
   const source = glob.startsWith("./") ? glob.slice(2) : glob;
   return new RegExp(`^${compile(source, glob)}$`, "s");
 }
-function createInputMatcher(globs) {
-  if (globs.length === 0) return () => false;
-  const patterns = globs.map(globToRegExp);
+function createInputMatcher(globs2) {
+  if (globs2.length === 0) return () => false;
+  const patterns = globs2.map(globToRegExp);
   return (path) => patterns.some((pattern) => pattern.test(path));
 }
 function compile(glob, original) {
@@ -334,17 +334,17 @@ function normalizeRelativePath(path) {
 }
 function createDeclaredInputs(inputs2, files) {
   const known2 = [...files];
-  const select = (globs) => {
-    const matches = createInputMatcher(globs);
+  const select = (globs2) => {
+    const matches = createInputMatcher(globs2);
     return known2.filter((file) => matches(file)).sort(compare);
   };
   if (isInputList(inputs2)) {
     const selected = select(inputs2);
     return { for: () => selected, all: selected };
   }
-  const rules = Object.entries(inputs2).map(([testGlob, globs]) => ({
+  const rules = Object.entries(inputs2).map(([testGlob, globs2]) => ({
     applies: createInputMatcher([testGlob]),
-    selected: select(globs)
+    selected: select(globs2)
   }));
   const union = (lists) => lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort(compare);
   return {
@@ -1062,6 +1062,7 @@ var init_policy = __esm({
       inputs: [],
       env: { allowlist: [] },
       runner: { tierSize: 4, timeoutMs: 6e5 },
+      nodeTest: [],
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null }
     };
@@ -2927,6 +2928,82 @@ var init_notes = __esm({
   }
 });
 
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute4, posix as posix4 } from "node:path";
+function compiles(globs2) {
+  for (const glob of globs2) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
+    }
+  }
+  return null;
+}
+function nodeTestProjects(value, path) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry2, index) => {
+    const at = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at, kept);
+    if (problem === null) kept.push(withDefaults(entry2));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function entryProblem(entry2, at, kept) {
+  if (!isRecord(entry2))
+    return `"${at}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  for (const key of Object.keys(entry2)) {
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(FIELDS)) {
+    const given = entry2[key];
+    if (given === void 0 && !REQUIRED.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why2 = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at}.${key}" ${why2}; ${skipped}`;
+  }
+  if (kept.some((project) => project.name === named)) {
+    return `"${at}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  }
+  return null;
+}
+var nonEmptyString, strings, globs, variables, insideRoot, FIELDS, REQUIRED;
+var init_policy_node_test = __esm({
+  "src/core/daemon/policy-node-test.ts"() {
+    "use strict";
+    init_fs();
+    init_glob();
+    nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+    strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+    globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+    variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+    insideRoot = (v) => {
+      if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+      const normal = posix4.normalize(v.replaceAll("\\", "/"));
+      return isAbsolute4(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+    };
+    FIELDS = {
+      name: nonEmptyString,
+      cwd: insideRoot,
+      node: nonEmptyString,
+      argv: strings,
+      env: variables,
+      include: globs,
+      exclude: globs
+    };
+    REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+  }
+});
+
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync5 } from "node:fs";
 import { join as join14 } from "node:path";
@@ -2966,7 +3043,10 @@ function merge(shape, defaults, given, prefix, problems) {
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
-      else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
     } else if (!isRecord(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
@@ -2987,31 +3067,24 @@ function lastPolicyNote(store, worktreeId) {
   const texts = readDaemonNotes(store, worktreeId).map((note) => note.text);
   return texts.findLast((text) => text.startsWith(POLICY_FILE)) ?? null;
 }
-var POLICY_FILE, boolean, strings, inputs, atLeastZero, aboveZero, positiveInteger, orNull, oneOf2, SHAPE;
+var POLICY_FILE, boolean, strings2, inputs, atLeastZero, aboveZero, positiveInteger, orNull, oneOf2, SHAPE;
 var init_policy2 = __esm({
   "src/core/daemon/policy.ts"() {
     "use strict";
     init_fs();
-    init_glob();
     init_notes();
     init_types();
+    init_policy_node_test();
     POLICY_FILE = "squeal.config.json";
     boolean = (v) => typeof v === "boolean" ? null : "true or false";
-    strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+    strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
     inputs = (v) => {
-      const isList = strings(v) === null;
-      if (!isList && !(isRecord(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
+      const isList = strings2(v) === null;
+      if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
         return "an array of strings, or an object from test-file glob to an array of strings";
       }
-      const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-      for (const glob of globs) {
-        try {
-          globToRegExp(glob);
-        } catch (error) {
-          return { problem: `has a glob Squeal cannot use: ${error.message}` };
-        }
-      }
-      return null;
+      const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+      return compiles(globs2);
     };
     atLeastZero = (v) => isNumber2(v) && v >= 0 ? null : "a number >= 0";
     aboveZero = (v) => isNumber2(v) && v > 0 ? null : "a number > 0";
@@ -3026,11 +3099,12 @@ var init_policy2 = __esm({
       stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
       baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
       inputs,
-      env: { allowlist: strings },
+      env: { allowlist: strings2 },
       runner: {
         tierSize: positiveInteger,
         timeoutMs: orNull(positiveInteger)
       },
+      nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
       daemon: { idleExitMinutes: aboveZero },
       store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
     };
@@ -8977,11 +9051,46 @@ var init_vitest = __esm({
   }
 });
 
+// src/runners/node-test/adapter.ts
+var adapter_exports = {};
+__export(adapter_exports, {
+  NODE_TEST_ADAPTER_VERSION: () => NODE_TEST_ADAPTER_VERSION,
+  createNodeTestAdapter: () => createNodeTestAdapter
+});
+function createNodeTestAdapter(project) {
+  const unlisted = (path) => Promise.reject(
+    new Error(`node-test project ${JSON.stringify(project.name)} lists no test files: ${path}`)
+  );
+  return {
+    name: "node-test",
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    invalidate: async () => ({ recreatedProjects: [] }),
+    affected: async () => ({ direct: [], transitive: [] }),
+    closure: (testFile) => unlisted(testFile.path),
+    enumerate: (testFile) => unlisted(testFile.path),
+    testFiles: async () => [],
+    environment: async () => [],
+    run: (testFiles) => unlisted(testFiles.map((f) => f.path).join(", ")),
+    close: async () => {
+    }
+  };
+}
+var NODE_TEST_ADAPTER_VERSION;
+var init_adapter2 = __esm({
+  "src/runners/node-test/adapter.ts"() {
+    "use strict";
+    NODE_TEST_ADAPTER_VERSION = "0";
+  }
+});
+
 // src/core/daemon/runner.ts
 var runner_exports = {};
 __export(runner_exports, {
-  createRecoveringRunner: () => createRecoveringRunner
+  createRecoveringRunner: () => createRecoveringRunner,
+  vitestDetected: () => vitestDetected
 });
+import { readdirSync as readdirSync2, readFileSync as readFileSync8 } from "node:fs";
+import { join as join26 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters4 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -9064,9 +9173,165 @@ function messageOf(error) {
   const text = error instanceof Error ? error.message : String(error);
   return stripVTControlCharacters4(text).trim();
 }
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync2(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync8(join26(root, "package.json"), "utf8"));
+  } catch {
+    return false;
+  }
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+var VITEST_CONFIG;
 var init_runner = __esm({
   "src/core/daemon/runner.ts"() {
     "use strict";
+    init_fs();
+    VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+  }
+});
+
+// src/core/daemon/composite-runner.ts
+var composite_runner_exports = {};
+__export(composite_runner_exports, {
+  createCompositeRunner: () => createCompositeRunner
+});
+function createCompositeRunner(adapters) {
+  const owners = /* @__PURE__ */ new Map();
+  const own = (adapter, projects) => {
+    for (const project of projects) {
+      const owner2 = owners.get(project);
+      if (owner2 !== void 0 && owner2 !== adapter) {
+        throw new Error(
+          `project ${JSON.stringify(project)} is reported by both ${owner2.name} and ${adapter.name}; rename one`
+        );
+      }
+      owners.set(project, adapter);
+    }
+  };
+  const each = (call) => Promise.all(adapters.map(async (adapter) => ({ adapter, value: await call(adapter) })));
+  const environment = async () => {
+    const parts = await each((adapter) => adapter.environment());
+    for (const { adapter, value } of parts)
+      own(
+        adapter,
+        value.map((e) => e.project)
+      );
+    return parts.flatMap((part) => part.value);
+  };
+  const ownerOf = async (testFile) => {
+    if (!owners.has(testFile.project)) await environment();
+    const owner2 = owners.get(testFile.project);
+    if (owner2 === void 0) {
+      throw new Error(
+        `no runner owns project ${JSON.stringify(testFile.project)} (${testFile.path})`
+      );
+    }
+    return owner2;
+  };
+  return {
+    name: adapters.map((adapter) => adapter.name).join("+"),
+    adapterVersion: adapters.map((adapter) => adapter.adapterVersion).join("+"),
+    async invalidate(paths) {
+      const parts = await Promise.all(adapters.map((adapter) => adapter.invalidate(paths)));
+      const projects = new Set(parts.flatMap((part) => part.recreatedProjects));
+      return { recreatedProjects: [...projects].sort(compare) };
+    },
+    async affected(changedPaths) {
+      const parts = await Promise.all(adapters.map((adapter) => adapter.affected(changedPaths)));
+      return {
+        direct: parts.flatMap((part) => part.direct).sort(compareRefs2),
+        transitive: parts.flatMap((part) => part.transitive).sort(compareRefs2)
+      };
+    },
+    closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
+    enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
+    async testFiles() {
+      const parts = await each((adapter) => adapter.testFiles());
+      for (const { adapter, value } of parts)
+        own(
+          adapter,
+          value.map((f) => f.project)
+        );
+      return parts.flatMap((part) => part.value);
+    },
+    environment,
+    async run(testFiles, options) {
+      const groups = /* @__PURE__ */ new Map();
+      for (const testFile of testFiles) {
+        const owner2 = await ownerOf(testFile);
+        groups.set(owner2, [...groups.get(owner2) ?? [], testFile]);
+      }
+      const parts = [];
+      for (const adapter of adapters) {
+        const files = groups.get(adapter);
+        if (files === void 0) continue;
+        parts.push({ adapter, report: await runPart(adapter, files, options) });
+      }
+      return merge2(parts);
+    },
+    async close() {
+      const closed = await Promise.allSettled(adapters.map((adapter) => adapter.close()));
+      const failed2 = closed.find((result) => result.status === "rejected");
+      if (failed2 !== void 0) throw failed2.reason;
+    }
+  };
+}
+async function runPart(adapter, testFiles, options) {
+  const started = Date.now();
+  try {
+    return await adapter.run(testFiles, options);
+  } catch (error) {
+    return {
+      end: "crashed",
+      durationMs: Date.now() - started,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+function merge2(parts) {
+  const reports = parts.map((part) => part.report);
+  const end = reports.reduce(
+    (worst, report2) => SEVERITY[report2.end] > SEVERITY[worst] ? report2.end : worst,
+    "completed"
+  );
+  const failures = parts.flatMap(
+    ({ adapter, report: report2 }) => report2.failure === null ? [] : [`${adapter.name}: ${report2.failure}`]
+  );
+  const timed = reports.some((report2) => report2.fileDurations !== void 0);
+  return {
+    end,
+    durationMs: reports.reduce((sum, report2) => sum + report2.durationMs, 0),
+    completedFiles: reports.flatMap((report2) => report2.completedFiles),
+    results: reports.flatMap((report2) => report2.results),
+    fileErrors: reports.flatMap((report2) => report2.fileErrors),
+    failure: failures.length === 0 ? null : failures.join("; "),
+    ...timed ? { fileDurations: reports.flatMap((report2) => report2.fileDurations ?? []) } : {}
+  };
+}
+function compareRefs2(a, b) {
+  return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
+}
+var SEVERITY;
+var init_composite_runner = __esm({
+  "src/core/daemon/composite-runner.ts"() {
+    "use strict";
+    init_fs();
+    SEVERITY = { completed: 0, "timed-out": 1, crashed: 2 };
   }
 });
 
@@ -9077,7 +9342,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.14";
+  if (true) return "0.1.15";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10594,6 +10859,8 @@ var Daemon = class {
   #policy = DEFAULT_POLICY;
   #desk = null;
   #runner = null;
+  /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
+  #vitest = null;
   #loop = null;
   #starting = Promise.resolve();
   #stopTimers = () => {
@@ -10715,23 +10982,41 @@ var Daemon = class {
   async #run() {
     const { root, worktreeId, store, commonDir } = this.opened;
     try {
-      const [{ createDaemonLoop: createDaemonLoop2 }, { createStateSink: createStateSink2, describeFailure: describeFailure2 }, vitest, runnerModule] = await Promise.all([
+      const [
+        { createDaemonLoop: createDaemonLoop2 },
+        { createStateSink: createStateSink2, describeFailure: describeFailure2 },
+        vitest,
+        nodeTest,
+        runnerModule,
+        { createCompositeRunner: createCompositeRunner2 }
+      ] = await Promise.all([
         Promise.resolve().then(() => (init_daemon_loop(), daemon_loop_exports)),
         Promise.resolve().then(() => (init_state2(), state_exports)),
         Promise.resolve().then(() => (init_vitest(), vitest_exports)),
-        Promise.resolve().then(() => (init_runner(), runner_exports))
+        Promise.resolve().then(() => (init_adapter2(), adapter_exports)),
+        Promise.resolve().then(() => (init_runner(), runner_exports)),
+        Promise.resolve().then(() => (init_composite_runner(), composite_runner_exports))
       ]);
       const { storePaths: storePaths2 } = await Promise.resolve().then(() => (init_store2(), store_exports));
-      const runner = runnerModule.createRecoveringRunner({
+      const around = this.options.ownsProcess ? inRootWhileRunning(root, this.opened.scratch) : void 0;
+      const configured = this.#policy.nodeTest;
+      const vitestRunner = configured.length === 0 || runnerModule.vitestDetected(root) ? runnerModule.createRecoveringRunner({
         name: "vitest",
         adapterVersion: vitest.VITEST_ADAPTER_VERSION,
         create: () => vitest.createVitestAdapter({ root, note: (text) => this.#note(text) }),
-        onFailure: (text) => this.#note(`${text}; every check of this worktree is unknown until the config loads`),
+        onFailure: (text) => this.#note(
+          `${text}; every check of this worktree is unknown until the config loads`
+        ),
         onRecovered: () => this.#note("Vitest started after the config changed"),
-        around: this.options.ownsProcess ? inRootWhileRunning(root, this.opened.scratch) : void 0
-      });
+        around
+      }) : null;
+      const runner = createCompositeRunner2([
+        ...vitestRunner === null ? [] : [vitestRunner],
+        ...configured.map((project) => nodeTest.createNodeTestAdapter(project))
+      ]);
+      this.#vitest = vitestRunner;
       this.#runner = runner;
-      await runner.open();
+      await vitestRunner?.open();
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop2({
         root,
@@ -10790,7 +11075,7 @@ var Daemon = class {
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    this.#runner?.retry();
+    this.#vitest?.retry();
     return this.#loop.scheduler.requestFullSuite({ force });
   }
   #note(text) {
@@ -10899,8 +11184,8 @@ async function daemonCommand(args, io) {
 // src/cli/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync11, mkdirSync as mkdirSync8, readFileSync as readFileSync8, rmSync as rmSync6, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join26 } from "node:path";
+import { existsSync as existsSync11, mkdirSync as mkdirSync8, readFileSync as readFileSync9, rmSync as rmSync6, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join27 } from "node:path";
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 var MARKETPLACE_SOURCE = {
@@ -10918,7 +11203,7 @@ function init(args, io) {
 `);
     return 1;
   }
-  const settingsPath = join26(root, ".claude", "settings.json");
+  const settingsPath = join27(root, ".claude", "settings.json");
   const settings = readSettings(settingsPath);
   if (typeof settings === "string") {
     io.stderr(`squeal init: ${settings}; nothing changed
@@ -10938,7 +11223,7 @@ function init(args, io) {
     }
   }
   const lines = [];
-  const configPath = join26(root, "squeal.config.json");
+  const configPath = join27(root, "squeal.config.json");
   const writeConfig = !existsSync11(configPath);
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
@@ -10964,7 +11249,7 @@ function init(args, io) {
   } : restorer(settingsPath, settings.text);
   try {
     if (text !== settings.text) {
-      mkdirSync8(join26(root, ".claude"), { recursive: true });
+      mkdirSync8(join27(root, ".claude"), { recursive: true });
       writeFileSync3(settingsPath, text);
     }
   } catch (error) {
@@ -11005,7 +11290,7 @@ function reason(error) {
 }
 function readSettings(path) {
   if (!existsSync11(path)) return { value: {}, text: null, indent: 2 };
-  const text = readFileSync8(path, "utf8");
+  const text = readFileSync9(path, "utf8");
   let value;
   try {
     value = JSON.parse(text);
@@ -11017,8 +11302,8 @@ function readSettings(path) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync13, lstatSync as lstatSync4, readdirSync as readdirSync2, rmSync as rmSync7 } from "node:fs";
-import { basename as basename9, dirname as dirname15, join as join27 } from "node:path";
+import { existsSync as existsSync13, lstatSync as lstatSync4, readdirSync as readdirSync3, rmSync as rmSync7 } from "node:fs";
+import { basename as basename9, dirname as dirname15, join as join28 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
@@ -11203,7 +11488,7 @@ async function removeCommand(args, io, options = {}) {
     return 1;
   }
   const storeDir = storePaths(commonDir).dir;
-  const configPath = join27(root, "squeal.config.json");
+  const configPath = join28(root, "squeal.config.json");
   const removed = [];
   const failed2 = [];
   const remove = (path, line) => {
@@ -11281,7 +11566,7 @@ async function isTracked(root, path) {
 }
 async function otherConfigs(root) {
   const out = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
-  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join27(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync13(path));
+  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join28(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync13(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -11305,7 +11590,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   const held = [];
   const deadline = Date.now() + waitMs;
   for (const name of names) {
-    const lockPath = join27(locksDir, name);
+    const lockPath = join28(locksDir, name);
     for (; ; ) {
       const lock2 = acquireDaemonLock(lockPath);
       if (lock2 !== null) {
@@ -11322,7 +11607,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   return held;
 }
 function tempDirs(commonDir, worktrees) {
-  if (!existsSync13(join27(storePaths(commonDir).dir, "repository-id"))) return [];
+  if (!existsSync13(join28(storePaths(commonDir).dir, "repository-id"))) return [];
   const uid = currentUid();
   const dirs = [];
   for (const { root } of worktrees) {
@@ -11352,11 +11637,11 @@ function isOwnDir(path, uid, prefix) {
   return stat5?.isDirectory() === true && stat5.uid === uid;
 }
 function entries(dir) {
-  return safeList2(dir).map((name) => join27(dir, name));
+  return safeList2(dir).map((name) => join28(dir, name));
 }
 function safeList2(dir) {
   try {
-    return readdirSync2(dir);
+    return readdirSync3(dir);
   } catch {
     return [];
   }
