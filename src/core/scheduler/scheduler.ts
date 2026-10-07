@@ -147,6 +147,9 @@ class TierScheduler implements Scheduler {
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
     const force = request.force === true;
+    // An install the next reconciliation pass would find ends the wait first; still waiting,
+    // every file is unkeyed and the checkpoint ends `abandoned`.
+    if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
