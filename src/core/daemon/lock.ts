@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { isBusy } from "../store/index.js";
 import type { AbsolutePath } from "../types/index.js";
 
 /** The daemon singleton, held for the life of the process. */
@@ -43,10 +44,4 @@ export function acquireDaemonLock(path: AbsolutePath): DaemonLock | null {
       }
     },
   };
-}
-
-/** SQLITE_BUSY (5) and SQLITE_LOCKED (6), including extended codes. */
-function isBusy(error: unknown): boolean {
-  const code = (error as { errcode?: unknown } | null)?.errcode;
-  return typeof code === "number" && [5, 6].includes(code & 0xff);
 }

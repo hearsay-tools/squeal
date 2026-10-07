@@ -1,5 +1,5 @@
 import { findWorktreeRoot, resolveCommonDir } from "../fs/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../store/index.js";
+import { isBusy, isStoreOpenFailure, openStore, storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   PAYLOAD_SCHEMA_VERSION,
@@ -79,10 +79,4 @@ export function withStatusStore<T>(
   } finally {
     store?.close();
   }
-}
-
-/** SQLITE_BUSY (5) and SQLITE_LOCKED (6), including extended codes. */
-function isBusy(error: unknown): boolean {
-  const code = (error as { errcode?: unknown } | null)?.errcode;
-  return typeof code === "number" && [5, 6].includes(code & 0xff);
 }

@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import {
+  isBusy,
   isStoreOpenFailure,
   META_STORE_RECOVERED,
   openStore,
@@ -231,5 +232,25 @@ describe("migrate", () => {
     expect(ran).toEqual([2, 3]);
     expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(3);
     db.close();
+  });
+});
+
+describe("isBusy", () => {
+  it("is true for a write lock another connection holds, false for other errors", () => {
+    const file = join(fakeCommonDir(), "busy.db");
+    const holder = new DatabaseSync(file);
+    const other = new DatabaseSync(file, { timeout: 0 });
+    holder.exec("CREATE TABLE t (x); BEGIN IMMEDIATE");
+    let busy: unknown;
+    try {
+      other.exec("BEGIN IMMEDIATE");
+    } catch (error) {
+      busy = error;
+    }
+    expect(isBusy(busy)).toBe(true);
+    expect(isBusy(new Error("plain"))).toBe(false);
+    expect(isBusy(null)).toBe(false);
+    holder.close();
+    other.close();
   });
 });

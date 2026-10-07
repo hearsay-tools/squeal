@@ -86,3 +86,9 @@ export function rollback(db: DatabaseSync): void {
     if (!/no transaction is active/.test(String(error))) throw error;
   }
 }
+
+/** SQLITE_BUSY (5) and SQLITE_LOCKED (6), including extended codes. */
+export function isBusy(error: unknown): boolean {
+  const code = (error as { errcode?: unknown } | null)?.errcode;
+  return typeof code === "number" && [5, 6].includes(code & 0xff);
+}
