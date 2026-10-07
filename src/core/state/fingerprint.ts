@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { stripVTControlCharacters } from "node:util";
+import { cap } from "../text.js";
 import type { CheckError, DiagnosticFingerprint, SourceLocation } from "../types/index.js";
 
 /** Longest `summary`, in characters. Deltas show it whole; full text stays in the run log. */
@@ -68,10 +69,6 @@ function normalize(line: string): string {
     (text, [pattern, replacement]) => text.replace(pattern, replacement),
     line,
   );
-}
-
-function cap(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 
 function where(location: SourceLocation | null): string {
