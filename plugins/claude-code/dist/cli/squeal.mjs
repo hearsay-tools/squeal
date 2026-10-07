@@ -8540,7 +8540,9 @@ function resolutionMoved(vitest, manifest) {
 }
 function resolutionFields(manifest) {
   const fields = readManifest(manifest);
-  return fields === null ? null : JSON.stringify(RESOLUTION_FIELDS.map((field) => fields[field]));
+  if (fields === null) return null;
+  const kept = Object.keys(fields).filter((field) => !IGNORED_FIELDS.has(field)).sort().map((field) => [field, fields[field]]);
+  return JSON.stringify(kept);
 }
 function staleTransforms(vitest, added, deleted, manifests = []) {
   const stale = /* @__PURE__ */ new Set();
@@ -8634,7 +8636,7 @@ function cachedFiles(vitest) {
   }
   return files;
 }
-var tracksSoftInvalidation, fellBack, manifestFields, RESOLUTION_FIELDS, isPackageJson, FALLBACK_NOTE;
+var tracksSoftInvalidation, fellBack, manifestFields, IGNORED_FIELDS, isPackageJson, FALLBACK_NOTE;
 var init_stale = __esm({
   "src/runners/vitest/stale.ts"() {
     "use strict";
@@ -8644,7 +8646,20 @@ var init_stale = __esm({
     tracksSoftInvalidation = /* @__PURE__ */ new WeakMap();
     fellBack = /* @__PURE__ */ new WeakSet();
     manifestFields = /* @__PURE__ */ new WeakMap();
-    RESOLUTION_FIELDS = ["name", "main", "module", "browser", "exports", "imports"];
+    IGNORED_FIELDS = /* @__PURE__ */ new Set([
+      "scripts",
+      "version",
+      "description",
+      "keywords",
+      "author",
+      "contributors",
+      "license",
+      "repository",
+      "bugs",
+      "homepage",
+      "funding",
+      "private"
+    ]);
     isPackageJson = (path) => basename8(path) === "package.json";
     FALLBACK_NOTE = "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
   }
@@ -9040,7 +9055,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.5";
+  if (true) return "0.1.6";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
