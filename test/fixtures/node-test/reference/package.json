@@ -1,0 +1,6 @@
+{
+  "name": "reference-root",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"]
+}
