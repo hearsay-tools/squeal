@@ -45,3 +45,15 @@ Seam: `src/core/daemon/scratch.ts`. Then N1 (cap the leftover sweep or empty it 
 Own: `src/core/daemon/scratch.ts`, `src/core/daemon/open.ts`, `src/core/daemon/daemon.ts` (shutdown only), `test/daemon/scratch*.test.ts`, `scratch-helpers.ts`, D10 in `spec.md`, one `status.md` line. Leave `src/core/daemon/paths.ts` git parts (001-69 is done by then; rebase if needed).
 
 Done when: a test with two repositories at one path keeps both temp directories; a test that deletes and re-clones at the same path while the old daemon runs keeps the new one's; the sweep is no longer before the socket for a large leftover; the full suite passes.
+
+## Batch 2
+
+001-67, 001-68, 001-69 and 001-76 landed (`cc223cf..7392b7a`, version 0.1.0). Batch 2 runs 001-65 (above), 001-71 and 001-72 in parallel; their files are disjoint.
+
+## 001-71 one rule for which daemon socket to ask
+
+Use /worker. Shape: slice. Seam: `src/core/daemon/ensure.ts` (`probeDaemon`, `recordedDaemon`, `ping`). Own: `src/core/daemon/ensure.ts`, `src/cli/daemon-access.ts`, the CLI commands that call it, `test/cli/`, `test/harness/ensure.test.ts`, D1's socket sentence if it changes. Leave `scratch.ts`, `open.ts`, `daemon.ts` (001-65) and `src/core/keys/`, `src/core/scheduler/` (001-72) alone.
+
+## 001-72 re-resolution after an add or delete: core heuristic or runner
+
+Use /worker. Shape: survey, then slice. Seam: `src/core/keys/resolution.ts` `closuresToReresolve` and its call at `src/core/scheduler/refinement.ts:118`. First produce the table the row asks for and commit it in this file under a "001-72 table" heading; then drop or keep with a test. Own: `src/core/keys/resolution.ts`, `src/core/scheduler/refinement.ts` (that call only), `test/keys/resolution.test.ts`, a scratch test under `test/runners/vitest/` if needed, D3 in `spec.md`, one `status.md` line, and the table heading in this file. A /reviewer follows, because a wrong drop shows as a missed re-run.
