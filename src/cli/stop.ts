@@ -12,7 +12,7 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
   }
   const root = worktreeRoot(args[0], io);
   if (root === null) return 1;
-  const socketPath = daemonSocket(root);
+  const socketPath = await daemonSocket(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
     io.stdout(`No daemon running for ${root}\n`);

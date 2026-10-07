@@ -41,26 +41,45 @@ export interface EnsureDaemonOptions extends ProbeOptions {
   readonly env?: NodeJS.ProcessEnv;
 }
 
+/** The socket to ask for a worktree's daemon, and what it answered there. */
+export interface DaemonLocation {
+  readonly socketPath: AbsolutePath;
+  readonly probe: DaemonProbe;
+}
+
 /**
- * Pings the daemon of the worktree at `root`. Review wave 3, S8: the socket
- * the daemon recorded in the store is asked first while its heartbeat is
- * fresh, since a daemon started from another environment may listen
- * elsewhere; then the socket in this environment's runtime dir (spec 001
- * D1). An unresponsive recorded socket is the answer: that daemon holds the
- * lock. Never rejects and never takes longer than twice `timeoutMs` plus
- * the connects.
+ * Pings the daemon of the worktree at `root`, through `locateDaemon`. Never
+ * rejects: a root that gives no socket path is `unresponsive`.
  */
 export async function probeDaemon(
   root: AbsolutePath,
   timeoutMs: number,
   options: ProbeOptions & { readonly env?: NodeJS.ProcessEnv } = {},
 ): Promise<DaemonProbe> {
-  let socketPath: AbsolutePath;
   try {
-    socketPath = socketPathFor(worktreeIdFor(root), options.env);
+    return (await locateDaemon(root, timeoutMs, options)).probe;
   } catch (error) {
     return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
   }
+}
+
+/**
+ * The one rule for which socket serves the worktree at `root`, for hooks
+ * and the CLI alike (task 001-71). Review wave 3, S8: the socket the daemon
+ * recorded in the store is asked first while its heartbeat is fresh, since a
+ * daemon started from another environment may listen elsewhere; then the
+ * socket in this environment's runtime dir (spec 001 D1). An unresponsive
+ * recorded socket is the answer: that daemon holds the lock. With no daemon
+ * on either, the computed socket, where a new daemon binds. Throws only when
+ * `root` gives no socket path; never takes longer than twice `timeoutMs`
+ * plus the connects.
+ */
+export async function locateDaemon(
+  root: AbsolutePath,
+  timeoutMs: number,
+  options: ProbeOptions & { readonly env?: NodeJS.ProcessEnv } = {},
+): Promise<DaemonLocation> {
+  const socketPath = socketPathFor(worktreeIdFor(root), options.env);
   const record = options.record === undefined ? recordedDaemon(root) : options.record;
   const now = options.now ?? Date.now;
   if (
@@ -68,10 +87,10 @@ export async function probeDaemon(
     record.socketPath !== socketPath &&
     daemonLiveness(record, now()).state === "alive"
   ) {
-    const recorded = await ping(record.socketPath, timeoutMs);
-    if (recorded.state !== "absent") return recorded;
+    const probe = await ping(record.socketPath, timeoutMs);
+    if (probe.state !== "absent") return { socketPath: record.socketPath, probe };
   }
-  return ping(socketPath, timeoutMs);
+  return { socketPath, probe: await ping(socketPath, timeoutMs) };
 }
 
 async function ping(socketPath: AbsolutePath, timeoutMs: number): Promise<DaemonProbe> {
@@ -80,18 +99,30 @@ async function ping(socketPath: AbsolutePath, timeoutMs: number): Promise<Daemon
     if (response.ok && response.type === "ping") return { state: "alive", ping: response };
     return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
   } catch (error) {
-    const code = (error as DaemonRequestError).code;
-    if (code === "ENOENT" || code === "ECONNREFUSED") return { state: "absent", code };
+    const code = noDaemonCode(error);
+    if (code !== null) return { state: "absent", code };
     return { state: "unresponsive", reason: (error as Error).message };
   }
 }
 
-/** The daemon record of the worktree at `root`; `null` without a store, a row or a record. */
-function recordedDaemon(root: AbsolutePath): DaemonRecord | null {
+/**
+ * The code of a socket error that means no daemon listens: `ENOENT` (no
+ * socket file) or `ECONNREFUSED` (nobody accepting); `null` for any other.
+ */
+export function noDaemonCode(error: unknown): "ENOENT" | "ECONNREFUSED" | null {
+  const code = (error as DaemonRequestError | null)?.code;
+  return code === "ENOENT" || code === "ECONNREFUSED" ? code : null;
+}
+
+/**
+ * The daemon record of the worktree at `root`; `null` without a store, a row
+ * or a record, or when the store stays busy past `busyTimeoutMs`.
+ */
+export function recordedDaemon(root: AbsolutePath, busyTimeoutMs = 100): DaemonRecord | null {
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return null;
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    const store = openStore(commonDir, { create: false, busyTimeoutMs });
     if (isStoreOpenFailure(store)) return null;
     try {
       return store.worktrees.get(worktreeIdFor(root))?.daemon ?? null;
