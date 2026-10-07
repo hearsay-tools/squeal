@@ -27,7 +27,7 @@ const deps = (overrides: Partial<HookDeps> = {}): HookDeps => ({
   ...overrides,
 });
 
-type Event = "session-start" | "user-prompt-submit" | "post-tool-batch" | "stop";
+type Event = "session-start" | "user-prompt-submit" | "post-tool-batch" | "pre-tool-use" | "stop";
 
 const hook = (name: Event, r: SquealRepo, overrides: object = {}) =>
   runHook(name, recorded(name, r.root, overrides), deps());
@@ -161,6 +161,22 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     expect(await hook("post-tool-batch", r)).toEqual(SILENT);
     expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
 
+    const waiter = await waiterAround(r, () => r.apply(r.fail()));
+    expect(waiter).toEqual(SILENT);
+    expect(context(await hook("post-tool-batch", r))).toContain("PASS -> FAIL");
+  });
+
+  it("(5b) another Stop hook continues the turn: its first tool call is in a turn before it runs (task 001-93)", async () => {
+    const r = await inTurn();
+    r.queue("k2");
+    // Squeal's Stop is silent, another Stop hook blocks, and the continuation runs `sleep 15`.
+    expect(await hook("stop", r)).toEqual(SILENT);
+    expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
+    const bash = { tool_name: "Bash", tool_input: { command: "sleep 15" } };
+    expect(await hook("pre-tool-use", r, bash)).toEqual(SILENT);
+    expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
+
+    // The waited-for result lands while the call runs: only the next PostToolBatch tells it.
     const waiter = await waiterAround(r, () => r.apply(r.fail()));
     expect(waiter).toEqual(SILENT);
     expect(context(await hook("post-tool-batch", r))).toContain("PASS -> FAIL");
