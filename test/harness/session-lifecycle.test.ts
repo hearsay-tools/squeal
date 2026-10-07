@@ -1,7 +1,7 @@
-import { mkdtempSync, realpathSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { createDelivery } from "../../src/core/delivery/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { type Consumer, MAIN_AGENT } from "../../src/core/types/index.js";
@@ -114,6 +114,7 @@ describe("SessionEnd (defect 5)", () => {
     const r = squealRepo();
     registered(r);
     const outside = realpathSync(mkdtempSync(join(tmpdir(), "squeal-outside-")));
+    onTestFinished(() => rmSync(outside, { recursive: true, force: true }));
 
     await runHook(
       "session-end",
