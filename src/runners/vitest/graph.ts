@@ -3,6 +3,7 @@ import { builtinModules } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
+import { environmentPackage, moduleLoads } from "./loads.js";
 
 /** Files reached from some entry files through the transform graph. */
 export interface ImportClosure {
@@ -21,6 +22,13 @@ export interface ImportClosure {
   readonly bare: ReadonlyMap<AbsolutePath, ReadonlySet<string>>;
   /** Node builtins the walked files import, without `node:` or a subpath. */
   readonly builtins: ReadonlySet<string>;
+  /**
+   * Packages looked up from the project root, `root`: the environment an
+   * entry's docblock names (review wave-11b B1). Vitest reads the docblock of
+   * a test file only.
+   */
+  readonly rooted: ReadonlySet<string>;
+  readonly root: AbsolutePath;
 }
 
 /** One hop of the transform graph out of a project file. */
@@ -28,6 +36,8 @@ interface ImportTargets {
   readonly targets: readonly AbsolutePath[];
   readonly bare: readonly string[];
   readonly builtins: readonly string[];
+  /** The package of the environment the file's docblock names. */
+  readonly environment: string | null;
 }
 
 const BUILTINS: ReadonlySet<string> = new Set(
@@ -51,6 +61,8 @@ export async function importClosure(
   const missing = new Set<AbsolutePath>();
   const bare = new Map<AbsolutePath, ReadonlySet<string>>();
   const builtins = new Set<string>();
+  const rooted = new Set<string>();
+  const entrySet = new Set(entries);
 
   const visit = async (file: AbsolutePath): Promise<void> => {
     if (files.has(file) || missing.has(file)) return;
@@ -63,11 +75,12 @@ export async function importClosure(
     const hop = await importTargets(project, file);
     if (hop.bare.length > 0) bare.set(file, new Set(hop.bare));
     for (const name of hop.builtins) builtins.add(name);
+    if (hop.environment !== null && entrySet.has(file)) rooted.add(hop.environment);
     await Promise.all(hop.targets.map(visit));
   };
 
   await Promise.all(entries.map(visit));
-  return { files, missing, bare, builtins };
+  return { files, missing, bare, builtins, rooted, root: project.config.root };
 }
 
 /**
@@ -87,7 +100,15 @@ export async function directImports(
     (existsSync(target) ? files : missing).add(target);
   }
   const bare = new Map(hop.bare.length > 0 ? [[file, new Set(hop.bare)]] : []);
-  return { files, missing, bare, builtins: new Set(hop.builtins) };
+  const rooted = new Set(hop.environment === null ? [] : [hop.environment]);
+  return {
+    files,
+    missing,
+    bare,
+    builtins: new Set(hop.builtins),
+    rooted,
+    root: project.config.root,
+  };
 }
 
 /** One hop of the transform graph: the import targets of an existing project file. */
@@ -110,23 +131,29 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
   const targets: AbsolutePath[] = [];
   const bare: string[] = [];
   const builtins: string[] = [];
-  for (const dep of [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])]) {
-    const target = depToPath(dep, file, project.config.root);
-    if (target !== null) {
-      targets.push(target);
-      continue;
-    }
-    const builtin = builtinOf(dep);
+  const add = (specifier: string): void => {
+    const builtin = builtinOf(specifier);
     if (builtin !== null) builtins.push(builtin);
     else {
-      const name = packageName(dep);
+      const name = packageName(specifier);
       if (name !== null) bare.push(name);
     }
+  };
+  for (const dep of [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])]) {
+    const target = depToPath(dep, file, project.config.root);
+    if (target !== null) targets.push(target);
+    else add(dep);
   }
-  return { targets, bare, builtins };
+  // Review wave-11b B2: a `require` Vite does not see. One no specifier
+  // names can reach any package, as `module` can.
+  const loads = moduleLoads(file, transformed);
+  for (const specifier of loads.requires) add(specifier);
+  if (loads.unnamed) builtins.push("module");
+  const named = loads.environment === null ? null : environmentPackage(loads.environment);
+  return { targets, bare, builtins, environment: named };
 }
 
-const NO_TARGETS: ImportTargets = { targets: [], bare: [], builtins: [] };
+const NO_TARGETS: ImportTargets = { targets: [], bare: [], builtins: [], environment: null };
 
 /** The builtin a specifier names (`node:fs/promises`, `fs`), without `node:` or a subpath. */
 export function builtinOf(specifier: string): string | null {

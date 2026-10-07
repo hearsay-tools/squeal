@@ -1,7 +1,7 @@
-import { type Dirent, readdirSync } from "node:fs";
 import { join, posix } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type { AbsolutePath, PackageImport, RelativePath } from "../types/index.js";
+import { PackageScans } from "./package-scans.js";
 
 /**
  * Builtins through which a test can load packages no import names: a child
@@ -30,19 +30,6 @@ interface LockEntry {
 const EDGES = ["dependencies", "optionalDependencies", "peerDependencies"] as const;
 
 /**
- * Files a package can ship without anything Node loads: declarations, their
- * maps, the manifest and documentation. Anything else counts as runtime,
- * `.json` and `.ts` included, since a test can `require` the one and Vite
- * transforms the other.
- */
-const NOT_RUNTIME = [
-  /\.d\.[cm]?ts(?:\.map)?$/,
-  /^package\.json$/,
-  /\.(?:md|markdown|txt)$/i,
-  /^(?:licen[cs]e|readme|changelog|notice|authors|history|copying)(?:[.-].*)?$/i,
-];
-
-/**
  * The installed npm dependency graph of one install, from its hidden
  * lockfile `node_modules/.package-lock.json`.
  *
@@ -53,22 +40,26 @@ const NOT_RUNTIME = [
  * does not resolve keys as absent; a workspace link keys as its location,
  * since its files are project files in the closure; a package with no
  * runtime file keys as a constant and is not expanded, since it changes what
- * `tsc` reads, never what Node loads.
+ * `tsc` reads, never what Node loads. Task 001-109: `opaque` tells whether
+ * the code of a package among some identities reaches a builtin that loads
+ * packages no import names.
  */
 export class InstalledGraph {
   readonly #packages: Readonly<Record<string, LockEntry>>;
   readonly #closures = new Map<string, readonly string[]>();
+  /** The location of each installed identity a closure produced. */
+  readonly #locations = new Map<string, string>();
 
   /**
    * `base` is the directory holding `node_modules`, relative to the worktree
-   * root (`""` for the root). `typesOnly` caches the on-disk scan by
-   * identity, so a re-read of an unchanged install scans nothing.
+   * root (`""` for the root). `scans` caches the on-disk scans by identity,
+   * so a re-read of an unchanged install scans nothing.
    */
   constructor(
     readonly dir: AbsolutePath,
     readonly base: RelativePath,
     packages: Readonly<Record<string, unknown>>,
-    private readonly typesOnly: Map<string, boolean> = new Map(),
+    private readonly scans: PackageScans = new PackageScans(),
   ) {
     const entries: Record<string, LockEntry> = {};
     for (const [location, entry] of Object.entries(packages)) {
@@ -95,6 +86,23 @@ export class InstalledGraph {
     }
     const sorted = [...found].filter((identity) => !exclude?.has(identity));
     return sorted.sort(compare);
+  }
+
+  /**
+   * Whether the code of one of `identities`, as `identities()` returned
+   * them, reaches `child_process`, `worker_threads`, `module` or `cluster`
+   * (task 001-109, review wave-11b B3): a package that starts a process or a
+   * worker, or resolves by hand, can load packages its lockfile closure does
+   * not hold. Scanned once per identity.
+   */
+  opaque(identities: readonly string[]): boolean {
+    return identities.some((identity) => {
+      const location = this.#locations.get(identity);
+      return (
+        location !== undefined &&
+        this.scans.opaque(this.#scanId(identity), join(this.dir, location))
+      );
+    });
   }
 
   /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -135,13 +143,13 @@ export class InstalledGraph {
         identities.push(`workspace:${location}`);
         continue;
       }
-      if (this.#typesOnly(location, entry)) {
+      const identity = `${location}@${text(entry.version)}#${text(entry.integrity ?? entry.resolved)}`;
+      if (this.scans.typesOnly(this.#scanId(identity), join(this.dir, location))) {
         identities.push(`${location}@types-only`);
         continue;
       }
-      identities.push(
-        `${location}@${text(entry.version)}#${text(entry.integrity ?? entry.resolved)}`,
-      );
+      identities.push(identity);
+      this.#locations.set(identity, location);
       for (const field of EDGES) {
         const names = entry[field];
         if (!isRecord(names)) continue;
@@ -156,30 +164,10 @@ export class InstalledGraph {
     return identities;
   }
 
-  #typesOnly(location: string, entry: LockEntry): boolean {
-    const id = `${this.dir}\0${location}\0${text(entry.version)}\0${text(entry.integrity)}`;
-    let known = this.typesOnly.get(id);
-    if (known === undefined) {
-      known = !hasRuntimeFile(join(this.dir, location));
-      this.typesOnly.set(id, known);
-    }
-    return known;
+  /** An identity is unique within one install; the install's directory makes it unique across. */
+  #scanId(identity: string): string {
+    return `${this.dir}\0${identity}`;
   }
-}
-
-/** Whether a package folder ships a file Node could load. Unreadable counts as yes. */
-function hasRuntimeFile(dir: AbsolutePath): boolean {
-  let entries: Dirent[];
-  try {
-    entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return true;
-  }
-  return entries.some((entry) => {
-    if (entry.name === "node_modules") return false;
-    if (entry.isDirectory()) return hasRuntimeFile(join(dir, entry.name));
-    return !NOT_RUNTIME.some((pattern) => pattern.test(entry.name));
-  });
 }
 
 /** A location under some `node_modules`: an installed package, not a workspace. */

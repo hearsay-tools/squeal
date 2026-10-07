@@ -4,6 +4,7 @@ import {
   type DependencyKeys,
   dependencyKeys,
   installedDependencies,
+  PackageScans,
 } from "../../src/core/keys/index.js";
 import type { RunnerPackages } from "../../src/core/types/index.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
@@ -59,12 +60,18 @@ const uses = (...names: string[]): RunnerPackages => ({
 describe("per-package dependency keys (001-105)", () => {
   let dir: ReturnType<typeof tempDir>;
   let root: string;
+  /** Installs `keysOf` wrote: package scans read them when a segment is asked for (001-109). */
+  let scratches: ReturnType<typeof tempDir>[];
   beforeEach(() => {
     dir = tempDir();
     root = dir.path;
+    scratches = [];
     writeFile(root, "packages/ws/package.json", JSON.stringify({ name: "ws", version: "0.0.0" }));
   });
-  afterEach(() => dir.cleanup());
+  afterEach(() => {
+    dir.cleanup();
+    for (const scratch of scratches) scratch.cleanup();
+  });
 
   const keysOf = async (
     packages: Readonly<Record<string, FixturePackage>>,
@@ -72,14 +79,11 @@ describe("per-package dependency keys (001-105)", () => {
     environment: RunnerPackages | null = ENVIRONMENT,
   ): Promise<DependencyKeys> => {
     const scratch = tempDir();
-    try {
-      writeFile(scratch.path, "packages/ws/package.json", "{}");
-      writeInstall(scratch.path, packages);
-      const installed = await installedDependencies(scratch.path, scratch.path);
-      return dependencyKeys(installed, environment ?? undefined);
-    } finally {
-      scratch.cleanup();
-    }
+    scratches.push(scratch);
+    writeFile(scratch.path, "packages/ws/package.json", "{}");
+    writeInstall(scratch.path, packages);
+    const installed = await installedDependencies(scratch.path, scratch.path);
+    return dependencyKeys(installed, environment ?? undefined);
   };
   const bump = (location: string, version: string) => ({
     ...BASE,
@@ -155,6 +159,93 @@ describe("per-package dependency keys (001-105)", () => {
     }
     const plain = { ...uses("ext"), builtins: ["fs", "path"] };
     expect(after.of(plain)).toBe(before.of(plain));
+  });
+
+  describe("opaque packages (001-109, review wave-11b B3)", () => {
+    const code = (source: string) => ({ "index.js": source });
+    const OPAQUE: Readonly<Record<string, FixturePackage>> = {
+      ...BASE,
+      "node_modules/spawner": {
+        version: "1.0.0",
+        files: code('const { execFileSync } = require("node:child_process");\n'),
+      },
+      "node_modules/wrapper": { version: "1.0.0", dependencies: { spawner: "1" } },
+      "node_modules/bundled": {
+        version: "1.0.0",
+        files: { "dist/index.mjs": 'const w = __require("worker_threads");\n' },
+      },
+      "node_modules/resolver": {
+        version: "1.0.0",
+        files: code('import { createRequire } from "module";\n'),
+      },
+      "node_modules/esm-flag": {
+        version: "1.0.0",
+        files: code('export const isEsm = (type) => type === "module";\n'),
+      },
+      "node_modules/typed": {
+        version: "1.0.0",
+        files: { "index.js": "", "index.d.ts": 'import "child_process";\n' },
+      },
+    };
+    const bumped = (location: string) => ({
+      ...OPAQUE,
+      [location]: { ...OPAQUE[location], version: "9.0.0" } as FixturePackage,
+    });
+
+    it("keys a test file whose package set holds an opaque package by the whole fingerprint", async () => {
+      const before = await keysOf(OPAQUE);
+      // `other` is in no closure below: only a whole-fingerprint key moves when it is bumped.
+      const after = await keysOf(bumped("node_modules/other"));
+      for (const name of ["spawner", "wrapper", "bundled", "resolver"]) {
+        expect(after.of(uses(name)), name).not.toBe(before.of(uses(name)));
+        expect(after.of(uses(name)), name).toMatch(/^whole:/);
+      }
+      for (const name of ["ext", "esm-flag", "typed"]) {
+        expect(after.of(uses(name)), name).toBe(before.of(uses(name)));
+      }
+    });
+
+    it("holds the whole fingerprint in the environment hash when a setup package is opaque", async () => {
+      const environment = {
+        ...ENVIRONMENT,
+        imports: [...ENVIRONMENT.imports, { from: "", name: "spawner" }],
+      };
+      const before = await keysOf(OPAQUE, environment);
+      const after = await keysOf(bumped("node_modules/other"), environment);
+      expect(after.environment).not.toBe(before.environment);
+      expect(after.of(uses("ext"))).toBe("");
+    });
+
+    it("exempts the runner's own closure, which starts processes and workers by design", async () => {
+      const spawningRunner = {
+        ...OPAQUE,
+        "node_modules/vite": { version: "8.0.0", files: code('import "node:child_process";\n') },
+      };
+      const environment = { ...ENVIRONMENT, runner: [{ from: "", name: "vitest" }] };
+      const before = await keysOf(spawningRunner, environment);
+      const after = await keysOf(
+        { ...spawningRunner, "node_modules/other": { version: "2.0.0" } },
+        environment,
+      );
+      expect(after.environment).toBe(before.environment);
+      // A test file's package that depends on `vite` meets it in the environment set, excluded.
+      expect(after.of(uses("ext"))).toBe(before.of(uses("ext")));
+    });
+
+    it("scans each installed package version once across reads of the install", async () => {
+      writeInstall(root, OPAQUE);
+      const scans = new PackageScans();
+      const keys = async () =>
+        dependencyKeys(await installedDependencies(root, root, scans), ENVIRONMENT);
+      (await keys()).of(uses("wrapper"));
+      const first = scans.scanned;
+      expect(first).toBeGreaterThan(0);
+      (await keys()).of(uses("wrapper"));
+      expect(scans.scanned).toBe(first);
+      writeInstall(root, bumped("node_modules/spawner"));
+      (await keys()).of(uses("wrapper"));
+      expect(scans.scanned).toBe(first + 1);
+    });
   });
 
   it("keys a test file whose runner reports no packages (node:test today) by the whole fingerprint", async () => {

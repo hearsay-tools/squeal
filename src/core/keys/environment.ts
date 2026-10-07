@@ -15,6 +15,7 @@ import {
   packageFoldersFingerprint,
   staleHiddenLockfile,
 } from "./hidden-lockfile.js";
+import type { PackageScans } from "./package-scans.js";
 import { InstalledGraph } from "./packages.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
@@ -194,7 +195,7 @@ export interface InstalledDependencies {
 export async function installedDependencies(
   projectRoot: AbsolutePath,
   worktreeRoot: AbsolutePath,
-  typesOnly?: Map<string, boolean>,
+  scans?: PackageScans,
 ): Promise<InstalledDependencies> {
   const found = await locateLockfile(projectRoot, worktreeRoot);
   if (found === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
@@ -223,7 +224,7 @@ export async function installedDependencies(
   const listed = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
   const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
   const graph =
-    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, typesOnly);
+    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
   return { fingerprint: hash.digest("hex"), note, graph, patches: patches.digest("hex") };
 }
 
