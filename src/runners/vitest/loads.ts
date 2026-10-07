@@ -4,13 +4,16 @@ import type { AbsolutePath } from "../../core/types/index.js";
 /** A literal `require("x")`; `myrequire(` and `require(x)` do not match. */
 const REQUIRE = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
 
+/** A `require.resolve` of one relative string literal, which names a file (review wave-11d S3). */
+const RESOLVE_RELATIVE = /\brequire\s*\.\s*resolve\s*\(\s*(["'])(\.\.?\/[^"'\n]*)\1\s*\)/g;
+
 /**
- * A load no specifier names: `require.resolve`, `createRequire`,
- * `import.meta.resolve`, and a `require(` whose argument is not one string
- * literal.
+ * A load no specifier names: `require.resolve` but of one relative string
+ * literal, `createRequire`, `import.meta.resolve`, and a `require(` whose
+ * argument is not one string literal.
  */
 const UNNAMED_LOAD =
-  /\brequire\s*\.\s*resolve\b|\bcreateRequire\b|\bimport\.meta\.resolve\b|\brequire\s*\((?!\s*(["'])[^"'\n]+\1\s*\))/;
+  /\brequire\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bcreateRequire\b|\bimport\.meta\.resolve\b|\brequire\s*\((?!\s*(["'])[^"'\n]+\2\s*\))/;
 
 /** Vitest's own docblock pattern (`getSpecificationsOptions`, Vitest 5). */
 const DOCBLOCK_ENVIRONMENT = /@(?:vitest|jest)-environment\s+([\w-]+)\b/;
@@ -25,7 +28,7 @@ const ENVIRONMENT_PACKAGES: Readonly<Record<string, string | null>> = {
 
 /** What a module's source loads without an import Vite sees. */
 export interface SourceLoads {
-  /** Specifiers of literal `require` calls. */
+  /** Specifiers of literal `require` calls, and of `require.resolve` calls of a relative literal. */
   readonly requires: readonly string[];
   /** A load no specifier names, which can reach any package. */
   readonly unnamed: boolean;
@@ -40,8 +43,10 @@ export interface SourceLoads {
  */
 export function sourceLoads(source: string): SourceLoads {
   const requires: string[] = [];
-  for (const match of source.matchAll(REQUIRE)) {
-    if (match[2] !== undefined) requires.push(match[2]);
+  for (const pattern of [REQUIRE, RESOLVE_RELATIVE]) {
+    for (const match of source.matchAll(pattern)) {
+      if (match[2] !== undefined) requires.push(match[2]);
+    }
   }
   const environment = DOCBLOCK_ENVIRONMENT.exec(source)?.[1] ?? null;
   return { requires, unnamed: UNNAMED_LOAD.test(source), environment };

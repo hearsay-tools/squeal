@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
@@ -17,7 +17,9 @@ export interface ImportClosure {
   readonly missing: ReadonlySet<AbsolutePath>;
   /**
    * Package specifiers Vite left as written, by importing file: a package it
-   * did not resolve. Task 001-105: keyed as Node would look them up.
+   * did not resolve. Task 001-105: keyed as Node would look them up. A
+   * package name, or `<name>/package.json` for a read of its manifest
+   * (review wave-11d S1).
    */
   readonly bare: ReadonlyMap<AbsolutePath, ReadonlySet<string>>;
   /** Node builtins the walked files import, without `node:` or a subpath. */
@@ -136,7 +138,7 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
     if (builtin !== null) builtins.push(builtin);
     else {
       const name = packageName(specifier);
-      if (name !== null) bare.push(name);
+      if (name !== null) bare.push(isManifest(specifier, name) ? specifier : name);
     }
   };
   for (const dep of [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])]) {
@@ -145,15 +147,63 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
     else add(dep);
   }
   // Review wave-11b B2: a `require` Vite does not see. One no specifier
-  // names can reach any package, as `module` can.
+  // names can reach any package, as `module` can. Review wave-11d S3: a
+  // relative one reaches a file, walked like an import's.
   const loads = moduleLoads(file, transformed);
-  for (const specifier of loads.requires) add(specifier);
+  for (const specifier of loads.requires) {
+    if (isRelative(specifier)) {
+      const target = requireTarget(file, specifier);
+      if (target === null) builtins.push("module");
+      else targets.push(target);
+    } else if (builtinOf(specifier) !== null || packageName(specifier) !== null) add(specifier);
+    // An absolute path or a `#` import, not resolved here: it can load anything.
+    else builtins.push("module");
+  }
   if (loads.unnamed) builtins.push("module");
   const named = loads.environment === null ? null : environmentPackage(loads.environment);
   return { targets, bare, builtins, environment: named };
 }
 
 const NO_TARGETS: ImportTargets = { targets: [], bare: [], builtins: [], environment: null };
+
+/** Whether `specifier` reads the manifest of package `name`, and so loads none of its code. */
+function isManifest(specifier: string, name: string): boolean {
+  return (specifier.split("?")[0] ?? specifier) === `${name}/package.json`;
+}
+
+function isRelative(specifier: string): boolean {
+  return (
+    specifier.startsWith("./") ||
+    specifier.startsWith("../") ||
+    specifier === "." ||
+    specifier === ".."
+  );
+}
+
+/** The extensions Node's `require` tries, in its order. */
+const REQUIRE_EXTENSIONS = [".js", ".json", ".node"];
+
+/**
+ * The file a relative `require` from `importer` loads, as Node resolves it:
+ * the path, the path with each extension, then the `index` of a directory.
+ * A path where nothing exists is returned as is, a missing target whose
+ * resolution candidates the closure holds. `null` for a directory with a
+ * `package.json`, whose `main` is not resolved here, or with no `index`
+ * (review wave-11d S3).
+ */
+function requireTarget(importer: AbsolutePath, specifier: string): AbsolutePath | null {
+  const path = resolve(dirname(importer), specifier);
+  const kind = (candidate: string) => statSync(candidate, { throwIfNoEntry: false });
+  if (kind(path)?.isFile()) return path;
+  for (const ext of REQUIRE_EXTENSIONS) if (kind(`${path}${ext}`)?.isFile()) return `${path}${ext}`;
+  if (!kind(path)?.isDirectory()) return path;
+  if (existsSync(join(path, "package.json"))) return null;
+  for (const ext of REQUIRE_EXTENSIONS) {
+    const index = join(path, `index${ext}`);
+    if (kind(index)?.isFile()) return index;
+  }
+  return null;
+}
 
 /** The builtin a specifier names (`node:fs/promises`, `fs`), without `node:` or a subpath. */
 export function builtinOf(specifier: string): string | null {

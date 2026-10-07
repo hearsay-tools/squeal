@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { RunnerPackages } from "../types/index.js";
+import type { PackageImport, RunnerPackages } from "../types/index.js";
 import type { InstalledDependencies } from "./environment.js";
 import { OPAQUE_BUILTINS } from "./packages.js";
 
@@ -44,13 +44,19 @@ export function dependencyKeys(
     return { environment: fingerprint, of: () => "" };
   }
   const excluded = new Set(shared);
+  // Review wave-11d S2: a test's opacity is judged on the whole closure of
+  // what it imports, shared or not; only its imports of the runner's own
+  // packages are exempt, as the environment's are.
+  const started = (entry: PackageImport) => graph.identities([{ ...entry, manifest: true }]).join();
+  const runnerStarts = new Set((environment.runner ?? []).map(started));
   const whole = `whole:${fingerprint}`;
   return {
     environment: hash([SCOPED_ENCODING, shared, installed.patches]),
     of: (packages) => {
       if (packages === undefined || isOpaque(packages)) return whole;
-      const identities = graph.identities(packages.imports, excluded);
-      return graph.opaque(identities) ? whole : hash([PACKAGES_ENCODING, identities]);
+      const own = packages.imports.filter((entry) => !runnerStarts.has(started(entry)));
+      if (graph.opaque(graph.identities(own))) return whole;
+      return hash([PACKAGES_ENCODING, graph.identities(packages.imports, excluded)]);
     },
   };
 }
