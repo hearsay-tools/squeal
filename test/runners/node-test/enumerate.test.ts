@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { enumerate, enumerateSource } from "../../../src/runners/node-test/enumerate.js";
+import { createNodeTestGraph } from "../../../src/runners/node-test/graph/index.js";
 
 /**
  * Spec 003 D6: static enumeration gives a file's checks before it has run, in
@@ -338,7 +339,11 @@ describe("enumerateSource", () => {
 });
 
 describe("enumeration cost", () => {
-  it("enumerates 200 generated test files under 200 ms", SLOW, async () => {
+  // Review wave 2: a fixed 200 ms failed under the full suite's load. The bound is a ratio
+  // to the cold graph build of the same 1,000-module fixture, measured between the rounds
+  // in this process, so load slows both. At calm load enumeration took about 40 ms and the
+  // build about 190 ms; best of three of each.
+  it("enumerates 200 generated test files in under half a cold graph build", SLOW, async () => {
     const out = join(scratch, "big");
     execFileSync(process.execPath, [join(fixtures, "gen-big.mjs"), out]);
     const dir = join(out, "packages/core/test");
@@ -346,19 +351,28 @@ describe("enumeration cost", () => {
       .filter((f) => f.endsWith(".test.ts"))
       .map((f) => join(dir, f));
     expect(files).toHaveLength(200);
-    // `stripTypeScriptTypes` loads its WebAssembly once per process, about 90 ms; a cold
-    // process measured 135 ms for the 200 files with it, about 40 ms without. The best of
-    // three runs keeps a busy host (the full suite beside it) from timing its own load.
+    // `stripTypeScriptTypes` loads its WebAssembly once per process, about 90 ms; it is
+    // loaded before timing, as a running daemon has it.
     enumerateSource(`test("warm", () => {});`, ref);
-    let elapsed = Number.POSITIVE_INFINITY;
+    let enumeration = Number.POSITIVE_INFINITY;
+    let build = Number.POSITIVE_INFINITY;
     for (let round = 0; round < 3; round++) {
-      const start = performance.now();
+      let start = performance.now();
       const all = await Promise.all(
         files.map((f) => enumerate(f, { project: "big", path: relative(out, f) })),
       );
-      elapsed = Math.min(elapsed, performance.now() - start);
+      enumeration = Math.min(enumeration, performance.now() - start);
       expect(all.every((checks) => checks.length > 0)).toBe(true);
+      start = performance.now();
+      const graph = await createNodeTestGraph({
+        root: out,
+        cwd: join(out, "packages/core"),
+        argv: ["--import", "../../scripts/preload.mjs", "--import", "tsx"],
+        testFiles: files.map((f) => relative(out, f)),
+      });
+      graph.affected([]);
+      build = Math.min(build, performance.now() - start);
     }
-    expect(elapsed).toBeLessThan(200);
+    expect(enumeration / build, `${enumeration} ms against ${build} ms`).toBeLessThan(0.5);
   });
 });
