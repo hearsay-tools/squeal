@@ -114,6 +114,14 @@ export interface StatusHeader {
    * `readLiveHeader`; absent reads as installed or not known.
    */
   readonly dependenciesInstalled?: boolean;
+  /**
+   * An installed lockfile (`isInstalledLockfile`) among `changedPaths` whose
+   * newest change in them wrote it: the results follow a dependency install.
+   * A lockfile whose newest change deleted it is not one (`npm ci` deletes
+   * `node_modules` first; task 001-94, review wave 10b S1). Set by
+   * `readLiveHeader`; absent names none.
+   */
+  readonly installedLockfile?: RelativePath;
 }
 
 /**

@@ -1,3 +1,4 @@
+import { isInstalledLockfile } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import type {
@@ -5,6 +6,7 @@ import type {
   DaemonLiveness,
   DaemonRecord,
   EpochMs,
+  FileChange,
   KnownState,
   RelativePath,
   RevisionNumber,
@@ -41,9 +43,10 @@ export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs):
 }
 
 /**
- * The shared header (D6) with the worktree's daemon liveness and the paths
+ * The shared header (D6) with the worktree's daemon liveness, the paths
  * changed since revision `since` (`changedSince`), which every delivered
- * message names (task 001-85; task 001-89, review wave 10 S4 (b)).
+ * message names (task 001-85; task 001-89, review wave 10 S4 (b)), and the
+ * installed lockfile those changes wrote, if any (task 001-94, S1).
  */
 export function readLiveHeader(
   store: Store,
@@ -53,31 +56,37 @@ export function readLiveHeader(
   since: RevisionNumber | null = null,
 ): StatusHeader {
   const header = readHeader(store, worktreeId, states);
+  const changes = changedSince(store, worktreeId, header.revision, since);
+  const installed = [...changes.values()].find(
+    (c) => c.newHash !== null && isInstalledLockfile(c.path),
+  );
   return {
     ...header,
     daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
-    changedPaths: changedSince(store, worktreeId, header.revision, since),
+    changedPaths: [...changes.keys()],
+    ...(installed === undefined ? {} : { installedLockfile: installed.path }),
   };
 }
 
 /**
  * The paths revisions after `since` up to `revision` changed, oldest first,
- * each once: what changed since a consumer's last report, so a check that
- * broke at one revision and is reported at a later one names both edits.
- * With nothing after `since`, or no `since`, the paths `revision` changed.
+ * each once with its newest change: what changed since a consumer's last
+ * report, so a check that broke at one revision and is reported at a later
+ * one names both edits. With nothing after `since`, or no `since`, the paths
+ * `revision` changed. One query (review wave 10b, N3).
  */
 export function changedSince(
   store: Store,
   worktreeId: WorktreeId,
   revision: RevisionNumber,
   since: RevisionNumber | null,
-): readonly RelativePath[] {
-  const from = since === null || since >= revision ? revision : Math.max(since + 1, 1);
-  const paths = new Set<RelativePath>();
-  for (let n = from; n <= revision && n > 0; n++) {
-    for (const change of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change.path);
+): ReadonlyMap<RelativePath, FileChange> {
+  const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
+  const changes = new Map<RelativePath, FileChange>();
+  for (const r of store.revisions.range(worktreeId, after, revision)) {
+    for (const change of r.changes) changes.set(change.path, change);
   }
-  return [...paths];
+  return changes;
 }
 
 /*

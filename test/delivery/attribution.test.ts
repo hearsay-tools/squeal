@@ -240,6 +240,44 @@ describe("installed dependencies in the header", () => {
   });
 });
 
+/* Review wave 10b S1: `npm ci` deletes node_modules first; a deletion is not an install. */
+describe("a removed installed lockfile", () => {
+  function remove(path: string): number {
+    return store.revisions.append({
+      worktreeId: WT,
+      createdAt: 1,
+      head: null,
+      dirty: true,
+      trigger: "watch",
+      changes: [{ path, oldHash: "installed", newHash: null }],
+    }).number;
+  }
+
+  it("is not labelled an install, so the header says one thing (S1 probe)", async () => {
+    apply(edit([]), result(A, "pass"));
+    await delivery.register(C1);
+    hashed("src/a.test.ts", "package-lock.json");
+    apply(
+      remove("node_modules/.package-lock.json"),
+      result(A, "fail", { message: "Cannot find package 'vitest'" }),
+    );
+    const text = formatDelta((await delivery.onToolBoundary(C1)) as Delta);
+    expect(text).toContain("No dependencies are installed in this worktree");
+    expect(text).not.toContain("follow a dependency install");
+  });
+
+  it("is labelled an install once a later revision in the range writes it again", async () => {
+    apply(edit([]), result(A, "fail"));
+    await delivery.register(C1);
+    hashed("src/a.test.ts", "node_modules/.package-lock.json");
+    remove("node_modules/.package-lock.json");
+    apply(edit(["node_modules/.package-lock.json"]), result(A, "pass"));
+    expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).toContain(
+      "These results follow a dependency install (node_modules/.package-lock.json changed).",
+    );
+  });
+});
+
 describe("still failing", () => {
   it("lists the checks failing at delivery", async () => {
     const B = check("b");

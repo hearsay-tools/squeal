@@ -1,4 +1,3 @@
-import { isInstalledLockfile } from "../keys/index.js";
 import type { StatusHeader, TransitionEntry } from "../types/index.js";
 
 /*
@@ -83,16 +82,17 @@ export function loadLine(entry: TransitionEntry): string | null {
     : `load average ${entry.loadAverage.toFixed(2)} when it ran`;
 }
 
-/** Header sentences about installed dependencies, each with a leading space; empty when none applies. */
+/**
+ * The header sentence about installed dependencies, with a leading space;
+ * empty when none applies. One at most: a worktree with none installed is
+ * never said to follow an install (task 001-94, review wave 10b S1).
+ */
 export function installSentences(header: StatusHeader): string {
-  const none =
-    header.dependenciesInstalled === false
-      ? " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install."
-      : "";
-  const lockfile = header.changedPaths?.find(isInstalledLockfile);
-  const install =
-    lockfile === undefined
-      ? ""
-      : ` These results follow a dependency install (${lockfile} changed).`;
-  return `${none}${install}`;
+  if (header.dependenciesInstalled === false) {
+    return " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.";
+  }
+  const lockfile = header.installedLockfile;
+  return lockfile === undefined
+    ? ""
+    : ` These results follow a dependency install (${lockfile} changed).`;
 }
