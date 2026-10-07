@@ -190,6 +190,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     register: async (consumer, { inTurn = false } = {}) =>
       store.transaction(() => {
         const at = now();
+        // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
+        const registered = store.consumers.get(consumer) !== null;
         store.consumers.register(consumer, at);
         const states = store.knownStates.list(consumer.worktreeId);
         store.views.writeMany(
@@ -201,7 +203,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
         tellLiveness(store, consumer, header.daemon?.state ?? null);
         tellRevision(store, consumer, header.revision);
-        tellRegistered(store, consumer, header.revision);
+        if (!registered) tellRegistered(store, consumer, header.revision);
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
         return {
