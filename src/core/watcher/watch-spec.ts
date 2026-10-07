@@ -1,4 +1,4 @@
-import { hasGitEntry, toAbsolute } from "../fs/index.js";
+import { hasGitEntry, sameList, toAbsolute } from "../fs/index.js";
 import type { AbsolutePath, RelativePath, WatchSpec } from "../types/index.js";
 import { checkIgnored, type GitStatus, gitStatus, listIgnored, listSubmodules } from "./git.js";
 
@@ -54,8 +54,4 @@ export function sameWatchSpec(a: WatchSpec, b: WatchSpec): boolean {
   return (
     a.root === b.root && sameList(a.excluded, b.excluded) && sameList(a.extraFiles, b.extraFiles)
   );
-}
-
-function sameList(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((value, i) => value === b[i]);
 }

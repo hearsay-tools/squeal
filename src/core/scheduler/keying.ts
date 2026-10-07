@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { runGit, splitNul } from "../fs/index.js";
+import { runGit, sameList, splitNul } from "../fs/index.js";
 import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
 import {
   assembleClosure,
@@ -331,8 +331,4 @@ export class WorktreeKeys {
   #knownFiles(): RelativePath[] {
     return [...this.cache.paths(), ...this.#extra];
   }
-}
-
-function sameList(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((value, i) => value === b[i]);
 }
