@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/session-start.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/session-start.mjs\"",
             "timeout": 2
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/user-prompt-submit.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/user-prompt-submit.mjs\"",
             "timeout": 2
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node \"${PLUGIN_ROOT}/dist/pre-tool-use.mjs\"",
+            "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/pre-tool-use.mjs\"",
             "timeout": 2
           }
         ]
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node \"${PLUGIN_ROOT}/dist/post-tool-use.mjs\"",
+            "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/post-tool-use.mjs\"",
             "timeout": 2
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/stop.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/stop.mjs\"",
             "timeout": 2
           }
         ]
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/subagent-start.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/subagent-start.mjs\"",
             "timeout": 2
           }
         ]
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/subagent-stop.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/subagent-stop.mjs\"",
             "timeout": 2
           }
         ]
@@ -85,7 +85,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/interrupt.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/interrupt.mjs\"",
             "timeout": 3
           }
         ]
@@ -96,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/dist/session-end.mjs\"",
+            "command": "node --disable-warning=ExperimentalWarning \"${PLUGIN_ROOT}/dist/session-end.mjs\"",
             "timeout": 3
           }
         ]

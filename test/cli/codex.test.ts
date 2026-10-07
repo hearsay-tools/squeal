@@ -157,7 +157,9 @@ describe("squeal init --harness codex --print-launcher-config", () => {
           expect(hook.type).toBe("command");
           expect(typeof hook.timeout).toBe("number");
           expect(hook.command).not.toContain("PLUGIN_ROOT");
-          expect(hook.command).toContain(`"${PLUGIN}/dist/`);
+          expect(hook.command).toContain(
+            `node --disable-warning=ExperimentalWarning "${PLUGIN}/dist/`,
+          );
         }
       }
     }
@@ -183,7 +185,8 @@ describe("squeal init --harness codex --print-launcher-config", () => {
     const [plain] = config["hooks.Stop"] as CodexHookGroup[];
     expect(plain?.hooks[0]).toEqual({
       type: "command",
-      command: 'node "/opt/squeal/plugins/codex/dist/stop.mjs"',
+      command:
+        'node --disable-warning=ExperimentalWarning "/opt/squeal/plugins/codex/dist/stop.mjs"',
       timeout: 2,
     });
     expect((config["hooks.PreToolUse"] as CodexHookGroup[])[0]?.matcher).toBe("*");
