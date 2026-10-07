@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { dirname, join, sep } from "node:path";
-import { compare, isMissing, toRelative } from "../fs/index.js";
+import { dirname, join, resolve, sep } from "node:path";
+import { compare, isMissing, isRecord, toRelative } from "../fs/index.js";
 import type {
   AbsolutePath,
   CoreEnvironmentInputs,
@@ -15,6 +15,7 @@ import {
   packageFoldersFingerprint,
   staleHiddenLockfile,
 } from "./hidden-lockfile.js";
+import { InstalledGraph } from "./packages.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const ENVIRONMENT_ENCODING = "squeal-environment/1";
@@ -168,6 +169,15 @@ export interface InstalledDependencies {
   readonly fingerprint: string;
   /** Why npm's hidden lockfile does not describe the install, or `null`. */
   readonly note: string | null;
+  /**
+   * The package graph per-package keys read (task 001-105): only from npm's
+   * hidden lockfile while npm would trust it. `null` for any other lockfile
+   * format, a stale or unparsable hidden lockfile, or no install; keys then
+   * hold the whole `fingerprint`.
+   */
+  readonly graph: InstalledGraph | null;
+  /** Hash of the patches directory the package manager applies; part of `fingerprint` too. */
+  readonly patches: string;
 }
 
 /**
@@ -184,19 +194,24 @@ export interface InstalledDependencies {
 export async function installedDependencies(
   projectRoot: AbsolutePath,
   worktreeRoot: AbsolutePath,
+  typesOnly?: Map<string, boolean>,
 ): Promise<InstalledDependencies> {
   const found = await locateLockfile(projectRoot, worktreeRoot);
-  if (found === null) return { fingerprint: "none", note: null };
+  if (found === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
   const { dir, format, content } = found;
   const stale = format.path === HIDDEN_LOCKFILE ? staleHiddenLockfile(dir, content) : null;
   const hash = createHash("sha256").update(`${format.path}\0`);
   if (stale === null) hash.update(content);
   else hash.update(`stale\0${packageFoldersFingerprint(dir, content)}`);
+  const patches = createHash("sha256");
   if (format.patches !== null) {
     const patchesDir = join(dir, format.patches);
     for (const path of await listEntries(patchesDir)) {
       const bytes = await readIfFile(join(patchesDir, path));
-      if (bytes !== null) hash.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
+      if (bytes === null) continue;
+      for (const target of [hash, patches]) {
+        target.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
+      }
     }
   }
   const lockfile = toRelative(worktreeRoot, join(dir, format.path)) ?? format.path;
@@ -205,7 +220,21 @@ export async function installedDependencies(
       ? null
       : `${lockfile} does not describe the installed packages (${stale}); ` +
         "dependencies are keyed by their package.json files until npm rewrites it";
-  return { fingerprint: hash.digest("hex"), note };
+  const listed = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
+  const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
+  const graph =
+    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, typesOnly);
+  return { fingerprint: hash.digest("hex"), note, graph, patches: patches.digest("hex") };
+}
+
+/** The `packages` map of a hidden lockfile, or `null` when it has none. */
+function packagesOf(content: Buffer): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(content.toString("utf8"));
+    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

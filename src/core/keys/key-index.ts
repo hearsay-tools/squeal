@@ -43,6 +43,8 @@ interface Keyed {
   readonly closure: Closure;
   /** `closure.paths` in order. */
   readonly entries: readonly PathEntry[];
+  /** The installed-dependency segment of the key (task 001-105). */
+  dependencies: string;
   key: CheckKey | null;
 }
 
@@ -91,12 +93,39 @@ export class KeyIndex {
   }
 
   /**
+   * Sets the environment hash of each project in `environments` and the
+   * installed-dependency segment of each of their test files, then re-keys
+   * every test file once, so no key passes through a mix of old and new
+   * inputs (task 001-105).
+   */
+  setInstalled(
+    environments: ReadonlyMap<ProjectName, EnvironmentHash>,
+    dependenciesOf: (testFile: TestFileRef) => string,
+  ): KeyChange[] {
+    const moved = new Set<ProjectName>();
+    for (const [project, envHash] of environments) {
+      if (this.environments.get(project) !== envHash) moved.add(project);
+      this.environments.set(project, envHash);
+    }
+    const changed = this.reverse.testFiles().filter((ref) => {
+      const keyed = this.keyed.get(testFileId(ref));
+      if (!keyed || !environments.has(ref.project)) return false;
+      const dependencies = dependenciesOf(ref);
+      if (dependencies === keyed.dependencies) return moved.has(ref.project);
+      keyed.dependencies = dependencies;
+      return true;
+    });
+    return this.recompute(changed);
+  }
+
+  /**
    * Sets or replaces a test file's closure and keys it. Every path's hash is
    * read again; a path whose hash changed without a `rekey` also re-keys the
    * other test files that reference it. While any path is untracked the test
    * file has no key, and a key it had is dropped (a change to `null`).
+   * `dependencies` is its installed-dependency segment (task 001-105).
    */
-  setClosure(closure: Closure): ClosureUpdate {
+  setClosure(closure: Closure, dependencies = ""): ClosureUpdate {
     const id = testFileId(closure.testFile);
     const previous = this.keyed.get(id);
     const stale: RelativePath[] = [];
@@ -106,7 +135,7 @@ export class KeyIndex {
       return entry;
     });
     if (previous) this.release(previous.closure.paths);
-    this.keyed.set(id, { closure, entries, key: previous?.key ?? null });
+    this.keyed.set(id, { closure, entries, dependencies, key: previous?.key ?? null });
     this.reverse.set(closure.testFile, closure.paths);
 
     const affected = this.reverse.referencing(stale).filter((ref) => testFileId(ref) !== id);
@@ -156,7 +185,7 @@ export class KeyIndex {
       if (entry.hash === undefined) return null;
       segments.push(entry.segment);
     }
-    return keyFromSegments(envHash, keyed.closure.testFile, segments);
+    return keyFromSegments(envHash, keyed.closure.testFile, segments, keyed.dependencies);
   }
 
   /** The entry of `path` with one more reference; a new entry reads the hash. */

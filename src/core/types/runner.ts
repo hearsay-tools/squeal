@@ -42,6 +42,37 @@ export interface RunnerClosure {
    * (D3). Paths that do not exist hash as absent. `node_modules` excluded.
    */
   readonly paths: readonly RelativePath[];
+  /**
+   * The installed packages and Node builtins the closure's project files
+   * import in one hop (D3, task 001-105). Absent when the runner does not
+   * report them: the test file then keys by the whole installed-dependency
+   * fingerprint.
+   */
+  readonly packages?: RunnerPackages;
+}
+
+/**
+ * An installed package a project file imports, as Node would look it up: in
+ * `<from>/node_modules/<name>`, then in each parent directory's.
+ */
+export interface PackageImport {
+  /** Worktree-relative directory the lookup starts in; `""` is the worktree root. */
+  readonly from: RelativePath;
+  /** `name` or `@scope/name`, without a subpath. */
+  readonly name: string;
+}
+
+/**
+ * First-hop installed packages and Node builtins of a closure. Spec 001 D3
+ * (task 001-105): a test file's key holds the lockfile closure of the
+ * packages its closure imports directly; one that imports `child_process`,
+ * `worker_threads` or `module` keys by the whole fingerprint instead.
+ */
+export interface RunnerPackages {
+  /** Unordered; duplicates allowed. */
+  readonly imports: readonly PackageImport[];
+  /** Builtin module names without the `node:` prefix or a subpath (`fs`, not `fs/promises`). */
+  readonly builtins: readonly string[];
 }
 
 /**
@@ -71,6 +102,14 @@ export interface RunnerEnvironment {
    * stat cache, and recomputes the environment when one of them changes.
    */
   readonly files: readonly RelativePath[];
+  /**
+   * Installed packages every test file of the project can load: the runner
+   * itself, and what the setup and `globalSetup` closures and the config
+   * files import (D3, task 001-105). Absent when the runner does not report
+   * them: every test file then keys by the whole installed-dependency
+   * fingerprint.
+   */
+  readonly packages?: RunnerPackages;
 }
 
 /**
