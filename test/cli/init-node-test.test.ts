@@ -107,13 +107,44 @@ describe("squeal init seeds nodeTest", () => {
     expect(out).toContain('"name": "test:piped"');
   });
 
-  it("never overwrites an existing config", () => {
+  it("never overwrites an existing config, and suggests entries when it has no nodeTest", () => {
     const root = cezarion();
     writeFileSync(join(root, "squeal.config.json"), "{}\n");
     const result = init(root);
     expect(result.code).toBe(0);
     expect(readFileSync(join(root, "squeal.config.json"), "utf8")).toBe("{}\n");
+    // Review wave 2, N2: the human learns which suites go unvalidated.
+    const out = result.stdout();
+    expect(out).toContain("kept squeal.config.json");
+    expect(out).toContain("squeal.config.json has no nodeTest; to validate these node:test suites");
+    expect(out).toContain('"name": "test:unit"');
+    expect(out).toContain('"cwd": "packages/cezarion"');
+    expect(out).not.toContain("seeded nodeTest project");
+  });
+
+  it("suggests nothing when the kept config has a nodeTest, even an empty one", () => {
+    const root = cezarion();
+    writeFileSync(join(root, "squeal.config.json"), `{ "nodeTest": [] }\n`);
+    const result = init(root);
+    expect(result.code).toBe(0);
+    expect(readFileSync(join(root, "squeal.config.json"), "utf8")).toBe(`{ "nodeTest": [] }\n`);
     expect(result.stdout()).not.toContain("nodeTest");
+  });
+
+  it("names a seeded script after a refused one of the same name plainly (review wave 2, N1)", () => {
+    const root = cezarion();
+    writeJson(join(root, "package.json"), {
+      private: true,
+      workspaces: ["packages/*", "!packages/ignored"],
+      scripts: { "test:unit": `npm run build && ${UNIT}` },
+    });
+    const result = init(root);
+    expect(result.code).toBe(0);
+    expect((config(root).nodeTest as { name: string }[]).map((p) => p.name)).toEqual([
+      "test:unit",
+      "test:package",
+    ]);
+    expect(result.stdout()).toContain('script "test:unit" in package.json is not');
   });
 
   it("writes the default policy when there is no package.json", () => {

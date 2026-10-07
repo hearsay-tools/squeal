@@ -38,12 +38,19 @@ export function seedNodeTest(root: string): NodeTestSeed {
     }
   }
 
-  const counts = new Map<string, number>();
-  for (const { script } of found) counts.set(script, (counts.get(script) ?? 0) + 1);
+  // Names are unique (D1); a script seeded from several packages is named by its package
+  // too. Only seeded scripts count for a seeded name (review wave 2, N1): a refused one
+  // is never written, so it cannot collide.
+  const all = new Map<string, number>();
+  const seeded = new Map<string, number>();
+  for (const { script, parsed } of found) {
+    all.set(script, (all.get(script) ?? 0) + 1);
+    if (typeof parsed !== "string") seeded.set(script, (seeded.get(script) ?? 0) + 1);
+  }
   const projects: SeededProject[] = [];
   const templates: SeededProject[] = [];
   for (const { dir, script, parsed } of found) {
-    // Names are unique (D1); a script repeated across packages is named by its package too.
+    const counts = typeof parsed === "string" ? all : seeded;
     const name = dir !== "" && (counts.get(script) ?? 0) > 1 ? `${dir}:${script}` : script;
     const where = manifestPath(dir);
     const cwd = dir === "" ? {} : { cwd: dir };

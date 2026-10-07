@@ -125,15 +125,20 @@ function initClaudeCode(io: CliIo): number {
       : "kept squeal.config.json",
   );
   let seed: NodeTestSeed = { projects: [], notes: [], templates: [] };
+  // Review wave 2, N2: a kept config without `nodeTest` gets the seeded entries as a suggestion.
+  const suggest = !writeConfig && lacksNodeTest(configPath);
   try {
-    if (writeConfig) seed = seedNodeTest(root);
+    if (writeConfig || suggest) seed = seedNodeTest(root);
   } catch (error) {
-    io.stderr(
-      `squeal init: could not read package.json scripts: ${reason(error)}; nothing changed\n`,
-    );
-    return 1;
+    if (writeConfig) {
+      io.stderr(
+        `squeal init: could not read package.json scripts: ${reason(error)}; nothing changed\n`,
+      );
+      return 1;
+    }
+    lines.push(`could not read package.json scripts to suggest nodeTest: ${reason(error)}`);
   }
-  lines.push(...seed.notes);
+  lines.push(...(suggest ? seed.notes.filter((n) => !n.startsWith(SEEDED)) : seed.notes));
 
   const next: JsonObject = { ...settings.value };
   const marketplaceEntries = marketplaces as JsonObject;
@@ -174,6 +179,12 @@ function initClaudeCode(io: CliIo): number {
   io.stdout(
     [
       ...lines.map((line) => `squeal init: ${line}`),
+      ...(suggest && seed.projects.length > 0
+        ? [
+            "squeal.config.json has no nodeTest; to validate these node:test suites, add:",
+            JSON.stringify({ nodeTest: seed.projects }, null, 2),
+          ]
+        : []),
       ...(seed.templates.length === 0
         ? []
         : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)]),
@@ -182,6 +193,19 @@ function initClaudeCode(io: CliIo): number {
     ].join("\n"),
   );
   return 0;
+}
+
+/** The note `seedNodeTest` writes for a seeded script; a suggestion seeds nothing. */
+const SEEDED = "seeded nodeTest project";
+
+/** True when the config parses as an object without a `nodeTest` key. */
+function lacksNodeTest(path: string): boolean {
+  try {
+    const value: unknown = JSON.parse(readFileSync(path, "utf8"));
+    return isRecord(value) && !("nodeTest" in value);
+  } catch {
+    return false;
+  }
 }
 
 /** Puts settings.json back as it was read: the old text, or no file. */
