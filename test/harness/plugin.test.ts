@@ -1,18 +1,12 @@
 import { execFileSync } from "node:child_process";
-import {
-  accessSync,
-  constants,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-} from "node:fs";
+import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { describe, expect, it } from "vitest";
+import { buildDist } from "../../src/harness/build.js";
 import {
   bundleOptions,
+  CLAUDE_CODE_PLUGIN,
   hookEntries,
   PLUGIN_DIST,
   REPO_ROOT,
@@ -21,7 +15,7 @@ import {
 } from "../../src/harness/claude-code/build.js";
 import { WAITER_HOOK_TIMEOUT_S } from "../../src/harness/claude-code/index.js";
 import { tempDir } from "../store/helpers.js";
-import { runtimeDir } from "./bundle-helpers.js";
+import { expectSameFiles, runtimeDir } from "./bundle-helpers.js";
 
 const PLUGIN = join(REPO_ROOT, "plugins/claude-code");
 const readJson = (path: string): unknown => JSON.parse(readFileSync(join(PLUGIN, path), "utf8"));
@@ -132,17 +126,8 @@ describe("plugin manifest", () => {
 describe("bundles", () => {
   it("are committed exactly as `npm run build` produces them", async () => {
     const outdir = tempDir("squeal-bundles-");
-    await build(bundleOptions(outdir));
-    const files = (dir: string): string[] =>
-      readdirSync(dir, { recursive: true, encoding: "utf8" })
-        .filter((f) => f.endsWith(".mjs"))
-        .sort();
-    expect(files(PLUGIN_DIST)).toEqual(files(outdir));
-    for (const file of files(outdir)) {
-      expect(readFileSync(join(PLUGIN_DIST, file), "utf8"), file).toBe(
-        readFileSync(join(outdir, file), "utf8"),
-      );
-    }
+    await buildDist(CLAUDE_CODE_PLUGIN, outdir);
+    expectSameFiles(PLUGIN_DIST, outdir, ".mjs");
   });
 
   it("give the CLI the root version with no manifest anywhere near it (B1)", () => {

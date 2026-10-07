@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { REPO_ROOT } from "../../../src/harness/claude-code/build.js";
+import { buildDist, REPO_ROOT } from "../../../src/harness/build.js";
+import { CODEX_PLUGIN } from "../../../src/harness/codex/build.js";
 import type { CodexHookName } from "../../../src/harness/codex/index.js";
 
 /** Where Codex ran: `codex exec`, a `codex app-server` thread, or the TUI. */
@@ -58,4 +59,15 @@ export function allFixtures(): (readonly [Mode, string, string])[] {
       (name) => [mode, name, String(codexInput(mode, name, "/").hook_event_name)] as const,
     ),
   );
+}
+
+/**
+ * Builds the Codex bundles into a directory of their own under /tmp, as
+ * `SQUEAL_TEST_DIST` does for Claude Code: `plugins/codex/dist` is built and
+ * committed only at integration. Call from `beforeAll`; `cleanup` in `afterAll`.
+ */
+export async function buildCodexBundles(): Promise<{ dir: string; cleanup: () => void }> {
+  const dir = mkdtempSync("/tmp/sq-codex-");
+  await buildDist(CODEX_PLUGIN, dir);
+  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
