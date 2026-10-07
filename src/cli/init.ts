@@ -36,34 +36,43 @@ type JsonObject = Record<string, unknown>;
  * the config cannot be written, so a failure changes nothing. With
  * `--harness codex`, see `initCodex`.
  */
-export function init(args: readonly string[], io: CliIo): number {
+export function init(args: readonly string[], io: CliIo): number | Promise<number> {
   const parsed = parseInitArgs(args);
   if (typeof parsed === "string") {
     io.stderr(`squeal init: takes no arguments but those below; ${parsed}\n\n${INIT_USAGE}`);
     return 2;
   }
   if (parsed.harness === "codex") {
-    return parsed.printLauncherConfig ? printLauncherConfig(io) : initCodex(io);
+    return parsed.printLauncherConfig
+      ? printLauncherConfig(io)
+      : initCodex(io, { trust: parsed.trust, yes: parsed.yes });
   }
   return initClaudeCode(io);
 }
 
 const INIT_USAGE = `Usage: squeal init [--harness claude-code]
-       squeal init --harness codex [--print-launcher-config]
+       squeal init --harness codex [--print-launcher-config | --trust [--yes]]
 `;
 
 interface InitArgs {
   readonly harness: "claude-code" | "codex";
   readonly printLauncherConfig: boolean;
+  /** Row 002-17: have Codex trust the plugin's hooks; `yes` without asking. */
+  readonly trust: boolean;
+  readonly yes: boolean;
 }
 
 /** Spec 002 D1: no `--harness` keeps the Claude Code behaviour. */
 function parseInitArgs(args: readonly string[]): InitArgs | string {
   let harness: string = "claude-code";
   let printLauncher = false;
+  let trust = false;
+  let yes = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
     if (arg === "--print-launcher-config") printLauncher = true;
+    else if (arg === "--trust") trust = true;
+    else if (arg === "--yes") yes = true;
     else if (arg.startsWith("--harness=")) harness = arg.slice("--harness=".length);
     else if (arg === "--harness") {
       const value = args[++i];
@@ -75,7 +84,10 @@ function parseInitArgs(args: readonly string[]): InitArgs | string {
     return `unknown harness "${harness}": claude-code or codex`;
   }
   if (printLauncher && harness !== "codex") return "--print-launcher-config needs --harness codex";
-  return { harness, printLauncherConfig: printLauncher };
+  if (trust && harness !== "codex") return "--trust needs --harness codex";
+  if (yes && !trust) return "--yes needs --trust";
+  if (trust && printLauncher) return "--trust and --print-launcher-config are separate commands";
+  return { harness, printLauncherConfig: printLauncher, trust, yes };
 }
 
 function initClaudeCode(io: CliIo): number {

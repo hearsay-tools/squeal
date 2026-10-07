@@ -5,6 +5,7 @@ import { DEFAULT_POLICY } from "../../core/types/index.js";
 import type { CliIo } from "../main.js";
 import { type NodeTestSeed, seedNodeTest } from "../node-test-seed.js";
 import { findCodexPlugin, launcherConfig, readPluginHooks } from "./launcher.js";
+import { type TrustOptions, terminalAsk, trustCodexHooks } from "./trust.js";
 
 /*
  * `squeal init --harness codex`, spec 002 D1 and goal 8: Codex loads plugins
@@ -16,15 +17,30 @@ import { findCodexPlugin, launcherConfig, readPluginHooks } from "./launcher.js"
 /** This repository as a Codex marketplace source; its `.agents/plugins/marketplace.json`. */
 export const CODEX_MARKETPLACE_SOURCE = "hearsay-tools/squeal";
 export const CODEX_PLUGIN_ID = "squeal@squeal";
+const CODEX_INSTALL_COMMANDS = [
+  `codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
+  `codex plugin add ${CODEX_PLUGIN_ID}`,
+];
 
 /** The trust step, also named by `squeal status` (spec 002 D6). */
 export const CODEX_TRUST_STEP = `open the Codex TUI, run /hooks and trust the hooks of ${CODEX_PLUGIN_ID}`;
 
+/** `--trust` and `--yes` (row 002-17). */
+export interface InitCodexOptions {
+  readonly trust: boolean;
+  readonly yes: boolean;
+}
+
 /**
  * Exit 0 when the repository is set up, 1 when the directory is not in a git
- * worktree or the config cannot be written.
+ * worktree or the config cannot be written. With `--trust`, then has Codex
+ * trust the plugin's hooks (`trustCodexHooks`), and exits with its code.
  */
-export function initCodex(io: CliIo): number {
+export function initCodex(
+  io: CliIo,
+  options: InitCodexOptions = { trust: false, yes: false },
+  deps: Partial<Pick<TrustOptions, "ask" | "timeoutMs">> = {},
+): number | Promise<number> {
   const cwd = io.cwd ?? process.cwd();
   const root = findWorktreeRoot(cwd);
   if (root === null) {
@@ -54,13 +70,19 @@ export function initCodex(io: CliIo): number {
         ? []
         : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)]),
       "Each user installs the Codex plugin once; Codex writes its own config:",
-      `  codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
-      `  codex plugin add ${CODEX_PLUGIN_ID}`,
+      ...CODEX_INSTALL_COMMANDS.map((c) => `  ${c}`),
       `Then trust its hooks once: ${CODEX_TRUST_STEP}. Codex skips untrusted hooks silently.`,
       "",
     ].join("\n"),
   );
-  return 0;
+  if (!options.trust) return 0;
+  return trustCodexHooks(io, root, {
+    pluginId: CODEX_PLUGIN_ID,
+    installCommands: CODEX_INSTALL_COMMANDS,
+    yes: options.yes,
+    ask: deps.ask === undefined ? terminalAsk() : deps.ask,
+    ...(deps.timeoutMs === undefined ? {} : { timeoutMs: deps.timeoutMs }),
+  });
 }
 
 /**

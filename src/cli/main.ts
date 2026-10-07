@@ -20,10 +20,12 @@ Usage:
   squeal why <check> [--json]   History and provenance of one check
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
-  squeal init --harness codex [--print-launcher-config]
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
                                 Write squeal.config.json and print the Codex plugin
                                 install and trust steps; or print the hooks and their
-                                trust as thread/start config for a launcher
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
