@@ -2,7 +2,7 @@
 
 ## When an edit is denied
 
-With policy `interrupt.onRegression` on (the default), the first file edit after a new regression is denied once. The denial lists the failing checks and says the edit was not applied. The same edit can be re-issued; the same regression does not deny twice.
+With policy `interrupt.onRegression` on (the default), the first file edit after a regression is denied once: a check that passed in this worktree, or passed where its result was inherited from, fails now. The denial lists those checks and says the edit was not applied. A failure first observed, from Squeal's run at start or from a test file just written, never denies; it arrives with the next tool call. The same edit can be re-issued; the same regression does not deny twice.
 
 ## When Stop keeps you going
 
@@ -14,7 +14,7 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `interrupt.onRegression` | `true` | Deny one edit when a check newly fails. |
+| `interrupt.onRegression` | `true` | Deny one edit when a check that passed here fails. |
 | `stop.blockOnKnownFailures` | `false` | Keep the agent going at Stop while failures exist at the current revision. Failures whose re-run is still pending are named as pending, with the revision they last failed at, and do not block. Blocks once per stop. |
 | `stop.requireFullSuite` | `false` | Keep the agent going at Stop until a full-suite run completed at the current revision. Blocks once per stop. |
 | `stop.waitMs` | `0` | At Stop, wait this long for pending checks of the current revision. Capped at 1500 ms by the 2 s hook timeout. |
