@@ -12,6 +12,10 @@ import { all, openFixture, outcomes, paths, readsTest, ref, SLOW } from "./helpe
 const pkg = ref("test/pkg.test.ts");
 const module = (path: string) => ({ [path]: `export const which = "${path}";\n` });
 const main = (entry: string) => `${JSON.stringify({ name: "a", main: entry })}\n`;
+const json = (fields: object) => `${JSON.stringify(fields)}\n`;
+/** The fixture's own root manifest, with `fields` added. */
+const root = (fields: object) =>
+  json({ name: "squeal-fixture-vitest-basic", private: true, type: "module", ...fields });
 
 interface Case {
   readonly name: string;
@@ -88,6 +92,75 @@ const cases: Case[] = [
     workspace: true,
     before: "packages/a/src/one.ts",
     after: "packages/a/src/two.ts",
+  },
+  // Reviews/wave-9b.md E5 (S1): Vite caches a package's data, `imports` included.
+  {
+    name: "imports of a workspace package edited: its subpath import resolves to the new target",
+    manifest: "packages/a/package.json",
+    from: json({ name: "a", main: "src/entry.ts", imports: { "#x": "./src/one.ts" } }),
+    to: json({ name: "a", main: "src/entry.ts", imports: { "#x": "./src/two.ts" } }),
+    files: {
+      "packages/a/src/entry.ts": 'export { which } from "#x";\n',
+      ...module("packages/a/src/one.ts"),
+      ...module("packages/a/src/two.ts"),
+    },
+    specifier: "a",
+    workspace: true,
+    before: "packages/a/src/one.ts",
+    after: "packages/a/src/two.ts",
+  },
+  // A nested manifest's `imports` shadows the root's for files below it.
+  {
+    name: "a nested manifest with imports deleted: the root's imports apply",
+    manifest: "src/pkg/package.json",
+    from: json({ imports: { "#x": "./one.ts" } }),
+    to: null,
+    files: {
+      "package.json": root({ imports: { "#x": "./src/two.ts" } }),
+      "src/pkg/index.ts": 'export { which } from "#x";\n',
+      ...module("src/pkg/one.ts"),
+      ...module("src/two.ts"),
+    },
+    specifier: "../src/pkg/index.ts",
+    before: "src/pkg/one.ts",
+    after: "src/two.ts",
+  },
+  {
+    name: "a nested manifest with imports added: it shadows the root's",
+    manifest: "src/pkg/package.json",
+    from: null,
+    to: json({ imports: { "#x": "./one.ts" } }),
+    files: {
+      "package.json": root({ imports: { "#x": "./src/two.ts" } }),
+      "src/pkg/index.ts": 'export { which } from "#x";\n',
+      ...module("src/pkg/one.ts"),
+      ...module("src/two.ts"),
+    },
+    specifier: "../src/pkg/index.ts",
+    before: "src/two.ts",
+    after: "src/pkg/one.ts",
+  },
+  // Reviews/wave-9b.md E6 (S1, S2): the root manifest re-resolves every closure.
+  {
+    name: "imports of the root manifest edited: its subpath import resolves to the new target",
+    manifest: "package.json",
+    from: root({ imports: { "#lib": "./src/pa.ts" } }),
+    to: root({ imports: { "#lib": "./src/pb.ts" } }),
+    files: { ...module("src/pa.ts"), ...module("src/pb.ts") },
+    specifier: "#lib",
+    before: "src/pa.ts",
+    after: "src/pb.ts",
+  },
+  // Reviews/wave-9b.md E7 (S2): the root package imported by its own name.
+  {
+    name: "exports of the root manifest edited: the package imported by name resolves anew",
+    manifest: "package.json",
+    from: root({ exports: { ".": "./src/pa.ts" } }),
+    to: root({ exports: { ".": "./src/pb.ts" } }),
+    files: { ...module("src/pa.ts"), ...module("src/pb.ts") },
+    specifier: "squeal-fixture-vitest-basic",
+    before: "src/pa.ts",
+    after: "src/pb.ts",
   },
 ];
 

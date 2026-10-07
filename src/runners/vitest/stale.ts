@@ -17,24 +17,36 @@ const tracksSoftInvalidation = new WeakMap<Vitest, boolean>();
 /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
 const fellBack = new WeakSet<Vitest>();
 
+/** Per instance: each manifest's resolution fields as last invalidated, as JSON (reviews/wave-9b.md S3). */
+const manifestFields = new WeakMap<Vitest, Map<AbsolutePath, string>>();
+
+/** The `package.json` fields that decide how an import of or inside its directory resolves. */
+const RESOLUTION_FIELDS = ["name", "main", "module", "browser", "exports", "imports"] as const;
+
 /**
  * Invalidates what the adds and deletes among `paths`, and the edited
  * `package.json` files, can make wrong; the caller has invalidated every path
- * itself. `note` hears the fallback to full invalidation once per instance.
+ * itself. An edited `package.json` whose resolution fields are the ones
+ * recorded at its last edit makes nothing wrong. `note` hears the fallback to
+ * full invalidation once per instance.
  */
-export function invalidateStructural(
+export async function invalidateStructural(
   vitest: Vitest,
   paths: readonly { readonly kind: InvalidatedPath["kind"]; readonly abs: AbsolutePath }[],
   note: (text: string) => void,
-): void {
-  const structural = paths.filter((p) => p.kind !== "change" || isPackageJson(p.abs));
+): Promise<void> {
+  const manifests = paths.filter((p) => isPackageJson(p.abs));
+  // Spec 001 D4: Vite caches each manifest it read; a re-transform must not see the old one.
+  for (const p of manifests) await dropPackageData(vitest, p.abs, p.kind);
+  const moved = new Set(manifests.filter((p) => resolutionMoved(vitest, p)));
+  const structural = paths.filter((p) => p.kind !== "change" || moved.has(p));
   if (structural.length > 0) {
     // Spec 001 D4: an add or delete re-transforms only the importers whose
     // resolution it can change, never the whole graph (lessons, defect 11).
     const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
     const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-    const manifests = structural.filter((p) => p.kind === "change").map((p) => p.abs);
-    const stale = staleTransforms(vitest, added, deleted, manifests);
+    const edited = structural.filter((p) => p.kind === "change").map((p) => p.abs);
+    const stale = staleTransforms(vitest, added, deleted, edited);
     for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
     if (stale === null && !fellBack.has(vitest)) {
       fellBack.add(vitest);
@@ -48,10 +60,68 @@ export function invalidateStructural(
 }
 
 /**
+ * Reviews/wave-9b.md S1: Vite caches package data per directory and drops it
+ * only in the `watchChange` hook its own watcher calls, which Squeal never
+ * starts. A subpath import (`#x`) resolves through that cache, so without
+ * this a re-transform keeps the old `imports`. The hook drops only the data
+ * read from this manifest, so for an added one this also drops, from Vite's
+ * internal `packageCache`, the nearest-package lookups at or below its
+ * directory: they found an ancestor's manifest, which the new one shadows.
+ */
+async function dropPackageData(
+  vitest: Vitest,
+  manifest: AbsolutePath,
+  kind: InvalidatedPath["kind"],
+): Promise<void> {
+  const event = kind === "add" ? "create" : kind === "delete" ? "delete" : "update";
+  const dir = dirname(manifest);
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      await environment.pluginContainer.watchChange(manifest, { event });
+      const cache = (environment.config as { packageCache?: unknown }).packageCache;
+      if (kind !== "add" || !(cache instanceof Map)) continue;
+      for (const key of [...cache.keys()]) {
+        if (key === `fnpd_${dir}` || (typeof key === "string" && key.startsWith(`fnpd_${dir}/`))) {
+          cache.delete(key);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Reviews/wave-9b.md S3: whether an add, a delete or an edit of a manifest can
+ * move a resolution, recording its fields for the next call. An edit moves
+ * none when its fields equal the recorded ones; with none recorded, as for
+ * the first edit after a start, it may have.
+ */
+function resolutionMoved(
+  vitest: Vitest,
+  manifest: { readonly kind: InvalidatedPath["kind"]; readonly abs: AbsolutePath },
+): boolean {
+  let recorded = manifestFields.get(vitest);
+  if (!recorded) {
+    recorded = new Map();
+    manifestFields.set(vitest, recorded);
+  }
+  const before = recorded.get(manifest.abs);
+  const after = manifest.kind === "delete" ? null : resolutionFields(manifest.abs);
+  if (after === null) recorded.delete(manifest.abs);
+  else recorded.set(manifest.abs, after);
+  return manifest.kind !== "change" || before === undefined || before !== after;
+}
+
+/** The resolution fields of a `package.json` as JSON; `null` when it cannot be read. */
+function resolutionFields(manifest: AbsolutePath): string | null {
+  const fields = readManifest(manifest);
+  return fields === null ? null : JSON.stringify(RESOLUTION_FIELDS.map((field) => fields[field]));
+}
+
+/**
  * Files whose cached transforms an add, a delete or an edited `package.json`
- * (`manifests`) can make wrong, or `null`
- * when this Vite keeps no `invalidationState` and the stale set cannot be
- * known: the caller then invalidates every cached transform.
+ * (`manifests`) can make wrong, or `null` when this Vite keeps no
+ * `invalidationState` and the stale set cannot be known: the caller then
+ * invalidates every cached transform.
  *
  * Spec 001 D4: a cached transform holds each import as Vite resolved it, and
  * an unresolvable specifier verbatim. A deleted file stales every module that
@@ -70,6 +140,9 @@ export function invalidateStructural(
  * - a resolved import under the directory of an edited `package.json`: the
  *   directory, or the package by name, may now resolve to another entry
  *   (reviews/wave-9.md S2);
+ * - any import, when the module itself lies under the directory of an added,
+ *   deleted or edited `package.json`: its subpath imports (`#x`) resolve
+ *   through the `imports` of its nearest manifest (reviews/wave-9b.md S1);
  * - `import.meta.glob` or a template-literal dynamic import in its source.
  *
  * Every other transform stays cached (lessons, defect 11). The deleted files
@@ -87,9 +160,10 @@ export function staleTransforms(
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set<AbsolutePath>(deleted);
-      const directories = [...added, ...deleted, ...manifests]
+      const scopes = [...added, ...deleted, ...manifests]
         .filter(isPackageJson)
         .map((p) => `${dirname(p)}/`);
+      const directories = [...scopes];
       for (const path of added) {
         const bases = resolutionBases(path, extensions);
         for (const base of bases) {
@@ -114,6 +188,7 @@ export function staleTransforms(
           if (!result) continue;
           const deps = [...(result.deps ?? []), ...(result.dynamicDeps ?? [])];
           if (
+            (deps.length > 0 && scopes.some((dir) => file.startsWith(dir))) ||
             deps.some((dep) => reresolves(dep, file)) ||
             (added.length > 0 && expandsFromDisk(file, result))
           ) {
@@ -152,17 +227,22 @@ function entryDirectories(
 
 /** The entry fields of a `package.json` that name one file; none when it cannot be read. */
 function packageEntries(manifest: AbsolutePath): string[] {
-  let fields: unknown;
-  try {
-    fields = JSON.parse(readFileSync(manifest, "utf8"));
-  } catch {
-    return [];
-  }
-  if (!isRecord(fields)) return [];
+  const fields = readManifest(manifest);
+  if (fields === null) return [];
   const dot = isRecord(fields.exports) ? fields.exports["."] : fields.exports;
   return [fields.main, fields.module, dot].filter(
     (entry): entry is string => typeof entry === "string",
   );
+}
+
+/** A `package.json` as an object; `null` when it cannot be read or is not one. */
+function readManifest(manifest: AbsolutePath): Record<string, unknown> | null {
+  try {
+    const fields: unknown = JSON.parse(readFileSync(manifest, "utf8"));
+    return isRecord(fields) ? fields : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A dep Vite left as written that is neither a path, a virtual id nor a Node builtin. */
