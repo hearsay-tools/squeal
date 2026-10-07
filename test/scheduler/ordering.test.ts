@@ -59,8 +59,12 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
     const repo = createRepo("barrel");
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
-    // A runner without `affectedDetailed`: every affected file is transitive.
-    delete (h.runner as { affectedDetailed?: unknown }).affectedDetailed;
+    // A runner that cannot tell direct importers apart: every affected file is transitive.
+    const affected = h.runner.affected.bind(h.runner);
+    h.runner.affected = async (paths) => {
+      const { direct, transitive } = await affected(paths);
+      return { direct: [], transitive: [...direct, ...transitive] };
+    };
     await h.scheduler.start();
     await h.scheduler.idle();
     const baseline = h.runner.runs.length;
@@ -86,11 +90,11 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     const direct: string[][] = [];
-    const affectedDetailed = h.runner.affectedDetailed?.bind(h.runner);
-    h.runner.affectedDetailed = async (paths) => {
-      const affected = await (affectedDetailed as NonNullable<typeof affectedDetailed>)(paths);
-      direct.push(affected.direct.map((f) => f.path));
-      return affected;
+    const affected = h.runner.affected.bind(h.runner);
+    h.runner.affected = async (paths) => {
+      const result = await affected(paths);
+      direct.push(result.direct.map((f) => f.path));
+      return result;
     };
     await h.scheduler.start();
     await h.scheduler.idle();
