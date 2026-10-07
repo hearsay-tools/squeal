@@ -1,8 +1,6 @@
 import { join } from "node:path";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 
-export { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
-
 /** Spec 001 D1: the store layout under `<git-common-dir>/squeal/`. */
 export interface StorePaths {
   readonly dir: AbsolutePath;

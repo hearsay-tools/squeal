@@ -1,7 +1,8 @@
+import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
-import { META_STORE_RECOVERED, worktreeIdFor } from "../store/index.js";
+import { META_STORE_RECOVERED } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckBreakdown,

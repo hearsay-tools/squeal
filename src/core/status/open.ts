@@ -21,8 +21,6 @@ export interface StatusContext {
   readonly root: AbsolutePath;
 }
 
-export { findWorktreeRoot };
-
 export function unavailable(
   reason: StatusUnavailable["reason"],
   detail: string,

@@ -101,8 +101,6 @@ export function userTmpDir(uid: number = currentUid()): AbsolutePath {
   return join("/tmp", `squeal-${uid}`);
 }
 
-export { linkedWorktreeDir } from "../fs/index.js";
-
 function xdgRuntimeDir(env: NodeJS.ProcessEnv): AbsolutePath | null {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? xdg : null;

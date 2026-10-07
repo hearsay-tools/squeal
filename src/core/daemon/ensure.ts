@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { daemonLiveness } from "../delivery/liveness.js";
+import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
-import { resolveCommonDir, storePaths, worktreeIdFor } from "../store/paths.js";
+import { storePaths } from "../store/paths.js";
 import {
   type AbsolutePath,
   DAEMON_SOCKET_TIMEOUT_MS,

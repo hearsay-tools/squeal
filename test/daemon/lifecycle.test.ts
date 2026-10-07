@@ -185,7 +185,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
 
 async function linkedRepo(repo: FixtureRepo, root: string) {
   const { realpathSync } = await import("node:fs");
-  const { worktreeIdFor } = await import("../../src/core/store/index.js");
+  const { worktreeIdFor } = await import("../../src/core/fs/index.js");
   const { socketPathFor } = await import("../../src/core/daemon/paths.js");
   const real = realpathSync(root);
   const worktreeId = worktreeIdFor(real);

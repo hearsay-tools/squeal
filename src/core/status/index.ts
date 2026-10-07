@@ -3,7 +3,6 @@ export { formatCheck, parseCheck } from "../state/index.js";
 export { formatStatus, formatUnavailable } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {
-  findWorktreeRoot,
   STATUS_BUSY_TIMEOUT_MS,
   type StatusContext,
   type StatusStoreOptions,

@@ -15,7 +15,8 @@ import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { isStoreOpenFailure, openStore, worktreeIdFor } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import { notesMetaKey, type PingResponse, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 

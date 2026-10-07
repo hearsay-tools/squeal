@@ -10,7 +10,7 @@ import {
 import { join, sep } from "node:path";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
-import { worktreeIdFor } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { KnownState } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import {

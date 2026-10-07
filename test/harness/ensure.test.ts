@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ensureDaemon, probeDaemon, socketPathFor } from "../../src/core/daemon/index.js";
-import { worktreeIdFor } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { fakeRepo } from "../status/helpers.js";
 import { tempDir } from "../store/helpers.js";
 import { squealRepo } from "./helpers.js";
