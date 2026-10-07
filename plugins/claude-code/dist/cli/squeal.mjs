@@ -3386,12 +3386,12 @@ var init_stat_cache = __esm({
 
 // src/core/hash/hasher.ts
 import { lstat } from "node:fs/promises";
-import { join as join13 } from "node:path";
+import { join as join14 } from "node:path";
 function createFsHasher(root, format) {
   return {
     async stat(path) {
       try {
-        const stats = await lstat(join13(root, path));
+        const stats = await lstat(join14(root, path));
         if (!stats.isFile() && !stats.isSymbolicLink()) return null;
         return {
           mtimeMs: stats.mtimeMs,
@@ -3404,7 +3404,7 @@ function createFsHasher(root, format) {
         throw new Error(`squeal: cannot stat ${path} in ${root}: ${error.message}`);
       }
     },
-    hash: (path) => hashFile(join13(root, path), format),
+    hash: (path) => hashFile(join14(root, path), format),
     now: () => Date.now()
   };
 }
@@ -3832,7 +3832,7 @@ var init_git2 = __esm({
 });
 
 // src/core/scheduler/lockfiles.ts
-import { join as join14 } from "node:path";
+import { join as join15 } from "node:path";
 var Lockfiles;
 var init_lockfiles = __esm({
   "src/core/scheduler/lockfiles.ts"() {
@@ -3853,7 +3853,7 @@ var init_lockfiles = __esm({
         this.#moved.clear();
         const fingerprints = /* @__PURE__ */ new Map();
         for (const environment of environments) {
-          const root = environment.root === void 0 || environment.root === "" ? this.root : join14(this.root, environment.root);
+          const root = environment.root === void 0 || environment.root === "" ? this.root : join15(this.root, environment.root);
           this.#projects.set(environment.project, { root, lockfile: await this.#find(root) });
           fingerprints.set(
             environment.project,
@@ -4759,7 +4759,7 @@ var init_stability = __esm({
 
 // src/core/scheduler/tiers.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
-import { join as join15 } from "node:path";
+import { join as join16 } from "node:path";
 function selectTier(context, ledger) {
   const { store, keys, policy } = context;
   const picked = [];
@@ -4792,7 +4792,7 @@ function selectTier(context, ledger) {
   const runId = randomUUID3();
   const tier = {
     runId,
-    logDir: join15(context.runsDir, runId),
+    logDir: join16(context.runsDir, runId),
     revision: ledger.revision,
     checkpointId,
     files: picked,
@@ -7234,7 +7234,7 @@ var init_parcel_backend = __esm({
 
 // src/core/watcher/backend.ts
 import { createRequire } from "node:module";
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 import { pathToFileURL } from "node:url";
 function createWatcherBackend(platform) {
   return platform === "darwin" ? createParcelBackend(loadParcel) : chokidarBackend;
@@ -7245,7 +7245,7 @@ async function loadParcel(root) {
   } catch (own) {
     let resolved;
     try {
-      resolved = createRequire(join18(root, "package.json")).resolve("@parcel/watcher");
+      resolved = createRequire(join19(root, "package.json")).resolve("@parcel/watcher");
     } catch {
       throw own;
     }
@@ -7284,7 +7284,7 @@ var init_concurrency2 = __esm({
 
 // src/core/watcher/paths.ts
 import { lstat as lstat4 } from "node:fs/promises";
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 function* selfAndAncestors(path) {
   let current = path;
   while (true) {
@@ -7299,7 +7299,7 @@ function isGitMetadata(path) {
 }
 async function hasGitEntry(dir) {
   try {
-    await lstat4(join19(dir, ".git"));
+    await lstat4(join20(dir, ".git"));
     return true;
   } catch (error) {
     if (isMissing(error)) return false;
@@ -7776,7 +7776,7 @@ var init_daemon_loop = __esm({
 
 // src/runners/vitest/graph.ts
 import { existsSync as existsSync8 } from "node:fs";
-import { basename as basename4, dirname as dirname11, extname as extname2, join as join20, resolve as resolve9 } from "node:path";
+import { basename as basename4, dirname as dirname11, extname as extname2, join as join21, resolve as resolve9 } from "node:path";
 async function importClosure(project, entries) {
   const files = /* @__PURE__ */ new Set();
   const missing = /* @__PURE__ */ new Set();
@@ -7821,7 +7821,7 @@ function depToPath(dep, importer, root) {
   const path = dep.split("?")[0] ?? dep;
   if (path.startsWith("/@fs/")) return path.slice("/@fs".length);
   if (path.startsWith("/@")) return null;
-  if (path.startsWith("/")) return join20(root, path);
+  if (path.startsWith("/")) return join21(root, path);
   if (path.startsWith("./") || path.startsWith("../")) return resolve9(dirname11(importer), path);
   return null;
 }
@@ -7831,7 +7831,7 @@ function resolutionCandidates(target, extensions) {
   return [
     target,
     ...extensions.map((e) => `${target}${e}`),
-    ...extensions.map((e) => join20(target, `index${e}`)),
+    ...extensions.map((e) => join21(target, `index${e}`)),
     ...twins
   ];
 }
@@ -7867,7 +7867,7 @@ var init_graph = __esm({
 });
 
 // src/runners/vitest/project.ts
-import { basename as basename5, dirname as dirname12, join as join21 } from "node:path";
+import { basename as basename5, dirname as dirname12, join as join22 } from "node:path";
 function configFiles(vitest) {
   const files = /* @__PURE__ */ new Set();
   for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
@@ -7903,7 +7903,7 @@ function snapshotPath(project, testFile) {
   if (resolveSnapshotPath) {
     return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
   }
-  return join21(dirname12(testFile), "__snapshots__", `${basename5(testFile)}.snap`);
+  return join22(dirname12(testFile), "__snapshots__", `${basename5(testFile)}.snap`);
 }
 function resolveExtensions(project) {
   return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
@@ -8293,12 +8293,12 @@ var init_environment2 = __esm({
 
 // src/runners/vitest/load.ts
 import { createRequire as createRequire2 } from "node:module";
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 async function loadVitest(root) {
   let resolved;
   try {
-    resolved = createRequire2(join22(root, "package.json")).resolve("vitest/node");
+    resolved = createRequire2(join23(root, "package.json")).resolve("vitest/node");
   } catch (error) {
     const reason2 = error instanceof Error ? error.message.split("\n")[0] : String(error);
     throw new Error(
@@ -8314,8 +8314,8 @@ var init_load = __esm({
 });
 
 // src/runners/vitest/run.ts
-import { mkdirSync as mkdirSync6, writeFileSync } from "node:fs";
-import { join as join23 } from "node:path";
+import { mkdirSync as mkdirSync7, writeFileSync } from "node:fs";
+import { join as join24 } from "node:path";
 async function execute(vitest, specs, timeoutMs, collector) {
   const run = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
@@ -8401,18 +8401,18 @@ function owner(error, collector) {
   return path === null ? null : collector.paths.toRelative(path);
 }
 function writeRunLog(options, collector, report2) {
-  mkdirSync6(options.logDir, { recursive: true });
+  mkdirSync7(options.logDir, { recursive: true });
   const header = [
     `squeal vitest run ${options.runId}`,
     `end: ${report2.end}${report2.failure ? ` (${report2.failure})` : ""}, ${report2.durationMs} ms`,
     ""
   ];
-  const logFile = join23(options.logDir, "vitest.log");
+  const logFile = join24(options.logDir, "vitest.log");
   writeFileSync(logFile, `${[...header, ...collector.log].join("\n")}
 `);
   collector.logFile = logFile;
   writeFileSync(
-    join23(options.logDir, "report.json"),
+    join24(options.logDir, "report.json"),
     `${JSON.stringify({ runId: options.runId, report: report2 }, null, 2)}
 `
   );
@@ -8435,10 +8435,10 @@ var init_run = __esm({
 // src/runners/vitest/dynamic.ts
 import { readFileSync as readFileSync6 } from "node:fs";
 function expandsFromDisk(file, transform) {
-  if (file.includes("/node_modules/")) return false;
   let found = scanned.get(transform);
   if (found === void 0) {
-    found = DYNAMIC_SPECIFIER.test(readSource(file));
+    const source = readSource(file);
+    found = source === null || DYNAMIC_SPECIFIER.test(source);
     scanned.set(transform, found);
   }
   return found;
@@ -8447,7 +8447,7 @@ function readSource(file) {
   try {
     return readFileSync6(file, "utf8");
   } catch {
-    return "";
+    return null;
   }
 }
 var DYNAMIC_SPECIFIER, scanned;
@@ -8460,8 +8460,9 @@ var init_dynamic = __esm({
 });
 
 // src/runners/vitest/stale.ts
+import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:fs";
 import { isBuiltin } from "node:module";
-import { basename as basename6, dirname as dirname13 } from "node:path";
+import { basename as basename6, dirname as dirname13, join as join25 } from "node:path";
 function staleTransforms(vitest, added, deleted) {
   const stale = /* @__PURE__ */ new Set();
   const gone = new Set(deleted);
@@ -8471,9 +8472,13 @@ function staleTransforms(vitest, added, deleted) {
       const targets = new Set(deleted);
       const directories = [...added, ...deleted].filter(isPackageJson).map((p) => `${dirname13(p)}/`);
       for (const path of added) {
-        for (const base of resolutionBases(path, extensions)) {
+        const bases = resolutionBases(path, extensions);
+        for (const base of bases) {
           for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
           if (base !== dirname13(path)) directories.push(`${base}/`);
+        }
+        for (const dir of entryDirectories(path, bases, project.config.root)) {
+          directories.push(`${dir}/`);
         }
       }
       const reresolves = (dep, file) => {
@@ -8497,6 +8502,28 @@ function staleTransforms(vitest, added, deleted) {
     }
   }
   return stale;
+}
+function entryDirectories(path, bases, root) {
+  const found = [];
+  for (let dir = dirname13(path); dir.startsWith(`${root}/`); dir = dirname13(dir)) {
+    const manifest = join25(dir, "package.json");
+    if (!existsSync10(manifest)) continue;
+    if (packageEntries(manifest).some((entry2) => bases.includes(join25(dir, entry2)))) found.push(dir);
+  }
+  return found;
+}
+function packageEntries(manifest) {
+  let fields;
+  try {
+    fields = JSON.parse(readFileSync7(manifest, "utf8"));
+  } catch {
+    return [];
+  }
+  if (!isRecord(fields)) return [];
+  const dot = isRecord(fields.exports) ? fields.exports["."] : fields.exports;
+  return [fields.main, fields.module, dot].filter(
+    (entry2) => typeof entry2 === "string"
+  );
 }
 function isUnresolvedBare(dep) {
   return !dep.startsWith("/") && !dep.startsWith(".") && !dep.startsWith("\0") && !dep.includes(":") && !isBuiltin(dep);
@@ -8523,7 +8550,7 @@ function cachedFiles(vitest) {
   }
   return files;
 }
-var tracksSoftInvalidation, isPackageJson, FALLBACK_NOTE;
+var tracksSoftInvalidation, isPackageJson, isRecord, FALLBACK_NOTE;
 var init_stale = __esm({
   "src/runners/vitest/stale.ts"() {
     "use strict";
@@ -8531,6 +8558,7 @@ var init_stale = __esm({
     init_graph();
     tracksSoftInvalidation = /* @__PURE__ */ new WeakMap();
     isPackageJson = (path) => basename6(path) === "package.json";
+    isRecord = (value) => typeof value === "object" && value !== null;
     FALLBACK_NOTE = "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
   }
 });
@@ -8876,6 +8904,7 @@ function createRecoveringRunner(options) {
   let retry = false;
   let creating = null;
   let closed = false;
+  const around = options.around ?? ((call) => call());
   const attempt = () => {
     retry = false;
     creating ??= (async () => {
@@ -8912,42 +8941,42 @@ function createRecoveringRunner(options) {
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
-    async open() {
+    open: () => around(async () => {
       try {
         await adapter();
         return true;
       } catch {
         return false;
       }
-    },
+    }),
     retry() {
       retry = true;
     },
-    async invalidate(paths) {
+    invalidate: (paths) => around(async () => {
       if (inner !== null || closed) return (await adapter()).invalidate(paths);
       retry = true;
       const fresh = await adapter();
       const projects = new Set((await fresh.environment()).map((e) => e.project));
       return { recreatedProjects: [...projects].sort() };
-    },
-    affected: async (changedPaths) => (await adapter()).affected(changedPaths),
-    async affectedDetailed(changedPaths) {
+    }),
+    affected: (changedPaths) => around(async () => (await adapter()).affected(changedPaths)),
+    affectedDetailed: (changedPaths) => around(async () => {
       const current = await adapter();
       if (current.affectedDetailed) return current.affectedDetailed(changedPaths);
       return { direct: [], transitive: await current.affected(changedPaths) };
-    },
-    closure: async (testFile) => (await adapter()).closure(testFile),
-    enumerate: async (testFile) => (await adapter()).enumerate(testFile),
-    testFiles: async () => (await adapter()).testFiles(),
-    environment: async () => (await adapter()).environment(),
-    run: async (testFiles, runOptions) => (await adapter()).run(testFiles, runOptions),
-    async close() {
+    }),
+    closure: (testFile) => around(async () => (await adapter()).closure(testFile)),
+    enumerate: (testFile) => around(async () => (await adapter()).enumerate(testFile)),
+    testFiles: () => around(async () => (await adapter()).testFiles()),
+    environment: () => around(async () => (await adapter()).environment()),
+    run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
+    close: () => around(async () => {
       if (closed) return;
       closed = true;
       await creating?.catch(() => {
       });
       await inner?.close();
-    }
+    })
   };
 }
 function messageOf(error) {
@@ -10089,7 +10118,7 @@ function parseNotes(raw) {
 init_fs();
 init_store2();
 import { existsSync as existsSync7, realpathSync as realpathSync4 } from "node:fs";
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync4 } from "node:fs";
@@ -10125,6 +10154,42 @@ function isBusy2(error) {
   return typeof code === "number" && [5, 6].includes(code & 255);
 }
 
+// src/core/daemon/scratch.ts
+init_paths2();
+import { mkdirSync as mkdirSync5, rmSync as rmSync5 } from "node:fs";
+import { join as join11 } from "node:path";
+function daemonScratch(commonDir, worktreeId) {
+  const workDir = storePaths(commonDir).dir;
+  return { workDir, tempDir: join11(workDir, "tmp", worktreeId) };
+}
+function prepareScratch(scratch) {
+  rmSync5(scratch.tempDir, { recursive: true, force: true });
+  mkdirSync5(scratch.tempDir, { recursive: true });
+}
+function adoptScratch(scratch) {
+  process.chdir(scratch.workDir);
+  process.env.TMPDIR = scratch.tempDir;
+  process.env.TMP = scratch.tempDir;
+  process.env.TEMP = scratch.tempDir;
+}
+function inRootWhileRunning(root, scratch) {
+  let inFlight = 0;
+  return async (call) => {
+    if (inFlight++ === 0) chdirQuietly(root);
+    try {
+      return await call();
+    } finally {
+      if (--inFlight === 0) chdirQuietly(scratch.workDir);
+    }
+  };
+}
+function chdirQuietly(dir) {
+  try {
+    process.chdir(dir);
+  } catch {
+  }
+}
+
 // src/core/daemon/open.ts
 var DAEMON_BUSY_TIMEOUT_MS = 5e3;
 async function openDaemon(rootArgument, now) {
@@ -10132,7 +10197,7 @@ async function openDaemon(rootArgument, now) {
   let commonDir;
   try {
     root = realpathSync4(rootArgument);
-    if (!existsSync7(join11(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    if (!existsSync7(join12(root, ".git"))) throw new Error(`${root} has no .git entry`);
     const out = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
     commonDir = realpathSync4(out.trim());
   } catch (error) {
@@ -10150,6 +10215,13 @@ async function openDaemon(rootArgument, now) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
   }
   if (lock2 === null) return exit("lost-lock", 0, `another daemon serves ${root}`);
+  const scratch = daemonScratch(commonDir, worktreeId);
+  try {
+    prepareScratch(scratch);
+  } catch (error) {
+    lock2.release();
+    return exit("start-failed", 1, `could not prepare ${scratch.tempDir}: ${message(error)}`);
+  }
   let store;
   try {
     const opened = openStore(commonDir, {
@@ -10171,7 +10243,7 @@ async function openDaemon(rootArgument, now) {
     lock2.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
   }
-  return { root, commonDir, worktreeId, store, lock: lock2 };
+  return { root, commonDir, worktreeId, store, lock: lock2, scratch };
 }
 function abandon(opened, now, log, text) {
   const report2 = log ?? (() => {
@@ -10194,27 +10266,27 @@ function message(error) {
 
 // src/core/daemon/paths.ts
 init_fs();
-import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync5, readFileSync as readFileSync5 } from "node:fs";
+import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync6, readFileSync as readFileSync5 } from "node:fs";
 import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname6, isAbsolute as isAbsolute3, join as join12, resolve as resolve6 } from "node:path";
+import { dirname as dirname6, isAbsolute as isAbsolute3, join as join13, resolve as resolve6 } from "node:path";
 function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? join12(tempDir(env), userDirName());
+  return xdgRuntimeDir(env) ?? join13(tempDir(env), userDirName());
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join12(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join12("/tmp", userDirName(), name);
+  const path = join13(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join13("/tmp", userDirName(), name);
 }
 function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
   const dir = dirname6(socketPath);
   if (dir === xdgRuntimeDir(env)) {
-    mkdirSync5(dir, { recursive: true, mode: 448 });
+    mkdirSync6(dir, { recursive: true, mode: 448 });
     return;
   }
-  mkdirSync5(dirname6(dir), { recursive: true });
+  mkdirSync6(dirname6(dir), { recursive: true });
   try {
-    mkdirSync5(dir, { mode: 448 });
+    mkdirSync6(dir, { mode: 448 });
     chmodSync2(dir, 448);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
@@ -10237,7 +10309,7 @@ function checkPrivateDir(dir, uid) {
   }
 }
 function linkedWorktreeDir(root) {
-  const dotGit = join12(root, ".git");
+  const dotGit = join13(root, ".git");
   try {
     if (!lstatSync2(dotGit).isFile()) return null;
   } catch (error) {
@@ -10276,7 +10348,9 @@ async function startDaemon(options) {
   }
   let daemon;
   try {
-    daemon = new Daemon(opened, options);
+    const env = options.env ?? { ...process.env };
+    if (options.ownsProcess) adoptScratch(opened.scratch);
+    daemon = new Daemon(opened, { ...options, env });
   } catch (error) {
     desk.discard();
     return abandon(opened, now, options.log, `daemon exited: could not start: ${message(error)}`);
@@ -10438,7 +10512,8 @@ var Daemon = class {
         adapterVersion: vitest.VITEST_ADAPTER_VERSION,
         create: () => vitest.createVitestAdapter({ root }),
         onFailure: (text) => this.#note(`${text}; every check of this worktree is unknown until the config loads`),
-        onRecovered: () => this.#note("Vitest started after the config changed")
+        onRecovered: () => this.#note("Vitest started after the config changed"),
+        around: this.options.ownsProcess ? inRootWhileRunning(root, this.opened.scratch) : void 0
       });
       this.#runner = runner;
       await runner.open();
@@ -10584,7 +10659,7 @@ async function daemonCommand(args, io) {
   };
   const restore2 = ownSignals(() => stop());
   try {
-    const daemon = await startDaemon({ root, log });
+    const daemon = await startDaemon({ root, log, ownsProcess: true });
     if ("reason" in daemon) {
       log(daemon.message);
       return daemon.code;
@@ -10601,8 +10676,8 @@ async function daemonCommand(args, io) {
 }
 
 // src/cli/init.ts
-import { existsSync as existsSync10, mkdirSync as mkdirSync7, readFileSync as readFileSync7, rmSync as rmSync5, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join24 } from "node:path";
+import { existsSync as existsSync11, mkdirSync as mkdirSync8, readFileSync as readFileSync8, rmSync as rmSync6, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join26 } from "node:path";
 init_types();
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
@@ -10622,7 +10697,7 @@ function init(args, io) {
 `);
     return 1;
   }
-  const settingsPath = join24(root, ".claude", "settings.json");
+  const settingsPath = join26(root, ".claude", "settings.json");
   const settings = readSettings(settingsPath);
   if (typeof settings === "string") {
     io.stderr(`squeal init: ${settings}; nothing changed
@@ -10642,8 +10717,8 @@ function init(args, io) {
     }
   }
   const lines = [];
-  const configPath = join24(root, "squeal.config.json");
-  const writeConfig = !existsSync10(configPath);
+  const configPath = join26(root, "squeal.config.json");
+  const writeConfig = !existsSync11(configPath);
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
   );
@@ -10668,7 +10743,7 @@ function init(args, io) {
   } : restorer(settingsPath, settings.text);
   try {
     if (text !== settings.text) {
-      mkdirSync7(join24(root, ".claude"), { recursive: true });
+      mkdirSync8(join26(root, ".claude"), { recursive: true });
       writeFileSync2(settingsPath, text);
     }
   } catch (error) {
@@ -10698,7 +10773,7 @@ function init(args, io) {
 function restorer(path, text) {
   return () => {
     try {
-      if (text === null) rmSync5(path, { force: true });
+      if (text === null) rmSync6(path, { force: true });
       else writeFileSync2(path, text);
     } catch {
     }
@@ -10708,8 +10783,8 @@ function reason(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function readSettings(path) {
-  if (!existsSync10(path)) return { value: {}, text: null, indent: 2 };
-  const text = readFileSync7(path, "utf8");
+  if (!existsSync11(path)) return { value: {}, text: null, indent: 2 };
+  const text = readFileSync8(path, "utf8");
   let value;
   try {
     value = JSON.parse(text);
@@ -10907,7 +10982,7 @@ async function ended(root, socketPath, id) {
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync11 } from "node:fs";
+import { existsSync as existsSync12, mkdirSync as mkdirSync9 } from "node:fs";
 init_open();
 init_paths2();
 init_types();
@@ -10961,10 +11036,14 @@ async function ensureDaemon(root, options = {}) {
   if (probe.state === "alive") return "alive";
   if (probe.state === "unresponsive") return "unavailable";
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync11(cli)) return "unavailable";
+  if (cli === null || !existsSync12(cli)) return "unavailable";
   try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return "unavailable";
+    const cwd = storePaths(commonDir).dir;
+    mkdirSync9(cwd, { recursive: true });
     const child = spawn2(process.execPath, [cli, "daemon", root], {
-      cwd: root,
+      cwd,
       detached: true,
       stdio: "ignore"
     });
