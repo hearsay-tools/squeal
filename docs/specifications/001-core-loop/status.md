@@ -95,6 +95,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 11 (001-111, `lessons.md` defect 21; decided by the worker by experiment): D2 amended. `git check-ignore --stdin` exits 128 for a whole batch when one path lies beyond a symlinked directory (`fatal: pathspec ... is beyond a symbolic link`), so a worktree with a linked `node_modules` killed its daemon at start. Such a path now counts as ignored without asking git, which makes the installed lockfile an extra file, hashed and watched through the link; `node_modules/` does not match the link itself, which git lists as an untracked file. A batch git refuses anyway is halved until the path git names in its refusal stands alone and counts as ignored; a lone path git does not name rethrows, so a broken repository still fails.
 
+- 2026-10-07, wave 11 (001-112, `lessons.md` defect 22; the line and its trigger decided by the coordinator, the Claude Code tool parse agreed with it): D9 and D10 amended. A daemon past grace whose socket does not answer counts as down and is not replaced. While no daemon validates and the hook started none, every PostToolBatch whose tools may have edited (an edit tool, a shell, or unnamed tools) adds "Not validated: no daemon has validated since <time>; this edit has no result."; liveness is still told once. A dead daemon the hook respawns adds nothing. Codex's PostToolUse names no tools to the shared step yet, so it says the line at every boundary while no daemon validates, until 002-21 passes `mayEdit([input.tool_name])`.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
