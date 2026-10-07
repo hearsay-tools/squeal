@@ -10,8 +10,8 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
-import { codexRecorded } from "../harness/codex/helpers.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
+import { codexRecorded } from "../harness/codex/helpers.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 
 /* Spec 002 D1, D6 and goal 8: `squeal init --harness codex` and the Codex status line. */
