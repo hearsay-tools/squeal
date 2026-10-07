@@ -1,0 +1,8 @@
+{"type":"test:enqueue","data":{"nesting":0,"name":"test/busy-loop.test.ts","type":"test","testId":1,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/busy-loop.test.ts"}}
+{"type":"test:dequeue","data":{"nesting":0,"name":"test/busy-loop.test.ts","type":"test","testId":1,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/busy-loop.test.ts"}}
+{"type":"test:enqueue","data":{"nesting":0,"name":"test/pass.test.ts","type":"test","testId":2,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:dequeue","data":{"nesting":0,"name":"test/pass.test.ts","type":"test","testId":2,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:enqueue","data":{"nesting":0,"name":"passes","type":"test","testId":1,"parentId":0,"tags":[],"line":5,"column":1,"file":"<fixtures>/edge/test/pass.test.ts","entryFile":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:dequeue","data":{"nesting":0,"name":"passes","type":"test","testId":1,"parentId":0,"tags":[],"line":5,"column":1,"file":"<fixtures>/edge/test/pass.test.ts","entryFile":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:complete","data":{"name":"passes","nesting":0,"testNumber":1,"testId":1,"parentId":0,"details":{"duration_ms":0.622713,"type":"test","passed":true},"tags":[],"line":5,"column":1,"file":"<fixtures>/edge/test/pass.test.ts","entryFile":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:complete","data":{"name":"test/pass.test.ts","nesting":0,"testNumber":2,"testId":2,"parentId":0,"details":{"duration_ms":103.875702,"type":"test","passed":true},"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/pass.test.ts"}}
