@@ -1,12 +1,15 @@
-import { isInstalledLockfile } from "../keys/index.js";
+import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import type {
   CheckId,
+  CheckKey,
   Consumer,
   DeltaEntry,
   KnownState,
+  RelativePath,
   RevisionNumber,
   StatusHeader,
   Store,
+  TestFileRef,
   TransitionEntry,
   WorktreeId,
 } from "../types/index.js";
@@ -34,10 +37,36 @@ function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): n
 }
 
 /**
+ * The stored closure of `ref` when it is `worktreeId`'s: written by it, or by
+ * a worktree whose current key for the file is its own, since a key covers
+ * every closure path and its content. `undefined` otherwise: the store keeps
+ * the newest closure of any worktree, and another branch can import other
+ * files (task 001-94, review wave 10b S2).
+ */
+function closureFor(store: Store, worktreeId: WorktreeId) {
+  const keys = new Map<WorktreeId, ReadonlyMap<string, CheckKey | null>>();
+  const keyOf = (id: WorktreeId, ref: TestFileRef) => {
+    let byFile = keys.get(id);
+    if (byFile === undefined) {
+      byFile = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
+      keys.set(id, byFile);
+    }
+    return byFile.get(testFileId(ref)) ?? null;
+  };
+  return (ref: TestFileRef): readonly RelativePath[] | undefined => {
+    const record = store.testFiles.get(ref);
+    if (record === null) return undefined;
+    if (record.updatedBy === worktreeId) return record.closure.paths;
+    const key = keyOf(worktreeId, ref);
+    return key !== null && key === keyOf(record.updatedBy, ref) ? record.closure.paths : undefined;
+  };
+}
+
+/**
  * Each failure with the closure paths changed since `consumer` registered
- * (`TransitionEntry.changesInClosure`) and a timeout's load. A closure is
- * the newest stored for the test file; an inherited result is read against
- * this worktree's changes, the ones the agent made.
+ * (`TransitionEntry.changesInClosure`) and a timeout's load. The closure is
+ * this worktree's (`closureFor`); an inherited result is read against this
+ * worktree's changes, the ones the agent made.
  */
 export function attribute(
   store: Store,
@@ -48,10 +77,11 @@ export function attribute(
   if (!entries.some((e) => e.to === "fail")) return entries;
   const since = registration(store, consumer);
   const changed = since === null ? null : changedAfter(store, consumer.worktreeId, since, revision);
+  const closureOf = closureFor(store, consumer.worktreeId);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const { project, testPath } = entry.check;
-    const closure = store.testFiles.get({ project, path: testPath })?.closure.paths;
+    const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
       changed === null || closure === undefined ? undefined : closure.filter((p) => changed.has(p));
     const load = loadOf(store, consumer.worktreeId, entry);
