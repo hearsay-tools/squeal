@@ -41,9 +41,14 @@ const PACKAGES: Readonly<Record<string, FixturePackage>> = {
     ...esm('export const inlTrans = "inl-trans-1";\n'),
   },
   "node_modules/setup-pkg": { version: "1.0.0", ...esm('export const setupValue = "setup-1";\n') },
+  // Reaches `child_process`, as plugins do; a config plugin drives the run and no test imports it
+  // (001-109), so the environment keeps its scoped hash.
   "node_modules/plugin-pkg": {
     version: "1.0.0",
-    ...esm('export default function plugin() {\n  return { name: "plugin-pkg" };\n}\n'),
+    ...esm(
+      'import "node:child_process";\n' +
+        'export default function plugin() {\n  return { name: "plugin-pkg" };\n}\n',
+    ),
   },
   "node_modules/@types/node": { version: "22.0.0", files: { "index.d.ts": "export {};\n" } },
   "node_modules/vitest-environment-custom": { version: "1.0.0", ...environment("custom") },
