@@ -120,3 +120,15 @@ Use /worker. Shape: repair. Outcome: deleting or editing a `package.json` re-run
 ## 001-75 quality slices 1 to 6 and the two drops
 
 Use /worker. Shape: finish. Outcome: the dead files, shims and copies `quality/2026-10.md` names are gone, and the two keys no code honours are removed. Read: `quality/2026-10.md` "Drop candidates" X1, X2 and "Slices" 1 to 6. Decided by the human: drop both X1 (`runner.maxConcurrentRuns`: type, default, validation, `squeal init`, skill and README text; a config that still sets it is reported as an unknown key by the loader as for any other) and X2 (`SchedulerStatus` keeps only `revision`; rewrite the 17 assertions to read the store). Own: the files each slice and drop names, outside `src/core/keys/`, `src/runners/vitest/stale.ts`, `adapter.ts` and `test/runners/vitest/structural*` (001-79). One commit per slice or drop. Amend D11 for X1 and add one `status.md` line per drop. Done when: each slice and drop has landed as its own commit; full suite green.
+
+## Batch 5
+
+Batch 4 landed (001-79, 001-75; version 0.1.3, `48182dc`). The last two rows run in parallel: 001-74 writes across the tree, 001-80 only reads a fixed range.
+
+## 001-74 one copy of each small helper
+
+Use /worker. Shape: finish (the board row is the scope). Also: retarget every importer of the 001-69 git-layout re-exports (`store/paths.ts`, `daemon/paths.ts`, `status/open.ts`, `watcher/paths.ts`) to `src/core/fs` and drop the re-exports. Re-check every duplicate the row lists at current line numbers first; some moved in waves 9's earlier batches. Own: any file the row names or the retarget touches. Hooks stay dependency-free; the hook p95 test must still pass. One commit per helper.
+
+## 001-80 review of 001-79
+
+Use /reviewer. Range: the 001-79 commits as landed, `eae3f46..48182dc` filtered to `(001-79` in the subject. Output `reviews/wave-9b.md`. Outcome: whether `reviews/wave-9.md` S1 and S2 are closed, and whether picking `below(dir)` on any manifest change re-runs too much (cost on the 1,000-module fixture, a root `package.json` edit). Probe: a `package.json` edit that changes only `scripts` (should it re-run anything?), `exports` maps, a nested workspace. Do not re-check "What fits" from earlier reviews.
