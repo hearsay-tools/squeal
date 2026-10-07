@@ -71,3 +71,14 @@ Added 2026-10-07 after a dogfooding report: a Stop or PostToolBatch report somet
 4. What Codex, Pi and OpenCode expose to a tool subprocess for the same purpose, docs only, one line each, so the design is not Claude-only.
 
 Recommendation: feasible or not; the design; the D6, D7, D9 sentences it would change; and what a board row's done-when would be.
+
+## Topic: per-package-keys
+
+Added 2026-10-07 from `lessons.md` defect 20. Today the environment hash (D3) includes the whole installed-dependency fingerprint, so any lockfile difference re-keys every test file and a fresh worktree inherits nothing.
+
+1. Which installed packages a test file's result can depend on: the packages in its transform graph (Vite records inlined ones as `/@fs/.../node_modules/...`), externalized packages Node resolves at run time, their own transitive dependencies, setup files, `globalSetup`, the Vitest config's plugins. What Squeal can observe of each, at Vitest 5 and Vite 8, by experiment.
+2. Whether a per-test-file dependency set (package name, resolved version, integrity from `node_modules/.package-lock.json` or the pnpm and yarn equivalents) can be built cheaply at closure time and kept sound: a transitive change must still re-key. What must stay environment-wide.
+3. Measured on `cezar`: between the main checkout's install and `origin/main`'s, how many of the 600-odd test files would keep their key under the per-file scheme, and how much the closure and keying cost grows.
+4. Prior art, docs or source only: how Nx, Turborepo and Bazel hash external dependencies per project or target.
+
+Recommendation: sound or not, the cost, what D3 would say, and a board row's done-when if it is worth building.
