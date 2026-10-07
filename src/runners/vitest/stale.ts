@@ -1,5 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
-import { basename, dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
 import { expandsFromDisk } from "./dynamic.js";
@@ -28,7 +29,9 @@ const tracksSoftInvalidation = new WeakMap<Vitest, boolean>();
  *   `/…` or `/@fs/…` URL, packages included, so a bare dep is unresolved;
  * - a resolved import under a directory it would now shadow, which covers a
  *   directory resolved through its own `package.json`, and under the
- *   directory of an added or deleted `package.json`;
+ *   directory of an added or deleted `package.json`, and under the directory
+ *   of a `package.json` whose entry the added path can now resolve: Vite fell
+ *   back to the directory's `index` while that entry was missing;
  * - `import.meta.glob` or a template-literal dynamic import in its source.
  *
  * Every other transform stays cached (lessons, defect 11). The deleted files
@@ -47,10 +50,14 @@ export function staleTransforms(
       const targets = new Set<AbsolutePath>(deleted);
       const directories = [...added, ...deleted].filter(isPackageJson).map((p) => `${dirname(p)}/`);
       for (const path of added) {
-        for (const base of resolutionBases(path, extensions)) {
+        const bases = resolutionBases(path, extensions);
+        for (const base of bases) {
           for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
           // A directory's `package.json` wins over its `index`, so an `index` shadows nothing under it.
           if (base !== dirname(path)) directories.push(`${base}/`);
+        }
+        for (const dir of entryDirectories(path, bases, project.config.root)) {
+          directories.push(`${dir}/`);
         }
       }
       const reresolves = (dep: string, file: AbsolutePath): boolean => {
@@ -79,9 +86,46 @@ export function staleTransforms(
   return stale;
 }
 
-/** A dep Vite left as written that is neither a path, a virtual id nor a Node builtin. */
 const isPackageJson = (path: AbsolutePath) => basename(path) === "package.json";
 
+/**
+ * Reviews/wave-7.5.md B2: the ancestors of `path` below `root` whose
+ * `package.json` names, as `main`, `module` or a string `exports` or
+ * `exports["."]`, an entry that `path` is among the resolution candidates of.
+ */
+function entryDirectories(
+  path: AbsolutePath,
+  bases: readonly AbsolutePath[],
+  root: AbsolutePath,
+): AbsolutePath[] {
+  const found: AbsolutePath[] = [];
+  for (let dir = dirname(path); dir.startsWith(`${root}/`); dir = dirname(dir)) {
+    const manifest = join(dir, "package.json");
+    if (!existsSync(manifest)) continue;
+    if (packageEntries(manifest).some((entry) => bases.includes(join(dir, entry)))) found.push(dir);
+  }
+  return found;
+}
+
+/** The entry fields of a `package.json` that name one file; none when it cannot be read. */
+function packageEntries(manifest: AbsolutePath): string[] {
+  let fields: unknown;
+  try {
+    fields = JSON.parse(readFileSync(manifest, "utf8"));
+  } catch {
+    return [];
+  }
+  if (!isRecord(fields)) return [];
+  const dot = isRecord(fields.exports) ? fields.exports["."] : fields.exports;
+  return [fields.main, fields.module, dot].filter(
+    (entry): entry is string => typeof entry === "string",
+  );
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+/** A dep Vite left as written that is neither a path, a virtual id nor a Node builtin. */
 function isUnresolvedBare(dep: string): boolean {
   return (
     !dep.startsWith("/") &&
