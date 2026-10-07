@@ -33,3 +33,22 @@ jobs:
       - name: Bundles match the build
         # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
         run: git diff --exit-code -- plugins/claude-code/dist
+
+  version:
+    # 001-76: Claude Code updates an installed plugin only when its manifest's version changes,
+    # so a change to the shipped bundles must raise package.json's version, which the build copies.
+    name: Bundle changes bump the version
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Compare with main before this change
+        env:
+          # A pull request against its base; a push to main against the main it replaced.
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: npm run check:version -- "$BASE" HEAD
