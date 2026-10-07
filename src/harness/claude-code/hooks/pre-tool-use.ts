@@ -1,9 +1,9 @@
+import { readPolicy } from "../../../core/daemon/policy.js";
 import { formatDelta } from "../../../core/delivery/index.js";
 import { REGRESSION_KINDS } from "../../../core/types/index.js";
 import { isFork } from "../fork.js";
 import type { Handler } from "../hook.js";
 import { withContext } from "../hook.js";
-import { readHookPolicy } from "../policy.js";
 import { denialSentence } from "../text.js";
 
 /**
@@ -16,7 +16,7 @@ import { denialSentence } from "../text.js";
 export const preToolUse: Handler = async (input, location, deps) => {
   if (isFork(input)) return null;
   return withContext(input, location, deps, async (context) => {
-    if (!readHookPolicy(location.root).interrupt.onRegression) return null;
+    if (!readPolicy(location.root).interrupt.onRegression) return null;
     const delta = await context.delivery.peek(context.consumer, { kinds: REGRESSION_KINDS });
     if (delta === null) return null;
     const tool = input.tool_name ?? "tool";

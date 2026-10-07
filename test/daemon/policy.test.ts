@@ -2,9 +2,8 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
+import { loadPolicy, POLICY_FILE, readPolicy } from "../../src/core/daemon/policy.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
-import { readHookPolicy } from "../../src/harness/claude-code/policy.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -178,8 +177,8 @@ describe("loadPolicy (spec 001 D11)", () => {
 
   it("is what the hooks read: one loader for daemon and hooks (review S3)", () => {
     const root = rootWith('{"stop": {"waitMs": "500", "blockOnKnownFailures": true}, "x": 1}');
-    expect(readHookPolicy(root)).toEqual(loadPolicy(root).policy);
-    expect(readHookPolicy(root).stop).toEqual({
+    expect(readPolicy(root)).toEqual(loadPolicy(root).policy);
+    expect(readPolicy(root).stop).toEqual({
       ...DEFAULT_POLICY.stop,
       blockOnKnownFailures: true,
     });
