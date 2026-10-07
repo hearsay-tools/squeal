@@ -89,9 +89,9 @@ export interface PreparedScratch {
  * aside and removed in the background, because a large leftover would delay
  * the socket past the hooks' budget (review wave 7.7, N1).
  *
- * A user directory that is refused, made first by another user for one,
- * costs only its sharing: the daemon takes a fresh
- * `/tmp/squeal-<uid>-<key>-XXXXXX` and says why (review wave 7.7, N2).
+ * A refused user directory, such as one another user made first, costs
+ * only the sharing: the daemon takes a fresh `/tmp/squeal-<uid>-<key>-XXXXXX`
+ * and says why (review wave 7.7, N2).
  */
 export function prepareScratch(
   scratch: DaemonScratch,
