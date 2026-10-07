@@ -75,3 +75,17 @@ Questions: (1) B1: can a preload's run-time import still escape every key (a pre
 Rules: change no code; label findings proven, plausible or unverified; only a proven break blocks; probes under `/tmp`; never this repository's store, never `/home/agent/projects/cezar`. This is the second and last review round on this slice: a remaining blocker goes to the human, not to a third round.
 
 Use /reviewer.
+
+## 003-27 the node:test graph drops resolver caches after a build
+
+Outcome: the node:test graph keeps less memory after it builds, at the same build and re-resolve cost.
+
+Read: spec 003 D3, D4 and goal 6; `status.md` (the 003-20 line: at 10,000 modules and 2,000 test files the module table and enhanced-resolve caches retain about 140 MB, 123 MB of it resolver caches); `src/runners/node-test/graph/resolver.ts`, `graph.ts`, `modules.ts`; `test/runners/node-test/graph-cost.test.ts`.
+
+Shape: slice. Seam: `resolver.ts`, where the `CachedInputFileSystem` and the per-`(tsconfig, condition)` resolvers live. First measure retained heap after a cold build at 1,000 and 10,000 modules (`test/fixtures/node-test/gen-big.mjs` scaled, or 003-20's method), then drop or bound the resolver caches once a build or re-resolve has finished, keeping what a plain edit needs so it stays under five percent of a cold build.
+
+Owns: `src/runners/node-test/graph/**`, `test/runners/node-test/graph*.test.ts`. Leave alone: everything else.
+
+Done when: retained heap after a build at 10,000 modules is measured before and after and reported, with the resolver share reduced; the graph tests and the cost ratios pass; lint, typecheck, full suite green. Do not run `npm run build`.
+
+Use /worker.
