@@ -36,6 +36,8 @@ const TSX_ALIAS: Record<string, string[]> = {
 /** `require` without tsx: Node's CJS extensions, plus the ones type stripping registers. */
 const NODE_REQUIRE_EXTENSIONS = [".js", ".json", ".node", ".ts", ".cts", ".mts"];
 
+const NODE_MODULES = `${sep}node_modules${sep}`;
+
 const BUILTIN: Resolution = { path: null, builtin: true, reads: [], candidates: [], pair: null };
 
 /**
@@ -49,6 +51,7 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
   let resolvers = new Map<string, ReturnType<typeof enhanced.ResolverFactory.createResolver>>();
   let tsconfigs = new Map<string, AbsolutePath | null>();
   let realpaths = new Map<string, AbsolutePath | null>();
+  let resolutions = new Map<string, Resolution>();
   const tsx = chain.rules === "tsx";
 
   const exists = (path: string) => {
@@ -69,7 +72,7 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     let found = realpaths.get(path);
     if (found === undefined) {
       try {
-        found = fs.realpathSync(path);
+        found = fs.realpathSync.native(path);
       } catch {
         found = null;
       }
@@ -110,46 +113,59 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     return resolver;
   };
-  const inWorktree = (path: string) =>
-    path.startsWith(root + sep) && !path.includes(`${sep}node_modules${sep}`);
+  const inWorktree = (path: string) => path.startsWith(root + sep) && !path.includes(NODE_MODULES);
 
   return {
     resolve(specifier, importer, kind) {
       if (isBuiltin(specifier)) return BUILTIN;
       const from = dirname(importer);
-      const resolver = resolverFor(tsx ? tsconfigFor(from) : null, kind);
-      const context = {
-        fileDependencies: new Set<string>(),
-        missingDependencies: new Set<string>(),
-        contextDependencies: new Set<string>(),
-      };
-      let target: string | false;
-      try {
-        target = resolver.resolveSync({}, from, specifier, context);
-      } catch {
-        target = false;
+      // One directory resolves a specifier one way: modules beside each other share it.
+      const key = `${from}\0${kind}\0${specifier}`;
+      let resolution = resolutions.get(key);
+      if (resolution === undefined) {
+        resolution = resolveFrom(specifier, from, kind);
+        resolutions.set(key, resolution);
       }
-      const path = target === false ? null : real(target);
-      const reads = new Set<AbsolutePath>();
-      for (const dependency of context.fileDependencies) {
-        if (!dependency.endsWith(".json") || dependency === target) continue;
-        const read = real(dependency);
-        if (read !== null && read !== path && inWorktree(read)) reads.add(read);
-      }
-      // A directory probed as a file is not a candidate: no file can appear there.
-      const candidates =
-        path === null
-          ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory(p))
-          : [];
-      return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(specifier, path) };
+      return resolution;
     },
     clear() {
       fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
       resolvers = new Map();
       tsconfigs = new Map();
       realpaths = new Map();
+      resolutions = new Map();
     },
   };
+
+  function resolveFrom(specifier: string, from: AbsolutePath, kind: EdgeKind): Resolution {
+    const resolver = resolverFor(tsx ? tsconfigFor(from) : null, kind);
+    const context = {
+      fileDependencies: new Set<string>(),
+      missingDependencies: new Set<string>(),
+      contextDependencies: new Set<string>(),
+    };
+    let target: string | false;
+    try {
+      target = resolver.resolveSync({}, from, specifier, context);
+    } catch {
+      target = false;
+    }
+    // `symlinks: true` already gives the target's real path.
+    const path = target === false ? null : target;
+    const reads = new Set<AbsolutePath>();
+    for (const dependency of context.fileDependencies) {
+      if (!dependency.endsWith(".json") || dependency === target) continue;
+      // A manifest read through a workspace symlink counts at its real path.
+      const read = dependency.includes(NODE_MODULES) ? real(dependency) : dependency;
+      if (read !== null && read !== path && inWorktree(read)) reads.add(read);
+    }
+    // A directory probed as a file is not a candidate: no file can appear there.
+    const candidates =
+      path === null
+        ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory(p))
+        : [];
+    return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(specifier, path) };
+  }
 
   function pairOf(specifier: string, path: AbsolutePath | null) {
     if (!tsx || path === null) return null;
