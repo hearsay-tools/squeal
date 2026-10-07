@@ -41,10 +41,13 @@ export function closurePackages(graph: ImportClosure, paths: WorktreePaths): Run
     if (entry === "unnamed") builtins.add(UNNAMED);
     else if (entry !== null) imports.push(entry);
   }
-  for (const [importer, names] of graph.bare) {
+  for (const [importer, specifiers] of graph.bare) {
     const from = directoryOf(dirname(importer), paths);
     if (from === null) continue;
-    for (const name of names) imports.push({ from, name });
+    for (const specifier of specifiers) {
+      const entry = bareImport(from, specifier);
+      if (entry !== null) imports.push(entry);
+    }
   }
   const root = directoryOf(graph.root, paths);
   if (root !== null) for (const name of graph.rooted) imports.push({ from: root, name });
@@ -68,6 +71,18 @@ function installedEntry(
   if (name === null) return "unnamed";
   const from = rel.slice(0, Math.max(0, at - 1));
   return rest === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
+}
+
+/**
+ * The package a bare specifier names, looked up from `from`; a read of its
+ * own `package.json` is marked, since it loads no code (review wave-11b N2,
+ * wave-11d S1: also through a `require`).
+ */
+function bareImport(from: RelativePath, specifier: string): PackageImport | null {
+  const name = packageName(specifier);
+  if (name === null) return null;
+  const path = specifier.split("?")[0] ?? specifier;
+  return path === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
 }
 
 /**
@@ -108,11 +123,11 @@ export async function environmentPackages(
     if (unnamed) builtins.add(UNNAMED);
     for (const specifier of specifiers) {
       const builtin = builtinOf(specifier);
-      const name = builtin === null ? packageName(specifier) : null;
+      const entry = builtin === null ? bareImport(from, specifier) : null;
       if (builtin !== null) builtins.add(builtin);
-      else if (name !== null) {
-        imports.push({ from, name });
-        runner.push({ from, name });
+      else if (entry !== null) {
+        imports.push(entry);
+        runner.push(entry);
       }
     }
   }

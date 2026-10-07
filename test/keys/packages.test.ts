@@ -231,6 +231,7 @@ describe("per-package dependency keys (001-105)", () => {
       const spawningRunner = {
         ...OPAQUE,
         "node_modules/vite": { version: "8.0.0", files: code('import "node:child_process";\n') },
+        "node_modules/vite-user": { version: "1.0.0", dependencies: { vite: "8" } },
       };
       const environment = { ...ENVIRONMENT, runner: [{ from: "", name: "vitest" }] };
       const before = await keysOf(spawningRunner, environment);
@@ -239,8 +240,13 @@ describe("per-package dependency keys (001-105)", () => {
         environment,
       );
       expect(after.environment).toBe(before.environment);
-      // A test file's package that depends on `vite` meets it in the environment set, excluded.
-      expect(after.of(uses("ext"))).toBe(before.of(uses("ext")));
+      // A test file imports the runner itself, looked up from its own directory: exempt too.
+      expect(after.of(uses("vitest", "ext"))).toBe(before.of(uses("vitest", "ext")));
+      expect(after.of(uses("vitest", "ext"))).not.toMatch(/^whole:/);
+      // Review wave-11d S2: a test file's own package reaching the opaque `vite` is not exempt
+      // because the runner reaches it too.
+      expect(after.of(uses("vite-user"))).toMatch(/^whole:/);
+      expect(after.of(uses("vite-user"))).not.toBe(before.of(uses("vite-user")));
     });
 
     it("scans each installed package version once across reads of the install", async () => {

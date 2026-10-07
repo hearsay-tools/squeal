@@ -48,6 +48,15 @@ describe("closurePackages (001-109)", () => {
     expect(packages.imports).toEqual([{ from: "", name: "@types/node", manifest: true }]);
   });
 
+  it("marks a bare read of a package's own package.json, as a require leaves it (wave-11d S1)", () => {
+    const bare = new Map([["/w/test/a.test.ts", new Set(["@types/probe/package.json", "ext"])]]);
+    const packages = closurePackages(closure([], { bare }), paths);
+    expect(packages.imports).toEqual([
+      { from: "test", name: "@types/probe", manifest: true },
+      { from: "test", name: "ext" },
+    ]);
+  });
+
   it("looks a docblock's environment up from the project root (B1)", () => {
     const packages = closurePackages(
       closure([], { rooted: new Set(["vitest-environment-custom"]), root: "/w/app" }),
@@ -74,9 +83,21 @@ describe("sourceLoads (001-109, B1, B2)", () => {
     ]) {
       expect(sourceLoads(source).unnamed, source).toBe(true);
     }
-    for (const source of ["myrequire(name)", "const required = 1;", 'import a from "a";']) {
+    for (const source of [
+      "myrequire(name)",
+      "const required = 1;",
+      'import a from "a";',
+      'require.resolve("./data.json")',
+    ]) {
       expect(sourceLoads(source).unnamed, source).toBe(false);
     }
+  });
+
+  it("reports a require.resolve of a relative literal as a require, which names a file (wave-11d S3)", () => {
+    expect(
+      sourceLoads('require.resolve("./data.json");\nrequire.resolve("x/y");').requires,
+    ).toEqual(["./data.json"]);
+    expect(sourceLoads('require.resolve("./a", { paths: [dir] })').unnamed).toBe(true);
   });
 
   it("reads the environment a docblock names, as Vitest does", () => {
