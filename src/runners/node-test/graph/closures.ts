@@ -59,10 +59,12 @@ export class ClosureIndex {
     this.testWords = Math.ceil(tests.length / 32);
     this.holderBits = new Uint32Array(this.paths.length * this.testWords);
     tests.forEach((test, t) => {
-      for (const r of this.ranks(this.testBits.get(test) ?? this.empty())) {
-        const at = r * this.testWords + (t >>> 5);
-        this.holderBits[at] = (this.holderBits[at] ?? 0) | (1 << (t & 31));
-      }
+      const column = t >>> 5;
+      const bit = 1 << (t & 31);
+      eachRank(this.testBits.get(test) ?? this.empty(), (r) => {
+        const at = r * this.testWords + column;
+        this.holderBits[at] = (this.holderBits[at] ?? 0) | bit;
+      });
     });
     this.reasons = [...modules]
       .map((m) => [this.rank.get(m) ?? -1, nodes(m)?.incomplete ?? []] as const)
@@ -98,7 +100,7 @@ export class ClosureIndex {
   /** The worktree-relative paths of a closure, sorted. */
   members(bits: Uint32Array): string[] {
     const out: string[] = [];
-    for (const r of this.ranks(bits)) out.push(this.relative[r] ?? "");
+    eachRank(bits, (r) => out.push(this.relative[r] ?? ""));
     return out;
   }
 
@@ -108,16 +110,6 @@ export class ClosureIndex {
       if (((bits[r >>> 5] ?? 0) & (1 << (r & 31))) !== 0) for (const w of why) out.add(w);
     }
     return [...out].sort();
-  }
-
-  private *ranks(bits: Uint32Array): Generator<number> {
-    for (let w = 0; w < bits.length; w++) {
-      let word = bits[w] ?? 0;
-      while (word !== 0) {
-        yield w * 32 + 31 - Math.clz32(word & -word);
-        word &= word - 1;
-      }
-    }
   }
 
   private empty(): Uint32Array {
@@ -205,6 +197,17 @@ function reachable(
     }
   }
   return seen;
+}
+
+/** Calls `fn` with every set bit's rank, ascending. A plain loop: a generator costs 3x at 14M bits. */
+function eachRank(bits: Uint32Array, fn: (rank: number) => void): void {
+  for (let w = 0; w < bits.length; w++) {
+    let word = bits[w] ?? 0;
+    while (word !== 0) {
+      fn(w * 32 + 31 - Math.clz32(word & -word));
+      word &= word - 1;
+    }
+  }
 }
 
 function or(into: Uint32Array, from: Uint32Array): void {
