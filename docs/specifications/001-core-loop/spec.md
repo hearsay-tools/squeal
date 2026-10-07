@@ -162,7 +162,7 @@ The daemon exits when its root is deleted, when `<common-dir>/worktrees/<name>` 
 - `baseline.onStart`: `"lookup-then-run-missing"` (default) or `"lookup-only"`.
 - `inputs`: extra closure globs for fixtures read at runtime, either a list applied to every test file or a map from test-file glob to input globs so one runtime read does not re-key the whole suite.
 - `env.allowlist`: environment variables included in the environment hash.
-- `runner.tierSize` (`4`), `runner.timeoutMs` per run (`600000`, because a synchronous loop in a test worker cannot be stopped by the runner's own test timeout), `runner.maxConcurrentRuns` (`1` in v1).
+- `runner.tierSize` (`4`), `runner.timeoutMs` per run (`600000`, because a synchronous loop in a test worker cannot be stopped by the runner's own test timeout). Runs go one at a time; no key sets how many run at once.
 - `daemon.idleExitMinutes` (`60`), `store.retentionDays` (`7`), `store.maxSizeMb`.
 
 Squeal loads Vitest from the project under validation, resolved from the worktree root and imported lazily by the runner adapter, never from its own installation; a project without Vitest is a runner failure state, not a crash. Squeal runs only the project's own Vitest configuration inside the worktree. It never runs arbitrary commands, never writes to the worktree beyond what Vitest itself writes (`update: 'none'` prevents snapshot writes), and inherits the environment of the hook that started it, with only the additions D10 makes (`TMPDIR`, `TMP` and `TEMP` point at its own temp directory).

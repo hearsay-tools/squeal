@@ -58,6 +58,8 @@ Started: 2026-10-02
 - 2026-10-07, wave 9 (001-77, `tasks/wave-9.md` "001-77"): D10 amended. A daemon binds its socket at a staging name and renames it into place, and on exit unlinks the socket path only while it still has the inode it bound, so an old daemon's exit leaves the newcomer at a reused path or a re-clone in place answering. `test/daemon/socket-handover.test.ts` pins both scenarios.
 - 2026-10-07, wave 9 (001-79, from `reviews/wave-9.md` S1, S2, N1, N2): D3 and D4 amended. An added, deleted or edited `package.json` re-resolves every closure with a path below its directory, so a deleted manifest whose entry lies below it, and an edited `main`, re-run their importers; the runner stales the importers under an edited manifest's directory as under an added or deleted one. A root `package.json` picks only closures with a root file: a package importing itself by name is not modelled. `test/runners/vitest/reresolution.test.ts` asserts the run outcome for P1, P2a, P2a2 and P3c. `afterEdit` on the cost fixture is unchanged (22.5 ms against 23.4 ms, one local run each). Quality slice 7: the D4 resolution-path rows of `structural.test.ts` are `structural-resolution.test.ts`.
 
+- 2026-10-07, wave 9 (001-75, `quality/2026-10.md` X1): `runner.maxConcurrentRuns` dropped from D11, the policy type, its default, the loader and the skill. No code read it: a project that set it to 4 got one run at a time and no note. A config that still sets it gets one `unknown key "runner.maxConcurrentRuns"` note, as for any other unknown key; `squeal init` no longer writes it.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.

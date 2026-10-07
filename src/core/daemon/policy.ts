@@ -74,7 +74,6 @@ const SHAPE: Shape = {
   runner: {
     tierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger),
-    maxConcurrentRuns: positiveInteger,
   },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },

@@ -52,7 +52,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       baseline: { onStart: "lookup-only" },
       inputs: ["fixtures/**/*.json"],
       env: { allowlist: ["TZ"] },
-      runner: { tierSize: 2, timeoutMs: null, maxConcurrentRuns: 1 },
+      runner: { tierSize: 2, timeoutMs: null },
       daemon: { idleExitMinutes: 0.5 },
       store: { retentionDays: 3, maxSizeMb: 200 },
     });
@@ -61,6 +61,12 @@ describe("loadPolicy (spec 001 D11)", () => {
   it("names an unknown key with its full path", () => {
     expect(problems('{"runner": {"tierSiz": 2}}')).toEqual(['unknown key "runner.tierSiz"']);
     expect(problems('{"intterupt": {}}')).toEqual(['unknown key "intterupt"']);
+  });
+
+  it("names runner.maxConcurrentRuns as unknown, a key no code honoured (quality X1)", () => {
+    expect(problems('{"runner": {"maxConcurrentRuns": 1}}')).toEqual([
+      'unknown key "runner.maxConcurrentRuns"',
+    ]);
   });
 
   it("names a value of the wrong type with what was expected and what was found", () => {
