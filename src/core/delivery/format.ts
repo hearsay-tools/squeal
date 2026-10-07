@@ -41,6 +41,17 @@ function checkName(check: CheckId): string {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
 
+/**
+ * Task 001-88: a FAIL report ends with one line naming the command that prints
+ * the full output of its first failure. A name the shell would expand inside
+ * double quotes is single-quoted.
+ */
+function whyLine(check: CheckId): string {
+  const name = checkName(check);
+  const quoted = /["$`\\]/.test(name) ? `'${name.replaceAll("'", "'\\''")}'` : `"${name}"`;
+  return `Full output: squeal why ${quoted}`;
+}
+
 function at(location: SourceLocation): string {
   return `at ${location.path}:${location.line}:${location.column}`;
 }
@@ -180,23 +191,30 @@ function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
   });
 }
 
-/** Adds blocks in order while they fit; the rest is summarized by `overflow`. */
+/**
+ * Adds blocks in order while they fit in `max` with `tail` after them; the
+ * rest is summarized by `overflow`.
+ */
 function assemble(
   head: string,
   blocks: readonly Block[],
   overflow: (left: Block[]) => string,
+  tail: string | null,
+  max: number,
 ): string {
+  const end = tail === null ? "" : `\n\n${tail}`;
+  const room = max - end.length;
   let out = head;
   for (const [i, b] of blocks.entries()) {
     const next = `${out}\n\n${b.text}`;
     const last = i === blocks.length - 1;
-    if (next.length <= MESSAGE_CAP_CHARS - (last ? 0 : OVERFLOW_RESERVE)) {
+    if (next.length <= room - (last ? 0 : OVERFLOW_RESERVE)) {
       out = next;
       continue;
     }
-    return cap(`${out}\n\n${overflow(blocks.slice(i))}`, MESSAGE_CAP_CHARS);
+    return `${cap(`${out}\n\n${overflow(blocks.slice(i))}`, room)}${end}`;
   }
-  return out;
+  return `${out}${end}`;
 }
 
 /** Renders a delta: header, failures first, unknowns, recoveries, retired failures. */
@@ -216,14 +234,17 @@ export function formatDelta(delta: Delta): string {
     ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
     ...retired.map(retiredBlock),
   ];
-  return assemble(`${title}\n${headerLine(header)}`, blocks, (left) => {
+  const failed = changed.find((e) => e.to === "fail");
+  const overflow = (left: Block[]) => {
     const outcomes = left.flatMap((b) => b.outcomes);
     const by = (["fail", "pass", "unknown", "resolved"] as const)
       .map((o) => [o, outcomes.filter((x) => x === o).length] as const)
       .filter(([, n]) => n > 0)
       .map(([o, n]) => `${n} ${upper(o)}`);
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
-  });
+  };
+  const tail = failed === undefined ? null : whyLine(failed.check);
+  return assemble(`${title}\n${headerLine(header)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
 }
 
 /** The title of a delta that carries only a change of daemon liveness. */
@@ -233,8 +254,14 @@ function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): 
     : `SQUEAL · no daemon is validating at revision ${revision}`;
 }
 
-/** Renders a registration: header and every known failure, which are never delivered again. */
-export function formatRegistration(registration: Registration): string {
+/**
+ * Renders a registration: header and every known failure, which are never
+ * delivered again. `max` below the cap leaves room for text the hook adds.
+ */
+export function formatRegistration(
+  registration: Registration,
+  max: number = MESSAGE_CAP_CHARS,
+): string {
   const { header, knownFailures } = registration;
   const head = [
     `SQUEAL · registered at revision ${header.revision}`,
@@ -252,9 +279,12 @@ export function formatRegistration(registration: Registration): string {
       ["fail"],
     ),
   );
+  const first = knownFailures[0];
   return assemble(
     head,
     blocks,
     (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`,
+    first === undefined ? null : whyLine(first.check),
+    max,
   );
 }
