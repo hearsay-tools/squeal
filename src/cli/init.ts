@@ -4,6 +4,7 @@ import { findWorktreeRoot, isRecord } from "../core/fs/index.js";
 import { DEFAULT_POLICY } from "../core/types/index.js";
 import { initCodex, printLauncherConfig } from "./codex/init.js";
 import type { CliIo } from "./main.js";
+import { type NodeTestSeed, seedNodeTest } from "./node-test-seed.js";
 
 /*
  * `squeal init`, spec 001 D9: "adds the marketplace and the `enabledPlugins`
@@ -111,6 +112,16 @@ function initClaudeCode(io: CliIo): number {
       ? "wrote squeal.config.json with every default policy key"
       : "kept squeal.config.json",
   );
+  let seed: NodeTestSeed = { projects: [], notes: [], templates: [] };
+  try {
+    if (writeConfig) seed = seedNodeTest(root);
+  } catch (error) {
+    io.stderr(
+      `squeal init: could not read package.json scripts: ${reason(error)}; nothing changed\n`,
+    );
+    return 1;
+  }
+  lines.push(...seed.notes);
 
   const next: JsonObject = { ...settings.value };
   const marketplaceEntries = marketplaces as JsonObject;
@@ -141,7 +152,8 @@ function initClaudeCode(io: CliIo): number {
     return 1;
   }
   try {
-    if (writeConfig) writeFileSync(configPath, `${JSON.stringify(DEFAULT_POLICY, null, 2)}\n`);
+    const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
+    if (writeConfig) writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
   } catch (error) {
     restore();
     io.stderr(`squeal init: could not write ${configPath}: ${reason(error)}; nothing changed\n`);
@@ -150,6 +162,9 @@ function initClaudeCode(io: CliIo): number {
   io.stdout(
     [
       ...lines.map((line) => `squeal init: ${line}`),
+      ...(seed.templates.length === 0
+        ? []
+        : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)]),
       `Each collaborator installs the plugin once: claude plugin install ${PLUGIN_ID} --scope project`,
       "",
     ].join("\n"),
