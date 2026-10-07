@@ -106,6 +106,14 @@ export interface StatusHeader {
    * Set by `readLiveHeader`; absent or empty names nothing.
    */
   readonly changedPaths?: readonly RelativePath[];
+  /**
+   * `false` when the daemon has hashed this worktree's files and no
+   * installed lockfile is among them (`isInstalledLockfile`): its
+   * installed-dependency fingerprint is empty, so failures that cannot find
+   * a package are expected until an install. Task 001-91. Set by
+   * `readLiveHeader`; absent reads as installed or not known.
+   */
+  readonly dependenciesInstalled?: boolean;
 }
 
 /**
