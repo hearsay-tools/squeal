@@ -57,3 +57,32 @@ Use /worker. Shape: slice. Seam: `src/core/daemon/ensure.ts` (`probeDaemon`, `re
 ## 001-72 re-resolution after an add or delete: core heuristic or runner
 
 Use /worker. Shape: survey, then slice. Seam: `src/core/keys/resolution.ts` `closuresToReresolve` and its call at `src/core/scheduler/refinement.ts:118`. First produce the table the row asks for and commit it in this file under a "001-72 table" heading; then drop or keep with a test. Own: `src/core/keys/resolution.ts`, `src/core/scheduler/refinement.ts` (that call only), `test/keys/resolution.test.ts`, a scratch test under `test/runners/vitest/` if needed, D3 in `spec.md`, one `status.md` line, and the table heading in this file. A /reviewer follows, because a wrong drop shows as a missed re-run.
+
+## 001-72 table
+
+Measured by `test/runners/vitest/reresolution-survey.test.ts` (commit of this table; replaced by `reresolution.test.ts` after). Each row is the `basic` fixture plus the scenario's files, with every test file's closure fetched and every test file run, then one add or delete through `invalidate`. "Heuristic" is `closuresToReresolve`, "rekeyed" the test files whose closure holds the changed path (`KeyIndex.rekey` through `content.rekeyed`), "affected" is `affected([path])` as `fetchRunnerPart` calls it. "Moved" is the test files whose closure, fetched again, differs; "missed" is moved but neither rekeyed nor affected. `basic` stands for `each`, `math` and `strings`, whose closures hold `src/` paths. The `resolution.test.ts` rows are replayed on real files as R1 to R4; its declared-input row cannot reach the call, which passes only changes that are not declared inputs (`refinement.ts:114`).
+
+| Row | Change | Heuristic | Rekeyed | Affected | Heuristic only | Moved | Missed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| structural: missing target appears, extension | add `src/later.ts` | later, basic | later | later | basic | later | none |
+| structural: missing target appears, `index` | add `src/pkg/index.ts` | pkg, basic | pkg | pkg | basic | pkg | none |
+| structural: resolved target deleted | delete `src/util.ts` | util, basic | util | none | basic | util | none |
+| structural: new file shadows a resolved one | add `src/util.ts` | util, basic | none | util | basic | util | none |
+| structural: unrelated add | add `src/unrelated.ts` | basic | none | none | basic | none | none |
+| structural: unrelated delete | delete `src/unrelated.ts` | basic | none | none | basic | none | none |
+| structural: `import.meta.glob` (root and own server) | add `src/plugins/b.ts` | registry | none | registry | none | registry | none |
+| structural: template-literal import | add `src/locales/fr.ts` | locale | none | locale | none | locale | none |
+| structural: new file shadows a `package.json` directory | add `src/pkg.ts` | pkg, basic | none | pkg | basic | pkg | none |
+| **structural: new `package.json` re-points a directory** | add `src/pkg/package.json` | pkg | none | none | **pkg** | pkg | **pkg** |
+| **reverse of the row above** | delete `src/pkg/package.json` | pkg | none | none | **pkg** | pkg | **pkg** |
+| structural: alias, `tsconfig` paths | add `src/later.ts` | later, basic | none | later | basic | later | none |
+| structural: glob in a virtual module, an inlined dependency | add `src/plugins/b.ts` | none | none | none | none | none | none |
+| structural: `package.json` `main` entry appears (`lib.ts`, `lib/`) | add `src/pkg/lib.ts` | pkg | none | pkg | none | pkg | none |
+| R1 (resolution: directory a file was added to) | add `src/a.js` beside `src/a.ts` | a, basic | none | a | basic | a | none |
+| R1, deleted from | delete `src/a.js` | a, basic | a | none | basic | a | none |
+| R1b (TypeScript twin) | add `src/a.js`, imported as `./a.js` | a, basic | none | a | basic | a | none |
+| R2 (resolution: new file shadows a directory) | as structural "shadows a resolved one" | | | | | | |
+| R3 (resolution: `index` appears) | add `src/bar/index.ts`, `./bar` resolved to `src/bar.ts` | bar, basic | none | none | bar, basic | none | none |
+| R4 (resolution: worktree root) | add `root.js` beside `root.ts` | root | none | root | none | root | none |
+
+Outcome: keep. Adding or deleting a `package.json` re-points the directory it sits in, and only `closuresToReresolve` re-resolves its importers: the manifest is in no closure and in no module graph, so `rekey` and `affected` both miss it, while the directory's `index` or entry is in the closure and in that directory. Every other moved closure is covered by `rekey` or `affected`; the heuristic's other picks re-fetch closures that do not move. Editing a `package.json` `main` (a content change) moves nothing in any rule, the fetched closure included: Vite keeps the importer's transform. That is outside this row and is reported to the coordinator.
