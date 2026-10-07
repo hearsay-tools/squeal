@@ -42,6 +42,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 7.5 (001-56, from `reviews/wave-7.md` B1, S1, S2, N1, N3, N4): an add also stales unresolved non-relative imports (alias, `tsconfig` `paths`, package), modules whose source on disk uses `import.meta.glob` or a template-literal dynamic import (a cached scan, chosen over a `createVitest` plugin that Vitest does not pass to projects with their own Vite server), resolved imports under a directory the added path shadows, and imports under the directory of an added or deleted `package.json`; a Vite without `invalidationState` falls back to invalidating every transform, with one note (D4). Figures in D4 give local and CI numbers. `Object.keys(import.meta.glob(...))` compiles to keys without imports, so its matched files are not in the closure (D3 gap, not a staleness one, the same under `invalidateAll`).
 
+- 2026-10-07, wave 7.5 (001-60, from `reviews/wave-7.5.md` B1, B2): the add's source scan covers inlined `node_modules` dependencies and counts a module with no source on disk (a virtual module) as expanding; an added path that an ancestor `package.json` names as `main`, `module` or `exports` stales the importers under that directory, which Vite had resolved to its `index` (D4). Cost on the 1,000-module fixture is unchanged locally (five runs: `affected` after an add 15.7 to 17.4 ms against 12.6 to 15.6 ms after an edit, first `invalidate` 18.0 to 20.6 ms, cold 0.92 to 1.0 s). Such a glob's matched files still never enter a closure (`reviews/wave-7.5.md` N5), so `affected` misses its test; the fix only keeps a later run from reading a stale transform.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
