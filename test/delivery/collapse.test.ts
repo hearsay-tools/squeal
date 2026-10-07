@@ -147,6 +147,14 @@ describe("recoveries above five collapse (task 001-91)", () => {
     expect(text).toContain("      3 in tests/r-a.test.ts");
   });
 
+  it("lists the names when grouping by file saves no line (review wave 10b, N1)", () => {
+    const spread = Array.from({ length: 6 }, (_, i) => check(`tests/r${i}.test.ts`, "x"));
+    expect(body(formatDelta(delta(spread.map(recovery))))).toEqual([
+      "PASS  6 checks recovered (FAIL -> PASS)",
+      ...spread.map((c) => `      ${c.testPath} > x`),
+    ]);
+  });
+
   it("counts the files past ten", () => {
     const many = Array.from({ length: 14 }, (_, i) => check(`tests/m${i}.test.ts`, "x"));
     const lines = body(formatDelta(delta(many.map(recovery))));

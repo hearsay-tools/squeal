@@ -7,7 +7,8 @@ import type { CheckId } from "../types/index.js";
  * blocks. Up to `LISTED_MAX` recoveries (or retired checks) are listed as
  * before; above it, one summary line and the shorter of two lists, the checks
  * that changed or the checks still failing. A list of more than `LISTED_MAX`
- * names is grouped by test file with counts.
+ * names is grouped by test file with counts when that takes fewer lines
+ * (review wave 10b, N1: six checks in six files read as six names).
  */
 
 /** Recoveries, retired checks and names listed one by one before they collapse. */
@@ -31,9 +32,18 @@ export function checkName(check: CheckId): string {
 const fileName = (check: CheckId) =>
   `${check.project === "" ? "" : `[${check.project}] `}${check.testPath}`;
 
-/** Names one per line, or above `LISTED_MAX` one line per test file, most checks first. */
+/**
+ * Names one per line, or above `LISTED_MAX` one line per test file, most
+ * checks first, when that takes fewer lines than the names.
+ */
 export function nameLines(checks: readonly CheckId[]): string[] {
   if (checks.length <= LISTED_MAX) return checks.map(checkName);
+  const grouped = byFile(checks);
+  return grouped.length < checks.length ? grouped : checks.map(checkName);
+}
+
+/** One line per test file with its count, the first `FILES_SHOWN`, then the rest counted. */
+function byFile(checks: readonly CheckId[]): string[] {
   const byFile = new Map<string, number>();
   for (const check of checks) byFile.set(fileName(check), (byFile.get(fileName(check)) ?? 0) + 1);
   const files = [...byFile].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
