@@ -1,7 +1,9 @@
+import { writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { writeTurn } from "../../src/core/delivery/turn.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { check, result } from "../state/helpers.js";
 import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
@@ -15,11 +17,17 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * its most expensive path. Other test files spawn processes at the
  * same time, so a hook passes when one of up to 3 rounds meets the budget;
  * the table reports the best round. Above load average 8 nothing is asserted.
+ *
+ * Task 001-96 (review wave 10c S1): SessionStart that spawns the daemon waits
+ * for its heartbeat only, as in 0.1.11 (131 to 184 ms on the review's
+ * machine), held to `SPAWN_BUDGET_MS`. The daemon is a stand-in CLI that
+ * writes the heartbeat, a real daemon's first store write.
  */
 
 const RUNS = 20;
 const ROUNDS = 3;
 const BUDGET_MS = 80;
+const SPAWN_BUDGET_MS = 200;
 // Inside the full parallel suite the measurement competes with other test files; at load 7 a
 // hook read 80 ms p95 that measured 50 ms alone. Assert only on a quiet machine, report always.
 const MAX_LOAD = 4;
@@ -63,6 +71,40 @@ interface Case {
   readonly env?: Readonly<Record<string, string>>;
   /** Untimed work before each run. */
   readonly before?: (r: SquealRepo, run: number) => void;
+  /** p95 budget; default `BUDGET_MS`. */
+  readonly budget?: number;
+}
+
+/**
+ * SessionStart `startup` spawning the daemon: no socket in a runtime dir of
+ * its own, no daemon record, and as the CLI a stand-in that records a
+ * heartbeat the way `squeal daemon` does once it holds its lock.
+ */
+function spawnCase(r: SquealRepo): Case {
+  const dir = runtimeDir();
+  const cli = join(dir, "daemon.mjs");
+  const update = `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+    daemon_heartbeat_at = ?, daemon_heartbeat_interval_ms = 3600000,
+    daemon_version = '0.0.0-test' WHERE id = ?`;
+  writeFileSync(
+    cli,
+    [
+      `import { DatabaseSync } from "node:sqlite";`,
+      `const db = new DatabaseSync(${JSON.stringify(storePaths(r.repo.commonDir).database)});`,
+      `db.exec("PRAGMA busy_timeout = 2000");`,
+      `const now = Date.now();`,
+      `db.prepare(${JSON.stringify(update)}).run("/nowhere.sock", now, now, ${JSON.stringify(r.worktreeId)});`,
+      `db.close();`,
+    ].join("\n"),
+  );
+  return {
+    hook: "session-start",
+    name: "session-start (spawn)",
+    input: "session-start",
+    env: { XDG_RUNTIME_DIR: dir, SQUEAL_CLI: cli },
+    before: (repo) => repo.daemon("none"),
+    budget: SPAWN_BUDGET_MS,
+  };
 }
 
 /** Alternates the one fixture check between pass and fail, so each run has a transition to deliver. */
@@ -107,11 +149,20 @@ describe("bundled hook latency", () => {
       XDG_RUNTIME_DIR: dir,
     });
 
-    const rows: { hook: string; rounds: number; p50: number; p95: number; max: number }[] = [];
-    for (const c of CASES) {
+    const rows: {
+      hook: string;
+      rounds: number;
+      p50: number;
+      p95: number;
+      max: number;
+      budget: number;
+    }[] = [];
+    // Last: the stand-in leaves a daemon record whose socket nobody listens on.
+    for (const c of [...CASES, spawnCase(r)]) {
+      const budget = c.budget ?? BUDGET_MS;
       let best: number[] | null = null;
       let rounds = 0;
-      while (rounds < ROUNDS && (best === null || p95(best) >= BUDGET_MS)) {
+      while (rounds < ROUNDS && (best === null || p95(best) >= budget)) {
         rounds++;
         const samples: number[] = [];
         for (let run = 0; run < RUNS; run++) {
@@ -133,6 +184,7 @@ describe("bundled hook latency", () => {
         p50: Math.round(sorted[Math.floor(RUNS / 2)] ?? 0),
         p95: Math.round(p95(sorted)),
         max: Math.round(sorted.at(-1) ?? 0),
+        budget,
       });
     }
 
@@ -144,6 +196,6 @@ describe("bundled hook latency", () => {
     // Shared CI runners report a low load average and still take 128 ms for a cold Node start
     // (Node 22 job, 2026-10-06). The budget is a dogfooding measurement; in CI it is reported only.
     if (load > MAX_LOAD || process.env.CI !== undefined) return;
-    for (const row of rows) expect(row.p95, row.hook).toBeLessThan(BUDGET_MS);
+    for (const row of rows) expect(row.p95, row.hook).toBeLessThan(row.budget);
   }, 120_000);
 });

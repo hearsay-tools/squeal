@@ -1,7 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { daemonLiveness } from "../../core/delivery/liveness.js";
-import { bootstrapped } from "../../core/delivery/registered.js";
 import type { DaemonRecord, EnsureDaemonResult } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
@@ -43,20 +42,16 @@ export async function ensureIfStale(context: HookContext, deps: HookDeps): Promi
 }
 
 /**
- * Waits up to `SPAWN_SETTLE_MS` for a fresh heartbeat in the store and the
- * daemon's bootstrap marker. Task 001-94, review wave 10b B2 (b): until the
- * start scan is recorded, a registration records no revision for the agent's
- * changes to start at, so a slower start scan costs the attribution lines,
- * never their truth.
+ * Waits up to `SPAWN_SETTLE_MS` for a fresh heartbeat in the store. Not for
+ * the daemon's start scan: attribution needs no wait (task 001-96, review
+ * wave 10c S1).
  */
 export async function settle(context: HookContext, deps: HookDeps): Promise<void> {
   const deadline = performance.now() + SPAWN_SETTLE_MS;
   const now = deps.now ?? Date.now;
-  const { store, consumer } = context;
   for (;;) {
-    const record = store.worktrees.get(consumer.worktreeId)?.daemon ?? null;
-    const alive = daemonLiveness(record, now()).state === "alive";
-    if (alive && bootstrapped(store, consumer.worktreeId, alive)) return;
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    if (daemonLiveness(record, now()).state === "alive") return;
     const left = deadline - performance.now();
     if (left <= 0) return;
     await sleep(Math.min(SETTLE_POLL_MS, left));

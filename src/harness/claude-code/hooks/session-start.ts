@@ -12,8 +12,7 @@ import { unregisterSession } from "../sweep.js";
  * Without a usable store the daemon is still ensured, and the first
  * PostToolBatch registers. After spawning a daemon, registration waits
  * briefly for its heartbeat, so its header reports a daemon that is about to
- * validate as validating, and for its start scan, so the registration records
- * where the agent's changes start (`settle`, task 001-94).
+ * validate as validating.
  *
  * Lessons, defect 5: a SessionStart (not SubagentStart) with source `startup`
  * or `resume` means any earlier run of that session id is gone, so every

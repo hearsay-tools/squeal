@@ -1,11 +1,7 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { bootstrappedMetaKey } from "../../src/core/types/index.js";
-import {
-  type HookDeps,
-  type HookResult,
-  runHook,
-  SPAWN_SETTLE_MS,
-} from "../../src/harness/claude-code/index.js";
+import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { result } from "../state/helpers.js";
 import { ADDS, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
@@ -79,74 +75,118 @@ describe("an edit before SessionStart resume or compact", () => {
 });
 
 /*
- * Review wave 10b B2, decided (b): a SessionStart that spawned the daemon
- * waits within `SPAWN_SETTLE_MS` for the daemon's start scan to be recorded.
- * The scan's `start` revision holds what changed while no daemon ran, never
- * the agent's changes.
+ * Task 001-96 (review wave 10c B1, S1): SessionStart waits for the spawned
+ * daemon's heartbeat only, never for its start scan. No `start` revision is
+ * the agent's, and "none of your changes" needs a daemon that had scanned
+ * when the session registered.
  */
 describe("SessionStart after spawning a daemon", () => {
-  /** A new daemon: heartbeat at `heartbeatMs`, its start scan changing `src/math.ts` at `scanMs`. */
-  function spawning(r: SquealRepo, heartbeatMs: number, scanMs: number | null): HookDeps {
-    r.daemon("none");
+  /**
+   * A new daemon `startedAt`: heartbeat at `heartbeatMs`, then at `scanMs`
+   * its start scan, a `start` revision changing `scanned` when any, and the
+   * bootstrap marker.
+   */
+  function spawning(
+    r: SquealRepo,
+    { heartbeatMs = 20, scanMs = 150, scanned = [] as string[], startedAt = 2 } = {},
+  ): HookDeps {
     return deps({
       ensureDaemon: async () => {
         setTimeout(() => {
           r.store.worktrees.setDaemon(r.worktreeId, {
             socketPath: `/tmp/squeal-test-${r.worktreeId}.sock`,
-            startedAt: 2,
+            startedAt,
             heartbeatAt: Date.now(),
             heartbeatIntervalMs: 3_600_000,
             squealVersion: "0.0.0-test",
           });
         }, heartbeatMs);
-        if (scanMs !== null) {
-          setTimeout(() => {
+        setTimeout(() => {
+          if (scanned.length > 0) {
             r.store.revisions.append({
               worktreeId: r.worktreeId,
               createdAt: 1,
               head: null,
               dirty: false,
               trigger: "start",
-              changes: [{ path: "src/math.ts", oldHash: "a", newHash: "pulled" }],
+              changes: scanned.map((path) => ({ path, oldHash: "a", newHash: "scanned" })),
             });
-            r.store.meta.set(bootstrappedMetaKey(r.worktreeId), "2");
-          }, scanMs);
-        }
+          }
+          r.store.meta.set(bootstrappedMetaKey(r.worktreeId), String(startedAt));
+        }, scanMs);
         return "spawned";
       },
     });
   }
 
-  async function afterReadme(r: SquealRepo): Promise<string> {
-    failAfterReadme(r);
+  async function postToolBatch(r: SquealRepo): Promise<string> {
     return context(await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps()));
   }
 
-  it("waits for the start scan and counts none of it as the agent's", async () => {
-    const r = repo();
+  /** SessionStart `source` spawning a daemon; resolves once its start scan is recorded. */
+  async function spawnSession(
+    r: SquealRepo,
+    source: string,
+    options: Parameters<typeof spawning>[1] = {},
+  ): Promise<number> {
     const started = performance.now();
-    await runHook("session-start", recorded("session-start", r.root), spawning(r, 50, 200));
-    expect(performance.now() - started).toBeLessThan(SPAWN_SETTLE_MS);
-    const text = await afterReadme(r);
-    expect(text).toContain("none of your changes are in its imports");
+    await runHook(
+      "session-start",
+      recorded("session-start", r.root, { source }),
+      spawning(r, options),
+    );
+    const elapsed = performance.now() - started;
+    await sleep((options.scanMs ?? 150) + 50);
+    return elapsed;
+  }
+
+  it("returns on the heartbeat, before the start scan", async () => {
+    const r = repo();
+    r.daemon("none");
+    const elapsed = await spawnSession(r, "startup", { scanMs: 400 });
+    expect(elapsed).toBeLessThan(400);
   });
 
-  it("gives no attribution line when the start scan outlasts the wait", async () => {
+  it("gives attribution from the first PostToolBatch after the start revision (case 1)", async () => {
     const r = repo();
-    const started = performance.now();
-    await runHook("session-start", recorded("session-start", r.root), spawning(r, 50, null));
-    expect(performance.now() - started).toBeGreaterThanOrEqual(SPAWN_SETTLE_MS - 10);
-    // The scan lands after the registration, with the files pulled while no daemon ran.
-    r.store.revisions.append({
-      worktreeId: r.worktreeId,
-      createdAt: 1,
-      head: null,
-      dirty: false,
-      trigger: "start",
-      changes: [{ path: "src/math.ts", oldHash: "a", newHash: "pulled" }],
-    });
-    r.store.meta.set(bootstrappedMetaKey(r.worktreeId), "2");
-    const text = await afterReadme(r);
+    r.daemon("none");
+    await spawnSession(r, "startup", { scanned: ["package.json"] });
+    r.apply(); // the agent edits src/math.ts
+    failAfterReadme(r);
+    const text = await postToolBatch(r);
+    expect(text).toContain("touches your changes: src/math.ts");
+  });
+
+  it("counts none of a restarted daemon's start revision as the agent's (case 2, wave 10c B1 probe)", async () => {
+    const r = repo();
+    await sessionStart(r, "startup");
+    // A reboot: no SessionEnd. Someone pulls src/math.ts while no daemon runs.
+    r.daemon("none");
+    await spawnSession(r, "resume", { startedAt: 99, scanned: ["src/math.ts"] });
+    failAfterReadme(r);
+    const text = await postToolBatch(r);
+    expect(text).toContain("FAIL  src/math.test.ts > math > adds");
+    expect(text).not.toContain("your changes");
+  });
+
+  it("gives neither line for an agent edit absorbed into the start revision (case 3)", async () => {
+    const r = repo();
+    r.daemon("none");
+    // The agent's first edit of src/math.ts lands before the scan reads it.
+    await spawnSession(r, "startup", { scanned: ["src/math.ts"] });
+    failAfterReadme(r);
+    const text = await postToolBatch(r);
+    expect(text).toContain("FAIL  src/math.test.ts > math > adds");
+    expect(text).not.toContain("your changes");
+  });
+
+  it("never says none of your changes after a new worktree's seeding", async () => {
+    const r = repo();
+    r.daemon("none");
+    // An empty cache: the scan hashes every file without a revision, the agent's early edit too.
+    await spawnSession(r, "startup");
+    failAfterReadme(r);
+    const text = await postToolBatch(r);
     expect(text).toContain("FAIL  src/math.test.ts > math > adds");
     expect(text).not.toContain("your changes");
   });
