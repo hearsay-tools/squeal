@@ -203,7 +203,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-107 the install wait never claims a suite, and covers a reinstall | done (0.1.20) (brief in `specifications/001-core-loop/tasks/wave-11.md`) | `reviews/wave-11.md` B1 (`run --all` while waiting completes a checkpoint that ran nothing), S1 (wait also while `npm ci` replaces `node_modules`; reproduced live), S2, S3, N1 to N5. | B1 probe a test; a reinstall under a running daemon stores no failure; edits during the wait run first. |
 | 001-108 re-review of 001-107 | running | `/reviewer`, last round on the 001-100 slice. | `reviews/wave-11c.md` committed. |
 | 001-105 per-package dependency keys (scheme B) | done (0.1.20; 323 of 632 cezar files keep their key across installs) (brief in `specifications/001-core-loop/tasks/wave-11.md`) | Human chose scheme B: each test file keyed by the lockfile closure of the packages it imports; whole-lockfile fallback for files reaching `child_process`, `worker_threads`, `module`. | At least 300 of 632 `cezar` files keep their key across the defect 20 pair, none of the child-process ones; the fixture bumps re-key exactly their users. |
-| 001-106 review of 001-104 and 001-105 | running | `/reviewer`: can a key now survive a dependency change that could alter a result. | `reviews/wave-11b.md` committed. |
+| 001-106 review of 001-104 and 001-105 | done, FAIL with B1 to B3 (`reviews/wave-11b.md`); B3 awaits the human | `/reviewer`: can a key now survive a dependency change that could alter a result. | `reviews/wave-11b.md` committed. |
 
 ## Feature 002: Codex adapter
 
