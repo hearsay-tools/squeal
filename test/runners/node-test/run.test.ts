@@ -98,6 +98,19 @@ describe("runNodeTest", () => {
       .filter((pid) => pid !== undefined)
       .map(Number);
     expect(pids.length).toBeGreaterThan(0);
+    // A killed group's test children are reparented to init and reaped by it, not by us,
+    // so under load one can stay a zombie for a moment: wait for the pids to go.
+    const alive = (pid: number) => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    for (let waited = 0; pids.some(alive) && waited < 5_000; waited += 50) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
     for (const pid of pids) expect(() => process.kill(pid, 0)).toThrow(/ESRCH/);
   });
 
