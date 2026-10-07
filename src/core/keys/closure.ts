@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { compare } from "../fs/index.js";
+import { compare, sameList } from "../fs/index.js";
 import type {
   Closure,
   ClosureMethod,
@@ -145,10 +145,6 @@ export function sameInputs(a: PolicyInputs, b: PolicyInputs): boolean {
 
 export function isInputList(inputs: PolicyInputs): inputs is readonly string[] {
   return Array.isArray(inputs);
-}
-
-function sameList(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((value, i) => value === b[i]);
 }
 
 /**

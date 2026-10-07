@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { compare, isMissing, toAbsolute, toRelative } from "../../src/core/fs/index.js";
+import { compare, isMissing, sameList, toAbsolute, toRelative } from "../../src/core/fs/index.js";
 
 const ROOT = "/repo";
 const errno = (code: string) => Object.assign(new Error(code), { code });
@@ -50,5 +50,14 @@ describe("compare", () => {
   it("orders by UTF-16 code unit, not locale", () => {
     expect(["b", "a", "B", "ä", "Z"].sort(compare)).toEqual(["B", "Z", "a", "b", "ä"]);
     expect(compare("a", "a")).toBe(0);
+  });
+});
+
+describe("sameList", () => {
+  it("is true only for the same strings in the same order", () => {
+    expect(sameList(["a", "b"], ["a", "b"])).toBe(true);
+    expect(sameList([], [])).toBe(true);
+    expect(sameList(["a", "b"], ["b", "a"])).toBe(false);
+    expect(sameList(["a"], ["a", "b"])).toBe(false);
   });
 });
