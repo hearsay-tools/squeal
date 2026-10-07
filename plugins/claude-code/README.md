@@ -30,6 +30,17 @@ The first refreshes Claude Code's clone of this repository; the second installs 
 
 The marketplace does not auto-update unless you turn it on, under `/plugin` **Marketplaces** or with `autoUpdate` on its `extraKnownMarketplaces` entry; then Claude Code updates the plugin in the background and asks for `/reload-plugins`.
 
+## Remove from a project
+
+From any worktree of the repository:
+
+```sh
+squeal remove            # or: squeal remove --config
+claude plugin uninstall squeal@squeal --scope project
+```
+
+`squeal remove` asks the daemon of every worktree to stop and waits until each has let go of its lock, then deletes `<git-common-dir>/squeal/` (the store, locks, run logs and repository id) and the daemons' temp directories under `/tmp/squeal-<uid>/tmp/`. A daemon that does not stop within 5 seconds, usually one finishing a test run, makes it exit 1 with nothing deleted; run it again. `squeal.config.json` stays unless `--config` is given, and while it is there the next session starts Squeal again; it is committed, so other worktrees and clones keep their copy. Run it again on a repository with nothing left and it says so. Uninstall the plugin with the scope you installed it with, and delete the `squeal` entries under `extraKnownMarketplaces` and `enabledPlugins` in `.claude/settings.json` if they remain.
+
 ## Develop
 
 For development, load this directory for one session: `claude --plugin-dir plugins/claude-code`. Claude Code ignores a `--plugin-dir` that does not exist without any message, and a relative path resolves against the current directory, so pass an absolute path when in doubt. The `init` event of `--output-format stream-json` lists the loaded plugins under `plugins`; Squeal is loaded when `squeal` is there (lessons, surprise 10).

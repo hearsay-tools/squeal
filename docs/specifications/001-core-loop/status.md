@@ -71,6 +71,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 10 (001-88): D9 amended. Every first registration (SessionStart, or UserPromptSubmit or PostToolBatch on a new store) is followed by a primer, never shown without a usable store (Squeal runs the Vitest tests; do not run Vitest to learn whether edits broke something; results arrive with the next tool call; when to run tests yourself; not typecheck, build or other suites), and says only the primer after `compact` for a registered main agent and in a repository with a config but no store; the registration is capped to leave it room within 10,000 characters. A FAIL report (delta or registration) ends with one `Full output: squeal why "<name>"` line for its first failure (D6 wording, a factual label). The skill is described by running tests or checking for breakage, its body is steps first, and counts, commands and policy keys move to `skills/squeal/references/`. SessionStart p95 with the primer, bundles built outside `dist`, load 6.35 so not asserted: 65 ms.
 
+- 2026-10-07, wave 10 (001-90): D7 amended. `squeal remove [--config]` stops every worktree's daemon, holds every daemon lock while it deletes `<common-dir>/squeal/` and the repository's daemon temp directories, deletes nothing and exits 1 when a lock stays held for 5 s, deletes `squeal.config.json` only with `--config`, and says what remains (plugin, kept config).
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
