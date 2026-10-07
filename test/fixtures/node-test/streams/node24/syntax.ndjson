@@ -1,0 +1,35 @@
+{"type":"test:enqueue","data":{"nesting":0,"name":"test/syntax.test.ts","type":"test","testId":1,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:dequeue","data":{"nesting":0,"name":"test/syntax.test.ts","type":"test","testId":1,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"node:internal/modules/run_main:107\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    triggerUncaughtException(\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    ^\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"Error: Transform failed with 1 error:\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"<fixtures>/edge/test/syntax.test.ts:3:14: ERROR: Unexpected \"=\"\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at failureErrorWithLog (/home/agent/projects/squeal/.ai/cezar/worktrees/bfa42290-6ea5-41cd-bca4-07facff5b3aa/node_modules/esbuild/lib/main.js:1752:15)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at /home/agent/projects/squeal/.ai/cezar/worktrees/bfa42290-6ea5-41cd-bca4-07facff5b3aa/node_modules/esbuild/lib/main.js:1019:50\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at responseCallbacks.<computed> (/home/agent/projects/squeal/.ai/cezar/worktrees/bfa42290-6ea5-41cd-bca4-07facff5b3aa/node_modules/esbuild/lib/main.js:886:9)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at handleIncomingPacket (/home/agent/projects/squeal/.ai/cezar/worktrees/bfa42290-6ea5-41cd-bca4-07facff5b3aa/node_modules/esbuild/lib/main.js:941:12)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at Socket.readFromStdout (/home/agent/projects/squeal/.ai/cezar/worktrees/bfa42290-6ea5-41cd-bca4-07facff5b3aa/node_modules/esbuild/lib/main.js:864:7)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at Socket.emit (node:events:514:28)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at addChunk (node:internal/streams/readable:568:12)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at Readable.push (node:internal/streams/readable:399:5)\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"  name: 'TransformError'\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"}\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/syntax.test.ts","message":"Node.js v24.21.0\n","entryFile":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:complete","data":{"name":"test/syntax.test.ts","nesting":0,"testNumber":1,"testId":1,"parentId":0,"details":{"duration_ms":161.088791,"type":"test","error":{"stack":null,"code":"ERR_TEST_FAILURE","failureType":"testCodeFailure","cause":"test failed","message":"test failed","exitCode":1,"signal":null},"passed":false},"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:start","data":{"nesting":0,"name":"test/syntax.test.ts","testId":1,"parentId":0,"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:fail","data":{"name":"test/syntax.test.ts","nesting":0,"testNumber":1,"testId":1,"parentId":0,"details":{"duration_ms":161.088791,"type":"test","error":{"stack":null,"code":"ERR_TEST_FAILURE","failureType":"testCodeFailure","cause":"test failed","message":"test failed","exitCode":1,"signal":null}},"tags":[],"line":1,"column":1,"file":"<fixtures>/edge/test/syntax.test.ts"}}
+{"type":"test:plan","data":{"nesting":0,"count":1}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"tests 1","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"suites 0","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"pass 0","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"fail 1","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"cancelled 0","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"skipped 0","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"todo 0","level":"info"}}
+{"type":"test:diagnostic","data":{"nesting":0,"message":"duration_ms 168.810298","level":"info"}}
+{"type":"test:summary","data":{"success":false,"counts":{"tests":1,"failed":1,"passed":0,"cancelled":0,"skipped":0,"todo":0,"topLevel":1,"suites":0},"duration_ms":168.810298,"file":null}}

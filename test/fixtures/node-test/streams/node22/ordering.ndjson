@@ -1,0 +1,7 @@
+{"type":"test:enqueue","data":{"nesting":0,"name":"test/busy-loop.test.ts","type":"test","line":1,"column":1,"file":"<fixtures>/edge/test/busy-loop.test.ts"}}
+{"type":"test:dequeue","data":{"nesting":0,"name":"test/busy-loop.test.ts","type":"test","line":1,"column":1,"file":"<fixtures>/edge/test/busy-loop.test.ts"}}
+{"type":"test:enqueue","data":{"nesting":0,"name":"test/pass.test.ts","type":"test","line":1,"column":1,"file":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:dequeue","data":{"nesting":0,"name":"test/pass.test.ts","type":"test","line":1,"column":1,"file":"<fixtures>/edge/test/pass.test.ts"}}
+{"type":"test:stderr","data":{"file":"test/busy-loop.test.ts","message":"(node:758714) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n"}}
+{"type":"test:stderr","data":{"file":"test/busy-loop.test.ts","message":"(Use `node --trace-warnings ...` to show where the warning was created)\n"}}
+{"type":"test:complete","data":{"name":"test/pass.test.ts","nesting":0,"testNumber":2,"details":{"duration_ms":119.498744,"type":"test","passed":true},"line":1,"column":1,"file":"<fixtures>/edge/test/pass.test.ts"}}
