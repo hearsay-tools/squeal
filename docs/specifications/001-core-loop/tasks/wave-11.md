@@ -145,3 +145,11 @@ Decided: remove the in-process wait start (the revision or pre-tier check that e
 Own: `src/core/scheduler/`, `src/core/daemon/` (the exit path only; the 002/003 coordinator's `node-test-runners.ts` and runner construction stay theirs), tests under `test/scheduler/`, `test/daemon/`, D5 and D10 in `spec.md`, one `status.md` line. Do not run `npm run build` or touch any `dist`. Commit as you go.
 
 Done when: the review's B1 and B2 probes are tests that pass against a real daemon (an edit during `npm ci` under a running daemon: the daemon exits, a fresh one starts on the next hook, the edited file runs first against the new code and fails as it should); a workspace reinstall exits too; no test of the old in-process wait remains unless it now asserts the exit; the full suite passes.
+
+## 001-110 re-review of 001-109
+
+Use /reviewer. Range: 001-109's six commits as landed on `main` (`e48ac92` to `b32ae76` as cherry-picked), build `015e38c`. Output `reviews/wave-11d.md`. Last round on the 001-105 slice: blockers go to the human. Outcome: are `reviews/wave-11b.md` B1 to B3, S1 to S3, N1 to N4 closed, and can any package bump that changes a result still keep a key. Probe: the review's proofs; the accepted exemption for config-file plugins (their closure must stay in the environment hash: bump a dependency of a plugin); a package that reaches `child_process` only through a dependency two levels down; `import.meta.resolve` and computed `require`; the package-scan cache across a reinstall of the same version with different contents (integrity); the `cezar` share (265 of 632) on a fresh clone.
+
+## 001-115 review of 001-111 and 001-112
+
+Use /reviewer. Range: 001-111 (`ac0c5a0`, `f53a56f`, `4551941`) and 001-112 (`5958e95`, `5398b62`, `8f8280f`, `bd063e3`) as landed, build `015e38c`. Output `reviews/wave-11f.md`. Outcome: (1) does treating paths beyond a symlinked directory as ignored hide a file that should be validated (a source directory that is a symlink, not just `node_modules`), and does a split batch ever drop a path; (2) can "Not validated" be missing after an edit while no daemon validates, or appear while one does (heartbeat grace, a slow tier, Bash that edits nothing). Probe both plugins where the shared code applies.
