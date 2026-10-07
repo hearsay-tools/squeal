@@ -68,17 +68,23 @@ describe("ChangeFeed over a symlinked source directory", () => {
 
   it("reports an added, an edited and a deleted file behind the link within the debounce", async () => {
     await startFeed();
+    const started = log.batches.length;
     write(root, "lib/added.test.ts", "it('x', () => {});\n");
     await waitFor(() => watched("lib/added.test.ts", true), 3_000);
     appendFileSync(join(root, "lib/a.ts"), "y\n");
     await waitFor(() => watched("lib/a.ts", true), 3_000);
     unlinkSync(join(root, "lib/added.test.ts"));
     await waitFor(() => watched("lib/added.test.ts", false), 3_000);
-    // The linked install is not watched: a write there reports nothing.
-    const before = log.batches.length;
+    // The linked install is not watched: a write there reports nothing under it.
     appendFileSync(join(root, "node_modules/.package-lock.json"), "\n");
     await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(log.batches.slice(before).flatMap((b) => b.paths.map((p) => p.path))).toEqual([]);
+    expect(log.paths().filter((p) => p.startsWith("node_modules/"))).toEqual([]);
+    // `fs.watch` follows the link, so each write also reports `lib`; that is no new link to
+    // walk, so no reconciliation pass (one would re-stat the tracked README.md) ran.
+    const reconciled = log.batches
+      .slice(started)
+      .filter((b) => b.paths.some((p) => p.path === "README.md"));
+    expect(reconciled.length).toBe(0);
   });
 
   it("observes a link that appears, and drops its files when it goes", async () => {

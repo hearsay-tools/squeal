@@ -1,5 +1,5 @@
 import { realpath } from "node:fs/promises";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import {
   type AbsolutePath,
   type CandidateBatch,
@@ -16,6 +16,7 @@ import {
   type CandidateContext,
   candidatesForReconcile,
   candidatesFromHints,
+  type HintCandidates,
 } from "./candidates.js";
 import { Debouncer } from "./debounce.js";
 import { Exclusions } from "./exclusions.js";
@@ -86,8 +87,11 @@ class Feed implements ChangeFeed {
   private extraFiles: RelativePath[];
   private sub: WatchSubscription | null = null;
   private linked: LinkedWatches | null = null;
-  /** The symlinked directories the last reconciliation observed. */
-  private linkedDirs = new Set<RelativePath>();
+  /**
+   * Symlinked directories seen, observed or not, with their target's realpath.
+   * `fs.watch` follows a link, so a write behind one also reports the link.
+   */
+  private linkTargets = new Map<RelativePath, AbsolutePath>();
   private queue: Promise<void> = Promise.resolve();
   private idleTimer: NodeJS.Timeout | null = null;
   private closed = false;
@@ -158,20 +162,35 @@ class Feed implements ChangeFeed {
       if (hinted.ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
       if (hinted.paths.length > 0) await this.emit({ trigger: "watch", paths: hinted.paths });
       // Paths that were excluded until now were never watched; git status finds them. So does
-      // the walk of a linked directory, which appeared, or went, with a link of this batch.
-      const relinked =
-        hinted.linkedDirs.length > 0 || hinted.paths.some((p) => this.linkedDirs.has(p.path));
-      if (widened || relinked) await this.reconcileNow("watch");
+      // the walk of a linked directory, which appeared, went or moved with a link of this batch.
+      if (widened || (await this.relinked(hinted))) await this.reconcileNow("watch");
     });
   }
 
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
     const status = await gitStatus(this.root);
     await this.rebuildSpec(status);
-    const { paths, linkedDirs } = await candidatesForReconcile(this.context(), status.paths);
-    this.linkedDirs = new Set(linkedDirs.keys());
+    const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), status.paths);
+    this.linkTargets = new Map(links);
     await this.linked?.update(linkedDirs);
     await this.emit({ trigger, paths });
+  }
+
+  /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
+  private async relinked(hinted: HintCandidates): Promise<boolean> {
+    let changed = false;
+    const links = new Set(hinted.linkedDirs);
+    for (const link of links) {
+      const target = await realpath(join(this.root, link)).catch(() => null);
+      if (target === null || this.linkTargets.get(link) === target) continue;
+      this.linkTargets.set(link, target);
+      changed = true;
+    }
+    for (const { path } of hinted.paths) {
+      if (links.has(path) || !this.linkTargets.delete(path)) continue;
+      changed = true;
+    }
+    return changed;
   }
 
   /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
