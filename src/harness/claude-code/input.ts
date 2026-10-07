@@ -17,6 +17,8 @@ export interface HookInput {
   readonly agent_type?: string;
   /** PreToolUse. */
   readonly tool_name?: string;
+  /** PostToolBatch: the `tool_name` of each of its `tool_calls`; absent when it has none. */
+  readonly tool_names?: readonly string[];
   /** Stop and SubagentStop: true while a Stop hook's block keeps the agent going. */
   readonly stop_hook_active?: boolean;
   /** SessionStart: `startup`, `resume`, `clear` or `compact`. */
@@ -43,7 +45,17 @@ export function parseHookInput(text: string): HookInput | null {
     ...(typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {}),
     ...(typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {}),
     ...(typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {}),
+    ...toolNames(v.tool_calls),
     ...(typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}),
     ...(typeof v.source === "string" ? { source: v.source } : {}),
   };
+}
+
+/** `tool_names` of a `tool_calls` array whose every entry names its tool; nothing otherwise. */
+function toolNames(calls: unknown): { tool_names?: readonly string[] } {
+  if (!Array.isArray(calls)) return {};
+  const names = calls.map((c: unknown) =>
+    typeof c === "object" && c !== null ? (c as Record<string, unknown>).tool_name : undefined,
+  );
+  return names.every((n) => typeof n === "string") ? { tool_names: names as string[] } : {};
 }
