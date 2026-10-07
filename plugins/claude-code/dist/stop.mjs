@@ -368,9 +368,12 @@ function isNumber(value) {
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
+// src/core/keys/hidden-lockfile.ts
+var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
+
 // src/core/keys/environment.ts
 var LOCKFILES = [
-  { path: "node_modules/.package-lock.json", patches: "patches" },
+  { path: HIDDEN_LOCKFILE, patches: "patches" },
   { path: "node_modules/.yarn-state.yml", patches: null },
   { path: ".pnp.cjs", patches: ".yarn/patches" },
   { path: ".pnp.js", patches: ".yarn/patches" },
