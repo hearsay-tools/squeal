@@ -65,6 +65,21 @@ export function startTurn(store: Store, consumer: Consumer): void {
   writeTurn(store, consumer, IN_TURN);
 }
 
+/**
+ * Puts a registered consumer left idle in a turn (task 001-93): a tool call
+ * means the agent works, whatever the last Stop said, because another Stop
+ * hook can continue a turn Squeal's silent Stop ended (lessons, defect 14
+ * after wave 10). Reads first, so a consumer already in a turn takes no write
+ * lock.
+ */
+export function resumeTurn(store: Store, consumer: Consumer): void {
+  if (readTurn(store, consumer).turn !== "idle") return;
+  store.transaction(() => {
+    if (store.consumers.get(consumer) === null) return;
+    if (readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
+  });
+}
+
 type Idle = Extract<TurnState, { turn: "idle" }>;
 
 /** Each listed test file's current key, by `testFileId`. */
