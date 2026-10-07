@@ -89,6 +89,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 11 (001-105, `research/per-package-keys.md` scheme B; decided by the human, the `node:test` line agreed with the 002/003 coordinator, `cluster` and config builtins by the worker): D3 and D4 amended. The environment hash holds the lockfile closure of the runner, the setup and `globalSetup` closures' packages and the config files' bare imports, plus `patches/`; each test file's key adds the lockfile closure of the installed packages its closure imports in one hop (types-only packages constant, unresolved names absent); a file reaching `child_process`, `worker_threads`, `module` or `cluster`, or with no packages reported, keys by the whole fingerprint, and so does every file of a stale or non-npm install. The stale-lockfile note is recorded once per change. On `cezar`, 323 of 632 files keep their key across the defect 20 pair read as-is, none reaching `child_process`; keying all 632 costs 52 ms. Additive types: `RunnerClosure.packages`, `RunnerEnvironment.packages`, `PackageImport`, `RunnerPackages`; `InstalledDependencies.graph` and `patches`; check-key encoding 2.
 
+- 2026-10-07, after wave 11: `reviews/wave-10d.md` N4 closed by the spec 002/003 coordinator (0.1.21, `5265b61`): `test/store/helpers.ts` removes temp directories with retries, which ends the ENOTEMPTY race in both bundled-hook tests. The idle-exit test in `test/daemon/lifecycle.test.ts` no longer waits for readiness, which its 1.8 s idle period could outrun under load.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.

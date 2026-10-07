@@ -76,7 +76,8 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
   it("exits after the idle period with no registered consumers, leaving a note", async () => {
     const repo = fixture({ "squeal.config.json": '{"daemon": {"idleExitMinutes": 0.03}}' });
     const spawned = daemon(repo);
-    await waitReady(repo, spawned);
+    // No waitReady: under load the 1.8 s idle period can end before a ping
+    // sees "ready", and the exit with its idle note is what this test checks.
     const exit = await Promise.race([spawned.exited, delay(60_000).then(() => null)]);
     expect(exit).toEqual({ code: 0, signal: null });
     expect(withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon)).toBeNull();
