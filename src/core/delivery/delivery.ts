@@ -188,7 +188,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   }
 
   return {
-    register: async (consumer, { inTurn = false } = {}) =>
+    register: async (consumer, { inTurn = false, atStart = false } = {}) =>
       store.transaction(() => {
         const at = now();
         // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
@@ -205,7 +205,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, header.daemon?.state ?? null);
         tellRevision(store, consumer, header.revision);
         if (!registered) {
-          const alive = header.daemon?.state === "alive";
+          // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
+          const alive = atStart && header.daemon?.state === "alive";
           tellRegistered(store, consumer, header.revision, {
             at,
             scanned: scannedDaemon(store, consumer.worktreeId, alive),

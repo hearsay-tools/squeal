@@ -191,3 +191,56 @@ describe("SessionStart after spawning a daemon", () => {
     expect(text).not.toContain("your changes");
   });
 });
+
+/*
+ * Task 001-99 (review wave 10d, S2): a registration that follows the
+ * session's tool calls holds their edits in its registration revision, so
+ * it never says "none": the `-p` probe P5.
+ */
+describe("a registration after the session's tool calls", () => {
+  const PRINT = { CLAUDE_CODE_ENTRYPOINT: "sdk-cli" };
+
+  it("never says none of the changes when PostToolBatch registers after an edit (P5)", async () => {
+    const r = repo();
+    r.apply(); // the agent's first batch edits src/math.ts before any registration
+    const post = () =>
+      runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps({ env: PRINT }));
+    await post(); // registers, with the edit in its registration revision
+    failAfterReadme(r);
+    const text = context(await post());
+    expect(text).toContain("FAIL  src/math.test.ts > math > adds");
+    expect(text).not.toContain("none of");
+  });
+
+  it("never says none of the changes when SessionStart compact registers again", async () => {
+    const r = repo();
+    r.apply(); // the run's edit, before compaction; its consumer expired meanwhile
+    await sessionStart(r, "compact");
+    failAfterReadme(r);
+    const text = context(
+      await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps()),
+    );
+    expect(text).toContain("FAIL  src/math.test.ts > math > adds");
+    expect(text).not.toContain("none of");
+  });
+
+  it("says none of the changes after SessionStart startup", async () => {
+    const r = repo();
+    await sessionStart(r, "startup");
+    failAfterReadme(r);
+    const text = context(
+      await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps()),
+    );
+    expect(text).toContain("none of");
+  });
+
+  it("still names a file changed after PostToolBatch registered", async () => {
+    const r = repo();
+    const post = () =>
+      runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps({ env: PRINT }));
+    await post();
+    r.apply();
+    failAfterReadme(r);
+    expect(context(await post())).toContain("src/math.ts");
+  });
+});

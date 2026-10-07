@@ -153,13 +153,13 @@ describe("expireConsumers and the registration revision (task 001-94, N4)", () =
     const gone = consumer("gone");
     let clock = NOW - 11 * MIN;
     const delivery = createDelivery(store, { status: fixedStatus(), now: () => clock });
-    await delivery.register(gone);
+    await delivery.register(gone, { atStart: true });
     append(); // revision 1, the agent's
     leaveLockFile(locksDir, gone);
     expect(expireConsumers(store, NOW, { locksDir })).toEqual([gone]);
     append(); // revision 2, while it was gone
     clock = NOW;
-    await delivery.register(gone);
+    await delivery.register(gone, { atStart: true });
     expect(registration(store, gone)).toEqual({ since: 0, gaps: [[1, 2]], scanned: 1 });
   });
 });

@@ -86,7 +86,7 @@ async function failingEntry(): Promise<TransitionEntry> {
 describe("whether the changes since registration reach a failure", () => {
   beforeEach(async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
   });
 
   it("names the closure paths changed since registration", async () => {
@@ -143,7 +143,7 @@ describe("a timeout's load average", () => {
 
   beforeEach(async () => {
     apply(edit([]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
   });
 
   it("is read from the result the failure came from", async () => {
@@ -219,7 +219,7 @@ function deltaOf(entry: TransitionEntry): Delta {
 describe("installed dependencies in the header", () => {
   it("says no dependencies are installed when no hashed file is an installed lockfile", async () => {
     apply(edit([]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     hashed("src/a.test.ts", "package-lock.json");
     apply(edit([]), result(A, "fail", { message: "Cannot find package 'vitest'" }));
     const delta = await delivery.onToolBoundary(C1);
@@ -230,14 +230,14 @@ describe("installed dependencies in the header", () => {
   it("says it in a registration that carries known failures", async () => {
     hashed("src/a.test.ts");
     apply(edit([]), result(A, "fail"));
-    expect(formatRegistration(await delivery.register(C1))).toContain(
+    expect(formatRegistration(await delivery.register(C1, { atStart: true }))).toContain(
       "No dependencies are installed in this worktree",
     );
   });
 
   it("says nothing once a lockfile is installed, or while nothing is hashed", async () => {
     apply(edit([]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit([]), result(A, "fail"));
     expect((await delivery.onToolBoundary(C1))?.header.dependenciesInstalled).toBeUndefined();
     hashed("src/a.test.ts", "node_modules/.package-lock.json");
@@ -247,7 +247,7 @@ describe("installed dependencies in the header", () => {
 
   it("labels a report after the installed lockfile changed", async () => {
     apply(edit([]), result(A, "fail"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["node_modules/.package-lock.json"]), result(A, "pass"));
     expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).toContain(
       "These results follow a dependency install (node_modules/.package-lock.json changed).",
@@ -270,7 +270,7 @@ describe("a removed installed lockfile", () => {
 
   it("is not labelled an install, so the header says one thing (S1 probe)", async () => {
     apply(edit([]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     hashed("src/a.test.ts", "package-lock.json");
     apply(
       remove("node_modules/.package-lock.json"),
@@ -283,7 +283,7 @@ describe("a removed installed lockfile", () => {
 
   it("is labelled an install once a later revision in the range writes it again", async () => {
     apply(edit([]), result(A, "fail"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     hashed("src/a.test.ts", "node_modules/.package-lock.json");
     remove("node_modules/.package-lock.json");
     apply(edit(["node_modules/.package-lock.json"]), result(A, "pass"));
@@ -297,7 +297,7 @@ describe("still failing", () => {
   it("lists the checks failing at delivery", async () => {
     const B = check("b");
     apply(edit([]), result(A, "fail"), result(B, "fail"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit([]), result(A, "pass"));
     expect((await delivery.onToolBoundary(C1))?.stillFailing).toEqual([B]);
   });

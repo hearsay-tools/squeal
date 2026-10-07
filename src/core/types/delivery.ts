@@ -215,6 +215,15 @@ export interface RegisterOptions {
    * it starts idle, waiting for nothing.
    */
   readonly inTurn?: boolean;
+  /**
+   * Task 001-99 (review wave 10d, S2): the consumer registers at its
+   * session's or subagent's start, before any tool call or prompt of its
+   * own, so its registration revision holds none of its changes. Only then
+   * is the scanned daemon recorded, which "none of the files changed here"
+   * needs. Default `false`: a registration after tool calls (PostToolBatch,
+   * UserPromptSubmit, Stop) may already hold their edits.
+   */
+  readonly atStart?: boolean;
 }
 
 export interface WaitOptions {

@@ -73,9 +73,9 @@ async function failing(): Promise<{ entry: TransitionEntry; text: string }> {
 describe("a registration of a consumer still registered", () => {
   it("keeps the revision it first registered at (B1 probe)", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     edit(["src/x.ts"]);
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toEqual(["src/x.ts"]);
@@ -113,7 +113,7 @@ describe("a start revision", () => {
   it("of a daemon spawned at registration counts none of it (wave 10b B2 probe)", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     liveDaemon(store, WT, { scanned: false, startedAt: 2 });
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     startScan(["src/x.ts"]);
     liveDaemon(store, WT, { startedAt: 2 });
     apply(edit(["README.md"]), result(A, "fail"));
@@ -124,7 +124,7 @@ describe("a start revision", () => {
 
   it("of a daemon restarted while the consumer stayed registered gives neither line (wave 10c B1 probe)", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     restart(99, ["src/x.ts"]); // someone's git pull while no daemon ran
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
@@ -135,7 +135,7 @@ describe("a start revision", () => {
   it("that absorbed an edit before it was recorded gives neither line, never none", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     liveDaemon(store, WT, { scanned: false, startedAt: 2 });
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     startScan(["src/x.ts"]); // the agent's first edit, made before the scan read the file
     liveDaemon(store, WT, { startedAt: 2 });
     edit(["src/x.ts"]); // and edited again since
@@ -148,14 +148,14 @@ describe("a start revision", () => {
   it("that is the registration revision gives neither line", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     restart(2, ["src/x.ts"]);
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toBeUndefined();
   });
 
   it("whose paths miss the closure leaves the agent's changes named", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     restart(2, ["src/other.ts"]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
     expect((await failing()).text).toContain("touches your changes: src/x.ts");
@@ -171,14 +171,21 @@ describe("a start revision", () => {
 describe("none of your changes", () => {
   it("is said when the live daemon had scanned at registration", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).text).toContain("none of your changes are in its imports");
   });
 
+  it("is not said for a registration after tool calls (review wave 10d, S2)", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    await delivery.register(C1, { inTurn: true });
+    apply(edit(["README.md"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toBeUndefined();
+  });
+
   it("is not said for a registration before the start scan, a new worktree's seeding", async () => {
     liveDaemon(store, WT, { scanned: false, startedAt: 2 });
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     // The scan seeds every file without a revision, the agent's early edit of src/x.ts too.
     liveDaemon(store, WT, { startedAt: 2 });
     apply(edit(["README.md"]), result(A, "fail"));
@@ -189,7 +196,7 @@ describe("none of your changes", () => {
 
   it("is not said once another daemon started, even with no start revision", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     restart(2);
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toBeUndefined();
@@ -198,7 +205,7 @@ describe("none of your changes", () => {
   it("is not said for a registration while no daemon is alive", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     store.worktrees.setDaemon(WT, null);
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     restart(3);
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toBeUndefined();
@@ -207,7 +214,7 @@ describe("none of your changes", () => {
   it("is not said while the marker is an earlier daemon's", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     liveDaemon(store, WT, { scanned: false, startedAt: 2 });
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toBeUndefined();
   });
@@ -215,7 +222,7 @@ describe("none of your changes", () => {
   it("leaves the agent's changes named before the start scan", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     liveDaemon(store, WT, { scanned: false, startedAt: 2 });
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     liveDaemon(store, WT, { startedAt: 2 });
     apply(edit(["src/x.ts"]), result(A, "fail"));
     expect((await failing()).text).toContain("touches your changes: src/x.ts");
@@ -242,43 +249,43 @@ describe("a consumer that left and registers again (N4)", () => {
 
   it("keeps its changes from before it left, without the ones made while it was away", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     edit(["src/x.ts"]); // the agent
     await delivery.unregister(C1);
     edit(["src/y.ts"]); // someone else, while the session was gone
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toEqual(["src/x.ts"]);
   });
 
   it("starts over after the consumer expiry", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     edit(["src/x.ts"]);
     await delivery.unregister(C1);
     clock += CONSUMER_EXPIRY_MS + 1;
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toEqual([]);
   });
 
   it("is not told none of its changes once another daemon started while it was away", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     await delivery.unregister(C1);
     restart(2);
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     expect((await failing()).entry.changesInClosure).toBeUndefined();
   });
 
   it("is kept for its session and agent only", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     edit(["src/x.ts"]);
     await delivery.unregister(C1);
     const other: Consumer = { ...C1, sessionId: "s2" };
-    await delivery.register(other);
+    await delivery.register(other, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
     const delta = await delivery.onToolBoundary(other);
     const entry = delta?.entries.find((e) => e.to === "fail");
@@ -311,7 +318,7 @@ describe("whose closure a failure is read against (S2)", () => {
 
   beforeEach(async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
   });
 
   it("ignores another worktree's closure under a different key (S2 probe)", async () => {
@@ -334,7 +341,7 @@ describe("whose closure a failure is read against (S2)", () => {
     const C2: Consumer = { worktreeId: OTHER, sessionId: "s2", agentId: "main" };
     liveDaemon(store, OTHER);
     setKey(store, "k-other", { worktreeId: OTHER });
-    await delivery.register(C2);
+    await delivery.register(C2, { atStart: true });
     storedBy(OTHER, ["src/a.test.ts", "src/y.ts"]);
     const other = store.revisions.append({
       worktreeId: OTHER,
@@ -360,7 +367,7 @@ describe("whose closure a failure is read against (S2)", () => {
 describe("the revisions since registration (review wave 10b, N3)", () => {
   it("are read in one query, however many there are", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
-    await delivery.register(C1);
+    await delivery.register(C1, { atStart: true });
     for (let i = 0; i < 3_000; i++) edit([`src/f${i % 50}.ts`]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
     const get = vi.spyOn(store.revisions, "get");
