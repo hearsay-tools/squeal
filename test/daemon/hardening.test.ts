@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 import {
-  chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -11,7 +11,8 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { locateDaemon } from "../../src/core/daemon/ensure.js";
+import { socketPathFor, userTmpDir } from "../../src/core/daemon/paths.js";
 import {
   type BuiltCli,
   buildCli,
@@ -117,35 +118,53 @@ describe("squeal daemon: a bad policy is a state (spec 001 D11, review S3)", SLO
 });
 
 describe("squeal daemon: socket directory without XDG_RUNTIME_DIR (review S8)", SLOW, () => {
-  const uid = process.getuid?.() ?? 0;
-
-  /** The fixture's environment without a runtime dir, with a short private TMPDIR. */
-  function withoutRuntimeDir(repo: FixtureRepo) {
+  /** A short private directory for a TMPDIR, removed after the test. */
+  function shortTmp(): string {
     const tmp = realpathSync(mkdtempSync("/tmp/sq-"));
     cleanups.push(() => rmSync(tmp, { recursive: true, force: true }));
-    const env: NodeJS.ProcessEnv = { ...childEnv(repo.runtimeDir), TMPDIR: tmp };
-    delete env.XDG_RUNTIME_DIR;
-    const socketPath = socketPathFor(repo.worktreeId, { TMPDIR: tmp });
-    return { tmp, env, dir: join(tmp, `squeal-${uid}`), repo: { ...repo, env, socketPath } };
+    return tmp;
   }
 
-  it("binds in <tmpdir>/squeal-<uid>, created with mode 0700", async () => {
-    const { dir, repo } = withoutRuntimeDir(fixture());
-    expect(repo.socketPath).toBe(join(dir, `squeal-${repo.worktreeId}.sock`));
+  /** The fixture's environment without a runtime dir, with `TMPDIR` set. */
+  function withoutRuntimeDir(repo: FixtureRepo, extra: NodeJS.ProcessEnv = {}): FixtureRepo {
+    const env: NodeJS.ProcessEnv = { ...childEnv(repo.runtimeDir), TMPDIR: shortTmp(), ...extra };
+    delete env.XDG_RUNTIME_DIR;
+    return { ...repo, env, socketPath: socketPathFor(repo.worktreeId, env) };
+  }
+
+  it("binds in /tmp/squeal-<uid>, not under TMPDIR, and a hook with another TMPDIR reaches it", async () => {
+    const repo = withoutRuntimeDir(fixture());
+    expect(repo.socketPath).toBe(join(userTmpDir(), `squeal-${repo.worktreeId}.sock`));
     const spawned = daemon(repo);
     await waitReady(repo, spawned);
-    expect(statSync(dir).mode & 0o777).toBe(0o700);
+    expect(statSync(userTmpDir()).mode & 0o777).toBe(0o700);
     const record = withStore(repo, (store) => store.worktrees.get(repo.worktreeId));
     expect(record?.daemon?.socketPath).toBe(repo.socketPath);
+
+    // No recorded socket to lean on: the hook finds the daemon by computing its path.
+    const located = await locateDaemon(repo.root, 1_000, {
+      env: { TMPDIR: shortTmp() },
+      record: null,
+    });
+    expect(located).toMatchObject({ socketPath: repo.socketPath, probe: { state: "alive" } });
   });
 
-  it("refuses a directory others can enter, with a note, and exits 1", async () => {
-    const { dir, repo } = withoutRuntimeDir(fixture());
-    mkdirSync(dir);
-    chmodSync(dir, 0o755);
+  it("refuses a directory another user owns, with a note, and exits 1", async () => {
+    // Another user is played by a uid the test does not have (as scratch-refused does).
+    const uid = 3_000_000_000 + Math.floor(Math.random() * 1_000_000);
+    const dir = `/tmp/squeal-${uid}`;
+    mkdirSync(dir, { mode: 0o700 });
+    cleanups.push(() => {
+      for (const name of readdirSync("/tmp").filter((n) => n.startsWith(`squeal-${uid}`))) {
+        rmSync(join("/tmp", name), { recursive: true, force: true });
+      }
+    });
+    const preload = join(shortTmp(), "uid.mjs");
+    writeFileSync(preload, `process.getuid = () => ${uid};\n`);
+    const repo = withoutRuntimeDir(fixture(), { NODE_OPTIONS: `--import=${preload}` });
     const spawned = daemon(repo);
     expect(await spawned.exited).toEqual({ code: 1, signal: null });
-    const reason = `could not start serving: socket directory ${dir} has mode 755, not 700; refusing to bind in it`;
+    const reason = `could not start serving: socket directory ${dir} is owned by uid ${process.getuid?.()}, not ${uid}; refusing to use it`;
     expect(spawned.stderr()).toContain(reason);
     expect(readNotes(repo).at(-1)).toBe(reason);
     expect(

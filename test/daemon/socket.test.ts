@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
@@ -20,6 +20,7 @@ import {
   prepareSocketDir,
   runtimeDir,
   socketPathFor,
+  userTmpDir,
 } from "../../src/core/daemon/paths.js";
 import { createDaemonServer, type DaemonServer } from "../../src/core/daemon/server.js";
 import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/index.js";
@@ -47,23 +48,27 @@ async function serve(socketPath: string): Promise<DaemonServer> {
 }
 
 describe("socket paths (spec 001 D1)", () => {
-  it("uses XDG_RUNTIME_DIR when set and absolute, else <tmpdir>/squeal-<uid> (review S8)", () => {
+  it("uses XDG_RUNTIME_DIR when set and absolute, else /tmp/squeal-<uid> whatever TMPDIR says", () => {
     expect(runtimeDir({ XDG_RUNTIME_DIR: "/run/user/1000" })).toBe("/run/user/1000");
-    expect(runtimeDir({ XDG_RUNTIME_DIR: "", TMPDIR: "/var/tmp" })).toBe(`/var/tmp/squeal-${uid}`);
+    expect(runtimeDir({ XDG_RUNTIME_DIR: "", TMPDIR: "/var/tmp" })).toBe(`/tmp/squeal-${uid}`);
     expect(runtimeDir({ XDG_RUNTIME_DIR: "relative", TMPDIR: "/var/tmp/" })).toBe(
-      `/var/tmp/squeal-${uid}`,
+      `/tmp/squeal-${uid}`,
     );
     expect(runtimeDir({})).toBe(`/tmp/squeal-${uid}`);
-    expect(runtimeDir({ TMPDIR: "relative" })).toBe(`/tmp/squeal-${uid}`);
+    expect(runtimeDir({})).toBe(userTmpDir());
   });
 
   it("names the socket squeal-<worktree-hash>.sock, short enough for macOS", () => {
     const path = socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: "/run/user/1000" });
     expect(path).toBe("/run/user/1000/squeal-0123456789abcdef.sock");
     expect(Buffer.byteLength(path)).toBeLessThan(104);
-    expect(socketPathFor("0123456789abcdef", { TMPDIR: "/tmp" })).toBe(
-      `/tmp/squeal-${uid}/squeal-0123456789abcdef.sock`,
+  });
+
+  it("gives hooks with different TMPDIRs one socket path without XDG_RUNTIME_DIR (lessons defect 13)", () => {
+    const paths = [{}, { TMPDIR: "/tmp" }, { TMPDIR: "/var/folders/xy/T/" }, { TMP: "/a" }].map(
+      (env) => socketPathFor("0123456789abcdef", env),
     );
+    expect(new Set(paths)).toEqual(new Set([`/tmp/squeal-${uid}/squeal-0123456789abcdef.sock`]));
   });
 
   it("falls back to /tmp/squeal-<uid> when the runtime dir would make the path too long to bind", () => {
@@ -175,49 +180,50 @@ describe("daemon singleton lock (spec 001 D10)", () => {
 });
 
 describe("socket directory outside XDG_RUNTIME_DIR (review S8)", () => {
-  // Short, so the socket path stays below the bind limit and no fallback applies.
-  const tempDir = () => {
-    const dir = realpathSync(mkdtempSync("/tmp/sq-"));
-    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-    return dir;
+  // A stand-in for /tmp/squeal-<uid>, which the test must not chmod: the
+  // directory checked is the socket's, whatever its name.
+  const socketIn = () => {
+    const tmp = realpathSync(mkdtempSync("/tmp/sq-"));
+    cleanups.push(() => rmSync(tmp, { recursive: true, force: true }));
+    return join(tmp, "squeal-user", "squeal-0123456789abcdef.sock");
   };
-  const socketIn = (tmp: string) => socketPathFor("0123456789abcdef", { TMPDIR: tmp });
 
   it("is created with mode 0700 and accepted again", () => {
-    const tmp = tempDir();
-    const socketPath = socketIn(tmp);
-    prepareSocketDir(socketPath, { TMPDIR: tmp });
-    const stat = statSync(join(tmp, `squeal-${uid}`));
+    const socketPath = socketIn();
+    prepareSocketDir(socketPath, {});
+    const stat = statSync(dirname(socketPath));
     expect(stat.mode & 0o777).toBe(0o700);
     expect(stat.uid).toBe(uid);
-    expect(() => prepareSocketDir(socketPath, { TMPDIR: tmp })).not.toThrow();
+    expect(() => prepareSocketDir(socketPath, {})).not.toThrow();
   });
 
   it("is refused when another user owns it", () => {
-    const tmp = tempDir();
-    prepareSocketDir(socketIn(tmp), { TMPDIR: tmp });
+    const socketPath = socketIn();
+    prepareSocketDir(socketPath, {});
     // Without root no test can chown; the owner the check expects is what differs.
-    expect(() => prepareSocketDir(socketIn(tmp), { TMPDIR: tmp }, uid + 1)).toThrow(
-      new RegExp(`squeal-${uid} is owned by uid ${uid}, not ${uid + 1}; refusing to bind in it`),
+    expect(() => prepareSocketDir(socketPath, {}, uid + 1)).toThrow(
+      `socket directory ${dirname(socketPath)} is owned by uid ${uid}, not ${uid + 1}; refusing to use it`,
     );
   });
 
   it("is refused when its mode lets others in, or when it is a symlink", () => {
-    const tmp = tempDir();
-    const dir = join(tmp, `squeal-${uid}`);
+    const socketPath = socketIn();
+    const dir = dirname(socketPath);
     mkdirSync(dir, { mode: 0o755 });
     chmodSync(dir, 0o755);
-    expect(() => prepareSocketDir(socketIn(tmp), { TMPDIR: tmp })).toThrow(
-      /has mode 755, not 700; refusing to bind in it/,
+    expect(() => prepareSocketDir(socketPath, {})).toThrow(
+      /has mode 755, not 700; refusing to use it/,
     );
     rmSync(dir, { recursive: true });
-    const elsewhere = tempDir();
+    const elsewhere = realpathSync(mkdtempSync("/tmp/sq-"));
+    cleanups.push(() => rmSync(elsewhere, { recursive: true, force: true }));
     symlinkSync(elsewhere, dir);
-    expect(() => checkPrivateDir(dir, uid)).toThrow(/is not a directory; refusing to bind in it/);
+    expect(() => checkPrivateDir(dir, uid)).toThrow(/is not a directory; refusing to use it/);
   });
 
   it("leaves XDG_RUNTIME_DIR as it is", () => {
-    const xdg = tempDir();
+    const xdg = realpathSync(mkdtempSync("/tmp/sq-"));
+    cleanups.push(() => rmSync(xdg, { recursive: true, force: true }));
     chmodSync(xdg, 0o755);
     const socketPath = socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: xdg });
     expect(() => prepareSocketDir(socketPath, { XDG_RUNTIME_DIR: xdg })).not.toThrow();
