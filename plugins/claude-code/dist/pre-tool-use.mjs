@@ -2268,6 +2268,13 @@ function writeTurn(store, consumer, state) {
 function startTurn(store, consumer) {
   writeTurn(store, consumer, IN_TURN);
 }
+function resumeTurn(store, consumer) {
+  if (readTurn(store, consumer).turn !== "idle") return;
+  store.transaction(() => {
+    if (store.consumers.get(consumer) === null) return;
+    if (readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
+  });
+}
 function currentKeys(keys) {
   return new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
 }
@@ -2769,13 +2776,17 @@ function denialSentence(toolName) {
 }
 
 // src/harness/claude-code/hooks/pre-tool-use.ts
+var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "NotebookEdit"]);
 var preToolUse = async (input, location2, deps) => {
   if (isFork(input)) return null;
   return withContext(input, location2, deps, async (context) => {
-    if (!readPolicy(location2.root).interrupt.onRegression) return null;
+    const edit = EDIT_TOOLS.has(input.tool_name ?? "");
+    if (!edit || !readPolicy(location2.root).interrupt.onRegression) {
+      resumeTurn(context.store, context.consumer);
+      return null;
+    }
     const delta = await context.delivery.peek(context.consumer, { kinds: REGRESSION_KINDS });
     if (delta === null) return null;
-    const tool = input.tool_name ?? "tool";
     return {
       output: {
         hookSpecificOutput: {
@@ -2783,7 +2794,7 @@ var preToolUse = async (input, location2, deps) => {
           permissionDecision: "deny",
           permissionDecisionReason: `${formatDelta(delta)}
 
-${denialSentence(tool)}`
+${denialSentence(input.tool_name ?? "tool")}`
         }
       }
     };
