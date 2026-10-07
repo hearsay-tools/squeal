@@ -18,6 +18,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && npm run build:plugin",
     "build:plugin": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/harness/claude-code/build.ts",
+    "check:version": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
