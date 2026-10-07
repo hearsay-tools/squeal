@@ -1,6 +1,6 @@
 {
   "name": "squeal-claude-code-plugin",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "private": true,
   "description": "Marks the bundles under dist/ as ES modules; its version follows the root package. The bundles carry their version from the build.",
   "type": "module"
