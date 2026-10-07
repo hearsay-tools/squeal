@@ -105,7 +105,7 @@ describe("liveness in delivered text", () => {
 describe("a boundary while no daemon validates and none was started", () => {
   const STALE = Date.UTC(2026, 0, 2, 14, 2);
   const LINE =
-    "Not validated: no daemon has validated since 2026-01-02T14:02:00.000Z; this edit has no result.";
+    "Not validated: no daemon has validated since 2026-01-02T14:02:00.000Z; any change this call made has no result.";
   const batch = (root: string, ...tools: string[]) =>
     recorded("post-tool-batch", root, {
       tool_calls: tools.map((tool_name, i) => ({
@@ -115,7 +115,7 @@ describe("a boundary while no daemon validates and none was started", () => {
       })),
     });
 
-  it("says the edit has no result at every boundary with an edit", async () => {
+  it("says any change has no result at every boundary that may have edited", async () => {
     const r = await registered();
     r.daemon("stale", STALE);
     const { deps } = recording("unavailable");
@@ -129,7 +129,9 @@ describe("a boundary while no daemon validates and none was started", () => {
         "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.\n" +
         LINE,
     );
+    // Review wave 11f, S1: a Bash call may have changed nothing, so the line never says it edited.
     expect(context(second)).toBe(`SQUEAL · ${LINE}`);
+    expect(context(second)).not.toContain("edit");
   });
 
   it("says nothing more at a boundary without an edit", async () => {
@@ -167,7 +169,7 @@ describe("a boundary while no daemon validates and none was started", () => {
     const out = await runHook("post-tool-batch", batch(r.root, "Write"), deps);
 
     expect(context(out)).toBe(
-      "SQUEAL · Not validated: no daemon is running; this edit has no result.",
+      "SQUEAL · Not validated: no daemon is running; any change this call made has no result.",
     );
   });
 
