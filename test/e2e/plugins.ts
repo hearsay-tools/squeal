@@ -115,6 +115,8 @@ const CODEX: Plugin = {
     const input = {
       ...codexFixture(mode, name),
       session_id: CODEX_SESSION,
+      // The thread's own transcript: one named for another session is an unserved thread (002 D2).
+      transcript_path: codexFixture("app-server", "session-start").transcript_path,
       cwd: root,
       ...overrides,
     };
