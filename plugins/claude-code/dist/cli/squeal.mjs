@@ -1,8 +1,18 @@
 #!/usr/bin/env node
 import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
 var __esm = (fn, res, err) => function __init() {
   if (err) throw err[0];
   try {
@@ -11,10 +21,33 @@ var __esm = (fn, res, err) => function __init() {
     throw err = [e], e;
   }
 };
+var __commonJS = (cb, mod) => function __require2() {
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 
 // src/core/keys/check-key.ts
 import { createHash } from "node:crypto";
@@ -38,7 +71,7 @@ function compare(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 function sameList(a, b) {
-  return a.length === b.length && a.every((value, i) => value === b[i]);
+  return a.length === b.length && a.every((value, i2) => value === b[i2]);
 }
 var init_compare = __esm({
   "src/core/fs/compare.ts"() {
@@ -48,16 +81,16 @@ var init_compare = __esm({
 
 // src/core/fs/concurrency.ts
 async function mapConcurrent(items, fn, limit = FILE_CONCURRENCY) {
-  const list = [...items];
-  const results2 = new Array(list.length);
+  const list2 = [...items];
+  const results2 = new Array(list2.length);
   let next = 0;
   const worker = async () => {
-    while (next < list.length) {
+    while (next < list2.length) {
       const index = next++;
-      results2[index] = await fn(list[index], index);
+      results2[index] = await fn(list2[index], index);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(limit, list2.length) }, worker));
   return results2;
 }
 var FILE_CONCURRENCY;
@@ -85,7 +118,7 @@ function runGit(cwd, args, options = {}) {
   const okCodes = options.okCodes ?? [0];
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name of REPOSITORY_VARIABLES) delete env[name];
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve11, reject) => {
     const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -96,7 +129,7 @@ function runGit(cwd, args, options = {}) {
     });
     child.on("close", (code) => {
       if (code !== null && okCodes.includes(code)) {
-        resolve8(Buffer.concat(stdout).toString("utf8"));
+        resolve11(Buffer.concat(stdout).toString("utf8"));
         return;
       }
       const message2 = Buffer.concat(stderr).toString("utf8").trim();
@@ -252,50 +285,50 @@ function createInputMatcher(globs2) {
 }
 function compile(glob, original) {
   let out = "";
-  let i = 0;
-  while (i < glob.length) {
-    const char = glob[i];
+  let i2 = 0;
+  while (i2 < glob.length) {
+    const char = glob[i2];
     if (char === "*") {
-      if (glob[i + 1] === "*") {
-        const atStart = i === 0 || glob[i - 1] === "/";
-        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+      if (glob[i2 + 1] === "*") {
+        const atStart = i2 === 0 || glob[i2 - 1] === "/";
+        const atEnd = i2 + 2 === glob.length || glob[i2 + 2] === "/";
         if (atStart && atEnd) {
-          if (i + 2 === glob.length) out += ".+";
+          if (i2 + 2 === glob.length) out += ".+";
           else out += "(?:.+/)?";
-          i += 3;
+          i2 += 3;
           continue;
         }
       }
       out += "[^/]*";
-      i += glob[i + 1] === "*" ? 2 : 1;
+      i2 += glob[i2 + 1] === "*" ? 2 : 1;
     } else if (char === "?") {
       out += "[^/]";
-      i++;
+      i2++;
     } else if (char === "[") {
-      const end = glob.indexOf("]", i + 2);
+      const end = glob.indexOf("]", i2 + 2);
       if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
-      let body = glob.slice(i + 1, end);
+      let body = glob.slice(i2 + 1, end);
       const negated = body.startsWith("!");
       if (negated) body = body.slice(1);
       out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
-      i = end + 1;
+      i2 = end + 1;
     } else if (char === "{") {
-      const end = matchingBrace(glob, i, original);
-      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      const end = matchingBrace(glob, i2, original);
+      const alternatives = splitTopLevel(glob.slice(i2 + 1, end));
       out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
-      i = end + 1;
+      i2 = end + 1;
     } else {
       out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
-      i++;
+      i2++;
     }
   }
   return out;
 }
 function matchingBrace(glob, open3, original) {
   let depth = 0;
-  for (let i = open3; i < glob.length; i++) {
-    if (glob[i] === "{") depth++;
-    else if (glob[i] === "}" && --depth === 0) return i;
+  for (let i2 = open3; i2 < glob.length; i2++) {
+    if (glob[i2] === "{") depth++;
+    else if (glob[i2] === "}" && --depth === 0) return i2;
   }
   throw new Error(`squeal: unclosed { in input glob: ${original}`);
 }
@@ -303,12 +336,12 @@ function splitTopLevel(body) {
   const parts = [];
   let depth = 0;
   let start = 0;
-  for (let i = 0; i < body.length; i++) {
-    if (body[i] === "{") depth++;
-    else if (body[i] === "}") depth--;
-    else if (body[i] === "," && depth === 0) {
-      parts.push(body.slice(start, i));
-      start = i + 1;
+  for (let i2 = 0; i2 < body.length; i2++) {
+    if (body[i2] === "{") depth++;
+    else if (body[i2] === "}") depth--;
+    else if (body[i2] === "," && depth === 0) {
+      parts.push(body.slice(start, i2));
+      start = i2 + 1;
     }
   }
   parts.push(body.slice(start));
@@ -652,7 +685,7 @@ function workspaces(listed) {
 }
 function packageFolders(dir, workspaceFolders) {
   const folders = [];
-  const visit = (path, entry2) => {
+  const visit2 = (path, entry2) => {
     if (!entry2.isSymbolicLink() && !entry2.isDirectory()) return;
     const link = entry2.isSymbolicLink();
     folders.push({ path, link, mtimeMs: lstatSync2(join5(dir, path)).mtimeMs });
@@ -663,9 +696,9 @@ function packageFolders(dir, workspaceFolders) {
       if (entry2.name.startsWith(".")) continue;
       const path = `${modules}/${entry2.name}`;
       if (entry2.name.startsWith("@") && entry2.isDirectory()) {
-        for (const child of entriesOf(join5(dir, path))) visit(`${path}/${child.name}`, child);
+        for (const child of entriesOf(join5(dir, path))) visit2(`${path}/${child.name}`, child);
       } else {
-        visit(path, entry2);
+        visit2(path, entry2);
       }
     }
   };
@@ -848,8 +881,8 @@ var init_environment = __esm({
 
 // src/core/keys/reverse-index.ts
 import { posix as posix3 } from "node:path";
-function testFileId(ref) {
-  return `${ref.project}\0${ref.path}`;
+function testFileId(ref2) {
+  return `${ref2.project}\0${ref2.path}`;
 }
 function directoryOf(path) {
   const dir = posix3.dirname(path);
@@ -934,7 +967,7 @@ var init_reverse_index = __esm({
         this.pathsOf.delete(id);
       }
       sorted(ids) {
-        return [...ids].sort(compare).map((id) => this.refs.get(id)).filter((ref) => ref !== void 0);
+        return [...ids].sort(compare).map((id) => this.refs.get(id)).filter((ref2) => ref2 !== void 0);
       }
     };
   }
@@ -969,7 +1002,7 @@ var init_key_index = __esm({
       setEnvironment(project, envHash) {
         if (this.environments.get(project) === envHash) return [];
         this.environments.set(project, envHash);
-        return this.recompute(this.reverse.testFiles().filter((ref) => ref.project === project));
+        return this.recompute(this.reverse.testFiles().filter((ref2) => ref2.project === project));
       }
       /**
        * Sets the environment hash of each project in `environments` and the
@@ -983,11 +1016,11 @@ var init_key_index = __esm({
           if (this.environments.get(project) !== envHash) moved.add(project);
           this.environments.set(project, envHash);
         }
-        const changed = this.reverse.testFiles().filter((ref) => {
-          const keyed = this.keyed.get(testFileId(ref));
-          if (!keyed || !environments.has(ref.project)) return false;
-          const dependencies = dependenciesOf(ref);
-          if (dependencies === keyed.dependencies) return moved.has(ref.project);
+        const changed = this.reverse.testFiles().filter((ref2) => {
+          const keyed = this.keyed.get(testFileId(ref2));
+          if (!keyed || !environments.has(ref2.project)) return false;
+          const dependencies = dependenciesOf(ref2);
+          if (dependencies === keyed.dependencies) return moved.has(ref2.project);
           keyed.dependencies = dependencies;
           return true;
         });
@@ -1012,8 +1045,8 @@ var init_key_index = __esm({
         if (previous) this.release(previous.closure.paths);
         this.keyed.set(id, { closure, entries: entries2, dependencies, key: previous?.key ?? null });
         this.reverse.set(closure.testFile, closure.paths);
-        const affected2 = this.reverse.referencing(stale).filter((ref) => testFileId(ref) !== id);
-        const untracked = closure.paths.filter((_, i) => entries2[i]?.hash === void 0);
+        const affected2 = this.reverse.referencing(stale).filter((ref2) => testFileId(ref2) !== id);
+        const untracked = closure.paths.filter((_, i2) => entries2[i2]?.hash === void 0);
         return { changes: this.recompute([closure.testFile, ...affected2]), untracked };
       }
       /** Forgets a deleted test file. Returns whether it was known. */
@@ -1091,7 +1124,7 @@ import { posix as posix4 } from "node:path";
 function closuresToReresolve(changes, index, isDeclaredInput) {
   const picked = /* @__PURE__ */ new Map();
   const pick = (refs) => {
-    for (const ref of refs) picked.set(testFileId(ref), ref);
+    for (const ref2 of refs) picked.set(testFileId(ref2), ref2);
   };
   for (const change2 of changes) {
     const dir = directoryOf(change2.path);
@@ -1155,12 +1188,12 @@ import { tmpdir } from "node:os";
 import { stripVTControlCharacters } from "node:util";
 function tempPrefixes() {
   const dir = tmpdir().replace(/\/+$/, "");
-  let real = dir;
+  let real2 = dir;
   try {
-    real = realpathSync2(dir);
+    real2 = realpathSync2(dir);
   } catch {
   }
-  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+  return [.../* @__PURE__ */ new Set([dir, real2, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
 }
 function escapeRegExp(text2) {
   return text2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1227,12 +1260,12 @@ function testFileKeyOf(check) {
 function testFileOf(check) {
   return { project: check.project, path: check.testPath };
 }
-function classify(outcome, resultKey, key) {
+function classify(outcome2, resultKey, key) {
   if (key !== void 0 && resultKey !== null && resultKey === key.key) {
     return { validity: "current", pendingPhase: null };
   }
   if (key?.pending) return { validity: "pending", pendingPhase: key.pending };
-  return { validity: outcome === "unknown" ? "unknown" : "stale", pendingPhase: null };
+  return { validity: outcome2 === "unknown" ? "unknown" : "stale", pendingPhase: null };
 }
 function originOf(worktreeId, result) {
   const p = result.provenance;
@@ -1304,10 +1337,10 @@ function read(store, worktreeId) {
 function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
   if (transitions.length === 0) return;
   const baseline2 = checkpointId !== null && store.checkpoints.get(checkpointId)?.kind === "baseline";
-  const current = read(store, worktreeId);
-  if (!baseline2 && current === null) return;
-  const fresh = baseline2 && current?.checkpointId !== checkpointId;
-  const entries2 = new Set(fresh ? [] : current?.entries);
+  const current2 = read(store, worktreeId);
+  if (!baseline2 && current2 === null) return;
+  const fresh = baseline2 && current2?.checkpointId !== checkpointId;
+  const entries2 = new Set(fresh ? [] : current2?.entries);
   const touched = new Set(transitions.map((t) => checkIdentity(t.check)));
   for (const e of entries2) if (touched.has(e.slice(0, e.lastIndexOf("\0")))) entries2.delete(e);
   if (baseline2) {
@@ -1315,7 +1348,7 @@ function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
       if (t.kind === "first-seen-fail") entries2.add(entry(t.check, t.toFingerprint));
     }
   }
-  const id = baseline2 ? checkpointId : current?.checkpointId ?? "";
+  const id = baseline2 ? checkpointId : current2?.checkpointId ?? "";
   const next = { checkpointId: id, entries: [...entries2] };
   store.meta.set(metaKey(worktreeId), JSON.stringify(next));
 }
@@ -1597,7 +1630,7 @@ function createStateSink(store, options = {}) {
     const keyOf = (state) => keys.get(testFileKeyOf(state.check));
     const prior = (state) => previous.get(checkIdentity(state.check)) ?? null;
     const commit = (revision, next, checkpointId) => {
-      const at = now();
+      const at2 = now();
       const changed = [];
       const recorded2 = [];
       for (const state of next) {
@@ -1615,7 +1648,7 @@ function createStateSink(store, options = {}) {
           fromFingerprint: before?.fingerprint ?? null,
           toFingerprint: state.fingerprint,
           revision,
-          at
+          at: at2
         });
       }
       store.knownStates.upsertMany(changed);
@@ -1643,11 +1676,11 @@ function createStateSink(store, options = {}) {
       const { previous, keys, keyOf, prior, commit } = begin(worktreeId);
       const only = testFiles === void 0 ? null : new Set(testFiles.map(testFileId));
       const included = (file) => only === null || only.has(file);
-      const at = now();
+      const at2 = now();
       const next = /* @__PURE__ */ new Map();
       for (const [file, key] of keys) {
         if (!included(file)) continue;
-        for (const r of store.results.byKey(key.key, at)) {
+        for (const r of store.results.byKey(key.key, at2)) {
           next.set(
             checkIdentity(r.check),
             stateFromResult(worktreeId, revision, r, key, prior(r))
@@ -1819,8 +1852,8 @@ function migrate(db, migrations = MIGRATIONS) {
   db.exec("BEGIN IMMEDIATE");
   try {
     const from = userVersion(db);
-    for (let version = from; version < migrations.length; version++) {
-      migrations[version]?.(db);
+    for (let version2 = from; version2 < migrations.length; version2++) {
+      migrations[version2]?.(db);
     }
     if (from < migrations.length) db.exec(`PRAGMA user_version = ${migrations.length}`);
     db.exec("COMMIT");
@@ -2278,25 +2311,25 @@ function createConsumerRepo(conn) {
      * with the current known state on registration, so entries left by an
      * earlier registration of the same consumer are dropped.
      */
-    register: (consumer, at) => conn.transaction(() => {
+    register: (consumer, at2) => conn.transaction(() => {
       unregister(consumer);
       conn.run(
         `INSERT INTO consumers (worktree_id, session_id, agent_id, registered_at, last_seen_at)
            VALUES (?, ?, ?, ?, ?)`,
         ...consumerParams(consumer),
-        at,
-        at
+        at2,
+        at2
       );
-      return { consumer, registeredAt: at, lastSeenAt: at, lastDeliveredAt: null };
+      return { consumer, registeredAt: at2, lastSeenAt: at2, lastDeliveredAt: null };
     }),
-    touch: (consumer, at, delivered) => {
+    touch: (consumer, at2, delivered) => {
       conn.run(
         `UPDATE consumers SET last_seen_at = ?,
            last_delivered_at = CASE WHEN ? THEN ? ELSE last_delivered_at END
          WHERE ${WHERE_CONSUMER}`,
-        at,
+        at2,
         delivered ? 1 : 0,
-        at,
+        at2,
         ...consumerParams(consumer)
       );
     },
@@ -2504,8 +2537,8 @@ function createRunRepo(conn) {
       );
       return { ...record, endedAt: null, end: null };
     },
-    finish: (id, end, at) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
+    finish: (id, end, at2) => {
+      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at2, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
@@ -2541,8 +2574,8 @@ function createCheckpointRepo(conn) {
       );
       return { ...record, completedAt: null, end: null };
     },
-    finish: (id, end, at) => {
-      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at, id);
+    finish: (id, end, at2) => {
+      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at2, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
@@ -3016,10 +3049,10 @@ function createWorktreeRepo(conn) {
         id
       );
     },
-    heartbeat: (id, at) => {
+    heartbeat: (id, at2) => {
       conn.run(
         "UPDATE worktrees SET daemon_heartbeat_at = ? WHERE id = ? AND daemon_socket IS NOT NULL",
-        at,
+        at2,
         id
       );
     },
@@ -3162,8 +3195,8 @@ function connect(paths, options) {
     const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
     if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
     db.exec("PRAGMA synchronous = NORMAL");
-    const version = migrate(db);
-    return createStore(new Connection(db), version, paths);
+    const version2 = migrate(db);
+    return createStore(new Connection(db), version2, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
@@ -3193,12 +3226,12 @@ function recover(paths, options) {
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
-    const at = now();
-    const movedTo = moveAside(paths.database, at);
+    const at2 = now();
+    const movedTo = moveAside(paths.database, at2);
     const fresh = connect(paths, { ...options, checkIntegrity: false });
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
-      const note = JSON.stringify({ at, movedTo, reason: again.corrupt });
+      const note = JSON.stringify({ at: at2, movedTo, reason: again.corrupt });
       fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
     }
     return fresh;
@@ -3207,9 +3240,9 @@ function recover(paths, options) {
     lock2.close();
   }
 }
-function moveAside(database, at) {
-  let movedTo = `${database}.corrupt-${at}`;
-  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at}-${n}`;
+function moveAside(database, at2) {
+  let movedTo = `${database}.corrupt-${at2}`;
+  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
   renameSync(database, movedTo);
   if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync2(`${database}-shm`, { force: true });
@@ -3276,10 +3309,10 @@ function parseList(raw) {
 }
 function toNote(item) {
   if (typeof item !== "object" || item === null) return [];
-  const { at, revision, text: text2 } = item;
-  if (typeof at !== "number" || typeof text2 !== "string") return [];
+  const { at: at2, revision, text: text2 } = item;
+  if (typeof at2 !== "number" || typeof text2 !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  return [{ at, revision, text: text2 }];
+  return [{ at: at2, revision, text: text2 }];
 }
 var init_notes = __esm({
   "src/core/notes.ts"() {
@@ -3305,8 +3338,8 @@ function nodeTestProjects(value, path) {
   const kept = [];
   const problems = [];
   value.forEach((entry2, index) => {
-    const at = `${path}[${index}]`;
-    const problem = entryProblem(entry2, at, kept);
+    const at2 = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at2, kept);
     if (problem === null) kept.push(withDefaults(entry2));
     else problems.push(problem);
   });
@@ -3315,13 +3348,13 @@ function nodeTestProjects(value, path) {
 function withDefaults(entry2) {
   return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
 }
-function entryProblem(entry2, at, kept) {
+function entryProblem(entry2, at2, kept) {
   if (!isRecord(entry2))
-    return `"${at}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
   const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
-  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  const skipped2 = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
   for (const key of Object.keys(entry2)) {
-    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at}.${key}"; ${skipped}`;
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped2}`;
   }
   for (const [key, field] of Object.entries(FIELDS)) {
     const given = entry2[key];
@@ -3329,10 +3362,10 @@ function entryProblem(entry2, at, kept) {
     const expected = field(given);
     if (expected === null) continue;
     const why2 = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
-    return `"${at}.${key}" ${why2}; ${skipped}`;
+    return `"${at2}.${key}" ${why2}; ${skipped2}`;
   }
   if (kept.some((project) => project.name === named)) {
-    return `"${at}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -3472,10 +3505,10 @@ var init_policy2 = __esm({
 });
 
 // src/core/scheduler/files.ts
-function newFileState(ref) {
+function newFileState(ref2) {
   return {
-    ref,
-    id: testFileId(ref),
+    ref: ref2,
+    id: testFileId(ref2),
     key: null,
     resultKey: null,
     checks: [],
@@ -3596,8 +3629,8 @@ async function readCleanIndexHashes(root) {
     input: `${[...candidates.keys()].join("\0")}\0`
   });
   const fields = splitNul(attributes);
-  for (let i = 0; i + 2 < fields.length; i += 3) {
-    if (fields[i + 2] !== "unspecified") candidates.delete(fields[i]);
+  for (let i2 = 0; i2 + 2 < fields.length; i2 += 3) {
+    if (fields[i2 + 2] !== "unspecified") candidates.delete(fields[i2]);
   }
   return candidates;
 }
@@ -3735,9 +3768,9 @@ async function seedStatCache(cache, root, paths, options) {
   let fromIndex = 0;
   let fromBytes = 0;
   let missing = 0;
-  await mapConcurrent(paths, async (path, i) => {
+  await mapConcurrent(paths, async (path, i2) => {
     const stat6 = await hasher.stat(path);
-    const earlier = before[i];
+    const earlier = before[i2];
     const indexHash = index.get(path);
     if (stat6 && earlier && indexHash !== void 0 && sameStat(stat6, earlier)) {
       cache.set({ path, ...stat6, hash: indexHash }, { racy: isRacy(stat6, hasher.now()) });
@@ -3781,7 +3814,7 @@ var init_hash = __esm({
 async function statCandidates(paths, hasher) {
   const sorted = [...new Set(paths)].sort(compare);
   const stats = await mapConcurrent(sorted, (path) => hasher.stat(path));
-  return sorted.map((path, i) => ({ path, stat: stats[i] ?? null }));
+  return sorted.map((path, i2) => ({ path, stat: stats[i2] ?? null }));
 }
 async function diffCandidates(candidates, cache, hasher) {
   const statOf = /* @__PURE__ */ new Map();
@@ -4025,33 +4058,33 @@ function applyListing(context, ledger, listed) {
   for (const file of [...ledger.files.values()]) {
     if (!ids.has(file.id)) ledger.removeFile(file);
   }
-  for (const ref of listed) {
-    if (!ledger.file(ref)) ledger.addFile(ref);
+  for (const ref2 of listed) {
+    if (!ledger.file(ref2)) ledger.addFile(ref2);
   }
-  return listed.filter((ref) => !context.keys.index.closure(ref));
+  return listed.filter((ref2) => !context.keys.index.closure(ref2));
 }
 async function resolveClosures(context, refs, failures) {
   const changes = [];
   const resolved = [];
-  for (const ref of refs) {
+  for (const ref2 of refs) {
     const keyChanges = await resolveClosure(
       context,
-      ref,
-      (reason2) => failed(failures, ref.project, reason2)
+      ref2,
+      (reason2) => failed(failures, ref2.project, reason2)
     );
     if (keyChanges === null) continue;
     changes.push(...keyChanges);
-    resolved.push(ref);
+    resolved.push(ref2);
   }
   changes.push(...await context.keys.trackUntracked());
   storeClosures(context, resolved);
   return changes;
 }
-async function resolveClosure(context, ref, onFailure) {
+async function resolveClosure(context, ref2, onFailure) {
   const closure = await tryRunner(
     context,
-    `closure of ${ref.path}`,
-    () => context.runner.closure(ref),
+    `closure of ${ref2.path}`,
+    () => context.runner.closure(ref2),
     onFailure
   );
   return closure === null ? null : context.keys.setClosure(closure);
@@ -4059,11 +4092,11 @@ async function resolveClosure(context, ref, onFailure) {
 function storeClosures(context, refs) {
   const { store, keys } = context;
   store.transaction(() => {
-    for (const ref of refs) {
-      const closure = keys.index.closure(ref);
+    for (const ref2 of refs) {
+      const closure = keys.index.closure(ref2);
       if (!closure) continue;
       store.testFiles.put({
-        testFile: ref,
+        testFile: ref2,
         closure,
         updatedAt: context.now(),
         updatedBy: context.worktreeId
@@ -4327,16 +4360,16 @@ var init_queue = __esm({
       get size() {
         return this.#entries.size;
       }
-      has(ref) {
-        return this.#entries.has(testFileId(ref));
+      has(ref2) {
+        return this.#entries.has(testFileId(ref2));
       }
       /**
        * Queues a test file, or raises the priority of its entry. A `forced` entry
        * (`run --all --force`) runs even when its key has a result. A `recent`
        * entry stays recent until it leaves the queue.
        */
-      add(ref, priority, forced = false, recent = false) {
-        const id = testFileId(ref);
+      add(ref2, priority, forced = false, recent = false) {
+        const id = testFileId(ref2);
         const entry2 = this.#entries.get(id);
         if (entry2) {
           entry2.priority = Math.min(entry2.priority, priority);
@@ -4344,20 +4377,20 @@ var init_queue = __esm({
           entry2.recent ||= recent;
           return;
         }
-        this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
+        this.#entries.set(id, { ref: ref2, priority, seq: this.#seq++, forced, recent });
       }
       clear() {
         this.#entries.clear();
         this.#recentTiers = 0;
       }
-      remove(ref) {
-        return this.#entries.delete(testFileId(ref));
+      remove(ref2) {
+        return this.#entries.delete(testFileId(ref2));
       }
-      isForced(ref) {
-        return this.#entries.get(testFileId(ref))?.forced ?? false;
+      isForced(ref2) {
+        return this.#entries.get(testFileId(ref2))?.forced ?? false;
       }
-      isRecent(ref) {
-        return this.#entries.get(testFileId(ref))?.recent ?? false;
+      isRecent(ref2) {
+        return this.#entries.get(testFileId(ref2))?.recent ?? false;
       }
       /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */
       tierSelected(tookBacklog) {
@@ -4410,15 +4443,15 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   const known2 = knownChecks(context);
   const fromStore = /* @__PURE__ */ new Set();
   const unresolved = [];
-  for (const ref of refs) {
-    const file = ledger.addFile(ref);
+  for (const ref2 of refs) {
+    const file = ledger.addFile(ref2);
     restore(file, known2.get(file.id));
-    const record = store.testFiles.get(ref);
+    const record = store.testFiles.get(ref2);
     if (record !== null) {
-      keys.setClosure({ testFile: ref, paths: record.closure.paths });
+      keys.setClosure({ testFile: ref2, paths: record.closure.paths });
       fromStore.add(file.id);
     } else {
-      unresolved.push(ref);
+      unresolved.push(ref2);
     }
   }
   await resolveClosures(context, unresolved, failures);
@@ -4830,8 +4863,8 @@ var init_keying = __esm({
           });
           hashes.set(environment.project, environmentHash(core, environment, hashOf));
         }
-        return this.index.setInstalled(hashes, (ref) => {
-          const runner = this.#runnerClosures.get(testFileId(ref));
+        return this.index.setInstalled(hashes, (ref2) => {
+          const runner = this.#runnerClosures.get(testFileId(ref2));
           return runner === void 0 ? "" : this.#dependencySegment(runner);
         });
       }
@@ -4922,9 +4955,9 @@ var init_keying = __esm({
       unmatchedInputs(testFiles) {
         return unmatchedInputs(this.#policy.inputs, testFiles, this.#knownFiles());
       }
-      removeTestFile(ref) {
-        this.#runnerClosures.delete(testFileId(ref));
-        this.index.removeTestFile(ref);
+      removeTestFile(ref2) {
+        this.#runnerClosures.delete(testFileId(ref2));
+        this.index.removeTestFile(ref2);
       }
       /**
        * Re-selects declared inputs when one was added or deleted, and re-assembles
@@ -4962,10 +4995,10 @@ var init_keying = __esm({
         return [...this.#extra].sort();
       }
       /** What the stability check compares for a test file: its closure, its project's environment files, its lockfile. */
-      stabilityPaths(ref) {
-        const paths = new Set(this.index.closure(ref)?.paths ?? []);
-        for (const path of this.#environments.get(ref.project)?.files ?? []) paths.add(path);
-        const lockfile = this.#lockfiles.of(ref.project);
+      stabilityPaths(ref2) {
+        const paths = new Set(this.index.closure(ref2)?.paths ?? []);
+        for (const path of this.#environments.get(ref2.project)?.files ?? []) paths.add(path);
+        const lockfile = this.#lockfiles.of(ref2.project);
         if (lockfile !== null) paths.add(lockfile);
         return [...paths];
       }
@@ -5023,9 +5056,9 @@ var init_checkpoints = __esm({
         return active === null ? null : { record: active.record, remaining: active.remaining.size };
       }
       /** Id of the open checkpoint when it requested `ref`, else `null`. */
-      idFor(ref) {
+      idFor(ref2) {
         const active = this.#active;
-        return active?.remaining.has(testFileId(ref)) ? active.record.id : null;
+        return active?.remaining.has(testFileId(ref2)) ? active.record.id : null;
       }
       /** Records a new checkpoint, abandoning the open one. With no files it completes at once. */
       start(id, kind, revision, testFiles, strict = false) {
@@ -5061,16 +5094,16 @@ var init_checkpoints = __esm({
         return record;
       }
       /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
-      done(ref, by) {
+      done(ref2, by) {
         const active = this.#active;
         if (active === null || active.strict && by !== active.record.id) return;
-        active.remaining.delete(testFileId(ref));
+        active.remaining.delete(testFileId(ref2));
         this.#settle();
       }
       /** `ref` crashed or timed out: the checkpoint cannot complete. */
-      failed(ref) {
+      failed(ref2) {
         const active = this.#active;
-        if (!active?.remaining.delete(testFileId(ref))) return;
+        if (!active?.remaining.delete(testFileId(ref2))) return;
         active.failed = true;
         this.#settle();
       }
@@ -5129,15 +5162,15 @@ var init_ledger = __esm({
       #applied = [];
       #unknown = [];
       #retired = [];
-      file(ref) {
-        return this.files.get(testFileId(ref));
+      file(ref2) {
+        return this.files.get(testFileId(ref2));
       }
       /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
       ordered() {
-        return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null);
+        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null);
       }
-      addFile(ref) {
-        const file = newFileState(ref);
+      addFile(ref2) {
+        const file = newFileState(ref2);
         this.files.set(file.id, file);
         this.#dirty.add(file.id);
         return file;
@@ -5170,30 +5203,30 @@ var init_ledger = __esm({
         const misses = [];
         const seen = /* @__PURE__ */ new Set();
         const recent = this.recentOf(changed, options.direct);
-        for (const ref of refs) {
-          const file = this.file(ref);
+        for (const ref2 of refs) {
+          const file = this.file(ref2);
           if (!file || seen.has(file.id)) continue;
           seen.add(file.id);
-          const key = this.context.keys.index.key(ref);
+          const key = this.context.keys.index.key(ref2);
           if (key !== file.key) {
             file.key = key;
             this.#dirty.add(file.id);
           }
-          if (this.queue.isForced(ref)) continue;
+          if (this.queue.isForced(ref2)) continue;
           if (key === null || key === file.runningKey || key === file.unknownKey || key === file.resultKey) {
-            this.queue.remove(ref);
+            this.queue.remove(ref2);
             this.#syncPhase(file);
             continue;
           }
           const hits = this.context.store.results.byKey(key, this.context.now());
           if (hits.length > 0) {
-            const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
+            const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref2);
             this.applyResults(file, key, hits, checkpointId);
             continue;
           }
           misses.push(file);
           if (file.blocked !== null) {
-            this.queue.remove(ref);
+            this.queue.remove(ref2);
             this.#syncPhase(file);
           } else if (options.queueMisses !== false) {
             this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
@@ -5205,8 +5238,8 @@ var init_ledger = __esm({
       recentOf(changed, direct) {
         const ids = new Set(direct);
         if (changed.size === 0) return ids;
-        for (const ref of this.context.keys.index.reverse.referencing(changed))
-          ids.add(testFileId(ref));
+        for (const ref2 of this.context.keys.index.reverse.referencing(changed))
+          ids.add(testFileId(ref2));
         for (const file of this.files.values()) if (changed.has(file.ref.path)) ids.add(file.id);
         return ids;
       }
@@ -5382,12 +5415,12 @@ async function fetchRunnerPart(context, ledger, revision, content, carried) {
   );
   const reresolve = /* @__PURE__ */ new Map();
   const pick = (refs) => {
-    for (const ref of refs) {
-      const id = testFileId(ref);
-      if (exists2.has(id)) reresolve.set(id, ref);
+    for (const ref2 of refs) {
+      const id = testFileId(ref2);
+      if (exists2.has(id)) reresolve.set(id, ref2);
     }
   };
-  pick((listed ?? []).filter((ref) => !keys.index.closure(ref)));
+  pick((listed ?? []).filter((ref2) => !keys.index.closure(ref2)));
   pick(
     [...ledger.files.values()].filter((file) => recreated.has(file.ref.project) || file.blocked !== null).map((file) => file.ref)
   );
@@ -5403,12 +5436,12 @@ async function fetchRunnerPart(context, ledger, revision, content, carried) {
   pick(affected2?.direct ?? []);
   pick(affected2?.transitive ?? []);
   const closures = [];
-  for (const ref of reresolve.values()) {
+  for (const ref2 of reresolve.values()) {
     const closure = await tryRunner(
       context,
-      `closure of ${ref.path}`,
-      () => runner.closure(ref),
-      (reason2) => failed(failures, ref.project, reason2)
+      `closure of ${ref2.path}`,
+      () => runner.closure(ref2),
+      (reason2) => failed(failures, ref2.project, reason2)
     );
     if (closure !== null) closures.push(closure);
   }
@@ -5428,7 +5461,7 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile) {
   const changed = new Set(part.revision.changes.map((c) => c.path));
   const touched = /* @__PURE__ */ new Map();
   const touch = (refs) => {
-    for (const ref of refs) touched.set(testFileId(ref), ref);
+    for (const ref2 of refs) touched.set(testFileId(ref2), ref2);
   };
   const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
   if (part.environments !== null) touchKeys(await keys.setEnvironments(part.environments));
@@ -5436,11 +5469,11 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile) {
   const resolved = [];
   const stale = [];
   for (const closure of part.closures) {
-    const ref = closure.testFile;
-    if (!ledger.file(ref)) continue;
+    const ref2 = closure.testFile;
+    if (!ledger.file(ref2)) continue;
     touchKeys(keys.setClosure(closure));
-    resolved.push(ref);
-    if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) stale.push(ref);
+    resolved.push(ref2);
+    if ([ref2.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) stale.push(ref2);
   }
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved);
@@ -5525,7 +5558,7 @@ var init_runner_work = __esm({
             const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
             ledger.refineChanges = null;
             const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
-            for (const ref of stale) this.#carried.set(testFileId(ref), ref);
+            for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
             ledger.commit({ refined: revision.number });
           });
         } catch (error) {
@@ -5547,9 +5580,9 @@ var init_runner_work = __esm({
       /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
       afterTier(task) {
         if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
-        return new Promise((resolve8, reject) => {
+        return new Promise((resolve11, reject) => {
           this.#tasks.push({
-            run: () => this.host.lock.run(task).then(resolve8, reject),
+            run: () => this.host.lock.run(task).then(resolve11, reject),
             cancel: () => reject(new Error("squeal scheduler: closed"))
           });
           this.host.pump();
@@ -5581,12 +5614,12 @@ var init_runner_work = __esm({
 });
 
 // src/core/scheduler/records.ts
-function fileCheck(ref) {
-  return { kind: "file", project: ref.project, testPath: ref.path };
+function fileCheck(ref2) {
+  return { kind: "file", project: ref2.project, testPath: ref2.path };
 }
 function recordsForFile(input) {
-  const { ref, key, report: report2, provenance, describe } = input;
-  const inFile = (check) => check.project === ref.project && check.testPath === ref.path;
+  const { ref: ref2, key, report: report2, provenance, describe } = input;
+  const inFile = (check) => check.project === ref2.project && check.testPath === ref2.path;
   const records = [];
   const ran = /* @__PURE__ */ new Set();
   let testsMs = 0;
@@ -5606,14 +5639,14 @@ function recordsForFile(input) {
       provenance
     });
   }
-  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path).flatMap((e) => e.errors);
+  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref2.project && e.testFile.path === ref2.path).flatMap((e) => e.errors);
   const fileMs = report2.fileDurations?.find(
-    (d) => d.testFile.project === ref.project && d.testFile.path === ref.path
+    (d) => d.testFile.project === ref2.project && d.testFile.path === ref2.path
   )?.durationMs;
   const outsideTestsMs = fileMs === void 0 ? 0 : Math.max(0, fileMs - testsMs);
   if (errors.length === 0) {
     records.push({
-      check: fileCheck(ref),
+      check: fileCheck(ref2),
       key,
       outcome: "pass",
       durationMs: outsideTestsMs,
@@ -5642,7 +5675,7 @@ function recordsForFile(input) {
       records.push(failed2(check));
     }
   }
-  records.push({ ...failed2(fileCheck(ref)), durationMs: outsideTestsMs });
+  records.push({ ...failed2(fileCheck(ref2)), durationMs: outsideTestsMs });
   return records;
 }
 var init_records = __esm({
@@ -5682,27 +5715,27 @@ function selectTier(context, ledger) {
   const { store, keys, policy } = context;
   const picked = [];
   let tookBacklog = false;
-  for (const ref of ledger.ordered()) {
+  for (const ref2 of ledger.ordered()) {
     if (picked.length >= policy.runner.tierSize) break;
-    const file = ledger.file(ref);
+    const file = ledger.file(ref2);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {
-      ledger.queue.remove(ref);
+      ledger.queue.remove(ref2);
       if (file) ledger.touch(file);
       continue;
     }
-    const forced = ledger.queue.isForced(ref);
+    const forced = ledger.queue.isForced(ref2);
     if (!forced) {
       const hits = store.results.byKey(key, context.now());
       if (hits.length > 0) {
-        ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
+        ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref2));
         continue;
       }
     }
-    tookBacklog ||= !ledger.queue.isRecent(ref);
-    ledger.queue.remove(ref);
-    const checkpointId2 = ledger.checkpoints.idFor(ref);
-    picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId: checkpointId2, forced });
+    tookBacklog ||= !ledger.queue.isRecent(ref2);
+    ledger.queue.remove(ref2);
+    const checkpointId2 = ledger.checkpoints.idFor(ref2);
+    picked.push({ file, key, inputs: keys.stabilityPaths(ref2), checkpointId: checkpointId2, forced });
   }
   if (picked.length === 0) {
     ledger.commit();
@@ -6040,7 +6073,7 @@ var init_scheduler2 = __esm({
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
-        return new Promise((resolve8) => this.#idle.push(resolve8));
+        return new Promise((resolve11) => this.#idle.push(resolve11));
       }
       trackedPaths() {
         return this.#context?.keys.cache.paths() ?? [];
@@ -6057,7 +6090,7 @@ var init_scheduler2 = __esm({
           this.#ledger?.checkpoints.finish("abandoned");
           if (this.#awaitingInstall) stopWaiting(this.options);
         });
-        for (const resolve8 of this.#idle.splice(0)) resolve8();
+        for (const resolve11 of this.#idle.splice(0)) resolve11();
       }
       /**
        * Runs tiers one after another until the queue is empty. Selection and
@@ -6115,7 +6148,7 @@ var init_scheduler2 = __esm({
           } finally {
             this.#pumping = null;
             if (!this.#closed && !this.#stalled && this.#hasWork()) this.#pump();
-            else if (this.#isIdle()) for (const resolve8 of this.#idle.splice(0)) resolve8();
+            else if (this.#isIdle()) for (const resolve11 of this.#idle.splice(0)) resolve11();
           }
         })();
       }
@@ -6404,9 +6437,9 @@ var init_readdirp = __esm({
       }
       // Synchronous in dirent mode; returns a promise only when stats are needed.
       _formatEntry(dirent, path) {
-        const basename11 = this._isDirent ? dirent.name : dirent;
-        const fullPath = pjoin(path, basename11);
-        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename11 };
+        const basename12 = this._isDirent ? dirent.name : dirent;
+        const fullPath = pjoin(path, basename12);
+        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename12 };
         if (this._isDirent) {
           entry2.dirent = dirent;
           return entry2;
@@ -6947,9 +6980,9 @@ var init_handler = __esm({
       _watchWithNodeFs(path, listener) {
         const opts = this.fsw.options;
         const directory = sp.dirname(path);
-        const basename11 = sp.basename(path);
+        const basename12 = sp.basename(path);
         const parent2 = this.fsw._getWatchedDir(directory);
-        parent2.add(basename11);
+        parent2.add(basename12);
         const absolutePath = sp.resolve(path);
         const options = {
           persistent: opts.persistent
@@ -6959,7 +6992,7 @@ var init_handler = __esm({
         let closer;
         if (opts.usePolling) {
           const enableBin = opts.interval !== opts.binaryInterval;
-          options.interval = enableBin && isBinaryPath(basename11) ? opts.binaryInterval : opts.interval;
+          options.interval = enableBin && isBinaryPath(basename12) ? opts.binaryInterval : opts.interval;
           closer = setFsWatchFileListener(path, absolutePath, options, {
             listener,
             rawEmitter: this.fsw._emitRaw
@@ -6981,11 +7014,11 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname18 = sp.dirname(file);
-        const basename11 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname18);
+        const dirname21 = sp.dirname(file);
+        const basename12 = sp.basename(file);
+        const parent2 = this.fsw._getWatchedDir(dirname21);
         let prevStats = stats;
-        if (parent2.has(basename11))
+        if (parent2.has(basename12))
           return;
         const listener = async (path, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
@@ -6995,9 +7028,9 @@ var init_handler = __esm({
               const newStats2 = await stat4(file);
               if (this.fsw.closed)
                 return;
-              const at = newStats2.atimeMs;
+              const at2 = newStats2.atimeMs;
               const mt = newStats2.mtimeMs;
-              if (!at || at <= mt || mt !== prevStats.mtimeMs) {
+              if (!at2 || at2 <= mt || mt !== prevStats.mtimeMs) {
                 this.fsw._emit(EV.CHANGE, file, newStats2);
               }
               if ((isMacos || isLinux || isFreeBSD) && prevStats.ino !== newStats2.ino) {
@@ -7010,12 +7043,12 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname18, basename11);
+              this.fsw._remove(dirname21, basename12);
             }
-          } else if (parent2.has(basename11)) {
-            const at = newStats.atimeMs;
+          } else if (parent2.has(basename12)) {
+            const at2 = newStats.atimeMs;
             const mt = newStats.mtimeMs;
-            if (!at || at <= mt || mt !== prevStats.mtimeMs) {
+            if (!at2 || at2 <= mt || mt !== prevStats.mtimeMs) {
               this.fsw._emit(EV.CHANGE, file, newStats);
             }
             prevStats = newStats;
@@ -7079,7 +7112,7 @@ var init_handler = __esm({
         if (!throttler)
           return;
         const previous = this.fsw._getWatchedDir(wh.path);
-        const current = /* @__PURE__ */ new Set();
+        const current2 = /* @__PURE__ */ new Set();
         let stream = this.fsw._readdirp(directory, {
           fileFilter: (entry2) => wh.filterPath(entry2),
           directoryFilter: (entry2) => wh.filterDir(entry2)
@@ -7093,7 +7126,7 @@ var init_handler = __esm({
           }
           const item = entry2.path;
           let path = sp.join(directory, item);
-          current.add(item);
+          current2.add(item);
           if (entry2.stats.isSymbolicLink() && await this._handleSymlink(entry2, directory, path, item)) {
             return;
           }
@@ -7107,7 +7140,7 @@ var init_handler = __esm({
             this._addToNodeFs(path, initialAdd, wh, depth + 1);
           }
         }).on(EV.ERROR, this._boundHandleError);
-        return new Promise((resolve8, reject) => {
+        return new Promise((resolve11, reject) => {
           if (!stream)
             return reject();
           stream.once(STR_END, () => {
@@ -7116,9 +7149,9 @@ var init_handler = __esm({
               return;
             }
             const wasThrottled = throttler ? throttler.clear() : false;
-            resolve8(void 0);
+            resolve11(void 0);
             previous.getChildren().filter((item) => {
-              return item !== directory && !current.has(item);
+              return item !== directory && !current2.has(item);
             }).forEach((item) => {
               this.fsw._remove(directory, item);
             });
@@ -7256,11 +7289,11 @@ function createPattern(matcher) {
       if (matcher.path === string)
         return true;
       if (matcher.recursive) {
-        const relative4 = sp2.relative(matcher.path, string);
-        if (!relative4) {
+        const relative9 = sp2.relative(matcher.path, string);
+        if (!relative9) {
           return false;
         }
-        return !relative4.startsWith("..") && !sp2.isAbsolute(relative4);
+        return !relative9.startsWith("..") && !sp2.isAbsolute(relative9);
       }
       return false;
     };
@@ -7854,8 +7887,8 @@ var init_chokidar = __esm({
           const ign = this.options.ignored;
           const ignored = (ign || []).map(normalizeIgnored(cwd));
           const ignoredPaths = [...this._ignoredPaths];
-          const list = [...ignoredPaths.map(normalizeIgnored(cwd)), ...ignored];
-          this._userIgnored = anymatch(list, void 0);
+          const list2 = [...ignoredPaths.map(normalizeIgnored(cwd)), ...ignored];
+          this._userIgnored = anymatch(list2, void 0);
         }
         return this._userIgnored(path, stats);
       }
@@ -7952,12 +7985,12 @@ var init_chokidar = __esm({
       _addPathCloser(path, closer) {
         if (!closer)
           return;
-        let list = this._closers.get(path);
-        if (!list) {
-          list = [];
-          this._closers.set(path, list);
+        let list2 = this._closers.get(path);
+        if (!list2) {
+          list2 = [];
+          this._closers.set(path, list2);
         }
-        list.push(closer);
+        list2.push(closer);
       }
       _readdirp(root, opts) {
         if (this.closed)
@@ -7998,12 +8031,12 @@ var init_exclusions = __esm({
       excludes(path) {
         if (this.extra.has(path)) return false;
         const { root } = this.spec;
-        let current = path;
-        while (current.length > root.length) {
-          if (this.excluded.has(current)) return true;
-          const parent2 = dirname11(current);
-          if (parent2 === current) break;
-          current = parent2;
+        let current2 = path;
+        while (current2.length > root.length) {
+          if (this.excluded.has(current2)) return true;
+          const parent2 = dirname11(current2);
+          if (parent2 === current2) break;
+          current2 = parent2;
         }
         return false;
       }
@@ -8028,7 +8061,7 @@ var init_chokidar_backend = __esm({
     chokidarBackend = {
       name: "chokidar",
       async watch(spec, listener) {
-        let current = spec;
+        let current2 = spec;
         let exclusions = new Exclusions(spec);
         const watcher = watch([spec.root, ...spec.extraFiles], {
           ignored: (path) => exclusions.excludes(path),
@@ -8044,11 +8077,11 @@ var init_chokidar_backend = __esm({
         watcher.on("error", (error) => {
           listener.onError(error instanceof Error ? error : new Error(String(error)));
         });
-        await new Promise((resolve8) => watcher.once("ready", () => resolve8()));
+        await new Promise((resolve11) => watcher.once("ready", () => resolve11()));
         return {
           async update(next) {
-            const before = current;
-            current = next;
+            const before = current2;
+            current2 = next;
             exclusions = new Exclusions(next);
             const nowExcluded = next.excluded.filter((p) => !before.excluded.includes(p));
             const noLongerExcluded = before.excluded.filter((p) => !next.excluded.includes(p));
@@ -8183,12 +8216,12 @@ var init_backend = __esm({
 
 // src/core/watcher/paths.ts
 function* selfAndAncestors(path) {
-  let current = path;
+  let current2 = path;
   while (true) {
-    yield current;
-    const slash = current.lastIndexOf("/");
+    yield current2;
+    const slash = current2.lastIndexOf("/");
     if (slash < 0) return;
-    current = current.slice(0, slash);
+    current2 = current2.slice(0, slash);
   }
 }
 function isGitMetadata(path) {
@@ -8267,8 +8300,8 @@ async function candidatesForReconcile(ctx, statusPaths) {
     return stats2 && !stats2.isDirectory() ? toFileStat(stats2) : null;
   });
   const out = /* @__PURE__ */ new Map();
-  paths.forEach((rel, i) => {
-    const stat6 = stats[i];
+  paths.forEach((rel, i2) => {
+    const stat6 = stats[i2];
     if (stat6 !== void 0) out.set(rel, stat6);
   });
   return sortCandidates(out);
@@ -8521,13 +8554,13 @@ var init_change_feed = __esm({
       }
       /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
       async rebuildSpec(status2) {
-        const current = this.spec;
-        if (!current || !this.sub) return false;
+        const current2 = this.spec;
+        if (!current2 || !this.sub) return false;
         const next = await buildWatchSpec(this.root, this.extraFiles, status2);
-        if (sameWatchSpec(current, next)) return false;
+        if (sameWatchSpec(current2, next)) return false;
         await this.sub.update(next);
         this.spec = next;
-        return current.excluded.some((p) => !next.excluded.includes(p));
+        return current2.excluded.some((p) => !next.excluded.includes(p));
       }
       context() {
         const spec = this.spec ?? { root: this.root, excluded: [], extraFiles: [] };
@@ -8665,7 +8698,7 @@ async function importClosure(project, entries2) {
   const missing = /* @__PURE__ */ new Set();
   const bare = /* @__PURE__ */ new Map();
   const builtins = /* @__PURE__ */ new Set();
-  const visit = async (file) => {
+  const visit2 = async (file) => {
     if (files.has(file) || missing.has(file)) return;
     if (!existsSync10(file)) {
       missing.add(file);
@@ -8676,9 +8709,9 @@ async function importClosure(project, entries2) {
     const hop = await importTargets(project, file);
     if (hop.bare.length > 0) bare.set(file, new Set(hop.bare));
     for (const name of hop.builtins) builtins.add(name);
-    await Promise.all(hop.targets.map(visit));
+    await Promise.all(hop.targets.map(visit2));
   };
-  await Promise.all(entries2.map(visit));
+  await Promise.all(entries2.map(visit2));
   return { files, missing, bare, builtins };
 }
 async function directImports(project, file) {
@@ -8754,16 +8787,16 @@ function resolutionCandidates(target, extensions) {
 }
 function resolutionBases(path, extensions) {
   const ext = extname2(path);
-  const bases = [path];
-  if (ext === "") return bases;
+  const bases2 = [path];
+  if (ext === "") return bases2;
   if (extensions.includes(ext)) {
-    bases.push(path.slice(0, -ext.length));
-    if (basename7(path) === `index${ext}`) bases.push(dirname13(path));
+    bases2.push(path.slice(0, -ext.length));
+    if (basename7(path) === `index${ext}`) bases2.push(dirname13(path));
   }
   for (const [js, twins] of Object.entries(TYPESCRIPT_TWINS)) {
-    if (twins.includes(ext)) bases.push(path.slice(0, -ext.length) + js);
+    if (twins.includes(ext)) bases2.push(path.slice(0, -ext.length) + js);
   }
-  return bases;
+  return bases2;
 }
 function isMissingTarget(closure, path) {
   if (closure.missing.has(path)) return true;
@@ -8870,9 +8903,9 @@ async function affectedTestFiles(vitest, specs, changed) {
   const imported = /* @__PURE__ */ new Set();
   const direct = /* @__PURE__ */ new Set();
   const add = (spec, through) => {
-    const current = known2.get(specKey(spec));
-    if (!current) return;
-    affected2.set(specKey(spec), current);
+    const current2 = known2.get(specKey(spec));
+    if (!current2) return;
+    affected2.set(specKey(spec), current2);
     if (through === "graph") imported.add(specKey(spec));
     if (through === "snapshot") direct.add(specKey(spec));
   };
@@ -8983,8 +9016,8 @@ function enumeratedChecks(module, testFile) {
 }
 function toCheckRunResult(testCase, testFile, paths, fullName) {
   const result = testCase.result();
-  const outcome = OUTCOMES4[result.state];
-  if (!outcome) return null;
+  const outcome2 = OUTCOMES4[result.state];
+  if (!outcome2) return null;
   const location2 = testCase.location;
   return {
     check: {
@@ -8993,10 +9026,10 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
       testPath: testFile.path,
       fullName
     },
-    outcome,
+    outcome: outcome2,
     durationMs: testCase.diagnostic()?.duration ?? 0,
     location: location2 ? { path: testFile.path, line: location2.line, column: location2.column } : null,
-    errors: outcome === "fail" ? (result.errors ?? []).map((e) => withLoad(toCheckError(e, paths))) : []
+    errors: outcome2 === "fail" ? (result.errors ?? []).map((e) => withLoad(toCheckError(e, paths))) : []
   };
 }
 function compareRefs(a, b) {
@@ -9014,18 +9047,18 @@ var init_results2 = __esm({
     };
     TIMEOUT = /^(?:Test|Hook) timed out in \d+ms/;
     currentLoad = () => process.platform === "win32" ? null : loadavg()[0] ?? null;
-    refKey = (ref) => `${ref.project}\0${ref.path}`;
+    refKey = (ref2) => `${ref2.project}\0${ref2.path}`;
   }
 });
 
 // src/runners/vitest/reporter.ts
 import { appendFileSync } from "node:fs";
-function createSquealReporter(current) {
+function createSquealReporter(current2) {
   return {
-    onTestCaseResult: (testCase) => current()?.testCase(testCase),
-    onTestModuleEnd: (module) => current()?.moduleEnd(module),
-    onTestRunEnd: (_modules, unhandledErrors, reason2) => current()?.runEnd(unhandledErrors, reason2),
-    onUserConsoleLog: (log) => current()?.console(log.type, log.content)
+    onTestCaseResult: (testCase) => current2()?.testCase(testCase),
+    onTestModuleEnd: (module) => current2()?.moduleEnd(module),
+    onTestRunEnd: (_modules, unhandledErrors, reason2) => current2()?.runEnd(unhandledErrors, reason2),
+    onUserConsoleLog: (log) => current2()?.console(log.type, log.content)
   };
 }
 function moduleDuration(module) {
@@ -9071,13 +9104,13 @@ var init_reporter = __esm({
         return path === null ? null : this.#requested.get(refKey({ project, path })) ?? null;
       }
       testCase(testCase) {
-        const ref = this.#ref(testCase.project.name, testCase.module.moduleId);
-        if (!ref) return;
-        const result = toCheckRunResult(testCase, ref, this.paths, this.#name(testCase));
+        const ref2 = this.#ref(testCase.project.name, testCase.module.moduleId);
+        if (!ref2) return;
+        const result = toCheckRunResult(testCase, ref2, this.paths, this.#name(testCase));
         if (!result) return;
-        this.results.push({ ref, result });
+        this.results.push({ ref: ref2, result });
         this.log.push(
-          `${result.outcome.toUpperCase()} ${label(ref)} > ${result.check.fullName} (${Math.round(result.durationMs)} ms)`
+          `${result.outcome.toUpperCase()} ${label(ref2)} > ${result.check.fullName} (${Math.round(result.durationMs)} ms)`
         );
         for (const error of testCase.result().errors ?? []) this.log.push(indent(errorText(error)));
       }
@@ -9091,17 +9124,17 @@ var init_reporter = __esm({
         return names.get(testCase.id) ?? testCase.fullName;
       }
       moduleEnd(module) {
-        const ref = this.#ref(module.project.name, module.moduleId);
-        if (!ref) return;
+        const ref2 = this.#ref(module.project.name, module.moduleId);
+        if (!ref2) return;
         const errors = module.errors();
-        this.modules.set(refKey(ref), {
-          ref,
+        this.modules.set(refKey(ref2), {
+          ref: ref2,
           state: module.state(),
           errors,
           afterCancel: this.cancelRequested,
           durationMs: moduleDuration(module)
         });
-        this.log.push(`MODULE ${module.state()} ${label(ref)}`);
+        this.log.push(`MODULE ${module.state()} ${label(ref2)}`);
         for (const error of errors) this.log.push(indent(`file-level error: ${errorText(error)}`));
       }
       runEnd(unhandledErrors, reason2) {
@@ -9132,7 +9165,7 @@ var init_reporter = __esm({
         this.log.push(`[${type}] ${content.replace(/\n$/, "")}`);
       }
     };
-    label = (ref) => ref.project ? `[${ref.project}] ${ref.path}` : ref.path;
+    label = (ref2) => ref2.project ? `[${ref2.project}] ${ref2.path}` : ref2.path;
     indent = (text2) => text2.replace(/^/gm, "    ");
   }
 });
@@ -9293,7 +9326,7 @@ function parse(H2, N2 = "@") {
   for (; w.ri(); ) {
     const A2 = w.is(), Q2 = w.ie(), B2 = w.it(), E2 = 15 & B2, C2 = w.ai(), g2 = w.id(), I2 = w.ss(), D2 = w.se(), N3 = w.ip();
     let R2, M2 = false;
-    if (1 & N3 ? R2 = U(-1 === g2 ? A2 : A2 + 1, -1 === g2 ? Q2 : Q2 - 1, A2, !!(2 & N3)) : -1 !== g2 && "`" === H2[A2] && (R2 = i(A2, Q2), M2 = void 0 !== R2), 3 === E2) s.push({ type: "import-meta", specifier: null, typeOnly: false, start: A2, end: Q2, importStart: I2, importEnd: D2 });
+    if (1 & N3 ? R2 = U(-1 === g2 ? A2 : A2 + 1, -1 === g2 ? Q2 : Q2 - 1, A2, !!(2 & N3)) : -1 !== g2 && "`" === H2[A2] && (R2 = i2(A2, Q2), M2 = void 0 !== R2), 3 === E2) s.push({ type: "import-meta", specifier: null, typeOnly: false, start: A2, end: Q2, importStart: I2, importEnd: D2 });
     else if (-1 !== g2) {
       const w2 = 5 === E2 ? "source" : 7 === E2 ? "defer" : null;
       s.push({ type: "dynamic", specifier: R2, glob: M2, phase: w2, start: A2, end: Q2, importStart: I2, importEnd: D2, dynamicStart: g2, attributes: null, attributesStart: C2, probablyTypeOnly: !!(16 & B2) });
@@ -9401,7 +9434,7 @@ function parse(H2, N2 = "@") {
     const B2 = H2.charCodeAt(A2);
     return 34 === B2 || 39 === B2 ? U(A2 + 1, Q2 - 1, A2) : H2.slice(A2, Q2);
   }
-  function i(A2, Q2) {
+  function i2(A2, Q2) {
     if (w.rts(), !w.rt()) return;
     let B2 = "", E2 = A2 + 1, C2 = A2 + 1, g2 = w.te();
     for (; C2 < Q2; ) {
@@ -9455,10 +9488,10 @@ function closurePackages(graph, paths) {
   const imports = [];
   for (const file of graph.files) {
     const rel = paths.toRelative(file);
-    const at = rel === null ? -1 : rel.lastIndexOf(NODE_MODULES);
-    if (rel === null || at === -1 || at > 0 && rel[at - 1] !== "/") continue;
-    const name = packageName(rel.slice(at + NODE_MODULES.length));
-    if (name !== null) imports.push({ from: rel.slice(0, Math.max(0, at - 1)), name });
+    const at2 = rel === null ? -1 : rel.lastIndexOf(NODE_MODULES);
+    if (rel === null || at2 === -1 || at2 > 0 && rel[at2 - 1] !== "/") continue;
+    const name = packageName(rel.slice(at2 + NODE_MODULES.length));
+    if (name !== null) imports.push({ from: rel.slice(0, Math.max(0, at2 - 1)), name });
   }
   for (const [importer, names] of graph.bare) {
     const from = directoryOf2(dirname15(importer), paths);
@@ -9560,8 +9593,8 @@ function abandon2(vitest, collector) {
 }
 async function settleWithin(promise, ms) {
   let timer;
-  const timeout = new Promise((resolve8) => {
-    timer = setTimeout(() => resolve8(null), ms);
+  const timeout = new Promise((resolve11) => {
+    timer = setTimeout(() => resolve11(null), ms);
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -9579,10 +9612,10 @@ function buildReport(collector, execution, durationMs) {
   const completed = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => !m.afterCancel && m.state !== "pending" && m.state !== "queued").map((m) => m.ref).sort(compareRefs);
   const completedKeys = new Set(completed.map(refKey));
   const errors = /* @__PURE__ */ new Map();
-  const addErrors = (ref, list) => {
-    if (list.length === 0) return;
-    const existing = errors.get(refKey(ref))?.errors ?? [];
-    errors.set(refKey(ref), { testFile: ref, errors: [...existing, ...list] });
+  const addErrors = (ref2, list2) => {
+    if (list2.length === 0) return;
+    const existing = errors.get(refKey(ref2))?.errors ?? [];
+    errors.set(refKey(ref2), { testFile: ref2, errors: [...existing, ...list2] });
   };
   for (const module of collector.modules.values()) {
     if (completedKeys.has(refKey(module.ref))) {
@@ -9594,8 +9627,8 @@ function buildReport(collector, execution, durationMs) {
   }
   for (const error of collector.unhandledErrors) {
     const rel = owner(error, collector);
-    for (const ref of completed.filter((r) => r.path === rel)) {
-      addErrors(ref, [toCheckError(error, collector.paths)]);
+    for (const ref2 of completed.filter((r) => r.path === rel)) {
+      addErrors(ref2, [toCheckError(error, collector.paths)]);
     }
   }
   return {
@@ -9740,12 +9773,12 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
       const scopes = [...added, ...deleted, ...manifests].filter(isPackageJson).map((p) => `${dirname16(p)}/`);
       const directories = [...scopes];
       for (const path of added) {
-        const bases = resolutionBases(path, extensions);
-        for (const base of bases) {
+        const bases2 = resolutionBases(path, extensions);
+        for (const base of bases2) {
           for (const candidate of resolutionCandidates(base, extensions)) targets.add(candidate);
           if (base !== dirname16(path)) directories.push(`${base}/`);
         }
-        for (const dir of entryDirectories(path, bases, project.config.root)) {
+        for (const dir of entryDirectories(path, bases2, project.config.root)) {
           directories.push(`${dir}/`);
         }
       }
@@ -9771,13 +9804,13 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
   }
   return stale;
 }
-function entryDirectories(path, bases, root) {
+function entryDirectories(path, bases2, root) {
   const found = [];
   for (let dir = dirname16(path); dir.startsWith(`${root}/`); dir = dirname16(dir)) {
     const manifest = join33(dir, "package.json");
     if (!existsSync12(manifest)) continue;
     const named = packageEntries(manifest).map((entry2) => join33(dir, entry2).replace(/\/+$/, ""));
-    if (named.some((entry2) => bases.includes(entry2))) found.push(dir);
+    if (named.some((entry2) => bases2.includes(entry2))) found.push(dir);
   }
   return found;
 }
@@ -9909,11 +9942,11 @@ var init_adapter = __esm({
           this.#reload = false;
         }
         const generation = ++this.#generation;
-        const current = () => generation === this.#generation ? this.#collector : null;
+        const current2 = () => generation === this.#generation ? this.#collector : null;
         const vitest = await this.#node.createVitest("test", {
           root: this.paths.root,
           watch: false,
-          reporters: [createSquealReporter(current)],
+          reporters: [createSquealReporter(current2)],
           update: "none",
           includeTaskLocation: true
         });
@@ -10033,13 +10066,13 @@ var init_adapter = __esm({
       run(testFiles, options) {
         return this.#serial(async (vitest) => {
           const specs = testFiles.map(
-            (ref) => findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path))
+            (ref2) => findProject(vitest, ref2).createSpecification(this.paths.toAbsolute(ref2.path))
           );
           const collector = new RunCollector(testFiles, this.paths);
           if (specs.length === 0) {
-            const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
-            writeRunLog(options, collector, empty);
-            return empty;
+            const empty2 = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
+            writeRunLog(options, collector, empty2);
+            return empty2;
           }
           const exitCode = process.exitCode;
           const started = performance.now();
@@ -10088,14 +10121,14 @@ var init_adapter = __esm({
   }
 });
 
-// src/runners/vitest/paths.ts
+// src/core/fs/worktree-paths.ts
 import { sep as sep5 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 var WorktreePaths;
-var init_paths4 = __esm({
-  "src/runners/vitest/paths.ts"() {
+var init_worktree_paths = __esm({
+  "src/core/fs/worktree-paths.ts"() {
     "use strict";
-    init_fs();
+    init_paths();
     WorktreePaths = class {
       constructor(root) {
         this.root = root;
@@ -10123,6 +10156,14 @@ var init_paths4 = __esm({
   }
 });
 
+// src/runners/vitest/paths.ts
+var init_paths4 = __esm({
+  "src/runners/vitest/paths.ts"() {
+    "use strict";
+    init_worktree_paths();
+  }
+});
+
 // src/runners/vitest/index.ts
 var vitest_exports = {};
 __export(vitest_exports, {
@@ -10146,35 +10187,16617 @@ var init_vitest = __esm({
   }
 });
 
-// src/runners/node-test/adapter.ts
-var adapter_exports = {};
-__export(adapter_exports, {
-  NODE_TEST_ADAPTER_VERSION: () => NODE_TEST_ADAPTER_VERSION,
-  createNodeTestAdapter: () => createNodeTestAdapter
-});
-function createNodeTestAdapter(project) {
-  const unlisted = (path) => Promise.reject(
-    new Error(`node-test project ${JSON.stringify(project.name)} lists no test files: ${path}`)
+// src/runners/node-test/adapter-files.ts
+import { readdirSync as readdirSync5 } from "node:fs";
+import { join as join34, relative as relative4, resolve as resolve8, sep as sep6 } from "node:path";
+function projectCwd(root, project) {
+  return resolve8(root, project.cwd ?? ".");
+}
+function listTestFiles2(root, project) {
+  const cwd = projectCwd(root, project);
+  const include = createInputMatcher(project.include);
+  const exclude = createInputMatcher(project.exclude ?? []);
+  const found = [];
+  const walk = (dir) => {
+    let entries2;
+    try {
+      entries2 = readdirSync5(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry2 of entries2) {
+      if (SKIPPED.has(entry2.name)) continue;
+      const path = join34(dir, entry2.name);
+      if (entry2.isDirectory()) walk(path);
+      else if (entry2.isFile()) {
+        const fromCwd = slashes(relative4(cwd, path));
+        if (include(fromCwd) && !exclude(fromCwd)) found.push(slashes(relative4(root, path)));
+      }
+    }
+  };
+  for (const base of bases(project.include)) walk(join34(cwd, base));
+  return found.sort(compare);
+}
+function bases(globs2) {
+  const all = globs2.map((glob) => {
+    const segments2 = (glob.startsWith("./") ? glob.slice(2) : glob).split("/");
+    const literal2 = [];
+    for (const segment of segments2.slice(0, -1)) {
+      if (GLOB.test(segment)) break;
+      literal2.push(segment);
+    }
+    return literal2.join("/");
+  });
+  const sorted = [...new Set(all)].sort(compare);
+  return sorted.filter(
+    (base, i2) => !sorted.slice(0, i2).some((other) => other === "" || base.startsWith(`${other}/`))
   );
+}
+function slashes(path) {
+  return path.split(sep6).join("/");
+}
+var SKIPPED, GLOB;
+var init_adapter_files = __esm({
+  "src/runners/node-test/adapter-files.ts"() {
+    "use strict";
+    init_fs();
+    init_glob();
+    SKIPPED = /* @__PURE__ */ new Set(["node_modules", ".git"]);
+    GLOB = /[*?[{]/;
+  }
+});
+
+// src/runners/node-test/adapter-environment.ts
+import { execFile } from "node:child_process";
+import { relative as relative5, sep as sep7 } from "node:path";
+function probeNode(project, cwd) {
+  const node = project.node ?? "node";
+  const { NODE_TEST_CONTEXT: _, ...base } = process.env;
+  return new Promise((done) => {
+    execFile(
+      node,
+      ["-e", PROBE],
+      { cwd, env: { ...base, ...project.env }, timeout: PROBE_TIMEOUT_MS, encoding: "utf8" },
+      (error, stdout) => {
+        const [version2, execPath] = stdout.trimEnd().split("\n").slice(-2);
+        if (error === null && version2?.startsWith("v") && execPath) {
+          done({ ok: true, version: version2, execPath });
+        } else {
+          const reason2 = error?.message.split("\n")[0] ?? `unexpected output ${JSON.stringify(stdout)}`;
+          done({ ok: false, error: `cannot run ${JSON.stringify(node)}: ${reason2}` });
+        }
+      }
+    );
+  });
+}
+function projectEnvironment2(root, project, probe, preloads, adapterVersion) {
+  const execPath = probe.ok ? toRelative(root, probe.execPath) ?? probe.execPath : null;
+  const cwd = slashes2(relative5(root, projectCwd(root, project)));
+  const config = {
+    node: project.node ?? "node",
+    execPath,
+    argv: project.argv,
+    env: Object.entries(project.env).sort(([a], [b]) => compare(a, b)),
+    cwd,
+    include: project.include,
+    exclude: project.exclude ?? []
+  };
+  return {
+    project: project.name,
+    ...cwd === "" ? {} : { root: cwd },
+    runnerName: "node-test",
+    runnerVersion: probe.ok ? probe.version : NODE_UNAVAILABLE,
+    adapterVersion,
+    resolvedConfig: JSON.stringify(config),
+    files: [...preloads]
+  };
+}
+function slashes2(path) {
+  return path.split(sep7).join("/");
+}
+var PROBE_TIMEOUT_MS, PROBE, NODE_UNAVAILABLE;
+var init_adapter_environment = __esm({
+  "src/runners/node-test/adapter-environment.ts"() {
+    "use strict";
+    init_fs();
+    init_adapter_files();
+    PROBE_TIMEOUT_MS = 3e4;
+    PROBE = 'process.stdout.write(process.version + "\\n" + process.execPath + "\\n")';
+    NODE_UNAVAILABLE = "unavailable";
+  }
+});
+
+// node_modules/acorn/dist/acorn.mjs
+function isInAstralSet(code, set) {
+  var pos = 65536;
+  for (var i2 = 0; i2 < set.length; i2 += 2) {
+    pos += set[i2];
+    if (pos > code) {
+      return false;
+    }
+    pos += set[i2 + 1];
+    if (pos >= code) {
+      return true;
+    }
+  }
+  return false;
+}
+function isIdentifierStart(code, astral) {
+  if (code < 65) {
+    return code === 36;
+  }
+  if (code < 91) {
+    return true;
+  }
+  if (code < 97) {
+    return code === 95;
+  }
+  if (code < 123) {
+    return true;
+  }
+  if (code <= 65535) {
+    return code >= 170 && nonASCIIidentifierStart.test(String.fromCharCode(code));
+  }
+  if (astral === false) {
+    return false;
+  }
+  return isInAstralSet(code, astralIdentifierStartCodes);
+}
+function isIdentifierChar(code, astral) {
+  if (code < 48) {
+    return code === 36;
+  }
+  if (code < 58) {
+    return true;
+  }
+  if (code < 65) {
+    return false;
+  }
+  if (code < 91) {
+    return true;
+  }
+  if (code < 97) {
+    return code === 95;
+  }
+  if (code < 123) {
+    return true;
+  }
+  if (code <= 65535) {
+    return code >= 170 && nonASCIIidentifier.test(String.fromCharCode(code));
+  }
+  if (astral === false) {
+    return false;
+  }
+  return isInAstralSet(code, astralIdentifierStartCodes) || isInAstralSet(code, astralIdentifierCodes);
+}
+function binop(name, prec) {
+  return new TokenType(name, { beforeExpr: true, binop: prec });
+}
+function kw(name, options) {
+  if (options === void 0) options = {};
+  options.keyword = name;
+  return keywords[name] = new TokenType(name, options);
+}
+function isNewLine(code) {
+  return code === 10 || code === 13 || code === 8232 || code === 8233;
+}
+function nextLineBreak(code, from, end) {
+  if (end === void 0) end = code.length;
+  for (var i2 = from; i2 < end; i2++) {
+    var next = code.charCodeAt(i2);
+    if (isNewLine(next)) {
+      return i2 < end - 1 && next === 13 && code.charCodeAt(i2 + 1) === 10 ? i2 + 2 : i2 + 1;
+    }
+  }
+  return -1;
+}
+function wordsRegexp(words) {
+  return regexpCache[words] || (regexpCache[words] = new RegExp("^(?:" + words.replace(/ /g, "|") + ")$"));
+}
+function codePointToString(code) {
+  if (code <= 65535) {
+    return String.fromCharCode(code);
+  }
+  code -= 65536;
+  return String.fromCharCode((code >> 10) + 55296, (code & 1023) + 56320);
+}
+function getLineInfo(input, offset2) {
+  for (var line = 1, cur = 0; ; ) {
+    var nextBreak = nextLineBreak(input, cur, offset2);
+    if (nextBreak < 0) {
+      return new Position(line, offset2 - cur);
+    }
+    ++line;
+    cur = nextBreak;
+  }
+}
+function getOptions(opts) {
+  var options = {};
+  for (var opt in defaultOptions2) {
+    options[opt] = opts && hasOwn(opts, opt) ? opts[opt] : defaultOptions2[opt];
+  }
+  if (options.ecmaVersion === "latest") {
+    options.ecmaVersion = 1e8;
+  } else if (options.ecmaVersion == null) {
+    if (!warnedAboutEcmaVersion && typeof console === "object" && console.warn) {
+      warnedAboutEcmaVersion = true;
+      console.warn("Since Acorn 8.0.0, options.ecmaVersion is required.\nDefaulting to 2020, but this will stop working in the future.");
+    }
+    options.ecmaVersion = 11;
+  } else if (options.ecmaVersion >= 2015) {
+    options.ecmaVersion -= 2009;
+  }
+  if (options.allowReserved == null) {
+    options.allowReserved = options.ecmaVersion < 5;
+  }
+  if (!opts || opts.allowHashBang == null) {
+    options.allowHashBang = options.ecmaVersion >= 14;
+  }
+  if (isArray(options.onToken)) {
+    var tokens = options.onToken;
+    options.onToken = function(token) {
+      return tokens.push(token);
+    };
+  }
+  if (isArray(options.onComment)) {
+    options.onComment = pushComment(options, options.onComment);
+  }
+  if (options.sourceType === "commonjs" && options.allowAwaitOutsideFunction) {
+    throw new Error("Cannot use allowAwaitOutsideFunction with sourceType: commonjs");
+  }
+  return options;
+}
+function pushComment(options, array) {
+  return function(block2, text2, start, end, startLoc, endLoc) {
+    var comment = {
+      type: block2 ? "Block" : "Line",
+      value: text2,
+      start,
+      end
+    };
+    if (options.locations) {
+      comment.loc = new SourceLocation(this, startLoc, endLoc);
+    }
+    if (options.ranges) {
+      comment.range = [start, end];
+    }
+    array.push(comment);
+  };
+}
+function functionFlags(async, generator) {
+  return SCOPE_FUNCTION | (async ? SCOPE_ASYNC : 0) | (generator ? SCOPE_GENERATOR : 0);
+}
+function keywordOpAt(parser, pos) {
+  var end = pos + 1, stop = Math.min(parser.input.length, pos + 11);
+  while (end < stop) {
+    var ch = parser.fullCharCodeAt(end);
+    if (!isIdentifierChar(ch, true)) {
+      break;
+    }
+    end += ch <= 65535 ? 1 : 2;
+  }
+  return end === pos + 2 && parser.input.slice(pos, end) === "in" || end === pos + 10 && parser.input.slice(pos, end) === "instanceof";
+}
+function isPrivateNameConflicted(privateNameMap, element) {
+  var name = element.key.name;
+  var curr = privateNameMap[name];
+  var next = "true";
+  if (element.type === "MethodDefinition" && (element.kind === "get" || element.kind === "set")) {
+    next = (element.static ? "s" : "i") + element.kind;
+  }
+  if (curr === "iget" && next === "iset" || curr === "iset" && next === "iget" || curr === "sget" && next === "sset" || curr === "sset" && next === "sget") {
+    privateNameMap[name] = "true";
+    return false;
+  } else if (!curr) {
+    privateNameMap[name] = next;
+    return false;
+  } else {
+    return true;
+  }
+}
+function checkKeyName(node, name) {
+  var computed = node.computed;
+  var key = node.key;
+  return !computed && (key.type === "Identifier" && key.name === name || key.type === "Literal" && key.value === name);
+}
+function isLocalVariableAccess(node) {
+  return node.type === "Identifier" || node.type === "ParenthesizedExpression" && isLocalVariableAccess(node.expression);
+}
+function isPrivateFieldAccess(node) {
+  return node.type === "MemberExpression" && node.property.type === "PrivateIdentifier" || node.type === "ChainExpression" && isPrivateFieldAccess(node.expression) || node.type === "ParenthesizedExpression" && isPrivateFieldAccess(node.expression);
+}
+function finishNodeAt(node, type, pos, loc) {
+  node.type = type;
+  node.end = pos;
+  if (this.options.locations) {
+    node.loc.end = loc;
+  }
+  if (this.options.ranges) {
+    node.range[1] = pos;
+  }
+  return node;
+}
+function buildUnicodeData(ecmaVersion2) {
+  var d = data[ecmaVersion2] = {
+    binary: wordsRegexp(unicodeBinaryProperties[ecmaVersion2] + " " + unicodeGeneralCategoryValues),
+    binaryOfStrings: wordsRegexp(unicodeBinaryPropertiesOfStrings[ecmaVersion2]),
+    nonBinary: {
+      General_Category: wordsRegexp(unicodeGeneralCategoryValues),
+      Script: wordsRegexp(unicodeScriptValues[ecmaVersion2])
+    }
+  };
+  d.nonBinary.Script_Extensions = d.nonBinary.Script;
+  d.nonBinary.gc = d.nonBinary.General_Category;
+  d.nonBinary.sc = d.nonBinary.Script;
+  d.nonBinary.scx = d.nonBinary.Script_Extensions;
+}
+function hasProp(obj) {
+  for (var _ in obj) {
+    return true;
+  }
+  return false;
+}
+function isRegularExpressionModifier(ch) {
+  return ch === 105 || ch === 109 || ch === 115;
+}
+function isSyntaxCharacter(ch) {
+  return ch === 36 || ch >= 40 && ch <= 43 || ch === 46 || ch === 63 || ch >= 91 && ch <= 94 || ch >= 123 && ch <= 125;
+}
+function isRegExpIdentifierStart(ch) {
+  return isIdentifierStart(ch, true) || ch === 36 || ch === 95;
+}
+function isRegExpIdentifierPart(ch) {
+  return isIdentifierChar(ch, true) || ch === 36 || ch === 95 || ch === 8204 || ch === 8205;
+}
+function isControlLetter(ch) {
+  return ch >= 65 && ch <= 90 || ch >= 97 && ch <= 122;
+}
+function isValidUnicode(ch) {
+  return ch >= 0 && ch <= 1114111;
+}
+function isCharacterClassEscape(ch) {
+  return ch === 100 || ch === 68 || ch === 115 || ch === 83 || ch === 119 || ch === 87;
+}
+function isUnicodePropertyNameCharacter(ch) {
+  return isControlLetter(ch) || ch === 95;
+}
+function isUnicodePropertyValueCharacter(ch) {
+  return isUnicodePropertyNameCharacter(ch) || isDecimalDigit(ch);
+}
+function isClassSetReservedDoublePunctuatorCharacter(ch) {
+  return ch === 33 || ch >= 35 && ch <= 38 || ch >= 42 && ch <= 44 || ch === 46 || ch >= 58 && ch <= 64 || ch === 94 || ch === 96 || ch === 126;
+}
+function isClassSetSyntaxCharacter(ch) {
+  return ch === 40 || ch === 41 || ch === 45 || ch === 47 || ch >= 91 && ch <= 93 || ch >= 123 && ch <= 125;
+}
+function isClassSetReservedPunctuator(ch) {
+  return ch === 33 || ch === 35 || ch === 37 || ch === 38 || ch === 44 || ch === 45 || ch >= 58 && ch <= 62 || ch === 64 || ch === 96 || ch === 126;
+}
+function isDecimalDigit(ch) {
+  return ch >= 48 && ch <= 57;
+}
+function isHexDigit(ch) {
+  return ch >= 48 && ch <= 57 || ch >= 65 && ch <= 70 || ch >= 97 && ch <= 102;
+}
+function hexToInt(ch) {
+  if (ch >= 65 && ch <= 70) {
+    return 10 + (ch - 65);
+  }
+  if (ch >= 97 && ch <= 102) {
+    return 10 + (ch - 97);
+  }
+  return ch - 48;
+}
+function isOctalDigit(ch) {
+  return ch >= 48 && ch <= 55;
+}
+function stringToNumber(str2, isLegacyOctalNumericLiteral) {
+  if (isLegacyOctalNumericLiteral) {
+    return parseInt(str2, 8);
+  }
+  return parseFloat(str2.replace(/_/g, ""));
+}
+function stringToBigInt(str2) {
+  if (typeof BigInt !== "function") {
+    return null;
+  }
+  return BigInt(str2.replace(/_/g, ""));
+}
+function parse4(input, options) {
+  return Parser.parse(input, options);
+}
+var astralIdentifierCodes, astralIdentifierStartCodes, nonASCIIidentifierChars, nonASCIIidentifierStartChars, reservedWords, ecma5AndLessKeywords, keywords$1, keywordRelationalOperator, nonASCIIidentifierStart, nonASCIIidentifier, TokenType, beforeExpr, startsExpr, keywords, types$1, lineBreak, lineBreakG, nonASCIIwhitespace, skipWhiteSpace, ref, hasOwnProperty, toString, hasOwn, isArray, regexpCache, loneSurrogate, Position, SourceLocation, defaultOptions2, warnedAboutEcmaVersion, SCOPE_TOP, SCOPE_FUNCTION, SCOPE_ASYNC, SCOPE_GENERATOR, SCOPE_ARROW, SCOPE_SIMPLE_CATCH, SCOPE_SUPER, SCOPE_DIRECT_SUPER, SCOPE_CLASS_STATIC_BLOCK, SCOPE_CLASS_FIELD_INIT, SCOPE_SWITCH, SCOPE_VAR, BIND_NONE, BIND_VAR, BIND_LEXICAL, BIND_FUNCTION, BIND_SIMPLE_CATCH, BIND_OUTSIDE, Parser, prototypeAccessors, pp$9, literal, DestructuringErrors, pp$8, loopLabel, switchLabel, empty$1, FUNC_STATEMENT, FUNC_HANGING_STATEMENT, FUNC_NULLABLE_ID, pp$7, TokContext, types, pp$6, pp$5, empty, pp$4, pp$3, Scope, Node, pp$2, scriptValuesAddedInUnicode, ecma9BinaryProperties, ecma10BinaryProperties, ecma11BinaryProperties, ecma12BinaryProperties, ecma13BinaryProperties, ecma14BinaryProperties, unicodeBinaryProperties, ecma14BinaryPropertiesOfStrings, unicodeBinaryPropertiesOfStrings, unicodeGeneralCategoryValues, ecma9ScriptValues, ecma10ScriptValues, ecma11ScriptValues, ecma12ScriptValues, ecma13ScriptValues, ecma14ScriptValues, unicodeScriptValues, data, ecmaVersion, i, list, pp$1, BranchID, RegExpValidationState, CharSetNone, CharSetOk, CharSetString, Token, pp, INVALID_TEMPLATE_ESCAPE_ERROR, version;
+var init_acorn = __esm({
+  "node_modules/acorn/dist/acorn.mjs"() {
+    astralIdentifierCodes = [509, 0, 227, 0, 150, 4, 294, 9, 1368, 2, 2, 1, 6, 3, 41, 2, 5, 0, 166, 1, 574, 3, 9, 9, 7, 9, 32, 4, 318, 1, 31, 4, 33, 15, 71, 10, 50, 3, 123, 2, 54, 14, 32, 10, 3, 1, 11, 3, 46, 10, 8, 0, 46, 9, 7, 2, 37, 13, 2, 9, 6, 1, 45, 0, 13, 2, 49, 13, 9, 3, 2, 11, 83, 11, 7, 0, 3, 0, 158, 11, 6, 9, 7, 3, 56, 1, 2, 6, 3, 1, 3, 2, 10, 0, 11, 1, 3, 6, 4, 4, 68, 8, 2, 0, 3, 0, 2, 3, 2, 4, 2, 0, 15, 1, 83, 17, 10, 9, 5, 0, 82, 19, 13, 9, 214, 6, 3, 8, 28, 1, 83, 16, 16, 9, 82, 12, 9, 9, 7, 19, 58, 14, 5, 9, 243, 14, 166, 9, 71, 5, 2, 1, 3, 3, 2, 0, 2, 1, 13, 9, 120, 6, 3, 6, 4, 0, 29, 9, 41, 6, 2, 3, 9, 0, 10, 10, 47, 15, 199, 7, 137, 9, 54, 7, 2, 7, 17, 9, 57, 21, 2, 13, 123, 5, 4, 0, 2, 1, 2, 6, 2, 0, 9, 9, 49, 4, 2, 1, 2, 4, 9, 9, 55, 9, 7, 0, 259, 3, 10, 1, 2, 0, 49, 6, 4, 4, 14, 10, 5350, 0, 7, 14, 11465, 27, 2343, 9, 87, 9, 39, 4, 60, 6, 26, 9, 535, 9, 470, 0, 2, 54, 8, 3, 82, 0, 12, 1, 19628, 1, 4178, 9, 519, 45, 3, 22, 481, 1, 61, 4, 4, 5, 9, 7, 3, 6, 31, 3, 149, 2, 12, 2, 9, 1, 3, 0, 33, 1, 1357, 49, 513, 54, 5, 49, 9, 0, 15, 0, 23, 4, 2, 14, 1361, 6, 2, 16, 3, 6, 2, 1, 2, 4, 101, 0, 161, 6, 10, 9, 357, 0, 62, 13, 499, 13, 245, 1, 2, 9, 233, 0, 3, 0, 8, 1, 6, 0, 475, 6, 110, 6, 6, 9, 4759, 9, 787719, 239];
+    astralIdentifierStartCodes = [0, 11, 2, 25, 2, 18, 2, 1, 2, 14, 3, 13, 35, 122, 70, 52, 268, 28, 4, 48, 48, 31, 14, 29, 6, 37, 11, 29, 3, 35, 5, 7, 2, 4, 43, 157, 19, 35, 5, 35, 5, 39, 9, 51, 13, 10, 2, 14, 2, 6, 2, 1, 2, 10, 2, 14, 2, 6, 2, 1, 4, 51, 13, 310, 10, 21, 11, 7, 25, 5, 2, 41, 2, 13, 65, 5, 3, 0, 2, 43, 2, 1, 4, 0, 3, 22, 11, 22, 10, 30, 66, 18, 2, 1, 11, 21, 11, 25, 7, 25, 39, 55, 7, 1, 65, 0, 16, 3, 2, 2, 2, 28, 43, 28, 4, 28, 36, 7, 2, 27, 28, 53, 11, 21, 11, 18, 14, 17, 111, 72, 56, 50, 14, 50, 14, 35, 39, 27, 10, 22, 251, 41, 7, 1, 17, 5, 18, 21, 18, 28, 11, 0, 9, 21, 43, 17, 47, 20, 28, 22, 13, 52, 58, 1, 3, 0, 14, 44, 33, 24, 27, 35, 30, 0, 3, 0, 9, 34, 4, 0, 13, 47, 15, 3, 22, 0, 2, 0, 36, 17, 2, 24, 20, 1, 64, 6, 2, 0, 2, 3, 2, 14, 2, 9, 8, 46, 39, 7, 3, 1, 3, 21, 2, 6, 2, 1, 2, 4, 4, 0, 19, 0, 13, 4, 31, 9, 2, 0, 3, 0, 2, 37, 2, 0, 26, 0, 2, 0, 45, 52, 19, 3, 21, 2, 31, 47, 21, 1, 2, 0, 185, 46, 42, 3, 37, 47, 21, 0, 60, 42, 14, 0, 72, 26, 38, 6, 186, 43, 117, 63, 32, 7, 3, 0, 3, 7, 2, 1, 2, 23, 16, 0, 2, 0, 95, 7, 3, 38, 17, 0, 2, 0, 29, 0, 11, 39, 8, 0, 22, 0, 12, 45, 20, 0, 19, 72, 18, 0, 182, 32, 32, 8, 2, 36, 18, 0, 50, 29, 113, 6, 2, 1, 2, 37, 22, 0, 26, 5, 2, 1, 2, 31, 15, 0, 24, 43, 22, 0, 239, 18, 16, 0, 2, 12, 2, 33, 125, 0, 80, 921, 103, 111, 6, 206, 13, 310, 2314, 96, 16, 1071, 18, 5, 26, 3994, 6, 582, 6842, 29, 1763, 568, 8, 30, 18, 78, 18, 29, 19, 47, 17, 3, 32, 20, 6, 18, 433, 44, 212, 63, 33, 24, 3, 24, 45, 74, 6, 0, 67, 12, 65, 1, 2, 0, 15, 4, 10, 7386, 37, 33, 96, 114, 14, 913, 15, 50, 7710, 3, 2, 6, 2, 1, 2, 296, 10, 0, 30, 2, 3, 0, 15, 4, 8, 395, 2309, 106, 6, 12, 4, 8, 8, 9, 5991, 84, 2, 70, 2, 1, 3, 0, 3, 1, 3, 3, 2, 11, 2, 0, 2, 6, 2, 64, 2, 3, 3, 7, 2, 6, 2, 27, 2, 3, 2, 4, 2, 0, 4, 6, 2, 340, 2, 24, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 7, 1845, 129, 15, 6, 55, 50, 49, 61, 147, 44, 11, 6, 17, 0, 322, 29, 19, 43, 485, 27, 229, 29, 3, 0, 208, 30, 2, 2, 2, 1, 2, 6, 3, 4, 10, 1, 225, 6, 2, 3, 2, 1, 2, 14, 2, 196, 60, 67, 8, 0, 1205, 3, 2, 26, 2, 1, 2, 0, 3, 0, 2, 9, 2, 3, 2, 0, 2, 0, 7, 0, 5, 0, 2, 0, 2, 0, 2, 2, 2, 1, 2, 0, 3, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 1, 2, 0, 3, 3, 2, 6, 2, 3, 2, 3, 2, 0, 2, 9, 2, 16, 6, 2, 2, 4, 2, 16, 4421, 42719, 33, 4382, 2, 5773, 3, 7472, 16, 621, 2467, 541, 1507, 4938, 6, 8489, 39815, 11327];
+    nonASCIIidentifierChars = "\u200C\u200D\xB7\u0300-\u036F\u0387\u0483-\u0487\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7-\u05C9\u0610-\u061A\u064B-\u0669\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u06F0-\u06F9\u0711\u0730-\u074A\u07A6-\u07B0\u07C0-\u07C9\u07EB-\u07F3\u07FD\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u0897-\u089F\u08CA-\u08E1\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0966-\u096F\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u09E6-\u09EF\u09FE\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A66-\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0AE6-\u0AEF\u0AFA-\u0AFF\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B53-\u0B57\u0B62\u0B63\u0B66-\u0B6F\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0BE6-\u0BEF\u0C00-\u0C04\u0C3C\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C66-\u0C6F\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0CE6-\u0CEF\u0CF3\u0D00-\u0D03\u0D3B\u0D3C\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D66-\u0D6F\u0D81-\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0E50-\u0E59\u0EB1\u0EB4-\u0EBC\u0EC8-\u0ECE\u0ED0-\u0ED9\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1040-\u1049\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F-\u109D\u135D-\u135F\u1369-\u1371\u1712-\u1715\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u17E0-\u17E9\u180B-\u180D\u180F-\u1819\u18A9\u1920-\u192B\u1930-\u193B\u1946-\u194F\u19D0-\u19DA\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AB0-\u1ABD\u1ABF-\u1AF0\u1B00-\u1B04\u1B34-\u1B44\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BB0-\u1BB9\u1BE6-\u1BF3\u1C24-\u1C37\u1C40-\u1C49\u1C50-\u1C59\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF4\u1CF7-\u1CF9\u1DC0-\u1DFF\u200C\u200D\u203F\u2040\u2054\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\u30FB\uA620-\uA629\uA66F\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA82C\uA880\uA881\uA8B4-\uA8C5\uA8D0-\uA8D9\uA8E0-\uA8F1\uA8FF-\uA909\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9D0-\uA9D9\uA9E5\uA9F0-\uA9F9\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA50-\uAA59\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uABF0-\uABF9\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F\uFE33\uFE34\uFE4D-\uFE4F\uFF10-\uFF19\uFF3F\uFF65";
+    nonASCIIidentifierStartChars = "\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0558\u0559\u0560-\u0588\u058B\u058C\u05D0-\u05EA\u05EF-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u0860-\u086A\u0870-\u0887\u0889-\u088F\u08A0-\u08C9\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u09FC\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C5C\u0C5D\u0C60\u0C61\u0C80\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDC-\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D04-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D54-\u0D56\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E86-\u0E8A\u0E8C-\u0EA3\u0EA5\u0EA7-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u1711\u171F-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1878\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4C\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1C80-\u1C8A\u1C90-\u1CBA\u1CBD-\u1CBF\u1CE9-\u1CEC\u1CEE-\u1CF3\u1CF5\u1CF6\u1CFA\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u208F-\u209F\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309B-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312F\u3131-\u318E\u31A0-\u31BF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7DD\uA7E2\uA7F1-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA8FE\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB69\uAB6C\uAB6D\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC";
+    reservedWords = {
+      3: "abstract boolean byte char class double enum export extends final float goto implements import int interface long native package private protected public short static super synchronized throws transient volatile",
+      5: "class enum extends super const export import",
+      6: "enum",
+      strict: "implements interface let package private protected public static yield",
+      strictBind: "eval arguments"
+    };
+    ecma5AndLessKeywords = "break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this";
+    keywords$1 = {
+      5: ecma5AndLessKeywords,
+      "5module": ecma5AndLessKeywords + " export import",
+      6: ecma5AndLessKeywords + " const class extends export import super"
+    };
+    keywordRelationalOperator = /^in(stanceof)?$/;
+    nonASCIIidentifierStart = new RegExp("[" + nonASCIIidentifierStartChars + "]");
+    nonASCIIidentifier = new RegExp("[" + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "]");
+    TokenType = function TokenType2(label2, conf) {
+      if (conf === void 0) conf = {};
+      this.label = label2;
+      this.keyword = conf.keyword;
+      this.beforeExpr = !!conf.beforeExpr;
+      this.startsExpr = !!conf.startsExpr;
+      this.isLoop = !!conf.isLoop;
+      this.isAssign = !!conf.isAssign;
+      this.prefix = !!conf.prefix;
+      this.postfix = !!conf.postfix;
+      this.binop = conf.binop || null;
+      this.updateContext = null;
+    };
+    beforeExpr = { beforeExpr: true };
+    startsExpr = { startsExpr: true };
+    keywords = {};
+    types$1 = {
+      num: new TokenType("num", startsExpr),
+      regexp: new TokenType("regexp", startsExpr),
+      string: new TokenType("string", startsExpr),
+      name: new TokenType("name", startsExpr),
+      privateId: new TokenType("privateId", startsExpr),
+      eof: new TokenType("eof"),
+      // Punctuation token types.
+      bracketL: new TokenType("[", { beforeExpr: true, startsExpr: true }),
+      bracketR: new TokenType("]"),
+      braceL: new TokenType("{", { beforeExpr: true, startsExpr: true }),
+      braceR: new TokenType("}"),
+      parenL: new TokenType("(", { beforeExpr: true, startsExpr: true }),
+      parenR: new TokenType(")"),
+      comma: new TokenType(",", beforeExpr),
+      semi: new TokenType(";", beforeExpr),
+      colon: new TokenType(":", beforeExpr),
+      dot: new TokenType("."),
+      question: new TokenType("?", beforeExpr),
+      questionDot: new TokenType("?."),
+      arrow: new TokenType("=>", beforeExpr),
+      template: new TokenType("template"),
+      invalidTemplate: new TokenType("invalidTemplate"),
+      ellipsis: new TokenType("...", beforeExpr),
+      backQuote: new TokenType("`", startsExpr),
+      dollarBraceL: new TokenType("${", { beforeExpr: true, startsExpr: true }),
+      // Operators. These carry several kinds of properties to help the
+      // parser use them properly (the presence of these properties is
+      // what categorizes them as operators).
+      //
+      // `binop`, when present, specifies that this operator is a binary
+      // operator, and will refer to its precedence.
+      //
+      // `prefix` and `postfix` mark the operator as a prefix or postfix
+      // unary operator.
+      //
+      // `isAssign` marks all of `=`, `+=`, `-=` etcetera, which act as
+      // binary operators with a very low precedence, that should result
+      // in AssignmentExpression nodes.
+      eq: new TokenType("=", { beforeExpr: true, isAssign: true }),
+      assign: new TokenType("_=", { beforeExpr: true, isAssign: true }),
+      incDec: new TokenType("++/--", { prefix: true, postfix: true, startsExpr: true }),
+      prefix: new TokenType("!/~", { beforeExpr: true, prefix: true, startsExpr: true }),
+      logicalOR: binop("||", 1),
+      logicalAND: binop("&&", 2),
+      bitwiseOR: binop("|", 3),
+      bitwiseXOR: binop("^", 4),
+      bitwiseAND: binop("&", 5),
+      equality: binop("==/!=/===/!==", 6),
+      relational: binop("</>/<=/>=", 7),
+      bitShift: binop("<</>>/>>>", 8),
+      plusMin: new TokenType("+/-", { beforeExpr: true, binop: 9, prefix: true, startsExpr: true }),
+      modulo: binop("%", 10),
+      star: binop("*", 10),
+      slash: binop("/", 10),
+      starstar: new TokenType("**", { beforeExpr: true }),
+      coalesce: binop("??", 1),
+      // Keyword token types.
+      _break: kw("break"),
+      _case: kw("case", beforeExpr),
+      _catch: kw("catch"),
+      _continue: kw("continue"),
+      _debugger: kw("debugger"),
+      _default: kw("default", beforeExpr),
+      _do: kw("do", { isLoop: true, beforeExpr: true }),
+      _else: kw("else", beforeExpr),
+      _finally: kw("finally"),
+      _for: kw("for", { isLoop: true }),
+      _function: kw("function", startsExpr),
+      _if: kw("if"),
+      _return: kw("return", beforeExpr),
+      _switch: kw("switch"),
+      _throw: kw("throw", beforeExpr),
+      _try: kw("try"),
+      _var: kw("var"),
+      _const: kw("const"),
+      _while: kw("while", { isLoop: true }),
+      _with: kw("with"),
+      _new: kw("new", { beforeExpr: true, startsExpr: true }),
+      _this: kw("this", startsExpr),
+      _super: kw("super", startsExpr),
+      _class: kw("class", startsExpr),
+      _extends: kw("extends", beforeExpr),
+      _export: kw("export"),
+      _import: kw("import", startsExpr),
+      _null: kw("null", startsExpr),
+      _true: kw("true", startsExpr),
+      _false: kw("false", startsExpr),
+      _in: kw("in", { beforeExpr: true, binop: 7 }),
+      _instanceof: kw("instanceof", { beforeExpr: true, binop: 7 }),
+      _typeof: kw("typeof", { beforeExpr: true, prefix: true, startsExpr: true }),
+      _void: kw("void", { beforeExpr: true, prefix: true, startsExpr: true }),
+      _delete: kw("delete", { beforeExpr: true, prefix: true, startsExpr: true })
+    };
+    lineBreak = /\r\n?|\n|\u2028|\u2029/;
+    lineBreakG = new RegExp(lineBreak.source, "g");
+    nonASCIIwhitespace = /[\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]/;
+    skipWhiteSpace = /(?:\s|\/\/.*|\/\*[^]*?\*\/)*/g;
+    ref = Object.prototype;
+    hasOwnProperty = ref.hasOwnProperty;
+    toString = ref.toString;
+    hasOwn = Object.hasOwn || (function(obj, propName) {
+      return hasOwnProperty.call(obj, propName);
+    });
+    isArray = Array.isArray || (function(obj) {
+      return toString.call(obj) === "[object Array]";
+    });
+    regexpCache = /* @__PURE__ */ Object.create(null);
+    loneSurrogate = /(?:[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF])/;
+    Position = function Position2(line, col) {
+      this.line = line;
+      this.column = col;
+    };
+    Position.prototype.offset = function offset(n) {
+      return new Position(this.line, this.column + n);
+    };
+    SourceLocation = function SourceLocation2(p, start, end) {
+      this.start = start;
+      this.end = end;
+      if (p.sourceFile !== null) {
+        this.source = p.sourceFile;
+      }
+    };
+    defaultOptions2 = {
+      // `ecmaVersion` indicates the ECMAScript version to parse. Must be
+      // either 3, 5, 6 (or 2015), 7 (2016), 8 (2017), 9 (2018), 10
+      // (2019), 11 (2020), 12 (2021), 13 (2022), 14 (2023), or `"latest"`
+      // (the latest version the library supports). This influences
+      // support for strict mode, the set of reserved words, and support
+      // for new syntax features.
+      ecmaVersion: null,
+      // `sourceType` indicates the mode the code should be parsed in.
+      // Can be either `"script"`, `"module"` or `"commonjs"`. This influences global
+      // strict mode and parsing of `import` and `export` declarations.
+      sourceType: "script",
+      // When set to true, enable strict parsing mode even if `sourceType`
+      // is `"script"`.
+      strict: false,
+      // `onInsertedSemicolon` can be a callback that will be called when
+      // a semicolon is automatically inserted. It will be passed the
+      // position of the inserted semicolon as an offset, and if
+      // `locations` is enabled, it is given the location as a `{line,
+      // column}` object as second argument.
+      onInsertedSemicolon: null,
+      // `onTrailingComma` is similar to `onInsertedSemicolon`, but for
+      // trailing commas.
+      onTrailingComma: null,
+      // By default, reserved words are only enforced if ecmaVersion >= 5.
+      // Set `allowReserved` to a boolean value to explicitly turn this on
+      // an off. When this option has the value "never", reserved words
+      // and keywords can also not be used as property names.
+      allowReserved: null,
+      // When enabled, a return at the top level is not considered an
+      // error.
+      allowReturnOutsideFunction: false,
+      // When enabled, import/export statements are not constrained to
+      // appearing at the top of the program, and an import.meta expression
+      // in a script isn't considered an error.
+      allowImportExportEverywhere: false,
+      // By default, await identifiers are allowed to appear at the top-level scope only if ecmaVersion >= 2022.
+      // When enabled, await identifiers are allowed to appear at the top-level scope,
+      // but they are still not allowed in non-async functions.
+      allowAwaitOutsideFunction: null,
+      // When enabled, super identifiers are not constrained to
+      // appearing in methods and do not raise an error when they appear elsewhere.
+      allowSuperOutsideMethod: null,
+      // When enabled, hashbang directive in the beginning of file is
+      // allowed and treated as a line comment. Enabled by default when
+      // `ecmaVersion` >= 2023.
+      allowHashBang: false,
+      // By default, the parser will verify that private properties are
+      // only used in places where they are valid and have been declared.
+      // Set this to false to turn such checks off.
+      checkPrivateFields: true,
+      // When `locations` is on, `loc` properties holding objects with
+      // `start` and `end` properties in `{line, column}` form (with
+      // line being 1-based and column 0-based) will be attached to the
+      // nodes.
+      locations: false,
+      // Pass an optional `{line, column}` object to use for the start of
+      // the parse. This is mostly useful when using `parseExpressionAt`
+      // with `locations: true`, to prevent the parser from having to
+      // determine the line position at the start position.
+      startLocation: null,
+      // A function can be passed as `onToken` option, which will
+      // cause Acorn to call that function with object in the same
+      // format as tokens returned from `tokenizer().getToken()`. Note
+      // that you are not allowed to call the parser from the
+      // callback—that will corrupt its internal state.
+      onToken: null,
+      // A function can be passed as `onComment` option, which will
+      // cause Acorn to call that function with `(block, text, start,
+      // end)` parameters whenever a comment is skipped. `block` is a
+      // boolean indicating whether this is a block (`/* */`) comment,
+      // `text` is the content of the comment, and `start` and `end` are
+      // character offsets that denote the start and end of the comment.
+      // When the `locations` option is on, two more parameters are
+      // passed, the full `{line, column}` locations of the start and
+      // end of the comments. Note that you are not allowed to call the
+      // parser from the callback—that will corrupt its internal state.
+      // When this option has an array as value, objects representing the
+      // comments are pushed to it.
+      onComment: null,
+      // Nodes have their start and end characters offsets recorded in
+      // `start` and `end` properties (directly on the node, rather than
+      // the `loc` object, which holds line/column data. To also add a
+      // [semi-standardized][range] `range` property holding a `[start,
+      // end]` array with the same numbers, set the `ranges` option to
+      // `true`.
+      //
+      // [range]: https://bugzilla.mozilla.org/show_bug.cgi?id=745678
+      ranges: false,
+      // It is possible to parse multiple files into a single AST by
+      // passing the tree produced by parsing the first file as
+      // `program` option in subsequent parses. This will add the
+      // toplevel forms of the parsed file to the `Program` (top) node
+      // of an existing parse tree.
+      program: null,
+      // When `locations` is on, you can pass this to record the source
+      // file in every node's `loc` object.
+      sourceFile: null,
+      // This value, if given, is stored in every node, whether
+      // `locations` is on or off.
+      directSourceFile: null,
+      // When enabled, parenthesized expressions are represented by
+      // (non-standard) ParenthesizedExpression nodes
+      preserveParens: false
+    };
+    warnedAboutEcmaVersion = false;
+    SCOPE_TOP = 1;
+    SCOPE_FUNCTION = 2;
+    SCOPE_ASYNC = 4;
+    SCOPE_GENERATOR = 8;
+    SCOPE_ARROW = 16;
+    SCOPE_SIMPLE_CATCH = 32;
+    SCOPE_SUPER = 64;
+    SCOPE_DIRECT_SUPER = 128;
+    SCOPE_CLASS_STATIC_BLOCK = 256;
+    SCOPE_CLASS_FIELD_INIT = 512;
+    SCOPE_SWITCH = 1024;
+    SCOPE_VAR = SCOPE_TOP | SCOPE_FUNCTION | SCOPE_CLASS_STATIC_BLOCK;
+    BIND_NONE = 0;
+    BIND_VAR = 1;
+    BIND_LEXICAL = 2;
+    BIND_FUNCTION = 3;
+    BIND_SIMPLE_CATCH = 4;
+    BIND_OUTSIDE = 5;
+    Parser = function Parser2(options, input, startPos) {
+      this.options = options = getOptions(options);
+      this.sourceFile = options.sourceFile;
+      this.keywords = wordsRegexp(keywords$1[options.ecmaVersion >= 6 ? 6 : options.sourceType === "module" ? "5module" : 5]);
+      var reserved = "";
+      if (options.allowReserved !== true) {
+        reserved = reservedWords[options.ecmaVersion >= 6 ? 6 : options.ecmaVersion === 5 ? 5 : 3];
+        if (options.sourceType === "module") {
+          reserved += " await";
+        }
+      }
+      this.reservedWords = wordsRegexp(reserved);
+      var reservedStrict = (reserved ? reserved + " " : "") + reservedWords.strict;
+      this.reservedWordsStrict = wordsRegexp(reservedStrict);
+      this.reservedWordsStrictBind = wordsRegexp(reservedStrict + " " + reservedWords.strictBind);
+      this.input = String(input);
+      this.containsEsc = false;
+      this.pos = startPos || 0;
+      this.curLine = 1;
+      if (options.startLocation) {
+        this.lineStart = this.pos - options.startLocation.column;
+        this.curLine = options.startLocation.line;
+      } else if (startPos) {
+        this.lineStart = this.input.lastIndexOf("\n", startPos - 1) + 1;
+        if (this.options.locations) {
+          this.curLine = this.input.slice(0, this.lineStart).split(lineBreak).length;
+        }
+      } else {
+        this.lineStart = 0;
+      }
+      this.type = types$1.eof;
+      this.value = null;
+      this.start = this.end = this.pos;
+      this.startLoc = this.endLoc = this.curPosition();
+      this.lastTokEndLoc = this.lastTokStartLoc = null;
+      this.lastTokStart = this.lastTokEnd = this.pos;
+      this.context = this.initialContext();
+      this.exprAllowed = true;
+      this.inModule = options.sourceType === "module";
+      this.strict = this.inModule || options.strict === true || this.strictDirective(this.pos);
+      this.potentialArrowAt = -1;
+      this.potentialArrowInForAwait = false;
+      this.yieldPos = this.awaitPos = this.awaitIdentPos = 0;
+      this.labels = [];
+      this.undefinedExports = /* @__PURE__ */ Object.create(null);
+      if (this.pos === 0 && options.allowHashBang && this.input.slice(0, 2) === "#!") {
+        this.skipLineComment(2);
+      }
+      this.scopeStack = [];
+      this.enterScope(
+        this.options.sourceType === "commonjs" ? SCOPE_FUNCTION : SCOPE_TOP
+      );
+      this.regexpState = null;
+      this.privateNameStack = [];
+    };
+    prototypeAccessors = { inFunction: { configurable: true }, inGenerator: { configurable: true }, inAsync: { configurable: true }, canAwait: { configurable: true }, allowReturn: { configurable: true }, allowSuper: { configurable: true }, allowDirectSuper: { configurable: true }, treatFunctionsAsVar: { configurable: true }, allowNewDotTarget: { configurable: true }, allowUsing: { configurable: true }, inClassStaticBlock: { configurable: true } };
+    Parser.prototype.parse = function parse2() {
+      var this$1$1 = this;
+      var node = this.options.program || this.startNode();
+      this.nextToken();
+      return this.catchStackOverflow(function() {
+        return this$1$1.parseTopLevel(node);
+      });
+    };
+    prototypeAccessors.inFunction.get = function() {
+      return (this.currentVarScope().flags & SCOPE_FUNCTION) > 0;
+    };
+    prototypeAccessors.inGenerator.get = function() {
+      return (this.currentVarScope().flags & SCOPE_GENERATOR) > 0;
+    };
+    prototypeAccessors.inAsync.get = function() {
+      return (this.currentVarScope().flags & SCOPE_ASYNC) > 0;
+    };
+    prototypeAccessors.canAwait.get = function() {
+      for (var i2 = this.scopeStack.length - 1; i2 >= 0; i2--) {
+        var ref2 = this.scopeStack[i2];
+        var flags = ref2.flags;
+        if (flags & (SCOPE_CLASS_STATIC_BLOCK | SCOPE_CLASS_FIELD_INIT)) {
+          return false;
+        }
+        if (flags & SCOPE_FUNCTION) {
+          return (flags & SCOPE_ASYNC) > 0;
+        }
+      }
+      return this.inModule && this.options.ecmaVersion >= 13 || this.options.allowAwaitOutsideFunction;
+    };
+    prototypeAccessors.allowReturn.get = function() {
+      if (this.inFunction) {
+        return true;
+      }
+      if (this.options.allowReturnOutsideFunction && this.currentVarScope().flags & SCOPE_TOP) {
+        return true;
+      }
+      return false;
+    };
+    prototypeAccessors.allowSuper.get = function() {
+      var ref2 = this.currentThisScope();
+      var flags = ref2.flags;
+      return (flags & SCOPE_SUPER) > 0 || this.options.allowSuperOutsideMethod;
+    };
+    prototypeAccessors.allowDirectSuper.get = function() {
+      return (this.currentThisScope().flags & SCOPE_DIRECT_SUPER) > 0;
+    };
+    prototypeAccessors.treatFunctionsAsVar.get = function() {
+      return this.treatFunctionsAsVarInScope(this.currentScope());
+    };
+    prototypeAccessors.allowNewDotTarget.get = function() {
+      for (var i2 = this.scopeStack.length - 1; i2 >= 0; i2--) {
+        var ref2 = this.scopeStack[i2];
+        var flags = ref2.flags;
+        if (flags & (SCOPE_CLASS_STATIC_BLOCK | SCOPE_CLASS_FIELD_INIT) || flags & SCOPE_FUNCTION && !(flags & SCOPE_ARROW)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    prototypeAccessors.allowUsing.get = function() {
+      var ref2 = this.currentScope();
+      var flags = ref2.flags;
+      if (flags & SCOPE_SWITCH) {
+        return false;
+      }
+      if (!this.inModule && flags & SCOPE_TOP) {
+        return false;
+      }
+      return true;
+    };
+    prototypeAccessors.inClassStaticBlock.get = function() {
+      return (this.currentVarScope().flags & SCOPE_CLASS_STATIC_BLOCK) > 0;
+    };
+    Parser.extend = function extend() {
+      var plugins = [], len = arguments.length;
+      while (len--) plugins[len] = arguments[len];
+      var cls = this;
+      for (var i2 = 0; i2 < plugins.length; i2++) {
+        cls = plugins[i2](cls);
+      }
+      return cls;
+    };
+    Parser.parse = function parse3(input, options) {
+      return new this(options, input).parse();
+    };
+    Parser.parseExpressionAt = function parseExpressionAt(input, pos, options) {
+      var parser = new this(options, input, pos);
+      parser.nextToken();
+      return parser.parseExpression();
+    };
+    Parser.tokenizer = function tokenizer(input, options) {
+      return new this(options, input);
+    };
+    Object.defineProperties(Parser.prototype, prototypeAccessors);
+    pp$9 = Parser.prototype;
+    literal = /^(?:'((?:\\[^]|[^'\\])*?)'|"((?:\\[^]|[^"\\])*?)")/;
+    pp$9.strictDirective = function(start) {
+      if (this.options.ecmaVersion < 5) {
+        return false;
+      }
+      for (; ; ) {
+        skipWhiteSpace.lastIndex = start;
+        start += skipWhiteSpace.exec(this.input)[0].length;
+        var match2 = literal.exec(this.input.slice(start));
+        if (!match2) {
+          return false;
+        }
+        if ((match2[1] || match2[2]) === "use strict") {
+          skipWhiteSpace.lastIndex = start + match2[0].length;
+          var spaceAfter = skipWhiteSpace.exec(this.input), end = spaceAfter.index + spaceAfter[0].length;
+          var next = this.input.charAt(end);
+          return next === ";" || next === "}" || lineBreak.test(spaceAfter[0]) && !(/[(`.[+\-/*%<>=,?^&]/.test(next) || next === "!" && this.input.charAt(end + 1) === "=" || next === "i" && keywordOpAt(this, end));
+        }
+        start += match2[0].length;
+        skipWhiteSpace.lastIndex = start;
+        start += skipWhiteSpace.exec(this.input)[0].length;
+        if (this.input[start] === ";") {
+          start++;
+        }
+      }
+    };
+    pp$9.eat = function(type) {
+      if (this.type === type) {
+        this.next();
+        return true;
+      } else {
+        return false;
+      }
+    };
+    pp$9.isContextual = function(name) {
+      return this.type === types$1.name && this.value === name && !this.containsEsc;
+    };
+    pp$9.eatContextual = function(name) {
+      if (!this.isContextual(name)) {
+        return false;
+      }
+      this.next();
+      return true;
+    };
+    pp$9.catchStackOverflow = function(f) {
+      try {
+        return f();
+      } catch (e) {
+        if (e instanceof Error && (/\bstack\b.*\b(exceeded|overflow)\b/i.test(e.message) || /\btoo much recursion\b/i.test(e.message))) {
+          this.raise(this.start, "Not enough stack space to parse input");
+        } else {
+          throw e;
+        }
+      }
+    };
+    pp$9.expectContextual = function(name) {
+      if (!this.eatContextual(name)) {
+        this.unexpected();
+      }
+    };
+    pp$9.canInsertSemicolon = function() {
+      return this.type === types$1.eof || this.type === types$1.braceR || lineBreak.test(this.input.slice(this.lastTokEnd, this.start));
+    };
+    pp$9.insertSemicolon = function() {
+      if (this.canInsertSemicolon()) {
+        if (this.options.onInsertedSemicolon) {
+          this.options.onInsertedSemicolon(this.lastTokEnd, this.lastTokEndLoc);
+        }
+        return true;
+      }
+    };
+    pp$9.semicolon = function() {
+      if (!this.eat(types$1.semi) && !this.insertSemicolon()) {
+        this.unexpected();
+      }
+    };
+    pp$9.afterTrailingComma = function(tokType, notNext) {
+      if (this.type === tokType) {
+        if (this.options.onTrailingComma) {
+          this.options.onTrailingComma(this.lastTokStart, this.lastTokStartLoc);
+        }
+        if (!notNext) {
+          this.next();
+        }
+        return true;
+      }
+    };
+    pp$9.expect = function(type) {
+      this.eat(type) || this.unexpected();
+    };
+    pp$9.unexpected = function(pos) {
+      this.raise(pos != null ? pos : this.start, "Unexpected token");
+    };
+    DestructuringErrors = function DestructuringErrors2() {
+      this.shorthandAssign = this.trailingComma = this.parenthesizedAssign = this.parenthesizedBind = this.doubleProto = -1;
+    };
+    pp$9.checkPatternErrors = function(refDestructuringErrors, isAssign) {
+      if (!refDestructuringErrors) {
+        return;
+      }
+      if (refDestructuringErrors.trailingComma > -1) {
+        this.raiseRecoverable(refDestructuringErrors.trailingComma, "Comma is not permitted after the rest element");
+      }
+      var parens = isAssign ? refDestructuringErrors.parenthesizedAssign : refDestructuringErrors.parenthesizedBind;
+      if (parens > -1) {
+        this.raiseRecoverable(parens, isAssign ? "Assigning to rvalue" : "Parenthesized pattern");
+      }
+    };
+    pp$9.checkExpressionErrors = function(refDestructuringErrors, andThrow) {
+      if (!refDestructuringErrors) {
+        return false;
+      }
+      var shorthandAssign = refDestructuringErrors.shorthandAssign;
+      var doubleProto = refDestructuringErrors.doubleProto;
+      if (!andThrow) {
+        return shorthandAssign >= 0 || doubleProto >= 0;
+      }
+      if (shorthandAssign >= 0) {
+        this.raise(shorthandAssign, "Shorthand property assignments are valid only in destructuring patterns");
+      }
+      if (doubleProto >= 0) {
+        this.raiseRecoverable(doubleProto, "Redefinition of __proto__ property");
+      }
+    };
+    pp$9.checkYieldAwaitInDefaultParams = function() {
+      if (this.yieldPos && (!this.awaitPos || this.yieldPos < this.awaitPos)) {
+        this.raise(this.yieldPos, "Yield expression cannot be a default value");
+      }
+      if (this.awaitPos) {
+        this.raise(this.awaitPos, "Await expression cannot be a default value");
+      }
+    };
+    pp$9.isSimpleAssignTarget = function(expr) {
+      if (expr.type === "ParenthesizedExpression") {
+        return this.isSimpleAssignTarget(expr.expression);
+      }
+      return expr.type === "Identifier" || expr.type === "MemberExpression";
+    };
+    pp$8 = Parser.prototype;
+    pp$8.parseTopLevel = function(node) {
+      var exports$1 = /* @__PURE__ */ Object.create(null);
+      if (!node.body) {
+        node.body = [];
+      }
+      while (this.type !== types$1.eof) {
+        var stmt = this.parseStatement(null, true, exports$1);
+        node.body.push(stmt);
+      }
+      if (this.inModule) {
+        for (var i2 = 0, list2 = Object.keys(this.undefinedExports); i2 < list2.length; i2 += 1) {
+          var name = list2[i2];
+          this.raiseRecoverable(this.undefinedExports[name].start, "Export '" + name + "' is not defined");
+        }
+      }
+      this.adaptDirectivePrologue(node.body);
+      this.next();
+      node.sourceType = this.options.sourceType === "commonjs" ? "script" : this.options.sourceType;
+      return this.finishNode(node, "Program");
+    };
+    loopLabel = { kind: "loop" };
+    switchLabel = { kind: "switch" };
+    pp$8.isLet = function(context) {
+      if (this.options.ecmaVersion < 6 || !this.isContextual("let")) {
+        return false;
+      }
+      skipWhiteSpace.lastIndex = this.pos;
+      var skip = skipWhiteSpace.exec(this.input);
+      var next = this.pos + skip[0].length, nextCh = this.fullCharCodeAt(next);
+      if (nextCh === 91 || nextCh === 92) {
+        return true;
+      }
+      if (context) {
+        return false;
+      }
+      if (nextCh === 123) {
+        return true;
+      }
+      if (isIdentifierStart(nextCh)) {
+        var start = next;
+        do {
+          next += nextCh <= 65535 ? 1 : 2;
+        } while (isIdentifierChar(nextCh = this.fullCharCodeAt(next)));
+        if (nextCh === 92) {
+          return true;
+        }
+        var ident = this.input.slice(start, next);
+        if (!keywordRelationalOperator.test(ident)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    pp$8.isAsyncFunction = function() {
+      if (this.options.ecmaVersion < 8 || !this.isContextual("async")) {
+        return false;
+      }
+      skipWhiteSpace.lastIndex = this.pos;
+      var skip = skipWhiteSpace.exec(this.input);
+      var next = this.pos + skip[0].length, after;
+      return !lineBreak.test(this.input.slice(this.pos, next)) && this.input.slice(next, next + 8) === "function" && (next + 8 === this.input.length || !(isIdentifierChar(after = this.fullCharCodeAt(next + 8)) || after === 92));
+    };
+    pp$8.isUsingKeyword = function(isAwaitUsing, isFor) {
+      if (this.options.ecmaVersion < 17 || !this.isContextual(isAwaitUsing ? "await" : "using")) {
+        return false;
+      }
+      skipWhiteSpace.lastIndex = this.pos;
+      var skip = skipWhiteSpace.exec(this.input);
+      var next = this.pos + skip[0].length;
+      if (lineBreak.test(this.input.slice(this.pos, next))) {
+        return false;
+      }
+      if (isAwaitUsing) {
+        var usingEndPos = next + 5, after;
+        if (this.input.slice(next, usingEndPos) !== "using" || usingEndPos === this.input.length || isIdentifierChar(after = this.fullCharCodeAt(usingEndPos)) || after === 92) {
+          return false;
+        }
+        skipWhiteSpace.lastIndex = usingEndPos;
+        var skipAfterUsing = skipWhiteSpace.exec(this.input);
+        next = usingEndPos + skipAfterUsing[0].length;
+        if (skipAfterUsing && lineBreak.test(this.input.slice(usingEndPos, next))) {
+          return false;
+        }
+      }
+      var ch = this.fullCharCodeAt(next);
+      if (!isIdentifierStart(ch) && ch !== 92) {
+        return false;
+      }
+      var idStart = next;
+      do {
+        next += ch <= 65535 ? 1 : 2;
+      } while (isIdentifierChar(ch = this.fullCharCodeAt(next)));
+      if (ch === 92) {
+        return true;
+      }
+      var id = this.input.slice(idStart, next);
+      if (keywordRelationalOperator.test(id)) {
+        return false;
+      }
+      if (isFor && !isAwaitUsing && id === "of") {
+        skipWhiteSpace.lastIndex = next;
+        var skipAfterOf = skipWhiteSpace.exec(this.input);
+        next = next + skipAfterOf[0].length;
+        if (this.input.charCodeAt(next) !== 61 || // Check for ==, === and => operators
+        (ch = this.input.charCodeAt(next + 1)) === 61 || ch === 62) {
+          return false;
+        }
+      }
+      return true;
+    };
+    pp$8.isAwaitUsing = function(isFor) {
+      return this.isUsingKeyword(true, isFor);
+    };
+    pp$8.isUsing = function(isFor) {
+      return this.isUsingKeyword(false, isFor);
+    };
+    pp$8.parseStatement = function(context, topLevel, exports$1) {
+      var starttype = this.type, node = this.startNode(), kind;
+      if (this.isLet(context)) {
+        starttype = types$1._var;
+        kind = "let";
+      }
+      switch (starttype) {
+        case types$1._break:
+        case types$1._continue:
+          return this.parseBreakContinueStatement(node, starttype.keyword);
+        case types$1._debugger:
+          return this.parseDebuggerStatement(node);
+        case types$1._do:
+          return this.parseDoStatement(node);
+        case types$1._for:
+          return this.parseForStatement(node);
+        case types$1._function:
+          if (context && (this.strict || context !== "if" && context !== "label") && this.options.ecmaVersion >= 6) {
+            this.unexpected();
+          }
+          return this.parseFunctionStatement(node, false, !context);
+        case types$1._class:
+          if (context) {
+            this.unexpected();
+          }
+          return this.parseClass(node, true);
+        case types$1._if:
+          return this.parseIfStatement(node);
+        case types$1._return:
+          return this.parseReturnStatement(node);
+        case types$1._switch:
+          return this.parseSwitchStatement(node);
+        case types$1._throw:
+          return this.parseThrowStatement(node);
+        case types$1._try:
+          return this.parseTryStatement(node);
+        case types$1._const:
+        case types$1._var:
+          kind = kind || this.value;
+          if (context && kind !== "var") {
+            this.unexpected();
+          }
+          return this.parseVarStatement(node, kind);
+        case types$1._while:
+          return this.parseWhileStatement(node);
+        case types$1._with:
+          return this.parseWithStatement(node);
+        case types$1.braceL:
+          return this.parseBlock(true, node);
+        case types$1.semi:
+          return this.parseEmptyStatement(node);
+        case types$1._export:
+        case types$1._import:
+          if (this.options.ecmaVersion > 10 && starttype === types$1._import) {
+            skipWhiteSpace.lastIndex = this.pos;
+            var skip = skipWhiteSpace.exec(this.input);
+            var next = this.pos + skip[0].length, nextCh = this.input.charCodeAt(next);
+            if (nextCh === 40 || nextCh === 46) {
+              return this.parseExpressionStatement(node, this.parseExpression());
+            }
+          }
+          if (!this.options.allowImportExportEverywhere) {
+            if (!topLevel) {
+              this.raise(this.start, "'import' and 'export' may only appear at the top level");
+            }
+            if (!this.inModule) {
+              this.raise(this.start, "'import' and 'export' may appear only with 'sourceType: module'");
+            }
+          }
+          return starttype === types$1._import ? this.parseImport(node) : this.parseExport(node, exports$1);
+        // If the statement does not start with a statement keyword or a
+        // brace, it's an ExpressionStatement or LabeledStatement. We
+        // simply start parsing an expression, and afterwards, if the
+        // next token is a colon and the expression was a simple
+        // Identifier node, we switch to interpreting it as a label.
+        default:
+          if (this.isAsyncFunction()) {
+            if (context) {
+              this.unexpected();
+            }
+            this.next();
+            return this.parseFunctionStatement(node, true, !context);
+          }
+          var usingKind = this.isAwaitUsing(false) ? "await using" : this.isUsing(false) ? "using" : null;
+          if (usingKind) {
+            if (!this.allowUsing) {
+              this.raise(this.start, "Using declaration cannot appear in the top level when source type is `script` or in the bare case statement");
+            }
+            if (context) {
+              this.raise(this.start, "Using declaration is not allowed in single-statement positions");
+            }
+            if (usingKind === "await using") {
+              if (!this.canAwait) {
+                this.raise(this.start, "Await using cannot appear outside of async function");
+              }
+              this.next();
+            }
+            this.next();
+            this.parseVar(node, false, usingKind);
+            this.semicolon();
+            return this.finishNode(node, "VariableDeclaration");
+          }
+          var maybeName = this.value, expr = this.parseExpression();
+          if (starttype === types$1.name && expr.type === "Identifier" && this.eat(types$1.colon)) {
+            return this.parseLabeledStatement(node, maybeName, expr, context);
+          } else {
+            return this.parseExpressionStatement(node, expr);
+          }
+      }
+    };
+    pp$8.parseBreakContinueStatement = function(node, keyword) {
+      var isBreak = keyword === "break";
+      this.next();
+      if (this.eat(types$1.semi) || this.insertSemicolon()) {
+        node.label = null;
+      } else if (this.type !== types$1.name) {
+        this.unexpected();
+      } else {
+        node.label = this.parseIdent();
+        this.semicolon();
+      }
+      var i2 = 0;
+      for (; i2 < this.labels.length; ++i2) {
+        var lab = this.labels[i2];
+        if (node.label == null || lab.name === node.label.name) {
+          if (lab.kind != null && (isBreak || lab.kind === "loop")) {
+            break;
+          }
+          if (node.label && isBreak) {
+            break;
+          }
+        }
+      }
+      if (i2 === this.labels.length) {
+        this.raise(node.start, "Unsyntactic " + keyword);
+      }
+      return this.finishNode(node, isBreak ? "BreakStatement" : "ContinueStatement");
+    };
+    pp$8.parseDebuggerStatement = function(node) {
+      this.next();
+      this.semicolon();
+      return this.finishNode(node, "DebuggerStatement");
+    };
+    pp$8.parseDoStatement = function(node) {
+      this.next();
+      this.labels.push(loopLabel);
+      node.body = this.parseStatement("do");
+      this.labels.pop();
+      this.expect(types$1._while);
+      node.test = this.parseParenExpression();
+      if (this.options.ecmaVersion >= 6) {
+        this.eat(types$1.semi);
+      } else {
+        this.semicolon();
+      }
+      return this.finishNode(node, "DoWhileStatement");
+    };
+    pp$8.parseForStatement = function(node) {
+      this.next();
+      var awaitAt = this.options.ecmaVersion >= 9 && this.canAwait && this.eatContextual("await") ? this.lastTokStart : -1;
+      this.labels.push(loopLabel);
+      this.enterScope(0);
+      this.expect(types$1.parenL);
+      if (this.type === types$1.semi) {
+        if (awaitAt > -1) {
+          this.unexpected(awaitAt);
+        }
+        return this.parseFor(node, null);
+      }
+      var isLet = this.isLet();
+      if (this.type === types$1._var || this.type === types$1._const || isLet) {
+        var init$1 = this.startNode(), kind = isLet ? "let" : this.value;
+        this.next();
+        this.parseVar(init$1, true, kind);
+        this.finishNode(init$1, "VariableDeclaration");
+        return this.parseForAfterInit(node, init$1, awaitAt);
+      }
+      var startsWithLet = this.isContextual("let"), isForOf = false;
+      var usingKind = this.isUsing(true) ? "using" : this.isAwaitUsing(true) ? "await using" : null;
+      if (usingKind) {
+        var init$2 = this.startNode();
+        this.next();
+        if (usingKind === "await using") {
+          if (!this.canAwait) {
+            this.raise(this.start, "Await using cannot appear outside of async function");
+          }
+          this.next();
+        }
+        this.parseVar(init$2, true, usingKind);
+        this.finishNode(init$2, "VariableDeclaration");
+        return this.parseForAfterInit(node, init$2, awaitAt);
+      }
+      var containsEsc = this.containsEsc;
+      var refDestructuringErrors = new DestructuringErrors();
+      var initPos = this.start;
+      var init3 = awaitAt > -1 ? this.parseExprSubscripts(refDestructuringErrors, "await") : this.parseExpression(true, refDestructuringErrors);
+      if (this.type === types$1._in || (isForOf = this.options.ecmaVersion >= 6 && this.isContextual("of"))) {
+        if (awaitAt > -1) {
+          if (this.type === types$1._in) {
+            this.unexpected(awaitAt);
+          }
+          node.await = true;
+        } else if (isForOf && this.options.ecmaVersion >= 8) {
+          if (init3.start === initPos && !containsEsc && init3.type === "Identifier" && init3.name === "async") {
+            this.unexpected();
+          } else if (this.options.ecmaVersion >= 9) {
+            node.await = false;
+          }
+        }
+        if (startsWithLet && isForOf) {
+          this.raise(init3.start, "The left-hand side of a for-of loop may not start with 'let'.");
+        }
+        this.toAssignable(init3, false, refDestructuringErrors);
+        this.checkLValPattern(init3);
+        return this.parseForIn(node, init3);
+      } else {
+        this.checkExpressionErrors(refDestructuringErrors, true);
+      }
+      if (awaitAt > -1) {
+        this.unexpected(awaitAt);
+      }
+      return this.parseFor(node, init3);
+    };
+    pp$8.parseForAfterInit = function(node, init3, awaitAt) {
+      if ((this.type === types$1._in || this.options.ecmaVersion >= 6 && this.isContextual("of")) && init3.declarations.length === 1) {
+        if (this.type === types$1._in) {
+          if ((init3.kind === "using" || init3.kind === "await using") && !init3.declarations[0].init) {
+            this.raise(this.start, "Using declaration is not allowed in for-in loops");
+          }
+          if (this.options.ecmaVersion >= 9 && awaitAt > -1) {
+            this.unexpected(awaitAt);
+          }
+        } else if (this.options.ecmaVersion >= 9) {
+          node.await = awaitAt > -1;
+        }
+        return this.parseForIn(node, init3);
+      }
+      if (awaitAt > -1) {
+        this.unexpected(awaitAt);
+      }
+      return this.parseFor(node, init3);
+    };
+    pp$8.parseFunctionStatement = function(node, isAsync, declarationPosition) {
+      this.next();
+      return this.parseFunction(node, FUNC_STATEMENT | (declarationPosition ? 0 : FUNC_HANGING_STATEMENT), false, isAsync);
+    };
+    pp$8.parseIfStatement = function(node) {
+      this.next();
+      node.test = this.parseParenExpression();
+      node.consequent = this.parseStatement("if");
+      node.alternate = this.eat(types$1._else) ? this.parseStatement("if") : null;
+      return this.finishNode(node, "IfStatement");
+    };
+    pp$8.parseReturnStatement = function(node) {
+      if (!this.allowReturn) {
+        this.raise(this.start, "'return' outside of function");
+      }
+      this.next();
+      if (this.eat(types$1.semi) || this.insertSemicolon()) {
+        node.argument = null;
+      } else {
+        node.argument = this.parseExpression();
+        this.semicolon();
+      }
+      return this.finishNode(node, "ReturnStatement");
+    };
+    pp$8.parseSwitchStatement = function(node) {
+      this.next();
+      node.discriminant = this.parseParenExpression();
+      node.cases = [];
+      this.expect(types$1.braceL);
+      this.labels.push(switchLabel);
+      this.enterScope(SCOPE_SWITCH);
+      var cur;
+      for (var sawDefault = false; this.type !== types$1.braceR; ) {
+        if (this.type === types$1._case || this.type === types$1._default) {
+          var isCase = this.type === types$1._case;
+          if (cur) {
+            this.finishNode(cur, "SwitchCase");
+          }
+          node.cases.push(cur = this.startNode());
+          cur.consequent = [];
+          this.next();
+          if (isCase) {
+            cur.test = this.parseExpression();
+          } else {
+            if (sawDefault) {
+              this.raiseRecoverable(this.lastTokStart, "Multiple default clauses");
+            }
+            sawDefault = true;
+            cur.test = null;
+          }
+          this.expect(types$1.colon);
+        } else {
+          if (!cur) {
+            this.unexpected();
+          }
+          cur.consequent.push(this.parseStatement(null));
+        }
+      }
+      this.exitScope();
+      if (cur) {
+        this.finishNode(cur, "SwitchCase");
+      }
+      this.next();
+      this.labels.pop();
+      return this.finishNode(node, "SwitchStatement");
+    };
+    pp$8.parseThrowStatement = function(node) {
+      this.next();
+      if (lineBreak.test(this.input.slice(this.lastTokEnd, this.start))) {
+        this.raise(this.lastTokEnd, "Illegal newline after throw");
+      }
+      node.argument = this.parseExpression();
+      this.semicolon();
+      return this.finishNode(node, "ThrowStatement");
+    };
+    empty$1 = [];
+    pp$8.parseCatchClauseParam = function() {
+      var param = this.parseBindingAtom();
+      var simple = param.type === "Identifier";
+      this.enterScope(simple ? SCOPE_SIMPLE_CATCH : 0);
+      this.checkLValPattern(param, simple ? BIND_SIMPLE_CATCH : BIND_LEXICAL);
+      this.expect(types$1.parenR);
+      return param;
+    };
+    pp$8.parseTryStatement = function(node) {
+      this.next();
+      node.block = this.parseBlock();
+      node.handler = null;
+      if (this.type === types$1._catch) {
+        var clause = this.startNode();
+        this.next();
+        if (this.eat(types$1.parenL)) {
+          clause.param = this.parseCatchClauseParam();
+        } else {
+          if (this.options.ecmaVersion < 10) {
+            this.unexpected();
+          }
+          clause.param = null;
+          this.enterScope(0);
+        }
+        clause.body = this.parseBlock(false);
+        this.exitScope();
+        node.handler = this.finishNode(clause, "CatchClause");
+      }
+      node.finalizer = this.eat(types$1._finally) ? this.parseBlock() : null;
+      if (!node.handler && !node.finalizer) {
+        this.raise(node.start, "Missing catch or finally clause");
+      }
+      return this.finishNode(node, "TryStatement");
+    };
+    pp$8.parseVarStatement = function(node, kind, allowMissingInitializer) {
+      this.next();
+      this.parseVar(node, false, kind, allowMissingInitializer);
+      this.semicolon();
+      return this.finishNode(node, "VariableDeclaration");
+    };
+    pp$8.parseWhileStatement = function(node) {
+      this.next();
+      node.test = this.parseParenExpression();
+      this.labels.push(loopLabel);
+      node.body = this.parseStatement("while");
+      this.labels.pop();
+      return this.finishNode(node, "WhileStatement");
+    };
+    pp$8.parseWithStatement = function(node) {
+      if (this.strict) {
+        this.raise(this.start, "'with' in strict mode");
+      }
+      this.next();
+      node.object = this.parseParenExpression();
+      node.body = this.parseStatement("with");
+      return this.finishNode(node, "WithStatement");
+    };
+    pp$8.parseEmptyStatement = function(node) {
+      this.next();
+      return this.finishNode(node, "EmptyStatement");
+    };
+    pp$8.parseLabeledStatement = function(node, maybeName, expr, context) {
+      for (var i$1 = 0, list2 = this.labels; i$1 < list2.length; i$1 += 1) {
+        var label2 = list2[i$1];
+        if (label2.name === maybeName) {
+          this.raise(expr.start, "Label '" + maybeName + "' is already declared");
+        }
+      }
+      var kind = this.type.isLoop ? "loop" : this.type === types$1._switch ? "switch" : null;
+      for (var i2 = this.labels.length - 1; i2 >= 0; i2--) {
+        var label$1 = this.labels[i2];
+        if (label$1.statementStart === node.start) {
+          label$1.statementStart = this.start;
+          label$1.kind = kind;
+        } else {
+          break;
+        }
+      }
+      this.labels.push({ name: maybeName, kind, statementStart: this.start });
+      node.body = this.parseStatement(context ? context.indexOf("label") === -1 ? context + "label" : context : "label");
+      this.labels.pop();
+      node.label = expr;
+      return this.finishNode(node, "LabeledStatement");
+    };
+    pp$8.parseExpressionStatement = function(node, expr) {
+      node.expression = expr;
+      this.semicolon();
+      return this.finishNode(node, "ExpressionStatement");
+    };
+    pp$8.parseBlock = function(createNewLexicalScope, node, exitStrict) {
+      if (createNewLexicalScope === void 0) createNewLexicalScope = true;
+      if (node === void 0) node = this.startNode();
+      node.body = [];
+      this.expect(types$1.braceL);
+      if (createNewLexicalScope) {
+        this.enterScope(0);
+      }
+      while (this.type !== types$1.braceR) {
+        var stmt = this.parseStatement(null);
+        node.body.push(stmt);
+      }
+      if (exitStrict) {
+        this.strict = false;
+      }
+      this.next();
+      if (createNewLexicalScope) {
+        this.exitScope();
+      }
+      return this.finishNode(node, "BlockStatement");
+    };
+    pp$8.parseFor = function(node, init3) {
+      node.init = init3;
+      this.expect(types$1.semi);
+      node.test = this.type === types$1.semi ? null : this.parseExpression();
+      this.expect(types$1.semi);
+      node.update = this.type === types$1.parenR ? null : this.parseExpression();
+      this.expect(types$1.parenR);
+      node.body = this.parseStatement("for");
+      this.exitScope();
+      this.labels.pop();
+      return this.finishNode(node, "ForStatement");
+    };
+    pp$8.parseForIn = function(node, init3) {
+      var isForIn = this.type === types$1._in;
+      this.next();
+      if (init3.type === "VariableDeclaration" && init3.declarations[0].init != null && (!isForIn || this.options.ecmaVersion < 8 || this.strict || init3.kind !== "var" || init3.declarations[0].id.type !== "Identifier")) {
+        this.raise(
+          init3.start,
+          (isForIn ? "for-in" : "for-of") + " loop variable declaration may not have an initializer"
+        );
+      }
+      node.left = init3;
+      node.right = isForIn ? this.parseExpression() : this.parseMaybeAssign();
+      this.expect(types$1.parenR);
+      node.body = this.parseStatement("for");
+      this.exitScope();
+      this.labels.pop();
+      return this.finishNode(node, isForIn ? "ForInStatement" : "ForOfStatement");
+    };
+    pp$8.parseVar = function(node, isFor, kind, allowMissingInitializer) {
+      node.declarations = [];
+      node.kind = kind;
+      for (; ; ) {
+        var decl = this.startNode();
+        this.parseVarId(decl, kind);
+        if (this.eat(types$1.eq)) {
+          decl.init = this.parseMaybeAssign(isFor);
+        } else if (!allowMissingInitializer && kind === "const" && !(this.type === types$1._in || this.options.ecmaVersion >= 6 && this.isContextual("of"))) {
+          this.unexpected();
+        } else if (!allowMissingInitializer && (kind === "using" || kind === "await using") && this.options.ecmaVersion >= 17 && this.type !== types$1._in && !this.isContextual("of")) {
+          this.raise(this.lastTokEnd, "Missing initializer in " + kind + " declaration");
+        } else if (!allowMissingInitializer && decl.id.type !== "Identifier" && !(isFor && (this.type === types$1._in || this.isContextual("of")))) {
+          this.raise(this.lastTokEnd, "Complex binding patterns require an initialization value");
+        } else {
+          decl.init = null;
+        }
+        node.declarations.push(this.finishNode(decl, "VariableDeclarator"));
+        if (!this.eat(types$1.comma)) {
+          break;
+        }
+      }
+      return node;
+    };
+    pp$8.parseVarId = function(decl, kind) {
+      decl.id = kind === "using" || kind === "await using" ? this.parseIdent() : this.parseBindingAtom();
+      this.checkLValPattern(decl.id, kind === "var" ? BIND_VAR : BIND_LEXICAL, false);
+    };
+    FUNC_STATEMENT = 1;
+    FUNC_HANGING_STATEMENT = 2;
+    FUNC_NULLABLE_ID = 4;
+    pp$8.parseFunction = function(node, statement, allowExpressionBody, isAsync, forInit) {
+      this.initFunction(node);
+      if (this.options.ecmaVersion >= 9 || this.options.ecmaVersion >= 6 && !isAsync) {
+        if (this.type === types$1.star && statement & FUNC_HANGING_STATEMENT) {
+          this.unexpected();
+        }
+        node.generator = this.eat(types$1.star);
+      }
+      if (this.options.ecmaVersion >= 8) {
+        node.async = !!isAsync;
+      }
+      if (statement & FUNC_STATEMENT) {
+        node.id = statement & FUNC_NULLABLE_ID && this.type !== types$1.name ? null : this.parseIdent();
+        if (node.id && !(statement & FUNC_HANGING_STATEMENT)) {
+          this.checkLValSimple(node.id, this.strict || node.generator || node.async ? this.treatFunctionsAsVar ? BIND_VAR : BIND_LEXICAL : BIND_FUNCTION);
+        }
+      }
+      var oldYieldPos = this.yieldPos, oldAwaitPos = this.awaitPos, oldAwaitIdentPos = this.awaitIdentPos;
+      this.yieldPos = 0;
+      this.awaitPos = 0;
+      this.awaitIdentPos = 0;
+      this.enterScope(functionFlags(node.async, node.generator));
+      if (!(statement & FUNC_STATEMENT)) {
+        node.id = this.type === types$1.name ? this.parseIdent() : null;
+      }
+      this.parseFunctionParams(node);
+      this.parseFunctionBody(node, allowExpressionBody, false, forInit);
+      this.yieldPos = oldYieldPos;
+      this.awaitPos = oldAwaitPos;
+      this.awaitIdentPos = oldAwaitIdentPos;
+      return this.finishNode(node, statement & FUNC_STATEMENT ? "FunctionDeclaration" : "FunctionExpression");
+    };
+    pp$8.parseFunctionParams = function(node) {
+      this.expect(types$1.parenL);
+      node.params = this.parseBindingList(types$1.parenR, false, this.options.ecmaVersion >= 8);
+      this.checkYieldAwaitInDefaultParams();
+    };
+    pp$8.parseClass = function(node, isStatement) {
+      this.next();
+      var oldStrict = this.strict;
+      this.strict = true;
+      this.parseClassId(node, isStatement);
+      this.parseClassSuper(node);
+      var privateNameMap = this.enterClassBody();
+      var classBody = this.startNode();
+      var hadConstructor = false;
+      classBody.body = [];
+      this.expect(types$1.braceL);
+      while (this.type !== types$1.braceR) {
+        var element = this.parseClassElement(node.superClass !== null);
+        if (element) {
+          classBody.body.push(element);
+          if (element.type === "MethodDefinition" && element.kind === "constructor") {
+            if (hadConstructor) {
+              this.raiseRecoverable(element.start, "Duplicate constructor in the same class");
+            }
+            hadConstructor = true;
+          } else if (element.key && element.key.type === "PrivateIdentifier" && isPrivateNameConflicted(privateNameMap, element)) {
+            this.raiseRecoverable(element.key.start, "Identifier '#" + element.key.name + "' has already been declared");
+          }
+        }
+      }
+      this.strict = oldStrict;
+      this.next();
+      node.body = this.finishNode(classBody, "ClassBody");
+      this.exitClassBody();
+      return this.finishNode(node, isStatement ? "ClassDeclaration" : "ClassExpression");
+    };
+    pp$8.parseClassElement = function(constructorAllowsSuper) {
+      if (this.eat(types$1.semi)) {
+        return null;
+      }
+      var ecmaVersion2 = this.options.ecmaVersion;
+      var node = this.startNode();
+      var keyName = "";
+      var isGenerator = false;
+      var isAsync = false;
+      var kind = "method";
+      var isStatic = false;
+      if (this.eatContextual("static")) {
+        if (ecmaVersion2 >= 13 && this.eat(types$1.braceL)) {
+          this.parseClassStaticBlock(node);
+          return node;
+        }
+        if (this.isClassElementNameStart() || this.type === types$1.star) {
+          isStatic = true;
+        } else {
+          keyName = "static";
+        }
+      }
+      node.static = isStatic;
+      if (!keyName && ecmaVersion2 >= 8 && this.eatContextual("async")) {
+        if ((this.isClassElementNameStart() || this.type === types$1.star) && !this.canInsertSemicolon()) {
+          isAsync = true;
+        } else {
+          keyName = "async";
+        }
+      }
+      if (!keyName && (ecmaVersion2 >= 9 || !isAsync) && this.eat(types$1.star)) {
+        isGenerator = true;
+      }
+      if (!keyName && !isAsync && !isGenerator) {
+        var lastValue = this.value;
+        if (this.eatContextual("get") || this.eatContextual("set")) {
+          if (this.isClassElementNameStart()) {
+            kind = lastValue;
+          } else {
+            keyName = lastValue;
+          }
+        }
+      }
+      if (keyName) {
+        node.computed = false;
+        node.key = this.startNodeAt(this.lastTokStart, this.lastTokStartLoc);
+        node.key.name = keyName;
+        this.finishNode(node.key, "Identifier");
+      } else {
+        this.parseClassElementName(node);
+      }
+      if (ecmaVersion2 < 13 || this.type === types$1.parenL || kind !== "method" || isGenerator || isAsync) {
+        var isConstructor = !node.static && checkKeyName(node, "constructor");
+        var allowsDirectSuper = isConstructor && constructorAllowsSuper;
+        if (isConstructor && kind !== "method") {
+          this.raise(node.key.start, "Constructor can't have get/set modifier");
+        }
+        node.kind = isConstructor ? "constructor" : kind;
+        this.parseClassMethod(node, isGenerator, isAsync, allowsDirectSuper);
+      } else {
+        this.parseClassField(node);
+      }
+      return node;
+    };
+    pp$8.isClassElementNameStart = function() {
+      return this.type === types$1.name || this.type === types$1.privateId || this.type === types$1.num || this.type === types$1.string || this.type === types$1.bracketL || this.type.keyword;
+    };
+    pp$8.parseClassElementName = function(element) {
+      if (this.type === types$1.privateId) {
+        if (this.value === "constructor") {
+          this.raise(this.start, "Classes can't have an element named '#constructor'");
+        }
+        element.computed = false;
+        element.key = this.parsePrivateIdent();
+      } else {
+        this.parsePropertyName(element);
+      }
+    };
+    pp$8.parseClassMethod = function(method, isGenerator, isAsync, allowsDirectSuper) {
+      var key = method.key;
+      if (method.kind === "constructor") {
+        if (isGenerator) {
+          this.raise(key.start, "Constructor can't be a generator");
+        }
+        if (isAsync) {
+          this.raise(key.start, "Constructor can't be an async method");
+        }
+      } else if (method.static && checkKeyName(method, "prototype")) {
+        this.raise(key.start, "Classes may not have a static property named prototype");
+      }
+      var value = method.value = this.parseMethod(isGenerator, isAsync, allowsDirectSuper);
+      if (method.kind === "get" && value.params.length !== 0) {
+        this.raiseRecoverable(value.start, "getter should have no params");
+      }
+      if (method.kind === "set" && value.params.length !== 1) {
+        this.raiseRecoverable(value.start, "setter should have exactly one param");
+      }
+      if (method.kind === "set" && value.params[0].type === "RestElement") {
+        this.raiseRecoverable(value.params[0].start, "Setter cannot use rest params");
+      }
+      return this.finishNode(method, "MethodDefinition");
+    };
+    pp$8.parseClassField = function(field) {
+      if (checkKeyName(field, "constructor")) {
+        this.raise(field.key.start, "Classes can't have a field named 'constructor'");
+      } else if (field.static && checkKeyName(field, "prototype")) {
+        this.raise(field.key.start, "Classes can't have a static field named 'prototype'");
+      }
+      if (this.eat(types$1.eq)) {
+        this.enterScope(SCOPE_CLASS_FIELD_INIT | SCOPE_SUPER);
+        field.value = this.parseMaybeAssign();
+        this.exitScope();
+      } else {
+        field.value = null;
+      }
+      this.semicolon();
+      return this.finishNode(field, "PropertyDefinition");
+    };
+    pp$8.parseClassStaticBlock = function(node) {
+      node.body = [];
+      var oldLabels = this.labels;
+      this.labels = [];
+      this.enterScope(SCOPE_CLASS_STATIC_BLOCK | SCOPE_SUPER);
+      while (this.type !== types$1.braceR) {
+        var stmt = this.parseStatement(null);
+        node.body.push(stmt);
+      }
+      this.next();
+      this.exitScope();
+      this.labels = oldLabels;
+      return this.finishNode(node, "StaticBlock");
+    };
+    pp$8.parseClassId = function(node, isStatement) {
+      if (this.type === types$1.name) {
+        node.id = this.parseIdent();
+        if (isStatement) {
+          this.checkLValSimple(node.id, BIND_LEXICAL, false);
+        }
+      } else {
+        if (isStatement === true) {
+          this.unexpected();
+        }
+        node.id = null;
+      }
+    };
+    pp$8.parseClassSuper = function(node) {
+      node.superClass = this.eat(types$1._extends) ? this.parseExprSubscripts(null, false) : null;
+    };
+    pp$8.enterClassBody = function() {
+      var element = { declared: /* @__PURE__ */ Object.create(null), used: [] };
+      this.privateNameStack.push(element);
+      return element.declared;
+    };
+    pp$8.exitClassBody = function() {
+      var ref2 = this.privateNameStack.pop();
+      var declared = ref2.declared;
+      var used = ref2.used;
+      if (!this.options.checkPrivateFields) {
+        return;
+      }
+      var len = this.privateNameStack.length;
+      var parent2 = len === 0 ? null : this.privateNameStack[len - 1];
+      for (var i2 = 0; i2 < used.length; ++i2) {
+        var id = used[i2];
+        if (!hasOwn(declared, id.name)) {
+          if (parent2) {
+            parent2.used.push(id);
+          } else {
+            this.raiseRecoverable(id.start, "Private field '#" + id.name + "' must be declared in an enclosing class");
+          }
+        }
+      }
+    };
+    pp$8.parseExportAllDeclaration = function(node, exports$1) {
+      if (this.options.ecmaVersion >= 11) {
+        if (this.eatContextual("as")) {
+          node.exported = this.parseModuleExportName();
+          this.checkExport(exports$1, node.exported, this.lastTokStart);
+        } else {
+          node.exported = null;
+        }
+      }
+      this.expectContextual("from");
+      if (this.type !== types$1.string) {
+        this.unexpected();
+      }
+      node.source = this.parseExprAtom();
+      if (this.options.ecmaVersion >= 16) {
+        node.attributes = this.parseWithClause();
+      }
+      this.semicolon();
+      return this.finishNode(node, "ExportAllDeclaration");
+    };
+    pp$8.parseExport = function(node, exports$1) {
+      this.next();
+      if (this.eat(types$1.star)) {
+        return this.parseExportAllDeclaration(node, exports$1);
+      }
+      if (this.eat(types$1._default)) {
+        this.checkExport(exports$1, "default", this.lastTokStart);
+        node.declaration = this.parseExportDefaultDeclaration();
+        return this.finishNode(node, "ExportDefaultDeclaration");
+      }
+      if (this.shouldParseExportStatement()) {
+        node.declaration = this.parseExportDeclaration(node);
+        if (node.declaration.type === "VariableDeclaration") {
+          this.checkVariableExport(exports$1, node.declaration.declarations);
+        } else {
+          this.checkExport(exports$1, node.declaration.id, node.declaration.id.start);
+        }
+        node.specifiers = [];
+        node.source = null;
+        if (this.options.ecmaVersion >= 16) {
+          node.attributes = [];
+        }
+      } else {
+        node.declaration = null;
+        node.specifiers = this.parseExportSpecifiers(exports$1);
+        if (this.eatContextual("from")) {
+          if (this.type !== types$1.string) {
+            this.unexpected();
+          }
+          node.source = this.parseExprAtom();
+          if (this.options.ecmaVersion >= 16) {
+            node.attributes = this.parseWithClause();
+          }
+        } else {
+          for (var i2 = 0, list2 = node.specifiers; i2 < list2.length; i2 += 1) {
+            var spec = list2[i2];
+            this.checkUnreserved(spec.local);
+            this.checkLocalExport(spec.local);
+            if (spec.local.type === "Literal") {
+              this.raise(spec.local.start, "A string literal cannot be used as an exported binding without `from`.");
+            }
+          }
+          node.source = null;
+          if (this.options.ecmaVersion >= 16) {
+            node.attributes = [];
+          }
+        }
+        this.semicolon();
+      }
+      return this.finishNode(node, "ExportNamedDeclaration");
+    };
+    pp$8.parseExportDeclaration = function(node) {
+      return this.parseStatement(null);
+    };
+    pp$8.parseExportDefaultDeclaration = function() {
+      var isAsync;
+      if (this.type === types$1._function || (isAsync = this.isAsyncFunction())) {
+        var fNode = this.startNode();
+        this.next();
+        if (isAsync) {
+          this.next();
+        }
+        return this.parseFunction(fNode, FUNC_STATEMENT | FUNC_NULLABLE_ID, false, isAsync);
+      } else if (this.type === types$1._class) {
+        var cNode = this.startNode();
+        return this.parseClass(cNode, "nullableID");
+      } else {
+        var declaration = this.parseMaybeAssign();
+        this.semicolon();
+        return declaration;
+      }
+    };
+    pp$8.checkExport = function(exports$1, name, pos) {
+      if (!exports$1) {
+        return;
+      }
+      if (typeof name !== "string") {
+        name = name.type === "Identifier" ? name.name : name.value;
+      }
+      if (hasOwn(exports$1, name)) {
+        this.raiseRecoverable(pos, "Duplicate export '" + name + "'");
+      }
+      exports$1[name] = true;
+    };
+    pp$8.checkPatternExport = function(exports$1, pat) {
+      var type = pat.type;
+      if (type === "Identifier") {
+        this.checkExport(exports$1, pat, pat.start);
+      } else if (type === "ObjectPattern") {
+        for (var i2 = 0, list2 = pat.properties; i2 < list2.length; i2 += 1) {
+          var prop = list2[i2];
+          this.checkPatternExport(exports$1, prop);
+        }
+      } else if (type === "ArrayPattern") {
+        for (var i$1 = 0, list$1 = pat.elements; i$1 < list$1.length; i$1 += 1) {
+          var elt = list$1[i$1];
+          if (elt) {
+            this.checkPatternExport(exports$1, elt);
+          }
+        }
+      } else if (type === "Property") {
+        this.checkPatternExport(exports$1, pat.value);
+      } else if (type === "AssignmentPattern") {
+        this.checkPatternExport(exports$1, pat.left);
+      } else if (type === "RestElement") {
+        this.checkPatternExport(exports$1, pat.argument);
+      }
+    };
+    pp$8.checkVariableExport = function(exports$1, decls) {
+      if (!exports$1) {
+        return;
+      }
+      for (var i2 = 0, list2 = decls; i2 < list2.length; i2 += 1) {
+        var decl = list2[i2];
+        this.checkPatternExport(exports$1, decl.id);
+      }
+    };
+    pp$8.shouldParseExportStatement = function() {
+      return this.type.keyword === "var" || this.type.keyword === "const" || this.type.keyword === "class" || this.type.keyword === "function" || this.isLet() || this.isAsyncFunction();
+    };
+    pp$8.parseExportSpecifier = function(exports$1) {
+      var node = this.startNode();
+      node.local = this.parseModuleExportName();
+      node.exported = this.eatContextual("as") ? this.parseModuleExportName() : node.local;
+      this.checkExport(
+        exports$1,
+        node.exported,
+        node.exported.start
+      );
+      return this.finishNode(node, "ExportSpecifier");
+    };
+    pp$8.parseExportSpecifiers = function(exports$1) {
+      var nodes = [], first = true;
+      this.expect(types$1.braceL);
+      while (!this.eat(types$1.braceR)) {
+        if (!first) {
+          this.expect(types$1.comma);
+          if (this.afterTrailingComma(types$1.braceR)) {
+            break;
+          }
+        } else {
+          first = false;
+        }
+        nodes.push(this.parseExportSpecifier(exports$1));
+      }
+      return nodes;
+    };
+    pp$8.parseImport = function(node) {
+      this.next();
+      if (this.type === types$1.string) {
+        node.specifiers = empty$1;
+        node.source = this.parseExprAtom();
+      } else {
+        node.specifiers = this.parseImportSpecifiers();
+        this.expectContextual("from");
+        node.source = this.type === types$1.string ? this.parseExprAtom() : this.unexpected();
+      }
+      if (this.options.ecmaVersion >= 16) {
+        node.attributes = this.parseWithClause();
+      }
+      this.semicolon();
+      return this.finishNode(node, "ImportDeclaration");
+    };
+    pp$8.parseImportSpecifier = function() {
+      var node = this.startNode();
+      node.imported = this.parseModuleExportName();
+      if (this.eatContextual("as")) {
+        node.local = this.parseIdent();
+      } else {
+        this.checkUnreserved(node.imported);
+        node.local = node.imported;
+      }
+      this.checkLValSimple(node.local, BIND_LEXICAL);
+      return this.finishNode(node, "ImportSpecifier");
+    };
+    pp$8.parseImportDefaultSpecifier = function() {
+      var node = this.startNode();
+      node.local = this.parseIdent();
+      this.checkLValSimple(node.local, BIND_LEXICAL);
+      return this.finishNode(node, "ImportDefaultSpecifier");
+    };
+    pp$8.parseImportNamespaceSpecifier = function() {
+      var node = this.startNode();
+      this.next();
+      this.expectContextual("as");
+      node.local = this.parseIdent();
+      this.checkLValSimple(node.local, BIND_LEXICAL);
+      return this.finishNode(node, "ImportNamespaceSpecifier");
+    };
+    pp$8.parseImportSpecifiers = function() {
+      var nodes = [], first = true;
+      if (this.type === types$1.name) {
+        nodes.push(this.parseImportDefaultSpecifier());
+        if (!this.eat(types$1.comma)) {
+          return nodes;
+        }
+      }
+      if (this.type === types$1.star) {
+        nodes.push(this.parseImportNamespaceSpecifier());
+        return nodes;
+      }
+      this.expect(types$1.braceL);
+      while (!this.eat(types$1.braceR)) {
+        if (!first) {
+          this.expect(types$1.comma);
+          if (this.afterTrailingComma(types$1.braceR)) {
+            break;
+          }
+        } else {
+          first = false;
+        }
+        nodes.push(this.parseImportSpecifier());
+      }
+      return nodes;
+    };
+    pp$8.parseWithClause = function() {
+      var nodes = [];
+      if (!this.eat(types$1._with)) {
+        return nodes;
+      }
+      this.expect(types$1.braceL);
+      var attributeKeys = {};
+      var first = true;
+      while (!this.eat(types$1.braceR)) {
+        if (!first) {
+          this.expect(types$1.comma);
+          if (this.afterTrailingComma(types$1.braceR)) {
+            break;
+          }
+        } else {
+          first = false;
+        }
+        var attr = this.parseImportAttribute();
+        var keyName = attr.key.type === "Identifier" ? attr.key.name : attr.key.value;
+        if (hasOwn(attributeKeys, keyName)) {
+          this.raiseRecoverable(attr.key.start, "Duplicate attribute key '" + keyName + "'");
+        }
+        attributeKeys[keyName] = true;
+        nodes.push(attr);
+      }
+      return nodes;
+    };
+    pp$8.parseImportAttribute = function() {
+      var node = this.startNode();
+      node.key = this.type === types$1.string ? this.parseExprAtom() : this.parseIdent(this.options.allowReserved !== "never");
+      this.expect(types$1.colon);
+      if (this.type !== types$1.string) {
+        this.unexpected();
+      }
+      node.value = this.parseExprAtom();
+      return this.finishNode(node, "ImportAttribute");
+    };
+    pp$8.parseModuleExportName = function() {
+      if (this.options.ecmaVersion >= 13 && this.type === types$1.string) {
+        var stringLiteral = this.parseLiteral(this.value);
+        if (loneSurrogate.test(stringLiteral.value)) {
+          this.raise(stringLiteral.start, "An export name cannot include a lone surrogate.");
+        }
+        return stringLiteral;
+      }
+      return this.parseIdent(true);
+    };
+    pp$8.adaptDirectivePrologue = function(statements) {
+      for (var i2 = 0; i2 < statements.length && this.isDirectiveCandidate(statements[i2]); ++i2) {
+        statements[i2].directive = statements[i2].expression.raw.slice(1, -1);
+      }
+    };
+    pp$8.isDirectiveCandidate = function(statement) {
+      return this.options.ecmaVersion >= 5 && statement.type === "ExpressionStatement" && statement.expression.type === "Literal" && typeof statement.expression.value === "string" && // Reject parenthesized strings.
+      (this.input[statement.start] === '"' || this.input[statement.start] === "'");
+    };
+    pp$7 = Parser.prototype;
+    pp$7.toAssignable = function(node, isBinding, refDestructuringErrors) {
+      if (this.options.ecmaVersion >= 6 && node) {
+        switch (node.type) {
+          case "Identifier":
+            if (this.inAsync && node.name === "await") {
+              this.raise(node.start, "Cannot use 'await' as identifier inside an async function");
+            }
+            break;
+          case "ObjectPattern":
+          case "ArrayPattern":
+          case "AssignmentPattern":
+          case "RestElement":
+            break;
+          case "ObjectExpression":
+            node.type = "ObjectPattern";
+            if (refDestructuringErrors) {
+              this.checkPatternErrors(refDestructuringErrors, true);
+            }
+            for (var i2 = 0, list2 = node.properties; i2 < list2.length; i2 += 1) {
+              var prop = list2[i2];
+              this.toAssignable(prop, isBinding);
+              if (prop.type === "RestElement" && (prop.argument.type === "ArrayPattern" || prop.argument.type === "ObjectPattern")) {
+                this.raise(prop.argument.start, "Unexpected token");
+              }
+            }
+            break;
+          case "Property":
+            if (node.kind !== "init") {
+              this.raise(node.key.start, "Object pattern can't contain getter or setter");
+            }
+            this.toAssignable(node.value, isBinding);
+            break;
+          case "ArrayExpression":
+            node.type = "ArrayPattern";
+            if (refDestructuringErrors) {
+              this.checkPatternErrors(refDestructuringErrors, true);
+            }
+            this.toAssignableList(node.elements, isBinding);
+            break;
+          case "SpreadElement":
+            node.type = "RestElement";
+            this.toAssignable(node.argument, isBinding);
+            if (node.argument.type === "AssignmentPattern") {
+              this.raise(node.argument.start, "Rest elements cannot have a default value");
+            }
+            break;
+          case "AssignmentExpression":
+            if (node.operator !== "=") {
+              this.raise(node.left.end, "Only '=' operator can be used for specifying default value.");
+            }
+            node.type = "AssignmentPattern";
+            delete node.operator;
+            this.toAssignable(node.left, isBinding);
+            break;
+          case "ParenthesizedExpression":
+            this.toAssignable(node.expression, isBinding, refDestructuringErrors);
+            break;
+          case "ChainExpression":
+            this.raiseRecoverable(node.start, "Optional chaining cannot appear in left-hand side");
+            break;
+          case "MemberExpression":
+            if (!isBinding) {
+              break;
+            }
+          default:
+            this.raise(node.start, "Assigning to rvalue");
+        }
+      } else if (refDestructuringErrors) {
+        this.checkPatternErrors(refDestructuringErrors, true);
+      }
+      return node;
+    };
+    pp$7.toAssignableList = function(exprList, isBinding) {
+      var end = exprList.length;
+      for (var i2 = 0; i2 < end; i2++) {
+        var elt = exprList[i2];
+        if (elt) {
+          this.toAssignable(elt, isBinding);
+        }
+      }
+      if (end) {
+        var last = exprList[end - 1];
+        if (this.options.ecmaVersion === 6 && isBinding && last && last.type === "RestElement" && last.argument.type !== "Identifier") {
+          this.unexpected(last.argument.start);
+        }
+      }
+      return exprList;
+    };
+    pp$7.parseSpread = function(refDestructuringErrors) {
+      var node = this.startNode();
+      this.next();
+      node.argument = this.parseMaybeAssign(false, refDestructuringErrors);
+      return this.finishNode(node, "SpreadElement");
+    };
+    pp$7.parseRestBinding = function() {
+      var node = this.startNode();
+      this.next();
+      if (this.options.ecmaVersion === 6 && this.type !== types$1.name) {
+        this.unexpected();
+      }
+      node.argument = this.parseBindingAtom();
+      return this.finishNode(node, "RestElement");
+    };
+    pp$7.parseBindingAtom = function() {
+      if (this.options.ecmaVersion >= 6) {
+        switch (this.type) {
+          case types$1.bracketL:
+            var node = this.startNode();
+            this.next();
+            node.elements = this.parseBindingList(types$1.bracketR, true, true);
+            return this.finishNode(node, "ArrayPattern");
+          case types$1.braceL:
+            return this.parseObj(true);
+        }
+      }
+      return this.parseIdent();
+    };
+    pp$7.parseBindingList = function(close, allowEmpty, allowTrailingComma, allowModifiers) {
+      var elts = [], first = true;
+      while (!this.eat(close)) {
+        if (first) {
+          first = false;
+        } else {
+          this.expect(types$1.comma);
+        }
+        if (allowEmpty && this.type === types$1.comma) {
+          elts.push(null);
+        } else if (allowTrailingComma && this.afterTrailingComma(close)) {
+          break;
+        } else if (this.type === types$1.ellipsis) {
+          var rest = this.parseRestBinding();
+          this.parseBindingListItem(rest);
+          elts.push(rest);
+          if (this.type === types$1.comma) {
+            this.raiseRecoverable(this.start, "Comma is not permitted after the rest element");
+          }
+          this.expect(close);
+          break;
+        } else {
+          elts.push(this.parseAssignableListItem(allowModifiers));
+        }
+      }
+      return elts;
+    };
+    pp$7.parseAssignableListItem = function(allowModifiers) {
+      var elem = this.parseMaybeDefault(this.start, this.startLoc);
+      this.parseBindingListItem(elem);
+      return elem;
+    };
+    pp$7.parseBindingListItem = function(param) {
+      return param;
+    };
+    pp$7.parseMaybeDefault = function(startPos, startLoc, left) {
+      left = left || this.parseBindingAtom();
+      if (this.options.ecmaVersion < 6 || !this.eat(types$1.eq)) {
+        return left;
+      }
+      var node = this.startNodeAt(startPos, startLoc);
+      node.left = left;
+      node.right = this.parseMaybeAssign();
+      return this.finishNode(node, "AssignmentPattern");
+    };
+    pp$7.checkLValSimple = function(expr, bindingType, checkClashes) {
+      if (bindingType === void 0) bindingType = BIND_NONE;
+      var isBind = bindingType !== BIND_NONE;
+      switch (expr.type) {
+        case "Identifier":
+          if (this.strict && this.reservedWordsStrictBind.test(expr.name)) {
+            this.raiseRecoverable(expr.start, (isBind ? "Binding " : "Assigning to ") + expr.name + " in strict mode");
+          }
+          if (isBind) {
+            if (bindingType === BIND_LEXICAL && expr.name === "let") {
+              this.raiseRecoverable(expr.start, "let is disallowed as a lexically bound name");
+            }
+            if (checkClashes) {
+              if (hasOwn(checkClashes, expr.name)) {
+                this.raiseRecoverable(expr.start, "Argument name clash");
+              }
+              checkClashes[expr.name] = true;
+            }
+            if (bindingType !== BIND_OUTSIDE) {
+              this.declareName(expr.name, bindingType, expr.start);
+            }
+          }
+          break;
+        case "ChainExpression":
+          this.raiseRecoverable(expr.start, "Optional chaining cannot appear in left-hand side");
+          break;
+        case "MemberExpression":
+          if (isBind) {
+            this.raiseRecoverable(expr.start, "Binding member expression");
+          }
+          break;
+        case "ParenthesizedExpression":
+          if (isBind) {
+            this.raiseRecoverable(expr.start, "Binding parenthesized expression");
+          }
+          return this.checkLValSimple(expr.expression, bindingType, checkClashes);
+        default:
+          this.raise(expr.start, (isBind ? "Binding" : "Assigning to") + " rvalue");
+      }
+    };
+    pp$7.checkLValPattern = function(expr, bindingType, checkClashes) {
+      if (bindingType === void 0) bindingType = BIND_NONE;
+      switch (expr.type) {
+        case "ObjectPattern":
+          for (var i2 = 0, list2 = expr.properties; i2 < list2.length; i2 += 1) {
+            var prop = list2[i2];
+            this.checkLValInnerPattern(prop, bindingType, checkClashes);
+          }
+          break;
+        case "ArrayPattern":
+          for (var i$1 = 0, list$1 = expr.elements; i$1 < list$1.length; i$1 += 1) {
+            var elem = list$1[i$1];
+            if (elem) {
+              this.checkLValInnerPattern(elem, bindingType, checkClashes);
+            }
+          }
+          break;
+        default:
+          this.checkLValSimple(expr, bindingType, checkClashes);
+      }
+    };
+    pp$7.checkLValInnerPattern = function(expr, bindingType, checkClashes) {
+      if (bindingType === void 0) bindingType = BIND_NONE;
+      switch (expr.type) {
+        case "Property":
+          this.checkLValInnerPattern(expr.value, bindingType, checkClashes);
+          break;
+        case "AssignmentPattern":
+          this.checkLValPattern(expr.left, bindingType, checkClashes);
+          break;
+        case "RestElement":
+          this.checkLValPattern(expr.argument, bindingType, checkClashes);
+          break;
+        default:
+          this.checkLValPattern(expr, bindingType, checkClashes);
+      }
+    };
+    TokContext = function TokContext2(token, isExpr, preserveSpace, override, generator) {
+      this.token = token;
+      this.isExpr = !!isExpr;
+      this.preserveSpace = !!preserveSpace;
+      this.override = override;
+      this.generator = !!generator;
+    };
+    types = {
+      b_stat: new TokContext("{", false),
+      b_expr: new TokContext("{", true),
+      b_tmpl: new TokContext("${", false),
+      p_stat: new TokContext("(", false),
+      p_expr: new TokContext("(", true),
+      q_tmpl: new TokContext("`", true, true, function(p) {
+        return p.tryReadTemplateToken();
+      }),
+      f_stat: new TokContext("function", false),
+      f_expr: new TokContext("function", true),
+      f_expr_gen: new TokContext("function", true, false, null, true),
+      f_gen: new TokContext("function", false, false, null, true)
+    };
+    pp$6 = Parser.prototype;
+    pp$6.initialContext = function() {
+      return [types.b_stat];
+    };
+    pp$6.curContext = function() {
+      return this.context[this.context.length - 1];
+    };
+    pp$6.braceIsBlock = function(prevType) {
+      var parent2 = this.curContext();
+      if (parent2 === types.f_expr || parent2 === types.f_stat) {
+        return true;
+      }
+      if (prevType === types$1.colon && (parent2 === types.b_stat || parent2 === types.b_expr)) {
+        return !parent2.isExpr;
+      }
+      if (prevType === types$1._return || prevType === types$1.name && this.exprAllowed) {
+        return lineBreak.test(this.input.slice(this.lastTokEnd, this.start));
+      }
+      if (prevType === types$1._else || prevType === types$1.semi || prevType === types$1.eof || prevType === types$1.parenR || prevType === types$1.arrow) {
+        return true;
+      }
+      if (prevType === types$1.braceL) {
+        return parent2 === types.b_stat;
+      }
+      if (prevType === types$1._var || prevType === types$1._const || prevType === types$1.name) {
+        return false;
+      }
+      return !this.exprAllowed;
+    };
+    pp$6.inGeneratorContext = function() {
+      for (var i2 = this.context.length - 1; i2 >= 1; i2--) {
+        var context = this.context[i2];
+        if (context.token === "function") {
+          return context.generator;
+        }
+      }
+      return false;
+    };
+    pp$6.updateContext = function(prevType) {
+      var update, type = this.type;
+      if (type.keyword && prevType === types$1.dot) {
+        this.exprAllowed = false;
+      } else if (update = type.updateContext) {
+        update.call(this, prevType);
+      } else {
+        this.exprAllowed = type.beforeExpr;
+      }
+    };
+    pp$6.overrideContext = function(tokenCtx) {
+      if (this.curContext() !== tokenCtx) {
+        this.context[this.context.length - 1] = tokenCtx;
+      }
+    };
+    types$1.parenR.updateContext = types$1.braceR.updateContext = function() {
+      if (this.context.length === 1) {
+        this.exprAllowed = true;
+        return;
+      }
+      var out = this.context.pop();
+      if (out === types.b_stat && this.curContext().token === "function") {
+        out = this.context.pop();
+      }
+      this.exprAllowed = !out.isExpr;
+    };
+    types$1.braceL.updateContext = function(prevType) {
+      this.context.push(this.braceIsBlock(prevType) ? types.b_stat : types.b_expr);
+      this.exprAllowed = true;
+    };
+    types$1.dollarBraceL.updateContext = function() {
+      this.context.push(types.b_tmpl);
+      this.exprAllowed = true;
+    };
+    types$1.parenL.updateContext = function(prevType) {
+      var statementParens = prevType === types$1._if || prevType === types$1._for || prevType === types$1._with || prevType === types$1._while;
+      this.context.push(statementParens ? types.p_stat : types.p_expr);
+      this.exprAllowed = true;
+    };
+    types$1.incDec.updateContext = function() {
+    };
+    types$1._function.updateContext = types$1._class.updateContext = function(prevType) {
+      if (prevType.beforeExpr && prevType !== types$1._else && !(prevType === types$1.semi && this.curContext() !== types.p_stat) && !(prevType === types$1._return && lineBreak.test(this.input.slice(this.lastTokEnd, this.start))) && !((prevType === types$1.colon || prevType === types$1.braceL) && this.curContext() === types.b_stat)) {
+        this.context.push(types.f_expr);
+      } else {
+        this.context.push(types.f_stat);
+      }
+      this.exprAllowed = false;
+    };
+    types$1.colon.updateContext = function() {
+      if (this.curContext().token === "function") {
+        this.context.pop();
+      }
+      this.exprAllowed = true;
+    };
+    types$1.backQuote.updateContext = function() {
+      if (this.curContext() === types.q_tmpl) {
+        this.context.pop();
+      } else {
+        this.context.push(types.q_tmpl);
+      }
+      this.exprAllowed = false;
+    };
+    types$1.star.updateContext = function(prevType) {
+      if (prevType === types$1._function) {
+        var index = this.context.length - 1;
+        if (this.context[index] === types.f_expr) {
+          this.context[index] = types.f_expr_gen;
+        } else {
+          this.context[index] = types.f_gen;
+        }
+      }
+      this.exprAllowed = true;
+    };
+    types$1.name.updateContext = function(prevType) {
+      var allowed = false;
+      if (this.options.ecmaVersion >= 6 && prevType !== types$1.dot) {
+        if (this.value === "of" && !this.exprAllowed || this.value === "yield" && this.inGeneratorContext()) {
+          allowed = true;
+        }
+      }
+      this.exprAllowed = allowed;
+    };
+    pp$5 = Parser.prototype;
+    pp$5.checkPropClash = function(prop, propHash, refDestructuringErrors) {
+      if (this.options.ecmaVersion >= 9 && prop.type === "SpreadElement") {
+        return;
+      }
+      if (this.options.ecmaVersion >= 6 && (prop.computed || prop.method || prop.shorthand)) {
+        return;
+      }
+      var key = prop.key;
+      var name;
+      switch (key.type) {
+        case "Identifier":
+          name = key.name;
+          break;
+        case "Literal":
+          name = String(key.value);
+          break;
+        default:
+          return;
+      }
+      var kind = prop.kind;
+      if (this.options.ecmaVersion >= 6) {
+        if (name === "__proto__" && kind === "init") {
+          if (propHash.proto) {
+            if (refDestructuringErrors) {
+              if (refDestructuringErrors.doubleProto < 0) {
+                refDestructuringErrors.doubleProto = key.start;
+              }
+            } else {
+              this.raiseRecoverable(key.start, "Redefinition of __proto__ property");
+            }
+          }
+          propHash.proto = true;
+        }
+        return;
+      }
+      name = "$" + name;
+      var other = propHash[name];
+      if (other) {
+        var redefinition;
+        if (kind === "init") {
+          redefinition = this.strict && other.init || other.get || other.set;
+        } else {
+          redefinition = other.init || other[kind];
+        }
+        if (redefinition) {
+          this.raiseRecoverable(key.start, "Redefinition of property");
+        }
+      } else {
+        other = propHash[name] = {
+          init: false,
+          get: false,
+          set: false
+        };
+      }
+      other[kind] = true;
+    };
+    pp$5.parseExpression = function(forInit, refDestructuringErrors) {
+      var this$1$1 = this;
+      return this.catchStackOverflow(function() {
+        var startPos = this$1$1.start, startLoc = this$1$1.startLoc;
+        var expr = this$1$1.parseMaybeAssign(forInit, refDestructuringErrors);
+        if (this$1$1.type === types$1.comma) {
+          var node = this$1$1.startNodeAt(startPos, startLoc);
+          node.expressions = [expr];
+          while (this$1$1.eat(types$1.comma)) {
+            node.expressions.push(this$1$1.parseMaybeAssign(forInit, refDestructuringErrors));
+          }
+          return this$1$1.finishNode(node, "SequenceExpression");
+        }
+        return expr;
+      });
+    };
+    pp$5.parseMaybeAssign = function(forInit, refDestructuringErrors, afterLeftParse) {
+      if (this.isContextual("yield")) {
+        if (this.inGenerator) {
+          return this.parseYield(forInit);
+        } else {
+          this.exprAllowed = false;
+        }
+      }
+      var ownDestructuringErrors = false, oldParenAssign = -1, oldTrailingComma = -1, oldDoubleProto = -1;
+      if (refDestructuringErrors) {
+        oldParenAssign = refDestructuringErrors.parenthesizedAssign;
+        oldTrailingComma = refDestructuringErrors.trailingComma;
+        oldDoubleProto = refDestructuringErrors.doubleProto;
+        refDestructuringErrors.parenthesizedAssign = refDestructuringErrors.trailingComma = -1;
+      } else {
+        refDestructuringErrors = new DestructuringErrors();
+        ownDestructuringErrors = true;
+      }
+      var startPos = this.start, startLoc = this.startLoc;
+      if (this.type === types$1.parenL || this.type === types$1.name) {
+        this.potentialArrowAt = this.start;
+        this.potentialArrowInForAwait = forInit === "await";
+      }
+      var left = this.parseMaybeConditional(forInit, refDestructuringErrors);
+      if (afterLeftParse) {
+        left = afterLeftParse.call(this, left, startPos, startLoc);
+      }
+      if (this.type.isAssign) {
+        var node = this.startNodeAt(startPos, startLoc);
+        node.operator = this.value;
+        if (this.type === types$1.eq) {
+          left = this.toAssignable(left, false, refDestructuringErrors);
+        }
+        if (!ownDestructuringErrors) {
+          refDestructuringErrors.parenthesizedAssign = refDestructuringErrors.trailingComma = -1;
+          if (refDestructuringErrors.shorthandAssign >= left.start) {
+            refDestructuringErrors.shorthandAssign = -1;
+          }
+          if (refDestructuringErrors.doubleProto >= left.start) {
+            refDestructuringErrors.doubleProto = -1;
+          }
+        }
+        if (this.type === types$1.eq) {
+          this.checkLValPattern(left);
+        } else {
+          this.checkLValSimple(left);
+        }
+        node.left = left;
+        this.next();
+        node.right = this.parseMaybeAssign(forInit);
+        if (oldDoubleProto > -1) {
+          refDestructuringErrors.doubleProto = oldDoubleProto;
+        }
+        return this.finishNode(node, "AssignmentExpression");
+      } else {
+        if (ownDestructuringErrors) {
+          this.checkExpressionErrors(refDestructuringErrors, true);
+        }
+      }
+      if (oldParenAssign > -1) {
+        refDestructuringErrors.parenthesizedAssign = oldParenAssign;
+      }
+      if (oldTrailingComma > -1) {
+        refDestructuringErrors.trailingComma = oldTrailingComma;
+      }
+      return left;
+    };
+    pp$5.parseMaybeConditional = function(forInit, refDestructuringErrors) {
+      var startPos = this.start, startLoc = this.startLoc;
+      var expr = this.parseExprOps(forInit, refDestructuringErrors);
+      if (this.checkExpressionErrors(refDestructuringErrors)) {
+        return expr;
+      }
+      if (!(expr.type === "ArrowFunctionExpression" && expr.start === startPos) && this.eat(types$1.question)) {
+        var node = this.startNodeAt(startPos, startLoc);
+        node.test = expr;
+        node.consequent = this.parseMaybeAssign();
+        this.expect(types$1.colon);
+        node.alternate = this.parseMaybeAssign(forInit);
+        return this.finishNode(node, "ConditionalExpression");
+      }
+      return expr;
+    };
+    pp$5.parseExprOps = function(forInit, refDestructuringErrors) {
+      var startPos = this.start, startLoc = this.startLoc;
+      var expr = this.parseMaybeUnary(refDestructuringErrors, false, false, forInit);
+      if (this.checkExpressionErrors(refDestructuringErrors)) {
+        return expr;
+      }
+      return expr.start === startPos && expr.type === "ArrowFunctionExpression" ? expr : this.parseExprOp(expr, startPos, startLoc, -1, forInit);
+    };
+    pp$5.parseExprOp = function(left, leftStartPos, leftStartLoc, minPrec, forInit) {
+      var prec = this.type.binop;
+      if (prec != null && (!forInit || this.type !== types$1._in)) {
+        if (prec > minPrec) {
+          var logical = this.type === types$1.logicalOR || this.type === types$1.logicalAND;
+          var coalesce = this.type === types$1.coalesce;
+          if (coalesce) {
+            prec = types$1.logicalAND.binop;
+          }
+          var op = this.value;
+          this.next();
+          var startPos = this.start, startLoc = this.startLoc;
+          var right = this.parseExprOp(this.parseMaybeUnary(null, false, false, forInit), startPos, startLoc, prec, forInit);
+          var node = this.buildBinary(leftStartPos, leftStartLoc, left, right, op, logical || coalesce);
+          if (logical && this.type === types$1.coalesce || coalesce && (this.type === types$1.logicalOR || this.type === types$1.logicalAND)) {
+            this.raiseRecoverable(this.start, "Logical expressions and coalesce expressions cannot be mixed. Wrap either by parentheses");
+          }
+          return this.parseExprOp(node, leftStartPos, leftStartLoc, minPrec, forInit);
+        }
+      }
+      return left;
+    };
+    pp$5.buildBinary = function(startPos, startLoc, left, right, op, logical) {
+      if (right.type === "PrivateIdentifier") {
+        this.raise(right.start, "Private identifier can only be left side of binary expression");
+      }
+      var node = this.startNodeAt(startPos, startLoc);
+      node.left = left;
+      node.operator = op;
+      node.right = right;
+      return this.finishNode(node, logical ? "LogicalExpression" : "BinaryExpression");
+    };
+    pp$5.parseMaybeUnary = function(refDestructuringErrors, sawUnary, incDec, forInit) {
+      var startPos = this.start, startLoc = this.startLoc, expr;
+      if (this.isContextual("await") && this.canAwait) {
+        expr = this.parseAwait(forInit);
+        sawUnary = true;
+      } else if (this.type.prefix) {
+        var node = this.startNode(), update = this.type === types$1.incDec;
+        node.operator = this.value;
+        node.prefix = true;
+        this.next();
+        node.argument = this.parseMaybeUnary(null, true, update, forInit);
+        this.checkExpressionErrors(refDestructuringErrors, true);
+        if (update) {
+          this.checkLValSimple(node.argument);
+        } else if (this.strict && node.operator === "delete" && isLocalVariableAccess(node.argument)) {
+          this.raiseRecoverable(node.start, "Deleting local variable in strict mode");
+        } else if (node.operator === "delete" && isPrivateFieldAccess(node.argument)) {
+          this.raiseRecoverable(node.start, "Private fields can not be deleted");
+        } else {
+          sawUnary = true;
+        }
+        expr = this.finishNode(node, update ? "UpdateExpression" : "UnaryExpression");
+      } else if (!sawUnary && this.type === types$1.privateId) {
+        if ((forInit || this.privateNameStack.length === 0) && this.options.checkPrivateFields) {
+          this.unexpected();
+        }
+        expr = this.parsePrivateIdent();
+        if (this.type !== types$1._in) {
+          this.unexpected();
+        }
+      } else {
+        expr = this.parseExprSubscripts(refDestructuringErrors, forInit);
+        if (this.checkExpressionErrors(refDestructuringErrors)) {
+          return expr;
+        }
+        while (this.type.postfix && !this.canInsertSemicolon()) {
+          var node$1 = this.startNodeAt(startPos, startLoc);
+          node$1.operator = this.value;
+          node$1.prefix = false;
+          node$1.argument = expr;
+          this.checkLValSimple(expr);
+          this.next();
+          expr = this.finishNode(node$1, "UpdateExpression");
+        }
+      }
+      if (!incDec && !(expr.type === "ArrowFunctionExpression" && expr.start === startPos) && this.eat(types$1.starstar)) {
+        if (sawUnary) {
+          this.unexpected(this.lastTokStart);
+        } else {
+          return this.buildBinary(startPos, startLoc, expr, this.parseMaybeUnary(null, false, false, forInit), "**", false);
+        }
+      } else {
+        return expr;
+      }
+    };
+    pp$5.parseExprSubscripts = function(refDestructuringErrors, forInit) {
+      var startPos = this.start, startLoc = this.startLoc;
+      var oldDoubleProto = -1, oldShorthandAssign = -1;
+      if (refDestructuringErrors) {
+        oldDoubleProto = refDestructuringErrors.doubleProto;
+        oldShorthandAssign = refDestructuringErrors.shorthandAssign;
+        refDestructuringErrors.doubleProto = refDestructuringErrors.shorthandAssign = -1;
+      }
+      var expr = this.parseExprAtom(refDestructuringErrors, forInit);
+      if (expr.type === "ArrowFunctionExpression" && this.input.slice(this.lastTokStart, this.lastTokEnd) !== ")") {
+        return expr;
+      }
+      var result = this.parseSubscripts(expr, startPos, startLoc, false, forInit);
+      if (refDestructuringErrors) {
+        if (result.end > expr.end) {
+          this.checkExpressionErrors(refDestructuringErrors, true);
+          if (refDestructuringErrors.parenthesizedAssign >= result.start) {
+            refDestructuringErrors.parenthesizedAssign = -1;
+          }
+          if (refDestructuringErrors.parenthesizedBind >= result.start) {
+            refDestructuringErrors.parenthesizedBind = -1;
+          }
+          if (refDestructuringErrors.trailingComma >= result.start) {
+            refDestructuringErrors.trailingComma = -1;
+          }
+        }
+        if (oldDoubleProto > -1) {
+          refDestructuringErrors.doubleProto = oldDoubleProto;
+        }
+        if (oldShorthandAssign > -1) {
+          refDestructuringErrors.shorthandAssign = oldShorthandAssign;
+        }
+      }
+      return result;
+    };
+    pp$5.parseSubscripts = function(base, startPos, startLoc, noCalls, forInit) {
+      var maybeAsyncArrow = this.options.ecmaVersion >= 8 && base.type === "Identifier" && base.name === "async" && this.lastTokEnd === base.end && !this.canInsertSemicolon() && base.end - base.start === 5 && this.potentialArrowAt === base.start;
+      var optionalChained = false;
+      while (true) {
+        var element = this.parseSubscript(base, startPos, startLoc, noCalls, maybeAsyncArrow, optionalChained, forInit);
+        if (element.optional) {
+          optionalChained = true;
+        }
+        if (element.end === base.end || element.type === "ArrowFunctionExpression") {
+          if (optionalChained) {
+            var chainNode = this.startNodeAt(startPos, startLoc);
+            chainNode.expression = element;
+            element = this.finishNode(chainNode, "ChainExpression");
+          }
+          return element;
+        }
+        base = element;
+        maybeAsyncArrow = false;
+      }
+    };
+    pp$5.shouldParseAsyncArrow = function() {
+      return !this.canInsertSemicolon() && this.eat(types$1.arrow);
+    };
+    pp$5.parseSubscriptAsyncArrow = function(startPos, startLoc, exprList, forInit) {
+      return this.parseArrowExpression(this.startNodeAt(startPos, startLoc), exprList, true, forInit);
+    };
+    pp$5.parseSubscript = function(base, startPos, startLoc, noCalls, maybeAsyncArrow, optionalChained, forInit) {
+      var optionalSupported = this.options.ecmaVersion >= 11;
+      var optional = optionalSupported && this.eat(types$1.questionDot);
+      if (noCalls && optional) {
+        this.raise(this.lastTokStart, "Optional chaining cannot appear in the callee of new expressions");
+      }
+      var computed = this.eat(types$1.bracketL);
+      if (computed || optional && this.type !== types$1.parenL && this.type !== types$1.backQuote || this.eat(types$1.dot)) {
+        var node = this.startNodeAt(startPos, startLoc);
+        node.object = base;
+        if (computed) {
+          node.property = this.parseExpression();
+          this.expect(types$1.bracketR);
+        } else if (this.type === types$1.privateId && base.type !== "Super") {
+          node.property = this.parsePrivateIdent();
+        } else {
+          node.property = this.parseIdent(this.options.allowReserved !== "never");
+        }
+        node.computed = !!computed;
+        if (optionalSupported) {
+          node.optional = optional;
+        }
+        base = this.finishNode(node, "MemberExpression");
+      } else if (!noCalls && this.eat(types$1.parenL)) {
+        var refDestructuringErrors = new DestructuringErrors(), oldYieldPos = this.yieldPos, oldAwaitPos = this.awaitPos, oldAwaitIdentPos = this.awaitIdentPos;
+        this.yieldPos = 0;
+        this.awaitPos = 0;
+        this.awaitIdentPos = 0;
+        var exprList = this.parseExprList(types$1.parenR, this.options.ecmaVersion >= 8, false, refDestructuringErrors);
+        if (maybeAsyncArrow && !optional && this.shouldParseAsyncArrow()) {
+          this.checkPatternErrors(refDestructuringErrors, false);
+          this.checkYieldAwaitInDefaultParams();
+          if (this.awaitIdentPos > 0) {
+            this.raise(this.awaitIdentPos, "Cannot use 'await' as identifier inside an async function");
+          }
+          this.yieldPos = oldYieldPos;
+          this.awaitPos = oldAwaitPos;
+          this.awaitIdentPos = oldAwaitIdentPos;
+          return this.parseSubscriptAsyncArrow(startPos, startLoc, exprList, forInit);
+        }
+        this.checkExpressionErrors(refDestructuringErrors, true);
+        this.yieldPos = oldYieldPos || this.yieldPos;
+        this.awaitPos = oldAwaitPos || this.awaitPos;
+        this.awaitIdentPos = oldAwaitIdentPos || this.awaitIdentPos;
+        var node$1 = this.startNodeAt(startPos, startLoc);
+        node$1.callee = base;
+        node$1.arguments = exprList;
+        if (optionalSupported) {
+          node$1.optional = optional;
+        }
+        base = this.finishNode(node$1, "CallExpression");
+      } else if (this.type === types$1.backQuote) {
+        if (optional || optionalChained) {
+          this.raise(this.start, "Optional chaining cannot appear in the tag of tagged template expressions");
+        }
+        var node$2 = this.startNodeAt(startPos, startLoc);
+        node$2.tag = base;
+        node$2.quasi = this.parseTemplate({ isTagged: true });
+        base = this.finishNode(node$2, "TaggedTemplateExpression");
+      }
+      return base;
+    };
+    pp$5.parseExprAtom = function(refDestructuringErrors, forInit, forNew) {
+      if (this.type === types$1.slash) {
+        this.readRegexp();
+      }
+      var node, canBeArrow = this.potentialArrowAt === this.start;
+      switch (this.type) {
+        case types$1._super:
+          if (!this.allowSuper) {
+            this.raise(this.start, "'super' keyword outside a method");
+          }
+          node = this.startNode();
+          this.next();
+          if (this.type === types$1.parenL && !this.allowDirectSuper) {
+            this.raise(node.start, "super() call outside constructor of a subclass");
+          }
+          if (this.type !== types$1.dot && this.type !== types$1.bracketL && this.type !== types$1.parenL) {
+            this.unexpected();
+          }
+          return this.finishNode(node, "Super");
+        case types$1._this:
+          node = this.startNode();
+          this.next();
+          return this.finishNode(node, "ThisExpression");
+        case types$1.name:
+          var startPos = this.start, startLoc = this.startLoc, containsEsc = this.containsEsc;
+          var id = this.parseIdent(false);
+          if (this.options.ecmaVersion >= 8 && !containsEsc && id.name === "async" && !this.canInsertSemicolon() && this.eat(types$1._function)) {
+            this.overrideContext(types.f_expr);
+            return this.parseFunction(this.startNodeAt(startPos, startLoc), 0, false, true, forInit);
+          }
+          if (canBeArrow && !this.canInsertSemicolon()) {
+            if (this.eat(types$1.arrow)) {
+              return this.parseArrowExpression(this.startNodeAt(startPos, startLoc), [id], false, forInit);
+            }
+            if (this.options.ecmaVersion >= 8 && id.name === "async" && this.type === types$1.name && !containsEsc && (!this.potentialArrowInForAwait || this.value !== "of" || this.containsEsc)) {
+              id = this.parseIdent(false);
+              if (this.canInsertSemicolon() || !this.eat(types$1.arrow)) {
+                this.unexpected();
+              }
+              return this.parseArrowExpression(this.startNodeAt(startPos, startLoc), [id], true, forInit);
+            }
+          }
+          return id;
+        case types$1.regexp:
+          var value = this.value;
+          node = this.parseLiteral(value.value);
+          node.regex = { pattern: value.pattern, flags: value.flags };
+          return node;
+        case types$1.num:
+        case types$1.string:
+          return this.parseLiteral(this.value);
+        case types$1._null:
+        case types$1._true:
+        case types$1._false:
+          node = this.startNode();
+          node.value = this.type === types$1._null ? null : this.type === types$1._true;
+          node.raw = this.type.keyword;
+          this.next();
+          return this.finishNode(node, "Literal");
+        case types$1.parenL:
+          var start = this.start, expr = this.parseParenAndDistinguishExpression(canBeArrow, forInit);
+          if (refDestructuringErrors) {
+            if (refDestructuringErrors.parenthesizedAssign < 0 && !this.isSimpleAssignTarget(expr)) {
+              refDestructuringErrors.parenthesizedAssign = start;
+            }
+            if (refDestructuringErrors.parenthesizedBind < 0) {
+              refDestructuringErrors.parenthesizedBind = start;
+            }
+          }
+          return expr;
+        case types$1.bracketL:
+          node = this.startNode();
+          this.next();
+          node.elements = this.parseExprList(types$1.bracketR, true, true, refDestructuringErrors);
+          return this.finishNode(node, "ArrayExpression");
+        case types$1.braceL:
+          this.overrideContext(types.b_expr);
+          return this.parseObj(false, refDestructuringErrors);
+        case types$1._function:
+          node = this.startNode();
+          this.next();
+          return this.parseFunction(node, 0);
+        case types$1._class:
+          return this.parseClass(this.startNode(), false);
+        case types$1._new:
+          return this.parseNew();
+        case types$1.backQuote:
+          return this.parseTemplate();
+        case types$1._import:
+          if (this.options.ecmaVersion >= 11) {
+            return this.parseExprImport(forNew);
+          } else {
+            return this.unexpected();
+          }
+        default:
+          return this.parseExprAtomDefault();
+      }
+    };
+    pp$5.parseExprAtomDefault = function() {
+      this.unexpected();
+    };
+    pp$5.parseExprImport = function(forNew) {
+      var node = this.startNode();
+      if (this.containsEsc) {
+        this.raiseRecoverable(this.start, "Escape sequence in keyword import");
+      }
+      this.next();
+      if (this.type === types$1.parenL && !forNew) {
+        return this.parseDynamicImport(node);
+      } else if (this.type === types$1.dot) {
+        var meta = this.startNodeAt(node.start, node.loc && node.loc.start);
+        meta.name = "import";
+        node.meta = this.finishNode(meta, "Identifier");
+        return this.parseImportMeta(node);
+      } else {
+        this.unexpected();
+      }
+    };
+    pp$5.parseDynamicImport = function(node) {
+      this.next();
+      node.source = this.parseMaybeAssign();
+      if (this.options.ecmaVersion >= 16) {
+        if (!this.eat(types$1.parenR)) {
+          this.expect(types$1.comma);
+          if (!this.afterTrailingComma(types$1.parenR)) {
+            node.options = this.parseMaybeAssign();
+            if (!this.eat(types$1.parenR)) {
+              this.expect(types$1.comma);
+              if (!this.afterTrailingComma(types$1.parenR)) {
+                this.unexpected();
+              }
+            }
+          } else {
+            node.options = null;
+          }
+        } else {
+          node.options = null;
+        }
+      } else {
+        if (!this.eat(types$1.parenR)) {
+          var errorPos = this.start;
+          if (this.eat(types$1.comma) && this.eat(types$1.parenR)) {
+            this.raiseRecoverable(errorPos, "Trailing comma is not allowed in import()");
+          } else {
+            this.unexpected(errorPos);
+          }
+        }
+      }
+      return this.finishNode(node, "ImportExpression");
+    };
+    pp$5.parseImportMeta = function(node) {
+      this.next();
+      var containsEsc = this.containsEsc;
+      node.property = this.parseIdent(true);
+      if (node.property.name !== "meta") {
+        this.raiseRecoverable(node.property.start, "The only valid meta property for import is 'import.meta'");
+      }
+      if (containsEsc) {
+        this.raiseRecoverable(node.start, "'import.meta' must not contain escaped characters");
+      }
+      if (this.options.sourceType !== "module" && !this.options.allowImportExportEverywhere) {
+        this.raiseRecoverable(node.start, "Cannot use 'import.meta' outside a module");
+      }
+      return this.finishNode(node, "MetaProperty");
+    };
+    pp$5.parseLiteral = function(value) {
+      var node = this.startNode();
+      node.value = value;
+      node.raw = this.input.slice(this.start, this.end);
+      if (node.raw.charCodeAt(node.raw.length - 1) === 110) {
+        node.bigint = node.value != null ? node.value.toString() : node.raw.slice(0, -1).replace(/_/g, "");
+      }
+      this.next();
+      return this.finishNode(node, "Literal");
+    };
+    pp$5.parseParenExpression = function() {
+      this.expect(types$1.parenL);
+      var val = this.parseExpression();
+      this.expect(types$1.parenR);
+      return val;
+    };
+    pp$5.shouldParseArrow = function(exprList) {
+      return !this.canInsertSemicolon();
+    };
+    pp$5.parseParenAndDistinguishExpression = function(canBeArrow, forInit) {
+      var startPos = this.start, startLoc = this.startLoc, val, allowTrailingComma = this.options.ecmaVersion >= 8;
+      if (this.options.ecmaVersion >= 6) {
+        this.next();
+        var innerStartPos = this.start, innerStartLoc = this.startLoc;
+        var exprList = [], first = true, lastIsComma = false;
+        var refDestructuringErrors = new DestructuringErrors(), oldYieldPos = this.yieldPos, oldAwaitPos = this.awaitPos, spreadStart;
+        this.yieldPos = 0;
+        this.awaitPos = 0;
+        while (this.type !== types$1.parenR) {
+          first ? first = false : this.expect(types$1.comma);
+          if (allowTrailingComma && this.afterTrailingComma(types$1.parenR, true)) {
+            lastIsComma = true;
+            break;
+          } else if (this.type === types$1.ellipsis) {
+            spreadStart = this.start;
+            exprList.push(this.parseParenItem(this.parseRestBinding()));
+            if (this.type === types$1.comma) {
+              this.raiseRecoverable(
+                this.start,
+                "Comma is not permitted after the rest element"
+              );
+            }
+            break;
+          } else {
+            exprList.push(this.parseMaybeAssign(false, refDestructuringErrors, this.parseParenItem));
+          }
+        }
+        var innerEndPos = this.lastTokEnd, innerEndLoc = this.lastTokEndLoc;
+        this.expect(types$1.parenR);
+        if (canBeArrow && this.shouldParseArrow(exprList) && this.eat(types$1.arrow)) {
+          this.checkPatternErrors(refDestructuringErrors, false);
+          this.checkYieldAwaitInDefaultParams();
+          this.yieldPos = oldYieldPos;
+          this.awaitPos = oldAwaitPos;
+          return this.parseParenArrowList(startPos, startLoc, exprList, forInit);
+        }
+        if (!exprList.length || lastIsComma) {
+          this.unexpected(this.lastTokStart);
+        }
+        if (spreadStart) {
+          this.unexpected(spreadStart);
+        }
+        this.checkExpressionErrors(refDestructuringErrors, true);
+        this.yieldPos = oldYieldPos || this.yieldPos;
+        this.awaitPos = oldAwaitPos || this.awaitPos;
+        if (exprList.length > 1) {
+          val = this.startNodeAt(innerStartPos, innerStartLoc);
+          val.expressions = exprList;
+          this.finishNodeAt(val, "SequenceExpression", innerEndPos, innerEndLoc);
+        } else {
+          val = exprList[0];
+        }
+      } else {
+        val = this.parseParenExpression();
+      }
+      if (this.options.preserveParens) {
+        var par = this.startNodeAt(startPos, startLoc);
+        par.expression = val;
+        return this.finishNode(par, "ParenthesizedExpression");
+      } else {
+        return val;
+      }
+    };
+    pp$5.parseParenItem = function(item) {
+      return item;
+    };
+    pp$5.parseParenArrowList = function(startPos, startLoc, exprList, forInit) {
+      return this.parseArrowExpression(this.startNodeAt(startPos, startLoc), exprList, false, forInit);
+    };
+    empty = [];
+    pp$5.parseNew = function() {
+      if (this.containsEsc) {
+        this.raiseRecoverable(this.start, "Escape sequence in keyword new");
+      }
+      var node = this.startNode();
+      this.next();
+      if (this.options.ecmaVersion >= 6 && this.type === types$1.dot) {
+        var meta = this.startNodeAt(node.start, node.loc && node.loc.start);
+        meta.name = "new";
+        node.meta = this.finishNode(meta, "Identifier");
+        this.next();
+        var containsEsc = this.containsEsc;
+        node.property = this.parseIdent(true);
+        if (node.property.name !== "target") {
+          this.raiseRecoverable(node.property.start, "The only valid meta property for new is 'new.target'");
+        }
+        if (containsEsc) {
+          this.raiseRecoverable(node.start, "'new.target' must not contain escaped characters");
+        }
+        if (!this.allowNewDotTarget) {
+          this.raiseRecoverable(node.start, "'new.target' can only be used in functions and class static block");
+        }
+        return this.finishNode(node, "MetaProperty");
+      }
+      var startPos = this.start, startLoc = this.startLoc;
+      node.callee = this.parseSubscripts(this.parseExprAtom(null, false, true), startPos, startLoc, true, false);
+      if (node.callee.type === "Super") {
+        this.raiseRecoverable(startPos, "Invalid use of 'super'");
+      }
+      if (this.eat(types$1.parenL)) {
+        node.arguments = this.parseExprList(types$1.parenR, this.options.ecmaVersion >= 8, false);
+      } else {
+        node.arguments = empty;
+      }
+      return this.finishNode(node, "NewExpression");
+    };
+    pp$5.parseTemplateElement = function(ref2) {
+      var isTagged = ref2.isTagged;
+      var elem = this.startNode();
+      if (this.type === types$1.invalidTemplate) {
+        if (!isTagged) {
+          this.raiseRecoverable(this.start, "Bad escape sequence in untagged template literal");
+        }
+        elem.value = {
+          raw: this.value.replace(/\r\n?/g, "\n"),
+          cooked: null
+        };
+      } else {
+        elem.value = {
+          raw: this.input.slice(this.start, this.end).replace(/\r\n?/g, "\n"),
+          cooked: this.value
+        };
+      }
+      this.next();
+      elem.tail = this.type === types$1.backQuote;
+      return this.finishNode(elem, "TemplateElement");
+    };
+    pp$5.parseTemplate = function(ref2) {
+      if (ref2 === void 0) ref2 = {};
+      var isTagged = ref2.isTagged;
+      if (isTagged === void 0) isTagged = false;
+      var node = this.startNode();
+      this.next();
+      node.expressions = [];
+      var curElt = this.parseTemplateElement({ isTagged });
+      node.quasis = [curElt];
+      while (!curElt.tail) {
+        if (this.type === types$1.eof) {
+          this.raise(this.pos, "Unterminated template literal");
+        }
+        this.expect(types$1.dollarBraceL);
+        node.expressions.push(this.parseExpression());
+        this.expect(types$1.braceR);
+        node.quasis.push(curElt = this.parseTemplateElement({ isTagged }));
+      }
+      this.next();
+      return this.finishNode(node, "TemplateLiteral");
+    };
+    pp$5.isAsyncProp = function(prop) {
+      return !prop.computed && prop.key.type === "Identifier" && prop.key.name === "async" && (this.type === types$1.name || this.type === types$1.num || this.type === types$1.string || this.type === types$1.bracketL || this.type.keyword || this.options.ecmaVersion >= 9 && this.type === types$1.star) && !lineBreak.test(this.input.slice(this.lastTokEnd, this.start));
+    };
+    pp$5.parseObj = function(isPattern, refDestructuringErrors) {
+      var node = this.startNode(), first = true, propHash = {};
+      node.properties = [];
+      this.next();
+      while (!this.eat(types$1.braceR)) {
+        if (!first) {
+          this.expect(types$1.comma);
+          if (this.options.ecmaVersion >= 5 && this.afterTrailingComma(types$1.braceR)) {
+            break;
+          }
+        } else {
+          first = false;
+        }
+        var prop = this.parseProperty(isPattern, refDestructuringErrors);
+        if (!isPattern) {
+          this.checkPropClash(prop, propHash, refDestructuringErrors);
+        }
+        node.properties.push(prop);
+      }
+      return this.finishNode(node, isPattern ? "ObjectPattern" : "ObjectExpression");
+    };
+    pp$5.parseProperty = function(isPattern, refDestructuringErrors) {
+      var prop = this.startNode(), isGenerator, isAsync, startPos, startLoc;
+      if (this.options.ecmaVersion >= 9 && this.eat(types$1.ellipsis)) {
+        if (isPattern) {
+          prop.argument = this.parseIdent(false);
+          if (this.type === types$1.comma) {
+            this.raiseRecoverable(this.start, "Comma is not permitted after the rest element");
+          }
+          return this.finishNode(prop, "RestElement");
+        }
+        prop.argument = this.parseMaybeAssign(false, refDestructuringErrors);
+        if (this.type === types$1.comma && refDestructuringErrors && refDestructuringErrors.trailingComma < 0) {
+          refDestructuringErrors.trailingComma = this.start;
+        }
+        return this.finishNode(prop, "SpreadElement");
+      }
+      if (this.options.ecmaVersion >= 6) {
+        prop.method = false;
+        prop.shorthand = false;
+        if (isPattern || refDestructuringErrors) {
+          startPos = this.start;
+          startLoc = this.startLoc;
+        }
+        if (!isPattern) {
+          isGenerator = this.eat(types$1.star);
+        }
+      }
+      var containsEsc = this.containsEsc;
+      this.parsePropertyName(prop);
+      if (!isPattern && !containsEsc && this.options.ecmaVersion >= 8 && !isGenerator && this.isAsyncProp(prop)) {
+        isAsync = true;
+        isGenerator = this.options.ecmaVersion >= 9 && this.eat(types$1.star);
+        this.parsePropertyName(prop);
+      } else {
+        isAsync = false;
+      }
+      this.parsePropertyValue(prop, isPattern, isGenerator, isAsync, startPos, startLoc, refDestructuringErrors, containsEsc);
+      return this.finishNode(prop, "Property");
+    };
+    pp$5.parseGetterSetter = function(prop) {
+      var kind = prop.key.name;
+      this.parsePropertyName(prop);
+      prop.value = this.parseMethod(false);
+      prop.kind = kind;
+      var paramCount = prop.kind === "get" ? 0 : 1;
+      if (prop.value.params.length !== paramCount) {
+        var start = prop.value.start;
+        if (prop.kind === "get") {
+          this.raiseRecoverable(start, "getter should have no params");
+        } else {
+          this.raiseRecoverable(start, "setter should have exactly one param");
+        }
+      } else {
+        if (prop.kind === "set" && prop.value.params[0].type === "RestElement") {
+          this.raiseRecoverable(prop.value.params[0].start, "Setter cannot use rest params");
+        }
+      }
+    };
+    pp$5.parsePropertyValue = function(prop, isPattern, isGenerator, isAsync, startPos, startLoc, refDestructuringErrors, containsEsc) {
+      if ((isGenerator || isAsync) && this.type === types$1.colon) {
+        this.unexpected();
+      }
+      if (this.eat(types$1.colon)) {
+        prop.value = isPattern ? this.parseMaybeDefault(this.start, this.startLoc) : this.parseMaybeAssign(false, refDestructuringErrors);
+        prop.kind = "init";
+      } else if (this.options.ecmaVersion >= 6 && this.type === types$1.parenL) {
+        if (isPattern) {
+          this.unexpected();
+        }
+        prop.method = true;
+        prop.value = this.parseMethod(isGenerator, isAsync);
+        prop.kind = "init";
+      } else if (!isPattern && !containsEsc && this.options.ecmaVersion >= 5 && !prop.computed && prop.key.type === "Identifier" && (prop.key.name === "get" || prop.key.name === "set") && (this.type !== types$1.comma && this.type !== types$1.braceR && this.type !== types$1.eq)) {
+        if (isGenerator || isAsync) {
+          this.unexpected();
+        }
+        this.parseGetterSetter(prop);
+      } else if (this.options.ecmaVersion >= 6 && !prop.computed && prop.key.type === "Identifier") {
+        if (isGenerator || isAsync) {
+          this.unexpected();
+        }
+        this.checkUnreserved(prop.key);
+        if (prop.key.name === "await" && !this.awaitIdentPos) {
+          this.awaitIdentPos = startPos;
+        }
+        if (isPattern) {
+          prop.value = this.parseMaybeDefault(startPos, startLoc, this.copyNode(prop.key));
+        } else if (this.type === types$1.eq && refDestructuringErrors) {
+          if (refDestructuringErrors.shorthandAssign < 0) {
+            refDestructuringErrors.shorthandAssign = this.start;
+          }
+          prop.value = this.parseMaybeDefault(startPos, startLoc, this.copyNode(prop.key));
+        } else {
+          prop.value = this.copyNode(prop.key);
+        }
+        prop.kind = "init";
+        prop.shorthand = true;
+      } else {
+        this.unexpected();
+      }
+    };
+    pp$5.parsePropertyName = function(prop) {
+      if (this.options.ecmaVersion >= 6) {
+        if (this.eat(types$1.bracketL)) {
+          prop.computed = true;
+          prop.key = this.parseMaybeAssign();
+          this.expect(types$1.bracketR);
+          return prop.key;
+        } else {
+          prop.computed = false;
+        }
+      }
+      return prop.key = this.type === types$1.num || this.type === types$1.string ? this.parseExprAtom() : this.parseIdent(this.options.allowReserved !== "never");
+    };
+    pp$5.initFunction = function(node) {
+      node.id = null;
+      if (this.options.ecmaVersion >= 6) {
+        node.generator = node.expression = false;
+      }
+      if (this.options.ecmaVersion >= 8) {
+        node.async = false;
+      }
+    };
+    pp$5.parseMethod = function(isGenerator, isAsync, allowDirectSuper) {
+      var node = this.startNode(), oldYieldPos = this.yieldPos, oldAwaitPos = this.awaitPos, oldAwaitIdentPos = this.awaitIdentPos;
+      this.initFunction(node);
+      if (this.options.ecmaVersion >= 6) {
+        node.generator = isGenerator;
+      }
+      if (this.options.ecmaVersion >= 8) {
+        node.async = !!isAsync;
+      }
+      this.yieldPos = 0;
+      this.awaitPos = 0;
+      this.awaitIdentPos = 0;
+      this.enterScope(functionFlags(isAsync, node.generator) | SCOPE_SUPER | (allowDirectSuper ? SCOPE_DIRECT_SUPER : 0));
+      this.expect(types$1.parenL);
+      node.params = this.parseBindingList(types$1.parenR, false, this.options.ecmaVersion >= 8);
+      this.checkYieldAwaitInDefaultParams();
+      this.parseFunctionBody(node, false, true, false);
+      this.yieldPos = oldYieldPos;
+      this.awaitPos = oldAwaitPos;
+      this.awaitIdentPos = oldAwaitIdentPos;
+      return this.finishNode(node, "FunctionExpression");
+    };
+    pp$5.parseArrowExpression = function(node, params, isAsync, forInit) {
+      var oldYieldPos = this.yieldPos, oldAwaitPos = this.awaitPos, oldAwaitIdentPos = this.awaitIdentPos;
+      this.enterScope(functionFlags(isAsync, false) | SCOPE_ARROW);
+      this.initFunction(node);
+      if (this.options.ecmaVersion >= 8) {
+        node.async = !!isAsync;
+      }
+      this.yieldPos = 0;
+      this.awaitPos = 0;
+      this.awaitIdentPos = 0;
+      node.params = this.toAssignableList(params, true);
+      this.parseFunctionBody(node, true, false, forInit);
+      this.yieldPos = oldYieldPos;
+      this.awaitPos = oldAwaitPos;
+      this.awaitIdentPos = oldAwaitIdentPos;
+      return this.finishNode(node, "ArrowFunctionExpression");
+    };
+    pp$5.parseFunctionBody = function(node, isArrowFunction, isMethod, forInit) {
+      var isExpression = isArrowFunction && this.type !== types$1.braceL;
+      var oldStrict = this.strict, useStrict = false;
+      if (isExpression) {
+        node.body = this.parseMaybeAssign(forInit);
+        node.expression = true;
+        this.checkParams(node, false);
+      } else {
+        var nonSimple = this.options.ecmaVersion >= 7 && !this.isSimpleParamList(node.params);
+        if (!oldStrict || nonSimple) {
+          useStrict = this.strictDirective(this.end);
+          if (useStrict && nonSimple) {
+            this.raiseRecoverable(node.start, "Illegal 'use strict' directive in function with non-simple parameter list");
+          }
+        }
+        var oldLabels = this.labels;
+        this.labels = [];
+        if (useStrict) {
+          this.strict = true;
+        }
+        this.checkParams(node, !oldStrict && !useStrict && !isArrowFunction && !isMethod && this.isSimpleParamList(node.params));
+        if (this.strict && node.id) {
+          this.checkLValSimple(node.id, BIND_OUTSIDE);
+        }
+        node.body = this.parseBlock(false, void 0, useStrict && !oldStrict);
+        node.expression = false;
+        this.adaptDirectivePrologue(node.body.body);
+        this.labels = oldLabels;
+      }
+      this.exitScope();
+    };
+    pp$5.isSimpleParamList = function(params) {
+      for (var i2 = 0, list2 = params; i2 < list2.length; i2 += 1) {
+        var param = list2[i2];
+        if (param.type !== "Identifier") {
+          return false;
+        }
+      }
+      return true;
+    };
+    pp$5.checkParams = function(node, allowDuplicates) {
+      var nameHash = /* @__PURE__ */ Object.create(null);
+      for (var i2 = 0, list2 = node.params; i2 < list2.length; i2 += 1) {
+        var param = list2[i2];
+        this.checkLValInnerPattern(param, BIND_VAR, allowDuplicates ? null : nameHash);
+      }
+    };
+    pp$5.parseExprList = function(close, allowTrailingComma, allowEmpty, refDestructuringErrors) {
+      var elts = [], first = true;
+      while (!this.eat(close)) {
+        if (!first) {
+          this.expect(types$1.comma);
+          if (allowTrailingComma && this.afterTrailingComma(close)) {
+            break;
+          }
+        } else {
+          first = false;
+        }
+        var elt = void 0;
+        if (allowEmpty && this.type === types$1.comma) {
+          elt = null;
+        } else if (this.type === types$1.ellipsis) {
+          elt = this.parseSpread(refDestructuringErrors);
+          if (refDestructuringErrors && this.type === types$1.comma && refDestructuringErrors.trailingComma < 0) {
+            refDestructuringErrors.trailingComma = this.start;
+          }
+        } else {
+          elt = this.parseMaybeAssign(false, refDestructuringErrors);
+        }
+        elts.push(elt);
+      }
+      return elts;
+    };
+    pp$5.checkUnreserved = function(ref2) {
+      var start = ref2.start;
+      var end = ref2.end;
+      var name = ref2.name;
+      if (this.inGenerator && name === "yield") {
+        this.raiseRecoverable(start, "Cannot use 'yield' as identifier inside a generator");
+      }
+      if (this.inAsync && name === "await") {
+        this.raiseRecoverable(start, "Cannot use 'await' as identifier inside an async function");
+      }
+      if (!(this.currentThisScope().flags & SCOPE_VAR) && name === "arguments") {
+        this.raiseRecoverable(start, "Cannot use 'arguments' in class field initializer");
+      }
+      if (this.inClassStaticBlock && (name === "arguments" || name === "await")) {
+        this.raise(start, "Cannot use " + name + " in class static initialization block");
+      }
+      if (this.keywords.test(name)) {
+        this.raise(start, "Unexpected keyword '" + name + "'");
+      }
+      if (this.options.ecmaVersion < 6 && this.input.slice(start, end).indexOf("\\") !== -1) {
+        return;
+      }
+      var re = this.strict ? this.reservedWordsStrict : this.reservedWords;
+      if (re.test(name)) {
+        if (!this.inAsync && name === "await") {
+          this.raiseRecoverable(start, "Cannot use keyword 'await' outside an async function");
+        }
+        this.raiseRecoverable(start, "The keyword '" + name + "' is reserved");
+      }
+    };
+    pp$5.parseIdent = function(liberal) {
+      var node = this.parseIdentNode();
+      this.next(!!liberal);
+      this.finishNode(node, "Identifier");
+      if (!liberal) {
+        this.checkUnreserved(node);
+        if (node.name === "await" && !this.awaitIdentPos) {
+          this.awaitIdentPos = node.start;
+        }
+      }
+      return node;
+    };
+    pp$5.parseIdentNode = function() {
+      var node = this.startNode();
+      if (this.type === types$1.name) {
+        node.name = this.value;
+      } else if (this.type.keyword) {
+        node.name = this.type.keyword;
+        if ((node.name === "class" || node.name === "function") && (this.lastTokEnd !== this.lastTokStart + 1 || this.input.charCodeAt(this.lastTokStart) !== 46)) {
+          this.context.pop();
+        }
+        this.type = types$1.name;
+      } else {
+        this.unexpected();
+      }
+      return node;
+    };
+    pp$5.parsePrivateIdent = function() {
+      var node = this.startNode();
+      if (this.type === types$1.privateId) {
+        node.name = this.value;
+      } else {
+        this.unexpected();
+      }
+      this.next();
+      this.finishNode(node, "PrivateIdentifier");
+      if (this.options.checkPrivateFields) {
+        if (this.privateNameStack.length === 0) {
+          this.raise(node.start, "Private field '#" + node.name + "' must be declared in an enclosing class");
+        } else {
+          this.privateNameStack[this.privateNameStack.length - 1].used.push(node);
+        }
+      }
+      return node;
+    };
+    pp$5.parseYield = function(forInit) {
+      if (!this.yieldPos) {
+        this.yieldPos = this.start;
+      }
+      var node = this.startNode();
+      this.next();
+      if (this.type === types$1.semi || this.canInsertSemicolon() || this.type !== types$1.star && !this.type.startsExpr) {
+        node.delegate = false;
+        node.argument = null;
+      } else {
+        node.delegate = this.eat(types$1.star);
+        node.argument = this.parseMaybeAssign(forInit);
+      }
+      return this.finishNode(node, "YieldExpression");
+    };
+    pp$5.parseAwait = function(forInit) {
+      if (!this.awaitPos) {
+        this.awaitPos = this.start;
+      }
+      var node = this.startNode();
+      this.next();
+      node.argument = this.parseMaybeUnary(null, true, false, forInit);
+      return this.finishNode(node, "AwaitExpression");
+    };
+    pp$4 = Parser.prototype;
+    pp$4.raise = function(pos, message2) {
+      var loc = getLineInfo(this.input, pos);
+      message2 += " (" + loc.line + ":" + loc.column + ")";
+      if (this.sourceFile) {
+        message2 += " in " + this.sourceFile;
+      }
+      var err = new SyntaxError(message2);
+      err.pos = pos;
+      err.loc = loc;
+      err.raisedAt = this.pos;
+      throw err;
+    };
+    pp$4.raiseRecoverable = pp$4.raise;
+    pp$4.curPosition = function() {
+      if (this.options.locations) {
+        return new Position(this.curLine, this.pos - this.lineStart);
+      }
+    };
+    pp$3 = Parser.prototype;
+    Scope = function Scope2(flags) {
+      this.flags = flags;
+      this.var = [];
+      this.lexical = [];
+      this.functions = [];
+    };
+    pp$3.enterScope = function(flags) {
+      this.scopeStack.push(new Scope(flags));
+    };
+    pp$3.exitScope = function() {
+      this.scopeStack.pop();
+    };
+    pp$3.treatFunctionsAsVarInScope = function(scope) {
+      return scope.flags & SCOPE_FUNCTION || !this.inModule && scope.flags & SCOPE_TOP;
+    };
+    pp$3.declareName = function(name, bindingType, pos) {
+      var redeclared = false;
+      if (bindingType === BIND_LEXICAL) {
+        var scope = this.currentScope();
+        redeclared = scope.lexical.indexOf(name) > -1 || scope.functions.indexOf(name) > -1 || scope.var.indexOf(name) > -1;
+        scope.lexical.push(name);
+        if (this.inModule && scope.flags & SCOPE_TOP) {
+          delete this.undefinedExports[name];
+        }
+      } else if (bindingType === BIND_SIMPLE_CATCH) {
+        var scope$1 = this.currentScope();
+        scope$1.lexical.push(name);
+      } else if (bindingType === BIND_FUNCTION) {
+        var scope$2 = this.currentScope();
+        if (this.treatFunctionsAsVar) {
+          redeclared = scope$2.lexical.indexOf(name) > -1;
+        } else {
+          redeclared = scope$2.lexical.indexOf(name) > -1 || scope$2.var.indexOf(name) > -1;
+        }
+        scope$2.functions.push(name);
+      } else {
+        for (var i2 = this.scopeStack.length - 1; i2 >= 0; --i2) {
+          var scope$3 = this.scopeStack[i2];
+          if (scope$3.lexical.indexOf(name) > -1 && !(scope$3.flags & SCOPE_SIMPLE_CATCH && scope$3.lexical[0] === name) || !this.treatFunctionsAsVarInScope(scope$3) && scope$3.functions.indexOf(name) > -1) {
+            redeclared = true;
+            break;
+          }
+          scope$3.var.push(name);
+          if (this.inModule && scope$3.flags & SCOPE_TOP) {
+            delete this.undefinedExports[name];
+          }
+          if (scope$3.flags & SCOPE_VAR) {
+            break;
+          }
+        }
+      }
+      if (redeclared) {
+        this.raiseRecoverable(pos, "Identifier '" + name + "' has already been declared");
+      }
+    };
+    pp$3.checkLocalExport = function(id) {
+      if (this.scopeStack[0].lexical.indexOf(id.name) === -1 && this.scopeStack[0].var.indexOf(id.name) === -1) {
+        this.undefinedExports[id.name] = id;
+      }
+    };
+    pp$3.currentScope = function() {
+      return this.scopeStack[this.scopeStack.length - 1];
+    };
+    pp$3.currentVarScope = function() {
+      for (var i2 = this.scopeStack.length - 1; ; i2--) {
+        var scope = this.scopeStack[i2];
+        if (scope.flags & (SCOPE_VAR | SCOPE_CLASS_FIELD_INIT | SCOPE_CLASS_STATIC_BLOCK)) {
+          return scope;
+        }
+      }
+    };
+    pp$3.currentThisScope = function() {
+      for (var i2 = this.scopeStack.length - 1; ; i2--) {
+        var scope = this.scopeStack[i2];
+        if (scope.flags & (SCOPE_VAR | SCOPE_CLASS_FIELD_INIT | SCOPE_CLASS_STATIC_BLOCK) && !(scope.flags & SCOPE_ARROW)) {
+          return scope;
+        }
+      }
+    };
+    Node = function Node2(parser, pos, loc) {
+      this.type = "";
+      this.start = pos;
+      this.end = 0;
+      if (parser.options.locations) {
+        this.loc = new SourceLocation(parser, loc);
+      }
+      if (parser.options.directSourceFile) {
+        this.sourceFile = parser.options.directSourceFile;
+      }
+      if (parser.options.ranges) {
+        this.range = [pos, 0];
+      }
+    };
+    pp$2 = Parser.prototype;
+    pp$2.startNode = function() {
+      return new Node(this, this.start, this.startLoc);
+    };
+    pp$2.startNodeAt = function(pos, loc) {
+      return new Node(this, pos, loc);
+    };
+    pp$2.finishNode = function(node, type) {
+      return finishNodeAt.call(this, node, type, this.lastTokEnd, this.lastTokEndLoc);
+    };
+    pp$2.finishNodeAt = function(node, type, pos, loc) {
+      return finishNodeAt.call(this, node, type, pos, loc);
+    };
+    pp$2.copyNode = function(node) {
+      var newNode = new Node(this, node.start, this.startLoc);
+      for (var prop in node) {
+        newNode[prop] = node[prop];
+      }
+      return newNode;
+    };
+    scriptValuesAddedInUnicode = "Berf Beria_Erfe Gara Garay Gukh Gurung_Khema Hrkt Katakana_Or_Hiragana Kawi Kirat_Rai Krai Nag_Mundari Nagm Ol_Onal Onao Sidetic Sidt Sunu Sunuwar Tai_Yo Tayo Todhri Todr Tolong_Siki Tols Tulu_Tigalari Tutg Unknown Zzzz";
+    ecma9BinaryProperties = "ASCII ASCII_Hex_Digit AHex Alphabetic Alpha Any Assigned Bidi_Control Bidi_C Bidi_Mirrored Bidi_M Case_Ignorable CI Cased Changes_When_Casefolded CWCF Changes_When_Casemapped CWCM Changes_When_Lowercased CWL Changes_When_NFKC_Casefolded CWKCF Changes_When_Titlecased CWT Changes_When_Uppercased CWU Dash Default_Ignorable_Code_Point DI Deprecated Dep Diacritic Dia Emoji Emoji_Component Emoji_Modifier Emoji_Modifier_Base Emoji_Presentation Extender Ext Grapheme_Base Gr_Base Grapheme_Extend Gr_Ext Hex_Digit Hex IDS_Binary_Operator IDSB IDS_Trinary_Operator IDST ID_Continue IDC ID_Start IDS Ideographic Ideo Join_Control Join_C Logical_Order_Exception LOE Lowercase Lower Math Noncharacter_Code_Point NChar Pattern_Syntax Pat_Syn Pattern_White_Space Pat_WS Quotation_Mark QMark Radical Regional_Indicator RI Sentence_Terminal STerm Soft_Dotted SD Terminal_Punctuation Term Unified_Ideograph UIdeo Uppercase Upper Variation_Selector VS White_Space space XID_Continue XIDC XID_Start XIDS";
+    ecma10BinaryProperties = ecma9BinaryProperties + " Extended_Pictographic";
+    ecma11BinaryProperties = ecma10BinaryProperties;
+    ecma12BinaryProperties = ecma11BinaryProperties + " EBase EComp EMod EPres ExtPict";
+    ecma13BinaryProperties = ecma12BinaryProperties;
+    ecma14BinaryProperties = ecma13BinaryProperties;
+    unicodeBinaryProperties = {
+      9: ecma9BinaryProperties,
+      10: ecma10BinaryProperties,
+      11: ecma11BinaryProperties,
+      12: ecma12BinaryProperties,
+      13: ecma13BinaryProperties,
+      14: ecma14BinaryProperties
+    };
+    ecma14BinaryPropertiesOfStrings = "Basic_Emoji Emoji_Keycap_Sequence RGI_Emoji_Modifier_Sequence RGI_Emoji_Flag_Sequence RGI_Emoji_Tag_Sequence RGI_Emoji_ZWJ_Sequence RGI_Emoji";
+    unicodeBinaryPropertiesOfStrings = {
+      9: "",
+      10: "",
+      11: "",
+      12: "",
+      13: "",
+      14: ecma14BinaryPropertiesOfStrings
+    };
+    unicodeGeneralCategoryValues = "Cased_Letter LC Close_Punctuation Pe Connector_Punctuation Pc Control Cc cntrl Currency_Symbol Sc Dash_Punctuation Pd Decimal_Number Nd digit Enclosing_Mark Me Final_Punctuation Pf Format Cf Initial_Punctuation Pi Letter L Letter_Number Nl Line_Separator Zl Lowercase_Letter Ll Mark M Combining_Mark Math_Symbol Sm Modifier_Letter Lm Modifier_Symbol Sk Nonspacing_Mark Mn Number N Open_Punctuation Ps Other C Other_Letter Lo Other_Number No Other_Punctuation Po Other_Symbol So Paragraph_Separator Zp Private_Use Co Punctuation P punct Separator Z Space_Separator Zs Spacing_Mark Mc Surrogate Cs Symbol S Titlecase_Letter Lt Unassigned Cn Uppercase_Letter Lu";
+    ecma9ScriptValues = "Adlam Adlm Ahom Anatolian_Hieroglyphs Hluw Arabic Arab Armenian Armn Avestan Avst Balinese Bali Bamum Bamu Bassa_Vah Bass Batak Batk Bengali Beng Bhaiksuki Bhks Bopomofo Bopo Brahmi Brah Braille Brai Buginese Bugi Buhid Buhd Canadian_Aboriginal Cans Carian Cari Caucasian_Albanian Aghb Chakma Cakm Cham Cham Cherokee Cher Common Zyyy Coptic Copt Qaac Cuneiform Xsux Cypriot Cprt Cyrillic Cyrl Deseret Dsrt Devanagari Deva Duployan Dupl Egyptian_Hieroglyphs Egyp Elbasan Elba Ethiopic Ethi Georgian Geor Glagolitic Glag Gothic Goth Grantha Gran Greek Grek Gujarati Gujr Gurmukhi Guru Han Hani Hangul Hang Hanunoo Hano Hatran Hatr Hebrew Hebr Hiragana Hira Imperial_Aramaic Armi Inherited Zinh Qaai Inscriptional_Pahlavi Phli Inscriptional_Parthian Prti Javanese Java Kaithi Kthi Kannada Knda Katakana Kana Kayah_Li Kali Kharoshthi Khar Khmer Khmr Khojki Khoj Khudawadi Sind Lao Laoo Latin Latn Lepcha Lepc Limbu Limb Linear_A Lina Linear_B Linb Lisu Lisu Lycian Lyci Lydian Lydi Mahajani Mahj Malayalam Mlym Mandaic Mand Manichaean Mani Marchen Marc Masaram_Gondi Gonm Meetei_Mayek Mtei Mende_Kikakui Mend Meroitic_Cursive Merc Meroitic_Hieroglyphs Mero Miao Plrd Modi Mongolian Mong Mro Mroo Multani Mult Myanmar Mymr Nabataean Nbat New_Tai_Lue Talu Newa Newa Nko Nkoo Nushu Nshu Ogham Ogam Ol_Chiki Olck Old_Hungarian Hung Old_Italic Ital Old_North_Arabian Narb Old_Permic Perm Old_Persian Xpeo Old_South_Arabian Sarb Old_Turkic Orkh Oriya Orya Osage Osge Osmanya Osma Pahawh_Hmong Hmng Palmyrene Palm Pau_Cin_Hau Pauc Phags_Pa Phag Phoenician Phnx Psalter_Pahlavi Phlp Rejang Rjng Runic Runr Samaritan Samr Saurashtra Saur Sharada Shrd Shavian Shaw Siddham Sidd SignWriting Sgnw Sinhala Sinh Sora_Sompeng Sora Soyombo Soyo Sundanese Sund Syloti_Nagri Sylo Syriac Syrc Tagalog Tglg Tagbanwa Tagb Tai_Le Tale Tai_Tham Lana Tai_Viet Tavt Takri Takr Tamil Taml Tangut Tang Telugu Telu Thaana Thaa Thai Thai Tibetan Tibt Tifinagh Tfng Tirhuta Tirh Ugaritic Ugar Vai Vaii Warang_Citi Wara Yi Yiii Zanabazar_Square Zanb";
+    ecma10ScriptValues = ecma9ScriptValues + " Dogra Dogr Gunjala_Gondi Gong Hanifi_Rohingya Rohg Makasar Maka Medefaidrin Medf Old_Sogdian Sogo Sogdian Sogd";
+    ecma11ScriptValues = ecma10ScriptValues + " Elymaic Elym Nandinagari Nand Nyiakeng_Puachue_Hmong Hmnp Wancho Wcho";
+    ecma12ScriptValues = ecma11ScriptValues + " Chorasmian Chrs Diak Dives_Akuru Khitan_Small_Script Kits Yezi Yezidi";
+    ecma13ScriptValues = ecma12ScriptValues + " Cypro_Minoan Cpmn Old_Uyghur Ougr Tangsa Tnsa Toto Vithkuqi Vith";
+    ecma14ScriptValues = ecma13ScriptValues + " " + scriptValuesAddedInUnicode;
+    unicodeScriptValues = {
+      9: ecma9ScriptValues,
+      10: ecma10ScriptValues,
+      11: ecma11ScriptValues,
+      12: ecma12ScriptValues,
+      13: ecma13ScriptValues,
+      14: ecma14ScriptValues
+    };
+    data = {};
+    for (i = 0, list = [9, 10, 11, 12, 13, 14]; i < list.length; i += 1) {
+      ecmaVersion = list[i];
+      buildUnicodeData(ecmaVersion);
+    }
+    pp$1 = Parser.prototype;
+    BranchID = function BranchID2(parent2, base) {
+      this.parent = parent2;
+      this.base = base || this;
+    };
+    BranchID.prototype.separatedFrom = function separatedFrom(alt) {
+      for (var self = this; self; self = self.parent) {
+        for (var other = alt; other; other = other.parent) {
+          if (self.base === other.base && self !== other) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    BranchID.prototype.sibling = function sibling() {
+      return new BranchID(this.parent, this.base);
+    };
+    RegExpValidationState = function RegExpValidationState2(parser) {
+      this.parser = parser;
+      this.validFlags = "gim" + (parser.options.ecmaVersion >= 6 ? "uy" : "") + (parser.options.ecmaVersion >= 9 ? "s" : "") + (parser.options.ecmaVersion >= 13 ? "d" : "") + (parser.options.ecmaVersion >= 15 ? "v" : "");
+      this.unicodeProperties = data[parser.options.ecmaVersion >= 14 ? 14 : parser.options.ecmaVersion];
+      this.source = "";
+      this.flags = "";
+      this.start = 0;
+      this.switchU = false;
+      this.switchV = false;
+      this.switchN = false;
+      this.pos = 0;
+      this.lastIntValue = 0;
+      this.lastStringValue = "";
+      this.lastAssertionIsQuantifiable = false;
+      this.numCapturingParens = 0;
+      this.maxBackReference = 0;
+      this.groupNames = /* @__PURE__ */ Object.create(null);
+      this.backReferenceNames = [];
+      this.branchID = null;
+    };
+    RegExpValidationState.prototype.reset = function reset(start, pattern2, flags) {
+      var unicodeSets = flags.indexOf("v") !== -1;
+      var unicode = flags.indexOf("u") !== -1;
+      this.start = start | 0;
+      this.source = pattern2 + "";
+      this.flags = flags;
+      if (unicodeSets && this.parser.options.ecmaVersion >= 15) {
+        this.switchU = true;
+        this.switchV = true;
+        this.switchN = true;
+      } else {
+        this.switchU = unicode && this.parser.options.ecmaVersion >= 6;
+        this.switchV = false;
+        this.switchN = unicode && this.parser.options.ecmaVersion >= 9;
+      }
+    };
+    RegExpValidationState.prototype.raise = function raise(message2) {
+      this.parser.raiseRecoverable(this.start, "Invalid regular expression: /" + this.source + "/: " + message2);
+    };
+    RegExpValidationState.prototype.at = function at(i2, forceU) {
+      if (forceU === void 0) forceU = false;
+      var s = this.source;
+      var l = s.length;
+      if (i2 >= l) {
+        return -1;
+      }
+      var c = s.charCodeAt(i2);
+      if (!(forceU || this.switchU) || c <= 55295 || c >= 57344 || i2 + 1 >= l) {
+        return c;
+      }
+      var next = s.charCodeAt(i2 + 1);
+      return next >= 56320 && next <= 57343 ? (c << 10) + next - 56613888 : c;
+    };
+    RegExpValidationState.prototype.nextIndex = function nextIndex(i2, forceU) {
+      if (forceU === void 0) forceU = false;
+      var s = this.source;
+      var l = s.length;
+      if (i2 >= l) {
+        return l;
+      }
+      var c = s.charCodeAt(i2), next;
+      if (!(forceU || this.switchU) || c <= 55295 || c >= 57344 || i2 + 1 >= l || (next = s.charCodeAt(i2 + 1)) < 56320 || next > 57343) {
+        return i2 + 1;
+      }
+      return i2 + 2;
+    };
+    RegExpValidationState.prototype.current = function current(forceU) {
+      if (forceU === void 0) forceU = false;
+      return this.at(this.pos, forceU);
+    };
+    RegExpValidationState.prototype.lookahead = function lookahead(forceU) {
+      if (forceU === void 0) forceU = false;
+      return this.at(this.nextIndex(this.pos, forceU), forceU);
+    };
+    RegExpValidationState.prototype.advance = function advance(forceU) {
+      if (forceU === void 0) forceU = false;
+      this.pos = this.nextIndex(this.pos, forceU);
+    };
+    RegExpValidationState.prototype.eat = function eat(ch, forceU) {
+      if (forceU === void 0) forceU = false;
+      if (this.current(forceU) === ch) {
+        this.advance(forceU);
+        return true;
+      }
+      return false;
+    };
+    RegExpValidationState.prototype.eatChars = function eatChars(chs, forceU) {
+      if (forceU === void 0) forceU = false;
+      var pos = this.pos;
+      for (var i2 = 0, list2 = chs; i2 < list2.length; i2 += 1) {
+        var ch = list2[i2];
+        var current2 = this.at(pos, forceU);
+        if (current2 === -1 || current2 !== ch) {
+          return false;
+        }
+        pos = this.nextIndex(pos, forceU);
+      }
+      this.pos = pos;
+      return true;
+    };
+    pp$1.validateRegExpFlags = function(state) {
+      var validFlags = state.validFlags;
+      var flags = state.flags;
+      var u = false;
+      var v = false;
+      for (var i2 = 0; i2 < flags.length; i2++) {
+        var flag2 = flags.charAt(i2);
+        if (validFlags.indexOf(flag2) === -1) {
+          this.raise(state.start, "Invalid regular expression flag");
+        }
+        if (flags.indexOf(flag2, i2 + 1) > -1) {
+          this.raise(state.start, "Duplicate regular expression flag");
+        }
+        if (flag2 === "u") {
+          u = true;
+        }
+        if (flag2 === "v") {
+          v = true;
+        }
+      }
+      if (this.options.ecmaVersion >= 15 && u && v) {
+        this.raise(state.start, "Invalid regular expression flag");
+      }
+    };
+    pp$1.validateRegExpPattern = function(state) {
+      this.regexp_pattern(state);
+      if (!state.switchN && this.options.ecmaVersion >= 9 && hasProp(state.groupNames)) {
+        state.switchN = true;
+        this.regexp_pattern(state);
+      }
+    };
+    pp$1.regexp_pattern = function(state) {
+      state.pos = 0;
+      state.lastIntValue = 0;
+      state.lastStringValue = "";
+      state.lastAssertionIsQuantifiable = false;
+      state.numCapturingParens = 0;
+      state.maxBackReference = 0;
+      state.groupNames = /* @__PURE__ */ Object.create(null);
+      state.backReferenceNames.length = 0;
+      state.branchID = null;
+      this.regexp_disjunction(state);
+      if (state.pos !== state.source.length) {
+        if (state.eat(
+          41
+          /* ) */
+        )) {
+          state.raise("Unmatched ')'");
+        }
+        if (state.eat(
+          93
+          /* ] */
+        ) || state.eat(
+          125
+          /* } */
+        )) {
+          state.raise("Lone quantifier brackets");
+        }
+      }
+      if (state.maxBackReference > state.numCapturingParens) {
+        state.raise("Invalid escape");
+      }
+      for (var i2 = 0, list2 = state.backReferenceNames; i2 < list2.length; i2 += 1) {
+        var name = list2[i2];
+        if (!state.groupNames[name]) {
+          state.raise("Invalid named capture referenced");
+        }
+      }
+    };
+    pp$1.regexp_disjunction = function(state) {
+      var trackDisjunction = this.options.ecmaVersion >= 16;
+      if (trackDisjunction) {
+        state.branchID = new BranchID(state.branchID, null);
+      }
+      this.regexp_alternative(state);
+      while (state.eat(
+        124
+        /* | */
+      )) {
+        if (trackDisjunction) {
+          state.branchID = state.branchID.sibling();
+        }
+        this.regexp_alternative(state);
+      }
+      if (trackDisjunction) {
+        state.branchID = state.branchID.parent;
+      }
+      if (this.regexp_eatQuantifier(state, true)) {
+        state.raise("Nothing to repeat");
+      }
+      if (state.eat(
+        123
+        /* { */
+      )) {
+        state.raise("Lone quantifier brackets");
+      }
+    };
+    pp$1.regexp_alternative = function(state) {
+      while (state.pos < state.source.length && this.regexp_eatTerm(state)) {
+      }
+    };
+    pp$1.regexp_eatTerm = function(state) {
+      if (this.regexp_eatAssertion(state)) {
+        if (state.lastAssertionIsQuantifiable && this.regexp_eatQuantifier(state)) {
+          if (state.switchU) {
+            state.raise("Invalid quantifier");
+          }
+        }
+        return true;
+      }
+      if (state.switchU ? this.regexp_eatAtom(state) : this.regexp_eatExtendedAtom(state)) {
+        this.regexp_eatQuantifier(state);
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatAssertion = function(state) {
+      var start = state.pos;
+      state.lastAssertionIsQuantifiable = false;
+      if (state.eat(
+        94
+        /* ^ */
+      ) || state.eat(
+        36
+        /* $ */
+      )) {
+        return true;
+      }
+      if (state.eat(
+        92
+        /* \ */
+      )) {
+        if (state.eat(
+          66
+          /* B */
+        ) || state.eat(
+          98
+          /* b */
+        )) {
+          return true;
+        }
+        state.pos = start;
+      }
+      if (state.eat(
+        40
+        /* ( */
+      ) && state.eat(
+        63
+        /* ? */
+      )) {
+        var lookbehind = false;
+        if (this.options.ecmaVersion >= 9) {
+          lookbehind = state.eat(
+            60
+            /* < */
+          );
+        }
+        if (state.eat(
+          61
+          /* = */
+        ) || state.eat(
+          33
+          /* ! */
+        )) {
+          this.regexp_disjunction(state);
+          if (!state.eat(
+            41
+            /* ) */
+          )) {
+            state.raise("Unterminated group");
+          }
+          state.lastAssertionIsQuantifiable = !lookbehind;
+          return true;
+        }
+      }
+      state.pos = start;
+      return false;
+    };
+    pp$1.regexp_eatQuantifier = function(state, noError) {
+      if (noError === void 0) noError = false;
+      if (this.regexp_eatQuantifierPrefix(state, noError)) {
+        state.eat(
+          63
+          /* ? */
+        );
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatQuantifierPrefix = function(state, noError) {
+      return state.eat(
+        42
+        /* * */
+      ) || state.eat(
+        43
+        /* + */
+      ) || state.eat(
+        63
+        /* ? */
+      ) || this.regexp_eatBracedQuantifier(state, noError);
+    };
+    pp$1.regexp_eatBracedQuantifier = function(state, noError) {
+      var start = state.pos;
+      if (state.eat(
+        123
+        /* { */
+      )) {
+        var min = 0, max = -1;
+        if (this.regexp_eatDecimalDigits(state)) {
+          min = state.lastIntValue;
+          if (state.eat(
+            44
+            /* , */
+          ) && this.regexp_eatDecimalDigits(state)) {
+            max = state.lastIntValue;
+          }
+          if (state.eat(
+            125
+            /* } */
+          )) {
+            if (max !== -1 && max < min && !noError) {
+              state.raise("numbers out of order in {} quantifier");
+            }
+            return true;
+          }
+        }
+        if (state.switchU && !noError) {
+          state.raise("Incomplete quantifier");
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatAtom = function(state) {
+      return this.regexp_eatPatternCharacters(state) || state.eat(
+        46
+        /* . */
+      ) || this.regexp_eatReverseSolidusAtomEscape(state) || this.regexp_eatCharacterClass(state) || this.regexp_eatUncapturingGroup(state) || this.regexp_eatCapturingGroup(state);
+    };
+    pp$1.regexp_eatReverseSolidusAtomEscape = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        92
+        /* \ */
+      )) {
+        if (this.regexp_eatAtomEscape(state)) {
+          return true;
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatUncapturingGroup = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        40
+        /* ( */
+      )) {
+        if (state.eat(
+          63
+          /* ? */
+        )) {
+          if (this.options.ecmaVersion >= 16) {
+            var addModifiers = this.regexp_eatModifiers(state);
+            var hasHyphen = state.eat(
+              45
+              /* - */
+            );
+            if (addModifiers || hasHyphen) {
+              for (var i2 = 0; i2 < addModifiers.length; i2++) {
+                var modifier = addModifiers.charAt(i2);
+                if (addModifiers.indexOf(modifier, i2 + 1) > -1) {
+                  state.raise("Duplicate regular expression modifiers");
+                }
+              }
+              if (hasHyphen) {
+                var removeModifiers = this.regexp_eatModifiers(state);
+                if (!addModifiers && !removeModifiers && state.current() === 58) {
+                  state.raise("Invalid regular expression modifiers");
+                }
+                for (var i$1 = 0; i$1 < removeModifiers.length; i$1++) {
+                  var modifier$1 = removeModifiers.charAt(i$1);
+                  if (removeModifiers.indexOf(modifier$1, i$1 + 1) > -1 || addModifiers.indexOf(modifier$1) > -1) {
+                    state.raise("Duplicate regular expression modifiers");
+                  }
+                }
+              }
+            }
+          }
+          if (state.eat(
+            58
+            /* : */
+          )) {
+            this.regexp_disjunction(state);
+            if (state.eat(
+              41
+              /* ) */
+            )) {
+              return true;
+            }
+            state.raise("Unterminated group");
+          }
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatCapturingGroup = function(state) {
+      if (state.eat(
+        40
+        /* ( */
+      )) {
+        if (this.options.ecmaVersion >= 9) {
+          this.regexp_groupSpecifier(state);
+        } else if (state.current() === 63) {
+          state.raise("Invalid group");
+        }
+        this.regexp_disjunction(state);
+        if (state.eat(
+          41
+          /* ) */
+        )) {
+          state.numCapturingParens += 1;
+          return true;
+        }
+        state.raise("Unterminated group");
+      }
+      return false;
+    };
+    pp$1.regexp_eatModifiers = function(state) {
+      var modifiers = "";
+      var ch = 0;
+      while ((ch = state.current()) !== -1 && isRegularExpressionModifier(ch)) {
+        modifiers += codePointToString(ch);
+        state.advance();
+      }
+      return modifiers;
+    };
+    pp$1.regexp_eatExtendedAtom = function(state) {
+      return state.eat(
+        46
+        /* . */
+      ) || this.regexp_eatReverseSolidusAtomEscape(state) || this.regexp_eatCharacterClass(state) || this.regexp_eatUncapturingGroup(state) || this.regexp_eatCapturingGroup(state) || this.regexp_eatInvalidBracedQuantifier(state) || this.regexp_eatExtendedPatternCharacter(state);
+    };
+    pp$1.regexp_eatInvalidBracedQuantifier = function(state) {
+      if (this.regexp_eatBracedQuantifier(state, true)) {
+        state.raise("Nothing to repeat");
+      }
+      return false;
+    };
+    pp$1.regexp_eatSyntaxCharacter = function(state) {
+      var ch = state.current();
+      if (isSyntaxCharacter(ch)) {
+        state.lastIntValue = ch;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatPatternCharacters = function(state) {
+      var start = state.pos;
+      var ch = 0;
+      while ((ch = state.current()) !== -1 && !isSyntaxCharacter(ch)) {
+        state.advance();
+      }
+      return state.pos !== start;
+    };
+    pp$1.regexp_eatExtendedPatternCharacter = function(state) {
+      var ch = state.current();
+      if (ch !== -1 && ch !== 36 && !(ch >= 40 && ch <= 43) && ch !== 46 && ch !== 63 && ch !== 91 && ch !== 94 && ch !== 124) {
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_groupSpecifier = function(state) {
+      if (state.eat(
+        63
+        /* ? */
+      )) {
+        if (!this.regexp_eatGroupName(state)) {
+          state.raise("Invalid group");
+        }
+        var trackDisjunction = this.options.ecmaVersion >= 16;
+        var known2 = state.groupNames[state.lastStringValue];
+        if (known2) {
+          if (trackDisjunction) {
+            for (var i2 = 0, list2 = known2; i2 < list2.length; i2 += 1) {
+              var altID = list2[i2];
+              if (!altID.separatedFrom(state.branchID)) {
+                state.raise("Duplicate capture group name");
+              }
+            }
+          } else {
+            state.raise("Duplicate capture group name");
+          }
+        }
+        if (trackDisjunction) {
+          (known2 || (state.groupNames[state.lastStringValue] = [])).push(state.branchID);
+        } else {
+          state.groupNames[state.lastStringValue] = true;
+        }
+      }
+    };
+    pp$1.regexp_eatGroupName = function(state) {
+      state.lastStringValue = "";
+      if (state.eat(
+        60
+        /* < */
+      )) {
+        if (this.regexp_eatRegExpIdentifierName(state) && state.eat(
+          62
+          /* > */
+        )) {
+          return true;
+        }
+        state.raise("Invalid capture group name");
+      }
+      return false;
+    };
+    pp$1.regexp_eatRegExpIdentifierName = function(state) {
+      state.lastStringValue = "";
+      if (this.regexp_eatRegExpIdentifierStart(state)) {
+        state.lastStringValue += codePointToString(state.lastIntValue);
+        while (this.regexp_eatRegExpIdentifierPart(state)) {
+          state.lastStringValue += codePointToString(state.lastIntValue);
+        }
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatRegExpIdentifierStart = function(state) {
+      var start = state.pos;
+      var forceU = this.options.ecmaVersion >= 11;
+      var ch = state.current(forceU);
+      state.advance(forceU);
+      if (ch === 92 && this.regexp_eatRegExpUnicodeEscapeSequence(state, forceU)) {
+        ch = state.lastIntValue;
+      }
+      if (isRegExpIdentifierStart(ch)) {
+        state.lastIntValue = ch;
+        return true;
+      }
+      state.pos = start;
+      return false;
+    };
+    pp$1.regexp_eatRegExpIdentifierPart = function(state) {
+      var start = state.pos;
+      var forceU = this.options.ecmaVersion >= 11;
+      var ch = state.current(forceU);
+      state.advance(forceU);
+      if (ch === 92 && this.regexp_eatRegExpUnicodeEscapeSequence(state, forceU)) {
+        ch = state.lastIntValue;
+      }
+      if (isRegExpIdentifierPart(ch)) {
+        state.lastIntValue = ch;
+        return true;
+      }
+      state.pos = start;
+      return false;
+    };
+    pp$1.regexp_eatAtomEscape = function(state) {
+      if (this.regexp_eatBackReference(state) || this.regexp_eatCharacterClassEscape(state) || this.regexp_eatCharacterEscape(state) || state.switchN && this.regexp_eatKGroupName(state)) {
+        return true;
+      }
+      if (state.switchU) {
+        if (state.current() === 99) {
+          state.raise("Invalid unicode escape");
+        }
+        state.raise("Invalid escape");
+      }
+      return false;
+    };
+    pp$1.regexp_eatBackReference = function(state) {
+      var start = state.pos;
+      if (this.regexp_eatDecimalEscape(state)) {
+        var n = state.lastIntValue;
+        if (state.switchU) {
+          if (n > state.maxBackReference) {
+            state.maxBackReference = n;
+          }
+          return true;
+        }
+        if (n <= state.numCapturingParens) {
+          return true;
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatKGroupName = function(state) {
+      if (state.eat(
+        107
+        /* k */
+      )) {
+        if (this.regexp_eatGroupName(state)) {
+          state.backReferenceNames.push(state.lastStringValue);
+          return true;
+        }
+        state.raise("Invalid named reference");
+      }
+      return false;
+    };
+    pp$1.regexp_eatCharacterEscape = function(state) {
+      return this.regexp_eatControlEscape(state) || this.regexp_eatCControlLetter(state) || this.regexp_eatZero(state) || this.regexp_eatHexEscapeSequence(state) || this.regexp_eatRegExpUnicodeEscapeSequence(state, false) || !state.switchU && this.regexp_eatLegacyOctalEscapeSequence(state) || this.regexp_eatIdentityEscape(state);
+    };
+    pp$1.regexp_eatCControlLetter = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        99
+        /* c */
+      )) {
+        if (this.regexp_eatControlLetter(state)) {
+          return true;
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatZero = function(state) {
+      if (state.current() === 48 && !isDecimalDigit(state.lookahead())) {
+        state.lastIntValue = 0;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatControlEscape = function(state) {
+      var ch = state.current();
+      if (ch === 116) {
+        state.lastIntValue = 9;
+        state.advance();
+        return true;
+      }
+      if (ch === 110) {
+        state.lastIntValue = 10;
+        state.advance();
+        return true;
+      }
+      if (ch === 118) {
+        state.lastIntValue = 11;
+        state.advance();
+        return true;
+      }
+      if (ch === 102) {
+        state.lastIntValue = 12;
+        state.advance();
+        return true;
+      }
+      if (ch === 114) {
+        state.lastIntValue = 13;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatControlLetter = function(state) {
+      var ch = state.current();
+      if (isControlLetter(ch)) {
+        state.lastIntValue = ch % 32;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatRegExpUnicodeEscapeSequence = function(state, forceU) {
+      if (forceU === void 0) forceU = false;
+      var start = state.pos;
+      var switchU = forceU || state.switchU;
+      if (state.eat(
+        117
+        /* u */
+      )) {
+        if (this.regexp_eatFixedHexDigits(state, 4)) {
+          var lead = state.lastIntValue;
+          if (switchU && lead >= 55296 && lead <= 56319) {
+            var leadSurrogateEnd = state.pos;
+            if (state.eat(
+              92
+              /* \ */
+            ) && state.eat(
+              117
+              /* u */
+            ) && this.regexp_eatFixedHexDigits(state, 4)) {
+              var trail = state.lastIntValue;
+              if (trail >= 56320 && trail <= 57343) {
+                state.lastIntValue = (lead - 55296) * 1024 + (trail - 56320) + 65536;
+                return true;
+              }
+            }
+            state.pos = leadSurrogateEnd;
+            state.lastIntValue = lead;
+          }
+          return true;
+        }
+        if (switchU && state.eat(
+          123
+          /* { */
+        ) && this.regexp_eatHexDigits(state) && state.eat(
+          125
+          /* } */
+        ) && isValidUnicode(state.lastIntValue)) {
+          return true;
+        }
+        if (switchU) {
+          state.raise("Invalid unicode escape");
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatIdentityEscape = function(state) {
+      if (state.switchU) {
+        if (this.regexp_eatSyntaxCharacter(state)) {
+          return true;
+        }
+        if (state.eat(
+          47
+          /* / */
+        )) {
+          state.lastIntValue = 47;
+          return true;
+        }
+        return false;
+      }
+      var ch = state.current();
+      if (ch !== 99 && (!state.switchN || ch !== 107)) {
+        state.lastIntValue = ch;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatDecimalEscape = function(state) {
+      state.lastIntValue = 0;
+      var ch = state.current();
+      if (ch >= 49 && ch <= 57) {
+        do {
+          state.lastIntValue = 10 * state.lastIntValue + (ch - 48);
+          state.advance();
+        } while ((ch = state.current()) >= 48 && ch <= 57);
+        return true;
+      }
+      return false;
+    };
+    CharSetNone = 0;
+    CharSetOk = 1;
+    CharSetString = 2;
+    pp$1.regexp_eatCharacterClassEscape = function(state) {
+      var ch = state.current();
+      if (isCharacterClassEscape(ch)) {
+        state.lastIntValue = -1;
+        state.advance();
+        return CharSetOk;
+      }
+      var negate = false;
+      if (state.switchU && this.options.ecmaVersion >= 9 && ((negate = ch === 80) || ch === 112)) {
+        state.lastIntValue = -1;
+        state.advance();
+        var result;
+        if (state.eat(
+          123
+          /* { */
+        ) && (result = this.regexp_eatUnicodePropertyValueExpression(state)) && state.eat(
+          125
+          /* } */
+        )) {
+          if (negate && result === CharSetString) {
+            state.raise("Invalid property name");
+          }
+          return result;
+        }
+        state.raise("Invalid property name");
+      }
+      return CharSetNone;
+    };
+    pp$1.regexp_eatUnicodePropertyValueExpression = function(state) {
+      var start = state.pos;
+      if (this.regexp_eatUnicodePropertyName(state) && state.eat(
+        61
+        /* = */
+      )) {
+        var name = state.lastStringValue;
+        if (this.regexp_eatUnicodePropertyValue(state)) {
+          var value = state.lastStringValue;
+          this.regexp_validateUnicodePropertyNameAndValue(state, name, value);
+          return CharSetOk;
+        }
+      }
+      state.pos = start;
+      if (this.regexp_eatLoneUnicodePropertyNameOrValue(state)) {
+        var nameOrValue = state.lastStringValue;
+        return this.regexp_validateUnicodePropertyNameOrValue(state, nameOrValue);
+      }
+      return CharSetNone;
+    };
+    pp$1.regexp_validateUnicodePropertyNameAndValue = function(state, name, value) {
+      if (!hasOwn(state.unicodeProperties.nonBinary, name)) {
+        state.raise("Invalid property name");
+      }
+      if (!state.unicodeProperties.nonBinary[name].test(value)) {
+        state.raise("Invalid property value");
+      }
+    };
+    pp$1.regexp_validateUnicodePropertyNameOrValue = function(state, nameOrValue) {
+      if (state.unicodeProperties.binary.test(nameOrValue)) {
+        return CharSetOk;
+      }
+      if (state.switchV && state.unicodeProperties.binaryOfStrings.test(nameOrValue)) {
+        return CharSetString;
+      }
+      state.raise("Invalid property name");
+    };
+    pp$1.regexp_eatUnicodePropertyName = function(state) {
+      var ch = 0;
+      state.lastStringValue = "";
+      while (isUnicodePropertyNameCharacter(ch = state.current())) {
+        state.lastStringValue += codePointToString(ch);
+        state.advance();
+      }
+      return state.lastStringValue !== "";
+    };
+    pp$1.regexp_eatUnicodePropertyValue = function(state) {
+      var ch = 0;
+      state.lastStringValue = "";
+      while (isUnicodePropertyValueCharacter(ch = state.current())) {
+        state.lastStringValue += codePointToString(ch);
+        state.advance();
+      }
+      return state.lastStringValue !== "";
+    };
+    pp$1.regexp_eatLoneUnicodePropertyNameOrValue = function(state) {
+      return this.regexp_eatUnicodePropertyValue(state);
+    };
+    pp$1.regexp_eatCharacterClass = function(state) {
+      if (state.eat(
+        91
+        /* [ */
+      )) {
+        var negate = state.eat(
+          94
+          /* ^ */
+        );
+        var result = this.regexp_classContents(state);
+        if (!state.eat(
+          93
+          /* ] */
+        )) {
+          state.raise("Unterminated character class");
+        }
+        if (negate && result === CharSetString) {
+          state.raise("Negated character class may contain strings");
+        }
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_classContents = function(state) {
+      if (state.current() === 93) {
+        return CharSetOk;
+      }
+      if (state.switchV) {
+        return this.regexp_classSetExpression(state);
+      }
+      this.regexp_nonEmptyClassRanges(state);
+      return CharSetOk;
+    };
+    pp$1.regexp_nonEmptyClassRanges = function(state) {
+      while (this.regexp_eatClassAtom(state)) {
+        var left = state.lastIntValue;
+        if (state.eat(
+          45
+          /* - */
+        ) && this.regexp_eatClassAtom(state)) {
+          var right = state.lastIntValue;
+          if (state.switchU && (left === -1 || right === -1)) {
+            state.raise("Invalid character class");
+          }
+          if (left !== -1 && right !== -1 && left > right) {
+            state.raise("Range out of order in character class");
+          }
+        }
+      }
+    };
+    pp$1.regexp_eatClassAtom = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        92
+        /* \ */
+      )) {
+        if (this.regexp_eatClassEscape(state)) {
+          return true;
+        }
+        if (state.switchU) {
+          var ch$1 = state.current();
+          if (ch$1 === 99 || isOctalDigit(ch$1)) {
+            state.raise("Invalid class escape");
+          }
+          state.raise("Invalid escape");
+        }
+        state.pos = start;
+      }
+      var ch = state.current();
+      if (ch !== 93) {
+        state.lastIntValue = ch;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatClassEscape = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        98
+        /* b */
+      )) {
+        state.lastIntValue = 8;
+        return true;
+      }
+      if (state.switchU && state.eat(
+        45
+        /* - */
+      )) {
+        state.lastIntValue = 45;
+        return true;
+      }
+      if (!state.switchU && state.eat(
+        99
+        /* c */
+      )) {
+        if (this.regexp_eatClassControlLetter(state)) {
+          return true;
+        }
+        state.pos = start;
+      }
+      return this.regexp_eatCharacterClassEscape(state) || this.regexp_eatCharacterEscape(state);
+    };
+    pp$1.regexp_classSetExpression = function(state) {
+      var result = CharSetOk, subResult;
+      if (this.regexp_eatClassSetRange(state)) ;
+      else if (subResult = this.regexp_eatClassSetOperand(state)) {
+        if (subResult === CharSetString) {
+          result = CharSetString;
+        }
+        var start = state.pos;
+        while (state.eatChars(
+          [38, 38]
+          /* && */
+        )) {
+          if (state.current() !== 38 && (subResult = this.regexp_eatClassSetOperand(state))) {
+            if (subResult !== CharSetString) {
+              result = CharSetOk;
+            }
+            continue;
+          }
+          state.raise("Invalid character in character class");
+        }
+        if (start !== state.pos) {
+          return result;
+        }
+        while (state.eatChars(
+          [45, 45]
+          /* -- */
+        )) {
+          if (this.regexp_eatClassSetOperand(state)) {
+            continue;
+          }
+          state.raise("Invalid character in character class");
+        }
+        if (start !== state.pos) {
+          return result;
+        }
+      } else {
+        state.raise("Invalid character in character class");
+      }
+      for (; ; ) {
+        if (this.regexp_eatClassSetRange(state)) {
+          continue;
+        }
+        subResult = this.regexp_eatClassSetOperand(state);
+        if (!subResult) {
+          return result;
+        }
+        if (subResult === CharSetString) {
+          result = CharSetString;
+        }
+      }
+    };
+    pp$1.regexp_eatClassSetRange = function(state) {
+      var start = state.pos;
+      if (this.regexp_eatClassSetCharacter(state)) {
+        var left = state.lastIntValue;
+        if (state.eat(
+          45
+          /* - */
+        ) && this.regexp_eatClassSetCharacter(state)) {
+          var right = state.lastIntValue;
+          if (left !== -1 && right !== -1 && left > right) {
+            state.raise("Range out of order in character class");
+          }
+          return true;
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatClassSetOperand = function(state) {
+      if (this.regexp_eatClassSetCharacter(state)) {
+        return CharSetOk;
+      }
+      return this.regexp_eatClassStringDisjunction(state) || this.regexp_eatNestedClass(state);
+    };
+    pp$1.regexp_eatNestedClass = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        91
+        /* [ */
+      )) {
+        var negate = state.eat(
+          94
+          /* ^ */
+        );
+        var result = this.regexp_classContents(state);
+        if (state.eat(
+          93
+          /* ] */
+        )) {
+          if (negate && result === CharSetString) {
+            state.raise("Negated character class may contain strings");
+          }
+          return result;
+        }
+        state.pos = start;
+      }
+      if (state.eat(
+        92
+        /* \ */
+      )) {
+        var result$1 = this.regexp_eatCharacterClassEscape(state);
+        if (result$1) {
+          return result$1;
+        }
+        state.pos = start;
+      }
+      return null;
+    };
+    pp$1.regexp_eatClassStringDisjunction = function(state) {
+      var start = state.pos;
+      if (state.eatChars(
+        [92, 113]
+        /* \q */
+      )) {
+        if (state.eat(
+          123
+          /* { */
+        )) {
+          var result = this.regexp_classStringDisjunctionContents(state);
+          if (state.eat(
+            125
+            /* } */
+          )) {
+            return result;
+          }
+        } else {
+          state.raise("Invalid escape");
+        }
+        state.pos = start;
+      }
+      return null;
+    };
+    pp$1.regexp_classStringDisjunctionContents = function(state) {
+      var result = this.regexp_classString(state);
+      while (state.eat(
+        124
+        /* | */
+      )) {
+        if (this.regexp_classString(state) === CharSetString) {
+          result = CharSetString;
+        }
+      }
+      return result;
+    };
+    pp$1.regexp_classString = function(state) {
+      var count = 0;
+      while (this.regexp_eatClassSetCharacter(state)) {
+        count++;
+      }
+      return count === 1 ? CharSetOk : CharSetString;
+    };
+    pp$1.regexp_eatClassSetCharacter = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        92
+        /* \ */
+      )) {
+        if (this.regexp_eatCharacterEscape(state) || this.regexp_eatClassSetReservedPunctuator(state)) {
+          return true;
+        }
+        if (state.eat(
+          98
+          /* b */
+        )) {
+          state.lastIntValue = 8;
+          return true;
+        }
+        state.pos = start;
+        return false;
+      }
+      var ch = state.current();
+      if (ch < 0 || ch === state.lookahead() && isClassSetReservedDoublePunctuatorCharacter(ch)) {
+        return false;
+      }
+      if (isClassSetSyntaxCharacter(ch)) {
+        return false;
+      }
+      state.advance();
+      state.lastIntValue = ch;
+      return true;
+    };
+    pp$1.regexp_eatClassSetReservedPunctuator = function(state) {
+      var ch = state.current();
+      if (isClassSetReservedPunctuator(ch)) {
+        state.lastIntValue = ch;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatClassControlLetter = function(state) {
+      var ch = state.current();
+      if (isDecimalDigit(ch) || ch === 95) {
+        state.lastIntValue = ch % 32;
+        state.advance();
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatHexEscapeSequence = function(state) {
+      var start = state.pos;
+      if (state.eat(
+        120
+        /* x */
+      )) {
+        if (this.regexp_eatFixedHexDigits(state, 2)) {
+          return true;
+        }
+        if (state.switchU) {
+          state.raise("Invalid escape");
+        }
+        state.pos = start;
+      }
+      return false;
+    };
+    pp$1.regexp_eatDecimalDigits = function(state) {
+      var start = state.pos;
+      var ch = 0;
+      state.lastIntValue = 0;
+      while (isDecimalDigit(ch = state.current())) {
+        state.lastIntValue = 10 * state.lastIntValue + (ch - 48);
+        state.advance();
+      }
+      return state.pos !== start;
+    };
+    pp$1.regexp_eatHexDigits = function(state) {
+      var start = state.pos;
+      var ch = 0;
+      state.lastIntValue = 0;
+      while (isHexDigit(ch = state.current())) {
+        state.lastIntValue = 16 * state.lastIntValue + hexToInt(ch);
+        state.advance();
+      }
+      return state.pos !== start;
+    };
+    pp$1.regexp_eatLegacyOctalEscapeSequence = function(state) {
+      if (this.regexp_eatOctalDigit(state)) {
+        var n1 = state.lastIntValue;
+        if (this.regexp_eatOctalDigit(state)) {
+          var n2 = state.lastIntValue;
+          if (n1 <= 3 && this.regexp_eatOctalDigit(state)) {
+            state.lastIntValue = n1 * 64 + n2 * 8 + state.lastIntValue;
+          } else {
+            state.lastIntValue = n1 * 8 + n2;
+          }
+        } else {
+          state.lastIntValue = n1;
+        }
+        return true;
+      }
+      return false;
+    };
+    pp$1.regexp_eatOctalDigit = function(state) {
+      var ch = state.current();
+      if (isOctalDigit(ch)) {
+        state.lastIntValue = ch - 48;
+        state.advance();
+        return true;
+      }
+      state.lastIntValue = 0;
+      return false;
+    };
+    pp$1.regexp_eatFixedHexDigits = function(state, length) {
+      var start = state.pos;
+      state.lastIntValue = 0;
+      for (var i2 = 0; i2 < length; ++i2) {
+        var ch = state.current();
+        if (!isHexDigit(ch)) {
+          state.pos = start;
+          return false;
+        }
+        state.lastIntValue = 16 * state.lastIntValue + hexToInt(ch);
+        state.advance();
+      }
+      return true;
+    };
+    Token = function Token2(p) {
+      this.type = p.type;
+      this.value = p.value;
+      this.start = p.start;
+      this.end = p.end;
+      if (p.options.locations) {
+        this.loc = new SourceLocation(p, p.startLoc, p.endLoc);
+      }
+      if (p.options.ranges) {
+        this.range = [p.start, p.end];
+      }
+    };
+    pp = Parser.prototype;
+    pp.next = function(ignoreEscapeSequenceInKeyword) {
+      if (!ignoreEscapeSequenceInKeyword && this.type.keyword && this.containsEsc) {
+        this.raiseRecoverable(this.start, "Escape sequence in keyword " + this.type.keyword);
+      }
+      if (this.options.onToken) {
+        this.options.onToken(new Token(this));
+      }
+      this.lastTokEnd = this.end;
+      this.lastTokStart = this.start;
+      this.lastTokEndLoc = this.endLoc;
+      this.lastTokStartLoc = this.startLoc;
+      this.nextToken();
+    };
+    pp.getToken = function() {
+      this.next();
+      return new Token(this);
+    };
+    if (typeof Symbol !== "undefined") {
+      pp[Symbol.iterator] = function() {
+        var this$1$1 = this;
+        return {
+          next: function() {
+            var token = this$1$1.getToken();
+            return {
+              done: token.type === types$1.eof,
+              value: token
+            };
+          }
+        };
+      };
+    }
+    pp.nextToken = function() {
+      var curContext = this.curContext();
+      if (!curContext || !curContext.preserveSpace) {
+        this.skipSpace();
+      }
+      this.start = this.pos;
+      if (this.options.locations) {
+        this.startLoc = this.curPosition();
+      }
+      if (this.pos >= this.input.length) {
+        return this.finishToken(types$1.eof);
+      }
+      if (curContext.override) {
+        return curContext.override(this);
+      } else {
+        this.readToken(this.fullCharCodeAtPos());
+      }
+    };
+    pp.readToken = function(code) {
+      if (isIdentifierStart(code, this.options.ecmaVersion >= 6) || code === 92) {
+        return this.readWord();
+      }
+      return this.getTokenFromCode(code);
+    };
+    pp.fullCharCodeAt = function(pos) {
+      var code = this.input.charCodeAt(pos);
+      if (code <= 55295 || code >= 56320) {
+        return code;
+      }
+      var next = this.input.charCodeAt(pos + 1);
+      return next <= 56319 || next >= 57344 ? code : (code << 10) + next - 56613888;
+    };
+    pp.fullCharCodeAtPos = function() {
+      return this.fullCharCodeAt(this.pos);
+    };
+    pp.skipBlockComment = function() {
+      var startLoc = this.options.onComment && this.curPosition();
+      var start = this.pos, end = this.input.indexOf("*/", this.pos += 2);
+      if (end === -1) {
+        this.raise(this.pos - 2, "Unterminated comment");
+      }
+      this.pos = end + 2;
+      if (this.options.locations) {
+        for (var nextBreak = void 0, pos = start; (nextBreak = nextLineBreak(this.input, pos, this.pos)) > -1; ) {
+          ++this.curLine;
+          pos = this.lineStart = nextBreak;
+        }
+      }
+      if (this.options.onComment) {
+        this.options.onComment(
+          true,
+          this.input.slice(start + 2, end),
+          start,
+          this.pos,
+          startLoc,
+          this.curPosition()
+        );
+      }
+    };
+    pp.skipLineComment = function(startSkip) {
+      var start = this.pos;
+      var startLoc = this.options.onComment && this.curPosition();
+      var ch = this.input.charCodeAt(this.pos += startSkip);
+      while (this.pos < this.input.length && !isNewLine(ch)) {
+        ch = this.input.charCodeAt(++this.pos);
+      }
+      if (this.options.onComment) {
+        this.options.onComment(
+          false,
+          this.input.slice(start + startSkip, this.pos),
+          start,
+          this.pos,
+          startLoc,
+          this.curPosition()
+        );
+      }
+    };
+    pp.skipSpace = function() {
+      loop: while (this.pos < this.input.length) {
+        var ch = this.input.charCodeAt(this.pos);
+        switch (ch) {
+          case 32:
+          case 160:
+            ++this.pos;
+            break;
+          case 13:
+            if (this.input.charCodeAt(this.pos + 1) === 10) {
+              ++this.pos;
+            }
+          case 10:
+          case 8232:
+          case 8233:
+            ++this.pos;
+            if (this.options.locations) {
+              ++this.curLine;
+              this.lineStart = this.pos;
+            }
+            break;
+          case 47:
+            switch (this.input.charCodeAt(this.pos + 1)) {
+              case 42:
+                this.skipBlockComment();
+                break;
+              case 47:
+                this.skipLineComment(2);
+                break;
+              default:
+                break loop;
+            }
+            break;
+          default:
+            if (ch > 8 && ch < 14 || ch >= 5760 && nonASCIIwhitespace.test(String.fromCharCode(ch))) {
+              ++this.pos;
+            } else {
+              break loop;
+            }
+        }
+      }
+    };
+    pp.finishToken = function(type, val) {
+      this.end = this.pos;
+      if (this.options.locations) {
+        this.endLoc = this.curPosition();
+      }
+      var prevType = this.type;
+      this.type = type;
+      this.value = val;
+      this.updateContext(prevType);
+    };
+    pp.readToken_dot = function() {
+      var next = this.input.charCodeAt(this.pos + 1);
+      if (next >= 48 && next <= 57) {
+        return this.readNumber(true);
+      }
+      var next2 = this.input.charCodeAt(this.pos + 2);
+      if (this.options.ecmaVersion >= 6 && next === 46 && next2 === 46) {
+        this.pos += 3;
+        return this.finishToken(types$1.ellipsis);
+      } else {
+        ++this.pos;
+        return this.finishToken(types$1.dot);
+      }
+    };
+    pp.readToken_slash = function() {
+      var next = this.input.charCodeAt(this.pos + 1);
+      if (this.exprAllowed) {
+        ++this.pos;
+        return this.readRegexp();
+      }
+      if (next === 61) {
+        return this.finishOp(types$1.assign, 2);
+      }
+      return this.finishOp(types$1.slash, 1);
+    };
+    pp.readToken_mult_modulo_exp = function(code) {
+      var next = this.input.charCodeAt(this.pos + 1);
+      var size = 1;
+      var tokentype = code === 42 ? types$1.star : types$1.modulo;
+      if (this.options.ecmaVersion >= 7 && code === 42 && next === 42) {
+        ++size;
+        tokentype = types$1.starstar;
+        next = this.input.charCodeAt(this.pos + 2);
+      }
+      if (next === 61) {
+        return this.finishOp(types$1.assign, size + 1);
+      }
+      return this.finishOp(tokentype, size);
+    };
+    pp.readToken_pipe_amp = function(code) {
+      var next = this.input.charCodeAt(this.pos + 1);
+      if (next === code) {
+        if (this.options.ecmaVersion >= 12) {
+          var next2 = this.input.charCodeAt(this.pos + 2);
+          if (next2 === 61) {
+            return this.finishOp(types$1.assign, 3);
+          }
+        }
+        return this.finishOp(code === 124 ? types$1.logicalOR : types$1.logicalAND, 2);
+      }
+      if (next === 61) {
+        return this.finishOp(types$1.assign, 2);
+      }
+      return this.finishOp(code === 124 ? types$1.bitwiseOR : types$1.bitwiseAND, 1);
+    };
+    pp.readToken_caret = function() {
+      var next = this.input.charCodeAt(this.pos + 1);
+      if (next === 61) {
+        return this.finishOp(types$1.assign, 2);
+      }
+      return this.finishOp(types$1.bitwiseXOR, 1);
+    };
+    pp.readToken_plus_min = function(code) {
+      var next = this.input.charCodeAt(this.pos + 1);
+      if (next === code) {
+        if (next === 45 && !this.inModule && this.input.charCodeAt(this.pos + 2) === 62 && (this.lastTokEnd === 0 || lineBreak.test(this.input.slice(this.lastTokEnd, this.pos)))) {
+          this.skipLineComment(3);
+          this.skipSpace();
+          return this.nextToken();
+        }
+        return this.finishOp(types$1.incDec, 2);
+      }
+      if (next === 61) {
+        return this.finishOp(types$1.assign, 2);
+      }
+      return this.finishOp(types$1.plusMin, 1);
+    };
+    pp.readToken_lt_gt = function(code) {
+      var next = this.input.charCodeAt(this.pos + 1);
+      var size = 1;
+      if (next === code) {
+        size = code === 62 && this.input.charCodeAt(this.pos + 2) === 62 ? 3 : 2;
+        if (this.input.charCodeAt(this.pos + size) === 61) {
+          return this.finishOp(types$1.assign, size + 1);
+        }
+        return this.finishOp(types$1.bitShift, size);
+      }
+      if (next === 33 && code === 60 && !this.inModule && this.input.charCodeAt(this.pos + 2) === 45 && this.input.charCodeAt(this.pos + 3) === 45) {
+        this.skipLineComment(4);
+        this.skipSpace();
+        return this.nextToken();
+      }
+      if (next === 61) {
+        size = 2;
+      }
+      return this.finishOp(types$1.relational, size);
+    };
+    pp.readToken_eq_excl = function(code) {
+      var next = this.input.charCodeAt(this.pos + 1);
+      if (next === 61) {
+        return this.finishOp(types$1.equality, this.input.charCodeAt(this.pos + 2) === 61 ? 3 : 2);
+      }
+      if (code === 61 && next === 62 && this.options.ecmaVersion >= 6) {
+        this.pos += 2;
+        return this.finishToken(types$1.arrow);
+      }
+      return this.finishOp(code === 61 ? types$1.eq : types$1.prefix, 1);
+    };
+    pp.readToken_question = function() {
+      var ecmaVersion2 = this.options.ecmaVersion;
+      if (ecmaVersion2 >= 11) {
+        var next = this.input.charCodeAt(this.pos + 1);
+        if (next === 46) {
+          var next2 = this.input.charCodeAt(this.pos + 2);
+          if (next2 < 48 || next2 > 57) {
+            return this.finishOp(types$1.questionDot, 2);
+          }
+        }
+        if (next === 63) {
+          if (ecmaVersion2 >= 12) {
+            var next2$1 = this.input.charCodeAt(this.pos + 2);
+            if (next2$1 === 61) {
+              return this.finishOp(types$1.assign, 3);
+            }
+          }
+          return this.finishOp(types$1.coalesce, 2);
+        }
+      }
+      return this.finishOp(types$1.question, 1);
+    };
+    pp.readToken_numberSign = function() {
+      var ecmaVersion2 = this.options.ecmaVersion;
+      var code = 35;
+      if (ecmaVersion2 >= 13) {
+        ++this.pos;
+        code = this.fullCharCodeAtPos();
+        if (isIdentifierStart(code, true) || code === 92) {
+          return this.finishToken(types$1.privateId, this.readWord1());
+        }
+      }
+      this.raise(this.pos, "Unexpected character '" + codePointToString(code) + "'");
+    };
+    pp.getTokenFromCode = function(code) {
+      switch (code) {
+        // The interpretation of a dot depends on whether it is followed
+        // by a digit or another two dots.
+        case 46:
+          return this.readToken_dot();
+        // Punctuation tokens.
+        case 40:
+          ++this.pos;
+          return this.finishToken(types$1.parenL);
+        case 41:
+          ++this.pos;
+          return this.finishToken(types$1.parenR);
+        case 59:
+          ++this.pos;
+          return this.finishToken(types$1.semi);
+        case 44:
+          ++this.pos;
+          return this.finishToken(types$1.comma);
+        case 91:
+          ++this.pos;
+          return this.finishToken(types$1.bracketL);
+        case 93:
+          ++this.pos;
+          return this.finishToken(types$1.bracketR);
+        case 123:
+          ++this.pos;
+          return this.finishToken(types$1.braceL);
+        case 125:
+          ++this.pos;
+          return this.finishToken(types$1.braceR);
+        case 58:
+          ++this.pos;
+          return this.finishToken(types$1.colon);
+        case 96:
+          if (this.options.ecmaVersion < 6) {
+            break;
+          }
+          ++this.pos;
+          return this.finishToken(types$1.backQuote);
+        case 48:
+          var next = this.input.charCodeAt(this.pos + 1);
+          if (next === 120 || next === 88) {
+            return this.readRadixNumber(16);
+          }
+          if (this.options.ecmaVersion >= 6) {
+            if (next === 111 || next === 79) {
+              return this.readRadixNumber(8);
+            }
+            if (next === 98 || next === 66) {
+              return this.readRadixNumber(2);
+            }
+          }
+        // Anything else beginning with a digit is an integer, octal
+        // number, or float.
+        case 49:
+        case 50:
+        case 51:
+        case 52:
+        case 53:
+        case 54:
+        case 55:
+        case 56:
+        case 57:
+          return this.readNumber(false);
+        // Quotes produce strings.
+        case 34:
+        case 39:
+          return this.readString(code);
+        // Operators are parsed inline in tiny state machines. '=' (61) is
+        // often referred to. `finishOp` simply skips the amount of
+        // characters it is given as second argument, and returns a token
+        // of the type given by its first argument.
+        case 47:
+          return this.readToken_slash();
+        case 37:
+        case 42:
+          return this.readToken_mult_modulo_exp(code);
+        case 124:
+        case 38:
+          return this.readToken_pipe_amp(code);
+        case 94:
+          return this.readToken_caret();
+        case 43:
+        case 45:
+          return this.readToken_plus_min(code);
+        case 60:
+        case 62:
+          return this.readToken_lt_gt(code);
+        case 61:
+        case 33:
+          return this.readToken_eq_excl(code);
+        case 63:
+          return this.readToken_question();
+        case 126:
+          return this.finishOp(types$1.prefix, 1);
+        case 35:
+          return this.readToken_numberSign();
+      }
+      this.raise(this.pos, "Unexpected character '" + codePointToString(code) + "'");
+    };
+    pp.finishOp = function(type, size) {
+      var str2 = this.input.slice(this.pos, this.pos + size);
+      this.pos += size;
+      return this.finishToken(type, str2);
+    };
+    pp.readRegexp = function() {
+      var escaped, inClass, start = this.pos;
+      for (; ; ) {
+        if (this.pos >= this.input.length) {
+          this.raise(start, "Unterminated regular expression");
+        }
+        var ch = this.input.charAt(this.pos);
+        if (lineBreak.test(ch)) {
+          this.raise(start, "Unterminated regular expression");
+        }
+        if (!escaped) {
+          if (ch === "[") {
+            inClass = true;
+          } else if (ch === "]" && inClass) {
+            inClass = false;
+          } else if (ch === "/" && !inClass) {
+            break;
+          }
+          escaped = ch === "\\";
+        } else {
+          escaped = false;
+        }
+        ++this.pos;
+      }
+      var pattern2 = this.input.slice(start, this.pos);
+      ++this.pos;
+      var flagsStart = this.pos;
+      var flags = this.readWord1();
+      if (this.containsEsc) {
+        this.unexpected(flagsStart);
+      }
+      var state = this.regexpState || (this.regexpState = new RegExpValidationState(this));
+      state.reset(start, pattern2, flags);
+      this.validateRegExpFlags(state);
+      this.validateRegExpPattern(state);
+      var value = null;
+      try {
+        value = new RegExp(pattern2, flags);
+      } catch (e) {
+      }
+      return this.finishToken(types$1.regexp, { pattern: pattern2, flags, value });
+    };
+    pp.readInt = function(radix, len, maybeLegacyOctalNumericLiteral) {
+      var allowSeparators = this.options.ecmaVersion >= 12 && len === void 0;
+      var isLegacyOctalNumericLiteral = maybeLegacyOctalNumericLiteral && this.input.charCodeAt(this.pos) === 48;
+      var start = this.pos, total = 0, lastCode = 0;
+      for (var i2 = 0, e = len == null ? Infinity : len; i2 < e; ++i2, ++this.pos) {
+        var code = this.input.charCodeAt(this.pos), val = void 0;
+        if (allowSeparators && code === 95) {
+          if (isLegacyOctalNumericLiteral) {
+            this.raiseRecoverable(this.pos, "Numeric separator is not allowed in legacy octal numeric literals");
+          }
+          if (lastCode === 95) {
+            this.raiseRecoverable(this.pos, "Numeric separator must be exactly one underscore");
+          }
+          if (i2 === 0) {
+            this.raiseRecoverable(this.pos, "Numeric separator is not allowed at the first of digits");
+          }
+          lastCode = code;
+          continue;
+        }
+        if (code >= 97) {
+          val = code - 97 + 10;
+        } else if (code >= 65) {
+          val = code - 65 + 10;
+        } else if (code >= 48 && code <= 57) {
+          val = code - 48;
+        } else {
+          val = Infinity;
+        }
+        if (val >= radix) {
+          break;
+        }
+        lastCode = code;
+        total = total * radix + val;
+      }
+      if (allowSeparators && lastCode === 95) {
+        this.raiseRecoverable(this.pos - 1, "Numeric separator is not allowed at the last of digits");
+      }
+      if (this.pos === start || len != null && this.pos - start !== len) {
+        return null;
+      }
+      return total;
+    };
+    pp.readRadixNumber = function(radix) {
+      var start = this.pos;
+      this.pos += 2;
+      var val = this.readInt(radix);
+      if (val == null) {
+        this.raise(this.start + 2, "Expected number in radix " + radix);
+      }
+      if (this.options.ecmaVersion >= 11 && this.input.charCodeAt(this.pos) === 110) {
+        val = stringToBigInt(this.input.slice(start, this.pos));
+        ++this.pos;
+      } else if (isIdentifierStart(this.fullCharCodeAtPos())) {
+        this.raise(this.pos, "Identifier directly after number");
+      }
+      return this.finishToken(types$1.num, val);
+    };
+    pp.readNumber = function(startsWithDot) {
+      var start = this.pos;
+      if (!startsWithDot && this.readInt(10, void 0, true) === null) {
+        this.raise(start, "Invalid number");
+      }
+      var octal = this.pos - start >= 2 && this.input.charCodeAt(start) === 48;
+      if (octal && this.strict) {
+        this.raise(start, "Invalid number");
+      }
+      var next = this.input.charCodeAt(this.pos);
+      if (!octal && !startsWithDot && this.options.ecmaVersion >= 11 && next === 110) {
+        var val$1 = stringToBigInt(this.input.slice(start, this.pos));
+        ++this.pos;
+        if (isIdentifierStart(this.fullCharCodeAtPos())) {
+          this.raise(this.pos, "Identifier directly after number");
+        }
+        return this.finishToken(types$1.num, val$1);
+      }
+      if (octal && /[89]/.test(this.input.slice(start, this.pos))) {
+        octal = false;
+      }
+      if (next === 46 && !octal) {
+        ++this.pos;
+        this.readInt(10);
+        next = this.input.charCodeAt(this.pos);
+      }
+      if ((next === 69 || next === 101) && !octal) {
+        next = this.input.charCodeAt(++this.pos);
+        if (next === 43 || next === 45) {
+          ++this.pos;
+        }
+        if (this.readInt(10) === null) {
+          this.raise(start, "Invalid number");
+        }
+      }
+      if (isIdentifierStart(this.fullCharCodeAtPos())) {
+        this.raise(this.pos, "Identifier directly after number");
+      }
+      var val = stringToNumber(this.input.slice(start, this.pos), octal);
+      return this.finishToken(types$1.num, val);
+    };
+    pp.readCodePoint = function() {
+      var ch = this.input.charCodeAt(this.pos), code;
+      if (ch === 123) {
+        if (this.options.ecmaVersion < 6) {
+          this.unexpected();
+        }
+        var codePos = ++this.pos;
+        code = this.readHexChar(this.input.indexOf("}", this.pos) - this.pos);
+        ++this.pos;
+        if (code > 1114111) {
+          this.invalidStringToken(codePos, "Code point out of bounds");
+        }
+      } else {
+        code = this.readHexChar(4);
+      }
+      return code;
+    };
+    pp.readString = function(quote) {
+      var out = "", chunkStart = ++this.pos;
+      for (; ; ) {
+        if (this.pos >= this.input.length) {
+          this.raise(this.start, "Unterminated string constant");
+        }
+        var ch = this.input.charCodeAt(this.pos);
+        if (ch === quote) {
+          break;
+        }
+        if (ch === 92) {
+          out += this.input.slice(chunkStart, this.pos);
+          out += this.readEscapedChar(false);
+          chunkStart = this.pos;
+        } else if (ch === 8232 || ch === 8233) {
+          if (this.options.ecmaVersion < 10) {
+            this.raise(this.start, "Unterminated string constant");
+          }
+          ++this.pos;
+          if (this.options.locations) {
+            this.curLine++;
+            this.lineStart = this.pos;
+          }
+        } else {
+          if (isNewLine(ch)) {
+            this.raise(this.start, "Unterminated string constant");
+          }
+          ++this.pos;
+        }
+      }
+      out += this.input.slice(chunkStart, this.pos++);
+      return this.finishToken(types$1.string, out);
+    };
+    INVALID_TEMPLATE_ESCAPE_ERROR = {};
+    pp.tryReadTemplateToken = function() {
+      this.inTemplateElement = true;
+      try {
+        this.readTmplToken();
+      } catch (err) {
+        if (err === INVALID_TEMPLATE_ESCAPE_ERROR) {
+          this.readInvalidTemplateToken();
+        } else {
+          throw err;
+        }
+      }
+      this.inTemplateElement = false;
+    };
+    pp.invalidStringToken = function(position2, message2) {
+      if (this.inTemplateElement && this.options.ecmaVersion >= 9) {
+        throw INVALID_TEMPLATE_ESCAPE_ERROR;
+      } else {
+        this.raise(position2, message2);
+      }
+    };
+    pp.readTmplToken = function() {
+      var out = "", chunkStart = this.pos;
+      for (; ; ) {
+        if (this.pos >= this.input.length) {
+          this.raise(this.start, "Unterminated template");
+        }
+        var ch = this.input.charCodeAt(this.pos);
+        if (ch === 96 || ch === 36 && this.input.charCodeAt(this.pos + 1) === 123) {
+          if (this.pos === this.start && (this.type === types$1.template || this.type === types$1.invalidTemplate)) {
+            if (ch === 36) {
+              this.pos += 2;
+              return this.finishToken(types$1.dollarBraceL);
+            } else {
+              ++this.pos;
+              return this.finishToken(types$1.backQuote);
+            }
+          }
+          out += this.input.slice(chunkStart, this.pos);
+          return this.finishToken(types$1.template, out);
+        }
+        if (ch === 92) {
+          out += this.input.slice(chunkStart, this.pos);
+          out += this.readEscapedChar(true);
+          chunkStart = this.pos;
+        } else if (isNewLine(ch)) {
+          out += this.input.slice(chunkStart, this.pos);
+          ++this.pos;
+          switch (ch) {
+            case 13:
+              if (this.input.charCodeAt(this.pos) === 10) {
+                ++this.pos;
+              }
+            case 10:
+              out += "\n";
+              break;
+            default:
+              out += String.fromCharCode(ch);
+              break;
+          }
+          if (this.options.locations) {
+            ++this.curLine;
+            this.lineStart = this.pos;
+          }
+          chunkStart = this.pos;
+        } else {
+          ++this.pos;
+        }
+      }
+    };
+    pp.readInvalidTemplateToken = function() {
+      for (; this.pos < this.input.length; this.pos++) {
+        switch (this.input[this.pos]) {
+          case "\\":
+            ++this.pos;
+            break;
+          case "$":
+            if (this.input[this.pos + 1] !== "{") {
+              break;
+            }
+          // fall through
+          case "`":
+            return this.finishToken(types$1.invalidTemplate, this.input.slice(this.start, this.pos));
+          case "\r":
+            if (this.input[this.pos + 1] === "\n") {
+              ++this.pos;
+            }
+          // fall through
+          case "\n":
+          case "\u2028":
+          case "\u2029":
+            ++this.curLine;
+            this.lineStart = this.pos + 1;
+            break;
+        }
+      }
+      this.raise(this.start, "Unterminated template");
+    };
+    pp.readEscapedChar = function(inTemplate) {
+      var ch = this.input.charCodeAt(++this.pos);
+      ++this.pos;
+      switch (ch) {
+        case 110:
+          return "\n";
+        // 'n' -> '\n'
+        case 114:
+          return "\r";
+        // 'r' -> '\r'
+        case 120:
+          return String.fromCharCode(this.readHexChar(2));
+        // 'x'
+        case 117:
+          return codePointToString(this.readCodePoint());
+        // 'u'
+        case 116:
+          return "	";
+        // 't' -> '\t'
+        case 98:
+          return "\b";
+        // 'b' -> '\b'
+        case 118:
+          return "\v";
+        // 'v' -> '\u000b'
+        case 102:
+          return "\f";
+        // 'f' -> '\f'
+        case 13:
+          if (this.input.charCodeAt(this.pos) === 10) {
+            ++this.pos;
+          }
+        // '\r\n'
+        case 10:
+          if (this.options.locations) {
+            this.lineStart = this.pos;
+            ++this.curLine;
+          }
+          return "";
+        case 56:
+        case 57:
+          if (this.strict) {
+            this.invalidStringToken(
+              this.pos - 1,
+              "Invalid escape sequence"
+            );
+          }
+          if (inTemplate) {
+            var codePos = this.pos - 1;
+            this.invalidStringToken(
+              codePos,
+              "Invalid escape sequence in template string"
+            );
+          }
+        default:
+          if (ch >= 48 && ch <= 55) {
+            var octalStr = this.input.substr(this.pos - 1, 3).match(/^[0-7]+/)[0];
+            var octal = parseInt(octalStr, 8);
+            if (octal > 255) {
+              octalStr = octalStr.slice(0, -1);
+              octal = parseInt(octalStr, 8);
+            }
+            this.pos += octalStr.length - 1;
+            ch = this.input.charCodeAt(this.pos);
+            if ((octalStr !== "0" || ch === 56 || ch === 57) && (this.strict || inTemplate)) {
+              this.invalidStringToken(
+                this.pos - 1 - octalStr.length,
+                inTemplate ? "Octal literal in template string" : "Octal literal in strict mode"
+              );
+            }
+            return String.fromCharCode(octal);
+          }
+          if (isNewLine(ch)) {
+            if (this.options.locations) {
+              this.lineStart = this.pos;
+              ++this.curLine;
+            }
+            return "";
+          }
+          return String.fromCharCode(ch);
+      }
+    };
+    pp.readHexChar = function(len) {
+      var codePos = this.pos;
+      var n = this.readInt(16, len);
+      if (n === null) {
+        this.invalidStringToken(codePos, "Bad character escape sequence");
+      }
+      return n;
+    };
+    pp.readWord1 = function() {
+      this.containsEsc = false;
+      var word = "", first = true, chunkStart = this.pos;
+      var astral = this.options.ecmaVersion >= 6;
+      while (this.pos < this.input.length) {
+        var ch = this.fullCharCodeAtPos();
+        if (isIdentifierChar(ch, astral)) {
+          this.pos += ch <= 65535 ? 1 : 2;
+        } else if (ch === 92) {
+          this.containsEsc = true;
+          word += this.input.slice(chunkStart, this.pos);
+          var escStart = this.pos;
+          if (this.input.charCodeAt(++this.pos) !== 117) {
+            this.invalidStringToken(this.pos, "Expecting Unicode escape sequence \\uXXXX");
+          }
+          ++this.pos;
+          var esc = this.readCodePoint();
+          if (!(first ? isIdentifierStart : isIdentifierChar)(esc, astral)) {
+            this.invalidStringToken(escStart, "Invalid Unicode escape");
+          }
+          word += codePointToString(esc);
+          chunkStart = this.pos;
+        } else {
+          break;
+        }
+        first = false;
+      }
+      return word + this.input.slice(chunkStart, this.pos);
+    };
+    pp.readWord = function() {
+      var word = this.readWord1();
+      var type = types$1.name;
+      if (this.keywords.test(word)) {
+        type = keywords[word];
+      }
+      return this.finishToken(type, word);
+    };
+    version = "8.19.0";
+    Parser.acorn = {
+      Parser,
+      version,
+      defaultOptions: defaultOptions2,
+      Position,
+      SourceLocation,
+      getLineInfo,
+      Node,
+      TokenType,
+      tokTypes: types$1,
+      keywordTypes: keywords,
+      TokContext,
+      tokContexts: types,
+      isIdentifierChar,
+      isIdentifierStart,
+      Token,
+      isNewLine,
+      lineBreak,
+      lineBreakG,
+      nonASCIIwhitespace
+    };
+  }
+});
+
+// src/runners/node-test/identity.ts
+function identify(tests) {
+  const parents = tests.every(hasIds) ? parentsById(tests) : parentsByNesting(tests);
+  const ancestorsOf = (test) => {
+    const chain = [];
+    for (let p = parents.get(test); p !== void 0; p = parents.get(p)) chain.unshift(p);
+    return chain;
+  };
+  const checks = tests.filter((test) => !test.suite).map((test) => {
+    const ancestors = ancestorsOf(test);
+    const fullName = [...ancestors, test].map((t) => t.name).join(NAME_SEPARATOR);
+    return { test, ancestors, fullName };
+  });
+  const names = suffixDuplicates(checks.map((c) => ({ fullName: c.fullName, line: c.test.line })));
+  return checks.map((check, i2) => ({ ...check, fullName: names[i2] ?? check.fullName }));
+}
+function suffixDuplicates(checks) {
+  const used = /* @__PURE__ */ new Set();
+  return checks.map(({ fullName, line }) => {
+    let name = fullName;
+    if (used.has(name)) {
+      const at2 = line === null ? "line ?" : `line ${line}`;
+      name = `${fullName} (${at2})`;
+      for (let n = 2; used.has(name); n++) name = `${fullName} (${at2}, ${n})`;
+    }
+    used.add(name);
+    return name;
+  });
+}
+function hasIds(test) {
+  return typeof test.testId === "number" && typeof test.parentId === "number";
+}
+function parentsById(tests) {
+  const byId = new Map(tests.map((t) => [t.testId, t]));
+  const parents = /* @__PURE__ */ new Map();
+  for (const test of tests) {
+    const parent2 = byId.get(test.parentId);
+    if (parent2 !== void 0 && parent2 !== test) parents.set(test, parent2);
+  }
+  return parents;
+}
+function parentsByNesting(tests) {
+  const parents = /* @__PURE__ */ new Map();
+  const pending = /* @__PURE__ */ new Map();
+  for (const test of tests) {
+    for (const child of pending.get(test.nesting + 1) ?? []) parents.set(child, test);
+    pending.set(test.nesting + 1, []);
+    pending.set(test.nesting, [...pending.get(test.nesting) ?? [], test]);
+  }
+  return parents;
+}
+var NAME_SEPARATOR;
+var init_identity = __esm({
+  "src/runners/node-test/identity.ts"() {
+    "use strict";
+    NAME_SEPARATOR = " > ";
+  }
+});
+
+// src/runners/node-test/enumerate.ts
+import { readFile as readFile4 } from "node:fs/promises";
+import { stripTypeScriptTypes } from "node:module";
+async function enumerate(file, testFile) {
+  return enumerateSource(await readFile4(file, "utf8"), testFile);
+}
+function enumerateSource(source, testFile) {
+  const program = parseStripped(source);
+  if (!program) return [];
+  const found = [];
+  const bindings = nodeTestBindings(program);
+  visit(program, { prefix: [], context: null }, bindings, source, found);
+  const names = suffixDuplicates(found);
+  return found.map((entry2, i2) => ({
+    check: {
+      kind: "test",
+      project: testFile.project,
+      testPath: testFile.path,
+      fullName: names[i2] ?? entry2.fullName
+    },
+    templated: entry2.templated,
+    location: { path: testFile.path, line: entry2.line, column: entry2.column }
+  }));
+}
+function parseStripped(source) {
+  let code;
+  try {
+    code = quietly(() => stripTypeScriptTypes(source, { mode: "strip" }));
+  } catch {
+    return null;
+  }
+  for (const sourceType of ["module", "script"]) {
+    try {
+      return parse4(code, {
+        ecmaVersion: "latest",
+        sourceType,
+        locations: true,
+        allowHashBang: true
+      });
+    } catch {
+    }
+  }
+  return null;
+}
+function quietly(strip) {
+  const emit = process.emitWarning;
+  process.emitWarning = function(warning, ...rest) {
+    const text2 = typeof warning === "string" ? warning : warning.message;
+    if (text2.includes("stripTypeScriptTypes")) return;
+    return Reflect.apply(emit, this, [warning, ...rest]);
+  };
+  try {
+    return strip();
+  } finally {
+    process.emitWarning = emit;
+  }
+}
+function nodeTestBindings(program) {
+  const calls = new Map(KINDS4);
+  const namespaces = /* @__PURE__ */ new Set();
+  for (const statement of program.body) {
+    if (statement.type !== "ImportDeclaration" || !NODE_TEST.has(String(statement.source.value)))
+      continue;
+    for (const specifier of statement.specifiers) {
+      if (specifier.type === "ImportDefaultSpecifier") calls.set(specifier.local.name, "test");
+      else if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name);
+      else {
+        const imported = specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value;
+        const kind = KINDS4.get(String(imported));
+        if (kind) calls.set(specifier.local.name, kind);
+      }
+    }
+  }
+  return { calls, namespaces };
+}
+function visit(node, scope, bindings, source, found) {
+  const kind = node.type === "CallExpression" ? classify3(node.callee, scope, bindings) : null;
+  if (node.type === "CallExpression" && kind) {
+    declare(node, kind, scope, bindings, source, found);
+    return;
+  }
+  for (const key of Object.keys(node)) {
+    const value = node[key];
+    if (Array.isArray(value)) {
+      for (const child of value) if (isNode(child)) visit(child, scope, bindings, source, found);
+    } else if (isNode(value)) visit(value, scope, bindings, source, found);
+  }
+}
+function declare(call, kind, scope, bindings, source, found) {
+  const start = call.loc?.start ?? { line: 0, column: -1 };
+  const position2 = { line: start.line, column: start.column + 1 };
+  const first = call.arguments[0];
+  const callback2 = call.arguments.findLast(isFunction);
+  const name = first ? declaredName(first, callback2) : null;
+  if (name === null) {
+    const template = first ? source.slice(first.start, first.end) : "<anonymous>";
+    found.push({
+      fullName: [...scope.prefix, template].join(NAME_SEPARATOR),
+      templated: true,
+      ...position2
+    });
+    return;
+  }
+  const prefix = [...scope.prefix, name];
+  if (kind === "test")
+    found.push({ fullName: prefix.join(NAME_SEPARATOR), templated: false, ...position2 });
+  if (!callback2 || skipped(call)) return;
+  const param = callback2.params[0];
+  const context = param?.type === "Identifier" ? param.name : null;
+  visit(callback2.body, { prefix, context }, bindings, source, found);
+}
+function isFunction(arg) {
+  return arg.type === "ArrowFunctionExpression" || arg.type === "FunctionExpression";
+}
+function declaredName(first, callback2) {
+  const literal2 = literalName(first);
+  if (literal2 !== null) return literal2;
+  if (first !== callback2 && first.type !== "ObjectExpression") return null;
+  const fn = callback2?.type === "FunctionExpression" ? callback2.id : null;
+  return fn?.name ?? "<anonymous>";
+}
+function skipped(call) {
+  let callee = call.callee;
+  while (callee.type === "MemberExpression" && !callee.computed) {
+    if (callee.property.type === "Identifier" && callee.property.name === "skip") return true;
+    callee = callee.object;
+  }
+  return call.arguments.some(
+    (arg) => arg.type === "ObjectExpression" && arg.properties.some(
+      (p) => p.type === "Property" && !p.computed && (p.key.type === "Identifier" && p.key.name === "skip" || p.key.type === "Literal" && p.key.value === "skip") && p.value.type === "Literal" && Boolean(p.value.value)
+    )
+  );
+}
+function classify3(callee, scope, bindings) {
+  if (callee.type === "Identifier") return bindings.calls.get(callee.name) ?? null;
+  if (callee.type !== "MemberExpression") return null;
+  const member = callee;
+  if (member.computed || member.property.type !== "Identifier") return null;
+  const property = member.property.name;
+  if (MODIFIERS.has(property)) return classify3(member.object, scope, bindings);
+  if (member.object.type !== "Identifier") return null;
+  if (property === "test" && member.object.name === scope.context) return "test";
+  if (bindings.namespaces.has(member.object.name)) return KINDS4.get(property) ?? null;
+  return null;
+}
+function literalName(arg) {
+  if (arg.type === "Literal" && typeof arg.value === "string") return arg.value;
+  if (arg.type === "TemplateLiteral" && arg.expressions.length === 0)
+    return arg.quasis[0]?.value.cooked ?? null;
+  return null;
+}
+function isNode(value) {
+  return typeof value === "object" && value !== null && typeof value.type === "string";
+}
+var KINDS4, MODIFIERS, NODE_TEST;
+var init_enumerate = __esm({
+  "src/runners/node-test/enumerate.ts"() {
+    "use strict";
+    init_acorn();
+    init_identity();
+    KINDS4 = /* @__PURE__ */ new Map([
+      ["test", "test"],
+      ["it", "test"],
+      ["describe", "suite"],
+      ["suite", "suite"]
+    ]);
+    MODIFIERS = /* @__PURE__ */ new Set(["skip", "todo", "only"]);
+    NODE_TEST = /* @__PURE__ */ new Set(["node:test", "test"]);
+  }
+});
+
+// src/runners/node-test/graph/closures.ts
+function reachable(nodes, roots) {
+  const seen = new Set(roots);
+  const stack = [...roots];
+  for (let file = stack.pop(); file !== void 0; file = stack.pop()) {
+    for (const dep of nodes(file)?.deps ?? []) {
+      if (!seen.has(dep)) {
+        seen.add(dep);
+        stack.push(dep);
+      }
+    }
+  }
+  return seen;
+}
+function eachRank(bits, fn) {
+  for (let w2 = 0; w2 < bits.length; w2++) {
+    let word = bits[w2] ?? 0;
+    while (word !== 0) {
+      fn(w2 * 32 + 31 - Math.clz32(word & -word));
+      word &= word - 1;
+    }
+  }
+}
+function or(into, from) {
+  for (let w2 = 0; w2 < into.length; w2++) into[w2] = (into[w2] ?? 0) | (from[w2] ?? 0);
+}
+var ClosureIndex;
+var init_closures = __esm({
+  "src/runners/node-test/graph/closures.ts"() {
+    "use strict";
+    ClosureIndex = class {
+      /** Paths by rank, sorted by their worktree-relative form. */
+      paths;
+      /** `paths` in worktree-relative form. */
+      relative;
+      rank;
+      words;
+      testBits;
+      testOrder;
+      /** Per path rank, a bitset over `testOrder`. */
+      holderBits;
+      testWords;
+      preload;
+      /** Ranks of modules with an incompleteness reason, and the reasons. */
+      reasons;
+      constructor(nodes, tests, preloadRoots, preloadExtra, rel) {
+        const modules = reachable(nodes, [...tests, ...preloadRoots]);
+        const all = new Set(preloadExtra);
+        for (const file of modules) {
+          all.add(file);
+          const node = nodes(file);
+          for (const p of node?.reads ?? []) all.add(p);
+          for (const p of node?.candidates ?? []) all.add(p);
+        }
+        const keyed = [...all].map((p) => [rel(p), p]);
+        keyed.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+        this.paths = keyed.map(([, p]) => p);
+        this.relative = keyed.map(([r]) => r);
+        this.rank = new Map(this.paths.map((p, i2) => [p, i2]));
+        this.words = Math.ceil(this.paths.length / 32);
+        const closureOf = this.closeComponents(nodes, modules);
+        this.testOrder = tests;
+        this.testBits = new Map(tests.map((t) => [t, closureOf.get(t) ?? this.empty()]));
+        this.preload = this.empty();
+        for (const root of preloadRoots) or(this.preload, closureOf.get(root) ?? this.empty());
+        for (const extra of preloadExtra) this.set(this.preload, extra);
+        this.testWords = Math.ceil(tests.length / 32);
+        this.holderBits = new Uint32Array(this.paths.length * this.testWords);
+        tests.forEach((test, t) => {
+          const column = t >>> 5;
+          const bit = 1 << (t & 31);
+          eachRank(this.testBits.get(test) ?? this.empty(), (r) => {
+            const at2 = r * this.testWords + column;
+            this.holderBits[at2] = (this.holderBits[at2] ?? 0) | bit;
+          });
+        });
+        this.reasons = [...modules].map((m) => [this.rank.get(m) ?? -1, nodes(m)?.incomplete ?? []]).filter(([, why2]) => why2.length > 0);
+      }
+      test(file) {
+        return this.testBits.get(file);
+      }
+      /** Test files whose closure holds `path`, in listing order. */
+      holders(path) {
+        const r = this.rank.get(path);
+        if (r === void 0) return [];
+        const out = [];
+        for (let w2 = 0; w2 < this.testWords; w2++) {
+          let word = this.holderBits[r * this.testWords + w2] ?? 0;
+          while (word !== 0) {
+            const bit = 31 - Math.clz32(word & -word);
+            word &= word - 1;
+            const test = this.testOrder[w2 * 32 + bit];
+            if (test !== void 0) out.push(test);
+          }
+        }
+        return out;
+      }
+      has(bits, path) {
+        const r = this.rank.get(path);
+        return r !== void 0 && ((bits[r >>> 5] ?? 0) & 1 << (r & 31)) !== 0;
+      }
+      /** The worktree-relative paths of a closure, sorted. */
+      members(bits) {
+        const out = [];
+        eachRank(bits, (r) => out.push(this.relative[r] ?? ""));
+        return out;
+      }
+      incomplete(bits) {
+        const out = /* @__PURE__ */ new Set();
+        for (const [r, why2] of this.reasons) {
+          if (((bits[r >>> 5] ?? 0) & 1 << (r & 31)) !== 0) for (const w2 of why2) out.add(w2);
+        }
+        return [...out].sort();
+      }
+      empty() {
+        return new Uint32Array(this.words);
+      }
+      set(bits, path) {
+        const r = this.rank.get(path);
+        if (r !== void 0) bits[r >>> 5] = (bits[r >>> 5] ?? 0) | 1 << (r & 31);
+      }
+      /** Iterative Tarjan; a component's closure is its own paths and its successors' closures. */
+      closeComponents(nodes, modules) {
+        const closureOf = /* @__PURE__ */ new Map();
+        const index = /* @__PURE__ */ new Map();
+        const low = /* @__PURE__ */ new Map();
+        const onStack = /* @__PURE__ */ new Set();
+        const stack = [];
+        let counter = 0;
+        for (const start of modules) {
+          if (index.has(start)) continue;
+          const frames = [];
+          const enter = (file) => {
+            index.set(file, counter);
+            low.set(file, counter++);
+            stack.push(file);
+            onStack.add(file);
+            frames.push([file, (nodes(file)?.deps ?? /* @__PURE__ */ new Set()).values()]);
+          };
+          enter(start);
+          while (frames.length > 0) {
+            const [file, deps] = frames[frames.length - 1];
+            const next = deps.next();
+            if (!next.done) {
+              const dep = next.value;
+              if (!index.has(dep)) enter(dep);
+              else if (onStack.has(dep))
+                low.set(file, Math.min(low.get(file) ?? 0, index.get(dep) ?? 0));
+              continue;
+            }
+            frames.pop();
+            const parent2 = frames[frames.length - 1]?.[0];
+            if (parent2 !== void 0)
+              low.set(parent2, Math.min(low.get(parent2) ?? 0, low.get(file) ?? 0));
+            if (low.get(file) !== index.get(file)) continue;
+            const component = [];
+            for (let member = stack.pop(); member !== void 0; member = stack.pop()) {
+              onStack.delete(member);
+              component.push(member);
+              if (member === file) break;
+            }
+            const bits = this.empty();
+            for (const member of component) {
+              const node = nodes(member);
+              this.set(bits, member);
+              for (const p of node?.reads ?? []) this.set(bits, p);
+              for (const p of node?.candidates ?? []) this.set(bits, p);
+              for (const dep of node?.deps ?? []) {
+                const done = closureOf.get(dep);
+                if (done !== void 0) or(bits, done);
+              }
+            }
+            for (const member of component) closureOf.set(member, bits);
+          }
+        }
+        return closureOf;
+      }
+    };
+  }
+});
+
+// src/runners/node-test/graph/glob.ts
+import { readdirSync as readdirSync6 } from "node:fs";
+import { dirname as dirname17, extname as extname3, join as join35, resolve as resolve9 } from "node:path";
+function expandGlob(glob, importer, tsx) {
+  if (!glob.startsWith("./") && !glob.startsWith("../")) return null;
+  const pattern2 = resolve9(dirname17(importer), glob);
+  const dir = dirname17(pattern2);
+  if (dir.includes("*")) return null;
+  const base = pattern2.slice(dir.length + 1);
+  const ext = extname3(base);
+  const stems = tsx && ALIASED[ext] ? ALIASED[ext].map((e) => base.slice(0, -ext.length) + e) : [base];
+  const matchers = stems.map(
+    (stem) => new RegExp(`^${stem.split("*").map(escapeRegExp2).join("[^/]*")}$`)
+  );
+  let names;
+  try {
+    names = readdirSync6(dir);
+  } catch {
+    return [];
+  }
+  return names.filter((name) => matchers.some((m) => m.test(name))).map((name) => join35(dir, name));
+}
+var ALIASED, escapeRegExp2;
+var init_glob2 = __esm({
+  "src/runners/node-test/graph/glob.ts"() {
+    "use strict";
+    ALIASED = {
+      ".js": [".ts", ".tsx", ".js"],
+      ".mjs": [".mts", ".mjs"],
+      ".cjs": [".cts", ".cjs"]
+    };
+    escapeRegExp2 = (text2) => text2.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+});
+
+// src/runners/node-test/graph/parse.ts
+function parseModule(source, name) {
+  const specifiers = [];
+  const incomplete = [];
+  try {
+    const [imports] = parse(source, name);
+    for (const record of imports) {
+      if (record.type === "import-meta") continue;
+      if (record.type === "dynamic") {
+        if (record.probablyTypeOnly) continue;
+        if (record.specifier === void 0) {
+          incomplete.push(
+            `import() with a computed specifier at ${name}:${position(source, record.importStart)}`
+          );
+          continue;
+        }
+        specifiers.push(
+          record.glob ? { specifier: record.specifier, kind: "glob" } : { specifier: record.specifier, kind: "import", dynamic: true }
+        );
+        continue;
+      }
+      if (!record.typeOnly) specifiers.push({ specifier: record.specifier, kind: "import" });
+    }
+  } catch (error) {
+    incomplete.push(`${name} does not parse as a module: ${error.message}`);
+  }
+  const literal2 = /* @__PURE__ */ new Set();
+  for (const match2 of source.matchAll(REQUIRE2)) {
+    if (match2[2] !== void 0) specifiers.push({ specifier: match2[2], kind: "require" });
+    literal2.add(match2.index);
+  }
+  for (const match2 of source.matchAll(REQUIRE_CALL)) {
+    if (!literal2.has(match2.index)) {
+      incomplete.push(
+        `require() with a computed specifier at ${name}:${position(source, match2.index)}`
+      );
+    }
+  }
+  return { specifiers, incomplete };
+}
+function position(source, offset2) {
+  let line = 1;
+  let start = 0;
+  for (let i2 = source.indexOf("\n"); i2 !== -1 && i2 < offset2; i2 = source.indexOf("\n", i2 + 1)) {
+    line++;
+    start = i2 + 1;
+  }
+  return `${line}:${offset2 - start + 1}`;
+}
+var parserReady, PARSED_EXTENSION, REQUIRE2, REQUIRE_CALL;
+var init_parse = __esm({
+  "src/runners/node-test/graph/parse.ts"() {
+    "use strict";
+    init_lexer();
+    parserReady = init();
+    PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
+    REQUIRE2 = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
+    REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
+  }
+});
+
+// src/runners/node-test/graph/modules.ts
+import { readFileSync as readFileSync11 } from "node:fs";
+import { relative as relative6, sep as sep8 } from "node:path";
+function sameEdges(a, b) {
+  return sameSet(a.deps, b.deps) && sameSet(a.reads, b.reads) && sameSet(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n") && a.pairs.flat().join("\n") === b.pairs.flat().join("\n");
+}
+var NO_PARSE, ModuleTable, sameSet;
+var init_modules = __esm({
+  "src/runners/node-test/graph/modules.ts"() {
+    "use strict";
+    init_glob2();
+    init_parse();
+    NO_PARSE = { specifiers: [], incomplete: [] };
+    ModuleTable = class {
+      constructor(root, resolver, tsx) {
+        this.root = root;
+        this.resolver = resolver;
+        this.tsx = tsx;
+      }
+      root;
+      resolver;
+      tsx;
+      parses = /* @__PURE__ */ new Map();
+      nodes = /* @__PURE__ */ new Map();
+      node(file) {
+        return this.nodes.get(file);
+      }
+      /** Resolves every module reachable from `roots` that has no node yet. */
+      reach(roots) {
+        const queue = [...roots];
+        for (let file = queue.pop(); file !== void 0; file = queue.pop()) {
+          if (this.nodes.has(file)) continue;
+          const node = this.resolveModule(file);
+          this.nodes.set(file, node);
+          for (const dep of node.deps) if (!this.nodes.has(dep)) queue.push(dep);
+        }
+      }
+      /**
+       * Re-parses and re-resolves one module; true when its edges changed. An
+       * unreached module only loses its cached parse, so a later reach reads it.
+       */
+      reparse(file) {
+        this.parses.delete(file);
+        const before = this.nodes.get(file);
+        if (before === void 0) return false;
+        const after = this.resolveModule(file);
+        this.nodes.set(file, after);
+        if (sameEdges(before, after)) return false;
+        this.reach(after.deps);
+        return true;
+      }
+      /** Forgets parses (of deleted or edited files) and every node; parses kept elsewhere are reused. */
+      reset(forget2) {
+        for (const file of forget2) this.parses.delete(file);
+        this.nodes = /* @__PURE__ */ new Map();
+      }
+      parsed(file) {
+        let parsed = this.parses.get(file);
+        if (parsed === void 0) {
+          parsed = NO_PARSE;
+          if (PARSED_EXTENSION.test(file)) {
+            try {
+              parsed = parseModule(readFileSync11(file, "utf8"), relative6(this.root, file));
+            } catch {
+            }
+          }
+          this.parses.set(file, parsed);
+        }
+        return parsed;
+      }
+      resolveModule(file) {
+        const parsed = this.parsed(file);
+        const deps = /* @__PURE__ */ new Set();
+        const reads = /* @__PURE__ */ new Set();
+        const candidates = /* @__PURE__ */ new Set();
+        const incomplete = [...parsed.incomplete];
+        const pairs = [];
+        const format = this.tsx ? this.resolver.moduleFormat(file) : null;
+        if (format?.manifest != null && parsed.specifiers.length > 0) reads.add(format.manifest);
+        for (const { specifier, kind: written, dynamic } of parsed.specifiers) {
+          if (written === "glob") {
+            const matches = expandGlob(specifier, file, this.tsx);
+            if (matches === null) {
+              incomplete.push(
+                `import(\`${specifier}\`) in ${relative6(this.root, file)} has no static glob`
+              );
+            }
+            for (const match2 of matches ?? []) if (this.inWorktree(match2)) deps.add(match2);
+            continue;
+          }
+          const kind = written === "import" && !dynamic && format?.format === "commonjs" ? "require" : written;
+          const resolution = this.resolver.resolve(specifier, file, kind);
+          for (const read3 of resolution.reads) reads.add(read3);
+          for (const candidate of resolution.candidates) candidates.add(candidate);
+          if (resolution.pair !== null) pairs.push(resolution.pair);
+          if (resolution.path !== null && this.inWorktree(resolution.path)) deps.add(resolution.path);
+        }
+        return { deps, reads, candidates, incomplete, pairs };
+      }
+      /** The specifiers `file` was parsed to, for a preload's hooks check. */
+      specifiers(file) {
+        return this.parsed(file).specifiers;
+      }
+      /** Inside the worktree and outside every `node_modules`. */
+      inWorktree(path) {
+        return path.startsWith(this.root + sep8) && !path.includes(`${sep8}node_modules${sep8}`);
+      }
+    };
+    sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
+  }
+});
+
+// src/runners/node-test/graph/graph.ts
+import { basename as basename10, join as join36, relative as relative7, sep as sep9 } from "node:path";
+var MANIFEST2, Graph;
+var init_graph2 = __esm({
+  "src/runners/node-test/graph/graph.ts"() {
+    "use strict";
+    init_closures();
+    init_modules();
+    MANIFEST2 = /^(?:package\.json|tsconfig.*\.json)$/;
+    Graph = class {
+      constructor(root, cwd, chain, resolver) {
+        this.root = root;
+        this.cwd = cwd;
+        this.chain = chain;
+        this.resolver = resolver;
+        this.table = new ModuleTable(root, resolver, chain.rules === "tsx");
+        this.prefix = root + sep9;
+      }
+      root;
+      cwd;
+      chain;
+      resolver;
+      table;
+      prefix;
+      testFiles = [];
+      index = null;
+      preloadRoots = [];
+      preloadIncomplete = [];
+      /** Reads and candidates of resolving the preloads themselves from `cwd`. */
+      preloadExtra = [];
+      /** Bare preloads outside the worktree's own modules: loaders Squeal does not model. */
+      outsidePreloads = [];
+      /** Paths a run loaded outside the static closure, per test file (D3, D5). */
+      observed = /* @__PURE__ */ new Map();
+      /** Cold build, or a full re-resolve after a reset. */
+      build(testFiles) {
+        this.testFiles = testFiles.map((f) => this.abs(f));
+        this.resolvePreloads();
+        this.table.reach([...this.preloadRoots, ...this.testFiles]);
+        this.index = null;
+      }
+      setTestFiles(testFiles) {
+        this.testFiles = testFiles.map((f) => this.abs(f));
+        this.table.reach(this.testFiles);
+        this.index = null;
+      }
+      invalidate(paths) {
+        const structural = paths.some(
+          (p) => p.kind !== "change" || MANIFEST2.test(basename10(p.path)) || this.isRead(this.abs(p.path))
+        );
+        if (structural) {
+          this.resolver.clear();
+          this.table.reset(paths.filter((p) => p.kind !== "add").map((p) => this.abs(p.path)));
+          this.build(this.testFiles.map((f) => this.rel(f)));
+          return;
+        }
+        for (const { path } of paths) if (this.table.reparse(this.abs(path))) this.index = null;
+      }
+      closure(testFile) {
+        const index = this.current();
+        const bits = index.test(this.abs(testFile));
+        if (bits === void 0) {
+          throw new Error(`node-test graph: ${testFile} is not a test file of this project`);
+        }
+        return { testFile, ...this.present(index, bits, []) };
+      }
+      preloads() {
+        const index = this.current();
+        return this.present(index, index.preload, this.preloadIncomplete);
+      }
+      /**
+       * D4: `direct` is every changed test file and every test file that imports
+       * a changed path in one hop (or read it, or probed it as a candidate);
+       * `transitive` the other test files whose closure holds a changed path or
+       * whose last run loaded it; every test file when a preload's closure holds one.
+       */
+      affected(changed) {
+        const index = this.current();
+        const direct = /* @__PURE__ */ new Set();
+        const transitive = /* @__PURE__ */ new Set();
+        for (const path of changed.map((p) => this.abs(p))) {
+          if (index.test(path) !== void 0) direct.add(path);
+          if (index.has(index.preload, path)) for (const file of this.testFiles) transitive.add(file);
+          for (const file of index.holders(path)) {
+            const node = this.table.node(file);
+            const oneHop = node !== void 0 && (node.deps.has(path) || node.reads.has(path) || node.candidates.has(path));
+            (oneHop ? direct : transitive).add(file);
+          }
+          for (const [file, paths] of this.observed) if (paths.has(path)) transitive.add(file);
+        }
+        for (const file of direct) transitive.delete(file);
+        return { direct: this.sorted(direct), transitive: this.sorted(transitive) };
+      }
+      recordObserved(testFile, paths) {
+        this.observed.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
+      }
+      /** The `.js`/`.ts` pairs that the modules of current closures meet under tsx. */
+      pairs() {
+        const index = this.current();
+        const seen = /* @__PURE__ */ new Map();
+        for (const path of index.paths) {
+          for (const [js, ts] of this.table.node(path)?.pairs ?? []) {
+            seen.set(js, [this.rel(js), this.rel(ts)]);
+          }
+        }
+        return [...seen.values()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+      }
+      current() {
+        this.index ??= new ClosureIndex(
+          (file) => this.table.node(file),
+          this.testFiles,
+          this.preloadRoots,
+          this.preloadExtra,
+          (path) => this.rel(path)
+        );
+        return this.index;
+      }
+      /**
+       * D1 as amended (S3): every preload resolves from `cwd`. One that resolves
+       * to a worktree module, a symlinked workspace package included, roots the
+       * preload closure; a bare one under `node_modules` is the installed-
+       * dependency fingerprint's and gets the unrecognized-loader note.
+       */
+      resolvePreloads() {
+        this.preloadRoots.length = 0;
+        this.preloadIncomplete = [];
+        this.preloadExtra = [];
+        this.outsidePreloads = [];
+        const from = join36(this.cwd, "[argv]");
+        for (const { specifier, kind, path } of this.chain.preloads) {
+          const resolution = this.resolver.resolve(specifier, from, kind);
+          const inside = resolution.path !== null && this.table.inWorktree(resolution.path);
+          if (resolution.path === null) {
+            this.preloadIncomplete.push(`preload ${JSON.stringify(specifier)} does not resolve`);
+          }
+          if (inside || path && resolution.path !== null) {
+            this.preloadRoots.push(resolution.path);
+          } else if (!path) {
+            this.outsidePreloads.push(specifier);
+          }
+          this.preloadExtra.push(...resolution.reads, ...resolution.candidates);
+        }
+      }
+      /**
+       * Notes for preloads: a bare one outside the worktree's modules is an
+       * unrecognized loader; a worktree one importing `node:module` may register
+       * hooks that change resolution.
+       */
+      preloadNotes() {
+        const rules = this.chain.rules === "tsx" ? "tsx's" : "Node's own";
+        const notes2 = this.outsidePreloads.map(
+          (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${rules} rules`
+        );
+        for (const root of this.preloadRoots) {
+          const hooks = this.table.specifiers(root).some((s) => s.specifier === "node:module" || s.specifier === "module");
+          if (hooks) {
+            notes2.push(
+              `node-test: preload ${JSON.stringify(this.rel(root))} imports node:module and may register module hooks; resolving with ${rules} rules`
+            );
+          }
+        }
+        return notes2;
+      }
+      present(index, bits, extra) {
+        const incomplete = [...extra, ...index.incomplete(bits)];
+        return {
+          paths: index.members(bits),
+          complete: incomplete.length === 0,
+          incomplete
+        };
+      }
+      /** A file some resolution read, such as a tsconfig `extends` target, changes resolution. */
+      isRead(path) {
+        if (this.table.node(path) !== void 0) return false;
+        const index = this.current();
+        return index.holders(path).length > 0 || index.has(index.preload, path);
+      }
+      sorted(paths) {
+        return [...paths].map((p) => this.rel(p)).sort();
+      }
+      abs(path) {
+        return join36(this.root, path);
+      }
+      /** Every graph path is under the root: a slice, not `path.relative` (100k calls per build). */
+      rel(path) {
+        return path.startsWith(this.prefix) ? path.slice(this.prefix.length) : relative7(this.root, path);
+      }
+    };
+  }
+});
+
+// src/runners/node-test/graph/loader-chain.ts
+function readLoaderChain(argv) {
+  let tsx = false;
+  const preloads = [];
+  const conditions = [];
+  const unrecognized = [];
+  for (let i2 = 0; i2 < argv.length; i2++) {
+    const arg = argv[i2] ?? "";
+    const eq = arg.indexOf("=");
+    const flag2 = eq > 0 ? arg.slice(0, eq) : arg;
+    const role = VALUE_FLAGS2[flag2];
+    if (role === void 0) continue;
+    const value = eq > 0 ? arg.slice(eq + 1) : argv[++i2];
+    if (value === void 0) break;
+    if (role === "condition") conditions.push(value);
+    else if (TSX.has(value)) tsx = true;
+    else if (role === "loader") unrecognized.push(value);
+    else preloads.push({ specifier: value, kind: role, path: isPath(value) });
+  }
+  return {
+    rules: tsx ? "tsx" : "node",
+    preloads,
+    conditions,
+    unrecognized
+  };
+}
+var TSX, VALUE_FLAGS2, isPath;
+var init_loader_chain = __esm({
+  "src/runners/node-test/graph/loader-chain.ts"() {
+    "use strict";
+    TSX = /* @__PURE__ */ new Set(["tsx", "tsx/esm"]);
+    VALUE_FLAGS2 = {
+      "--import": "import",
+      "--require": "require",
+      "-r": "require",
+      "--loader": "loader",
+      "--experimental-loader": "loader",
+      "--conditions": "condition",
+      "-C": "condition"
+    };
+    isPath = (specifier) => specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("file:");
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/memoize.js
+var require_memoize = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/memoize.js"(exports, module) {
+    "use strict";
+    var memoize = (fn) => {
+      let cache = false;
+      let result;
+      return () => {
+        if (cache) {
+          return (
+            /** @type {T} */
+            result
+          );
+        }
+        result = fn();
+        cache = true;
+        fn = void 0;
+        return (
+          /** @type {T} */
+          result
+        );
+      };
+    };
+    module.exports = memoize;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/CachedInputFileSystem.js
+var require_CachedInputFileSystem = __commonJS({
+  "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module) {
+    "use strict";
+    var { nextTick } = __require("process");
+    var dirname21 = (path) => {
+      let idx = path.length - 1;
+      while (idx >= 0) {
+        const char = path.charCodeAt(idx);
+        if (char === 47 || char === 92) break;
+        idx--;
+      }
+      if (idx < 0) return "";
+      return path.slice(0, idx);
+    };
+    var runCallbacks = (callbacks, err, result) => {
+      if (callbacks.length === 1) {
+        callbacks[0](err, result);
+        callbacks.length = 0;
+        return;
+      }
+      let error;
+      for (const callback2 of callbacks) {
+        try {
+          callback2(err, result);
+        } catch (err2) {
+          if (!error) error = err2;
+        }
+      }
+      callbacks.length = 0;
+      if (error) throw error;
+    };
+    var firstCallback;
+    var firstErr = null;
+    var firstResult;
+    var dispatchQueue = [];
+    var dispatchQueueLength = 0;
+    var spareQueue = [];
+    var MAX_RETAINED_QUEUE_LENGTH = 1024;
+    var runDispatch = () => {
+      const callback2 = (
+        /** @type {FileSystemCallback<EXPECTED_ANY>} */
+        firstCallback
+      );
+      const err = firstErr;
+      const result = firstResult;
+      firstCallback = void 0;
+      firstErr = null;
+      firstResult = void 0;
+      if (dispatchQueueLength === 0) {
+        callback2(err, result);
+        return;
+      }
+      const queue = dispatchQueue;
+      const length = dispatchQueueLength;
+      dispatchQueue = spareQueue;
+      dispatchQueueLength = 0;
+      let i2 = -3;
+      try {
+        callback2(err, result);
+        for (i2 = 0; i2 < length; i2 += 3) {
+          queue[i2](queue[i2 + 1], queue[i2 + 2]);
+        }
+      } finally {
+        i2 += 3;
+        if (i2 < length) {
+          if (firstCallback === void 0) {
+            firstCallback = queue[i2];
+            firstErr = queue[i2 + 1];
+            firstResult = queue[i2 + 2];
+            nextTick(runDispatch);
+            for (let j = i2 + 3; j < length; j++) {
+              dispatchQueue[dispatchQueueLength++] = queue[j];
+            }
+          } else {
+            const rest = queue.slice(i2, length);
+            rest.push(firstCallback, firstErr, firstResult);
+            for (let j = 0; j < dispatchQueueLength; j++) {
+              rest.push(dispatchQueue[j]);
+            }
+            [firstCallback, firstErr, firstResult] = rest;
+            dispatchQueue = rest.slice(3);
+            dispatchQueueLength = dispatchQueue.length;
+          }
+        }
+        for (let j = 0; j < length; j++) queue[j] = void 0;
+        if (queue.length > MAX_RETAINED_QUEUE_LENGTH) {
+          queue.length = MAX_RETAINED_QUEUE_LENGTH;
+        }
+        spareQueue = queue;
+      }
+    };
+    var scheduleDispatch = (callback2, err, result) => {
+      if (firstCallback === void 0) {
+        firstCallback = callback2;
+        firstErr = err;
+        firstResult = result;
+        nextTick(runDispatch);
+      } else {
+        const queue = dispatchQueue;
+        queue[dispatchQueueLength] = callback2;
+        queue[dispatchQueueLength + 1] = err;
+        queue[dispatchQueueLength + 2] = result;
+        dispatchQueueLength += 3;
+      }
+    };
+    var OperationMergerBackend = class {
+      /**
+       * @param {EXPECTED_FUNCTION | undefined} provider async method in filesystem
+       * @param {EXPECTED_FUNCTION | undefined} syncProvider sync method in filesystem
+       * @param {BaseFileSystem} providerContext call context for the provider methods
+       */
+      constructor(provider, syncProvider, providerContext) {
+        this._provider = provider;
+        this._syncProvider = syncProvider;
+        this._providerContext = providerContext;
+        this._activeAsyncOperations = /* @__PURE__ */ new Map();
+        this.provide = this._provider ? (
+          // Comment to align jsdoc
+          /**
+           * @param {PathLike | PathOrFileDescriptor} path path
+           * @param {object | FileSystemCallback<EXPECTED_ANY> | undefined} options options
+           * @param {FileSystemCallback<EXPECTED_ANY>=} callback callback
+           * @returns {EXPECTED_ANY} result
+           */
+          (path, options, callback2) => {
+            if (typeof options === "function") {
+              callback2 = /** @type {FileSystemCallback<EXPECTED_ANY>} */
+              options;
+              options = void 0;
+            }
+            if (typeof path !== "string" && !Buffer.isBuffer(path) && !(path instanceof URL) && typeof path !== "number") {
+              callback2(
+                new TypeError("path must be a string, Buffer, URL or number")
+              );
+              return;
+            }
+            if (options) {
+              return (
+                /** @type {EXPECTED_FUNCTION} */
+                this._provider.call(
+                  this._providerContext,
+                  path,
+                  options,
+                  callback2
+                )
+              );
+            }
+            let callbacks = this._activeAsyncOperations.get(path);
+            if (callbacks) {
+              callbacks.push(callback2);
+              return;
+            }
+            this._activeAsyncOperations.set(path, callbacks = [callback2]);
+            provider(
+              path,
+              /**
+               * @param {Error} err error
+               * @param {EXPECTED_ANY} result result
+               */
+              (err, result) => {
+                this._activeAsyncOperations.delete(path);
+                runCallbacks(callbacks, err, result);
+              }
+            );
+          }
+        ) : null;
+        this.provideSync = this._syncProvider ? (
+          // Comment to align jsdoc
+          /**
+           * @param {PathLike | PathOrFileDescriptor} path path
+           * @param {object=} options options
+           * @returns {EXPECTED_ANY} result
+           */
+          (path, options) => (
+            /** @type {EXPECTED_FUNCTION} */
+            this._syncProvider.call(
+              this._providerContext,
+              path,
+              options
+            )
+          )
+        ) : null;
+      }
+      purge() {
+      }
+      purgeParent() {
+      }
+    };
+    var STORAGE_MODE_IDLE = 0;
+    var STORAGE_MODE_SYNC = 1;
+    var STORAGE_MODE_ASYNC = 2;
+    var CacheBackend = class {
+      /**
+       * @param {number} duration max cache duration of items
+       * @param {EXPECTED_FUNCTION | undefined} provider async method
+       * @param {EXPECTED_FUNCTION | undefined} syncProvider sync method
+       * @param {BaseFileSystem} providerContext call context for the provider methods
+       */
+      constructor(duration2, provider, syncProvider, providerContext) {
+        this._duration = duration2;
+        this._provider = provider;
+        this._syncProvider = syncProvider;
+        this._providerContext = providerContext;
+        this._activeAsyncOperations = /* @__PURE__ */ new Map();
+        this._data = /* @__PURE__ */ new Map();
+        this._levels = [];
+        for (let i2 = 0; i2 < 10; i2++) this._levels.push(/* @__PURE__ */ new Set());
+        if (duration2 !== Infinity) {
+          for (let i2 = 5e3; i2 < duration2; i2 += 500) {
+            this._levels.push(/* @__PURE__ */ new Set());
+          }
+        }
+        this._currentLevel = 0;
+        this._tickInterval = Math.floor(duration2 / this._levels.length);
+        this._mode = STORAGE_MODE_IDLE;
+        this._timeout = void 0;
+        this._nextDecay = void 0;
+        this.provide = provider ? this.provide.bind(this) : null;
+        this.provideSync = syncProvider ? this.provideSync.bind(this) : null;
+      }
+      /**
+       * @param {PathLike | PathOrFileDescriptor} path path
+       * @param {EXPECTED_ANY} options options
+       * @param {FileSystemCallback<EXPECTED_ANY>} callback callback
+       * @returns {void}
+       */
+      provide(path, options, callback2) {
+        if (typeof options === "function") {
+          callback2 = options;
+          options = void 0;
+        }
+        if (typeof path !== "string" && !Buffer.isBuffer(path) && !(path instanceof URL) && typeof path !== "number") {
+          callback2(new TypeError("path must be a string, Buffer, URL or number"));
+          return;
+        }
+        const strPath = typeof path !== "string" ? path.toString() : path;
+        if (options) {
+          return (
+            /** @type {EXPECTED_FUNCTION} */
+            this._provider.call(
+              this._providerContext,
+              path,
+              options,
+              callback2
+            )
+          );
+        }
+        if (this._mode === STORAGE_MODE_SYNC) {
+          this._enterAsyncMode();
+        }
+        const cacheEntry = this._data.get(strPath);
+        if (cacheEntry !== void 0) {
+          if (cacheEntry.err) {
+            return scheduleDispatch(callback2, cacheEntry.err, void 0);
+          }
+          return scheduleDispatch(callback2, null, cacheEntry.result);
+        }
+        let callbacks = this._activeAsyncOperations.get(strPath);
+        if (callbacks !== void 0) {
+          callbacks.push(callback2);
+          return;
+        }
+        this._activeAsyncOperations.set(strPath, callbacks = [callback2]);
+        this._provider.call(
+          this._providerContext,
+          path,
+          /**
+           * @param {Error | null} err error
+           * @param {EXPECTED_ANY=} result result
+           */
+          (err, result) => {
+            this._activeAsyncOperations.delete(strPath);
+            this._storeResult(strPath, err, result);
+            this._enterAsyncMode();
+            runCallbacks(
+              /** @type {FileSystemCallback<EXPECTED_ANY>[]} */
+              callbacks,
+              err,
+              result
+            );
+          }
+        );
+      }
+      /**
+       * @param {PathLike | PathOrFileDescriptor} path path
+       * @param {EXPECTED_ANY} options options
+       * @returns {EXPECTED_ANY} result
+       */
+      provideSync(path, options) {
+        if (typeof path !== "string" && !Buffer.isBuffer(path) && !(path instanceof URL) && typeof path !== "number") {
+          throw new TypeError("path must be a string");
+        }
+        const strPath = typeof path !== "string" ? path.toString() : path;
+        if (options) {
+          return (
+            /** @type {EXPECTED_FUNCTION} */
+            this._syncProvider.call(
+              this._providerContext,
+              path,
+              options
+            )
+          );
+        }
+        if (this._mode === STORAGE_MODE_SYNC) {
+          this._runDecays();
+        }
+        const cacheEntry = this._data.get(strPath);
+        if (cacheEntry !== void 0) {
+          if (cacheEntry.err) throw cacheEntry.err;
+          return cacheEntry.result;
+        }
+        const callbacks = this._activeAsyncOperations.get(strPath);
+        this._activeAsyncOperations.delete(strPath);
+        let result;
+        try {
+          result = /** @type {EXPECTED_FUNCTION} */
+          this._syncProvider.call(
+            this._providerContext,
+            path
+          );
+        } catch (err) {
+          this._storeResult(
+            strPath,
+            /** @type {Error} */
+            err,
+            void 0
+          );
+          this._enterSyncModeWhenIdle();
+          if (callbacks) {
+            runCallbacks(
+              callbacks,
+              /** @type {Error} */
+              err,
+              void 0
+            );
+          }
+          throw err;
+        }
+        this._storeResult(strPath, null, result);
+        this._enterSyncModeWhenIdle();
+        if (callbacks) {
+          runCallbacks(callbacks, null, result);
+        }
+        return result;
+      }
+      /**
+       * @param {(string | Buffer | URL | number | (string | URL | Buffer | number)[] | Set<string | URL | Buffer | number>)=} what what to purge
+       * @param {{ exact?: boolean }=} options options; `exact: true` removes only entries whose key matches `what` exactly instead of any entry whose key starts with `what`
+       */
+      purge(what, options) {
+        if (what === void 0 || what === null) {
+          if (this._mode !== STORAGE_MODE_IDLE) {
+            this._data.clear();
+            for (const level of this._levels) {
+              level.clear();
+            }
+            this._enterIdleMode();
+          }
+          return;
+        }
+        const exact = options !== void 0 && options !== null && options.exact === true;
+        if (exact) {
+          if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
+            const strWhat = typeof what !== "string" ? what.toString() : what;
+            const data2 = this._data.get(strWhat);
+            if (data2 !== void 0) {
+              this._data.delete(strWhat);
+              data2.level.delete(strWhat);
+            }
+          } else {
+            for (const item of what) {
+              const strItem = typeof item !== "string" ? item.toString() : item;
+              const data2 = this._data.get(strItem);
+              if (data2 !== void 0) {
+                this._data.delete(strItem);
+                data2.level.delete(strItem);
+              }
+            }
+          }
+          if (this._data.size === 0) {
+            this._enterIdleMode();
+          }
+          return;
+        }
+        if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
+          const strWhat = typeof what !== "string" ? what.toString() : what;
+          if (strWhat === "") {
+            if (this._mode !== STORAGE_MODE_IDLE) {
+              this._data.clear();
+              for (const level of this._levels) {
+                level.clear();
+              }
+              this._enterIdleMode();
+            }
+            return;
+          }
+          for (const [key, data2] of this._data) {
+            if (key.startsWith(strWhat)) {
+              this._data.delete(key);
+              data2.level.delete(key);
+            }
+          }
+          if (this._data.size === 0) {
+            this._enterIdleMode();
+          }
+        } else {
+          for (const [key, data2] of this._data) {
+            for (const item of what) {
+              const strItem = typeof item !== "string" ? item.toString() : item;
+              if (key.startsWith(strItem)) {
+                this._data.delete(key);
+                data2.level.delete(key);
+                break;
+              }
+            }
+          }
+          if (this._data.size === 0) {
+            this._enterIdleMode();
+          }
+        }
+      }
+      /**
+       * @param {(string | Buffer | URL | number | (string | URL | Buffer | number)[] | Set<string | URL | Buffer | number>)=} what what to purge
+       */
+      purgeParent(what) {
+        if (what === void 0 || what === null) {
+          this.purge();
+        } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
+          const strWhat = typeof what !== "string" ? what.toString() : what;
+          this.purge(dirname21(strWhat));
+        } else {
+          const set = /* @__PURE__ */ new Set();
+          for (const item of what) {
+            const strItem = typeof item !== "string" ? item.toString() : item;
+            set.add(dirname21(strItem));
+          }
+          this.purge(set);
+        }
+      }
+      /**
+       * @param {string} path path
+       * @param {Error | null} err error
+       * @param {EXPECTED_ANY} result result
+       */
+      _storeResult(path, err, result) {
+        if (this._data.has(path)) return;
+        const level = this._levels[this._currentLevel];
+        this._data.set(path, { err, result, level });
+        level.add(path);
+      }
+      _decayLevel() {
+        const nextLevel = (this._currentLevel + 1) % this._levels.length;
+        const decay = this._levels[nextLevel];
+        this._currentLevel = nextLevel;
+        for (const item of decay) {
+          this._data.delete(item);
+        }
+        decay.clear();
+        if (this._data.size === 0) {
+          this._enterIdleMode();
+        } else {
+          this._nextDecay += this._tickInterval;
+        }
+      }
+      _runDecays() {
+        while (
+          /** @type {number} */
+          this._nextDecay <= Date.now() && this._mode !== STORAGE_MODE_IDLE
+        ) {
+          this._decayLevel();
+        }
+      }
+      _enterAsyncMode() {
+        let timeout = 0;
+        switch (this._mode) {
+          case STORAGE_MODE_ASYNC:
+            return;
+          case STORAGE_MODE_IDLE:
+            this._nextDecay = Date.now() + this._tickInterval;
+            timeout = this._tickInterval;
+            break;
+          case STORAGE_MODE_SYNC:
+            this._runDecays();
+            if (
+              /** @type {STORAGE_MODE_IDLE | STORAGE_MODE_SYNC | STORAGE_MODE_ASYNC} */
+              this._mode === STORAGE_MODE_IDLE
+            ) {
+              return;
+            }
+            timeout = Math.max(
+              0,
+              /** @type {number} */
+              this._nextDecay - Date.now()
+            );
+            break;
+        }
+        this._mode = STORAGE_MODE_ASYNC;
+        if (this._duration === Infinity) {
+          return;
+        }
+        const ref2 = setTimeout(() => {
+          this._mode = STORAGE_MODE_SYNC;
+          this._runDecays();
+        }, timeout);
+        if (ref2.unref) ref2.unref();
+        this._timeout = ref2;
+      }
+      _enterSyncModeWhenIdle() {
+        if (this._mode === STORAGE_MODE_IDLE) {
+          this._mode = STORAGE_MODE_SYNC;
+          this._nextDecay = Date.now() + this._tickInterval;
+        }
+      }
+      _enterIdleMode() {
+        this._mode = STORAGE_MODE_IDLE;
+        this._nextDecay = void 0;
+        if (this._timeout) clearTimeout(this._timeout);
+      }
+    };
+    var createBackend = (duration2, provider, syncProvider, providerContext) => {
+      if (duration2 > 0) {
+        return new CacheBackend(duration2, provider, syncProvider, providerContext);
+      }
+      return new OperationMergerBackend(provider, syncProvider, providerContext);
+    };
+    module.exports = class CachedInputFileSystem {
+      /**
+       * @param {BaseFileSystem} fileSystem file system
+       * @param {number} duration duration in ms files are cached
+       */
+      constructor(fileSystem, duration2) {
+        this.fileSystem = fileSystem;
+        this._lstatBackend = createBackend(
+          duration2,
+          this.fileSystem.lstat,
+          this.fileSystem.lstatSync,
+          this.fileSystem
+        );
+        const lstat7 = this._lstatBackend.provide;
+        this.lstat = /** @type {FileSystem["lstat"]} */
+        lstat7;
+        const lstatSync6 = this._lstatBackend.provideSync;
+        this.lstatSync = /** @type {SyncFileSystem["lstatSync"]} */
+        lstatSync6;
+        this._statBackend = createBackend(
+          duration2,
+          this.fileSystem.stat,
+          this.fileSystem.statSync,
+          this.fileSystem
+        );
+        const stat6 = this._statBackend.provide;
+        this.stat = /** @type {FileSystem["stat"]} */
+        stat6;
+        const statSync2 = this._statBackend.provideSync;
+        this.statSync = /** @type {SyncFileSystem["statSync"]} */
+        statSync2;
+        this._readdirBackend = createBackend(
+          duration2,
+          this.fileSystem.readdir,
+          this.fileSystem.readdirSync,
+          this.fileSystem
+        );
+        const readdir7 = this._readdirBackend.provide;
+        this.readdir = /** @type {FileSystem["readdir"]} */
+        readdir7;
+        const readdirSync10 = this._readdirBackend.provideSync;
+        this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */
+        readdirSync10;
+        this._readFileBackend = createBackend(
+          duration2,
+          this.fileSystem.readFile,
+          this.fileSystem.readFileSync,
+          this.fileSystem
+        );
+        const readFile5 = this._readFileBackend.provide;
+        this.readFile = /** @type {FileSystem["readFile"]} */
+        readFile5;
+        const readFileSync15 = this._readFileBackend.provideSync;
+        this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
+        readFileSync15;
+        this._readJsonBackend = createBackend(
+          duration2,
+          // prettier-ignore
+          this.fileSystem.readJson || this.readFile && /**
+           * @param {string} path path
+           * @param {FileSystemCallback<EXPECTED_ANY>} callback callback
+           */
+          ((path, callback2) => {
+            this.readFile(path, (err, buffer) => {
+              if (err) return callback2(err);
+              if (!buffer || buffer.length === 0) {
+                return callback2(new Error("No file content"));
+              }
+              let data2;
+              try {
+                data2 = JSON.parse(buffer.toString("utf8"));
+              } catch (err_) {
+                return callback2(
+                  /** @type {Error} */
+                  err_
+                );
+              }
+              callback2(null, data2);
+            });
+          }),
+          // prettier-ignore
+          this.fileSystem.readJsonSync || this.readFileSync && /**
+           * @param {string} path path
+           * @returns {EXPECTED_ANY} result
+           */
+          ((path) => {
+            const buffer = this.readFileSync(path);
+            const data2 = JSON.parse(buffer.toString("utf8"));
+            return data2;
+          }),
+          this.fileSystem
+        );
+        const readJson = this._readJsonBackend.provide;
+        this.readJson = /** @type {FileSystem["readJson"]} */
+        readJson;
+        const readJsonSync = this._readJsonBackend.provideSync;
+        this.readJsonSync = /** @type {SyncFileSystem["readJsonSync"]} */
+        readJsonSync;
+        this._readlinkBackend = createBackend(
+          duration2,
+          this.fileSystem.readlink,
+          this.fileSystem.readlinkSync,
+          this.fileSystem
+        );
+        const readlink2 = this._readlinkBackend.provide;
+        this.readlink = /** @type {FileSystem["readlink"]} */
+        readlink2;
+        const readlinkSync2 = this._readlinkBackend.provideSync;
+        this.readlinkSync = /** @type {SyncFileSystem["readlinkSync"]} */
+        readlinkSync2;
+        this._realpathBackend = createBackend(
+          duration2,
+          this.fileSystem.realpath,
+          this.fileSystem.realpathSync,
+          this.fileSystem
+        );
+        const realpath3 = this._realpathBackend.provide;
+        this.realpath = /** @type {FileSystem["realpath"]} */
+        realpath3;
+        const realpathSync9 = this._realpathBackend.provideSync;
+        this.realpathSync = /** @type {SyncFileSystem["realpathSync"]} */
+        realpathSync9;
+      }
+      /**
+       * @param {(string | Buffer | URL | number | (string | URL | Buffer | number)[] | Set<string | URL | Buffer | number>)=} what what to purge
+       * @param {{ exact?: boolean }=} options options; `exact: true` removes only cache entries whose key matches `what` exactly instead of any entry whose key starts with `what`
+       */
+      purge(what, options) {
+        this._statBackend.purge(what, options);
+        this._lstatBackend.purge(what, options);
+        if (options !== void 0 && options !== null && options.exact === true) {
+          this._readdirBackend.purge(what, options);
+        } else {
+          this._readdirBackend.purgeParent(what);
+        }
+        this._readFileBackend.purge(what, options);
+        this._readlinkBackend.purge(what, options);
+        this._readJsonBackend.purge(what, options);
+        this._realpathBackend.purge(what, options);
+      }
+    };
+  }
+});
+
+// node_modules/graceful-fs/polyfills.js
+var require_polyfills = __commonJS({
+  "node_modules/graceful-fs/polyfills.js"(exports, module) {
+    var constants2 = __require("constants");
+    var origCwd = process.cwd;
+    var cwd = null;
+    var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
+    process.cwd = function() {
+      if (!cwd)
+        cwd = origCwd.call(process);
+      return cwd;
+    };
+    try {
+      process.cwd();
+    } catch (er) {
+    }
+    if (typeof process.chdir === "function") {
+      chdir = process.chdir;
+      process.chdir = function(d) {
+        cwd = null;
+        chdir.call(process, d);
+      };
+      if (Object.setPrototypeOf) Object.setPrototypeOf(process.chdir, chdir);
+    }
+    var chdir;
+    module.exports = patch;
+    function patch(fs2) {
+      if (constants2.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+        patchLchmod(fs2);
+      }
+      if (!fs2.lutimes) {
+        patchLutimes(fs2);
+      }
+      fs2.chown = chownFix(fs2.chown);
+      fs2.fchown = chownFix(fs2.fchown);
+      fs2.lchown = chownFix(fs2.lchown);
+      fs2.chmod = chmodFix(fs2.chmod);
+      fs2.fchmod = chmodFix(fs2.fchmod);
+      fs2.lchmod = chmodFix(fs2.lchmod);
+      fs2.chownSync = chownFixSync(fs2.chownSync);
+      fs2.fchownSync = chownFixSync(fs2.fchownSync);
+      fs2.lchownSync = chownFixSync(fs2.lchownSync);
+      fs2.chmodSync = chmodFixSync(fs2.chmodSync);
+      fs2.fchmodSync = chmodFixSync(fs2.fchmodSync);
+      fs2.lchmodSync = chmodFixSync(fs2.lchmodSync);
+      fs2.stat = statFix(fs2.stat);
+      fs2.fstat = statFix(fs2.fstat);
+      fs2.lstat = statFix(fs2.lstat);
+      fs2.statSync = statFixSync(fs2.statSync);
+      fs2.fstatSync = statFixSync(fs2.fstatSync);
+      fs2.lstatSync = statFixSync(fs2.lstatSync);
+      if (fs2.chmod && !fs2.lchmod) {
+        fs2.lchmod = function(path, mode, cb) {
+          if (cb) process.nextTick(cb);
+        };
+        fs2.lchmodSync = function() {
+        };
+      }
+      if (fs2.chown && !fs2.lchown) {
+        fs2.lchown = function(path, uid, gid, cb) {
+          if (cb) process.nextTick(cb);
+        };
+        fs2.lchownSync = function() {
+        };
+      }
+      if (platform === "win32") {
+        fs2.rename = typeof fs2.rename !== "function" ? fs2.rename : (function(fs$rename) {
+          function rename(from, to, cb) {
+            var start = Date.now();
+            var backoff = 0;
+            fs$rename(from, to, function CB(er) {
+              if (er && (er.code === "EACCES" || er.code === "EPERM" || er.code === "EBUSY") && Date.now() - start < 6e4) {
+                setTimeout(function() {
+                  fs2.stat(to, function(stater, st) {
+                    if (stater && stater.code === "ENOENT")
+                      fs$rename(from, to, CB);
+                    else
+                      cb(er);
+                  });
+                }, backoff);
+                if (backoff < 100)
+                  backoff += 10;
+                return;
+              }
+              if (cb) cb(er);
+            });
+          }
+          if (Object.setPrototypeOf) Object.setPrototypeOf(rename, fs$rename);
+          return rename;
+        })(fs2.rename);
+      }
+      fs2.read = typeof fs2.read !== "function" ? fs2.read : (function(fs$read) {
+        function read3(fd, buffer, offset2, length, position2, callback_) {
+          var callback2;
+          if (callback_ && typeof callback_ === "function") {
+            var eagCounter = 0;
+            callback2 = function(er, _, __) {
+              if (er && er.code === "EAGAIN" && eagCounter < 10) {
+                eagCounter++;
+                return fs$read.call(fs2, fd, buffer, offset2, length, position2, callback2);
+              }
+              callback_.apply(this, arguments);
+            };
+          }
+          return fs$read.call(fs2, fd, buffer, offset2, length, position2, callback2);
+        }
+        if (Object.setPrototypeOf) Object.setPrototypeOf(read3, fs$read);
+        return read3;
+      })(fs2.read);
+      fs2.readSync = typeof fs2.readSync !== "function" ? fs2.readSync : /* @__PURE__ */ (function(fs$readSync) {
+        return function(fd, buffer, offset2, length, position2) {
+          var eagCounter = 0;
+          while (true) {
+            try {
+              return fs$readSync.call(fs2, fd, buffer, offset2, length, position2);
+            } catch (er) {
+              if (er.code === "EAGAIN" && eagCounter < 10) {
+                eagCounter++;
+                continue;
+              }
+              throw er;
+            }
+          }
+        };
+      })(fs2.readSync);
+      function patchLchmod(fs3) {
+        fs3.lchmod = function(path, mode, callback2) {
+          fs3.open(
+            path,
+            constants2.O_WRONLY | constants2.O_SYMLINK,
+            mode,
+            function(err, fd) {
+              if (err) {
+                if (callback2) callback2(err);
+                return;
+              }
+              fs3.fchmod(fd, mode, function(err2) {
+                fs3.close(fd, function(err22) {
+                  if (callback2) callback2(err2 || err22);
+                });
+              });
+            }
+          );
+        };
+        fs3.lchmodSync = function(path, mode) {
+          var fd = fs3.openSync(path, constants2.O_WRONLY | constants2.O_SYMLINK, mode);
+          var threw = true;
+          var ret;
+          try {
+            ret = fs3.fchmodSync(fd, mode);
+            threw = false;
+          } finally {
+            if (threw) {
+              try {
+                fs3.closeSync(fd);
+              } catch (er) {
+              }
+            } else {
+              fs3.closeSync(fd);
+            }
+          }
+          return ret;
+        };
+      }
+      function patchLutimes(fs3) {
+        if (constants2.hasOwnProperty("O_SYMLINK") && fs3.futimes) {
+          fs3.lutimes = function(path, at2, mt, cb) {
+            fs3.open(path, constants2.O_SYMLINK, function(er, fd) {
+              if (er) {
+                if (cb) cb(er);
+                return;
+              }
+              fs3.futimes(fd, at2, mt, function(er2) {
+                fs3.close(fd, function(er22) {
+                  if (cb) cb(er2 || er22);
+                });
+              });
+            });
+          };
+          fs3.lutimesSync = function(path, at2, mt) {
+            var fd = fs3.openSync(path, constants2.O_SYMLINK);
+            var ret;
+            var threw = true;
+            try {
+              ret = fs3.futimesSync(fd, at2, mt);
+              threw = false;
+            } finally {
+              if (threw) {
+                try {
+                  fs3.closeSync(fd);
+                } catch (er) {
+                }
+              } else {
+                fs3.closeSync(fd);
+              }
+            }
+            return ret;
+          };
+        } else if (fs3.futimes) {
+          fs3.lutimes = function(_a, _b, _c, cb) {
+            if (cb) process.nextTick(cb);
+          };
+          fs3.lutimesSync = function() {
+          };
+        }
+      }
+      function chmodFix(orig) {
+        if (!orig) return orig;
+        return function(target, mode, cb) {
+          return orig.call(fs2, target, mode, function(er) {
+            if (chownErOk(er)) er = null;
+            if (cb) cb.apply(this, arguments);
+          });
+        };
+      }
+      function chmodFixSync(orig) {
+        if (!orig) return orig;
+        return function(target, mode) {
+          try {
+            return orig.call(fs2, target, mode);
+          } catch (er) {
+            if (!chownErOk(er)) throw er;
+          }
+        };
+      }
+      function chownFix(orig) {
+        if (!orig) return orig;
+        return function(target, uid, gid, cb) {
+          return orig.call(fs2, target, uid, gid, function(er) {
+            if (chownErOk(er)) er = null;
+            if (cb) cb.apply(this, arguments);
+          });
+        };
+      }
+      function chownFixSync(orig) {
+        if (!orig) return orig;
+        return function(target, uid, gid) {
+          try {
+            return orig.call(fs2, target, uid, gid);
+          } catch (er) {
+            if (!chownErOk(er)) throw er;
+          }
+        };
+      }
+      function statFix(orig) {
+        if (!orig) return orig;
+        return function(target, options, cb) {
+          if (typeof options === "function") {
+            cb = options;
+            options = null;
+          }
+          function callback2(er, stats) {
+            if (stats) {
+              if (stats.uid < 0) stats.uid += 4294967296;
+              if (stats.gid < 0) stats.gid += 4294967296;
+            }
+            if (cb) cb.apply(this, arguments);
+          }
+          return options ? orig.call(fs2, target, options, callback2) : orig.call(fs2, target, callback2);
+        };
+      }
+      function statFixSync(orig) {
+        if (!orig) return orig;
+        return function(target, options) {
+          var stats = options ? orig.call(fs2, target, options) : orig.call(fs2, target);
+          if (stats) {
+            if (stats.uid < 0) stats.uid += 4294967296;
+            if (stats.gid < 0) stats.gid += 4294967296;
+          }
+          return stats;
+        };
+      }
+      function chownErOk(er) {
+        if (!er)
+          return true;
+        if (er.code === "ENOSYS")
+          return true;
+        var nonroot = !process.getuid || process.getuid() !== 0;
+        if (nonroot) {
+          if (er.code === "EINVAL" || er.code === "EPERM")
+            return true;
+        }
+        return false;
+      }
+    }
+  }
+});
+
+// node_modules/graceful-fs/legacy-streams.js
+var require_legacy_streams = __commonJS({
+  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+    var Stream = __require("stream").Stream;
+    module.exports = legacy;
+    function legacy(fs2) {
+      return {
+        ReadStream,
+        WriteStream
+      };
+      function ReadStream(path, options) {
+        if (!(this instanceof ReadStream)) return new ReadStream(path, options);
+        Stream.call(this);
+        var self = this;
+        this.path = path;
+        this.fd = null;
+        this.readable = true;
+        this.paused = false;
+        this.flags = "r";
+        this.mode = 438;
+        this.bufferSize = 64 * 1024;
+        options = options || {};
+        var keys = Object.keys(options);
+        for (var index = 0, length = keys.length; index < length; index++) {
+          var key = keys[index];
+          this[key] = options[key];
+        }
+        if (this.encoding) this.setEncoding(this.encoding);
+        if (this.start !== void 0) {
+          if ("number" !== typeof this.start) {
+            throw TypeError("start must be a Number");
+          }
+          if (this.end === void 0) {
+            this.end = Infinity;
+          } else if ("number" !== typeof this.end) {
+            throw TypeError("end must be a Number");
+          }
+          if (this.start > this.end) {
+            throw new Error("start must be <= end");
+          }
+          this.pos = this.start;
+        }
+        if (this.fd !== null) {
+          process.nextTick(function() {
+            self._read();
+          });
+          return;
+        }
+        fs2.open(this.path, this.flags, this.mode, function(err, fd) {
+          if (err) {
+            self.emit("error", err);
+            self.readable = false;
+            return;
+          }
+          self.fd = fd;
+          self.emit("open", fd);
+          self._read();
+        });
+      }
+      function WriteStream(path, options) {
+        if (!(this instanceof WriteStream)) return new WriteStream(path, options);
+        Stream.call(this);
+        this.path = path;
+        this.fd = null;
+        this.writable = true;
+        this.flags = "w";
+        this.encoding = "binary";
+        this.mode = 438;
+        this.bytesWritten = 0;
+        options = options || {};
+        var keys = Object.keys(options);
+        for (var index = 0, length = keys.length; index < length; index++) {
+          var key = keys[index];
+          this[key] = options[key];
+        }
+        if (this.start !== void 0) {
+          if ("number" !== typeof this.start) {
+            throw TypeError("start must be a Number");
+          }
+          if (this.start < 0) {
+            throw new Error("start must be >= zero");
+          }
+          this.pos = this.start;
+        }
+        this.busy = false;
+        this._queue = [];
+        if (this.fd === null) {
+          this._open = fs2.open;
+          this._queue.push([this._open, this.path, this.flags, this.mode, void 0]);
+          this.flush();
+        }
+      }
+    }
+  }
+});
+
+// node_modules/graceful-fs/clone.js
+var require_clone = __commonJS({
+  "node_modules/graceful-fs/clone.js"(exports, module) {
+    "use strict";
+    module.exports = clone;
+    var getPrototypeOf = Object.getPrototypeOf || function(obj) {
+      return obj.__proto__;
+    };
+    function clone(obj) {
+      if (obj === null || typeof obj !== "object")
+        return obj;
+      if (obj instanceof Object)
+        var copy = { __proto__: getPrototypeOf(obj) };
+      else
+        var copy = /* @__PURE__ */ Object.create(null);
+      Object.getOwnPropertyNames(obj).forEach(function(key) {
+        Object.defineProperty(copy, key, Object.getOwnPropertyDescriptor(obj, key));
+      });
+      return copy;
+    }
+  }
+});
+
+// node_modules/graceful-fs/graceful-fs.js
+var require_graceful_fs = __commonJS({
+  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+    var fs2 = __require("fs");
+    var polyfills = require_polyfills();
+    var legacy = require_legacy_streams();
+    var clone = require_clone();
+    var util = __require("util");
+    var gracefulQueue;
+    var previousSymbol;
+    if (typeof Symbol === "function" && typeof Symbol.for === "function") {
+      gracefulQueue = /* @__PURE__ */ Symbol.for("graceful-fs.queue");
+      previousSymbol = /* @__PURE__ */ Symbol.for("graceful-fs.previous");
+    } else {
+      gracefulQueue = "___graceful-fs.queue";
+      previousSymbol = "___graceful-fs.previous";
+    }
+    function noop() {
+    }
+    function publishQueue(context, queue2) {
+      Object.defineProperty(context, gracefulQueue, {
+        get: function() {
+          return queue2;
+        }
+      });
+    }
+    var debug = noop;
+    if (util.debuglog)
+      debug = util.debuglog("gfs4");
+    else if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || ""))
+      debug = function() {
+        var m = util.format.apply(util, arguments);
+        m = "GFS4: " + m.split(/\n/).join("\nGFS4: ");
+        console.error(m);
+      };
+    if (!fs2[gracefulQueue]) {
+      queue = global[gracefulQueue] || [];
+      publishQueue(fs2, queue);
+      fs2.close = (function(fs$close) {
+        function close(fd, cb) {
+          return fs$close.call(fs2, fd, function(err) {
+            if (!err) {
+              resetQueue();
+            }
+            if (typeof cb === "function")
+              cb.apply(this, arguments);
+          });
+        }
+        Object.defineProperty(close, previousSymbol, {
+          value: fs$close
+        });
+        return close;
+      })(fs2.close);
+      fs2.closeSync = (function(fs$closeSync) {
+        function closeSync2(fd) {
+          fs$closeSync.apply(fs2, arguments);
+          resetQueue();
+        }
+        Object.defineProperty(closeSync2, previousSymbol, {
+          value: fs$closeSync
+        });
+        return closeSync2;
+      })(fs2.closeSync);
+      if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
+        process.on("exit", function() {
+          debug(fs2[gracefulQueue]);
+          __require("assert").equal(fs2[gracefulQueue].length, 0);
+        });
+      }
+    }
+    var queue;
+    if (!global[gracefulQueue]) {
+      publishQueue(global, fs2[gracefulQueue]);
+    }
+    module.exports = patch(clone(fs2));
+    if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs2.__patched) {
+      module.exports = patch(fs2);
+      fs2.__patched = true;
+    }
+    function patch(fs3) {
+      polyfills(fs3);
+      fs3.gracefulify = patch;
+      fs3.createReadStream = createReadStream;
+      fs3.createWriteStream = createWriteStream;
+      var fs$readFile = fs3.readFile;
+      fs3.readFile = readFile5;
+      function readFile5(path, options, cb) {
+        if (typeof options === "function")
+          cb = options, options = null;
+        return go$readFile(path, options, cb);
+        function go$readFile(path2, options2, cb2, startTime) {
+          return fs$readFile(path2, options2, function(err) {
+            if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
+              enqueue([go$readFile, [path2, options2, cb2], err, startTime || Date.now(), Date.now()]);
+            else {
+              if (typeof cb2 === "function")
+                cb2.apply(this, arguments);
+            }
+          });
+        }
+      }
+      var fs$writeFile = fs3.writeFile;
+      fs3.writeFile = writeFile;
+      function writeFile(path, data2, options, cb) {
+        if (typeof options === "function")
+          cb = options, options = null;
+        return go$writeFile(path, data2, options, cb);
+        function go$writeFile(path2, data3, options2, cb2, startTime) {
+          return fs$writeFile(path2, data3, options2, function(err) {
+            if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
+              enqueue([go$writeFile, [path2, data3, options2, cb2], err, startTime || Date.now(), Date.now()]);
+            else {
+              if (typeof cb2 === "function")
+                cb2.apply(this, arguments);
+            }
+          });
+        }
+      }
+      var fs$appendFile = fs3.appendFile;
+      if (fs$appendFile)
+        fs3.appendFile = appendFile;
+      function appendFile(path, data2, options, cb) {
+        if (typeof options === "function")
+          cb = options, options = null;
+        return go$appendFile(path, data2, options, cb);
+        function go$appendFile(path2, data3, options2, cb2, startTime) {
+          return fs$appendFile(path2, data3, options2, function(err) {
+            if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
+              enqueue([go$appendFile, [path2, data3, options2, cb2], err, startTime || Date.now(), Date.now()]);
+            else {
+              if (typeof cb2 === "function")
+                cb2.apply(this, arguments);
+            }
+          });
+        }
+      }
+      var fs$copyFile = fs3.copyFile;
+      if (fs$copyFile)
+        fs3.copyFile = copyFile;
+      function copyFile(src, dest, flags, cb) {
+        if (typeof flags === "function") {
+          cb = flags;
+          flags = 0;
+        }
+        return go$copyFile(src, dest, flags, cb);
+        function go$copyFile(src2, dest2, flags2, cb2, startTime) {
+          return fs$copyFile(src2, dest2, flags2, function(err) {
+            if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
+              enqueue([go$copyFile, [src2, dest2, flags2, cb2], err, startTime || Date.now(), Date.now()]);
+            else {
+              if (typeof cb2 === "function")
+                cb2.apply(this, arguments);
+            }
+          });
+        }
+      }
+      var fs$readdir = fs3.readdir;
+      fs3.readdir = readdir7;
+      var noReaddirOptionVersions = /^v[0-5]\./;
+      function readdir7(path, options, cb) {
+        if (typeof options === "function")
+          cb = options, options = null;
+        var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path2, options2, cb2, startTime) {
+          return fs$readdir(path2, fs$readdirCallback(
+            path2,
+            options2,
+            cb2,
+            startTime
+          ));
+        } : function go$readdir2(path2, options2, cb2, startTime) {
+          return fs$readdir(path2, options2, fs$readdirCallback(
+            path2,
+            options2,
+            cb2,
+            startTime
+          ));
+        };
+        return go$readdir(path, options, cb);
+        function fs$readdirCallback(path2, options2, cb2, startTime) {
+          return function(err, files) {
+            if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
+              enqueue([
+                go$readdir,
+                [path2, options2, cb2],
+                err,
+                startTime || Date.now(),
+                Date.now()
+              ]);
+            else {
+              if (files && files.sort)
+                files.sort();
+              if (typeof cb2 === "function")
+                cb2.call(this, err, files);
+            }
+          };
+        }
+      }
+      if (process.version.substr(0, 4) === "v0.8") {
+        var legStreams = legacy(fs3);
+        ReadStream = legStreams.ReadStream;
+        WriteStream = legStreams.WriteStream;
+      }
+      var fs$ReadStream = fs3.ReadStream;
+      if (fs$ReadStream) {
+        ReadStream.prototype = Object.create(fs$ReadStream.prototype);
+        ReadStream.prototype.open = ReadStream$open;
+      }
+      var fs$WriteStream = fs3.WriteStream;
+      if (fs$WriteStream) {
+        WriteStream.prototype = Object.create(fs$WriteStream.prototype);
+        WriteStream.prototype.open = WriteStream$open;
+      }
+      Object.defineProperty(fs3, "ReadStream", {
+        get: function() {
+          return ReadStream;
+        },
+        set: function(val) {
+          ReadStream = val;
+        },
+        enumerable: true,
+        configurable: true
+      });
+      Object.defineProperty(fs3, "WriteStream", {
+        get: function() {
+          return WriteStream;
+        },
+        set: function(val) {
+          WriteStream = val;
+        },
+        enumerable: true,
+        configurable: true
+      });
+      var FileReadStream = ReadStream;
+      Object.defineProperty(fs3, "FileReadStream", {
+        get: function() {
+          return FileReadStream;
+        },
+        set: function(val) {
+          FileReadStream = val;
+        },
+        enumerable: true,
+        configurable: true
+      });
+      var FileWriteStream = WriteStream;
+      Object.defineProperty(fs3, "FileWriteStream", {
+        get: function() {
+          return FileWriteStream;
+        },
+        set: function(val) {
+          FileWriteStream = val;
+        },
+        enumerable: true,
+        configurable: true
+      });
+      function ReadStream(path, options) {
+        if (this instanceof ReadStream)
+          return fs$ReadStream.apply(this, arguments), this;
+        else
+          return ReadStream.apply(Object.create(ReadStream.prototype), arguments);
+      }
+      function ReadStream$open() {
+        var that = this;
+        open3(that.path, that.flags, that.mode, function(err, fd) {
+          if (err) {
+            if (that.autoClose)
+              that.destroy();
+            that.emit("error", err);
+          } else {
+            that.fd = fd;
+            that.emit("open", fd);
+            that.read();
+          }
+        });
+      }
+      function WriteStream(path, options) {
+        if (this instanceof WriteStream)
+          return fs$WriteStream.apply(this, arguments), this;
+        else
+          return WriteStream.apply(Object.create(WriteStream.prototype), arguments);
+      }
+      function WriteStream$open() {
+        var that = this;
+        open3(that.path, that.flags, that.mode, function(err, fd) {
+          if (err) {
+            that.destroy();
+            that.emit("error", err);
+          } else {
+            that.fd = fd;
+            that.emit("open", fd);
+          }
+        });
+      }
+      function createReadStream(path, options) {
+        return new fs3.ReadStream(path, options);
+      }
+      function createWriteStream(path, options) {
+        return new fs3.WriteStream(path, options);
+      }
+      var fs$open = fs3.open;
+      fs3.open = open3;
+      function open3(path, flags, mode, cb) {
+        if (typeof mode === "function")
+          cb = mode, mode = null;
+        return go$open(path, flags, mode, cb);
+        function go$open(path2, flags2, mode2, cb2, startTime) {
+          return fs$open(path2, flags2, mode2, function(err, fd) {
+            if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
+              enqueue([go$open, [path2, flags2, mode2, cb2], err, startTime || Date.now(), Date.now()]);
+            else {
+              if (typeof cb2 === "function")
+                cb2.apply(this, arguments);
+            }
+          });
+        }
+      }
+      return fs3;
+    }
+    function enqueue(elem) {
+      debug("ENQUEUE", elem[0].name, elem[1]);
+      fs2[gracefulQueue].push(elem);
+      retry();
+    }
+    var retryTimer;
+    function resetQueue() {
+      var now = Date.now();
+      for (var i2 = 0; i2 < fs2[gracefulQueue].length; ++i2) {
+        if (fs2[gracefulQueue][i2].length > 2) {
+          fs2[gracefulQueue][i2][3] = now;
+          fs2[gracefulQueue][i2][4] = now;
+        }
+      }
+      retry();
+    }
+    function retry() {
+      clearTimeout(retryTimer);
+      retryTimer = void 0;
+      if (fs2[gracefulQueue].length === 0)
+        return;
+      var elem = fs2[gracefulQueue].shift();
+      var fn = elem[0];
+      var args = elem[1];
+      var err = elem[2];
+      var startTime = elem[3];
+      var lastTime = elem[4];
+      if (startTime === void 0) {
+        debug("RETRY", fn.name, args);
+        fn.apply(null, args);
+      } else if (Date.now() - startTime >= 6e4) {
+        debug("TIMEOUT", fn.name, args);
+        var cb = args.pop();
+        if (typeof cb === "function")
+          cb.call(null, err);
+      } else {
+        var sinceAttempt = Date.now() - lastTime;
+        var sinceStart = Math.max(lastTime - startTime, 1);
+        var desiredDelay = Math.min(sinceStart * 1.2, 100);
+        if (sinceAttempt >= desiredDelay) {
+          debug("RETRY", fn.name, args);
+          fn.apply(null, args.concat([startTime]));
+        } else {
+          fs2[gracefulQueue].push(elem);
+        }
+      }
+      if (retryTimer === void 0) {
+        retryTimer = setTimeout(retry, 0);
+      }
+    }
+  }
+});
+
+// node_modules/enhanced-resolve/lib/forEachBail.js
+var require_forEachBail = __commonJS({
+  "node_modules/enhanced-resolve/lib/forEachBail.js"(exports, module) {
+    "use strict";
+    module.exports = function forEachBail(array, iterator, callback2) {
+      if (array.length === 0) return callback2();
+      let i2 = 0;
+      const next = () => {
+        let loop;
+        iterator(
+          array[i2++],
+          (err, result) => {
+            if (err || result !== void 0 || i2 >= array.length) {
+              return callback2(err, result, i2);
+            }
+            if (loop === false) while (next()) ;
+            loop = true;
+          },
+          i2
+        );
+        if (!loop) loop = false;
+        return loop;
+      };
+      while (next()) ;
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/strip-json-comments.js
+var require_strip_json_comments = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/strip-json-comments.js"(exports, module) {
+    "use strict";
+    var singleComment = /* @__PURE__ */ Symbol("singleComment");
+    var multiComment = /* @__PURE__ */ Symbol("multiComment");
+    var stripWithoutWhitespace = (_string, _start, _end) => "";
+    var stripWithWhitespace = (string, start, end) => string.slice(start, end).replace(/[^ \t\r\n]/g, " ");
+    var isEscaped = (jsonString, quotePosition) => {
+      let index = quotePosition - 1;
+      let backslashCount = 0;
+      while (jsonString[index] === "\\") {
+        index -= 1;
+        backslashCount += 1;
+      }
+      return Boolean(backslashCount % 2);
+    };
+    function stripJsonComments(jsonString, { whitespace = true, trailingCommas = false } = {}) {
+      if (typeof jsonString !== "string") {
+        throw new TypeError(
+          `Expected argument \`jsonString\` to be a \`string\`, got \`${typeof jsonString}\``
+        );
+      }
+      const strip = whitespace ? stripWithWhitespace : stripWithoutWhitespace;
+      let isInsideString = false;
+      let isInsideComment = false;
+      let offset2 = 0;
+      let buffer = "";
+      let result = "";
+      let commaIndex = -1;
+      for (let index = 0; index < jsonString.length; index++) {
+        const currentCharacter = jsonString[index];
+        const nextCharacter = jsonString[index + 1];
+        if (!isInsideComment && currentCharacter === '"') {
+          const escaped = isEscaped(jsonString, index);
+          if (!escaped) {
+            isInsideString = !isInsideString;
+          }
+        }
+        if (isInsideString) {
+          continue;
+        }
+        if (!isInsideComment && currentCharacter + nextCharacter === "//") {
+          buffer += jsonString.slice(offset2, index);
+          offset2 = index;
+          isInsideComment = singleComment;
+          index++;
+        } else if (isInsideComment === singleComment && currentCharacter + nextCharacter === "\r\n") {
+          index++;
+          isInsideComment = false;
+          buffer += strip(jsonString, offset2, index);
+          offset2 = index;
+          continue;
+        } else if (isInsideComment === singleComment && currentCharacter === "\n") {
+          isInsideComment = false;
+          buffer += strip(jsonString, offset2, index);
+          offset2 = index;
+        } else if (!isInsideComment && currentCharacter + nextCharacter === "/*") {
+          buffer += jsonString.slice(offset2, index);
+          offset2 = index;
+          isInsideComment = multiComment;
+          index++;
+          continue;
+        } else if (isInsideComment === multiComment && currentCharacter + nextCharacter === "*/") {
+          index++;
+          isInsideComment = false;
+          buffer += strip(jsonString, offset2, index + 1);
+          offset2 = index + 1;
+          continue;
+        } else if (trailingCommas && !isInsideComment) {
+          if (commaIndex !== -1) {
+            if (currentCharacter === "}" || currentCharacter === "]") {
+              buffer += jsonString.slice(offset2, index);
+              result += strip(buffer, 0, 1) + buffer.slice(1);
+              buffer = "";
+              offset2 = index;
+              commaIndex = -1;
+            } else if (currentCharacter !== " " && currentCharacter !== "	" && currentCharacter !== "\r" && currentCharacter !== "\n") {
+              buffer += jsonString.slice(offset2, index);
+              offset2 = index;
+              commaIndex = -1;
+            }
+          } else if (currentCharacter === ",") {
+            result += buffer + jsonString.slice(offset2, index);
+            buffer = "";
+            offset2 = index;
+            commaIndex = index;
+          }
+        }
+      }
+      const remaining = isInsideComment === singleComment ? strip(jsonString, offset2, jsonString.length) : jsonString.slice(offset2);
+      return result + buffer + remaining;
+    }
+    module.exports = stripJsonComments;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/fs.js
+var require_fs = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/fs.js"(exports, module) {
+    "use strict";
+    var memoize = require_memoize();
+    var stripJsonComments = require_strip_json_comments();
+    var _stripCommentsCache = /* @__PURE__ */ new WeakMap();
+    var getDecoder = memoize(() => new TextDecoder("utf-8", { ignoreBOM: true }));
+    var decodeText = (data2) => {
+      if (typeof data2 === "string") return data2;
+      if (typeof Buffer !== "undefined" && Buffer.isBuffer(data2)) {
+        return data2.toString("utf8");
+      }
+      return getDecoder().decode(data2);
+    };
+    function readJson(fileSystem, jsonFilePath, options, callback2) {
+      const { stripComments = false } = options;
+      const { readJson: fsReadJson } = fileSystem;
+      if (fsReadJson && !stripComments) {
+        fsReadJson(jsonFilePath, (err, content) => {
+          if (err) return callback2(err);
+          callback2(
+            null,
+            /** @type {JsonObject} */
+            content
+          );
+        });
+        return;
+      }
+      fileSystem.readFile(jsonFilePath, (err, data2) => {
+        if (err) return callback2(err);
+        const buf = (
+          /** @type {Buffer | Uint8Array | string} */
+          data2
+        );
+        const cacheable = stripComments && typeof buf === "object";
+        if (cacheable) {
+          const cached = _stripCommentsCache.get(buf);
+          if (cached !== void 0) return callback2(null, cached);
+        }
+        let result;
+        try {
+          const jsonText = decodeText(buf);
+          const jsonWithoutComments = stripComments ? stripJsonComments(jsonText, {
+            trailingCommas: true,
+            whitespace: true
+          }) : jsonText;
+          result = JSON.parse(jsonWithoutComments);
+        } catch (parseErr) {
+          return callback2(
+            /** @type {Error} */
+            parseErr
+          );
+        }
+        if (cacheable) {
+          _stripCommentsCache.set(buf, result);
+        }
+        callback2(null, result);
+      });
+    }
+    module.exports.decodeText = decodeText;
+    module.exports.readJson = readJson;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/DescriptionFileUtils.js
+var require_DescriptionFileUtils = __commonJS({
+  "node_modules/enhanced-resolve/lib/DescriptionFileUtils.js"(exports, module) {
+    "use strict";
+    var forEachBail = require_forEachBail();
+    var { decodeText } = require_fs();
+    var CHAR_SLASH = 47;
+    var CHAR_BACKSLASH = 92;
+    function cdUp(directory) {
+      if (directory.length <= 1) return null;
+      for (let i2 = directory.length - 1; i2 >= 0; i2--) {
+        const code = directory.charCodeAt(i2);
+        if (code === CHAR_SLASH || code === CHAR_BACKSLASH) {
+          return directory.slice(0, i2 || 1);
+        }
+      }
+      return null;
+    }
+    function loadDescriptionFile(resolver, directory, filenames, oldInfo, resolveContext, callback2) {
+      const iterFilename = (filename, iterCallback) => {
+        const descriptionFilePath = resolver.join(directory, filename);
+        function onJson(err, resolvedContent) {
+          if (err) {
+            if (resolveContext.log) {
+              resolveContext.log(
+                `${descriptionFilePath} (directory description file): ${err}`
+              );
+            } else {
+              err.message = `${descriptionFilePath} (directory description file): ${err}`;
+            }
+            return iterCallback(err);
+          }
+          iterCallback(null, {
+            content: (
+              /** @type {JsonObject} */
+              resolvedContent
+            ),
+            directory,
+            path: descriptionFilePath
+          });
+        }
+        if (resolver.fileSystem.readJson) {
+          resolver.fileSystem.readJson(descriptionFilePath, (err, content) => {
+            if (err) {
+              if (typeof /** @type {NodeJS.ErrnoException} */
+              err.code !== "undefined") {
+                if (resolveContext.missingDependencies) {
+                  resolveContext.missingDependencies.add(descriptionFilePath);
+                }
+                return iterCallback();
+              }
+              if (resolveContext.fileDependencies) {
+                resolveContext.fileDependencies.add(descriptionFilePath);
+              }
+              return onJson(err);
+            }
+            if (resolveContext.fileDependencies) {
+              resolveContext.fileDependencies.add(descriptionFilePath);
+            }
+            onJson(null, content);
+          });
+        } else {
+          resolver.fileSystem.readFile(descriptionFilePath, (err, content) => {
+            if (err) {
+              if (resolveContext.missingDependencies) {
+                resolveContext.missingDependencies.add(descriptionFilePath);
+              }
+              return iterCallback();
+            }
+            if (resolveContext.fileDependencies) {
+              resolveContext.fileDependencies.add(descriptionFilePath);
+            }
+            let json3;
+            if (content) {
+              try {
+                json3 = JSON.parse(decodeText(content));
+              } catch (err_) {
+                return onJson(
+                  /** @type {Error} */
+                  err_
+                );
+              }
+            } else {
+              return onJson(new Error("No content in file"));
+            }
+            onJson(null, json3);
+          });
+        }
+      };
+      let findDescriptionFile;
+      const onLevelDone = (err, result) => {
+        if (err) return callback2(err);
+        if (result) return callback2(null, result);
+        const dir = cdUp(directory);
+        if (!dir) {
+          return callback2();
+        }
+        directory = dir;
+        return findDescriptionFile();
+      };
+      findDescriptionFile = () => {
+        if (oldInfo && oldInfo.directory === directory) {
+          return callback2(null, oldInfo);
+        }
+        forEachBail(filenames, iterFilename, onLevelDone);
+      };
+      findDescriptionFile();
+    }
+    function getField(content, field) {
+      if (!content) return void 0;
+      if (Array.isArray(field)) {
+        let current2 = content;
+        for (let j = 0; j < field.length; j++) {
+          if (current2 === null || typeof current2 !== "object") {
+            current2 = null;
+            break;
+          }
+          current2 = /** @type {JsonValue} */
+          /** @type {JsonObject} */
+          current2[field[j]];
+        }
+        return current2;
+      }
+      return content[field];
+    }
+    module.exports.cdUp = cdUp;
+    module.exports.getField = getField;
+    module.exports.loadDescriptionFile = loadDescriptionFile;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/path.js
+var require_path = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/path.js"(exports, module) {
+    "use strict";
+    var path = __require("path");
+    var { fileURLToPath: fileURLToPath7 } = __require("url");
+    var CHAR_HASH = "#".charCodeAt(0);
+    var CHAR_SLASH = "/".charCodeAt(0);
+    var CHAR_BACKSLASH = "\\".charCodeAt(0);
+    var CHAR_A = "A".charCodeAt(0);
+    var CHAR_Z = "Z".charCodeAt(0);
+    var CHAR_LOWER_A = "a".charCodeAt(0);
+    var CHAR_LOWER_Z = "z".charCodeAt(0);
+    var CHAR_DOT = ".".charCodeAt(0);
+    var CHAR_COLON = ":".charCodeAt(0);
+    var CHAR_F = "F".charCodeAt(0);
+    var CHAR_LOWER_F = "f".charCodeAt(0);
+    var FILE_URL_REGEXP = /^file:\//i;
+    var posixNormalize = path.posix.normalize;
+    var winNormalize = path.win32.normalize;
+    var PathType = Object.freeze({
+      Empty: 0,
+      Normal: 1,
+      Relative: 2,
+      AbsoluteWin: 3,
+      AbsolutePosix: 4,
+      Internal: 5
+    });
+    var deprecatedInvalidSegmentRegEx = /(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))(\\|\/|$)/i;
+    var invalidSegmentRegEx = /(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))?(\\|\/|$)/i;
+    var getType = (maybePath) => {
+      switch (maybePath.length) {
+        case 0:
+          return PathType.Empty;
+        case 1: {
+          const c02 = maybePath.charCodeAt(0);
+          switch (c02) {
+            case CHAR_DOT:
+              return PathType.Relative;
+            case CHAR_SLASH:
+              return PathType.AbsolutePosix;
+            case CHAR_HASH:
+              return PathType.Internal;
+          }
+          return PathType.Normal;
+        }
+        case 2: {
+          const c02 = maybePath.charCodeAt(0);
+          switch (c02) {
+            case CHAR_DOT: {
+              const c13 = maybePath.charCodeAt(1);
+              switch (c13) {
+                case CHAR_DOT:
+                case CHAR_SLASH:
+                  return PathType.Relative;
+              }
+              return PathType.Normal;
+            }
+            case CHAR_SLASH:
+              return PathType.AbsolutePosix;
+            case CHAR_HASH:
+              return PathType.Internal;
+          }
+          const c12 = maybePath.charCodeAt(1);
+          if (c12 === CHAR_COLON && (c02 >= CHAR_A && c02 <= CHAR_Z || c02 >= CHAR_LOWER_A && c02 <= CHAR_LOWER_Z)) {
+            return PathType.AbsoluteWin;
+          }
+          if (c02 === CHAR_BACKSLASH && c12 === CHAR_BACKSLASH) {
+            return PathType.AbsoluteWin;
+          }
+          return PathType.Normal;
+        }
+      }
+      const c0 = maybePath.charCodeAt(0);
+      switch (c0) {
+        case CHAR_DOT: {
+          const c12 = maybePath.charCodeAt(1);
+          switch (c12) {
+            case CHAR_SLASH:
+              return PathType.Relative;
+            case CHAR_DOT: {
+              const c2 = maybePath.charCodeAt(2);
+              if (c2 === CHAR_SLASH) return PathType.Relative;
+              return PathType.Normal;
+            }
+          }
+          return PathType.Normal;
+        }
+        case CHAR_SLASH:
+          return PathType.AbsolutePosix;
+        case CHAR_HASH:
+          return PathType.Internal;
+      }
+      const c1 = maybePath.charCodeAt(1);
+      if (c1 === CHAR_COLON) {
+        const c2 = maybePath.charCodeAt(2);
+        if ((c2 === CHAR_BACKSLASH || c2 === CHAR_SLASH) && (c0 >= CHAR_A && c0 <= CHAR_Z || c0 >= CHAR_LOWER_A && c0 <= CHAR_LOWER_Z)) {
+          return PathType.AbsoluteWin;
+        }
+      }
+      if (c0 === CHAR_BACKSLASH && c1 === CHAR_BACKSLASH) {
+        return PathType.AbsoluteWin;
+      }
+      return PathType.Normal;
+    };
+    var normalize3 = (maybePath) => {
+      switch (getType(maybePath)) {
+        case PathType.Empty:
+          return maybePath;
+        case PathType.AbsoluteWin:
+          return winNormalize(maybePath);
+        case PathType.Relative: {
+          const r = posixNormalize(maybePath);
+          return getType(r) === PathType.Relative ? r : `./${r}`;
+        }
+      }
+      return posixNormalize(maybePath);
+    };
+    var join44 = (rootPath, request) => {
+      if (!request) return normalize3(rootPath);
+      const requestType = getType(request);
+      switch (requestType) {
+        case PathType.AbsolutePosix:
+          return posixNormalize(request);
+        case PathType.AbsoluteWin:
+          return winNormalize(request);
+      }
+      switch (getType(rootPath)) {
+        case PathType.Normal:
+        case PathType.Relative:
+        case PathType.AbsolutePosix:
+          return posixNormalize(`${rootPath}/${request}`);
+        case PathType.AbsoluteWin:
+          return winNormalize(`${rootPath}\\${request}`);
+      }
+      switch (requestType) {
+        case PathType.Empty:
+          return rootPath;
+        case PathType.Relative: {
+          const r = posixNormalize(rootPath);
+          return getType(r) === PathType.Relative ? r : `./${r}`;
+        }
+      }
+      return posixNormalize(rootPath);
+    };
+    var dirname21 = (maybePath) => {
+      switch (getType(maybePath)) {
+        case PathType.AbsoluteWin:
+          return path.win32.dirname(maybePath);
+      }
+      return path.posix.dirname(maybePath);
+    };
+    var createCachedJoin = () => {
+      const cache = /* @__PURE__ */ new Map();
+      const fn = (rootPath, request) => {
+        let cacheEntry;
+        let inner = cache.get(rootPath);
+        if (inner === void 0) {
+          cache.set(rootPath, inner = /* @__PURE__ */ new Map());
+        } else {
+          cacheEntry = inner.get(request);
+          if (cacheEntry !== void 0) return cacheEntry;
+        }
+        cacheEntry = join44(rootPath, request);
+        inner.set(request, cacheEntry);
+        return cacheEntry;
+      };
+      return { fn, cache };
+    };
+    var createCachedDirname = () => {
+      const cache = /* @__PURE__ */ new Map();
+      const fn = (maybePath) => {
+        const cacheEntry = cache.get(maybePath);
+        if (cacheEntry !== void 0) return cacheEntry;
+        const result = dirname21(maybePath);
+        cache.set(maybePath, result);
+        return result;
+      };
+      return { fn, cache };
+    };
+    var createCachedBasename = () => {
+      const cache = /* @__PURE__ */ new Map();
+      const fn = (maybePath, suffix) => {
+        let cacheEntry;
+        let inner = cache.get(maybePath);
+        if (inner === void 0) {
+          cache.set(maybePath, inner = /* @__PURE__ */ new Map());
+        } else {
+          cacheEntry = inner.get(suffix);
+          if (cacheEntry !== void 0) return cacheEntry;
+        }
+        cacheEntry = path.basename(maybePath, suffix);
+        inner.set(suffix, cacheEntry);
+        return cacheEntry;
+      };
+      return { fn, cache };
+    };
+    var isRelativeRequest = (request) => {
+      const len = request.length;
+      if (len === 0 || request.charCodeAt(0) !== CHAR_DOT) return false;
+      if (len === 1) return true;
+      const c1 = request.charCodeAt(1);
+      if (c1 === CHAR_SLASH) return true;
+      if (c1 !== CHAR_DOT) return false;
+      if (len === 2) return true;
+      return request.charCodeAt(2) === CHAR_SLASH;
+    };
+    var isWindowsPath = (maybePath) => {
+      const c0 = maybePath.charCodeAt(0);
+      if (c0 === CHAR_BACKSLASH) return true;
+      if (maybePath.charCodeAt(1) !== CHAR_COLON) return false;
+      return c0 >= CHAR_A && c0 <= CHAR_Z || c0 >= CHAR_LOWER_A && c0 <= CHAR_LOWER_Z;
+    };
+    var isSeparator = (charCode, windowsPath) => charCode === CHAR_SLASH || windowsPath && charCode === CHAR_BACKSLASH;
+    var parentPathLength = (parentPath, windowsPath) => {
+      let end = parentPath.length;
+      while (end > 0 && isSeparator(parentPath.charCodeAt(end - 1), windowsPath)) {
+        end--;
+      }
+      return end;
+    };
+    var equalsWindowsPrefix = (parentPath, length, childPath) => childPath.slice(0, length).replace(/\//g, "\\").toLowerCase() === parentPath.slice(0, length).replace(/\//g, "\\").toLowerCase();
+    var startsWithPath = (parentPath, length, childPath, windowsPath) => {
+      if (childPath.length < length) return false;
+      if (length === parentPath.length) {
+        if (childPath.startsWith(parentPath)) return true;
+        if (!windowsPath) return false;
+      }
+      for (let i2 = 0; i2 < length; i2++) {
+        const childCharCode = childPath.charCodeAt(i2);
+        const parentCharCode = parentPath.charCodeAt(i2);
+        if (childCharCode === parentCharCode) continue;
+        if (!windowsPath) return false;
+        if (isSeparator(childCharCode, true) && isSeparator(parentCharCode, true)) {
+          continue;
+        }
+        if (childCharCode > 127 || parentCharCode > 127) {
+          return equalsWindowsPrefix(parentPath, length, childPath);
+        }
+        const childLower = childCharCode >= CHAR_A && childCharCode <= CHAR_Z ? childCharCode + 32 : childCharCode;
+        const parentLower = parentCharCode >= CHAR_A && parentCharCode <= CHAR_Z ? parentCharCode + 32 : parentCharCode;
+        if (childLower !== parentLower) return false;
+      }
+      return true;
+    };
+    var isInside = (parentPath, childPath) => {
+      const windowsPath = isWindowsPath(parentPath);
+      const length = parentPathLength(parentPath, windowsPath);
+      if (!startsWithPath(parentPath, length, childPath, windowsPath)) return false;
+      return childPath.length === length || isSeparator(childPath.charCodeAt(length), windowsPath);
+    };
+    var isSubPath = (parentPath, childPath) => {
+      const windowsPath = isWindowsPath(parentPath);
+      const length = parentPathLength(parentPath, windowsPath);
+      if (childPath.length <= length) return false;
+      if (!startsWithPath(parentPath, length, childPath, windowsPath)) return false;
+      return isSeparator(childPath.charCodeAt(length), windowsPath);
+    };
+    var isFileURL = (maybePath) => {
+      const c0 = maybePath.charCodeAt(0);
+      return (c0 === CHAR_LOWER_F || c0 === CHAR_F) && FILE_URL_REGEXP.test(maybePath);
+    };
+    var toPath = (maybeURL) => {
+      if (maybeURL instanceof URL) return fileURLToPath7(maybeURL);
+      return isFileURL(maybeURL) ? fileURLToPath7(maybeURL) : maybeURL;
+    };
+    module.exports.PathType = PathType;
+    module.exports.createCachedBasename = createCachedBasename;
+    module.exports.createCachedDirname = createCachedDirname;
+    module.exports.createCachedJoin = createCachedJoin;
+    module.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
+    module.exports.dirname = dirname21;
+    module.exports.getType = getType;
+    module.exports.invalidSegmentRegEx = invalidSegmentRegEx;
+    module.exports.isFileURL = isFileURL;
+    module.exports.isInside = isInside;
+    module.exports.isRelativeRequest = isRelativeRequest;
+    module.exports.isSubPath = isSubPath;
+    module.exports.isWindowsPath = isWindowsPath;
+    module.exports.join = join44;
+    module.exports.normalize = normalize3;
+    module.exports.toPath = toPath;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/getInnerRequest.js
+var require_getInnerRequest = __commonJS({
+  "node_modules/enhanced-resolve/lib/getInnerRequest.js"(exports, module) {
+    "use strict";
+    var { isRelativeRequest } = require_path();
+    module.exports = function getInnerRequest(resolver, request) {
+      if (typeof request.__innerRequest === "string" && request.__innerRequest_request === request.request && request.__innerRequest_relativePath === request.relativePath) {
+        return request.__innerRequest;
+      }
+      let innerRequest;
+      if (request.request) {
+        innerRequest = request.request;
+        if (request.relativePath && isRelativeRequest(innerRequest)) {
+          innerRequest = resolver.join(request.relativePath, innerRequest);
+        }
+      } else {
+        innerRequest = request.relativePath;
+      }
+      request.__innerRequest_request = request.request;
+      request.__innerRequest_relativePath = request.relativePath;
+      return request.__innerRequest = /** @type {string} */
+      innerRequest;
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/AliasFieldPlugin.js
+var require_AliasFieldPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/AliasFieldPlugin.js"(exports, module) {
+    "use strict";
+    var DescriptionFileUtils = require_DescriptionFileUtils();
+    var getInnerRequest = require_getInnerRequest();
+    var NO_FIELD_OBJECT = /* @__PURE__ */ Symbol("NoFieldObject");
+    module.exports = class AliasFieldPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | string[]} field field
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, field, target) {
+        this.source = source;
+        this.field = field;
+        this.target = target;
+        this._fieldDataCache = /* @__PURE__ */ new WeakMap();
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("AliasFieldPlugin", (request, resolveContext, callback2) => {
+          if (!request.descriptionFileData) return callback2();
+          const innerRequest = getInnerRequest(resolver, request);
+          if (!innerRequest) return callback2();
+          const { descriptionFileData } = request;
+          let fieldData = this._fieldDataCache.get(descriptionFileData);
+          if (fieldData === void 0) {
+            const raw = DescriptionFileUtils.getField(
+              descriptionFileData,
+              this.field
+            );
+            fieldData = raw === null || typeof raw !== "object" ? NO_FIELD_OBJECT : (
+              /** @type {{ [k: string]: JsonPrimitive }} */
+              raw
+            );
+            this._fieldDataCache.set(descriptionFileData, fieldData);
+          }
+          if (fieldData === NO_FIELD_OBJECT) {
+            if (resolveContext.log) {
+              resolveContext.log(
+                `Field '${this.field}' doesn't contain a valid alias configuration`
+              );
+            }
+            return callback2();
+          }
+          const data2 = Object.prototype.hasOwnProperty.call(
+            fieldData,
+            innerRequest
+          ) ? (
+            /** @type {{ [Key in string]: JsonPrimitive }} */
+            fieldData[innerRequest]
+          ) : innerRequest.startsWith("./") ? (
+            /** @type {{ [Key in string]: JsonPrimitive }} */
+            fieldData[innerRequest.slice(2)]
+          ) : void 0;
+          if (data2 === innerRequest) return callback2();
+          if (data2 === void 0) return callback2();
+          if (data2 === false) {
+            const ignoreObj = {
+              ...request,
+              path: false
+            };
+            if (typeof resolveContext.yield === "function") {
+              resolveContext.yield(ignoreObj);
+              return callback2(null, null);
+            }
+            return callback2(null, ignoreObj);
+          }
+          const obj = {
+            ...request,
+            path: (
+              /** @type {string} */
+              request.descriptionFileRoot
+            ),
+            request: (
+              /** @type {string} */
+              data2
+            ),
+            fullySpecified: false
+          };
+          resolver.doResolve(
+            target,
+            obj,
+            `aliased from description file ${request.descriptionFilePath} with mapping '${innerRequest}' to '${/** @type {string} */
+            data2}'`,
+            resolveContext,
+            (err, result) => {
+              if (err) return callback2(err);
+              if (result === void 0) return callback2(null, null);
+              callback2(null, result);
+            }
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/AliasUtils.js
+var require_AliasUtils = __commonJS({
+  "node_modules/enhanced-resolve/lib/AliasUtils.js"(exports, module) {
+    "use strict";
+    var forEachBail = require_forEachBail();
+    var { PathType, getType } = require_path();
+    var EMPTY_LIST = (
+      /** @type {CompiledAliasOption[]} */
+      []
+    );
+    var EMPTY_COMPILED_OPTIONS = (
+      /** @type {CompiledAliasOptions} */
+      {
+        all: EMPTY_LIST,
+        byFirstChar: /* @__PURE__ */ new Map(),
+        hasAnyFirstChar: false,
+        useBuckets: false
+      }
+    );
+    function compileAliasOptions(resolver, options) {
+      if (options.length === 0) return EMPTY_COMPILED_OPTIONS;
+      const all = (
+        /** @type {CompiledAliasOption[]} */
+        Array.from({ length: options.length })
+      );
+      const byFirstChar = /* @__PURE__ */ new Map();
+      let hasAnyFirstChar = false;
+      for (let i2 = 0; i2 < options.length; i2++) {
+        const item = options[i2];
+        const { name } = item;
+        let absolutePath = null;
+        const type = getType(name);
+        if (type === PathType.AbsolutePosix || type === PathType.AbsoluteWin) {
+          absolutePath = resolver.join(name, "_").slice(0, -1);
+        }
+        const firstStar = name.indexOf("*");
+        let wildcardPrefix = null;
+        let wildcardSuffix = null;
+        if (firstStar !== -1 && !name.includes("*", firstStar + 1)) {
+          wildcardPrefix = name.slice(0, firstStar);
+          wildcardSuffix = name.slice(firstStar + 1);
+        }
+        let firstCharCode;
+        if (wildcardPrefix !== null && wildcardPrefix.length === 0) {
+          firstCharCode = -1;
+        } else {
+          firstCharCode = name.length > 0 ? name.charCodeAt(0) : -1;
+        }
+        const compiled = {
+          name,
+          nameWithSlash: `${name}/`,
+          alias: item.alias,
+          onlyModule: Boolean(item.onlyModule),
+          absolutePath,
+          wildcardPrefix,
+          wildcardSuffix,
+          firstCharCode,
+          arrayAlias: Array.isArray(item.alias)
+        };
+        all[i2] = compiled;
+        if (firstCharCode === -1) {
+          hasAnyFirstChar = true;
+        } else {
+          let bucket = byFirstChar.get(firstCharCode);
+          if (bucket === void 0) {
+            bucket = [];
+            byFirstChar.set(firstCharCode, bucket);
+          }
+          bucket.push(compiled);
+        }
+      }
+      const useBuckets = !hasAnyFirstChar && byFirstChar.size >= 2;
+      return { all, byFirstChar, hasAnyFirstChar, useBuckets };
+    }
+    function aliasResolveHandler(resolver, options, target, request, resolveContext, callback2) {
+      if (options.all.length === 0) return callback2();
+      const innerRequest = request.request || request.path;
+      if (!innerRequest) return callback2();
+      const innerFirstCharCode = innerRequest.charCodeAt(0);
+      const hasRequestString = Boolean(request.request);
+      let scan2;
+      if (options.useBuckets) {
+        const bucket = options.byFirstChar.get(innerFirstCharCode);
+        if (bucket === void 0) return callback2();
+        scan2 = bucket;
+      } else {
+        scan2 = options.all;
+      }
+      forEachBail(
+        scan2,
+        (item, callback3) => {
+          const { firstCharCode } = item;
+          if (firstCharCode !== -1 && firstCharCode !== innerFirstCharCode) {
+            return callback3();
+          }
+          let shouldStop = false;
+          const { absolutePath } = item;
+          const matchRequest = innerRequest === item.name || !item.onlyModule && (hasRequestString && innerRequest.startsWith(item.nameWithSlash) || absolutePath !== null && innerRequest.startsWith(absolutePath));
+          const matchWildcard = !item.onlyModule && item.wildcardPrefix !== null;
+          if (matchRequest || matchWildcard) {
+            const resolveWithAlias = (alias, callback4) => {
+              if (alias === false) {
+                const ignoreObj = {
+                  ...request,
+                  path: false
+                };
+                if (typeof resolveContext.yield === "function") {
+                  resolveContext.yield(ignoreObj);
+                  return callback4(null, null);
+                }
+                return callback4(null, ignoreObj);
+              }
+              let newRequestStr;
+              if (matchWildcard && innerRequest.startsWith(
+                /** @type {string} */
+                item.wildcardPrefix
+              ) && innerRequest.endsWith(
+                /** @type {string} */
+                item.wildcardSuffix
+              )) {
+                const match2 = innerRequest.slice(
+                  /** @type {string} */
+                  item.wildcardPrefix.length,
+                  innerRequest.length - /** @type {string} */
+                  item.wildcardSuffix.length
+                );
+                newRequestStr = alias.toString().replace("*", match2);
+              }
+              if (matchRequest && innerRequest !== alias && !innerRequest.startsWith(`${alias}/`)) {
+                const remainingRequest = innerRequest.slice(item.name.length);
+                newRequestStr = alias + remainingRequest;
+              }
+              if (newRequestStr !== void 0) {
+                shouldStop = true;
+                const obj = {
+                  ...request,
+                  request: newRequestStr,
+                  fullySpecified: false
+                };
+                return resolver.doResolve(
+                  target,
+                  obj,
+                  `aliased with mapping '${item.name}': '${alias}' to '${newRequestStr}'`,
+                  resolveContext,
+                  (err, result) => {
+                    if (err) return callback4(err);
+                    if (result) return callback4(null, result);
+                    return callback4();
+                  }
+                );
+              }
+              return callback4();
+            };
+            const stoppingCallback = (err, result) => {
+              if (err) return callback3(err);
+              if (result) return callback3(null, result);
+              if (shouldStop) return callback3(null, null);
+              return callback3();
+            };
+            if (item.arrayAlias) {
+              return forEachBail(
+                /** @type {string[]} */
+                item.alias,
+                resolveWithAlias,
+                stoppingCallback
+              );
+            }
+            return resolveWithAlias(item.alias, stoppingCallback);
+          }
+          return callback3();
+        },
+        callback2
+      );
+    }
+    module.exports.aliasResolveHandler = aliasResolveHandler;
+    module.exports.compileAliasOptions = compileAliasOptions;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/AliasPlugin.js
+var require_AliasPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/AliasPlugin.js"(exports, module) {
+    "use strict";
+    var { aliasResolveHandler, compileAliasOptions } = require_AliasUtils();
+    module.exports = class AliasPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {AliasOption | AliasOption[]} options options
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, options, target) {
+        this.source = source;
+        this.options = Array.isArray(options) ? options : [options];
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const compiled = compileAliasOptions(resolver, this.options);
+        resolver.getHook(this.source).tapAsync("AliasPlugin", (request, resolveContext, callback2) => {
+          aliasResolveHandler(
+            resolver,
+            compiled,
+            target,
+            request,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/AppendPlugin.js
+var require_AppendPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/AppendPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class AppendPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string} appending appending
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, appending, target) {
+        this.source = source;
+        this.appending = appending;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("AppendPlugin", (request, resolveContext, callback2) => {
+          const obj = {
+            ...request,
+            path: request.path + this.appending,
+            relativePath: request.relativePath && request.relativePath + this.appending
+          };
+          resolver.doResolve(
+            target,
+            obj,
+            this.appending,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ConditionalPlugin.js
+var require_ConditionalPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ConditionalPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class ConditionalPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {Partial<ResolveRequest>} test compare object
+       * @param {string | null} message log message
+       * @param {boolean} allowAlternatives when false, do not continue with the current step when "test" matches
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, test, message2, allowAlternatives, target) {
+        this.source = source;
+        this.test = test;
+        this.message = message2;
+        this.allowAlternatives = allowAlternatives;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const { test, message: message2, allowAlternatives } = this;
+        const keys = (
+          /** @type {(keyof ResolveRequest)[]} */
+          Object.keys(test)
+        );
+        resolver.getHook(this.source).tapAsync("ConditionalPlugin", (request, resolveContext, callback2) => {
+          for (const prop of keys) {
+            if (request[prop] !== test[prop]) return callback2();
+          }
+          resolver.doResolve(
+            target,
+            request,
+            message2,
+            resolveContext,
+            allowAlternatives ? callback2 : (err, result) => {
+              if (err) return callback2(err);
+              if (result === void 0) return callback2(null, null);
+              callback2(null, result);
+            }
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js
+var require_DescriptionFilePlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js"(exports, module) {
+    "use strict";
+    var DescriptionFileUtils = require_DescriptionFileUtils();
+    var BACKSLASH_G = /\\/g;
+    module.exports = class DescriptionFilePlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string[]} filenames filenames
+       * @param {boolean} pathIsFile pathIsFile
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, filenames, pathIsFile, target) {
+        this.source = source;
+        this.filenames = filenames;
+        this.pathIsFile = pathIsFile;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync(
+          "DescriptionFilePlugin",
+          (request, resolveContext, callback2) => {
+            const { path } = request;
+            if (!path) return callback2();
+            const directory = this.pathIsFile ? DescriptionFileUtils.cdUp(path) : path;
+            if (!directory) return callback2();
+            DescriptionFileUtils.loadDescriptionFile(
+              resolver,
+              directory,
+              this.filenames,
+              request.descriptionFilePath ? {
+                path: request.descriptionFilePath,
+                content: request.descriptionFileData,
+                directory: (
+                  /** @type {string} */
+                  request.descriptionFileRoot
+                )
+              } : void 0,
+              resolveContext,
+              (err, result) => {
+                if (err) return callback2(err);
+                if (!result) {
+                  if (resolveContext.log) {
+                    resolveContext.log(
+                      `No description file found in ${directory} or above`
+                    );
+                  }
+                  return callback2();
+                }
+                const rawRelative = path.slice(result.directory.length);
+                const relativePath = `.${rawRelative.includes("\\") ? rawRelative.replace(BACKSLASH_G, "/") : rawRelative}`;
+                const obj = {
+                  ...request,
+                  descriptionFilePath: result.path,
+                  descriptionFileData: result.content,
+                  descriptionFileRoot: result.directory,
+                  relativePath
+                };
+                resolver.doResolve(
+                  target,
+                  obj,
+                  `using description file: ${result.path} (relative path: ${relativePath})`,
+                  resolveContext,
+                  (err2, result2) => {
+                    if (err2) return callback2(err2);
+                    if (result2 === void 0) return callback2(null, null);
+                    callback2(null, result2);
+                  }
+                );
+              }
+            );
+          }
+        );
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/DirectoryExistsPlugin.js
+var require_DirectoryExistsPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/DirectoryExistsPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class DirectoryExistsPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync(
+          "DirectoryExistsPlugin",
+          (request, resolveContext, callback2) => {
+            const fs2 = resolver.fileSystem;
+            const directory = request.path;
+            if (!directory) return callback2();
+            fs2.stat(directory, (err, stat6) => {
+              if (err || !stat6 || !stat6.isDirectory()) {
+                if (resolveContext.missingDependencies) {
+                  resolveContext.missingDependencies.add(directory);
+                }
+                if (resolveContext.log) {
+                  resolveContext.log(
+                    err || !stat6 ? `${directory} doesn't exist` : `${directory} is not a directory`
+                  );
+                }
+                return callback2();
+              }
+              if (resolveContext.fileDependencies) {
+                resolveContext.fileDependencies.add(directory);
+              }
+              resolver.doResolve(
+                target,
+                request,
+                `existing directory ${directory}`,
+                resolveContext,
+                callback2
+              );
+            });
+          }
+        );
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/identifier.js
+var require_identifier = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/identifier.js"(exports, module) {
+    "use strict";
+    var { fileURLToPath: fileURLToPath7 } = __require("url");
+    var { isFileURL } = require_path();
+    var PATH_QUERY_FRAGMENT_REGEXP = /^(#?(?:\0.|[^?#\0])*)(\?(?:\0.|[^#\0])*)?(#.*)?$/;
+    var ZERO_ESCAPE_REGEXP = /\0(.)/g;
+    function dosPrefixEnd(identifier) {
+      if (identifier.length >= 4 && identifier.charCodeAt(1) === 92 && identifier.charCodeAt(3) === 92) {
+        const c2 = identifier.charCodeAt(2);
+        if (c2 === 63 || c2 === 46) return 4;
+      }
+      return 0;
+    }
+    function parseIdentifier(identifier) {
+      if (!identifier) {
+        return null;
+      }
+      if (isFileURL(identifier)) {
+        identifier = fileURLToPath7(identifier);
+      }
+      const firstEscape = identifier.indexOf("\0");
+      if (firstEscape !== -1) {
+        const match2 = PATH_QUERY_FRAGMENT_REGEXP.exec(identifier);
+        if (!match2) return null;
+        return [
+          match2[1].replace(ZERO_ESCAPE_REGEXP, "$1"),
+          match2[2] ? match2[2].replace(ZERO_ESCAPE_REGEXP, "$1") : "",
+          match2[3] || ""
+        ];
+      }
+      const scanStart = identifier.charCodeAt(0) === 92 ? dosPrefixEnd(identifier) : 0;
+      const queryStart = identifier.indexOf("?", scanStart);
+      const fragmentStart = identifier.indexOf("#", scanStart || 1);
+      if (fragmentStart < 0) {
+        if (queryStart < 0) {
+          return [identifier, "", ""];
+        }
+        return [identifier.slice(0, queryStart), identifier.slice(queryStart), ""];
+      }
+      if (queryStart < 0 || fragmentStart < queryStart) {
+        return [
+          identifier.slice(0, fragmentStart),
+          "",
+          identifier.slice(fragmentStart)
+        ];
+      }
+      return [
+        identifier.slice(0, queryStart),
+        identifier.slice(queryStart, fragmentStart),
+        identifier.slice(fragmentStart)
+      ];
+    }
+    module.exports.parseIdentifier = parseIdentifier;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/entrypoints.js
+var require_entrypoints = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/entrypoints.js"(exports, module) {
+    "use strict";
+    var { parseIdentifier } = require_identifier();
+    var slashCode = "/".charCodeAt(0);
+    var dotCode = ".".charCodeAt(0);
+    var hashCode = "#".charCodeAt(0);
+    var patternRegEx = /\*/g;
+    var DOLLAR_ESCAPE_RE = /\$/g;
+    var _keysCache = /* @__PURE__ */ new WeakMap();
+    function cachedKeys(obj) {
+      let keys = _keysCache.get(obj);
+      if (keys === void 0) {
+        keys = Object.keys(obj);
+        _keysCache.set(obj, keys);
+      }
+      return keys;
+    }
+    var _fieldKeyInfoCache = /* @__PURE__ */ new WeakMap();
+    function getFieldKeyInfos(field) {
+      const fieldKey = (
+        /** @type {RecordMapping} */
+        field
+      );
+      let infos = _fieldKeyInfoCache.get(fieldKey);
+      if (infos !== void 0) return infos;
+      const keys = Object.getOwnPropertyNames(field);
+      infos = Array.from({ length: keys.length });
+      for (let i2 = 0; i2 < keys.length; i2++) {
+        const key = keys[i2];
+        const patternIndex = key.indexOf("*");
+        const isValidPattern = patternIndex === -1 || !key.includes("*", patternIndex + 1);
+        const keyLen = key.length;
+        const endsWithSlash = keyLen > 0 && key.charCodeAt(keyLen - 1) === slashCode;
+        infos[i2] = {
+          key,
+          patternIndex,
+          wildcardPrefix: patternIndex === -1 ? "" : key.slice(0, patternIndex),
+          wildcardSuffix: patternIndex === -1 ? "" : key.slice(patternIndex + 1),
+          isLegacySubpath: patternIndex === -1 && endsWithSlash,
+          isPattern: patternIndex !== -1,
+          isSubpathMapping: endsWithSlash,
+          isValidPattern
+        };
+      }
+      _fieldKeyInfoCache.set(fieldKey, infos);
+      return infos;
+    }
+    function patternKeyCompare(a, b) {
+      const aPatternIndex = a.indexOf("*");
+      const bPatternIndex = b.indexOf("*");
+      const baseLenA = aPatternIndex === -1 ? a.length : aPatternIndex + 1;
+      const baseLenB = bPatternIndex === -1 ? b.length : bPatternIndex + 1;
+      if (baseLenA > baseLenB) return -1;
+      if (baseLenB > baseLenA) return 1;
+      if (aPatternIndex === -1) return 1;
+      if (bPatternIndex === -1) return -1;
+      if (a.length > b.length) return -1;
+      if (b.length > a.length) return 1;
+      return 0;
+    }
+    var _findMatchCache = /* @__PURE__ */ new WeakMap();
+    function computeFindMatch(request, field) {
+      const requestLen = request.length;
+      const requestEndsWithSlash = requestLen > 0 && request.charCodeAt(requestLen - 1) === slashCode;
+      const requestHasStar = request.includes("*");
+      if (!requestHasStar && !requestEndsWithSlash && Object.prototype.hasOwnProperty.call(field, request)) {
+        const target2 = (
+          /** @type {{ [k: string]: MappingValue }} */
+          field[request]
+        );
+        return [target2, "", false, false, request];
+      }
+      let bestMatch = "";
+      let bestMatchInfo = null;
+      let bestMatchSubpath;
+      const infos = getFieldKeyInfos(field);
+      for (let i2 = 0; i2 < infos.length; i2++) {
+        const info = infos[i2];
+        const { key, patternIndex } = info;
+        if (patternIndex !== -1) {
+          if (!info.isValidPattern || !request.startsWith(info.wildcardPrefix) || requestLen < key.length || !request.endsWith(info.wildcardSuffix) || patternKeyCompare(bestMatch, key) !== 1) {
+            continue;
+          }
+          bestMatch = key;
+          bestMatchInfo = info;
+          bestMatchSubpath = request.slice(
+            patternIndex,
+            requestLen - info.wildcardSuffix.length
+          );
+        } else if (info.isLegacySubpath && request.startsWith(key) && patternKeyCompare(bestMatch, key) === 1) {
+          bestMatch = key;
+          bestMatchInfo = info;
+          bestMatchSubpath = request.slice(key.length);
+        }
+      }
+      if (bestMatch === "") return null;
+      const target = (
+        /** @type {{ [k: string]: MappingValue }} */
+        field[bestMatch]
+      );
+      return [
+        target,
+        /** @type {string} */
+        bestMatchSubpath,
+        /** @type {FieldKeyInfo} */
+        bestMatchInfo.isSubpathMapping,
+        /** @type {FieldKeyInfo} */
+        bestMatchInfo.isPattern,
+        bestMatch
+      ];
+    }
+    function findMatch(request, field) {
+      const fieldKey = (
+        /** @type {RecordMapping} */
+        field
+      );
+      let perRequest = _findMatchCache.get(fieldKey);
+      if (perRequest === void 0) {
+        perRequest = /* @__PURE__ */ new Map();
+        _findMatchCache.set(fieldKey, perRequest);
+      } else {
+        const cached = perRequest.get(request);
+        if (cached !== void 0) return cached;
+      }
+      const result = computeFindMatch(request, field);
+      perRequest.set(request, result);
+      return result;
+    }
+    var NULL_RESULT = /* @__PURE__ */ Symbol("NULL_RESULT");
+    var _conditionalMappingCache = /* @__PURE__ */ new WeakMap();
+    function computeConditionalMapping(conditionalMapping_, conditionNames) {
+      const lookup = [[conditionalMapping_, cachedKeys(conditionalMapping_), 0]];
+      loop: while (lookup.length > 0) {
+        const top = lookup[lookup.length - 1];
+        const [mapping, conditions, j] = top;
+        for (let i2 = j; i2 < conditions.length; i2++) {
+          const condition = conditions[i2];
+          if (condition === "default" || conditionNames.has(condition)) {
+            const innerMapping = mapping[condition];
+            if (innerMapping !== null && typeof innerMapping === "object" && !Array.isArray(innerMapping)) {
+              const nested = (
+                /** @type {ConditionalMapping} */
+                innerMapping
+              );
+              top[2] = i2 + 1;
+              lookup.push([nested, cachedKeys(nested), 0]);
+              continue loop;
+            }
+            return (
+              /** @type {DirectMapping} */
+              innerMapping
+            );
+          }
+        }
+        lookup.pop();
+      }
+      return null;
+    }
+    function conditionalMapping(conditionalMapping_, conditionNames) {
+      let perSet = _conditionalMappingCache.get(conditionalMapping_);
+      if (perSet !== void 0) {
+        const cached = perSet.get(conditionNames);
+        if (cached !== void 0) {
+          return cached === NULL_RESULT ? null : (
+            /** @type {DirectMapping} */
+            cached
+          );
+        }
+      } else {
+        perSet = /* @__PURE__ */ new WeakMap();
+        _conditionalMappingCache.set(conditionalMapping_, perSet);
+      }
+      const result = computeConditionalMapping(conditionalMapping_, conditionNames);
+      perSet.set(conditionNames, result === null ? NULL_RESULT : result);
+      return result;
+    }
+    function targetMapping(remainingRequest, isPattern, isSubpathMapping, mappingTarget, assert) {
+      if (remainingRequest === void 0) {
+        assert(mappingTarget, false);
+        return mappingTarget;
+      }
+      if (isSubpathMapping) {
+        assert(mappingTarget, true);
+        return mappingTarget + remainingRequest;
+      }
+      assert(mappingTarget, false);
+      let result = mappingTarget;
+      if (isPattern) {
+        const escapedRemainder = remainingRequest.includes("$") ? remainingRequest.replace(DOLLAR_ESCAPE_RE, "$$") : remainingRequest;
+        result = result.replace(patternRegEx, escapedRemainder);
+      }
+      return result;
+    }
+    function directMapping(remainingRequest, isPattern, isSubpathMapping, mappingTarget, conditionNames, assert) {
+      if (mappingTarget === null) return [];
+      if (typeof mappingTarget === "string") {
+        return [
+          targetMapping(
+            remainingRequest,
+            isPattern,
+            isSubpathMapping,
+            mappingTarget,
+            assert
+          )
+        ];
+      }
+      const targets = [];
+      for (let i2 = 0, len = mappingTarget.length; i2 < len; i2++) {
+        const exp = mappingTarget[i2];
+        if (typeof exp === "string") {
+          targets.push(
+            targetMapping(
+              remainingRequest,
+              isPattern,
+              isSubpathMapping,
+              exp,
+              assert
+            )
+          );
+          continue;
+        }
+        const mapping = conditionalMapping(exp, conditionNames);
+        if (!mapping) continue;
+        const innerExports = directMapping(
+          remainingRequest,
+          isPattern,
+          isSubpathMapping,
+          mapping,
+          conditionNames,
+          assert
+        );
+        for (let j = 0, innerLen = innerExports.length; j < innerLen; j++) {
+          targets.push(innerExports[j]);
+        }
+      }
+      return targets;
+    }
+    var EMPTY_NO_MATCH = (
+      /** @type {[string[], null]} */
+      [[], null]
+    );
+    function createFieldProcessor(field, normalizeRequest, assertRequest, assertTarget) {
+      return function fieldProcessor(request, conditionNames) {
+        const match2 = findMatch(normalizeRequest(assertRequest(request)), field);
+        if (match2 === null) return EMPTY_NO_MATCH;
+        const [mapping, remainingRequest, isSubpathMapping, isPattern, usedField] = match2;
+        let direct;
+        if (mapping !== null && typeof mapping === "object" && !Array.isArray(mapping)) {
+          direct = conditionalMapping(
+            /** @type {ConditionalMapping} */
+            mapping,
+            conditionNames
+          );
+          if (direct === null) return EMPTY_NO_MATCH;
+        } else {
+          direct = /** @type {DirectMapping} */
+          mapping;
+        }
+        return [
+          directMapping(
+            remainingRequest,
+            isPattern,
+            isSubpathMapping,
+            direct,
+            conditionNames,
+            assertTarget
+          ),
+          usedField
+        ];
+      };
+    }
+    function assertExportsFieldRequest(request) {
+      if (request.charCodeAt(0) !== dotCode) {
+        throw new Error('Request should be relative path and start with "."');
+      }
+      if (request.length === 1) return "";
+      if (request.charCodeAt(1) !== slashCode) {
+        throw new Error('Request should be relative path and start with "./"');
+      }
+      if (request.charCodeAt(request.length - 1) === slashCode) {
+        throw new Error("Only requesting file allowed");
+      }
+      return request.slice(2);
+    }
+    function findSubpathsInConditions(mapping, subpathCode, trail) {
+      if (mapping === null || typeof mapping !== "object") return null;
+      if (Array.isArray(mapping)) {
+        for (let i2 = 0; i2 < mapping.length; i2++) {
+          const found = findSubpathsInConditions(mapping[i2], subpathCode, trail);
+          if (found) return found;
+        }
+        return null;
+      }
+      const keys = Object.keys(mapping);
+      for (let i2 = 0; i2 < keys.length; i2++) {
+        if (keys[i2].charCodeAt(0) === subpathCode) {
+          return { trail: [...trail], keys };
+        }
+      }
+      for (let i2 = 0; i2 < keys.length; i2++) {
+        const key = keys[i2];
+        trail.push(key);
+        const found = findSubpathsInConditions(mapping[key], subpathCode, trail);
+        if (found) return found;
+        trail.pop();
+      }
+      return null;
+    }
+    module.exports.explainSubpathsInConditions = function explainSubpathsInConditions(field, isExports) {
+      if (field === null || typeof field !== "object" || Array.isArray(field)) {
+        return null;
+      }
+      const subpathCode = isExports ? dotCode : hashCode;
+      const keys = Object.keys(field);
+      const trail = [];
+      let found = null;
+      for (let i2 = 0; i2 < keys.length && !found; i2++) {
+        trail.push(keys[i2]);
+        found = findSubpathsInConditions(
+          /** @type {Record<string, MappingValue>} */
+          field[keys[i2]],
+          subpathCode,
+          trail
+        );
+        trail.pop();
+      }
+      if (!found) return null;
+      const quote = (key) => JSON.stringify(key);
+      const subpathKeys = found.keys.filter(
+        (key) => key.charCodeAt(0) === subpathCode
+      );
+      const condition = found.trail[found.trail.length - 1];
+      const example2 = subpathKeys.map((key) => `${quote(key)}: { ${quote(condition)}: ... }`).join(", ");
+      return `the value at ${found.trail.map(quote).join(" -> ")} is an object with subpath keys (${subpathKeys.map(quote).join(
+        ", "
+      )}), which is not supported - a condition can only map to a target or to further conditions, so those subpaths never match. Put the subpaths at the top level and nest the conditions inside them instead, e.g. { ${example2} }.`;
+    };
+    function buildExportsField(field) {
+      if (typeof field === "string" || Array.isArray(field)) {
+        return { ".": field };
+      }
+      const keys = Object.keys(field);
+      for (let i2 = 0; i2 < keys.length; i2++) {
+        const key = keys[i2];
+        if (key.charCodeAt(0) !== dotCode) {
+          if (i2 === 0) {
+            while (i2 < keys.length) {
+              const charCode = keys[i2].charCodeAt(0);
+              if (charCode === dotCode || charCode === slashCode) {
+                throw new Error(
+                  `Exports field key should be relative path and start with "." (key: ${JSON.stringify(
+                    key
+                  )})`
+                );
+              }
+              i2++;
+            }
+            return { ".": field };
+          }
+          throw new Error(
+            `Exports field key should be relative path and start with "." (key: ${JSON.stringify(
+              key
+            )})`
+          );
+        }
+        if (key.length === 1) {
+          continue;
+        }
+        if (key.charCodeAt(1) !== slashCode) {
+          throw new Error(
+            `Exports field key should be relative path and start with "./" (key: ${JSON.stringify(
+              key
+            )})`
+          );
+        }
+      }
+      return field;
+    }
+    function assertExportTarget(exp, expectFolder) {
+      const parsedIdentifier = parseIdentifier(exp);
+      if (!parsedIdentifier) {
+        return;
+      }
+      const [relativePath] = parsedIdentifier;
+      const isFolder = relativePath.charCodeAt(relativePath.length - 1) === slashCode;
+      if (isFolder !== expectFolder) {
+        throw new Error(
+          expectFolder ? `Expecting folder to folder mapping. ${JSON.stringify(
+            exp
+          )} should end with "/"` : `Expecting file to file mapping. ${JSON.stringify(
+            exp
+          )} should not end with "/"`
+        );
+      }
+    }
+    module.exports.processExportsField = function processExportsField(exportsField) {
+      return createFieldProcessor(
+        buildExportsField(exportsField),
+        (request) => request.length === 0 ? "." : `./${request}`,
+        assertExportsFieldRequest,
+        assertExportTarget
+      );
+    };
+    function assertImportsFieldRequest(request) {
+      if (request.charCodeAt(0) !== hashCode) {
+        throw new Error('Request should start with "#"');
+      }
+      if (request.length === 1) {
+        throw new Error("Request should have at least 2 characters");
+      }
+      if (request.charCodeAt(request.length - 1) === slashCode) {
+        throw new Error("Only requesting file allowed");
+      }
+      return request.slice(1);
+    }
+    function assertImportTarget(imp, expectFolder) {
+      const parsedIdentifier = parseIdentifier(imp);
+      if (!parsedIdentifier) {
+        return;
+      }
+      const [relativePath] = parsedIdentifier;
+      const isFolder = relativePath.charCodeAt(relativePath.length - 1) === slashCode;
+      if (isFolder !== expectFolder) {
+        throw new Error(
+          expectFolder ? `Expecting folder to folder mapping. ${JSON.stringify(
+            imp
+          )} should end with "/"` : `Expecting file to file mapping. ${JSON.stringify(
+            imp
+          )} should not end with "/"`
+        );
+      }
+    }
+    module.exports.processImportsField = function processImportsField(importsField) {
+      return createFieldProcessor(
+        importsField,
+        (request) => `#${request}`,
+        assertImportsFieldRequest,
+        assertImportTarget
+      );
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ExportsFieldPlugin.js
+var require_ExportsFieldPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ExportsFieldPlugin.js"(exports, module) {
+    "use strict";
+    var DescriptionFileUtils = require_DescriptionFileUtils();
+    var forEachBail = require_forEachBail();
+    var {
+      explainSubpathsInConditions,
+      processExportsField
+    } = require_entrypoints();
+    var { parseIdentifier } = require_identifier();
+    var {
+      deprecatedInvalidSegmentRegEx,
+      invalidSegmentRegEx
+    } = require_path();
+    module.exports = class ExportsFieldPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {Set<string>} conditionNames condition names
+       * @param {string | string[]} fieldNamePath name path
+       * @param {string | ResolveStepHook} target target
+       * @param {boolean=} restrictions whether `restrictions` are configured (enables exports-target fallback when a target is filtered out)
+       */
+      constructor(source, conditionNames, fieldNamePath, target, restrictions) {
+        this.source = source;
+        this.target = target;
+        this.conditionNames = conditionNames;
+        this.fieldName = fieldNamePath;
+        this.restrictions = Boolean(restrictions);
+        this._fieldProcessorCache = /* @__PURE__ */ new WeakMap();
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("ExportsFieldPlugin", (request, resolveContext, callback2) => {
+          if (!request.descriptionFileData) return callback2();
+          if (
+            // When the description file is inherited from parent, abort
+            // (There is no description file inside of this package)
+            request.relativePath !== "." || request.request === void 0
+          ) {
+            return callback2();
+          }
+          const { descriptionFileData } = request;
+          const remainingRequest = request.query || request.fragment ? (request.request === "." ? "./" : request.request) + request.query + request.fragment : request.request;
+          let paths;
+          let usedField;
+          try {
+            let fieldProcessor = this._fieldProcessorCache.get(descriptionFileData);
+            if (fieldProcessor === void 0 && !this._fieldProcessorCache.has(descriptionFileData)) {
+              const exportsField = (
+                /** @type {ExportsField | null | undefined} */
+                DescriptionFileUtils.getField(
+                  descriptionFileData,
+                  this.fieldName
+                )
+              );
+              fieldProcessor = exportsField ? processExportsField(exportsField) : null;
+              this._fieldProcessorCache.set(descriptionFileData, fieldProcessor);
+            }
+            if (!fieldProcessor) return callback2();
+            if (request.directory) {
+              return callback2(
+                new Error(
+                  `Resolving to directories is not possible with the exports field (request was ${remainingRequest}/)`
+                )
+              );
+            }
+            [paths, usedField] = fieldProcessor(
+              remainingRequest,
+              this.conditionNames
+            );
+          } catch (err) {
+            const error = new Error(
+              `${/** @type {Error} */
+              err.message} (see exports field in ${request.descriptionFilePath})`
+            );
+            if (resolveContext.log) {
+              resolveContext.log(error.message);
+            }
+            return callback2(error);
+          }
+          if (paths.length === 0) {
+            const conditions = [...this.conditionNames];
+            const conditionsStr = conditions.length === 1 ? `the condition "${conditions[0]}"` : `the conditions ${JSON.stringify(conditions)}`;
+            const explanation = explainSubpathsInConditions(
+              /** @type {ExportsField | null | undefined} */
+              DescriptionFileUtils.getField(descriptionFileData, this.fieldName),
+              true
+            );
+            return callback2(
+              new Error(
+                `"${remainingRequest}" is not exported under ${conditionsStr} from package ${request.descriptionFileRoot} (see exports field in ${request.descriptionFilePath})${explanation ? `. In that exports field, ${explanation}` : ""}`
+              )
+            );
+          }
+          const restrictionsMarker = this.restrictions ? { blocked: false } : void 0;
+          forEachBail(
+            paths,
+            /**
+             * @param {string} path path
+             * @param {(err?: null | Error, result?: null | ResolveRequest) => void} callback callback
+             * @param {number} i index
+             * @returns {void}
+             */
+            (path, callback3, i2) => {
+              const parsedIdentifier = parseIdentifier(path);
+              if (!parsedIdentifier) return callback3();
+              const [relativePath, query, fragment] = parsedIdentifier;
+              if (!relativePath.startsWith("./")) {
+                if (paths.length === i2) {
+                  return callback3(
+                    new Error(
+                      `Invalid "exports" target "${path}" defined for "${usedField}" in the package config ${request.descriptionFilePath}, targets must start with "./"`
+                    )
+                  );
+                }
+                return callback3();
+              }
+              const withoutDotSlash = relativePath.slice(2);
+              if (invalidSegmentRegEx.test(withoutDotSlash) && deprecatedInvalidSegmentRegEx.test(withoutDotSlash)) {
+                if (paths.length === i2) {
+                  return callback3(
+                    new Error(
+                      `Invalid "exports" target "${path}" defined for "${usedField}" in the package config ${request.descriptionFilePath}, targets must start with "./"`
+                    )
+                  );
+                }
+                return callback3();
+              }
+              const obj = {
+                ...request,
+                request: void 0,
+                path: resolver.join(
+                  /** @type {string} */
+                  request.descriptionFileRoot,
+                  relativePath
+                ),
+                relativePath,
+                query,
+                fragment
+              };
+              if (restrictionsMarker) {
+                obj.__restrictionsMarker = restrictionsMarker;
+              }
+              resolver.doResolve(
+                target,
+                obj,
+                `using exports field: ${path}`,
+                resolveContext,
+                (err, result) => {
+                  if (err) return callback3(err);
+                  if (result === void 0) return callback3(null, null);
+                  callback3(null, result);
+                }
+              );
+            },
+            /**
+             * @param {(null | Error)=} err error
+             * @param {(null | ResolveRequest)=} result result
+             * @returns {void}
+             */
+            (err, result) => {
+              if (err) return callback2(err);
+              if (!result) {
+                if (restrictionsMarker && restrictionsMarker.blocked) {
+                  return callback2(null, null);
+                }
+                return callback2(
+                  new Error(
+                    `Package path ${remainingRequest} is exported from package ${request.descriptionFileRoot}, but no valid target file was found (see exports field in ${request.descriptionFilePath})`
+                  )
+                );
+              }
+              if (restrictionsMarker) delete result.__restrictionsMarker;
+              callback2(null, result);
+            }
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ExtensionAliasPlugin.js
+var require_ExtensionAliasPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ExtensionAliasPlugin.js"(exports, module) {
+    "use strict";
+    var forEachBail = require_forEachBail();
+    module.exports = class ExtensionAliasPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {ExtensionAliasOption} options options
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, options, target) {
+        this.source = source;
+        this.options = options;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const { extension, alias } = this.options;
+        resolver.getHook(this.source).tapAsync("ExtensionAliasPlugin", (request, resolveContext, callback2) => {
+          const useRequest = request.request !== void 0;
+          const source = useRequest ? (
+            /** @type {string} */
+            request.request
+          ) : request.path;
+          if (!source || !source.endsWith(extension)) return callback2();
+          const isAliasString = typeof alias === "string";
+          const sourceBase = source.slice(0, -extension.length);
+          const relativePathBase = !useRequest && request.relativePath && request.relativePath.endsWith(extension) ? request.relativePath.slice(0, -extension.length) : null;
+          const resolve11 = (alias2, callback3, index) => {
+            const newValue = `${sourceBase}${alias2}`;
+            const nextRequest = useRequest ? {
+              ...request,
+              request: newValue,
+              fullySpecified: true
+            } : {
+              ...request,
+              path: newValue,
+              relativePath: relativePathBase !== null ? `${relativePathBase}${alias2}` : request.relativePath,
+              fullySpecified: true
+            };
+            return resolver.doResolve(
+              target,
+              nextRequest,
+              `aliased from extension alias with mapping '${extension}' to '${alias2}'`,
+              resolveContext,
+              (err, result) => {
+                if (!isAliasString && index) {
+                  if (index !== this.options.alias.length) {
+                    if (resolveContext.log) {
+                      resolveContext.log(
+                        `Failed to alias from extension alias with mapping '${extension}' to '${alias2}' for '${newValue}': ${err}`
+                      );
+                    }
+                    return callback3(null, result);
+                  }
+                  return callback3(err, result);
+                }
+                callback3(err, result);
+              }
+            );
+          };
+          const stoppingCallback = (err, result) => {
+            if (err) return callback2(err);
+            if (result) return callback2(null, result);
+            if (isAliasString ? alias === extension : alias.includes(extension)) {
+              return callback2();
+            }
+            return callback2(null, null);
+          };
+          if (isAliasString) {
+            resolve11(alias, stoppingCallback);
+          } else if (alias.length > 1) {
+            forEachBail(alias, resolve11, stoppingCallback);
+          } else {
+            resolve11(alias[0], stoppingCallback);
+          }
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/FileExistsPlugin.js
+var require_FileExistsPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/FileExistsPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class FileExistsPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const fs2 = resolver.fileSystem;
+        resolver.getHook(this.source).tapAsync("FileExistsPlugin", (request, resolveContext, callback2) => {
+          const file = request.path;
+          if (!file) return callback2();
+          fs2.stat(file, (err, stat6) => {
+            if (err || !stat6 || !stat6.isFile()) {
+              if (resolveContext.missingDependencies) {
+                resolveContext.missingDependencies.add(file);
+              }
+              if (resolveContext.log) {
+                resolveContext.log(
+                  err || !stat6 ? `${file} doesn't exist` : `${file} is not a file`
+                );
+              }
+              return callback2();
+            }
+            if (resolveContext.fileDependencies) {
+              resolveContext.fileDependencies.add(file);
+            }
+            resolver.doResolve(
+              target,
+              request,
+              `existing file: ${file}`,
+              resolveContext,
+              callback2
+            );
+          });
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ImportsFieldPlugin.js
+var require_ImportsFieldPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ImportsFieldPlugin.js"(exports, module) {
+    "use strict";
+    var DescriptionFileUtils = require_DescriptionFileUtils();
+    var forEachBail = require_forEachBail();
+    var {
+      explainSubpathsInConditions,
+      processImportsField
+    } = require_entrypoints();
+    var { parseIdentifier } = require_identifier();
+    var { invalidSegmentRegEx } = require_path();
+    var dotCode = ".".charCodeAt(0);
+    module.exports = class ImportsFieldPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {Set<string>} conditionNames condition names
+       * @param {string | string[]} fieldNamePath name path
+       * @param {string | ResolveStepHook} targetFile target file
+       * @param {string | ResolveStepHook} targetPackage target package
+       */
+      constructor(source, conditionNames, fieldNamePath, targetFile, targetPackage) {
+        this.source = source;
+        this.targetFile = targetFile;
+        this.targetPackage = targetPackage;
+        this.conditionNames = conditionNames;
+        this.fieldName = fieldNamePath;
+        this._fieldProcessorCache = /* @__PURE__ */ new WeakMap();
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const targetFile = resolver.ensureHook(this.targetFile);
+        const targetPackage = resolver.ensureHook(this.targetPackage);
+        resolver.getHook(this.source).tapAsync("ImportsFieldPlugin", (request, resolveContext, callback2) => {
+          if (!request.descriptionFileData || request.request === void 0) {
+            return callback2();
+          }
+          const { descriptionFileData } = request;
+          const remainingRequest = request.query || request.fragment ? request.request + request.query + request.fragment : request.request;
+          let paths;
+          let usedField;
+          try {
+            let fieldProcessor = this._fieldProcessorCache.get(descriptionFileData);
+            if (fieldProcessor === void 0 && !this._fieldProcessorCache.has(descriptionFileData)) {
+              const importsField = (
+                /** @type {ImportsField | null | undefined} */
+                DescriptionFileUtils.getField(
+                  descriptionFileData,
+                  this.fieldName
+                )
+              );
+              fieldProcessor = importsField ? processImportsField(importsField) : null;
+              this._fieldProcessorCache.set(descriptionFileData, fieldProcessor);
+            }
+            if (!fieldProcessor) return callback2();
+            if (request.directory) {
+              return callback2(
+                new Error(
+                  `Resolving to directories is not possible with the imports field (request was ${remainingRequest}/)`
+                )
+              );
+            }
+            [paths, usedField] = fieldProcessor(
+              remainingRequest,
+              this.conditionNames
+            );
+          } catch (err) {
+            const error = new Error(
+              `${/** @type {Error} */
+              err.message} (see imports field in ${request.descriptionFilePath})`
+            );
+            if (resolveContext.log) {
+              resolveContext.log(error.message);
+            }
+            return callback2(error);
+          }
+          if (paths.length === 0) {
+            const explanation = explainSubpathsInConditions(
+              /** @type {ImportsField | null | undefined} */
+              DescriptionFileUtils.getField(descriptionFileData, this.fieldName),
+              false
+            );
+            return callback2(
+              new Error(
+                `Package import ${remainingRequest} is not imported from package ${request.descriptionFileRoot} (see imports field in ${request.descriptionFilePath})${explanation ? `. In that imports field, ${explanation}` : ""}`
+              )
+            );
+          }
+          forEachBail(
+            paths,
+            /**
+             * @param {string} path path
+             * @param {(err?: null | Error, result?: null | ResolveRequest) => void} callback callback
+             * @param {number} i index
+             * @returns {void}
+             */
+            (path, callback3, i2) => {
+              const parsedIdentifier = parseIdentifier(path);
+              if (!parsedIdentifier) return callback3();
+              const [path_, query, fragment] = parsedIdentifier;
+              switch (path_.charCodeAt(0)) {
+                // should be relative
+                case dotCode: {
+                  const withoutDotSlash = path_.slice(2);
+                  if (invalidSegmentRegEx.test(withoutDotSlash)) {
+                    if (paths.length === i2) {
+                      return callback3(
+                        new Error(
+                          `Invalid "imports" target "${path}" defined for "${usedField}" in the package config ${request.descriptionFilePath}, targets must start with "./"`
+                        )
+                      );
+                    }
+                    return callback3();
+                  }
+                  const obj = {
+                    ...request,
+                    request: void 0,
+                    path: resolver.join(
+                      /** @type {string} */
+                      request.descriptionFileRoot,
+                      path_
+                    ),
+                    relativePath: path_,
+                    query,
+                    fragment
+                  };
+                  resolver.doResolve(
+                    targetFile,
+                    obj,
+                    `using imports field: ${path}`,
+                    resolveContext,
+                    (err, result) => {
+                      if (err) return callback3(err);
+                      if (result === void 0) return callback3(null, null);
+                      callback3(null, result);
+                    }
+                  );
+                  break;
+                }
+                // package resolving
+                default: {
+                  const obj = {
+                    ...request,
+                    request: path_,
+                    relativePath: path_,
+                    fullySpecified: true,
+                    query,
+                    fragment
+                  };
+                  resolver.doResolve(
+                    targetPackage,
+                    obj,
+                    `using imports field: ${path}`,
+                    resolveContext,
+                    (err, result) => {
+                      if (err) return callback3(err);
+                      if (result === void 0) return callback3(null, null);
+                      callback3(null, result);
+                    }
+                  );
+                }
+              }
+            },
+            /**
+             * @param {null | Error=} err error
+             * @param {null | ResolveRequest=} result result
+             * @returns {void}
+             */
+            (err, result) => callback2(err, result || null)
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/JoinRequestPartPlugin.js
+var require_JoinRequestPartPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/JoinRequestPartPlugin.js"(exports, module) {
+    "use strict";
+    var namespaceStartCharCode = "@".charCodeAt(0);
+    module.exports = class JoinRequestPartPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync(
+          "JoinRequestPartPlugin",
+          (request, resolveContext, callback2) => {
+            const req = request.request || "";
+            let i2 = req.indexOf("/", 3);
+            if (i2 >= 0 && req.charCodeAt(2) === namespaceStartCharCode) {
+              i2 = req.indexOf("/", i2 + 1);
+            }
+            let moduleName;
+            let remainingRequest;
+            let fullySpecified;
+            if (i2 < 0) {
+              moduleName = req;
+              remainingRequest = ".";
+              fullySpecified = false;
+            } else {
+              moduleName = req.slice(0, i2);
+              remainingRequest = `.${req.slice(i2)}`;
+              fullySpecified = /** @type {boolean} */
+              request.fullySpecified;
+            }
+            const obj = {
+              ...request,
+              path: resolver.join(
+                /** @type {string} */
+                request.path,
+                moduleName
+              ),
+              relativePath: request.relativePath && resolver.join(request.relativePath, moduleName),
+              request: remainingRequest,
+              fullySpecified
+            };
+            resolver.doResolve(target, obj, null, resolveContext, callback2);
+          }
+        );
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/JoinRequestPlugin.js
+var require_JoinRequestPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/JoinRequestPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class JoinRequestPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("JoinRequestPlugin", (request, resolveContext, callback2) => {
+          const requestPath = (
+            /** @type {string} */
+            request.path
+          );
+          const requestRequest = (
+            /** @type {string} */
+            request.request
+          );
+          const obj = {
+            ...request,
+            path: resolver.join(requestPath, requestRequest),
+            relativePath: request.relativePath && resolver.join(request.relativePath, requestRequest),
+            request: void 0
+          };
+          resolver.doResolve(target, obj, null, resolveContext, callback2);
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/MainFieldPlugin.js
+var require_MainFieldPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/MainFieldPlugin.js"(exports, module) {
+    "use strict";
+    var DescriptionFileUtils = require_DescriptionFileUtils();
+    var alreadyTriedMainField = /* @__PURE__ */ Symbol("alreadyTriedMainField");
+    var NO_MAIN = /* @__PURE__ */ Symbol("NoMain");
+    module.exports = class MainFieldPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {MainFieldOptions} options options
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, options, target) {
+        this.source = source;
+        this.options = options;
+        this.target = target;
+        this._mainModuleCache = /* @__PURE__ */ new WeakMap();
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("MainFieldPlugin", (request, resolveContext, callback2) => {
+          if (request.path !== request.descriptionFileRoot || /** @type {ResolveRequest & { [alreadyTriedMainField]?: string }} */
+          request[alreadyTriedMainField] === request.descriptionFilePath || !request.descriptionFilePath) {
+            return callback2();
+          }
+          const descFileData = (
+            /** @type {JsonObject} */
+            request.descriptionFileData
+          );
+          let mainModule = this._mainModuleCache.get(descFileData);
+          if (mainModule === void 0) {
+            let raw = (
+              /** @type {string | null | undefined} */
+              DescriptionFileUtils.getField(descFileData, this.options.name)
+            );
+            if (!raw || typeof raw !== "string" || raw === "." || raw === "./") {
+              this._mainModuleCache.set(descFileData, NO_MAIN);
+              return callback2();
+            }
+            if (this.options.forceRelative && !/^\.\.?\//.test(raw)) {
+              raw = `./${raw}`;
+            }
+            mainModule = raw;
+            this._mainModuleCache.set(descFileData, mainModule);
+          } else if (mainModule === NO_MAIN) {
+            return callback2();
+          }
+          const filename = resolver.basename(request.descriptionFilePath);
+          const obj = {
+            ...request,
+            request: mainModule,
+            module: false,
+            directory: mainModule.endsWith("/"),
+            [alreadyTriedMainField]: request.descriptionFilePath
+          };
+          return resolver.doResolve(
+            target,
+            obj,
+            `use ${mainModule} from ${this.options.name} in ${filename}`,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/getPaths.js
+var require_getPaths = __commonJS({
+  "node_modules/enhanced-resolve/lib/getPaths.js"(exports, module) {
+    "use strict";
+    function getPaths(path) {
+      if (path === "/") return { paths: ["/"], segments: [""] };
+      const parts = path.split(/(.*?[\\/]+)/);
+      const paths = [path];
+      const segments2 = [parts[parts.length - 1]];
+      let part = parts[parts.length - 1];
+      path = path.slice(0, Math.max(0, path.length - part.length - 1));
+      for (let i2 = parts.length - 2; i2 > 2; i2 -= 2) {
+        paths.push(path);
+        part = parts[i2];
+        path = path.slice(0, Math.max(0, path.length - part.length)) || "/";
+        segments2.push(part.slice(0, -1));
+      }
+      [, part] = parts;
+      segments2.push(part);
+      paths.push(part);
+      return {
+        paths,
+        segments: segments2
+      };
+    }
+    var _getPathsCacheByFs = /* @__PURE__ */ new WeakMap();
+    function getPathsCached(fileSystem, path) {
+      let cache = _getPathsCacheByFs.get(fileSystem);
+      if (cache === void 0) {
+        cache = /* @__PURE__ */ new Map();
+        _getPathsCacheByFs.set(fileSystem, cache);
+      } else {
+        const cached = cache.get(path);
+        if (cached !== void 0) return cached;
+      }
+      const { paths, segments: segments2 } = getPaths(path);
+      const result = { paths: [...paths], segments: [...segments2] };
+      cache.set(path, result);
+      return result;
+    }
+    module.exports = getPaths;
+    module.exports.getPathsCached = getPathsCached;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ModulesUtils.js
+var require_ModulesUtils = __commonJS({
+  "node_modules/enhanced-resolve/lib/ModulesUtils.js"(exports, module) {
+    "use strict";
+    var forEachBail = require_forEachBail();
+    var { getPathsCached } = require_getPaths();
+    var _addrsCacheByDirs = /* @__PURE__ */ new WeakMap();
+    function modulesResolveHandler(resolver, directories, target, request, resolveContext, callback2) {
+      const fs2 = resolver.fileSystem;
+      const requestPath = (
+        /** @type {string} */
+        request.path
+      );
+      let addrs;
+      let perPath = _addrsCacheByDirs.get(directories);
+      if (perPath === void 0) {
+        perPath = /* @__PURE__ */ new Map();
+        _addrsCacheByDirs.set(directories, perPath);
+      } else {
+        addrs = perPath.get(requestPath);
+      }
+      if (addrs === void 0) {
+        const { paths } = getPathsCached(fs2, requestPath);
+        const pathsLen = paths.length;
+        const dirsLen = directories.length;
+        addrs = new Array(pathsLen * dirsLen);
+        let idx = 0;
+        const joinFn = resolver.pathCache.join.fn;
+        for (let pi = 0; pi < pathsLen; pi++) {
+          const pathItem = paths[pi];
+          for (let di = 0; di < dirsLen; di++) {
+            addrs[idx++] = joinFn(pathItem, directories[di]);
+          }
+        }
+        perPath.set(requestPath, addrs);
+      }
+      const relRequest = `./${request.request}`;
+      forEachBail(
+        addrs,
+        /**
+         * @param {string} addr addr
+         * @param {(err?: null | Error, result?: null | ResolveRequest) => void} callback callback
+         * @returns {void}
+         */
+        (addr, callback3) => {
+          fs2.stat(addr, (err, stat6) => {
+            if (!err && stat6 && stat6.isDirectory()) {
+              const obj = {
+                ...request,
+                path: addr,
+                request: relRequest,
+                module: false
+              };
+              const message2 = `looking for modules in ${addr}`;
+              return resolver.doResolve(
+                target,
+                obj,
+                message2,
+                resolveContext,
+                callback3
+              );
+            }
+            if (resolveContext.log) {
+              resolveContext.log(`${addr} doesn't exist or is not a directory`);
+            }
+            if (resolveContext.missingDependencies) {
+              resolveContext.missingDependencies.add(addr);
+            }
+            return callback3();
+          });
+        },
+        callback2
+      );
+    }
+    module.exports = {
+      modulesResolveHandler
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ModulesInHierarchicalDirectoriesPlugin.js
+var require_ModulesInHierarchicalDirectoriesPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ModulesInHierarchicalDirectoriesPlugin.js"(exports, module) {
+    "use strict";
+    var { modulesResolveHandler } = require_ModulesUtils();
+    module.exports = class ModulesInHierarchicalDirectoriesPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | string[]} directories directories
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, directories, target) {
+        this.source = source;
+        this.directories = /** @type {string[]} */
+        [...directories];
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync(
+          "ModulesInHierarchicalDirectoriesPlugin",
+          (request, resolveContext, callback2) => {
+            modulesResolveHandler(
+              resolver,
+              this.directories,
+              target,
+              request,
+              resolveContext,
+              callback2
+            );
+          }
+        );
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ModulesInRootPlugin.js
+var require_ModulesInRootPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ModulesInRootPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class ModulesInRootPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string} path path
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, path, target) {
+        this.source = source;
+        this.path = path;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("ModulesInRootPlugin", (request, resolveContext, callback2) => {
+          const obj = {
+            ...request,
+            path: this.path,
+            request: `./${request.request}`,
+            module: false
+          };
+          resolver.doResolve(
+            target,
+            obj,
+            `looking for modules in ${this.path}`,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/NextPlugin.js
+var require_NextPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/NextPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class NextPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("NextPlugin", (request, resolveContext, callback2) => {
+          resolver.doResolve(target, request, null, resolveContext, callback2);
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/fileURLToPath.js
+var require_fileURLToPath = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/fileURLToPath.js"(exports, module) {
+    "use strict";
+    var CHAR_LOWERCASE_A = 97;
+    var CHAR_LOWERCASE_Z = 122;
+    var isWindows2 = typeof process !== "undefined" && process.platform === "win32";
+    var forwardSlashRegEx = /\//g;
+    function getPathFromURLWin32(url) {
+      const { hostname } = url;
+      let { pathname } = url;
+      for (let n = 0; n < pathname.length; n++) {
+        if (pathname[n] === "%") {
+          const third = (pathname.codePointAt(n + 2) || 0) | 32;
+          if (pathname[n + 1] === "2" && third === 102 || // 2f 2F (/)
+          pathname[n + 1] === "5" && third === 99) {
+            throw new TypeError(
+              "File URL path must not include encoded \\ or / characters"
+            );
+          }
+        }
+      }
+      pathname = pathname.replace(forwardSlashRegEx, "\\");
+      pathname = decodeURIComponent(pathname);
+      if (hostname !== "") {
+        return `\\\\${hostname}${pathname}`;
+      }
+      const letter = (pathname.codePointAt(1) || 0) | 32;
+      const sep12 = pathname.charAt(2);
+      if (letter < CHAR_LOWERCASE_A || letter > CHAR_LOWERCASE_Z || sep12 !== ":") {
+        throw new TypeError("File URL path must be absolute");
+      }
+      return pathname.slice(1);
+    }
+    function getPathFromURLPosix(url) {
+      if (url.hostname !== "") {
+        throw new TypeError('File URL host must be "localhost" or empty');
+      }
+      const { pathname } = url;
+      for (let n = 0; n < pathname.length; n++) {
+        if (pathname[n] === "%") {
+          const third = (pathname.codePointAt(n + 2) || 0) | 32;
+          if (pathname[n + 1] === "2" && third === 102) {
+            throw new TypeError(
+              "File URL path must not include encoded / characters"
+            );
+          }
+        }
+      }
+      return decodeURIComponent(pathname);
+    }
+    function fileURLToPath7(path, options) {
+      const url = typeof path === "string" ? new URL(path) : path;
+      if (url.protocol !== "file:") {
+        throw new TypeError("The URL must be of scheme file");
+      }
+      const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
+      return windows ? getPathFromURLWin32(url) : getPathFromURLPosix(url);
+    }
+    module.exports = fileURLToPath7;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/pathToFileURL.js
+var require_pathToFileURL = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/pathToFileURL.js"(exports, module) {
+    "use strict";
+    var percentRegEx = /%/g;
+    var backslashRegEx = /\\/g;
+    var newlineRegEx = /\n/g;
+    var carriageReturnRegEx = /\r/g;
+    var tabRegEx = /\t/g;
+    var isWindows2 = typeof process !== "undefined" && process.platform === "win32";
+    function encodePathChars(filepath, windows) {
+      if (filepath.includes("%")) {
+        filepath = filepath.replace(percentRegEx, "%25");
+      }
+      if (!windows && filepath.includes("\\")) {
+        filepath = filepath.replace(backslashRegEx, "%5C");
+      }
+      if (filepath.includes("\n")) {
+        filepath = filepath.replace(newlineRegEx, "%0A");
+      }
+      if (filepath.includes("\r")) {
+        filepath = filepath.replace(carriageReturnRegEx, "%0D");
+      }
+      if (filepath.includes("	")) {
+        filepath = filepath.replace(tabRegEx, "%09");
+      }
+      return filepath;
+    }
+    function pathToFileURL5(filepath, options) {
+      const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
+      if (windows && filepath.startsWith("\\\\")) {
+        const hostnameEndIndex = filepath.indexOf("\\", 2);
+        if (hostnameEndIndex === -1) {
+          throw new TypeError(
+            `Missing UNC resource path in file path '${filepath}'`
+          );
+        }
+        if (hostnameEndIndex === 2) {
+          throw new TypeError(`Empty UNC servername in file path '${filepath}'`);
+        }
+        const url2 = new URL("file://");
+        url2.hostname = filepath.slice(2, hostnameEndIndex);
+        url2.pathname = encodePathChars(
+          filepath.slice(hostnameEndIndex).replace(backslashRegEx, "/"),
+          windows
+        );
+        return url2;
+      }
+      const url = new URL("file://");
+      url.pathname = encodePathChars(filepath, windows);
+      return url;
+    }
+    module.exports = pathToFileURL5;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/util/packageMap.js
+var require_packageMap = __commonJS({
+  "node_modules/enhanced-resolve/lib/util/packageMap.js"(exports, module) {
+    "use strict";
+    var fileURLToPath7 = require_fileURLToPath();
+    var { isInside, normalize: normalize3 } = require_path();
+    var pathToFileURL5 = require_pathToFileURL();
+    function createError(message2, code) {
+      const error = (
+        /** @type {Error & { code: string }} */
+        new Error(message2)
+      );
+      error.code = code;
+      return error;
+    }
+    function toPackagePath(url, base, id) {
+      let parsed;
+      try {
+        parsed = new URL(url, base);
+      } catch (_err) {
+        throw createError(
+          `Package map entry "${id}" has an invalid "url": ${url}`,
+          "ERR_INVALID_PACKAGE_MAP"
+        );
+      }
+      if (parsed.protocol !== "file:") {
+        throw createError(
+          `Package map entry "${id}" must use a "file:" url, received: ${url}`,
+          "ERR_INVALID_PACKAGE_MAP"
+        );
+      }
+      return normalize3(fileURLToPath7(parsed));
+    }
+    function parsePackageMap(data2, configFilePath) {
+      if (!data2 || typeof data2 !== "object" || Array.isArray(data2)) {
+        throw createError(
+          `Package map "${configFilePath}" must contain a JSON object`,
+          "ERR_INVALID_PACKAGE_MAP"
+        );
+      }
+      const rawPackages = data2.packages;
+      if (!rawPackages || typeof rawPackages !== "object" || Array.isArray(rawPackages)) {
+        throw createError(
+          `Package map "${configFilePath}" must contain a "packages" object`,
+          "ERR_INVALID_PACKAGE_MAP"
+        );
+      }
+      const base = pathToFileURL5(configFilePath);
+      const packages = /* @__PURE__ */ new Map();
+      const idsByPath = /* @__PURE__ */ new Map();
+      for (const id of Object.keys(rawPackages)) {
+        const rawEntry = (
+          /** @type {JsonObject} */
+          rawPackages[id]
+        );
+        if (!rawEntry || typeof rawEntry !== "object" || Array.isArray(rawEntry)) {
+          throw createError(
+            `Package map entry "${id}" must be an object`,
+            "ERR_INVALID_PACKAGE_MAP"
+          );
+        }
+        if (typeof rawEntry.url !== "string" || rawEntry.url === "") {
+          throw createError(
+            `Package map entry "${id}" must have a non-empty string "url"`,
+            "ERR_INVALID_PACKAGE_MAP"
+          );
+        }
+        const packagePath = toPackagePath(rawEntry.url, base, id);
+        const dependencies = /* @__PURE__ */ new Map();
+        const rawDependencies = rawEntry.dependencies;
+        if (rawDependencies !== void 0) {
+          if (!rawDependencies || typeof rawDependencies !== "object" || Array.isArray(rawDependencies)) {
+            throw createError(
+              `Package map entry "${id}" has a non-object "dependencies"`,
+              "ERR_INVALID_PACKAGE_MAP"
+            );
+          }
+          for (const specifier of Object.keys(rawDependencies)) {
+            const target = rawDependencies[specifier];
+            if (typeof target !== "string") {
+              throw createError(
+                `Package map entry "${id}" maps "${specifier}" to a non-string package id`,
+                "ERR_INVALID_PACKAGE_MAP"
+              );
+            }
+            dependencies.set(specifier, target);
+          }
+        }
+        packages.set(id, { id, path: packagePath, dependencies });
+        const ids = idsByPath.get(packagePath);
+        if (ids) {
+          ids.push(id);
+        } else {
+          idsByPath.set(packagePath, [id]);
+        }
+      }
+      for (const entry2 of packages.values()) {
+        for (const [specifier, target] of entry2.dependencies) {
+          if (!packages.has(target)) {
+            throw createError(
+              `Package map entry "${entry2.id}" maps "${specifier}" to unknown package id "${target}"`,
+              "ERR_INVALID_PACKAGE_MAP"
+            );
+          }
+        }
+      }
+      const locations = [...idsByPath].map(([path, ids]) => ({ path, ids })).sort((a, b) => b.path.length - a.path.length);
+      return { packages, locations };
+    }
+    function findPackageIds(packageMap, filePath) {
+      for (const location2 of packageMap.locations) {
+        if (isInside(location2.path, filePath)) return location2.ids;
+      }
+      return [];
+    }
+    module.exports.createError = createError;
+    module.exports.findPackageIds = findPackageIds;
+    module.exports.parsePackageMap = parsePackageMap;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/PackageMapPlugin.js
+var require_PackageMapPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/PackageMapPlugin.js"(exports, module) {
+    "use strict";
+    var { readJson } = require_fs();
+    var {
+      createError,
+      findPackageIds,
+      parsePackageMap
+    } = require_packageMap();
+    var PACKAGE_NAME_REGEXP = /^(@[^/]+\/)?[^/]+/;
+    module.exports = class PackageMapPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {PackageMapOptions} options package map options
+       * @param {boolean} symlinks whether the resolver resolves symlinks
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, options, symlinks, target) {
+        this.source = source;
+        this.options = options;
+        this.symlinks = symlinks;
+        this.target = target;
+        this._packageMap = void 0;
+        this._pending = void 0;
+      }
+      /**
+       * Read and parse the configuration file once, queueing every request that
+       * arrives while the read is in flight so a cold start does not re-read the
+       * same file for each of them.
+       * @param {Resolver} resolver the resolver
+       * @param {ResolveContext} resolveContext resolve context
+       * @param {PackageMapCallback} callback callback
+       * @returns {void}
+       */
+      _getPackageMap(resolver, resolveContext, callback2) {
+        const { configFile, packages } = this.options;
+        if (configFile && resolveContext.fileDependencies) {
+          resolveContext.fileDependencies.add(configFile);
+        }
+        if (this._packageMap !== void 0) {
+          return callback2(null, this._packageMap);
+        }
+        if (this._pending) {
+          this._pending.push(callback2);
+          return;
+        }
+        this._pending = [callback2];
+        const finish = (error, packageMap) => {
+          const pending = (
+            /** @type {PackageMapCallback[]} */
+            this._pending
+          );
+          this._pending = void 0;
+          for (const pendingCallback of pending) {
+            pendingCallback(error, packageMap);
+          }
+        };
+        this._resolveConfigFile(resolver, (realConfigFile) => {
+          if (packages) {
+            let packageMap;
+            try {
+              packageMap = parsePackageMap({ packages }, realConfigFile);
+            } catch (err) {
+              return finish(
+                /** @type {Error} */
+                err
+              );
+            }
+            this._packageMap = packageMap;
+            return finish(null, packageMap);
+          }
+          readJson(
+            resolver.fileSystem,
+            realConfigFile,
+            { stripComments: false },
+            (err, content) => {
+              let error = err || null;
+              let packageMap;
+              if (!error) {
+                try {
+                  packageMap = parsePackageMap(
+                    /** @type {import("./Resolver").JsonObject} */
+                    content,
+                    realConfigFile
+                  );
+                  this._packageMap = packageMap;
+                } catch (parseErr) {
+                  error = /** @type {Error} */
+                  parseErr;
+                }
+              }
+              finish(error, packageMap);
+            }
+          );
+        });
+      }
+      /**
+       * Hand back the configuration file path package locations resolve against:
+       * its real path when the resolver follows symlinks, and the path as given
+       * otherwise. A configuration file whose real path cannot be read (it may not
+       * exist, or the file system may not implement it) is used as-is, so the
+       * read below reports the problem.
+       * @param {Resolver} resolver the resolver
+       * @param {(configFile: string) => void} callback callback
+       * @returns {void}
+       */
+      _resolveConfigFile(resolver, callback2) {
+        const { configFile } = this.options;
+        const { realpath: realpath3 } = resolver.fileSystem;
+        if (!this.symlinks || !realpath3) return callback2(configFile);
+        realpath3(configFile, (err, result) => {
+          callback2(err || !result ? configFile : String(result));
+        });
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("PackageMapPlugin", (request, resolveContext, callback2) => {
+          const req = request.request;
+          if (!req) return callback2();
+          if (req.startsWith("node:")) return callback2();
+          const packageMatch = PACKAGE_NAME_REGEXP.exec(req);
+          if (!packageMatch) return callback2();
+          const [packageName2] = packageMatch;
+          const innerRequest = `.${req.slice(packageName2.length)}`;
+          this._getPackageMap(resolver, resolveContext, (err, packageMap) => {
+            if (err) return callback2(err);
+            const { packages } = (
+              /** @type {PackageMap} */
+              packageMap
+            );
+            const issuerPath = request.path;
+            const contextId = request.context && /** @type {string | undefined} */
+            request.context.packageId;
+            const explicitId = request.packageId !== void 0 ? request.packageId : contextId;
+            let issuerId;
+            if (explicitId !== void 0 && explicitId !== null) {
+              if (!packages.has(explicitId)) {
+                return callback2(
+                  createError(
+                    `Unknown package id "${explicitId}" for request "${req}"`,
+                    "ERR_PACKAGE_MAP_UNKNOWN_PACKAGE"
+                  )
+                );
+              }
+              issuerId = explicitId;
+            } else {
+              const ids = issuerPath === false ? [] : findPackageIds(
+                /** @type {PackageMap} */
+                packageMap,
+                issuerPath
+              );
+              if (ids.length === 0) {
+                return callback2(
+                  createError(
+                    `Cannot resolve "${req}" from "${issuerPath}": the importing file is not inside any package of the package map`,
+                    "ERR_PACKAGE_MAP_EXTERNAL_FILE"
+                  )
+                );
+              }
+              if (ids.length > 1) {
+                return callback2(
+                  createError(
+                    `Cannot resolve "${req}" from "${issuerPath}": the package ids ${ids.map((id) => `"${id}"`).join(
+                      ", "
+                    )} share this location, so the importing package is ambiguous. Propagate the package id of the previous resolution to disambiguate.`,
+                    "ERR_PACKAGE_MAP_AMBIGUOUS_PACKAGE"
+                  )
+                );
+              }
+              [issuerId] = ids;
+            }
+            const issuer = (
+              /** @type {import("./util/packageMap").PackageMapEntry} */
+              packages.get(issuerId)
+            );
+            const targetId = issuer.dependencies.get(packageName2);
+            if (targetId === void 0) {
+              if (resolveContext.log) {
+                resolveContext.log(
+                  `"${packageName2}" is not a dependency of package "${issuerId}" in the package map`
+                );
+              }
+              return callback2(null, null);
+            }
+            const targetEntry = (
+              /** @type {import("./util/packageMap").PackageMapEntry} */
+              packages.get(targetId)
+            );
+            const obj = {
+              ...request,
+              path: targetEntry.path,
+              request: innerRequest,
+              packageId: targetId,
+              fullySpecified: request.fullySpecified && innerRequest !== "."
+            };
+            resolver.doResolve(
+              target,
+              obj,
+              `resolved "${packageName2}" to package "${targetId}" by the package map`,
+              resolveContext,
+              (resolveErr, result) => {
+                if (resolveErr) return callback2(resolveErr);
+                if (result) return callback2(null, result);
+                return callback2(null, null);
+              }
+            );
+          });
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ParsePlugin.js
+var require_ParsePlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ParsePlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class ParsePlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {Partial<ResolveRequest>} requestOptions request options
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, requestOptions, target) {
+        this.source = source;
+        this.requestOptions = requestOptions;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const { requestOptions } = this;
+        resolver.getHook(this.source).tapAsync("ParsePlugin", (request, resolveContext, callback2) => {
+          const parsed = resolver.parse(
+            /** @type {string} */
+            request.request
+          );
+          const obj = { ...request };
+          obj.request = parsed.request;
+          obj.query = parsed.query || request.query || "";
+          obj.fragment = parsed.fragment || request.fragment || "";
+          obj.module = parsed.module;
+          obj.directory = parsed.directory;
+          obj.file = parsed.file;
+          obj.internal = parsed.internal;
+          Object.assign(obj, requestOptions);
+          if (parsed && resolveContext.log) {
+            if (parsed.module) resolveContext.log("Parsed request is a module");
+            if (parsed.directory) {
+              resolveContext.log("Parsed request is a directory");
+            }
+          }
+          if (obj.request && !obj.query && obj.fragment) {
+            const directory = obj.fragment.endsWith("/");
+            const alternative = {
+              ...obj,
+              directory,
+              request: obj.request + (obj.directory ? "/" : "") + (directory ? obj.fragment.slice(0, -1) : obj.fragment),
+              fragment: ""
+            };
+            resolver.doResolve(
+              target,
+              alternative,
+              null,
+              resolveContext,
+              (err, result) => {
+                if (err) return callback2(err);
+                if (result) return callback2(null, result);
+                resolver.doResolve(target, obj, null, resolveContext, callback2);
+              }
+            );
+            return;
+          }
+          resolver.doResolve(target, obj, null, resolveContext, callback2);
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/PnpPlugin.js
+var require_PnpPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/PnpPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class PnpPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {PnpApiImpl} pnpApi pnpApi
+       * @param {string | ResolveStepHook} target target
+       * @param {string | ResolveStepHook} alternateTarget alternateTarget
+       */
+      constructor(source, pnpApi, target, alternateTarget) {
+        this.source = source;
+        this.pnpApi = pnpApi;
+        this.target = target;
+        this.alternateTarget = alternateTarget;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const alternateTarget = resolver.ensureHook(this.alternateTarget);
+        resolver.getHook(this.source).tapAsync("PnpPlugin", (request, resolveContext, callback2) => {
+          const req = request.request;
+          if (!req) return callback2();
+          const issuer = `${request.path}/`;
+          const packageMatch = /^(@[^/]+\/)?[^/]+/.exec(req);
+          if (!packageMatch) return callback2();
+          const [packageName2] = packageMatch;
+          const innerRequest = `.${req.slice(packageName2.length)}`;
+          let resolution;
+          let apiResolution;
+          try {
+            resolution = this.pnpApi.resolveToUnqualified(packageName2, issuer, {
+              considerBuiltins: false
+            });
+            if (resolution === null) {
+              resolver.doResolve(
+                alternateTarget,
+                request,
+                "issuer is not managed by a pnpapi",
+                resolveContext,
+                (err, result) => {
+                  if (err) return callback2(err);
+                  if (result) return callback2(null, result);
+                  return callback2(null, null);
+                }
+              );
+              return;
+            }
+            if (resolveContext.fileDependencies) {
+              apiResolution = this.pnpApi.resolveToUnqualified("pnpapi", issuer, {
+                considerBuiltins: false
+              });
+            }
+          } catch (error) {
+            if (
+              /** @type {Error & { code: string }} */
+              error.code === "MODULE_NOT_FOUND" && /** @type {Error & { pnpCode: string }} */
+              error.pnpCode === "UNDECLARED_DEPENDENCY"
+            ) {
+              if (resolveContext.log) {
+                resolveContext.log("request is not managed by the pnpapi");
+                for (
+                  const line of
+                  /** @type {Error} */
+                  error.message.split("\n").filter(Boolean)
+                ) {
+                  resolveContext.log(`  ${line}`);
+                }
+              }
+              return callback2();
+            }
+            return callback2(
+              /** @type {Error} */
+              error
+            );
+          }
+          if (resolution === packageName2) return callback2();
+          if (apiResolution && resolveContext.fileDependencies) {
+            resolveContext.fileDependencies.add(apiResolution);
+          }
+          const obj = {
+            ...request,
+            path: resolution,
+            request: innerRequest,
+            ignoreSymlinks: true,
+            fullySpecified: request.fullySpecified && innerRequest !== "."
+          };
+          resolver.doResolve(
+            target,
+            obj,
+            `resolved by pnp to ${resolution}`,
+            resolveContext,
+            (err, result) => {
+              if (err) return callback2(err);
+              if (result) return callback2(null, result);
+              return callback2(null, null);
+            }
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/tapable/lib/Hook.js
+var require_Hook = __commonJS({
+  "node_modules/tapable/lib/Hook.js"(exports, module) {
+    "use strict";
+    var util = __require("util");
+    var deprecateContext = util.deprecate(
+      () => {
+      },
+      "Hook.context is deprecated and will be removed"
+    );
+    function CALL_DELEGATE(...args) {
+      this.call = this._createCall("sync");
+      return this.call(...args);
+    }
+    function CALL_ASYNC_DELEGATE(...args) {
+      this.callAsync = this._createCall("async");
+      return this.callAsync(...args);
+    }
+    function PROMISE_DELEGATE(...args) {
+      this.promise = this._createCall("promise");
+      return this.promise(...args);
+    }
+    var Hook = class {
+      constructor(args = [], name = void 0) {
+        this._args = args;
+        this.name = name;
+        this.taps = [];
+        this.interceptors = [];
+        this._call = CALL_DELEGATE;
+        this.call = CALL_DELEGATE;
+        this._callAsync = CALL_ASYNC_DELEGATE;
+        this.callAsync = CALL_ASYNC_DELEGATE;
+        this._promise = PROMISE_DELEGATE;
+        this.promise = PROMISE_DELEGATE;
+        this._x = void 0;
+        this.compile = this.compile;
+        this.tap = this.tap;
+        this.tapAsync = this.tapAsync;
+        this.tapPromise = this.tapPromise;
+      }
+      compile(_options) {
+        throw new Error("Abstract: should be overridden");
+      }
+      _createCall(type) {
+        return this.compile({
+          taps: this.taps,
+          interceptors: this.interceptors,
+          args: this._args,
+          type
+        });
+      }
+      _tap(type, options, fn) {
+        if (typeof options === "string") {
+          const name = options.trim();
+          if (name === "") {
+            throw new Error("Missing name for tap");
+          }
+          options = { type, fn, name };
+        } else {
+          if (typeof options !== "object" || options === null) {
+            throw new Error("Invalid tap options");
+          }
+          let { name } = options;
+          if (typeof name === "string") {
+            name = name.trim();
+          }
+          if (typeof name !== "string" || name === "") {
+            throw new Error("Missing name for tap");
+          }
+          if (typeof options.context !== "undefined") {
+            deprecateContext();
+          }
+          let onlyName = true;
+          for (const key in options) {
+            if (key !== "name") {
+              onlyName = false;
+              break;
+            }
+          }
+          if (onlyName) {
+            options = { type, fn, name };
+          } else {
+            options.name = name;
+            options = Object.assign({ type, fn }, options);
+          }
+        }
+        options = this._runRegisterInterceptors(options);
+        this._insert(options);
+      }
+      tap(options, fn) {
+        this._tap("sync", options, fn);
+      }
+      tapAsync(options, fn) {
+        this._tap("async", options, fn);
+      }
+      tapPromise(options, fn) {
+        this._tap("promise", options, fn);
+      }
+      _runRegisterInterceptors(options) {
+        const { interceptors } = this;
+        const { length } = interceptors;
+        if (length === 0) return options;
+        for (let i2 = 0; i2 < length; i2++) {
+          const interceptor = interceptors[i2];
+          if (interceptor.register) {
+            const newOptions = interceptor.register(options);
+            if (newOptions !== void 0) {
+              options = newOptions;
+            }
+          }
+        }
+        return options;
+      }
+      withOptions(options) {
+        const mergeOptions = (opt) => Object.assign({}, options, typeof opt === "string" ? { name: opt } : opt);
+        return {
+          name: this.name,
+          tap: (opt, fn) => this.tap(mergeOptions(opt), fn),
+          tapAsync: (opt, fn) => this.tapAsync(mergeOptions(opt), fn),
+          tapPromise: (opt, fn) => this.tapPromise(mergeOptions(opt), fn),
+          intercept: (interceptor) => this.intercept(interceptor),
+          isUsed: () => this.isUsed(),
+          withOptions: (opt) => this.withOptions(mergeOptions(opt))
+        };
+      }
+      isUsed() {
+        return this.taps.length > 0 || this.interceptors.length > 0;
+      }
+      intercept(interceptor) {
+        this._resetCompilation();
+        this.interceptors.push(Object.assign({}, interceptor));
+        if (interceptor.register) {
+          for (let i2 = 0; i2 < this.taps.length; i2++) {
+            this.taps[i2] = interceptor.register(this.taps[i2]);
+          }
+        }
+      }
+      _resetCompilation() {
+        this.call = this._call;
+        this.callAsync = this._callAsync;
+        this.promise = this._promise;
+      }
+      _insert(item) {
+        this._resetCompilation();
+        const { taps } = this;
+        const stage = typeof item.stage === "number" ? item.stage : 0;
+        if (!(typeof item.before === "string" || Array.isArray(item.before))) {
+          const n = taps.length;
+          if (n === 0 || (taps[n - 1].stage || 0) <= stage) {
+            taps[n] = item;
+            return;
+          }
+        }
+        let before;
+        if (typeof item.before === "string") {
+          before = /* @__PURE__ */ new Set([item.before]);
+        } else if (Array.isArray(item.before)) {
+          before = new Set(item.before);
+        }
+        let i2 = taps.length;
+        while (i2 > 0) {
+          i2--;
+          const tap = taps[i2];
+          taps[i2 + 1] = tap;
+          const xStage = tap.stage || 0;
+          if (before) {
+            if (before.has(tap.name)) {
+              before.delete(tap.name);
+              continue;
+            }
+            if (before.size > 0) {
+              continue;
+            }
+          }
+          if (xStage > stage) {
+            continue;
+          }
+          i2++;
+          break;
+        }
+        taps[i2] = item;
+      }
+    };
+    Object.setPrototypeOf(Hook.prototype, null);
+    module.exports = Hook;
+  }
+});
+
+// node_modules/tapable/lib/HookCodeFactory.js
+var require_HookCodeFactory = __commonJS({
+  "node_modules/tapable/lib/HookCodeFactory.js"(exports, module) {
+    "use strict";
+    var HookCodeFactory = class {
+      constructor(config) {
+        this.config = config;
+        this.options = void 0;
+        this._args = void 0;
+      }
+      create(options) {
+        this.init(options);
+        let fn;
+        switch (options.type) {
+          case "sync":
+            fn = new Function(
+              this.args(),
+              `"use strict";
+${this.header()}${this.contentWithInterceptors({
+                onError: (err) => `throw ${err};
+`,
+                onResult: (result) => `return ${result};
+`,
+                resultReturns: true,
+                onDone: () => "",
+                rethrowIfPossible: true
+              })}`
+            );
+            break;
+          case "async":
+            fn = new Function(
+              this.args({
+                after: "_callback"
+              }),
+              `"use strict";
+${this.header()}${this.contentWithInterceptors({
+                onError: (err) => `_callback(${err});
+`,
+                onResult: (result) => `_callback(null, ${result});
+`,
+                onDone: () => "_callback();\n"
+              })}`
+            );
+            break;
+          case "promise": {
+            let errorHelperUsed = false;
+            const content = this.contentWithInterceptors({
+              onError: (err) => {
+                errorHelperUsed = true;
+                return `_error(${err});
+`;
+              },
+              onResult: (result) => `_resolve(${result});
+`,
+              onDone: () => "_resolve();\n"
+            });
+            let code = "";
+            code += '"use strict";\n';
+            code += this.header();
+            code += "return new Promise((function(_resolve, _reject) {\n";
+            if (errorHelperUsed) {
+              code += "var _sync = true;\n";
+              code += "function _error(_err) {\n";
+              code += "if(_sync)\n";
+              code += "_resolve(Promise.resolve().then((function() { throw _err; })));\n";
+              code += "else\n";
+              code += "_reject(_err);\n";
+              code += "};\n";
+            }
+            code += content;
+            if (errorHelperUsed) {
+              code += "_sync = false;\n";
+            }
+            code += "}));\n";
+            fn = new Function(this.args(), code);
+            break;
+          }
+        }
+        this.deinit();
+        return fn;
+      }
+      setup(instance, options) {
+        const { taps } = options;
+        const { length } = taps;
+        const fns = Array.from({ length });
+        for (let i2 = 0; i2 < length; i2++) {
+          fns[i2] = taps[i2].fn;
+        }
+        instance._x = fns;
+      }
+      /**
+       * @param {{ type: "sync" | "promise" | "async", taps: Array<Tap>, interceptors: Array<Interceptor> }} options
+       */
+      init(options) {
+        this.options = options;
+        this._args = options.args;
+        this._joinedArgs = void 0;
+      }
+      deinit() {
+        this.options = void 0;
+        this._args = void 0;
+        this._joinedArgs = void 0;
+      }
+      contentWithInterceptors(options) {
+        if (this.options.interceptors.length > 0) {
+          const { onError, onResult, onDone } = options;
+          let code = "";
+          for (let i2 = 0; i2 < this.options.interceptors.length; i2++) {
+            const interceptor = this.options.interceptors[i2];
+            if (interceptor.call) {
+              code += `${this.getInterceptor(i2)}.call(${this.args({
+                before: interceptor.context ? "_context" : void 0
+              })});
+`;
+            }
+          }
+          code += this.content(
+            Object.assign(options, {
+              onError: onError && ((err) => {
+                let code2 = "";
+                for (let i2 = 0; i2 < this.options.interceptors.length; i2++) {
+                  const interceptor = this.options.interceptors[i2];
+                  if (interceptor.error) {
+                    code2 += `${this.getInterceptor(i2)}.error(${err});
+`;
+                  }
+                }
+                code2 += onError(err);
+                return code2;
+              }),
+              onResult: onResult && ((result) => {
+                let code2 = "";
+                for (let i2 = 0; i2 < this.options.interceptors.length; i2++) {
+                  const interceptor = this.options.interceptors[i2];
+                  if (interceptor.result) {
+                    code2 += `${this.getInterceptor(i2)}.result(${result});
+`;
+                  }
+                }
+                code2 += onResult(result);
+                return code2;
+              }),
+              onDone: onDone && (() => {
+                let code2 = "";
+                for (let i2 = 0; i2 < this.options.interceptors.length; i2++) {
+                  const interceptor = this.options.interceptors[i2];
+                  if (interceptor.done) {
+                    code2 += `${this.getInterceptor(i2)}.done();
+`;
+                  }
+                }
+                code2 += onDone();
+                return code2;
+              })
+            })
+          );
+          return code;
+        }
+        return this.content(options);
+      }
+      header() {
+        let code = "";
+        code += this.needContext() ? "var _context = {};\n" : "var _context;\n";
+        code += "var _x = this._x;\n";
+        if (this.options.interceptors.length > 0) {
+          code += "var _taps = this.taps;\n";
+          code += "var _interceptors = this.interceptors;\n";
+        }
+        return code;
+      }
+      needContext() {
+        const { taps } = this.options;
+        for (let i2 = 0; i2 < taps.length; i2++) {
+          if (taps[i2].context) return true;
+        }
+        return false;
+      }
+      callTap(tapIndex, { onError, onResult, onDone, rethrowIfPossible }) {
+        let code = "";
+        let hasTapCached = false;
+        for (let i2 = 0; i2 < this.options.interceptors.length; i2++) {
+          const interceptor = this.options.interceptors[i2];
+          if (interceptor.tap) {
+            if (!hasTapCached) {
+              code += `var _tap${tapIndex} = ${this.getTap(tapIndex)};
+`;
+              hasTapCached = true;
+            }
+            code += `${this.getInterceptor(i2)}.tap(${interceptor.context ? "_context, " : ""}_tap${tapIndex});
+`;
+          }
+        }
+        code += `var _fn${tapIndex} = ${this.getTapFn(tapIndex)};
+`;
+        const tap = this.options.taps[tapIndex];
+        switch (tap.type) {
+          case "sync":
+            if (!rethrowIfPossible) {
+              code += `var _hasError${tapIndex} = false;
+`;
+              code += "try {\n";
+            }
+            if (onResult) {
+              code += `var _result${tapIndex} = _fn${tapIndex}(${this.args({
+                before: tap.context ? "_context" : void 0
+              })});
+`;
+            } else {
+              code += `_fn${tapIndex}(${this.args({
+                before: tap.context ? "_context" : void 0
+              })});
+`;
+            }
+            if (!rethrowIfPossible) {
+              code += "} catch(_err) {\n";
+              code += `_hasError${tapIndex} = true;
+`;
+              code += onError("_err");
+              code += "}\n";
+              code += `if(!_hasError${tapIndex}) {
+`;
+            }
+            if (onResult) {
+              code += onResult(`_result${tapIndex}`);
+            }
+            if (onDone) {
+              code += onDone();
+            }
+            if (!rethrowIfPossible) {
+              code += "}\n";
+            }
+            break;
+          case "async": {
+            let cbCode = "";
+            cbCode += onResult ? `(function(_err${tapIndex}, _result${tapIndex}) {
+` : `(function(_err${tapIndex}) {
+`;
+            cbCode += `if(_err${tapIndex}) {
+`;
+            cbCode += onError(`_err${tapIndex}`);
+            cbCode += "} else {\n";
+            if (onResult) {
+              cbCode += onResult(`_result${tapIndex}`);
+            }
+            if (onDone) {
+              cbCode += onDone();
+            }
+            cbCode += "}\n";
+            cbCode += "})";
+            code += `_fn${tapIndex}(${this.args({
+              before: tap.context ? "_context" : void 0,
+              after: cbCode
+            })});
+`;
+            break;
+          }
+          case "promise":
+            code += `var _hasResult${tapIndex} = false;
+`;
+            code += `var _promise${tapIndex} = _fn${tapIndex}(${this.args({
+              before: tap.context ? "_context" : void 0
+            })});
+`;
+            code += `if (!_promise${tapIndex} || !_promise${tapIndex}.then)
+`;
+            code += `  throw new Error('Tap function (tapPromise) did not return promise (returned ' + _promise${tapIndex} + ')');
+`;
+            code += `_promise${tapIndex}.then((function(_result${tapIndex}) {
+`;
+            code += `_hasResult${tapIndex} = true;
+`;
+            if (onResult) {
+              code += onResult(`_result${tapIndex}`);
+            }
+            if (onDone) {
+              code += onDone();
+            }
+            code += `}), function(_err${tapIndex}) {
+`;
+            code += `if(_hasResult${tapIndex}) throw _err${tapIndex};
+`;
+            code += onError(
+              `!_err${tapIndex} ? new Error('Tap function (tapPromise) rejects "' + _err${tapIndex} + '" value') : _err${tapIndex}`
+            );
+            code += "});\n";
+            break;
+        }
+        return code;
+      }
+      callTapsSeries({
+        onError,
+        onResult,
+        resultReturns,
+        onDone,
+        doneReturns,
+        rethrowIfPossible
+      }) {
+        const { taps } = this.options;
+        const tapsLength = taps.length;
+        if (tapsLength === 0) return onDone();
+        let firstAsync = -1;
+        for (let i2 = 0; i2 < tapsLength; i2++) {
+          if (taps[i2].type !== "sync") {
+            firstAsync = i2;
+            break;
+          }
+        }
+        const somethingReturns = resultReturns || doneReturns;
+        const doneBreak = (skipDone) => {
+          if (skipDone) return "";
+          return onDone();
+        };
+        let code = "";
+        let current2 = onDone;
+        let unrollCounter = 0;
+        for (let j = tapsLength - 1; j >= 0; j--) {
+          const i2 = j;
+          const unroll = current2 !== onDone && (taps[i2].type !== "sync" || unrollCounter++ > 20);
+          if (unroll) {
+            unrollCounter = 0;
+            code += `function _next${i2}() {
+`;
+            code += current2();
+            code += "}\n";
+            current2 = () => `${somethingReturns ? "return " : ""}_next${i2}();
+`;
+          }
+          const done = current2;
+          const content = this.callTap(i2, {
+            onError: (error) => onError(i2, error, done, doneBreak),
+            onResult: onResult && ((result) => onResult(i2, result, done, doneBreak)),
+            onDone: !onResult && done,
+            rethrowIfPossible: rethrowIfPossible && (firstAsync < 0 || i2 < firstAsync)
+          });
+          current2 = () => content;
+        }
+        code += current2();
+        return code;
+      }
+      callTapsLooping({ onError, onDone, rethrowIfPossible }) {
+        if (this.options.taps.length === 0) return onDone();
+        const syncOnly = this.options.taps.every((t) => t.type === "sync");
+        let code = "";
+        if (!syncOnly) {
+          code += "var _looper = (function() {\n";
+          code += "var _loopAsync = false;\n";
+        }
+        code += "var _loop;\n";
+        code += "do {\n";
+        code += "_loop = false;\n";
+        for (let i2 = 0; i2 < this.options.interceptors.length; i2++) {
+          const interceptor = this.options.interceptors[i2];
+          if (interceptor.loop) {
+            code += `${this.getInterceptor(i2)}.loop(${this.args({
+              before: interceptor.context ? "_context" : void 0
+            })});
+`;
+          }
+        }
+        code += this.callTapsSeries({
+          onError,
+          onResult: (i2, result, next, doneBreak) => {
+            let code2 = "";
+            code2 += `if(${result} !== undefined) {
+`;
+            code2 += "_loop = true;\n";
+            if (!syncOnly) code2 += "if(_loopAsync) _looper();\n";
+            code2 += doneBreak(true);
+            code2 += "} else {\n";
+            code2 += next();
+            code2 += "}\n";
+            return code2;
+          },
+          onDone: onDone && (() => {
+            let code2 = "";
+            code2 += "if(!_loop) {\n";
+            code2 += onDone();
+            code2 += "}\n";
+            return code2;
+          }),
+          rethrowIfPossible: rethrowIfPossible && syncOnly
+        });
+        code += "} while(_loop);\n";
+        if (!syncOnly) {
+          code += "_loopAsync = true;\n";
+          code += "});\n";
+          code += "_looper();\n";
+        }
+        return code;
+      }
+      callTapsParallel({
+        onError,
+        onResult,
+        onDone,
+        rethrowIfPossible,
+        onTap = (i2, run) => run()
+      }) {
+        const { taps } = this.options;
+        const tapsLength = taps.length;
+        if (tapsLength <= 1) {
+          return this.callTapsSeries({
+            onError,
+            onResult,
+            onDone,
+            rethrowIfPossible
+          });
+        }
+        const done = () => {
+          if (onDone) return "if(--_counter === 0) _done();\n";
+          return "--_counter;";
+        };
+        const doneBreak = (skipDone) => {
+          if (skipDone || !onDone) return "_counter = 0;\n";
+          return "_counter = 0;\n_done();\n";
+        };
+        let code = "";
+        code += "do {\n";
+        code += `var _counter = ${tapsLength};
+`;
+        if (onDone) {
+          code += "var _done = (function() {\n";
+          code += onDone();
+          code += "});\n";
+        }
+        for (let i2 = 0; i2 < tapsLength; i2++) {
+          code += "if(_counter <= 0) break;\n";
+          code += onTap(
+            i2,
+            () => this.callTap(i2, {
+              onError: (error) => {
+                let code2 = "";
+                code2 += "if(_counter > 0) {\n";
+                code2 += onError(i2, error, done, doneBreak);
+                code2 += "}\n";
+                return code2;
+              },
+              onResult: onResult && ((result) => {
+                let code2 = "";
+                code2 += "if(_counter > 0) {\n";
+                code2 += onResult(i2, result, done, doneBreak);
+                code2 += "}\n";
+                return code2;
+              }),
+              onDone: !onResult && (() => done()),
+              rethrowIfPossible
+            }),
+            done,
+            doneBreak
+          );
+        }
+        code += "} while(false);\n";
+        return code;
+      }
+      args({ before, after } = {}) {
+        let joined = this._joinedArgs;
+        if (joined === void 0) {
+          joined = this._args.length === 0 ? "" : this._args.join(", ");
+          this._joinedArgs = joined;
+        }
+        if (!before && !after) return joined;
+        if (joined.length === 0) {
+          if (before && after) return `${before}, ${after}`;
+          return before || after;
+        }
+        if (before && after) return `${before}, ${joined}, ${after}`;
+        if (before) return `${before}, ${joined}`;
+        return `${joined}, ${after}`;
+      }
+      getTapFn(idx) {
+        return `_x[${idx}]`;
+      }
+      getTap(idx) {
+        return `_taps[${idx}]`;
+      }
+      getInterceptor(idx) {
+        return `_interceptors[${idx}]`;
+      }
+    };
+    module.exports = HookCodeFactory;
+  }
+});
+
+// node_modules/tapable/lib/AsyncParallelBailHook.js
+var require_AsyncParallelBailHook = __commonJS({
+  "node_modules/tapable/lib/AsyncParallelBailHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var AsyncParallelBailHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onResult, onDone }) {
+        let code = "";
+        code += `var _results = new Array(${this.options.taps.length});
+`;
+        code += "var _checkDone = function() {\n";
+        code += "for(var i = 0; i < _results.length; i++) {\n";
+        code += "var item = _results[i];\n";
+        code += "if(item === undefined) return false;\n";
+        code += "if(item.result !== undefined) {\n";
+        code += onResult("item.result");
+        code += "return true;\n";
+        code += "}\n";
+        code += "if(item.error) {\n";
+        code += onError("item.error");
+        code += "return true;\n";
+        code += "}\n";
+        code += "}\n";
+        code += "return false;\n";
+        code += "}\n";
+        code += this.callTapsParallel({
+          onError: (i2, err, done, doneBreak) => {
+            let code2 = "";
+            code2 += `if(${i2} < _results.length && ((_results.length = ${i2 + 1}), (_results[${i2}] = { error: ${err} }), _checkDone())) {
+`;
+            code2 += doneBreak(true);
+            code2 += "} else {\n";
+            code2 += done();
+            code2 += "}\n";
+            return code2;
+          },
+          onResult: (i2, result, done, doneBreak) => {
+            let code2 = "";
+            code2 += `if(${i2} < _results.length && (${result} !== undefined && (_results.length = ${i2 + 1}), (_results[${i2}] = { result: ${result} }), _checkDone())) {
+`;
+            code2 += doneBreak(true);
+            code2 += "} else {\n";
+            code2 += done();
+            code2 += "}\n";
+            return code2;
+          },
+          onTap: (i2, run, done, _doneBreak) => {
+            let code2 = "";
+            if (i2 > 0) {
+              code2 += `if(${i2} >= _results.length) {
+`;
+              code2 += done();
+              code2 += "} else {\n";
+            }
+            code2 += run();
+            if (i2 > 0) code2 += "}\n";
+            return code2;
+          },
+          onDone
+        });
+        return code;
+      }
+    };
+    var factory = new AsyncParallelBailHookCodeFactory();
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function AsyncParallelBailHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = AsyncParallelBailHook;
+      hook.compile = COMPILE;
+      hook._call = void 0;
+      hook.call = void 0;
+      return hook;
+    }
+    AsyncParallelBailHook.prototype = null;
+    module.exports = AsyncParallelBailHook;
+  }
+});
+
+// node_modules/tapable/lib/AsyncParallelHook.js
+var require_AsyncParallelHook = __commonJS({
+  "node_modules/tapable/lib/AsyncParallelHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var AsyncParallelHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onDone }) {
+        return this.callTapsParallel({
+          onError: (i2, err, done, doneBreak) => onError(err) + doneBreak(true),
+          onDone
+        });
+      }
+    };
+    var factory = new AsyncParallelHookCodeFactory();
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function AsyncParallelHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = AsyncParallelHook;
+      hook.compile = COMPILE;
+      hook._call = void 0;
+      hook.call = void 0;
+      return hook;
+    }
+    AsyncParallelHook.prototype = null;
+    module.exports = AsyncParallelHook;
+  }
+});
+
+// node_modules/tapable/lib/AsyncSeriesBailHook.js
+var require_AsyncSeriesBailHook = __commonJS({
+  "node_modules/tapable/lib/AsyncSeriesBailHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var AsyncSeriesBailHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onResult, resultReturns, onDone }) {
+        return this.callTapsSeries({
+          onError: (i2, err, next, doneBreak) => onError(err) + doneBreak(true),
+          onResult: (i2, result, next) => `if(${result} !== undefined) {
+${onResult(
+            result
+          )}
+} else {
+${next()}}
+`,
+          resultReturns,
+          onDone
+        });
+      }
+    };
+    var factory = new AsyncSeriesBailHookCodeFactory();
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function AsyncSeriesBailHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = AsyncSeriesBailHook;
+      hook.compile = COMPILE;
+      hook._call = void 0;
+      hook.call = void 0;
+      return hook;
+    }
+    AsyncSeriesBailHook.prototype = null;
+    module.exports = AsyncSeriesBailHook;
+  }
+});
+
+// node_modules/tapable/lib/AsyncSeriesHook.js
+var require_AsyncSeriesHook = __commonJS({
+  "node_modules/tapable/lib/AsyncSeriesHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var AsyncSeriesHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onDone }) {
+        return this.callTapsSeries({
+          onError: (i2, err, next, doneBreak) => onError(err) + doneBreak(true),
+          onDone
+        });
+      }
+    };
+    var factory = new AsyncSeriesHookCodeFactory();
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function AsyncSeriesHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = AsyncSeriesHook;
+      hook.compile = COMPILE;
+      hook._call = void 0;
+      hook.call = void 0;
+      return hook;
+    }
+    AsyncSeriesHook.prototype = null;
+    module.exports = AsyncSeriesHook;
+  }
+});
+
+// node_modules/tapable/lib/AsyncSeriesLoopHook.js
+var require_AsyncSeriesLoopHook = __commonJS({
+  "node_modules/tapable/lib/AsyncSeriesLoopHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var AsyncSeriesLoopHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onDone }) {
+        return this.callTapsLooping({
+          onError: (i2, err, next, doneBreak) => onError(err) + doneBreak(true),
+          onDone
+        });
+      }
+    };
+    var factory = new AsyncSeriesLoopHookCodeFactory();
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function AsyncSeriesLoopHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = AsyncSeriesLoopHook;
+      hook.compile = COMPILE;
+      hook._call = void 0;
+      hook.call = void 0;
+      return hook;
+    }
+    AsyncSeriesLoopHook.prototype = null;
+    module.exports = AsyncSeriesLoopHook;
+  }
+});
+
+// node_modules/tapable/lib/AsyncSeriesWaterfallHook.js
+var require_AsyncSeriesWaterfallHook = __commonJS({
+  "node_modules/tapable/lib/AsyncSeriesWaterfallHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var AsyncSeriesWaterfallHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onResult, _onDone }) {
+        return this.callTapsSeries({
+          onError: (i2, err, next, doneBreak) => onError(err) + doneBreak(true),
+          onResult: (i2, result, next) => {
+            let code = "";
+            code += `if(${result} !== undefined) {
+`;
+            code += `${this._args[0]} = ${result};
+`;
+            code += "}\n";
+            code += next();
+            return code;
+          },
+          onDone: () => onResult(this._args[0])
+        });
+      }
+    };
+    var factory = new AsyncSeriesWaterfallHookCodeFactory();
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function AsyncSeriesWaterfallHook(args = [], name = void 0) {
+      if (args.length < 1) {
+        throw new Error("Waterfall hooks must have at least one argument");
+      }
+      const hook = new Hook(args, name);
+      hook.constructor = AsyncSeriesWaterfallHook;
+      hook.compile = COMPILE;
+      hook._call = void 0;
+      hook.call = void 0;
+      return hook;
+    }
+    AsyncSeriesWaterfallHook.prototype = null;
+    module.exports = AsyncSeriesWaterfallHook;
+  }
+});
+
+// node_modules/tapable/lib/HookMap.js
+var require_HookMap = __commonJS({
+  "node_modules/tapable/lib/HookMap.js"(exports, module) {
+    "use strict";
+    var util = __require("util");
+    var defaultFactory = (key, hook) => hook;
+    var HookMap = class {
+      constructor(factory, name = void 0) {
+        this._map = /* @__PURE__ */ new Map();
+        this.name = name;
+        this._factory = factory;
+        this._interceptors = [];
+      }
+      get(key) {
+        return this._map.get(key);
+      }
+      for(key) {
+        const map = this._map;
+        const hook = map.get(key);
+        if (hook !== void 0) {
+          return hook;
+        }
+        let newHook = this._factory(key);
+        const interceptors = this._interceptors;
+        for (let i2 = 0; i2 < interceptors.length; i2++) {
+          newHook = interceptors[i2].factory(key, newHook);
+        }
+        map.set(key, newHook);
+        return newHook;
+      }
+      intercept(interceptor) {
+        this._interceptors.push(
+          Object.assign(
+            {
+              factory: defaultFactory
+            },
+            interceptor
+          )
+        );
+      }
+    };
+    HookMap.prototype.tap = util.deprecate(function tap(key, options, fn) {
+      return this.for(key).tap(options, fn);
+    }, "HookMap#tap(key,\u2026) is deprecated. Use HookMap#for(key).tap(\u2026) instead.");
+    HookMap.prototype.tapAsync = util.deprecate(function tapAsync(key, options, fn) {
+      return this.for(key).tapAsync(options, fn);
+    }, "HookMap#tapAsync(key,\u2026) is deprecated. Use HookMap#for(key).tapAsync(\u2026) instead.");
+    HookMap.prototype.tapPromise = util.deprecate(function tapPromise(key, options, fn) {
+      return this.for(key).tapPromise(options, fn);
+    }, "HookMap#tapPromise(key,\u2026) is deprecated. Use HookMap#for(key).tapPromise(\u2026) instead.");
+    module.exports = HookMap;
+  }
+});
+
+// node_modules/tapable/lib/MultiHook.js
+var require_MultiHook = __commonJS({
+  "node_modules/tapable/lib/MultiHook.js"(exports, module) {
+    "use strict";
+    var MultiHook = class _MultiHook {
+      constructor(hooks, name = void 0) {
+        this.hooks = hooks;
+        this.name = name;
+      }
+      tap(options, fn) {
+        const { hooks } = this;
+        for (let i2 = 0; i2 < hooks.length; i2++) {
+          hooks[i2].tap(options, fn);
+        }
+      }
+      tapAsync(options, fn) {
+        const { hooks } = this;
+        for (let i2 = 0; i2 < hooks.length; i2++) {
+          hooks[i2].tapAsync(options, fn);
+        }
+      }
+      tapPromise(options, fn) {
+        const { hooks } = this;
+        for (let i2 = 0; i2 < hooks.length; i2++) {
+          hooks[i2].tapPromise(options, fn);
+        }
+      }
+      isUsed() {
+        const { hooks } = this;
+        for (let i2 = 0; i2 < hooks.length; i2++) {
+          if (hooks[i2].isUsed()) return true;
+        }
+        return false;
+      }
+      intercept(interceptor) {
+        const { hooks } = this;
+        for (let i2 = 0; i2 < hooks.length; i2++) {
+          hooks[i2].intercept(interceptor);
+        }
+      }
+      withOptions(options) {
+        return new _MultiHook(
+          this.hooks.map((hook) => hook.withOptions(options)),
+          this.name
+        );
+      }
+    };
+    module.exports = MultiHook;
+  }
+});
+
+// node_modules/tapable/lib/SyncBailHook.js
+var require_SyncBailHook = __commonJS({
+  "node_modules/tapable/lib/SyncBailHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var SyncBailHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onResult, resultReturns, onDone, rethrowIfPossible }) {
+        return this.callTapsSeries({
+          onError: (i2, err) => onError(err),
+          onResult: (i2, result, next) => `if(${result} !== undefined) {
+${onResult(
+            result
+          )};
+} else {
+${next()}}
+`,
+          resultReturns,
+          onDone,
+          rethrowIfPossible
+        });
+      }
+    };
+    var factory = new SyncBailHookCodeFactory();
+    var TAP_ASYNC = () => {
+      throw new Error("tapAsync is not supported on a SyncBailHook");
+    };
+    var TAP_PROMISE = () => {
+      throw new Error("tapPromise is not supported on a SyncBailHook");
+    };
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function SyncBailHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = SyncBailHook;
+      hook.tapAsync = TAP_ASYNC;
+      hook.tapPromise = TAP_PROMISE;
+      hook.compile = COMPILE;
+      return hook;
+    }
+    SyncBailHook.prototype = null;
+    module.exports = SyncBailHook;
+  }
+});
+
+// node_modules/tapable/lib/SyncHook.js
+var require_SyncHook = __commonJS({
+  "node_modules/tapable/lib/SyncHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var SyncHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onDone, rethrowIfPossible }) {
+        return this.callTapsSeries({
+          onError: (i2, err) => onError(err),
+          onDone,
+          rethrowIfPossible
+        });
+      }
+    };
+    var factory = new SyncHookCodeFactory();
+    var TAP_ASYNC = () => {
+      throw new Error("tapAsync is not supported on a SyncHook");
+    };
+    var TAP_PROMISE = () => {
+      throw new Error("tapPromise is not supported on a SyncHook");
+    };
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function SyncHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = SyncHook;
+      hook.tapAsync = TAP_ASYNC;
+      hook.tapPromise = TAP_PROMISE;
+      hook.compile = COMPILE;
+      return hook;
+    }
+    SyncHook.prototype = null;
+    module.exports = SyncHook;
+  }
+});
+
+// node_modules/tapable/lib/SyncLoopHook.js
+var require_SyncLoopHook = __commonJS({
+  "node_modules/tapable/lib/SyncLoopHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var SyncLoopHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onDone, rethrowIfPossible }) {
+        return this.callTapsLooping({
+          onError: (i2, err) => onError(err),
+          onDone,
+          rethrowIfPossible
+        });
+      }
+    };
+    var factory = new SyncLoopHookCodeFactory();
+    var TAP_ASYNC = () => {
+      throw new Error("tapAsync is not supported on a SyncLoopHook");
+    };
+    var TAP_PROMISE = () => {
+      throw new Error("tapPromise is not supported on a SyncLoopHook");
+    };
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function SyncLoopHook(args = [], name = void 0) {
+      const hook = new Hook(args, name);
+      hook.constructor = SyncLoopHook;
+      hook.tapAsync = TAP_ASYNC;
+      hook.tapPromise = TAP_PROMISE;
+      hook.compile = COMPILE;
+      return hook;
+    }
+    SyncLoopHook.prototype = null;
+    module.exports = SyncLoopHook;
+  }
+});
+
+// node_modules/tapable/lib/SyncWaterfallHook.js
+var require_SyncWaterfallHook = __commonJS({
+  "node_modules/tapable/lib/SyncWaterfallHook.js"(exports, module) {
+    "use strict";
+    var Hook = require_Hook();
+    var HookCodeFactory = require_HookCodeFactory();
+    var SyncWaterfallHookCodeFactory = class extends HookCodeFactory {
+      content({ onError, onResult, resultReturns, rethrowIfPossible }) {
+        return this.callTapsSeries({
+          onError: (i2, err) => onError(err),
+          onResult: (i2, result, next) => {
+            let code = "";
+            code += `if(${result} !== undefined) {
+`;
+            code += `${this._args[0]} = ${result};
+`;
+            code += "}\n";
+            code += next();
+            return code;
+          },
+          onDone: () => onResult(this._args[0]),
+          doneReturns: resultReturns,
+          rethrowIfPossible
+        });
+      }
+    };
+    var factory = new SyncWaterfallHookCodeFactory();
+    var TAP_ASYNC = () => {
+      throw new Error("tapAsync is not supported on a SyncWaterfallHook");
+    };
+    var TAP_PROMISE = () => {
+      throw new Error("tapPromise is not supported on a SyncWaterfallHook");
+    };
+    function COMPILE(options) {
+      factory.setup(this, options);
+      return factory.create(options);
+    }
+    function SyncWaterfallHook(args = [], name = void 0) {
+      if (args.length < 1) {
+        throw new Error("Waterfall hooks must have at least one argument");
+      }
+      const hook = new Hook(args, name);
+      hook.constructor = SyncWaterfallHook;
+      hook.tapAsync = TAP_ASYNC;
+      hook.tapPromise = TAP_PROMISE;
+      hook.compile = COMPILE;
+      return hook;
+    }
+    SyncWaterfallHook.prototype = null;
+    module.exports = SyncWaterfallHook;
+  }
+});
+
+// node_modules/tapable/lib/index.js
+var require_lib = __commonJS({
+  "node_modules/tapable/lib/index.js"(exports, module) {
+    "use strict";
+    module.exports.AsyncParallelBailHook = require_AsyncParallelBailHook();
+    module.exports.AsyncParallelHook = require_AsyncParallelHook();
+    module.exports.AsyncSeriesBailHook = require_AsyncSeriesBailHook();
+    module.exports.AsyncSeriesHook = require_AsyncSeriesHook();
+    module.exports.AsyncSeriesLoopHook = require_AsyncSeriesLoopHook();
+    module.exports.AsyncSeriesWaterfallHook = require_AsyncSeriesWaterfallHook();
+    module.exports.HookMap = require_HookMap();
+    module.exports.MultiHook = require_MultiHook();
+    module.exports.SyncBailHook = require_SyncBailHook();
+    module.exports.SyncHook = require_SyncHook();
+    module.exports.SyncLoopHook = require_SyncLoopHook();
+    module.exports.SyncWaterfallHook = require_SyncWaterfallHook();
+    module.exports.__esModule = true;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/createInnerContext.js
+var require_createInnerContext = __commonJS({
+  "node_modules/enhanced-resolve/lib/createInnerContext.js"(exports, module) {
+    "use strict";
+    module.exports = function createInnerContext(parent2, stack, message2) {
+      const parentLog = parent2.log;
+      let innerLog;
+      if (parentLog) {
+        if (message2) {
+          let messageReported = false;
+          innerLog = (msg) => {
+            if (!messageReported) {
+              parentLog(message2);
+              messageReported = true;
+            }
+            parentLog(`  ${msg}`);
+          };
+        } else {
+          innerLog = parentLog;
+        }
+      }
+      return {
+        log: innerLog,
+        yield: parent2.yield,
+        fileDependencies: parent2.fileDependencies,
+        contextDependencies: parent2.contextDependencies,
+        missingDependencies: parent2.missingDependencies,
+        stack
+      };
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/Resolver.js
+var require_Resolver = __commonJS({
+  "node_modules/enhanced-resolve/lib/Resolver.js"(exports, module) {
+    "use strict";
+    var { AsyncSeriesBailHook, AsyncSeriesHook, SyncHook } = require_lib();
+    var createInnerContext = require_createInnerContext();
+    var { parseIdentifier } = require_identifier();
+    var {
+      PathType,
+      createCachedBasename,
+      createCachedDirname,
+      createCachedJoin,
+      getType,
+      isFileURL,
+      normalize: normalize3,
+      toPath
+    } = require_path();
+    var _withResolvers = (
+      // eslint-disable-next-line n/no-unsupported-features/es-syntax
+      Promise.withResolvers ? (
+        /**
+        * @param {Resolver} self resolver
+        * @param {Context} context context information object
+        * @param {string | URL} path context path or a `file:` URL instance
+        * @param {string | URL} request request string or a `file:` URL instance
+        * @param {ResolveContext} resolveContext resolve context
+        * @returns {Promise<string | false>} result
+        */
+        (self, context, path, request, resolveContext) => {
+          const { promise, resolve: resolve11, reject } = Promise.withResolvers();
+          self.resolve(context, path, request, resolveContext, (err, res) => {
+            if (err) reject(err);
+            else resolve11(
+              /** @type {string | false} */
+              res
+            );
+          });
+          return promise;
+        }
+      ) : (
+        /**
+        * @param {Resolver} self resolver
+        * @param {Context} context context information object
+        * @param {string | URL} path context path or a `file:` URL instance
+        * @param {string | URL} request request string or a `file:` URL instance
+        * @param {ResolveContext} resolveContext resolve context
+        * @returns {Promise<string | false>} result
+        */
+        (self, context, path, request, resolveContext) => new Promise((resolve11, reject) => {
+          self.resolve(context, path, request, resolveContext, (err, res) => {
+            if (err) reject(err);
+            else resolve11(
+              /** @type {string | false} */
+              res
+            );
+          });
+        })
+      )
+    );
+    var _pathCacheByFs = /* @__PURE__ */ new WeakMap();
+    var HASH_ESCAPE_RE = /#/g;
+    var StackEntry = class {
+      /**
+       * @param {ResolveStepHook} hook hook
+       * @param {ResolveRequest} request request
+       * @param {StackEntry=} parent previous tip
+       * @param {Set<string>=} preSeeded entries pre-seeded via the legacy `Set<string>` API
+       */
+      constructor(hook, request, parent2, preSeeded) {
+        this.name = hook.name;
+        this.path = request.path;
+        this.request = request.request || "";
+        this.query = request.query || "";
+        this.fragment = request.fragment || "";
+        this.directory = Boolean(request.directory);
+        this.module = Boolean(request.module);
+        this.parent = parent2;
+        this.preSeeded = preSeeded;
+      }
+      /**
+       * Walk the linked list looking for an entry with the same request shape.
+       * Set-compatible: callers that used `stack.has(entry)` keep working.
+       *
+       * NOTE: kept monomorphic on purpose. An earlier draft accepted a string
+       * query too (so pre-5.21 plugins keeping their own `Set<string>` of
+       * seen entries could probe the live stack with the formatted form),
+       * but adding the second shape regressed `doResolve`'s heap profile by
+       * ~1 MiB / 200 resolves on stack-churn — V8 keeps a polymorphic
+       * call-site state for `parent.has(stackEntry)` once `has` has two
+       * argument shapes. Plugins that need string membership can reach for
+       * `[...stack].find(e => e.includes(formattedString))` via the
+       * `String`-method proxies on `StackEntry` instead.
+       * @param {StackEntry} query entry to look for
+       * @returns {boolean} whether the stack already contains an equivalent entry
+       */
+      has(query) {
+        let node = this;
+        while (node) {
+          if (node.name === query.name && node.path === query.path && node.request === query.request && node.query === query.query && node.fragment === query.fragment && node.directory === query.directory && node.module === query.module) {
+            return true;
+          }
+          node = node.parent;
+        }
+        return this.preSeeded !== void 0 && this.preSeeded.has(query.toString());
+      }
+      /**
+       * Number of entries on the stack (oldest-to-newest length).
+       * @returns {number} size
+       */
+      get size() {
+        let count = this.preSeeded ? this.preSeeded.size : 0;
+        let node = this;
+        while (node) {
+          count++;
+          node = node.parent;
+        }
+        return count;
+      }
+      /**
+       * Iterate entries from oldest (root) to newest (tip), matching how a
+       * `Set` that was populated in insertion order would iterate. Pre-seeded
+       * legacy `Set<string>` entries come first so error-message output stays
+       * ordered oldest-to-newest.
+       *
+       * Yields each entry as its formatted `toString()` form. Plugins written
+       * against the pre-5.21 `Set<string>` shape — e.g.
+       * `[...resolveContext.stack].find(a => a.includes("module:"))` — keep
+       * working unchanged because each yielded value is a plain string with
+       * all of `String.prototype` available natively. Resolves that never
+       * iterate the stack pay nothing; iteration costs one `toString()`
+       * allocation per stack frame.
+       * @returns {IterableIterator<string>} iterator
+       */
+      *[Symbol.iterator]() {
+        if (this.preSeeded !== void 0) {
+          for (const entry2 of this.preSeeded) yield entry2;
+        }
+        const entries2 = [];
+        let node = this;
+        while (node) {
+          entries2.push(node);
+          node = node.parent;
+        }
+        for (let i2 = entries2.length - 1; i2 >= 0; i2--) yield entries2[i2].toString();
+      }
+      /**
+       * Human-readable form used in recursion error messages, logs, and the
+       * iterator above. Not memoized: caching would require an extra slot on
+       * every `StackEntry`, which costs heap even on resolves that never look
+       * at the formatted form.
+       * @returns {string} formatted entry
+       */
+      toString() {
+        return `${this.name}: (${this.path}) ${this.request}${this.query}${this.fragment}${this.directory ? " directory" : ""}${this.module ? " module" : ""}`;
+      }
+    };
+    function toCamelCase(str2) {
+      return str2.replace(/-([a-z])/g, (str3) => str3.slice(1).toUpperCase());
+    }
+    var Resolver = class _Resolver {
+      /**
+       * @param {ResolveStepHook} hook hook
+       * @param {ResolveRequest} request request
+       * @param {StackEntry=} parent previous tip of the stack
+       * @param {Set<string>=} preSeeded entries pre-seeded via the legacy `Set<string>` API
+       * @returns {StackEntry} stack entry
+       */
+      static createStackEntry(hook, request, parent2, preSeeded) {
+        return new StackEntry(hook, request, parent2, preSeeded);
+      }
+      /**
+       * @param {FileSystem} fileSystem a filesystem
+       * @param {ResolveOptions} options options
+       */
+      constructor(fileSystem, options) {
+        this.fileSystem = fileSystem;
+        this.options = options;
+        let pathCache = _pathCacheByFs.get(fileSystem);
+        if (!pathCache) {
+          pathCache = {
+            join: createCachedJoin(),
+            dirname: createCachedDirname(),
+            basename: createCachedBasename()
+          };
+          _pathCacheByFs.set(fileSystem, pathCache);
+        }
+        this.pathCache = pathCache;
+        this.hooks = {
+          resolveStep: new SyncHook(["hook", "request"], "resolveStep"),
+          noResolve: new SyncHook(["request", "error"], "noResolve"),
+          resolve: new AsyncSeriesBailHook(
+            ["request", "resolveContext"],
+            "resolve"
+          ),
+          result: new AsyncSeriesHook(["result", "resolveContext"], "result")
+        };
+      }
+      /**
+       * @param {string | ResolveStepHook} name hook name or hook itself
+       * @returns {ResolveStepHook} the hook
+       */
+      ensureHook(name) {
+        if (typeof name !== "string") {
+          return name;
+        }
+        name = toCamelCase(name);
+        if (name.startsWith("before")) {
+          return (
+            /** @type {ResolveStepHook} */
+            this.ensureHook(name[6].toLowerCase() + name.slice(7)).withOptions({
+              stage: -10
+            })
+          );
+        }
+        if (name.startsWith("after")) {
+          return (
+            /** @type {ResolveStepHook} */
+            this.ensureHook(name[5].toLowerCase() + name.slice(6)).withOptions({
+              stage: 10
+            })
+          );
+        }
+        const hook = (
+          /** @type {KnownHooks & EnsuredHooks} */
+          this.hooks[name]
+        );
+        if (!hook) {
+          this.hooks[name] = new AsyncSeriesBailHook(
+            ["request", "resolveContext"],
+            name
+          );
+          return (
+            /** @type {KnownHooks & EnsuredHooks} */
+            this.hooks[name]
+          );
+        }
+        return hook;
+      }
+      /**
+       * @param {string | ResolveStepHook} name hook name or hook itself
+       * @returns {ResolveStepHook} the hook
+       */
+      getHook(name) {
+        if (typeof name !== "string") {
+          return name;
+        }
+        name = toCamelCase(name);
+        if (name.startsWith("before")) {
+          return (
+            /** @type {ResolveStepHook} */
+            this.getHook(name[6].toLowerCase() + name.slice(7)).withOptions({
+              stage: -10
+            })
+          );
+        }
+        if (name.startsWith("after")) {
+          return (
+            /** @type {ResolveStepHook} */
+            this.getHook(name[5].toLowerCase() + name.slice(6)).withOptions({
+              stage: 10
+            })
+          );
+        }
+        const hook = (
+          /** @type {KnownHooks & EnsuredHooks} */
+          this.hooks[name]
+        );
+        if (!hook) {
+          throw new Error(`Hook ${name} doesn't exist`);
+        }
+        return hook;
+      }
+      /**
+       * @overload
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {string | false} result
+       */
+      /**
+       * @overload
+       * @param {Context} context context information object
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {string | false} result
+       */
+      /**
+       * @param {Context | string | URL} context context information object, or the context path (a path or a `file:` URL) when no context is provided
+       * @param {string | URL | ResolveContext=} parent context path (a path or a `file:` URL) or resolve context when no context is provided
+       * @param {string | URL | ResolveContext=} specifier request string (or a `file:` URL) or resolve context when no context is provided
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {string | false} result
+       */
+      resolveSync(context, parent2, specifier, resolveContext) {
+        let err;
+        let result;
+        let sync = false;
+        this.resolve(
+          /** @type {Context} */
+          context,
+          /** @type {string} */
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext || {},
+          (_err, r) => {
+            err = _err;
+            result = r;
+            sync = true;
+          }
+        );
+        if (!sync) {
+          throw new Error(
+            "Cannot 'resolveSync' because the fileSystem is not sync. Use 'resolve'!"
+          );
+        }
+        if (err) throw err;
+        if (result === void 0) throw new Error("No result");
+        return result;
+      }
+      /**
+       * @overload
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {Promise<string | false>} result
+       */
+      /**
+       * @overload
+       * @param {Context} context context information object
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {Promise<string | false>} result
+       */
+      /**
+       * @param {Context | string | URL} context context information object, or the context path (a path or a `file:` URL) when no context is provided
+       * @param {string | URL | ResolveContext=} parent context path (a path or a `file:` URL) or resolve context when no context is provided
+       * @param {string | URL | ResolveContext=} specifier request string (or a `file:` URL) or resolve context when no context is provided
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {Promise<string | false>} result
+       */
+      resolvePromise(context, parent2, specifier, resolveContext) {
+        return _withResolvers(
+          this,
+          /** @type {Context} */
+          context,
+          /** @type {string} */
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext || {}
+        );
+      }
+      /**
+       * @overload
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveCallback} callback callback function
+       * @returns {void}
+       */
+      /**
+       * @overload
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveContext} resolveContext resolve context
+       * @param {ResolveCallback} callback callback function
+       * @returns {void}
+       */
+      /**
+       * @overload
+       * @param {Context} context context information object
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveCallback} callback callback function
+       * @returns {void}
+       */
+      /**
+       * @overload
+       * @param {Context} context context information object
+       * @param {string | URL} parent context path or a `file:` URL
+       * @param {string | URL} specifier request string or a `file:` URL
+       * @param {ResolveContext} resolveContext resolve context
+       * @param {ResolveCallback} callback callback function
+       * @returns {void}
+       */
+      /**
+       * @param {Context | string | URL} context context information object, or the context path (a path or a `file:` URL) when no context is provided
+       * @param {string | URL | ResolveContext | ResolveCallback=} parent context path (a path or a `file:` URL) or (when no context) resolve context or callback
+       * @param {string | URL | ResolveContext | ResolveCallback=} specifier request string (or a `file:` URL) or (when no context) resolve context or callback
+       * @param {ResolveContext | ResolveCallback=} resolveContext resolve context or callback when no resolve context is provided
+       * @param {ResolveCallback=} callback callback function
+       * @returns {void}
+       */
+      resolve(context, parent2, specifier, resolveContext, callback2) {
+        if (typeof callback2 === "function" && typeof context === "object" && context !== null && typeof resolveContext === "object" && resolveContext !== null) {
+        } else {
+          if (typeof context === "string" || context instanceof URL) {
+            if (typeof callback2 !== "function") {
+              callback2 = /** @type {ResolveCallback | undefined} */
+              resolveContext;
+            }
+            resolveContext = /** @type {ResolveContext | ResolveCallback | undefined} */
+            specifier;
+            specifier = /** @type {string} */
+            parent2;
+            parent2 = context;
+            context = {};
+          }
+          if (typeof resolveContext === "function") {
+            callback2 = resolveContext;
+            resolveContext = {};
+          } else if (!resolveContext || typeof resolveContext !== "object") {
+            resolveContext = {};
+          }
+          if (typeof callback2 !== "function") {
+            throw new TypeError("callback argument is not a function");
+          }
+          if (!context || typeof context !== "object") {
+            context = {};
+          }
+        }
+        if (typeof parent2 !== "string") {
+          if (parent2 instanceof URL) parent2 = toPath(parent2);
+          else return callback2(new Error("path argument is not a string"));
+        } else if (isFileURL(parent2)) {
+          parent2 = toPath(parent2);
+        }
+        if (typeof specifier !== "string") {
+          if (specifier instanceof URL) specifier = toPath(specifier);
+          else return callback2(new Error("request argument is not a string"));
+        }
+        const obj = {
+          context,
+          path: parent2,
+          request: specifier
+        };
+        let yield_;
+        let yieldCalled = false;
+        let finishYield;
+        if (typeof resolveContext.yield === "function") {
+          const old = resolveContext.yield;
+          yield_ = (obj2) => {
+            old(obj2);
+            yieldCalled = true;
+          };
+          finishYield = (result) => {
+            if (result) {
+              yield_(result);
+            }
+            callback2(null);
+          };
+        }
+        const finishResolved = (result) => {
+          const resultPath = result.path;
+          if (resultPath === false) return callback2(null, false, result);
+          const escapedPath = resultPath.includes("#") ? resultPath.replace(HASH_ESCAPE_RE, "\0#") : resultPath;
+          const resultQuery = result.query;
+          let escapedQuery;
+          if (resultQuery) {
+            escapedQuery = resultQuery.includes("#") ? resultQuery.replace(HASH_ESCAPE_RE, "\0#") : resultQuery;
+          } else {
+            escapedQuery = "";
+          }
+          return callback2(
+            null,
+            `${escapedPath}${escapedQuery}${result.fragment || ""}`,
+            result
+          );
+        };
+        const finishWithoutResolve = (message2, log) => {
+          const error = new Error(`Can't ${message2}`);
+          error.details = log.join("\n");
+          this.hooks.noResolve.call(obj, error);
+          return callback2(error);
+        };
+        if (resolveContext.log) {
+          const message2 = `resolve '${specifier}' in '${parent2}'`;
+          const parentLog = resolveContext.log;
+          const log = [];
+          return this.doResolve(
+            this.hooks.resolve,
+            obj,
+            message2,
+            {
+              log: (msg) => {
+                parentLog(msg);
+                log.push(msg);
+              },
+              yield: yield_,
+              fileDependencies: resolveContext.fileDependencies,
+              contextDependencies: resolveContext.contextDependencies,
+              missingDependencies: resolveContext.missingDependencies,
+              stack: resolveContext.stack
+            },
+            (err, result) => {
+              if (err) return callback2(err);
+              if (yieldCalled || result && yield_) {
+                return (
+                  /** @type {ResolveContextYield} */
+                  finishYield(
+                    /** @type {ResolveRequest} */
+                    result
+                  )
+                );
+              }
+              if (result) return finishResolved(result);
+              return finishWithoutResolve(message2, log);
+            }
+          );
+        }
+        const rc = yield_ ? {
+          log: void 0,
+          yield: yield_,
+          fileDependencies: resolveContext.fileDependencies,
+          contextDependencies: resolveContext.contextDependencies,
+          missingDependencies: resolveContext.missingDependencies,
+          stack: resolveContext.stack
+        } : resolveContext;
+        return this.doResolve(this.hooks.resolve, obj, null, rc, (err, result) => {
+          if (err) return callback2(err);
+          if (yieldCalled || result && yield_) {
+            return (
+              /** @type {ResolveContextYield} */
+              finishYield(
+                /** @type {ResolveRequest} */
+                result
+              )
+            );
+          }
+          if (result) return finishResolved(result);
+          const message2 = `resolve '${specifier}' in '${parent2}'`;
+          const log = [];
+          return this.doResolve(
+            this.hooks.resolve,
+            obj,
+            message2,
+            {
+              log: (msg) => log.push(msg),
+              yield: yield_,
+              stack: resolveContext.stack
+            },
+            (err2, result2) => {
+              if (err2) return callback2(err2);
+              if (yieldCalled || result2 && yield_) {
+                return (
+                  /** @type {ResolveContextYield} */
+                  finishYield(
+                    /** @type {ResolveRequest} */
+                    result2
+                  )
+                );
+              }
+              return finishWithoutResolve(message2, log);
+            }
+          );
+        });
+      }
+      /**
+       * @param {ResolveStepHook} hook hook
+       * @param {ResolveRequest} request request
+       * @param {null | string} message string
+       * @param {ResolveContext} resolveContext resolver context
+       * @param {(err?: null | Error, result?: ResolveRequest) => void} callback callback
+       * @returns {void}
+       */
+      doResolve(hook, request, message2, resolveContext, callback2) {
+        const rawStack = resolveContext.stack;
+        let parent2;
+        let preSeeded;
+        if (rawStack instanceof StackEntry) {
+          parent2 = rawStack;
+          preSeeded = rawStack.preSeeded;
+        } else if (rawStack) {
+          preSeeded = /** @type {Set<string>} */
+          rawStack;
+        }
+        const stackEntry = _Resolver.createStackEntry(
+          hook,
+          request,
+          parent2,
+          preSeeded
+        );
+        if (parent2 !== void 0 ? parent2.has(stackEntry) : preSeeded !== void 0 && preSeeded.has(stackEntry.toString())) {
+          const recursionError = new Error(
+            `Recursion in resolving
+Stack:
+  ${[...stackEntry].join("\n  ")}`
+          );
+          recursionError.recursion = true;
+          if (resolveContext.log) {
+            resolveContext.log("abort resolving because of recursion");
+          }
+          return callback2(recursionError);
+        }
+        this.hooks.resolveStep.call(hook, request);
+        if (hook.isUsed()) {
+          if (!resolveContext.log && rawStack instanceof StackEntry) {
+            resolveContext.stack = stackEntry;
+            return hook.callAsync(request, resolveContext, (err, result) => {
+              resolveContext.stack = rawStack;
+              if (err) return callback2(err);
+              if (result) return callback2(null, result);
+              callback2();
+            });
+          }
+          const innerContext = createInnerContext(
+            resolveContext,
+            stackEntry,
+            message2
+          );
+          return hook.callAsync(request, innerContext, (err, result) => {
+            if (err) return callback2(err);
+            if (result) return callback2(null, result);
+            callback2();
+          });
+        }
+        callback2();
+      }
+      /**
+       * @param {string} identifier identifier
+       * @returns {ParsedIdentifier} parsed identifier
+       */
+      parse(identifier) {
+        const part = {
+          request: "",
+          query: "",
+          fragment: "",
+          module: false,
+          directory: false,
+          file: false,
+          internal: false
+        };
+        const parsedIdentifier = parseIdentifier(identifier);
+        if (!parsedIdentifier) return part;
+        [part.request, part.query, part.fragment] = parsedIdentifier;
+        if (part.request.length > 0) {
+          const requestType = getType(part.request);
+          part.module = requestType === PathType.Normal;
+          part.internal = identifier === part.request ? requestType === PathType.Internal : getType(identifier) === PathType.Internal;
+          part.directory = part.request.endsWith("/");
+          if (part.directory) {
+            part.request = part.request.slice(0, -1);
+          }
+        }
+        return part;
+      }
+      /**
+       * @param {string} path path
+       * @returns {boolean} true, if the path is a module
+       */
+      isModule(path) {
+        return getType(path) === PathType.Normal;
+      }
+      /**
+       * @param {string} path path
+       * @returns {boolean} true, if the path is private
+       */
+      isPrivate(path) {
+        return getType(path) === PathType.Internal;
+      }
+      /**
+       * @param {string} path a path
+       * @returns {boolean} true, if the path is a directory path
+       */
+      isDirectory(path) {
+        return path.endsWith("/");
+      }
+      /**
+       * @param {string} path path
+       * @returns {string} normalized path
+       */
+      normalize(path) {
+        return normalize3(path);
+      }
+      /**
+       * @param {string} path path
+       * @param {string} request request
+       * @returns {string} joined path
+       */
+      join(path, request) {
+        return this.pathCache.join.fn(path, request);
+      }
+      /**
+       * @param {string} path path
+       * @returns {string} parent directory
+       */
+      dirname(path) {
+        return this.pathCache.dirname.fn(path);
+      }
+      /**
+       * @param {string} path the path to evaluate
+       * @param {string=} suffix an extension to remove from the result
+       * @returns {string} the last portion of a path
+       */
+      basename(path, suffix) {
+        return this.pathCache.basename.fn(path, suffix);
+      }
+    };
+    module.exports = Resolver;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/RestrictionsPlugin.js
+var require_RestrictionsPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/RestrictionsPlugin.js"(exports, module) {
+    "use strict";
+    var { isInside, normalize: normalize3 } = require_path();
+    module.exports = class RestrictionsPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {Set<string | RegExp>} restrictions restrictions
+       */
+      constructor(source, restrictions) {
+        this.source = source;
+        this.restrictions = restrictions;
+        this._restrictions = [];
+        for (const rule of restrictions) {
+          this._restrictions.push(
+            typeof rule === "string" ? { type: "path", rule: normalize3(rule) } : { type: "regexp", rule }
+          );
+        }
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        resolver.getHook(this.source).tapAsync("RestrictionsPlugin", (request, resolveContext, callback2) => {
+          if (typeof request.path === "string") {
+            const { path } = request;
+            for (const restriction of this._restrictions) {
+              if (restriction.type === "path") {
+                if (isInside(restriction.rule, path)) continue;
+                if (resolveContext.log) {
+                  resolveContext.log(
+                    `${path} is not inside of the restriction ${restriction.rule}`
+                  );
+                }
+              } else {
+                if (restriction.rule.test(path)) continue;
+                if (resolveContext.log) {
+                  resolveContext.log(
+                    `${path} doesn't match the restriction ${restriction.rule}`
+                  );
+                }
+              }
+              if (request.__restrictionsMarker) {
+                request.__restrictionsMarker.blocked = true;
+              }
+              return callback2(null, null);
+            }
+          }
+          callback2();
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ResultPlugin.js
+var require_ResultPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/ResultPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class ResultPlugin {
+      /**
+       * @param {ResolveStepHook} source source
+       */
+      constructor(source) {
+        this.source = source;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        this.source.tapAsync(
+          "ResultPlugin",
+          (request, resolverContext, callback2) => {
+            const obj = { ...request };
+            if (resolverContext.log) {
+              resolverContext.log(`reporting result ${obj.path}`);
+            }
+            resolver.hooks.result.callAsync(obj, resolverContext, (err) => {
+              if (err) return callback2(err);
+              if (typeof resolverContext.yield === "function") {
+                resolverContext.yield(obj);
+                callback2(null, null);
+              } else {
+                callback2(null, obj);
+              }
+            });
+          }
+        );
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/RootsPlugin.js
+var require_RootsPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/RootsPlugin.js"(exports, module) {
+    "use strict";
+    var forEachBail = require_forEachBail();
+    var RootsPlugin = class {
+      /**
+       * @param {string | ResolveStepHook} source source hook
+       * @param {Set<string>} roots roots
+       * @param {string | ResolveStepHook} target target hook
+       */
+      constructor(source, roots, target) {
+        this.roots = [...roots];
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("RootsPlugin", (request, resolveContext, callback2) => {
+          const req = request.request;
+          if (!req) return callback2();
+          if (!req.startsWith("/")) return callback2();
+          forEachBail(
+            this.roots,
+            /**
+             * @param {string} root root
+             * @param {(err?: null | Error, result?: null | ResolveRequest) => void} callback callback
+             * @returns {void}
+             */
+            (root, callback3) => {
+              const path = resolver.join(root, req.slice(1));
+              const obj = {
+                ...request,
+                path,
+                relativePath: request.relativePath && path
+              };
+              resolver.doResolve(
+                target,
+                obj,
+                `root path ${root}`,
+                resolveContext,
+                callback3
+              );
+            },
+            callback2
+          );
+        });
+      }
+    };
+    module.exports = RootsPlugin;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/SelfReferencePlugin.js
+var require_SelfReferencePlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/SelfReferencePlugin.js"(exports, module) {
+    "use strict";
+    var DescriptionFileUtils = require_DescriptionFileUtils();
+    var slashCode = "/".charCodeAt(0);
+    var NO_SELF_REF = /* @__PURE__ */ Symbol("NoSelfRef");
+    module.exports = class SelfReferencePlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | string[]} fieldNamePath name path
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, fieldNamePath, target) {
+        this.source = source;
+        this.target = target;
+        this.fieldName = fieldNamePath;
+        this._nameCache = /* @__PURE__ */ new WeakMap();
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("SelfReferencePlugin", (request, resolveContext, callback2) => {
+          if (!request.descriptionFileData) return callback2();
+          const req = request.request;
+          if (!req) return callback2();
+          const { descriptionFileData } = request;
+          let name = this._nameCache.get(descriptionFileData);
+          if (name === void 0) {
+            const exportsField = DescriptionFileUtils.getField(
+              descriptionFileData,
+              this.fieldName
+            );
+            if (!exportsField) {
+              this._nameCache.set(descriptionFileData, NO_SELF_REF);
+              return callback2();
+            }
+            const rawName = DescriptionFileUtils.getField(
+              descriptionFileData,
+              "name"
+            );
+            if (typeof rawName !== "string") {
+              this._nameCache.set(descriptionFileData, NO_SELF_REF);
+              return callback2();
+            }
+            name = rawName;
+            this._nameCache.set(descriptionFileData, name);
+          } else if (name === NO_SELF_REF) {
+            return callback2();
+          }
+          if (req.startsWith(name) && (req.length === name.length || req.charCodeAt(name.length) === slashCode)) {
+            const remainingRequest = `.${req.slice(name.length)}`;
+            const obj = {
+              ...request,
+              request: remainingRequest,
+              path: (
+                /** @type {string} */
+                request.descriptionFileRoot
+              ),
+              relativePath: "."
+            };
+            resolver.doResolve(
+              target,
+              obj,
+              "self reference",
+              resolveContext,
+              callback2
+            );
+          } else {
+            return callback2();
+          }
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/SymlinkPlugin.js
+var require_SymlinkPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/SymlinkPlugin.js"(exports, module) {
+    "use strict";
+    var forEachBail = require_forEachBail();
+    var { getPathsCached } = require_getPaths();
+    var { PathType, getType } = require_path();
+    module.exports = class SymlinkPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        const fs2 = resolver.fileSystem;
+        resolver.getHook(this.source).tapAsync("SymlinkPlugin", (request, resolveContext, callback2) => {
+          if (request.ignoreSymlinks) return callback2();
+          const pathsResult = getPathsCached(
+            fs2,
+            /** @type {string} */
+            request.path
+          );
+          const { paths, segments: segments2 } = pathsResult;
+          let pathSegments = null;
+          let containsSymlink = false;
+          let idx = -1;
+          forEachBail(
+            paths,
+            /**
+             * @param {string} path path
+             * @param {(err?: null | Error, result?: null | number) => void} callback callback
+             * @returns {void}
+             */
+            (path, callback3) => {
+              idx++;
+              if (resolveContext.fileDependencies) {
+                resolveContext.fileDependencies.add(path);
+              }
+              fs2.readlink(path, (err, result) => {
+                if (!err && result) {
+                  if (pathSegments === null) {
+                    pathSegments = [...segments2];
+                  }
+                  pathSegments[idx] = /** @type {string} */
+                  result;
+                  containsSymlink = true;
+                  const resultType = getType(result.toString());
+                  if (resultType === PathType.AbsoluteWin || resultType === PathType.AbsolutePosix) {
+                    return callback3(null, idx);
+                  }
+                }
+                callback3();
+              });
+            },
+            /**
+             * @param {null | Error=} err error
+             * @param {null | number=} idx result
+             * @returns {void}
+             */
+            (err, idx2) => {
+              if (!containsSymlink) return callback2();
+              const own = (
+                /** @type {string[]} */
+                pathSegments
+              );
+              const resultSegments = typeof idx2 === "number" ? own.slice(0, idx2 + 1) : own;
+              const result = resultSegments.reduceRight(
+                (a, b) => resolver.join(a, b)
+              );
+              const obj = {
+                ...request,
+                path: result
+              };
+              resolver.doResolve(
+                target,
+                obj,
+                `resolved symlink to ${result}`,
+                resolveContext,
+                (err2, innerResult) => {
+                  if (err2) return callback2(err2);
+                  if (innerResult) return callback2(null, innerResult);
+                  return callback2(null, null);
+                }
+              );
+            }
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/SyncAsyncFileSystemDecorator.js
+var require_SyncAsyncFileSystemDecorator = __commonJS({
+  "node_modules/enhanced-resolve/lib/SyncAsyncFileSystemDecorator.js"(exports, module) {
+    "use strict";
+    function SyncAsyncFileSystemDecorator(fs2) {
+      this.fs = fs2;
+      this.lstat = void 0;
+      this.lstatSync = void 0;
+      const { lstatSync: lstatSync6 } = fs2;
+      if (lstatSync6) {
+        this.lstat = /** @type {FileSystem["lstat"]} */
+        ((arg, options, callback2) => {
+          let result;
+          try {
+            result = /** @type {SyncOrAsyncFunction | undefined} */
+            callback2 ? lstatSync6.call(fs2, arg, options) : lstatSync6.call(fs2, arg);
+          } catch (err) {
+            return (callback2 || options)(
+              /** @type {NodeJS.ErrnoException | null} */
+              err
+            );
+          }
+          (callback2 || options)(
+            null,
+            /** @type {ResultOfSyncOrAsyncFunction} */
+            result
+          );
+        });
+        this.lstatSync = /** @type {SyncFileSystem["lstatSync"]} */
+        ((arg, options) => lstatSync6.call(fs2, arg, options));
+      }
+      this.stat = /** @type {FileSystem["stat"]} */
+      ((arg, options, callback2) => {
+        let result;
+        try {
+          result = /** @type {SyncOrAsyncFunction | undefined} */
+          callback2 ? fs2.statSync(arg, options) : fs2.statSync(arg);
+        } catch (err) {
+          return (callback2 || options)(
+            /** @type {NodeJS.ErrnoException | null} */
+            err
+          );
+        }
+        (callback2 || options)(
+          null,
+          /** @type {ResultOfSyncOrAsyncFunction} */
+          result
+        );
+      });
+      this.statSync = /** @type {SyncFileSystem["statSync"]} */
+      ((arg, options) => fs2.statSync(arg, options));
+      this.readdir = /** @type {FileSystem["readdir"]} */
+      ((arg, options, callback2) => {
+        let result;
+        try {
+          result = /** @type {SyncOrAsyncFunction | undefined} */
+          callback2 ? fs2.readdirSync(
+            arg,
+            /** @type {Exclude<Parameters<FileSystem["readdir"]>[1], (err: NodeJS.ErrnoException | null, files: string[]) => void>} */
+            options
+          ) : fs2.readdirSync(arg);
+        } catch (err) {
+          return (callback2 || options)(
+            /** @type {NodeJS.ErrnoException | null} */
+            err,
+            []
+          );
+        }
+        (callback2 || options)(
+          null,
+          /** @type {ResultOfSyncOrAsyncFunction} */
+          result
+        );
+      });
+      this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */
+      ((arg, options) => fs2.readdirSync(
+        arg,
+        /** @type {Parameters<SyncFileSystem["readdirSync"]>[1]} */
+        options
+      ));
+      this.readFile = /** @type {FileSystem["readFile"]} */
+      ((arg, options, callback2) => {
+        let result;
+        try {
+          result = /** @type {SyncOrAsyncFunction | undefined} */
+          callback2 ? fs2.readFileSync(arg, options) : fs2.readFileSync(arg);
+        } catch (err) {
+          return (callback2 || options)(
+            /** @type {NodeJS.ErrnoException | null} */
+            err
+          );
+        }
+        (callback2 || options)(
+          null,
+          /** @type {ResultOfSyncOrAsyncFunction} */
+          result
+        );
+      });
+      this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
+      ((arg, options) => fs2.readFileSync(arg, options));
+      this.readlink = /** @type {FileSystem["readlink"]} */
+      ((arg, options, callback2) => {
+        let result;
+        try {
+          result = /** @type {SyncOrAsyncFunction | undefined} */
+          callback2 ? fs2.readlinkSync(
+            arg,
+            /** @type {Exclude<Parameters<FileSystem["readlink"]>[1], StringCallback>} */
+            options
+          ) : fs2.readlinkSync(arg);
+        } catch (err) {
+          return (callback2 || options)(
+            /** @type {NodeJS.ErrnoException | null} */
+            err
+          );
+        }
+        (callback2 || options)(
+          null,
+          /** @type {ResultOfSyncOrAsyncFunction} */
+          result
+        );
+      });
+      this.readlinkSync = /** @type {SyncFileSystem["readlinkSync"]} */
+      ((arg, options) => fs2.readlinkSync(
+        arg,
+        /** @type {Parameters<SyncFileSystem["readlinkSync"]>[1]} */
+        options
+      ));
+      this.readJson = void 0;
+      this.readJsonSync = void 0;
+      const { readJsonSync } = fs2;
+      if (readJsonSync) {
+        this.readJson = /** @type {FileSystem["readJson"]} */
+        ((arg, callback2) => {
+          let result;
+          try {
+            result = readJsonSync.call(fs2, arg);
+          } catch (err) {
+            return callback2(
+              /** @type {NodeJS.ErrnoException | Error | null} */
+              err
+            );
+          }
+          callback2(null, result);
+        });
+        this.readJsonSync = /** @type {SyncFileSystem["readJsonSync"]} */
+        ((arg) => readJsonSync.call(fs2, arg));
+      }
+      this.realpath = void 0;
+      this.realpathSync = void 0;
+      const { realpathSync: realpathSync9 } = fs2;
+      if (realpathSync9) {
+        this.realpath = /** @type {FileSystem["realpath"]} */
+        ((arg, options, callback2) => {
+          let result;
+          try {
+            result = /** @type {SyncOrAsyncFunction | undefined} */
+            callback2 ? realpathSync9.call(
+              fs2,
+              arg,
+              /** @type {Exclude<Parameters<NonNullable<FileSystem["realpath"]>>[1], StringCallback>} */
+              options
+            ) : realpathSync9.call(fs2, arg);
+          } catch (err) {
+            return (callback2 || options)(
+              /** @type {NodeJS.ErrnoException | null} */
+              err
+            );
+          }
+          (callback2 || options)(
+            null,
+            /** @type {ResultOfSyncOrAsyncFunction} */
+            result
+          );
+        });
+        this.realpathSync = /** @type {SyncFileSystem["realpathSync"]} */
+        ((arg, options) => realpathSync9.call(
+          fs2,
+          arg,
+          /** @type {Parameters<NonNullable<SyncFileSystem["realpathSync"]>>[1]} */
+          options
+        ));
+      }
+    }
+    module.exports = SyncAsyncFileSystemDecorator;
+  }
+});
+
+// node_modules/enhanced-resolve/lib/TryNextPlugin.js
+var require_TryNextPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/TryNextPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class TryNextPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string} message message
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, message2, target) {
+        this.source = source;
+        this.message = message2;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("TryNextPlugin", (request, resolveContext, callback2) => {
+          resolver.doResolve(
+            target,
+            request,
+            this.message,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/TsconfigPathsPlugin.js
+var require_TsconfigPathsPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/TsconfigPathsPlugin.js"(exports, module) {
+    "use strict";
+    var { aliasResolveHandler, compileAliasOptions } = require_AliasUtils();
+    var { modulesResolveHandler } = require_ModulesUtils();
+    var { readJson } = require_fs();
+    var { PathType: _PathType, isSubPath, normalize: normalize3 } = require_path();
+    var NULL_CONTEXT = /* @__PURE__ */ Symbol("NULL_CONTEXT");
+    var _contextSelectionCache = /* @__PURE__ */ new WeakMap();
+    var DEFAULT_CONFIG_FILE = "tsconfig.json";
+    var READ_JSON_OPTIONS = { stripComments: true };
+    var WILDCARD_TAIL_RE = /[/\\]\*$/;
+    function getPrefixLength(pattern2) {
+      const prefixLength = pattern2.indexOf("*");
+      if (prefixLength === -1) {
+        return pattern2.length;
+      }
+      return prefixLength;
+    }
+    function sortByLongestPrefix(arr) {
+      return [...arr].sort((a, b) => getPrefixLength(b) - getPrefixLength(a));
+    }
+    function mergeTsconfigs(base, config) {
+      base = base || {};
+      config = config || {};
+      return {
+        ...base,
+        ...config,
+        compilerOptions: {
+          .../** @type {TsconfigCompilerOptions} */
+          base.compilerOptions,
+          .../** @type {TsconfigCompilerOptions} */
+          config.compilerOptions
+        }
+      };
+    }
+    function substituteConfigDir(pathValue, configDir) {
+      if (!pathValue.includes("${configDir}")) return pathValue;
+      return pathValue.replace(/\$\{configDir\}/g, configDir);
+    }
+    function tsconfigPathsToResolveOptions(configDir, paths, resolver, baseUrl) {
+      const absoluteBaseUrl = !baseUrl ? configDir : resolver.join(configDir, baseUrl);
+      const sortedKeys = sortByLongestPrefix(Object.keys(paths));
+      const alias = [];
+      const modules = [];
+      for (const pattern2 of sortedKeys) {
+        const mappings = paths[pattern2];
+        const absolutePaths = mappings.map((mapping) => {
+          const substituted = substituteConfigDir(mapping, configDir);
+          return resolver.join(absoluteBaseUrl, substituted);
+        });
+        if (absolutePaths.length > 0) {
+          if (pattern2 === "*") {
+            for (let j = 0; j < absolutePaths.length; j++) {
+              const dir = absolutePaths[j];
+              if (WILDCARD_TAIL_RE.test(dir)) {
+                modules.push(dir.replace(WILDCARD_TAIL_RE, ""));
+              }
+            }
+          } else {
+            alias.push({ name: pattern2, alias: absolutePaths });
+          }
+        }
+      }
+      if (baseUrl && absoluteBaseUrl && !modules.includes(absoluteBaseUrl)) {
+        modules.push(absoluteBaseUrl);
+      }
+      return {
+        alias: compileAliasOptions(resolver, alias),
+        modules
+      };
+    }
+    function getAbsoluteBaseUrl(context, resolver, baseUrl) {
+      return !baseUrl ? context : resolver.join(context, baseUrl);
+    }
+    function buildTsconfigPathsMap(main2, mainContext, refs, fileDependencies) {
+      const allContexts = (
+        /** @type {{ [context: string]: TsconfigPathsData }} */
+        {
+          [mainContext]: main2,
+          ...refs
+        }
+      );
+      const contextList = Object.keys(allContexts);
+      return {
+        main: main2,
+        mainContext,
+        refs,
+        allContexts,
+        contextList,
+        fileDependencies
+      };
+    }
+    module.exports = class TsconfigPathsPlugin {
+      /**
+       * @param {true | string | TsconfigOptions} configFileOrOptions tsconfig file path or options object
+       */
+      constructor(configFileOrOptions) {
+        if (typeof configFileOrOptions === "object" && configFileOrOptions !== null) {
+          const { configFile } = configFileOrOptions;
+          this.isAutoConfigFile = typeof configFile !== "string";
+          this.configFile = this.isAutoConfigFile ? DEFAULT_CONFIG_FILE : (
+            /** @type {string} */
+            configFile
+          );
+          if (Array.isArray(configFileOrOptions.references)) {
+            this.references = configFileOrOptions.references.map((ref2) => ({
+              path: ref2
+            }));
+          } else if (configFileOrOptions.references === "auto") {
+            this.references = "auto";
+          } else {
+            this.references = [];
+          }
+          this.baseUrl = configFileOrOptions.baseUrl;
+        } else {
+          this.isAutoConfigFile = configFileOrOptions === true;
+          this.configFile = this.isAutoConfigFile ? DEFAULT_CONFIG_FILE : (
+            /** @type {string} */
+            configFileOrOptions
+          );
+          this.references = [];
+          this.baseUrl = void 0;
+        }
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const aliasTarget = resolver.ensureHook("internal-resolve");
+        const moduleTarget = resolver.ensureHook("module");
+        resolver.getHook("raw-resolve").tapAsync("TsconfigPathsPlugin", (request, resolveContext, callback2) => {
+          this._getTsconfigPathsMap(
+            resolver,
+            request,
+            resolveContext,
+            (err, tsconfigPathsMap) => {
+              if (err) return callback2(err);
+              if (!tsconfigPathsMap) return callback2();
+              const selectedData = this._selectPathsDataForContext(
+                request.path,
+                tsconfigPathsMap
+              );
+              if (!selectedData) return callback2();
+              aliasResolveHandler(
+                resolver,
+                selectedData.alias,
+                aliasTarget,
+                request,
+                resolveContext,
+                (err2, result) => {
+                  if (err2) return callback2(err2);
+                  if (result) return callback2(null, result);
+                  return callback2();
+                }
+              );
+            }
+          );
+        });
+        resolver.getHook("raw-module").tapAsync("TsconfigPathsPlugin", (request, resolveContext, callback2) => {
+          this._getTsconfigPathsMap(
+            resolver,
+            request,
+            resolveContext,
+            (err, tsconfigPathsMap) => {
+              if (err) return callback2(err);
+              if (!tsconfigPathsMap) return callback2();
+              const selectedData = this._selectPathsDataForContext(
+                request.path,
+                tsconfigPathsMap
+              );
+              if (!selectedData) return callback2();
+              modulesResolveHandler(
+                resolver,
+                selectedData.modules,
+                moduleTarget,
+                request,
+                resolveContext,
+                callback2
+              );
+            }
+          );
+        });
+      }
+      /**
+       * Get TsconfigPathsMap for the request (with caching)
+       * @param {Resolver} resolver the resolver
+       * @param {ResolveRequest} request the request
+       * @param {ResolveContext} resolveContext the resolve context
+       * @param {(err: Error | null, result?: TsconfigPathsMap | null) => void} callback the callback
+       * @returns {void}
+       */
+      _getTsconfigPathsMap(resolver, request, resolveContext, callback2) {
+        if (typeof request.tsconfigPathsMap !== "undefined") {
+          const cached = request.tsconfigPathsMap;
+          if (!cached) return callback2(null, null);
+          if (resolveContext.fileDependencies) {
+            for (const fileDependency of cached.fileDependencies) {
+              resolveContext.fileDependencies.add(fileDependency);
+            }
+          }
+          return callback2(null, cached);
+        }
+        if (this.isAutoConfigFile) {
+          this._findTsconfigUpward(
+            resolver,
+            request.path || process.cwd(),
+            (err, result) => {
+              if (err) {
+                request.tsconfigPathsMap = null;
+                return callback2(err);
+              }
+              if (!result) {
+                request.tsconfigPathsMap = null;
+                return callback2(null, null);
+              }
+              const map = (
+                /** @type {TsconfigPathsMap} */
+                result
+              );
+              request.tsconfigPathsMap = map;
+              if (resolveContext.fileDependencies) {
+                for (const fileDependency of map.fileDependencies) {
+                  resolveContext.fileDependencies.add(fileDependency);
+                }
+              }
+              callback2(null, map);
+            }
+          );
+          return;
+        }
+        const absTsconfigPath = resolver.join(
+          request.path || process.cwd(),
+          this.configFile
+        );
+        this._loadTsconfigPathsMap(resolver, absTsconfigPath, (err, result) => {
+          if (err) {
+            request.tsconfigPathsMap = null;
+            return callback2(err);
+          }
+          const map = (
+            /** @type {TsconfigPathsMap} */
+            result
+          );
+          request.tsconfigPathsMap = map;
+          if (resolveContext.fileDependencies) {
+            for (const fileDependency of map.fileDependencies) {
+              resolveContext.fileDependencies.add(fileDependency);
+            }
+          }
+          callback2(null, map);
+        });
+      }
+      /**
+       * Walk up from startDir to the filesystem root looking for tsconfig.json.
+       * Like TypeScript's own `findConfigFile` / `forEachAncestorDirectory`.
+       * @param {Resolver} resolver the resolver
+       * @param {string} startDir the directory to start searching from
+       * @param {(err: Error | null, result?: TsconfigPathsMap | null) => void} callback the callback
+       * @returns {void}
+       */
+      _findTsconfigUpward(resolver, startDir, callback2) {
+        const { fileSystem } = resolver;
+        const configFileName = this.configFile;
+        const check = (dir) => {
+          const candidate = resolver.join(dir, configFileName);
+          fileSystem.stat(candidate, (statErr) => {
+            if (!statErr) {
+              this._loadTsconfigPathsMap(resolver, candidate, (loadErr, result) => {
+                if (loadErr) {
+                  return callback2(null, null);
+                }
+                callback2(null, result);
+              });
+              return;
+            }
+            const parentDir2 = resolver.dirname(dir);
+            if (parentDir2 === dir) {
+              return callback2(null, null);
+            }
+            check(parentDir2);
+          });
+        };
+        check(startDir);
+      }
+      /**
+       * Load tsconfig.json and build complete TsconfigPathsMap
+       * Includes main project paths and all referenced projects
+       * @param {Resolver} resolver the resolver
+       * @param {string} absTsconfigPath absolute path to tsconfig.json
+       * @param {(err: Error | null, result?: TsconfigPathsMap) => void} callback the callback
+       * @returns {void}
+       */
+      _loadTsconfigPathsMap(resolver, absTsconfigPath, callback2) {
+        const fileDependencies = /* @__PURE__ */ new Set();
+        this._loadTsconfig(
+          resolver,
+          absTsconfigPath,
+          fileDependencies,
+          void 0,
+          (err, config) => {
+            if (err) return callback2(err);
+            const cfg = (
+              /** @type {Tsconfig} */
+              config
+            );
+            const compilerOptions = cfg.compilerOptions || {};
+            const mainContext = resolver.dirname(absTsconfigPath);
+            const baseUrl = this.baseUrl !== void 0 ? this.baseUrl : compilerOptions.baseUrl;
+            const main2 = tsconfigPathsToResolveOptions(
+              mainContext,
+              compilerOptions.paths || {},
+              resolver,
+              baseUrl
+            );
+            const refs = {};
+            let referencesToUse = null;
+            if (this.references === "auto") {
+              referencesToUse = cfg.references;
+            } else if (Array.isArray(this.references)) {
+              referencesToUse = this.references;
+            }
+            if (!Array.isArray(referencesToUse)) {
+              return callback2(
+                null,
+                buildTsconfigPathsMap(main2, mainContext, refs, fileDependencies)
+              );
+            }
+            this._loadTsconfigReferences(
+              resolver,
+              mainContext,
+              referencesToUse,
+              fileDependencies,
+              refs,
+              (refErr) => {
+                if (refErr) return callback2(refErr);
+                callback2(
+                  null,
+                  buildTsconfigPathsMap(main2, mainContext, refs, fileDependencies)
+                );
+              }
+            );
+          }
+        );
+      }
+      /**
+       * Select the correct TsconfigPathsData based on request.path (context-aware)
+       * Matches the behavior of tsconfig-paths-webpack-plugin
+       * @param {string | false} requestPath the request path
+       * @param {TsconfigPathsMap} tsconfigPathsMap the tsconfig paths map
+       * @returns {TsconfigPathsData | null} the selected paths data
+       */
+      _selectPathsDataForContext(requestPath, tsconfigPathsMap) {
+        const { main: main2, allContexts, contextList } = tsconfigPathsMap;
+        if (!requestPath) {
+          return main2;
+        }
+        let perMap;
+        if (contextList.length >= 2) {
+          perMap = _contextSelectionCache.get(tsconfigPathsMap);
+          if (perMap !== void 0) {
+            const cached = perMap.get(requestPath);
+            if (cached !== void 0) {
+              return cached === NULL_CONTEXT ? null : (
+                /** @type {TsconfigPathsData} */
+                cached
+              );
+            }
+          } else {
+            perMap = /* @__PURE__ */ new Map();
+            _contextSelectionCache.set(tsconfigPathsMap, perMap);
+          }
+        }
+        let longestMatchContext = null;
+        let longestMatchLength = 0;
+        for (let i2 = 0; i2 < contextList.length; i2++) {
+          const context = contextList[i2];
+          if (context === requestPath) {
+            const exact = allContexts[context];
+            if (perMap !== void 0) perMap.set(requestPath, exact);
+            return exact;
+          }
+          if (context.length > longestMatchLength && isSubPath(context, requestPath)) {
+            longestMatchContext = context;
+            longestMatchLength = context.length;
+          }
+        }
+        const result = longestMatchContext === null ? null : allContexts[longestMatchContext];
+        if (perMap !== void 0) {
+          perMap.set(requestPath, result === null ? NULL_CONTEXT : result);
+        }
+        return result;
+      }
+      /**
+       * Load tsconfig from extends path
+       * @param {Resolver} resolver the resolver
+       * @param {string} configFilePath current config file path
+       * @param {string} extendedConfigValue extends value
+       * @param {Set<string>} fileDependencies the file dependencies
+       * @param {Set<string>} visitedConfigPaths config paths being loaded (for circular extends detection)
+       * @param {(err: Error | null, result?: Tsconfig) => void} callback callback
+       * @returns {void}
+       */
+      _loadTsconfigFromExtends(resolver, configFilePath, extendedConfigValue, fileDependencies, visitedConfigPaths, callback2) {
+        const { fileSystem } = resolver;
+        const currentDir = resolver.dirname(configFilePath);
+        extendedConfigValue = substituteConfigDir(extendedConfigValue, currentDir);
+        const originalExtendedConfigValue = extendedConfigValue;
+        if (typeof extendedConfigValue === "string" && !extendedConfigValue.includes(".json")) {
+          extendedConfigValue += ".json";
+        }
+        const initialExtendedConfigPath = resolver.join(
+          currentDir,
+          extendedConfigValue
+        );
+        const loadExtended = (extendedConfigPath) => {
+          this._loadTsconfig(
+            resolver,
+            extendedConfigPath,
+            fileDependencies,
+            visitedConfigPaths,
+            (err, config) => {
+              if (err) return callback2(err);
+              const cfg = (
+                /** @type {Tsconfig} */
+                config
+              );
+              const compilerOptions = cfg.compilerOptions || {
+                baseUrl: void 0
+              };
+              if (compilerOptions.baseUrl) {
+                const extendedConfigDir = resolver.dirname(extendedConfigPath);
+                compilerOptions.baseUrl = getAbsoluteBaseUrl(
+                  extendedConfigDir,
+                  resolver,
+                  compilerOptions.baseUrl
+                );
+              }
+              delete cfg.references;
+              callback2(null, cfg);
+            }
+          );
+        };
+        fileSystem.stat(initialExtendedConfigPath, (existsErr) => {
+          if (!existsErr) return loadExtended(initialExtendedConfigPath);
+          let nodeModulesSubPath = null;
+          if (typeof originalExtendedConfigValue === "string" && originalExtendedConfigValue.startsWith("@") && originalExtendedConfigValue.split("/").length === 2) {
+            nodeModulesSubPath = `${originalExtendedConfigValue}/${DEFAULT_CONFIG_FILE}`;
+          } else if (extendedConfigValue.includes("/") && !originalExtendedConfigValue.startsWith(".") && !originalExtendedConfigValue.startsWith("/")) {
+            nodeModulesSubPath = extendedConfigValue;
+          } else if (!originalExtendedConfigValue.startsWith(".") && !originalExtendedConfigValue.startsWith("/")) {
+            nodeModulesSubPath = `${originalExtendedConfigValue}/${DEFAULT_CONFIG_FILE}`;
+          }
+          if (nodeModulesSubPath === null) {
+            return loadExtended(initialExtendedConfigPath);
+          }
+          const subPath = normalize3(`node_modules/${nodeModulesSubPath}`);
+          this._findExtendsInNodeModules(resolver, currentDir, subPath, (found) => {
+            loadExtended(found || resolver.join(currentDir, subPath));
+          });
+        });
+      }
+      /**
+       * Walk up from startDir looking for `<dir>/<subPath>` (a
+       * `node_modules/...` sub-path), matching Node.js module resolution so a
+       * package hoisted to a parent workspace's node_modules is found.
+       * @param {Resolver} resolver the resolver
+       * @param {string} startDir directory to start searching from
+       * @param {string} subPath node_modules-relative sub-path to look for
+       * @param {(found: string | null) => void} callback receives the found path or null
+       * @returns {void}
+       */
+      _findExtendsInNodeModules(resolver, startDir, subPath, callback2) {
+        const { fileSystem } = resolver;
+        const check = (dir) => {
+          const candidate = resolver.join(dir, subPath);
+          fileSystem.stat(candidate, (statErr) => {
+            if (!statErr) return callback2(candidate);
+            const parentDir2 = resolver.dirname(dir);
+            if (parentDir2 === dir) return callback2(null);
+            check(parentDir2);
+          });
+        };
+        check(startDir);
+      }
+      /**
+       * Load referenced tsconfig projects and store in referenceMatchMap
+       * Simple implementation matching tsconfig-paths-webpack-plugin:
+       * Just load each reference and store independently
+       * @param {Resolver} resolver the resolver
+       * @param {string} context the context
+       * @param {TsconfigReference[]} references array of references
+       * @param {Set<string>} fileDependencies the file dependencies
+       * @param {{ [baseUrl: string]: TsconfigPathsData }} referenceMatchMap the map to populate
+       * @param {(err: Error | null) => void} callback callback
+       * @param {Set<string>=} visitedRefPaths visited reference config paths (for circular reference detection)
+       * @returns {void}
+       */
+      _loadTsconfigReferences(resolver, context, references, fileDependencies, referenceMatchMap, callback2, visitedRefPaths) {
+        if (references.length === 0) return callback2(null);
+        const visited = visitedRefPaths || /* @__PURE__ */ new Set();
+        let pending = references.length;
+        const finishOne = () => {
+          if (--pending === 0) callback2(null);
+        };
+        for (const ref2 of references) {
+          const refPath = substituteConfigDir(ref2.path, context);
+          const refConfigPath = resolver.join(
+            resolver.join(context, refPath),
+            DEFAULT_CONFIG_FILE
+          );
+          if (visited.has(refConfigPath)) {
+            finishOne();
+            continue;
+          }
+          visited.add(refConfigPath);
+          this._loadTsconfig(
+            resolver,
+            refConfigPath,
+            fileDependencies,
+            void 0,
+            (err, refConfig) => {
+              if (err) return finishOne();
+              const cfg = (
+                /** @type {Tsconfig} */
+                refConfig
+              );
+              if (cfg.compilerOptions && cfg.compilerOptions.paths) {
+                const refContext = resolver.dirname(refConfigPath);
+                referenceMatchMap[refContext] = tsconfigPathsToResolveOptions(
+                  refContext,
+                  cfg.compilerOptions.paths || {},
+                  resolver,
+                  cfg.compilerOptions.baseUrl
+                );
+              }
+              if (this.references === "auto" && Array.isArray(cfg.references)) {
+                this._loadTsconfigReferences(
+                  resolver,
+                  resolver.dirname(refConfigPath),
+                  cfg.references,
+                  fileDependencies,
+                  referenceMatchMap,
+                  finishOne,
+                  visited
+                );
+              } else {
+                finishOne();
+              }
+            }
+          );
+        }
+      }
+      /**
+       * Load tsconfig.json with extends support
+       * @param {Resolver} resolver the resolver
+       * @param {string} configFilePath absolute path to tsconfig.json
+       * @param {Set<string>} fileDependencies the file dependencies
+       * @param {Set<string> | undefined} visitedConfigPaths config paths being loaded (for circular extends detection)
+       * @param {(err: Error | null, result?: Tsconfig) => void} callback callback
+       * @returns {void}
+       */
+      _loadTsconfig(resolver, configFilePath, fileDependencies, visitedConfigPaths, callback2) {
+        const visited = visitedConfigPaths || /* @__PURE__ */ new Set();
+        if (visited.has(configFilePath)) {
+          return callback2(
+            null,
+            /** @type {Tsconfig} */
+            {}
+          );
+        }
+        visited.add(configFilePath);
+        readJson(
+          resolver.fileSystem,
+          configFilePath,
+          READ_JSON_OPTIONS,
+          (err, parsed) => {
+            if (err) return callback2(
+              /** @type {Error} */
+              err
+            );
+            const config = (
+              /** @type {Tsconfig} */
+              parsed
+            );
+            fileDependencies.add(configFilePath);
+            const extendedConfig = config.extends;
+            if (!extendedConfig) return callback2(null, config);
+            if (!Array.isArray(extendedConfig)) {
+              this._loadTsconfigFromExtends(
+                resolver,
+                configFilePath,
+                extendedConfig,
+                fileDependencies,
+                visited,
+                (extErr, extendedTsconfig) => {
+                  if (extErr) return callback2(extErr);
+                  callback2(
+                    null,
+                    mergeTsconfigs(
+                      /** @type {Tsconfig} */
+                      extendedTsconfig,
+                      config
+                    )
+                  );
+                }
+              );
+              return;
+            }
+            let base = {};
+            let i2 = 0;
+            const next = () => {
+              if (i2 >= extendedConfig.length) {
+                return callback2(null, mergeTsconfigs(base, config));
+              }
+              this._loadTsconfigFromExtends(
+                resolver,
+                configFilePath,
+                extendedConfig[i2++],
+                fileDependencies,
+                visited,
+                (extErr, extendedTsconfig) => {
+                  if (extErr) return callback2(extErr);
+                  base = mergeTsconfigs(
+                    base,
+                    /** @type {Tsconfig} */
+                    extendedTsconfig
+                  );
+                  next();
+                }
+              );
+            };
+            next();
+          }
+        );
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/UnsafeCachePlugin.js
+var require_UnsafeCachePlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/UnsafeCachePlugin.js"(exports, module) {
+    "use strict";
+    var { isRelativeRequest } = require_path();
+    function joinRelativePreservingLeadingDot(relativePath, request, resolver) {
+      const normalized = resolver.join(relativePath, request);
+      return isRelativeRequest(normalized) ? normalized : `./${normalized}`;
+    }
+    function getCachePath(request) {
+      if (request.descriptionFileRoot && !request.module) {
+        return request.descriptionFileRoot;
+      }
+      return request.path;
+    }
+    function getCacheRequest(request, resolver) {
+      const requestString = request.request;
+      if (!requestString || !request.relativePath || !isRelativeRequest(requestString)) {
+        return requestString;
+      }
+      return joinRelativePreservingLeadingDot(
+        request.relativePath,
+        requestString,
+        resolver
+      );
+    }
+    function getCacheId(type, request, withContext, resolver) {
+      return JSON.stringify({
+        type,
+        context: withContext ? request.context : "",
+        path: getCachePath(request),
+        query: request.query,
+        fragment: request.fragment,
+        request: getCacheRequest(request, resolver)
+      });
+    }
+    module.exports = class UnsafeCachePlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {(request: ResolveRequest) => boolean} filterPredicate filterPredicate
+       * @param {Cache} cache cache
+       * @param {boolean} withContext withContext
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, filterPredicate, cache, withContext, target) {
+        this.source = source;
+        this.filterPredicate = filterPredicate;
+        this.withContext = withContext;
+        this.cache = cache;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("UnsafeCachePlugin", (request, resolveContext, callback2) => {
+          if (!this.filterPredicate(request)) {
+            return resolver.doResolve(
+              target,
+              request,
+              null,
+              resolveContext,
+              callback2
+            );
+          }
+          const isYield = typeof resolveContext.yield === "function";
+          const cacheId = getCacheId(
+            isYield ? "yield" : "default",
+            request,
+            this.withContext,
+            resolver
+          );
+          const cacheEntry = this.cache[cacheId];
+          if (cacheEntry) {
+            if (isYield) {
+              const yield_2 = (
+                /** @type {ResolveContextYield} */
+                resolveContext.yield
+              );
+              if (Array.isArray(cacheEntry)) {
+                for (const result of cacheEntry) yield_2(result);
+              } else {
+                yield_2(cacheEntry);
+              }
+              return callback2(null, null);
+            }
+            return callback2(
+              null,
+              /** @type {ResolveRequest} */
+              cacheEntry
+            );
+          }
+          let yieldFn;
+          let yield_;
+          const yieldResult = [];
+          if (isYield) {
+            yieldFn = resolveContext.yield;
+            yield_ = (result) => {
+              yieldResult.push(result);
+            };
+          }
+          resolver.doResolve(
+            target,
+            request,
+            null,
+            yield_ ? { ...resolveContext, yield: yield_ } : resolveContext,
+            (err, result) => {
+              if (err) return callback2(err);
+              if (isYield) {
+                if (result) yieldResult.push(result);
+                for (const result2 of yieldResult) {
+                  yieldFn(result2);
+                }
+                this.cache[cacheId] = yieldResult;
+                return callback2(null, null);
+              }
+              if (result) return callback2(null, this.cache[cacheId] = result);
+              callback2();
+            }
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/UseFilePlugin.js
+var require_UseFilePlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/UseFilePlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class UseFilePlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string} filename filename
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, filename, target) {
+        this.source = source;
+        this.filename = filename;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("UseFilePlugin", (request, resolveContext, callback2) => {
+          const filePath = resolver.join(
+            /** @type {string} */
+            request.path,
+            this.filename
+          );
+          const obj = {
+            ...request,
+            path: filePath,
+            relativePath: request.relativePath && resolver.join(request.relativePath, this.filename)
+          };
+          resolver.doResolve(
+            target,
+            obj,
+            `using path: ${filePath}`,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/ResolverFactory.js
+var require_ResolverFactory = __commonJS({
+  "node_modules/enhanced-resolve/lib/ResolverFactory.js"(exports, module) {
+    "use strict";
+    var { cwd, versions } = __require("process");
+    var AliasFieldPlugin = require_AliasFieldPlugin();
+    var AliasPlugin = require_AliasPlugin();
+    var AppendPlugin = require_AppendPlugin();
+    var ConditionalPlugin = require_ConditionalPlugin();
+    var DescriptionFilePlugin = require_DescriptionFilePlugin();
+    var DirectoryExistsPlugin = require_DirectoryExistsPlugin();
+    var ExportsFieldPlugin = require_ExportsFieldPlugin();
+    var ExtensionAliasPlugin = require_ExtensionAliasPlugin();
+    var FileExistsPlugin = require_FileExistsPlugin();
+    var ImportsFieldPlugin = require_ImportsFieldPlugin();
+    var JoinRequestPartPlugin = require_JoinRequestPartPlugin();
+    var JoinRequestPlugin = require_JoinRequestPlugin();
+    var MainFieldPlugin = require_MainFieldPlugin();
+    var ModulesInHierarchicalDirectoriesPlugin = require_ModulesInHierarchicalDirectoriesPlugin();
+    var ModulesInRootPlugin = require_ModulesInRootPlugin();
+    var NextPlugin = require_NextPlugin();
+    var PackageMapPlugin = require_PackageMapPlugin();
+    var ParsePlugin = require_ParsePlugin();
+    var PnpPlugin = require_PnpPlugin();
+    var Resolver = require_Resolver();
+    var RestrictionsPlugin = require_RestrictionsPlugin();
+    var ResultPlugin = require_ResultPlugin();
+    var RootsPlugin = require_RootsPlugin();
+    var SelfReferencePlugin = require_SelfReferencePlugin();
+    var SymlinkPlugin = require_SymlinkPlugin();
+    var SyncAsyncFileSystemDecorator = require_SyncAsyncFileSystemDecorator();
+    var TryNextPlugin = require_TryNextPlugin();
+    var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
+    var UnsafeCachePlugin = require_UnsafeCachePlugin();
+    var UseFilePlugin = require_UseFilePlugin();
+    var { PathType, getType, join: join44, toPath } = require_path();
+    function processPnpApiOption(option) {
+      if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
+      versions.pnp) {
+        const _findPnpApi = (
+          /** @type {(issuer: string) => PnpApi | null}} */
+          // @ts-expect-error maybe nothing
+          __require("module").findPnpApi
+        );
+        if (_findPnpApi) {
+          return {
+            resolveToUnqualified(request, issuer, opts) {
+              const pnpapi = _findPnpApi(issuer);
+              if (!pnpapi) {
+                return null;
+              }
+              return pnpapi.resolveToUnqualified(request, issuer, opts);
+            }
+          };
+        }
+      }
+      return option || null;
+    }
+    function toPathAlias(alias) {
+      if (alias === false) return false;
+      return Array.isArray(alias) ? alias.map(toPath) : toPath(alias);
+    }
+    function normalizeAlias(alias) {
+      if (typeof alias === "object" && !Array.isArray(alias) && alias !== null) {
+        return Object.keys(alias).map((key) => {
+          const obj = {
+            name: key,
+            onlyModule: false,
+            alias: toPathAlias(alias[key])
+          };
+          if (/\$$/.test(key)) {
+            obj.onlyModule = true;
+            obj.name = key.slice(0, -1);
+          }
+          return obj;
+        });
+      }
+      return alias ? alias.map((item) => ({ ...item, alias: toPathAlias(item.alias) })) : [];
+    }
+    function toPackageMapConfigFile(configFile) {
+      const file = toPath(configFile);
+      const type = getType(file);
+      if (type === PathType.AbsolutePosix || type === PathType.AbsoluteWin) {
+        return file;
+      }
+      if (typeof cwd !== "function") {
+        throw new Error(
+          "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
+        );
+      }
+      return join44(cwd(), file);
+    }
+    function normalizePackageMap(packageMap) {
+      if (packageMap === void 0) return null;
+      if (typeof packageMap === "string" || packageMap instanceof URL) {
+        return { configFile: toPackageMapConfigFile(packageMap), packages: null };
+      }
+      const { configFile, packages } = packageMap;
+      if (packages !== void 0 && configFile === void 0) {
+        throw new Error(
+          "The 'packageMap' option needs a 'configFile' next to 'packages' to resolve the package urls against"
+        );
+      }
+      if (configFile === void 0) {
+        throw new Error(
+          "The 'packageMap' option needs either a 'configFile' or 'packages'"
+        );
+      }
+      return {
+        configFile: toPackageMapConfigFile(configFile),
+        packages: packages === void 0 ? null : packages
+      };
+    }
+    function normalizeTsconfig(tsconfig) {
+      if (tsconfig === void 0) return false;
+      if (typeof tsconfig === "boolean") return tsconfig;
+      if (typeof tsconfig === "string" || tsconfig instanceof URL) {
+        return toPath(tsconfig);
+      }
+      const result = {};
+      if (tsconfig.configFile !== void 0) {
+        result.configFile = toPath(tsconfig.configFile);
+      }
+      if (tsconfig.baseUrl !== void 0) {
+        result.baseUrl = toPath(tsconfig.baseUrl);
+      }
+      if (tsconfig.references !== void 0) {
+        result.references = Array.isArray(tsconfig.references) ? tsconfig.references.map(toPath) : tsconfig.references;
+      }
+      return result;
+    }
+    function mergeFilteredToArray(array, filter) {
+      const result = [];
+      const set = new Set(array);
+      for (const item of set) {
+        if (filter(item)) {
+          const lastElement = result.length > 0 ? result[result.length - 1] : void 0;
+          if (Array.isArray(lastElement)) {
+            lastElement.push(item);
+          } else {
+            result.push([item]);
+          }
+        } else {
+          result.push(item);
+        }
+      }
+      return result;
+    }
+    function createOptions(options) {
+      const mainFieldsSet = new Set(options.mainFields || ["main"]);
+      const mainFields = [];
+      for (const item of mainFieldsSet) {
+        if (typeof item === "string") {
+          mainFields.push({
+            name: [item],
+            forceRelative: true
+          });
+        } else if (Array.isArray(item)) {
+          mainFields.push({
+            name: item,
+            forceRelative: true
+          });
+        } else {
+          mainFields.push({
+            name: Array.isArray(item.name) ? item.name : [item.name],
+            forceRelative: item.forceRelative
+          });
+        }
+      }
+      return {
+        alias: normalizeAlias(options.alias),
+        fallback: normalizeAlias(options.fallback),
+        aliasFields: new Set(options.aliasFields),
+        cachePredicate: options.cachePredicate || function trueFn() {
+          return true;
+        },
+        cacheWithContext: typeof options.cacheWithContext !== "undefined" ? options.cacheWithContext : true,
+        exportsFields: new Set(options.exportsFields || ["exports"]),
+        importsFields: new Set(options.importsFields || ["imports"]),
+        conditionNames: new Set(options.conditionNames),
+        descriptionFiles: [
+          ...new Set(options.descriptionFiles || ["package.json"])
+        ],
+        enforceExtension: options.enforceExtension === void 0 ? Boolean(options.extensions && options.extensions.includes("")) : options.enforceExtension,
+        extensions: new Set(options.extensions || [".js", ".json", ".node"]),
+        extensionAlias: options.extensionAlias ? Object.keys(options.extensionAlias).map((k) => ({
+          extension: k,
+          alias: (
+            /** @type {ExtensionAliasOptions} */
+            options.extensionAlias[k]
+          )
+        })) : [],
+        extensionAliasForExports: options.extensionAliasForExports || false,
+        fileSystem: options.useSyncFileSystemCalls ? new SyncAsyncFileSystemDecorator(
+          /** @type {SyncFileSystem} */
+          /** @type {unknown} */
+          options.fileSystem
+        ) : options.fileSystem,
+        unsafeCache: options.unsafeCache && typeof options.unsafeCache !== "object" ? (
+          /** @type {Cache} */
+          {}
+        ) : options.unsafeCache || false,
+        symlinks: typeof options.symlinks !== "undefined" ? options.symlinks : true,
+        resolver: options.resolver,
+        modules: mergeFilteredToArray(
+          Array.isArray(options.modules) ? options.modules.map(toPath) : options.modules ? [toPath(options.modules)] : ["node_modules"],
+          (item) => {
+            const type = getType(item);
+            return type === PathType.Normal || type === PathType.Relative;
+          }
+        ),
+        mainFields,
+        mainFiles: new Set(options.mainFiles || ["index"]),
+        plugins: options.plugins || [],
+        packageMap: normalizePackageMap(options.packageMap),
+        pnpApi: processPnpApiOption(options.pnpApi),
+        roots: new Set(options.roots ? options.roots.map(toPath) : void 0),
+        fullySpecified: options.fullySpecified || false,
+        resolveToContext: options.resolveToContext || false,
+        preferRelative: options.preferRelative || false,
+        preferAbsolute: options.preferAbsolute || false,
+        restrictions: new Set(
+          options.restrictions && options.restrictions.map((r) => r instanceof RegExp ? r : toPath(r))
+        ),
+        tsconfig: normalizeTsconfig(options.tsconfig)
+      };
+    }
+    module.exports.createResolver = function createResolver2(options) {
+      const normalizedOptions = createOptions(options);
+      const {
+        alias,
+        fallback,
+        aliasFields,
+        extensionAliasForExports,
+        cachePredicate,
+        cacheWithContext,
+        conditionNames,
+        descriptionFiles,
+        enforceExtension,
+        exportsFields,
+        extensionAlias,
+        importsFields,
+        extensions,
+        fileSystem,
+        fullySpecified,
+        mainFields,
+        mainFiles,
+        modules,
+        packageMap,
+        plugins: userPlugins,
+        pnpApi,
+        resolveToContext,
+        preferRelative,
+        preferAbsolute,
+        symlinks,
+        unsafeCache,
+        resolver: customResolver,
+        restrictions,
+        roots,
+        tsconfig
+      } = normalizedOptions;
+      const plugins = [...userPlugins];
+      const resolver = customResolver || new Resolver(fileSystem, normalizedOptions);
+      resolver.ensureHook("resolve");
+      resolver.ensureHook("internalResolve");
+      resolver.ensureHook("newInternalResolve");
+      resolver.ensureHook("importsResolve");
+      resolver.ensureHook("parsedResolve");
+      resolver.ensureHook("describedResolve");
+      resolver.ensureHook("rawResolve");
+      resolver.ensureHook("normalResolve");
+      resolver.ensureHook("internal");
+      resolver.ensureHook("rawModule");
+      resolver.ensureHook("alternateRawModule");
+      resolver.ensureHook("module");
+      resolver.ensureHook("resolveAsModule");
+      resolver.ensureHook("undescribedResolveInPackage");
+      resolver.ensureHook("resolveInPackage");
+      resolver.ensureHook("resolveInExistingDirectory");
+      resolver.ensureHook("importsFieldRelative");
+      if (extensionAliasForExports) {
+        resolver.ensureHook("exportsFieldRelative");
+      }
+      resolver.ensureHook("relative");
+      resolver.ensureHook("describedRelative");
+      resolver.ensureHook("directory");
+      resolver.ensureHook("undescribedExistingDirectory");
+      resolver.ensureHook("existingDirectory");
+      resolver.ensureHook("undescribedRawFile");
+      resolver.ensureHook("rawFile");
+      resolver.ensureHook("file");
+      resolver.ensureHook("finalFile");
+      resolver.ensureHook("existingFile");
+      resolver.ensureHook("resolved");
+      resolver.hooks.newInteralResolve = resolver.hooks.newInternalResolve;
+      for (const { source, resolveOptions } of [
+        { source: "resolve", resolveOptions: { fullySpecified } },
+        { source: "internal-resolve", resolveOptions: { fullySpecified: false } },
+        // Entry point for non-relative targets from the imports field.
+        // Sets internal: false to prevent re-entering imports resolution,
+        // aligning with the Node.js ESM spec where PACKAGE_IMPORTS_RESOLVE
+        // does not recursively resolve # specifiers.
+        // https://nodejs.org/api/esm.html#resolution-algorithm-specification
+        {
+          source: "imports-resolve",
+          resolveOptions: { fullySpecified: false, internal: false }
+        }
+      ]) {
+        plugins.push(new ParsePlugin(source, resolveOptions, "parsed-resolve"));
+      }
+      plugins.push(
+        new DescriptionFilePlugin(
+          "parsed-resolve",
+          descriptionFiles,
+          false,
+          "described-resolve"
+        )
+      );
+      plugins.push(new NextPlugin("after-parsed-resolve", "described-resolve"));
+      if (unsafeCache) {
+        plugins.push(
+          new UnsafeCachePlugin(
+            "described-resolve",
+            cachePredicate,
+            /** @type {import("./UnsafeCachePlugin").Cache} */
+            unsafeCache,
+            cacheWithContext,
+            "raw-resolve"
+          )
+        );
+      } else {
+        plugins.push(new NextPlugin("described-resolve", "raw-resolve"));
+      }
+      if (fallback.length > 0) {
+        plugins.push(
+          new AliasPlugin("described-resolve", fallback, "internal-resolve")
+        );
+      }
+      if (alias.length > 0) {
+        plugins.push(new AliasPlugin("raw-resolve", alias, "internal-resolve"));
+      }
+      if (tsconfig) {
+        plugins.push(new TsconfigPathsPlugin(tsconfig));
+      }
+      for (const item of aliasFields) {
+        plugins.push(new AliasFieldPlugin("raw-resolve", item, "internal-resolve"));
+      }
+      for (const item of extensionAlias) {
+        plugins.push(
+          new ExtensionAliasPlugin("raw-resolve", item, "normal-resolve")
+        );
+      }
+      plugins.push(new NextPlugin("raw-resolve", "normal-resolve"));
+      if (preferRelative) {
+        plugins.push(new JoinRequestPlugin("after-normal-resolve", "relative"));
+      }
+      plugins.push(
+        new ConditionalPlugin(
+          "after-normal-resolve",
+          { module: true },
+          "resolve as module",
+          false,
+          "raw-module"
+        )
+      );
+      plugins.push(
+        new ConditionalPlugin(
+          "after-normal-resolve",
+          { internal: true },
+          "resolve as internal import",
+          false,
+          "internal"
+        )
+      );
+      if (preferAbsolute) {
+        plugins.push(new JoinRequestPlugin("after-normal-resolve", "relative"));
+      }
+      if (roots.size > 0) {
+        plugins.push(new RootsPlugin("after-normal-resolve", roots, "relative"));
+      }
+      if (!preferRelative && !preferAbsolute) {
+        plugins.push(new JoinRequestPlugin("after-normal-resolve", "relative"));
+      }
+      for (const importsField of importsFields) {
+        plugins.push(
+          new ImportsFieldPlugin(
+            "internal",
+            conditionNames,
+            importsField,
+            "imports-field-relative",
+            "imports-resolve"
+          )
+        );
+      }
+      for (const item of extensionAlias) {
+        plugins.push(
+          new ExtensionAliasPlugin("imports-field-relative", item, "relative")
+        );
+      }
+      plugins.push(new NextPlugin("imports-field-relative", "relative"));
+      if (packageMap) {
+        plugins.push(
+          new PackageMapPlugin(
+            "raw-module",
+            packageMap,
+            symlinks,
+            "undescribed-resolve-in-package"
+          )
+        );
+      }
+      for (const exportsField of exportsFields) {
+        plugins.push(
+          new SelfReferencePlugin("raw-module", exportsField, "resolve-as-module")
+        );
+      }
+      for (const item of modules) {
+        if (Array.isArray(item)) {
+          if (item.includes("node_modules") && pnpApi) {
+            plugins.push(
+              new ModulesInHierarchicalDirectoriesPlugin(
+                "raw-module",
+                item.filter((i2) => i2 !== "node_modules"),
+                "module"
+              )
+            );
+            plugins.push(
+              new PnpPlugin(
+                "raw-module",
+                pnpApi,
+                "undescribed-resolve-in-package",
+                "alternate-raw-module"
+              )
+            );
+            plugins.push(
+              new ModulesInHierarchicalDirectoriesPlugin(
+                "alternate-raw-module",
+                ["node_modules"],
+                "module"
+              )
+            );
+          } else {
+            plugins.push(
+              new ModulesInHierarchicalDirectoriesPlugin(
+                "raw-module",
+                item,
+                "module"
+              )
+            );
+          }
+        } else {
+          plugins.push(new ModulesInRootPlugin("raw-module", item, "module"));
+        }
+      }
+      plugins.push(new JoinRequestPartPlugin("module", "resolve-as-module"));
+      if (!resolveToContext) {
+        plugins.push(
+          new ConditionalPlugin(
+            "resolve-as-module",
+            { directory: false, request: "." },
+            "single file module",
+            true,
+            "undescribed-raw-file"
+          )
+        );
+      }
+      plugins.push(
+        new DirectoryExistsPlugin(
+          "resolve-as-module",
+          "undescribed-resolve-in-package"
+        )
+      );
+      plugins.push(
+        new DescriptionFilePlugin(
+          "undescribed-resolve-in-package",
+          descriptionFiles,
+          false,
+          "resolve-in-package"
+        )
+      );
+      plugins.push(
+        new NextPlugin(
+          "after-undescribed-resolve-in-package",
+          "resolve-in-package"
+        )
+      );
+      const exportsFieldTarget = extensionAliasForExports ? "exports-field-relative" : "relative";
+      for (const exportsField of exportsFields) {
+        plugins.push(
+          new ExportsFieldPlugin(
+            "resolve-in-package",
+            conditionNames,
+            exportsField,
+            exportsFieldTarget,
+            restrictions.size > 0
+          )
+        );
+      }
+      plugins.push(
+        new NextPlugin("resolve-in-package", "resolve-in-existing-directory")
+      );
+      if (extensionAliasForExports) {
+        for (const item of extensionAlias) {
+          plugins.push(
+            new ExtensionAliasPlugin("exports-field-relative", item, "relative")
+          );
+        }
+        plugins.push(new NextPlugin("exports-field-relative", "relative"));
+      }
+      plugins.push(
+        new JoinRequestPlugin("resolve-in-existing-directory", "relative")
+      );
+      plugins.push(
+        new DescriptionFilePlugin(
+          "relative",
+          descriptionFiles,
+          true,
+          "described-relative"
+        )
+      );
+      plugins.push(new NextPlugin("after-relative", "described-relative"));
+      if (resolveToContext) {
+        plugins.push(new NextPlugin("described-relative", "directory"));
+      } else {
+        plugins.push(
+          new ConditionalPlugin(
+            "described-relative",
+            { directory: false },
+            null,
+            true,
+            "raw-file"
+          )
+        );
+        plugins.push(
+          new ConditionalPlugin(
+            "described-relative",
+            { fullySpecified: false },
+            "as directory",
+            true,
+            "directory"
+          )
+        );
+      }
+      plugins.push(
+        new DirectoryExistsPlugin("directory", "undescribed-existing-directory")
+      );
+      if (resolveToContext) {
+        plugins.push(new NextPlugin("undescribed-existing-directory", "resolved"));
+      } else {
+        plugins.push(
+          new DescriptionFilePlugin(
+            "undescribed-existing-directory",
+            descriptionFiles,
+            false,
+            "existing-directory"
+          )
+        );
+        for (const item of mainFiles) {
+          plugins.push(
+            new UseFilePlugin(
+              "undescribed-existing-directory",
+              item,
+              "undescribed-raw-file"
+            )
+          );
+        }
+        for (const item of mainFields) {
+          plugins.push(
+            new MainFieldPlugin(
+              "existing-directory",
+              item,
+              "resolve-in-existing-directory"
+            )
+          );
+        }
+        for (const item of mainFiles) {
+          plugins.push(
+            new UseFilePlugin("existing-directory", item, "undescribed-raw-file")
+          );
+        }
+        plugins.push(
+          new DescriptionFilePlugin(
+            "undescribed-raw-file",
+            descriptionFiles,
+            true,
+            "raw-file"
+          )
+        );
+        plugins.push(new NextPlugin("after-undescribed-raw-file", "raw-file"));
+        plugins.push(
+          new ConditionalPlugin(
+            "raw-file",
+            { fullySpecified: true },
+            null,
+            false,
+            "file"
+          )
+        );
+        if (!enforceExtension) {
+          plugins.push(new TryNextPlugin("raw-file", "no extension", "file"));
+        }
+        for (const item of extensions) {
+          plugins.push(new AppendPlugin("raw-file", item, "file"));
+        }
+        if (alias.length > 0) {
+          plugins.push(new AliasPlugin("file", alias, "internal-resolve"));
+        }
+        for (const item of aliasFields) {
+          plugins.push(new AliasFieldPlugin("file", item, "internal-resolve"));
+        }
+        plugins.push(new NextPlugin("file", "final-file"));
+        plugins.push(new FileExistsPlugin("final-file", "existing-file"));
+        if (symlinks) {
+          plugins.push(new SymlinkPlugin("existing-file", "existing-file"));
+        }
+        plugins.push(new NextPlugin("existing-file", "resolved"));
+      }
+      const { resolved } = (
+        /** @type {KnownHooks & EnsuredHooks} */
+        resolver.hooks
+      );
+      if (restrictions.size > 0) {
+        plugins.push(new RestrictionsPlugin(resolved, restrictions));
+      }
+      plugins.push(new ResultPlugin(resolved));
+      for (const plugin of plugins) {
+        if (typeof plugin === "function") {
+          plugin.call(resolver, resolver);
+        } else if (plugin) {
+          plugin.apply(resolver);
+        }
+      }
+      return resolver;
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/CloneBasenamePlugin.js
+var require_CloneBasenamePlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/CloneBasenamePlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class CloneBasenamePlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       * @param {string | ResolveStepHook} target target
+       */
+      constructor(source, target) {
+        this.source = source;
+        this.target = target;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const target = resolver.ensureHook(this.target);
+        resolver.getHook(this.source).tapAsync("CloneBasenamePlugin", (request, resolveContext, callback2) => {
+          const requestPath = (
+            /** @type {string} */
+            request.path
+          );
+          const filename = resolver.basename(requestPath);
+          const filePath = resolver.join(requestPath, filename);
+          const obj = {
+            ...request,
+            path: filePath,
+            relativePath: request.relativePath && resolver.join(request.relativePath, filename)
+          };
+          resolver.doResolve(
+            target,
+            obj,
+            `using path: ${filePath}`,
+            resolveContext,
+            callback2
+          );
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/LogInfoPlugin.js
+var require_LogInfoPlugin = __commonJS({
+  "node_modules/enhanced-resolve/lib/LogInfoPlugin.js"(exports, module) {
+    "use strict";
+    module.exports = class LogInfoPlugin {
+      /**
+       * @param {string | ResolveStepHook} source source
+       */
+      constructor(source) {
+        this.source = source;
+      }
+      /**
+       * @param {Resolver} resolver the resolver
+       * @returns {void}
+       */
+      apply(resolver) {
+        const { source } = this;
+        resolver.getHook(this.source).tapAsync("LogInfoPlugin", (request, resolveContext, callback2) => {
+          if (!resolveContext.log) return callback2();
+          const { log } = resolveContext;
+          const prefix = `[${source}] `;
+          if (request.path) {
+            log(`${prefix}Resolving in directory: ${request.path}`);
+          }
+          if (request.request) {
+            log(`${prefix}Resolving request: ${request.request}`);
+          }
+          if (request.module) log(`${prefix}Request is an module request.`);
+          if (request.directory) log(`${prefix}Request is a directory request.`);
+          if (request.query) {
+            log(`${prefix}Resolving request query: ${request.query}`);
+          }
+          if (request.fragment) {
+            log(`${prefix}Resolving request fragment: ${request.fragment}`);
+          }
+          if (request.descriptionFilePath) {
+            log(
+              `${prefix}Has description data from ${request.descriptionFilePath}`
+            );
+          }
+          if (request.relativePath) {
+            log(
+              `${prefix}Relative path from description file is: ${request.relativePath}`
+            );
+          }
+          callback2();
+        });
+      }
+    };
+  }
+});
+
+// node_modules/enhanced-resolve/lib/index.js
+var require_lib2 = __commonJS({
+  "node_modules/enhanced-resolve/lib/index.js"(exports, module) {
+    "use strict";
+    var memoize = require_memoize();
+    var getCachedFileSystem = memoize(() => require_CachedInputFileSystem());
+    var getNodeFileSystem = memoize(() => {
+      const fs2 = require_graceful_fs();
+      const CachedInputFileSystem = getCachedFileSystem();
+      return new CachedInputFileSystem(fs2, 4e3);
+    });
+    var getNodeContext = memoize(() => ({
+      environments: ["node+es3+es5+process+native"]
+    }));
+    var getResolverFactory = memoize(() => require_ResolverFactory());
+    var getAsyncResolver = memoize(
+      () => getResolverFactory().createResolver({
+        conditionNames: ["node"],
+        extensions: [".js", ".json", ".node"],
+        fileSystem: getNodeFileSystem()
+      })
+    );
+    var resolve11 = (
+      /**
+       * @param {object | string | URL} context context
+       * @param {string | URL} parent parent path
+       * @param {string | URL | ResolveContext | ResolveCallback} specifier specifier to resolve
+       * @param {ResolveContext | ResolveCallback=} resolveContext resolve context
+       * @param {ResolveCallback=} callback callback
+       */
+      (context, parent2, specifier, resolveContext, callback2) => {
+        if (typeof context === "string" || context instanceof URL) {
+          callback2 = /** @type {ResolveCallback} */
+          resolveContext;
+          resolveContext = /** @type {ResolveContext} */
+          specifier;
+          specifier = parent2;
+          parent2 = context;
+          context = getNodeContext();
+        }
+        if (typeof callback2 !== "function") {
+          callback2 = /** @type {ResolveCallback} */
+          resolveContext;
+        }
+        getAsyncResolver().resolve(
+          context,
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext,
+          /** @type {ResolveCallback} */
+          callback2
+        );
+      }
+    );
+    var getSyncResolver = memoize(
+      () => getResolverFactory().createResolver({
+        conditionNames: ["node"],
+        extensions: [".js", ".json", ".node"],
+        useSyncFileSystemCalls: true,
+        fileSystem: getNodeFileSystem()
+      })
+    );
+    var resolveSync = (
+      /**
+       * @param {object | string | URL} context context
+       * @param {string | URL} parent parent path
+       * @param {string | URL | ResolveContext | undefined} specifier specifier to resolve
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {string | false} resolved path
+       */
+      (context, parent2, specifier, resolveContext) => {
+        if (typeof context === "string" || context instanceof URL) {
+          resolveContext = /** @type {ResolveContext} */
+          specifier;
+          specifier = parent2;
+          parent2 = context;
+          context = getNodeContext();
+        }
+        return getSyncResolver().resolveSync(
+          context,
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext
+        );
+      }
+    );
+    var resolvePromise = (
+      /**
+       * @param {object | string | URL} context context
+       * @param {string | URL} parent parent path
+       * @param {string | URL | ResolveContext | undefined} specifier specifier to resolve
+       * @param {ResolveContext=} resolveContext resolve context
+       * @returns {Promise<string | false>} resolved path
+       */
+      (context, parent2, specifier, resolveContext) => {
+        if (typeof context === "string" || context instanceof URL) {
+          resolveContext = /** @type {ResolveContext} */
+          specifier;
+          specifier = parent2;
+          parent2 = context;
+          context = getNodeContext();
+        }
+        return getAsyncResolver().resolvePromise(
+          context,
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext
+        );
+      }
+    );
+    function create(options) {
+      const resolver = getResolverFactory().createResolver({
+        ...options,
+        fileSystem: options.fileSystem || getNodeFileSystem()
+      });
+      return function create2(context, parent2, specifier, resolveContext, callback2) {
+        if (typeof context === "string" || context instanceof URL) {
+          callback2 = /** @type {ResolveCallback} */
+          resolveContext;
+          resolveContext = /** @type {ResolveContext} */
+          specifier;
+          specifier = parent2;
+          parent2 = context;
+          context = getNodeContext();
+        }
+        if (typeof callback2 !== "function") {
+          callback2 = /** @type {ResolveCallback} */
+          resolveContext;
+        }
+        resolver.resolve(
+          context,
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext,
+          callback2
+        );
+      };
+    }
+    function createSync(options) {
+      const resolver = getResolverFactory().createResolver({
+        useSyncFileSystemCalls: true,
+        ...options,
+        fileSystem: options.fileSystem || getNodeFileSystem()
+      });
+      return function createSync2(context, parent2, specifier, resolveContext) {
+        if (typeof context === "string" || context instanceof URL) {
+          resolveContext = /** @type {ResolveContext} */
+          specifier;
+          specifier = parent2;
+          parent2 = context;
+          context = getNodeContext();
+        }
+        return resolver.resolveSync(
+          context,
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext
+        );
+      };
+    }
+    function createPromise(options) {
+      const resolver = getResolverFactory().createResolver({
+        ...options,
+        fileSystem: options.fileSystem || getNodeFileSystem()
+      });
+      return function createPromise2(context, parent2, specifier, resolveContext) {
+        if (typeof context === "string" || context instanceof URL) {
+          resolveContext = /** @type {ResolveContext} */
+          specifier;
+          specifier = parent2;
+          parent2 = context;
+          context = getNodeContext();
+        }
+        return resolver.resolvePromise(
+          context,
+          parent2,
+          /** @type {string} */
+          specifier,
+          /** @type {ResolveContext} */
+          resolveContext
+        );
+      };
+    }
+    var mergeExports = (obj, exports2) => {
+      const descriptors = Object.getOwnPropertyDescriptors(exports2);
+      Object.defineProperties(obj, descriptors);
+      return (
+        /** @type {A & B} */
+        Object.freeze(obj)
+      );
+    };
+    module.exports = mergeExports(resolve11, {
+      get sync() {
+        return resolveSync;
+      },
+      get promise() {
+        return resolvePromise;
+      },
+      create: mergeExports(create, {
+        get sync() {
+          return createSync;
+        },
+        get promise() {
+          return createPromise;
+        }
+      }),
+      get ResolverFactory() {
+        return getResolverFactory();
+      },
+      get CachedInputFileSystem() {
+        return getCachedFileSystem();
+      },
+      get CloneBasenamePlugin() {
+        return require_CloneBasenamePlugin();
+      },
+      get LogInfoPlugin() {
+        return require_LogInfoPlugin();
+      },
+      get TsconfigPathsPlugin() {
+        return require_TsconfigPathsPlugin();
+      },
+      get forEachBail() {
+        return require_forEachBail();
+      }
+    });
+  }
+});
+
+// src/runners/node-test/graph/tsconfig.ts
+import { dirname as dirname18, isAbsolute as isAbsolute7, join as join37, resolve as resolve10 } from "node:path";
+function readTsconfigPaths(file, read3) {
+  const files = [];
+  const load = (config, seen) => {
+    files.push(config);
+    const json3 = parseJsonc(read3(config));
+    const raw = json3?.extends;
+    const bases2 = typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
+    let pathsFile = null;
+    let baseUrl = null;
+    for (const base of bases2) {
+      if (typeof base !== "string") continue;
+      const target = locate(base, dirname18(config), read3);
+      if (target === null || seen.has(target)) continue;
+      const inherited = load(target, /* @__PURE__ */ new Set([...seen, target]));
+      pathsFile = inherited.pathsFile ?? pathsFile;
+      baseUrl = inherited.baseUrl ?? baseUrl;
+    }
+    const options = json3?.compilerOptions;
+    if (isObject(options)) {
+      if (isObject(options.paths)) pathsFile = config;
+      if (typeof options.baseUrl === "string") baseUrl = resolve10(dirname18(config), options.baseUrl);
+    }
+    return { pathsFile, baseUrl };
+  };
+  return { ...load(file, /* @__PURE__ */ new Set([file])), files };
+}
+function locate(specifier, dir, read3) {
+  const exists2 = (path) => read3(path) !== null;
+  if (specifier.startsWith(".") || isAbsolute7(specifier)) {
+    const path = resolve10(dir, specifier);
+    return [path, `${path}.json`].find(exists2) ?? null;
+  }
+  for (let at2 = dir; ; at2 = dirname18(at2)) {
+    const base = join37(at2, "node_modules", specifier);
+    const found = [base, `${base}.json`, join37(base, "tsconfig.json")].find(exists2);
+    if (found !== void 0) return found;
+    if (dirname18(at2) === at2) return null;
+  }
+}
+function parseJsonc(text2) {
+  if (text2 === null) return null;
+  let out = "";
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    const c = text2[i2];
+    if (c === '"') {
+      const start = i2;
+      for (i2++; i2 < text2.length && text2[i2] !== '"'; i2++) if (text2[i2] === "\\") i2++;
+      out += text2.slice(start, i2 + 1);
+    } else if (c === "/" && text2[i2 + 1] === "/") {
+      while (i2 < text2.length && text2[i2] !== "\n") i2++;
+      out += "\n";
+    } else if (c === "/" && text2[i2 + 1] === "*") {
+      i2 = text2.indexOf("*/", i2 + 2);
+      if (i2 === -1) break;
+      i2++;
+    } else {
+      out += c;
+    }
+  }
+  try {
+    const parsed = JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
+    return isObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+var isObject;
+var init_tsconfig = __esm({
+  "src/runners/node-test/graph/tsconfig.ts"() {
+    "use strict";
+    isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+});
+
+// src/runners/node-test/graph/resolver.ts
+import * as fs from "node:fs";
+import { isBuiltin as isBuiltin2 } from "node:module";
+import { dirname as dirname19, extname as extname4, join as join38, sep as sep10 } from "node:path";
+function createResolver(chain, root) {
+  let fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
+  let resolvers = /* @__PURE__ */ new Map();
+  let tsconfigs = /* @__PURE__ */ new Map();
+  let realpaths = /* @__PURE__ */ new Map();
+  let resolutions = /* @__PURE__ */ new Map();
+  let tsconfigPaths = /* @__PURE__ */ new Map();
+  let scopes = /* @__PURE__ */ new Map();
+  const tsx = chain.rules === "tsx";
+  const exists2 = (path) => {
+    try {
+      return fileSystem.statSync(path).isFile();
+    } catch {
+      return false;
+    }
+  };
+  const isDirectory2 = (path) => {
+    try {
+      return fileSystem.statSync(path).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  const real2 = (path) => {
+    let found = realpaths.get(path);
+    if (found === void 0) {
+      try {
+        found = fs.realpathSync.native(path);
+      } catch {
+        found = null;
+      }
+      realpaths.set(path, found);
+    }
+    return found;
+  };
+  const readText = (path) => {
+    try {
+      return fileSystem.readFileSync(path).toString("utf8");
+    } catch {
+      return null;
+    }
+  };
+  const chainOf = (tsconfig) => {
+    let found = tsconfigPaths.get(tsconfig);
+    if (found === void 0) {
+      found = readTsconfigPaths(tsconfig, readText);
+      tsconfigPaths.set(tsconfig, found);
+    }
+    return found;
+  };
+  const scopeOf = (dir) => {
+    let found = scopes.get(dir);
+    if (found === void 0) {
+      const manifest = join38(dir, "package.json");
+      const text2 = readText(manifest);
+      const parent2 = dirname19(dir);
+      if (text2 !== null) {
+        const type = parseJsonc(text2)?.type;
+        found = {
+          format: type === "module" ? "module" : "commonjs",
+          manifest: inWorktree(manifest) ? manifest : null
+        };
+      } else {
+        found = parent2 === dir ? { format: "commonjs", manifest: null } : scopeOf(parent2);
+      }
+      scopes.set(dir, found);
+    }
+    return found;
+  };
+  const tsconfigFor = (dir) => {
+    let found = tsconfigs.get(dir);
+    if (found === void 0) {
+      const here = join38(dir, "tsconfig.json");
+      const parent2 = dirname19(dir);
+      found = exists2(here) ? here : dir === root || parent2 === dir ? null : tsconfigFor(parent2);
+      tsconfigs.set(dir, found);
+    }
+    return found;
+  };
+  const tsconfigOption = (paths) => {
+    if (paths === null || paths.pathsFile === null && paths.baseUrl === null) return {};
+    const configFile = paths.pathsFile ?? paths.files[0];
+    return {
+      tsconfig: { configFile, ...paths.baseUrl === null ? {} : { baseUrl: paths.baseUrl } }
+    };
+  };
+  const resolverFor = (paths, kind) => {
+    const option = tsconfigOption(paths);
+    const key = `${JSON.stringify(option)}\0${kind}`;
+    let resolver = resolvers.get(key);
+    if (resolver === void 0) {
+      resolver = import_enhanced_resolve.default.ResolverFactory.createResolver({
+        fileSystem,
+        useSyncFileSystemCalls: true,
+        conditionNames: ["node", kind, ...chain.conditions],
+        symlinks: true,
+        ...tsx ? {
+          extensions: TSX_EXTENSIONS,
+          extensionAlias: TSX_ALIAS,
+          ...option
+        } : kind === "import" ? { extensions: [], fullySpecified: true } : { extensions: NODE_REQUIRE_EXTENSIONS }
+      });
+      resolvers.set(key, resolver);
+    }
+    return resolver;
+  };
+  function inWorktree(path) {
+    return path.startsWith(root + sep10) && !path.includes(NODE_MODULES2) && !path.endsWith(NODE_MODULES_DIR);
+  }
+  return {
+    resolve(specifier, importer, kind) {
+      if (isBuiltin2(specifier)) return BUILTIN;
+      const from = dirname19(importer);
+      const key = `${from}\0${kind}\0${specifier}`;
+      let resolution = resolutions.get(key);
+      if (resolution === void 0) {
+        resolution = resolveFrom(specifier, from, kind);
+        resolutions.set(key, resolution);
+      }
+      return resolution;
+    },
+    moduleFormat(file) {
+      if (COMMONJS.test(file)) return { format: "commonjs", manifest: null };
+      if (MODULE.test(file)) return { format: "module", manifest: null };
+      return scopeOf(dirname19(file));
+    },
+    clear() {
+      fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
+      resolvers = /* @__PURE__ */ new Map();
+      tsconfigs = /* @__PURE__ */ new Map();
+      realpaths = /* @__PURE__ */ new Map();
+      resolutions = /* @__PURE__ */ new Map();
+      tsconfigPaths = /* @__PURE__ */ new Map();
+      scopes = /* @__PURE__ */ new Map();
+    }
+  };
+  function resolveFrom(specifier, from, kind) {
+    const tsconfig = tsx ? tsconfigFor(from) : null;
+    const paths = tsconfig === null ? null : chainOf(tsconfig);
+    const resolver = resolverFor(paths, kind);
+    const context = {
+      fileDependencies: /* @__PURE__ */ new Set(),
+      missingDependencies: /* @__PURE__ */ new Set(),
+      contextDependencies: /* @__PURE__ */ new Set()
+    };
+    let target;
+    try {
+      target = resolver.resolveSync({}, from, specifier, context);
+    } catch {
+      target = false;
+    }
+    const path = target === false ? null : target;
+    const reads = new Set((paths?.files ?? []).filter(inWorktree));
+    for (const dependency of context.fileDependencies) {
+      if (!dependency.endsWith(".json") || dependency === target) continue;
+      const read3 = dependency.includes(NODE_MODULES2) ? real2(dependency) : dependency;
+      if (read3 !== null && read3 !== path && inWorktree(read3)) reads.add(read3);
+    }
+    const candidates = path === null ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory2(p)) : [];
+    return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(specifier, path) };
+  }
+  function pairOf(specifier, path) {
+    if (!tsx || path === null) return null;
+    const asked = extname4(specifier);
+    const got = extname4(path);
+    if (TSX_ALIAS[asked] === void 0 || got === asked) return null;
+    const twin = path.slice(0, -got.length) + asked;
+    return exists2(twin) ? [twin, path] : null;
+  }
+}
+var import_enhanced_resolve, TSX_EXTENSIONS, TSX_ALIAS, NODE_REQUIRE_EXTENSIONS, NODE_MODULES2, NODE_MODULES_DIR, COMMONJS, MODULE, BUILTIN;
+var init_resolver = __esm({
+  "src/runners/node-test/graph/resolver.ts"() {
+    "use strict";
+    import_enhanced_resolve = __toESM(require_lib2(), 1);
+    init_tsconfig();
+    TSX_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".mjs", ".cjs", ".json"];
+    TSX_ALIAS = {
+      ".js": [".ts", ".tsx", ".js"],
+      ".mjs": [".mts", ".mjs"],
+      ".cjs": [".cts", ".cjs"]
+    };
+    NODE_REQUIRE_EXTENSIONS = [".js", ".json", ".node", ".ts", ".cts", ".mts"];
+    NODE_MODULES2 = `${sep10}node_modules${sep10}`;
+    NODE_MODULES_DIR = `${sep10}node_modules`;
+    COMMONJS = /\.c[jt]s$/;
+    MODULE = /\.m[jt]s$/;
+    BUILTIN = { path: null, builtin: true, reads: [], candidates: [], pair: null };
+  }
+});
+
+// src/runners/node-test/graph/index.ts
+import { realpathSync as realpathSync6 } from "node:fs";
+async function createNodeTestGraph(options) {
+  await parserReady;
+  const root = realpathSync6(options.root);
+  const cwd = realpathSync6(options.cwd);
+  const chain = readLoaderChain(options.argv);
+  const graph = new Graph(root, cwd, chain, createResolver(chain, root));
+  graph.build(options.testFiles);
+  const loaderNotes = () => [
+    ...chain.unrecognized.map(
+      (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`
+    ),
+    ...graph.preloadNotes()
+  ];
+  return {
+    closure: (testFile) => graph.closure(testFile),
+    preloads: () => graph.preloads(),
+    affected: (changed) => graph.affected(changed),
+    invalidate: (paths) => graph.invalidate(paths),
+    setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
+    recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
+    notes: () => [
+      ...loaderNotes(),
+      ...graph.pairs().map(
+        ([js, ts]) => `node-test: ${JSON.stringify(js)} and ${JSON.stringify(ts)} both exist; tsx loads either one depending on the importer, Squeal assumes ${JSON.stringify(ts)} (unsupported layout)`
+      )
+    ]
+  };
+}
+var init_graph3 = __esm({
+  "src/runners/node-test/graph/index.ts"() {
+    "use strict";
+    init_graph2();
+    init_loader_chain();
+    init_parse();
+    init_resolver();
+  }
+});
+
+// src/runners/node-test/runtime.ts
+import { existsSync as existsSync13 } from "node:fs";
+import { fileURLToPath as fileURLToPath4 } from "node:url";
+function nodeTestRuntime(module = new URL(import.meta.url)) {
+  const tried = [];
+  for (const candidate of CANDIDATES) {
+    const dir = new URL(candidate, module);
+    const reporter = fileURLToPath4(new URL("reporter.mjs", dir));
+    const recorder = fileURLToPath4(new URL("recorder.mjs", dir));
+    if (existsSync13(reporter) && existsSync13(recorder)) return { reporter, recorder };
+    tried.push(fileURLToPath4(dir));
+  }
+  throw new Error(
+    `node:test runtime files not found beside ${module.href}: tried ${tried.join(", ")}`
+  );
+}
+var CANDIDATES;
+var init_runtime = __esm({
+  "src/runners/node-test/runtime.ts"() {
+    "use strict";
+    CANDIDATES = ["../node-test/", "./runtime/"];
+  }
+});
+
+// src/runners/node-test/run/events.ts
+function parseEvents(text2) {
+  const events = [];
+  for (const line of text2.split("\n")) {
+    if (line.trim() === "") continue;
+    try {
+      const value = JSON.parse(line);
+      if (isEvent(value)) events.push(value);
+    } catch {
+    }
+  }
+  return events;
+}
+function isEvent(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { type, data: data2 } = value;
+  return typeof type === "string" && typeof data2 === "object" && data2 !== null;
+}
+var init_events = __esm({
+  "src/runners/node-test/run/events.ts"() {
+    "use strict";
+  }
+});
+
+// src/runners/node-test/run/observed.ts
+import { realpathSync as realpathSync7 } from "node:fs";
+import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL3 } from "node:url";
+function observedClosure(testFile, absolute, graphs2, paths) {
+  const edges = graphs2.flatMap(parseEdges);
+  const entry2 = pathToFileURL3(real(absolute)).href;
+  const children = /* @__PURE__ */ new Map();
+  for (const { parent: parent2, url } of edges) {
+    if (parent2 === null) continue;
+    children.set(parent2, [...children.get(parent2) ?? [], url]);
+  }
+  if (!edges.some((e) => e.url === entry2 || e.parent === entry2)) return null;
+  const loaded = new Set(edges.map((e) => e.url));
+  const roots = edges.filter((e) => (e.parent === null || !loaded.has(e.parent)) && e.url !== entry2).map((e) => e.url);
+  return {
+    testFile,
+    paths: projectPaths(reach([entry2], children), paths),
+    preloadPaths: projectPaths(reach(roots, children), paths)
+  };
+}
+function parseEdges(text2) {
+  const edges = [];
+  for (const line of text2.split("\n")) {
+    if (line.trim() === "") continue;
+    try {
+      const { parent: parent2, url } = JSON.parse(line);
+      if (typeof url !== "string") continue;
+      edges.push({ parent: typeof parent2 === "string" ? parent2 : null, url });
+    } catch {
+    }
+  }
+  return edges;
+}
+function reach(roots, children) {
+  const seen = new Set(roots);
+  const stack = [...roots];
+  for (let url = stack.pop(); url !== void 0; url = stack.pop()) {
+    for (const child of children.get(url) ?? []) {
+      if (seen.has(child)) continue;
+      seen.add(child);
+      stack.push(child);
+    }
+  }
+  return seen;
+}
+function projectPaths(urls, paths) {
+  const out = /* @__PURE__ */ new Set();
+  for (const url of urls) {
+    if (!url.startsWith("file:")) continue;
+    const file = fileURLToPath5(url.replace(/[?#].*$/, ""));
+    if (!paths.isProjectFile(file)) continue;
+    const relative9 = paths.toRelative(file);
+    if (relative9 !== null) out.add(relative9);
+  }
+  return [...out].sort(compare);
+}
+function real(path) {
+  try {
+    return realpathSync7(path);
+  } catch {
+    return path;
+  }
+}
+var init_observed = __esm({
+  "src/runners/node-test/run/observed.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
+
+// src/runners/node-test/run/process.ts
+import { spawn as spawn2 } from "node:child_process";
+import { closeSync, openSync } from "node:fs";
+function startGroup(options) {
+  const out = openSync(options.stdout, "a");
+  const err = openSync(options.stderr, "a");
+  const child = spawn2(options.command, options.args, {
+    cwd: options.cwd,
+    env: options.env,
+    detached: true,
+    stdio: ["ignore", out, err]
+  });
+  closeSync(out);
+  closeSync(err);
+  let done = false;
+  const kill = (signal) => {
+    if (child.pid === void 0) return;
+    try {
+      process.kill(-child.pid, signal);
+    } catch {
+    }
+  };
+  const exited = new Promise((resolve11) => {
+    child.once("error", (error) => {
+      done = true;
+      resolve11({ code: null, signal: null, error: error.message });
+    });
+    child.once("exit", (code, signal) => {
+      if (done) return;
+      done = true;
+      kill("SIGKILL");
+      resolve11({ code, signal, error: null });
+    });
+  });
+  return { exited, kill: (signal) => done ? void 0 : kill(signal) };
+}
+var init_process = __esm({
+  "src/runners/node-test/run/process.ts"() {
+    "use strict";
+  }
+});
+
+// src/runners/node-test/run/errors.ts
+import { fileURLToPath as fileURLToPath6 } from "node:url";
+function toCheckError2(error, paths) {
+  const cause = error?.cause;
+  if (typeof cause === "object" && cause !== null && typeof cause.message === "string") {
+    const c = cause;
+    const stack = typeof c.stack === "string" ? c.stack : null;
+    return {
+      name: typeof c.name === "string" ? c.name : "Error",
+      message: paths.relativizeText(c.message),
+      stack: stack === null ? null : paths.relativizeText(stack),
+      location: stack === null ? null : firstProjectLocation(stack, paths),
+      diff: assertionDiff(c)
+    };
+  }
+  const message2 = cause === void 0 || cause === null ? error?.message ?? "test failed" : String(cause);
+  return {
+    name: typeof error?.name === "string" ? error.name : "Error",
+    message: paths.relativizeText(message2),
+    stack: null,
+    location: null,
+    diff: null
+  };
+}
+function assertionDiff(cause) {
+  if (cause.generatedMessage !== false || !("actual" in cause) || !("expected" in cause)) {
+    return null;
+  }
+  const show = (value) => JSON.stringify(value) ?? String(value);
+  const operator = typeof cause.operator === "string" ? `operator: ${cause.operator}
+` : "";
+  return `${operator}expected: ${show(cause.expected)}
+actual: ${show(cause.actual)}`;
+}
+function stderrError(stderr, paths) {
+  const text2 = paths.relativizeText(stderr).trim();
+  if (text2 === "") return null;
+  const lines = text2.split("\n");
+  const at2 = lines.findIndex((line) => ERROR_LINE.test(line));
+  const first = lines[at2] ?? "";
+  const next = lines[at2 + 1]?.trim() ?? "";
+  const headline = at2 === -1 ? text2 : first.endsWith(":") && next !== "" ? `${first} ${next}` : first;
+  return {
+    name: ERROR_LINE.exec(first)?.[1] ?? "Error",
+    message: headline,
+    stack: text2,
+    location: firstProjectLocation(stderr, paths),
+    diff: null
+  };
+}
+function firstProjectLocation(text2, paths) {
+  for (const match2 of text2.matchAll(POSITION)) {
+    const [, where2, line, column] = match2;
+    if (where2 === void 0) continue;
+    const file = where2.startsWith("file:") ? fileURLToPath6(where2) : where2;
+    if (!paths.isProjectFile(file)) continue;
+    const location2 = paths.location(file, Number(line), Number(column));
+    if (location2 !== null) return location2;
+  }
+  return null;
+}
+var ERROR_LINE, POSITION;
+var init_errors2 = __esm({
+  "src/runners/node-test/run/errors.ts"() {
+    "use strict";
+    ERROR_LINE = /^((?:[A-Z]\w*)?Error)\b[^:\n]*:/;
+    POSITION = /(file:\/\/\/[^\s():]+|\/[^\s():]+):(\d+):(\d+)/g;
+  }
+});
+
+// src/runners/node-test/run/report.ts
+function readFileStream(stream, paths) {
+  const isWrapper = (data2) => data2.nesting === 0 && data2.name === stream.arg && data2.entryFile === void 0;
+  const wrapper = stream.events.find((e) => e.type === "test:complete" && isWrapper(e.data));
+  const summary = stream.events.some((e) => e.type === "test:summary" && e.data.file === null);
+  const reported = stream.events.filter((e) => (e.type === "test:pass" || e.type === "test:fail") && !isWrapper(e.data)).map((event) => ({
+    event,
+    name: event.data.name ?? "",
+    nesting: event.data.nesting ?? 0,
+    testId: event.data.testId,
+    parentId: event.data.parentId,
+    suite: event.data.details?.type === "suite",
+    line: event.data.line ?? null
+  }));
+  const results2 = identify(reported).map(
+    ({ test, fullName, ancestors }) => toResult2(stream.testFile, test.event, fullName, ancestors, paths)
+  );
+  const failed2 = wrapper?.data.details?.passed === false;
+  const fileError = failed2 && !results2.some((r) => r.outcome === "fail") ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) } : null;
+  return {
+    completed: wrapper !== void 0 && summary,
+    results: results2,
+    fileError,
+    durationMs: wrapper?.data.details?.duration_ms ?? null
+  };
+}
+function outcome(event) {
+  const { skip, todo, details } = event.data;
+  if (skip !== void 0 || todo !== void 0) return "skip";
+  if (event.type === "test:pass") return "pass";
+  return details?.error?.failureType === "subtestsFailed" ? "pass" : "fail";
+}
+function toResult2(testFile, event, fullName, ancestors, paths) {
+  const result = outcome(event);
+  const { data: data2 } = event;
+  const file = typeof data2.file === "string" ? paths.toRelative(data2.file) : null;
+  return {
+    check: { kind: "test", project: testFile.project, testPath: testFile.path, fullName },
+    outcome: result,
+    durationMs: data2.details?.duration_ms ?? 0,
+    location: data2.line === void 0 ? null : { path: file ?? testFile.path, line: data2.line, column: data2.column ?? 1 },
+    errors: result === "fail" ? failureErrors(event, ancestors, paths) : []
+  };
+}
+function failureErrors(event, ancestors, paths) {
+  const own = toCheckError2(event.data.details?.error, paths);
+  if (event.data.details?.error?.failureType !== "cancelledByParent") return [own];
+  const causes = ancestors.filter((a) => ownFailure(a.event)).reverse();
+  return [own, ...causes.map((a) => toCheckError2(a.event.data.details?.error, paths))];
+}
+function ownFailure(event) {
+  const type = event.data.details?.error?.failureType;
+  return event.type === "test:fail" && type !== "subtestsFailed" && type !== "cancelledByParent";
+}
+function fileErrors(stream, reported, wrapper, paths) {
+  const stderr = stream.events.filter((e) => e.type === "test:stderr").map((e) => e.data.message ?? "").join("");
+  const errors = [
+    ...reported.filter((r) => r.suite && ownFailure(r.event)).map((r) => toCheckError2(r.event.data.details?.error, paths)),
+    stderrError(stderr, paths)
+  ].filter((e) => e !== null);
+  return errors.length > 0 ? errors : [toCheckError2(wrapper?.data.details?.error, paths)];
+}
+var init_report = __esm({
+  "src/runners/node-test/run/report.ts"() {
+    "use strict";
+    init_identity();
+    init_errors2();
+  }
+});
+
+// src/runners/node-test/run/run.ts
+import { mkdirSync as mkdirSync8, readdirSync as readdirSync7, readFileSync as readFileSync12, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join39, relative as relative8, sep as sep11 } from "node:path";
+import { pathToFileURL as pathToFileURL4 } from "node:url";
+async function runNodeTest(options) {
+  const started = performance.now();
+  const runtime = options.runtime ?? nodeTestRuntime();
+  const paths = new WorktreePaths(options.root);
+  const cwd = options.project.cwd ? toAbsolute(options.root, options.project.cwd) : options.root;
+  const env = childEnv(options);
+  mkdirSync8(options.logDir, { recursive: true });
+  const runs = options.files.map((testFile, index) => {
+    const absolute = toAbsolute(options.root, testFile.path);
+    const arg = relative8(cwd, absolute).split(sep11).join("/");
+    const args = [
+      "--enable-source-maps",
+      "--import",
+      pathToFileURL4(runtime.recorder).href,
+      ...options.project.argv,
+      "--test",
+      `--test-reporter=${runtime.reporter}`,
+      `--test-reporter-destination=${join39(options.logDir, `events-${index}.ndjson`)}`,
+      arg
+    ];
+    return { index, testFile, absolute, arg, args, exit: null, stream: null };
+  });
+  const node = options.project.node ?? "node";
+  const running = /* @__PURE__ */ new Set();
+  let expired = false;
+  const timers = [];
+  if (options.timeoutMs !== null) {
+    timers.push(
+      setTimeout(() => {
+        expired = true;
+        for (const group of running) group.kill("SIGTERM");
+        timers.push(
+          setTimeout(() => {
+            for (const group of running) group.kill("SIGKILL");
+          }, KILL_GRACE_MS)
+        );
+      }, options.timeoutMs)
+    );
+  }
+  const queue = [...runs];
+  const worker = async () => {
+    for (let run = queue.shift(); run !== void 0 && !expired; run = queue.shift()) {
+      const group = startGroup({
+        command: node,
+        args: run.args,
+        cwd,
+        env: { ...env, SQUEAL_NODE_TEST_GRAPH: join39(options.logDir, `graph-${run.index}`) },
+        stdout: join39(options.logDir, `stdout-${run.index}.log`),
+        stderr: join39(options.logDir, `stderr-${run.index}.log`)
+      });
+      running.add(group);
+      run.exit = await group.exited;
+      running.delete(group);
+      run.stream = readFileStream(
+        { testFile: run.testFile, arg: run.arg, events: readEvents(options.logDir, run.index) },
+        paths
+      );
+    }
+  };
+  const width = Math.max(1, Math.min(options.concurrency ?? runs.length, runs.length));
+  await Promise.all(Array.from({ length: width }, worker));
+  for (const timer of timers) clearTimeout(timer);
+  const completed = runs.filter((r) => r.stream?.completed === true);
+  const { end, failure: failure2 } = ending(runs, completed.length, expired, options.timeoutMs, node);
+  const report2 = {
+    end,
+    durationMs: Math.round(performance.now() - started),
+    completedFiles: completed.map((r) => r.testFile),
+    results: completed.flatMap((r) => r.stream?.results ?? []),
+    fileErrors: completed.flatMap((r) => r.stream?.fileError ? [r.stream.fileError] : []),
+    failure: failure2,
+    fileDurations: completed.flatMap(
+      (r) => r.stream?.durationMs == null ? [] : [{ testFile: r.testFile, durationMs: r.stream.durationMs }]
+    )
+  };
+  const observed = completed.flatMap((r) => {
+    const closure = observedClosure(r.testFile, r.absolute, graphs(options.logDir, r.index), paths);
+    return closure === null ? [] : [closure];
+  });
+  writeRunLog2(options.logDir, { node, cwd, runs, report: report2 });
+  return { report: report2, observed };
+}
+function childEnv(options) {
+  const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
+  return { ...base, ...options.project.env };
+}
+function ending(runs, completed, expired, timeoutMs, node) {
+  const unfinished = runs.length - completed;
+  if (expired) {
+    return {
+      end: "timed-out",
+      failure: `deadline of ${timeoutMs} ms passed with ${unfinished} of ${runs.length} test files unfinished`
+    };
+  }
+  const died = runs.filter((r) => r.stream?.completed !== true);
+  if (died.length === 0) return { end: "completed", failure: null };
+  const what = died.map((r) => `${r.testFile.path} (${describeExit(r.exit, node)})`).join(", ");
+  const failure2 = `node --test ended without a complete report for ${what}`;
+  return { end: completed === 0 ? "crashed" : "completed", failure: failure2 };
+}
+function describeExit(exit2, node) {
+  if (exit2 === null) return "not started";
+  if (exit2.error !== null) return `cannot run ${node}: ${exit2.error}`;
+  return exit2.signal === null ? `exit code ${exit2.code}` : `signal ${exit2.signal}`;
+}
+function readEvents(logDir, index) {
+  try {
+    return parseEvents(readFileSync12(join39(logDir, `events-${index}.ndjson`), "utf8"));
+  } catch {
+    return [];
+  }
+}
+function graphs(logDir, index) {
+  const prefix = `graph-${index}-`;
+  return readdirSync7(logDir).filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson")).map((name) => readFileSync12(join39(logDir, name), "utf8"));
+}
+function writeRunLog2(logDir, log) {
+  const files = log.runs.map((r) => ({
+    testFile: r.testFile.path,
+    command: [log.node, ...r.args],
+    exit: r.exit,
+    completed: r.stream?.completed ?? false
+  }));
+  const text2 = JSON.stringify({ cwd: log.cwd, files, report: log.report }, null, 2);
+  writeFileSync4(join39(logDir, "run.json"), `${text2}
+`);
+}
+var KILL_GRACE_MS;
+var init_run2 = __esm({
+  "src/runners/node-test/run/run.ts"() {
+    "use strict";
+    init_fs();
+    init_worktree_paths();
+    init_runtime();
+    init_events();
+    init_observed();
+    init_process();
+    init_report();
+    KILL_GRACE_MS = 2e3;
+  }
+});
+
+// src/runners/node-test/adapter.ts
+import { realpathSync as realpathSync8 } from "node:fs";
+import { join as join40 } from "node:path";
+async function createNodeTestAdapter(project, options) {
+  const root = realpathSync8(options.root);
+  const cwd = projectCwd(root, project);
+  const note = options.note ?? (() => {
+  });
+  const label2 = `node-test project ${JSON.stringify(project.name)}`;
+  const ref2 = (path) => ({ project: project.name, path });
+  let files = listTestFiles2(root, project);
+  const [graph, firstProbe] = await Promise.all([
+    createNodeTestGraph({ root, cwd, argv: project.argv, testFiles: files }),
+    probeNode(project, cwd)
+  ]);
+  let probe = firstProbe;
+  if (!probe.ok)
+    note(`${label2}: ${probe.error}; every check of the project is unknown until it runs`);
+  const observed = /* @__PURE__ */ new Map();
+  for (const [testFile, paths] of Object.entries(options.observed?.read() ?? {})) {
+    observed.set(testFile, new Set(paths));
+    graph.recordObserved(testFile, paths);
+  }
+  const noted = /* @__PURE__ */ new Set();
+  const notes2 = () => {
+    for (const text2 of graph.notes()) {
+      if (noted.has(text2)) continue;
+      noted.add(text2);
+      note(`${label2}: ${text2.replace(/^node-test: /, "")}`);
+    }
+  };
+  notes2();
+  const record = (seen) => {
+    const listed = new Set(files);
+    const additions = {};
+    for (const { testFile, paths } of seen) {
+      if (!listed.has(testFile.path)) continue;
+      const known2 = observed.get(testFile.path) ?? /* @__PURE__ */ new Set();
+      const closure = new Set(graph.closure(testFile.path).paths);
+      const added = paths.filter((p) => !closure.has(p) && !known2.has(p));
+      if (added.length === 0) continue;
+      for (const path of added) known2.add(path);
+      observed.set(testFile.path, known2);
+      graph.recordObserved(testFile.path, [...known2]);
+      additions[testFile.path] = added;
+    }
+    if (Object.keys(additions).length === 0 || options.observed === void 0) return;
+    try {
+      options.observed.write(additions);
+    } catch (error) {
+      note(`${label2}: could not store observed paths: ${String(error)}`);
+    }
+  };
   return {
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
-    invalidate: async () => ({ recreatedProjects: [] }),
-    affected: async () => ({ direct: [], transitive: [] }),
-    closure: (testFile) => unlisted(testFile.path),
-    enumerate: (testFile) => unlisted(testFile.path),
-    testFiles: async () => [],
-    environment: async () => [],
-    run: (testFiles) => unlisted(testFiles.map((f) => f.path).join(", ")),
+    async invalidate(paths) {
+      graph.invalidate(paths);
+      if (paths.some((p) => p.kind !== "change")) {
+        const next = listTestFiles2(root, project);
+        if (!sameList(next, files)) {
+          files = next;
+          graph.setTestFiles(files);
+        }
+      }
+      notes2();
+      if (probe.ok) return { recreatedProjects: [] };
+      probe = await probeNode(project, cwd);
+      if (!probe.ok) return { recreatedProjects: [] };
+      note(`${label2}: ${project.node ?? "node"} runs again (${probe.version})`);
+      return { recreatedProjects: [project.name] };
+    },
+    async affected(changed) {
+      const { direct, transitive } = graph.affected(changed);
+      return { direct: direct.map(ref2), transitive: transitive.map(ref2) };
+    },
+    async closure(testFile) {
+      const closure = graph.closure(testFile.path);
+      const extra = observed.get(testFile.path);
+      const paths = extra === void 0 ? closure.paths : [.../* @__PURE__ */ new Set([...closure.paths, ...extra])];
+      return { testFile, paths: [...paths].sort(compare) };
+    },
+    enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
+    testFiles: async () => files.map(ref2),
+    environment: async () => [
+      projectEnvironment2(root, project, probe, graph.preloads().paths, NODE_TEST_ADAPTER_VERSION)
+    ],
+    async run(testFiles, runOptions) {
+      if (!probe.ok) return unavailable2(`${label2}: ${probe.error}`);
+      const tempDir = options.tempDir;
+      const { report: report2, observed: seen } = await runNodeTest({
+        root,
+        project,
+        files: testFiles,
+        logDir: join40(runOptions.logDir, "node-test", encodeURIComponent(project.name)),
+        timeoutMs: runOptions.timeoutMs,
+        ...options.concurrency === void 0 ? {} : { concurrency: options.concurrency() },
+        ...tempDir === void 0 ? {} : { env: { ...process.env, TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir } }
+      });
+      record(seen);
+      return report2;
+    },
     close: async () => {
     }
+  };
+}
+function unavailable2(failure2) {
+  return {
+    end: "crashed",
+    durationMs: 0,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: failure2
   };
 }
 var NODE_TEST_ADAPTER_VERSION;
 var init_adapter2 = __esm({
   "src/runners/node-test/adapter.ts"() {
     "use strict";
-    NODE_TEST_ADAPTER_VERSION = "0";
+    init_fs();
+    init_adapter_environment();
+    init_adapter_files();
+    init_enumerate();
+    init_graph3();
+    init_run2();
+    NODE_TEST_ADAPTER_VERSION = "1";
   }
 });
 
@@ -10184,8 +26807,8 @@ __export(runner_exports, {
   createRecoveringRunner: () => createRecoveringRunner,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync5, readFileSync as readFileSync11 } from "node:fs";
-import { join as join34 } from "node:path";
+import { readdirSync as readdirSync8, readFileSync as readFileSync13 } from "node:fs";
+import { join as join41 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters4 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -10271,14 +26894,14 @@ function messageOf(error) {
 function vitestDetected(root) {
   let names;
   try {
-    names = readdirSync5(root);
+    names = readdirSync8(root);
   } catch {
     return false;
   }
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync11(join34(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync13(join41(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -10294,6 +26917,84 @@ var init_runner = __esm({
     "use strict";
     init_fs();
     VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+  }
+});
+
+// src/core/daemon/node-test-runners.ts
+var node_test_runners_exports = {};
+__export(node_test_runners_exports, {
+  createNodeTestRunners: () => createNodeTestRunners,
+  nodeTestObservedMetaKey: () => nodeTestObservedMetaKey,
+  observedStore: () => observedStore
+});
+function nodeTestObservedMetaKey(project) {
+  return `nodeTest.observed.${project}`;
+}
+function observedStore(store, project) {
+  const key = nodeTestObservedMetaKey(project);
+  return {
+    read: () => parseObserved(store.meta.get(key)),
+    write(additions) {
+      store.transaction(() => {
+        const merged = new Map(
+          Object.entries(parseObserved(store.meta.get(key))).map(([f, p]) => [f, new Set(p)])
+        );
+        for (const [testFile, paths] of Object.entries(additions)) {
+          const known2 = merged.get(testFile) ?? /* @__PURE__ */ new Set();
+          for (const path of paths) known2.add(path);
+          merged.set(testFile, known2);
+          const stored = store.testFiles.get({ project, path: testFile });
+          if (stored === null) continue;
+          const union = [.../* @__PURE__ */ new Set([...stored.closure.paths, ...paths])].sort(compare);
+          if (union.length === stored.closure.paths.length) continue;
+          store.testFiles.put({ ...stored, closure: { ...stored.closure, paths: union } });
+        }
+        const value = Object.fromEntries(
+          [...merged].sort(([a], [b]) => compare(a, b)).map(([testFile, paths]) => [testFile, [...paths].sort(compare)])
+        );
+        store.meta.set(key, JSON.stringify(value));
+      });
+    }
+  };
+}
+function parseObserved(raw) {
+  if (raw === null) return {};
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).flatMap(
+      ([testFile, paths]) => Array.isArray(paths) ? [[testFile, paths.filter((p) => typeof p === "string")]] : []
+    )
+  );
+}
+function createNodeTestRunners(projects, options) {
+  return projects.map(
+    (project) => createRecoveringRunner({
+      name: "node-test",
+      adapterVersion: NODE_TEST_ADAPTER_VERSION,
+      create: () => createNodeTestAdapter(project, {
+        root: options.root,
+        observed: observedStore(options.store, project.name),
+        note: options.note,
+        concurrency: options.tierSize,
+        tempDir: options.tempDir
+      }),
+      onFailure: (text2) => options.note(`${text2} (node-test project ${JSON.stringify(project.name)})`),
+      onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
+    })
+  );
+}
+var init_node_test_runners = __esm({
+  "src/core/daemon/node-test-runners.ts"() {
+    "use strict";
+    init_adapter2();
+    init_fs();
+    init_runner();
   }
 });
 
@@ -10437,14 +27138,14 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.20";
+  if (true) return "0.1.21";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join(dir, "package.json"));
-    if (version !== null) return version;
+    const version2 = readVersion(join(dir, "package.json"));
+    if (version2 !== null) return version2;
     const parent2 = dirname(dir);
     if (parent2 === dir) return null;
     dir = parent2;
@@ -10454,8 +27155,8 @@ function readVersion(path) {
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+    const { name, version: version2 } = parsed;
+    return name === PACKAGE_NAME && typeof version2 === "string" ? version2 : null;
   } catch {
     return null;
   }
@@ -10502,8 +27203,8 @@ function formatStatus(result, now) {
 }
 function notes(s) {
   const daemon = s.daemonNotes.map((n) => {
-    const at = new Date(n.at).toISOString();
-    return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
+    const at2 = new Date(n.at).toISOString();
+    return n.revision === null ? `${at2}: ${n.text}` : `${at2}, revision ${n.revision}: ${n.text}`;
   });
   const all = [...s.notes, ...daemon];
   return all.length === 0 ? [] : ["Notes:", ...all.map((note) => `  ${note}`)];
@@ -10640,8 +27341,8 @@ function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
   }
   return lines;
 }
-function upper(outcome) {
-  return outcome.toUpperCase();
+function upper(outcome2) {
+  return outcome2.toUpperCase();
 }
 
 // src/core/status/open.ts
@@ -10716,16 +27417,16 @@ function readGitHead(root) {
   let value = read2(join10(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
-    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref === void 0) return null;
-    value = read2(join10(gitDir, ref)) ?? read2(join10(commonDir, ref)) ?? packed(commonDir, ref);
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read2(join10(gitDir, ref2)) ?? read2(join10(commonDir, ref2)) ?? packed(commonDir, ref2);
   }
   return null;
 }
-function packed(commonDir, ref) {
+function packed(commonDir, ref2) {
   for (const line of (read2(join10(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
-    if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
+    if (name === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
@@ -10834,8 +27535,8 @@ function breakdown(states, keys) {
 function recoveryNote(raw) {
   if (raw === null) return null;
   try {
-    const { at, movedTo } = JSON.parse(raw);
-    const when = typeof at === "number" ? ` at ${new Date(at).toISOString()}` : "";
+    const { at: at2, movedTo } = JSON.parse(raw);
+    const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
     const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
     return `store was recovered from corruption${when}; the baseline was lost${where2}`;
   } catch {
@@ -10871,10 +27572,10 @@ function resolve4(store, worktreeId, query) {
     (n) => n.name.includes(query) || stem !== null && n.name.startsWith(stem)
   );
   if (matches.length > 1) {
-    const ending = matches.filter(
+    const ending2 = matches.filter(
       (n) => n.name.endsWith(` > ${query}`) || n.name.endsWith(`/${query}`)
     );
-    if (ending.length === 1) matches = ending;
+    if (ending2.length === 1) matches = ending2;
   }
   const [only] = matches;
   if (matches.length === 1 && only !== void 0) return only.check;
@@ -10991,15 +27692,15 @@ function parseTestScript(text2) {
   if (typeof words === "string") return words;
   if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0] ?? "")) return "an environment assignment";
   if (words[0] !== "node") return "a command other than node";
-  const at = words.indexOf("--test");
-  if (at === -1) return "no --test of its own";
-  const argv = words.slice(1, at);
-  for (let i = 0; i < argv.length; i++) {
-    const word = argv[i];
+  const at2 = words.indexOf("--test");
+  if (at2 === -1) return "no --test of its own";
+  const argv = words.slice(1, at2);
+  for (let i2 = 0; i2 < argv.length; i2++) {
+    const word = argv[i2];
     if (word.startsWith("-")) continue;
-    if (!VALUE_FLAGS.has(argv[i - 1] ?? "")) return "a script or argument before --test";
+    if (!VALUE_FLAGS.has(argv[i2 - 1] ?? "")) return "a script or argument before --test";
   }
-  const include = words.slice(at + 1);
+  const include = words.slice(at2 + 1);
   if (include.length === 0) return "no test-file glob";
   if (include.some((word) => word.startsWith("-"))) return "a flag after --test";
   if (compiles(include) !== null) return "a glob Squeal cannot use";
@@ -11008,18 +27709,18 @@ function parseTestScript(text2) {
 function shellWords(text2) {
   const words = [];
   let word = null;
-  for (let i = 0; i < text2.length; i++) {
-    const char = text2[i];
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    const char = text2[i2];
     if (/\s/.test(char)) {
       if (word !== null) words.push(word);
       word = null;
     } else if (char === "'" || char === '"') {
-      const end = text2.indexOf(char, i + 1);
+      const end = text2.indexOf(char, i2 + 1);
       if (end === -1) return "an unclosed quote";
-      const quoted = text2.slice(i + 1, end);
+      const quoted = text2.slice(i2 + 1, end);
       if (char === '"' && /[$`\\]/.test(quoted)) return "a shell expansion";
       word = (word ?? "") + quoted;
-      i = end;
+      i2 = end;
     } else {
       const special = SPECIAL[char];
       if (special !== void 0) return special;
@@ -11064,11 +27765,11 @@ function readManifest(root, dir, notes2) {
 }
 function workspaceDirs(root, manifest) {
   const field = isRecord(manifest) ? manifest.workspaces : void 0;
-  const list = isRecord(field) ? field.packages : field;
-  if (!Array.isArray(list)) return [];
+  const list2 = isRecord(field) ? field.packages : field;
+  if (!Array.isArray(list2)) return [];
   const include = [];
   const exclude = [];
-  for (const entry2 of list) {
+  for (const entry2 of list2) {
     if (typeof entry2 !== "string") continue;
     const negated = entry2.startsWith("!");
     const glob = (negated ? entry2.slice(1) : entry2).replace(/^\.\//, "").replace(/\/+$/, "");
@@ -11085,9 +27786,9 @@ function workspaceDirs(root, manifest) {
         continue;
       }
       const path = dir === "" ? entry2.name : `${dir}/${entry2.name}`;
-      const reachable = include.filter((p) => depth < p.depth && overlaps(path, p.prefix));
-      if (reachable.length === 0) continue;
-      const listed = reachable.some((p) => p.regexp.test(path)) && !exclude.some((p) => p.test(path));
+      const reachable2 = include.filter((p) => depth < p.depth && overlaps(path, p.prefix));
+      if (reachable2.length === 0) continue;
+      const listed = reachable2.some((p) => p.regexp.test(path)) && !exclude.some((p) => p.test(path));
       if (listed && hasManifest(root, path)) dirs.push(path);
       walk(path, depth + 1);
     }
@@ -11097,10 +27798,10 @@ function workspaceDirs(root, manifest) {
 }
 function pattern(glob) {
   const segments2 = glob.split("/");
-  const literal = segments2.findIndex((segment) => /[*?[{]/.test(segment));
+  const literal2 = segments2.findIndex((segment) => /[*?[{]/.test(segment));
   return {
     regexp: globToRegExp(glob),
-    prefix: segments2.slice(0, literal === -1 ? segments2.length : literal).join("/"),
+    prefix: segments2.slice(0, literal2 === -1 ? segments2.length : literal2).join("/"),
     depth: segments2.includes("**") ? Number.POSITIVE_INFINITY : segments2.length
   };
 }
@@ -11438,9 +28139,9 @@ async function createDaemonServer(socketPath, handle) {
   return {
     socketPath,
     close() {
-      closing ??= new Promise((resolve8) => {
+      closing ??= new Promise((resolve11) => {
         if (stillBound(socketPath, bound)) rmSync3(socketPath, { force: true });
-        server.close(() => resolve8());
+        server.close(() => resolve11());
         for (const socket of connections2) socket.destroy();
       });
       return closing;
@@ -11453,11 +28154,11 @@ async function bindAt(server, socketPath) {
     Math.max(2, basename(socketPath).length)
   );
   const staging = join14(dirname5(socketPath), name);
-  await new Promise((resolve8, reject) => {
+  await new Promise((resolve11, reject) => {
     server.once("error", reject);
     server.listen(staging, () => {
       server.off("error", reject);
-      resolve8();
+      resolve11();
     });
   });
   try {
@@ -11466,7 +28167,7 @@ async function bindAt(server, socketPath) {
     renameSync2(staging, socketPath);
     return { dev, ino };
   } catch (error) {
-    await new Promise((resolve8) => server.close(() => resolve8()));
+    await new Promise((resolve11) => server.close(() => resolve11()));
     throw error;
   }
 }
@@ -11546,12 +28247,12 @@ async function inWorker(worker, identity, events) {
   let listening = false;
   let closing = false;
   let closed = null;
-  const listen = new Promise((resolve8, reject) => {
+  const listen = new Promise((resolve11, reject) => {
     worker.on("message", (message2) => {
       switch (message2.type) {
         case "listening":
           listening = true;
-          resolve8();
+          resolve11();
           return;
         case "failed":
           reject(new Error(message2.error));
@@ -11599,8 +28300,8 @@ async function inWorker(worker, identity, events) {
     async close() {
       if (closing) return;
       closing = true;
-      await new Promise((resolve8) => {
-        closed = resolve8;
+      await new Promise((resolve11) => {
+        closed = resolve11;
         post({ type: "close" });
       });
       await worker.terminate();
@@ -11737,20 +28438,20 @@ function toRegistration(value) {
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
-function park(store, consumer, at) {
+function park(store, consumer, at2) {
   const key = registeredMetaKey(consumer.worktreeId);
-  const current = registration(store, consumer);
+  const current2 = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
-  if (current === null) return;
+  if (current2 === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  writeParked(store, consumer, at, { ...current, leftAt, leftTime: at });
+  writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2 });
 }
-function writeParked(store, consumer, at, value) {
+function writeParked(store, consumer, at2, value) {
   const key = parkedMetaKey(consumer.worktreeId);
   const all = readAll(store, key);
   const next = {};
   for (const [k, v] of Object.entries(all)) {
-    if (isRecord(v) && isNumber(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) next[k] = v;
+    if (isRecord(v) && isNumber(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) next[k] = v;
   }
   if (value === null) delete next[slot(consumer)];
   else next[slot(consumer)] = value;
@@ -11765,15 +28466,15 @@ function beforeFailing(history2, state) {
   if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
     return null;
   }
-  const at = history2.findLastIndex((t) => t.kind !== "fail-changed");
-  const entered = history2[at];
+  const at2 = history2.findLastIndex((t) => t.kind !== "fail-changed");
+  const entered = history2[at2];
   if (entered?.from == null) return null;
-  const passed = entered.from === "unknown" ? passBeforeUnknown(history2, at) : null;
+  const passed = entered.from === "unknown" ? passBeforeUnknown(history2, at2) : null;
   return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
 }
 function passBeforeUnknown(history2, end) {
-  for (let i = end - 1; i >= 0 && history2[i]?.to === "unknown"; i--) {
-    const from = history2[i]?.from;
+  for (let i2 = end - 1; i2 >= 0 && history2[i2]?.to === "unknown"; i2--) {
+    const from = history2[i2]?.from;
     if (from === "pass") return { outcome: "pass", fingerprint: null };
     if (from !== "unknown") return null;
   }
@@ -11834,7 +28535,7 @@ function planDelta(input) {
       observedAt: input.revision
     });
   }
-  const sorted = entries2.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
+  const sorted = entries2.map((entry2, i2) => ({ entry: entry2, i: i2 })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
@@ -11944,14 +28645,14 @@ function startTimers(context) {
       );
       return;
     }
-    const at = now();
-    if (at - lastExpire >= expireMs) {
-      lastExpire = at;
-      attempt("consumer expiry", () => expireConsumers(store, at, { locksDir }));
+    const at2 = now();
+    if (at2 - lastExpire >= expireMs) {
+      lastExpire = at2;
+      attempt("consumer expiry", () => expireConsumers(store, at2, { locksDir }));
     }
     attempt("idle check", () => {
-      if (store.consumers.list(worktreeId).length > 0) context.active(at);
-      else if (at - context.lastActive() >= idleMs) {
+      if (store.consumers.list(worktreeId).length > 0) context.active(at2);
+      else if (at2 - context.lastActive() >= idleMs) {
         context.shutdown(
           "idle",
           `daemon stopped: idle for ${duration(idleMs)} with no registered consumers`
@@ -12380,8 +29081,8 @@ var Daemon = class {
   #exit = null;
   #resolveExit = () => {
   };
-  #exited = new Promise((resolve8) => {
-    this.#resolveExit = resolve8;
+  #exited = new Promise((resolve11) => {
+    this.#resolveExit = resolve11;
   });
   async start(desk) {
     const { root, worktreeId } = this.opened;
@@ -12428,8 +29129,8 @@ var Daemon = class {
       timings: this.options.timings ?? {},
       heartbeatMs: this.#heartbeatMs(),
       lastActive: () => this.#lastActive,
-      active: (at) => {
-        this.#lastActive = at;
+      active: (at2) => {
+        this.#lastActive = at2;
       },
       note: (text2) => this.#note(text2),
       log: this.#log,
@@ -12505,7 +29206,7 @@ var Daemon = class {
         Promise.resolve().then(() => (init_daemon_loop(), daemon_loop_exports)),
         Promise.resolve().then(() => (init_state2(), state_exports)),
         Promise.resolve().then(() => (init_vitest(), vitest_exports)),
-        Promise.resolve().then(() => (init_adapter2(), adapter_exports)),
+        Promise.resolve().then(() => (init_node_test_runners(), node_test_runners_exports)),
         Promise.resolve().then(() => (init_runner(), runner_exports)),
         Promise.resolve().then(() => (init_composite_runner(), composite_runner_exports)),
         Promise.resolve().then(() => (init_scheduler3(), scheduler_exports))
@@ -12523,13 +29224,23 @@ var Daemon = class {
         onRecovered: () => this.#note("Vitest started after the config changed"),
         around
       }) : null;
+      const nodeTestRunners = nodeTest.createNodeTestRunners(configured, {
+        root,
+        store,
+        tempDir: this.opened.scratch.tempDir,
+        tierSize: () => this.#policy.runner.tierSize,
+        note: (text2) => this.#note(text2)
+      });
       const runner = createCompositeRunner2([
         ...vitestRunner === null ? [] : [vitestRunner],
-        ...configured.map((project) => nodeTest.createNodeTestAdapter(project))
+        ...nodeTestRunners
       ]);
       this.#vitest = vitestRunner;
       this.#runner = runner;
-      if (!await awaitsInstall2(root)) await vitestRunner?.open();
+      await Promise.all([
+        ...await awaitsInstall2(root) ? [] : [vitestRunner?.open()],
+        ...nodeTestRunners.map((r) => r.open())
+      ]);
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop2({
         root,
@@ -12697,8 +29408,8 @@ async function daemonCommand(args, io) {
 // src/cli/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync13, mkdirSync as mkdirSync8, readFileSync as readFileSync12, rmSync as rmSync6, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join35 } from "node:path";
+import { existsSync as existsSync14, mkdirSync as mkdirSync9, readFileSync as readFileSync14, rmSync as rmSync6, writeFileSync as writeFileSync5 } from "node:fs";
+import { join as join42 } from "node:path";
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 var MARKETPLACE_SOURCE = {
@@ -12723,12 +29434,12 @@ var INIT_USAGE = `Usage: squeal init [--harness claude-code]
 function parseInitArgs(args) {
   let harness = "claude-code";
   let printLauncher = false;
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  for (let i2 = 0; i2 < args.length; i2++) {
+    const arg = args[i2];
     if (arg === "--print-launcher-config") printLauncher = true;
     else if (arg.startsWith("--harness=")) harness = arg.slice("--harness=".length);
     else if (arg === "--harness") {
-      const value = args[++i];
+      const value = args[++i2];
       if (value === void 0) return "--harness takes claude-code or codex";
       harness = value;
     } else return `unknown argument "${arg}"`;
@@ -12747,7 +29458,7 @@ function initClaudeCode(io) {
 `);
     return 1;
   }
-  const settingsPath = join35(root, ".claude", "settings.json");
+  const settingsPath = join42(root, ".claude", "settings.json");
   const settings = readSettings(settingsPath);
   if (typeof settings === "string") {
     io.stderr(`squeal init: ${settings}; nothing changed
@@ -12767,8 +29478,8 @@ function initClaudeCode(io) {
     }
   }
   const lines = [];
-  const configPath = join35(root, "squeal.config.json");
-  const writeConfig = !existsSync13(configPath);
+  const configPath = join42(root, "squeal.config.json");
+  const writeConfig = !existsSync14(configPath);
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
   );
@@ -12804,8 +29515,8 @@ function initClaudeCode(io) {
   } : restorer(settingsPath, settings.text);
   try {
     if (text2 !== settings.text) {
-      mkdirSync8(join35(root, ".claude"), { recursive: true });
-      writeFileSync4(settingsPath, text2);
+      mkdirSync9(join42(root, ".claude"), { recursive: true });
+      writeFileSync5(settingsPath, text2);
     }
   } catch (error) {
     restore2();
@@ -12815,7 +29526,7 @@ function initClaudeCode(io) {
   }
   try {
     const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
-    if (writeConfig) writeFileSync4(configPath, `${JSON.stringify(config, null, 2)}
+    if (writeConfig) writeFileSync5(configPath, `${JSON.stringify(config, null, 2)}
 `);
   } catch (error) {
     restore2();
@@ -12837,7 +29548,7 @@ function restorer(path, text2) {
   return () => {
     try {
       if (text2 === null) rmSync6(path, { force: true });
-      else writeFileSync4(path, text2);
+      else writeFileSync5(path, text2);
     } catch {
     }
   };
@@ -12846,8 +29557,8 @@ function reason(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function readSettings(path) {
-  if (!existsSync13(path)) return { value: {}, text: null, indent: 2 };
-  const text2 = readFileSync12(path, "utf8");
+  if (!existsSync14(path)) return { value: {}, text: null, indent: 2 };
+  const text2 = readFileSync14(path, "utf8");
   let value;
   try {
     value = JSON.parse(text2);
@@ -12859,13 +29570,13 @@ function readSettings(path) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync15, lstatSync as lstatSync5, readdirSync as readdirSync6, rmSync as rmSync7 } from "node:fs";
-import { basename as basename10, dirname as dirname17, join as join36 } from "node:path";
+import { existsSync as existsSync16, lstatSync as lstatSync5, readdirSync as readdirSync9, rmSync as rmSync7 } from "node:fs";
+import { basename as basename11, dirname as dirname20, join as join43 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
-import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync14, mkdirSync as mkdirSync9 } from "node:fs";
+import { spawn as spawn3 } from "node:child_process";
+import { existsSync as existsSync15, mkdirSync as mkdirSync10 } from "node:fs";
 init_fs();
 init_open();
 init_paths2();
@@ -12874,7 +29585,7 @@ init_types();
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve11, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled = false;
@@ -12884,7 +29595,7 @@ function requestDaemon(socketPath, request, timeoutMs) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve8(response);
+      else resolve11(response);
     };
     const timer = setTimeout(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -12974,13 +29685,13 @@ async function ensureDaemon(root, options = {}) {
   if (probe.state === "alive") return "alive";
   if (probe.state === "unresponsive") return "unavailable";
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync14(cli)) return "unavailable";
+  if (cli === null || !existsSync15(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
-    mkdirSync9(cwd, { recursive: true });
-    const child = spawn2(process.execPath, [cli, "daemon", root], {
+    mkdirSync10(cwd, { recursive: true });
+    const child = spawn3(process.execPath, [cli, "daemon", root], {
       cwd,
       detached: true,
       stdio: "ignore"
@@ -13045,7 +29756,7 @@ async function removeCommand(args, io, options = {}) {
     return 1;
   }
   const storeDir = storePaths(commonDir).dir;
-  const configPath = join36(root, "squeal.config.json");
+  const configPath = join43(root, "squeal.config.json");
   const removed = [];
   const failed2 = [];
   const remove = (path, line) => {
@@ -13057,7 +29768,7 @@ async function removeCommand(args, io, options = {}) {
       failed2.push(`${path}: could not delete it (${code}); delete it by hand`);
     }
   };
-  if (existsSync15(storeDir)) {
+  if (existsSync16(storeDir)) {
     const worktrees = recordedWorktrees(commonDir);
     const stopped = [];
     for (const worktree of worktrees) if (await askToStop(worktree)) stopped.push(worktree.root);
@@ -13084,7 +29795,7 @@ ${stopped.map((r) => `  ${r}
       for (const lock2 of locks) lock2.release();
     }
   }
-  if (config && existsSync15(configPath)) {
+  if (config && existsSync16(configPath)) {
     const tracked = await isTracked(root, "squeal.config.json");
     remove(
       configPath,
@@ -13100,7 +29811,7 @@ ${removed.map((line) => `  ${line}
   io.stdout("Still there:\n");
   for (const line of failed2) io.stdout(`  ${line}
 `);
-  if (existsSync15(configPath)) {
+  if (existsSync16(configPath)) {
     io.stdout(
       `  ${configPath}: the next Claude Code session here starts Squeal again. It is committed; delete it, or run squeal remove --config.
 `
@@ -13123,7 +29834,7 @@ async function isTracked(root, path) {
 }
 async function otherConfigs(root) {
   const out = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
-  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join36(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync15(path));
+  return splitNul(out).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join43(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync16(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -13135,7 +29846,7 @@ function recordedWorktrees(commonDir) {
   }
 }
 async function askToStop(worktree) {
-  const socketPath = existsSync15(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
+  const socketPath = existsSync16(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
   const response = await askDaemon(socketPath, { type: "stop" }).catch(() => null);
   return response?.ok === true;
 }
@@ -13147,7 +29858,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   const held = [];
   const deadline = Date.now() + waitMs;
   for (const name of names) {
-    const lockPath = join36(locksDir, name);
+    const lockPath = join43(locksDir, name);
     for (; ; ) {
       const lock2 = acquireDaemonLock(lockPath);
       if (lock2 !== null) {
@@ -13164,19 +29875,19 @@ async function holdDaemonLocks(commonDir, waitMs) {
   return held;
 }
 function tempDirs(commonDir, worktrees) {
-  if (!existsSync15(join36(storePaths(commonDir).dir, "repository-id"))) return [];
+  if (!existsSync16(join43(storePaths(commonDir).dir, "repository-id"))) return [];
   const uid = currentUid();
   const dirs = [];
   for (const { root } of worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
-    const key = basename10(scratch.tempDir);
+    const key = basename11(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname17(scratch.tempDir);
+      const tmp = dirname20(scratch.tempDir);
       dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
-      if (existsSync15(scratch.tempDir)) dirs.push(scratch.tempDir);
+      if (existsSync16(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback = `${userTmpDir(uid)}-${key}-`;
-    dirs.push(...entries(dirname17(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
+    dirs.push(...entries(dirname20(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
 }
@@ -13194,11 +29905,11 @@ function isOwnDir(path, uid, prefix) {
   return stat6?.isDirectory() === true && stat6.uid === uid;
 }
 function entries(dir) {
-  return safeList2(dir).map((name) => join36(dir, name));
+  return safeList2(dir).map((name) => join43(dir, name));
 }
 function safeList2(dir) {
   try {
-    return readdirSync6(dir);
+    return readdirSync9(dir);
   } catch {
     return [];
   }
@@ -13365,8 +30076,8 @@ async function waitForStatus(cwd, options) {
       const transitions = countNews(start, states, header.revision);
       const settled = final || elapsed() >= settleMs;
       const daemon = worktreeLiveness(store.worktrees.get(id), now());
-      const outcome = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : settled && !isPending(header) ? "quiet" : final ? "timeout" : null;
-      return outcome === null ? null : { outcome, transitions, result: buildSnapshot(store, root, now()) };
+      const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : settled && !isPending(header) ? "quiet" : final ? "timeout" : null;
+      return outcome2 === null ? null : { outcome: outcome2, transitions, result: buildSnapshot(store, root, now()) };
     });
     if (read3 !== null && "available" in read3) {
       if (start === null || final) {
@@ -13418,18 +30129,18 @@ ${formatStatus(result, now())}`);
   }
   return 0;
 }
-function waitLine(outcome, transitions, snapshot2, waitedMs) {
+function waitLine(outcome2, transitions, snapshot2, waitedMs) {
   const after = `after ${(waitedMs / 1e3).toFixed(1)} s`;
-  const at = `at revision ${snapshot2.revision}`;
-  switch (outcome) {
+  const at2 = `at revision ${snapshot2.revision}`;
+  switch (outcome2) {
     case "quiet":
-      return `Returned on quiet: nothing pending ${at} ${after}`;
+      return `Returned on quiet: nothing pending ${at2} ${after}`;
     case "news":
-      return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
+      return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at2} ${after}`;
     case "no-daemon":
       return `Returned without a daemon: ${noDaemonText(snapshot2.daemon)}; results are as of revision ${snapshot2.revision}`;
     case "timeout":
-      return `Returned on timeout ${after}: ${pendingText(snapshot2)} ${at}`;
+      return `Returned on timeout ${after}: ${pendingText(snapshot2)} ${at2}`;
   }
 }
 function noDaemonText(daemon) {
@@ -13546,7 +30257,7 @@ function status(args, io) {
       return usage("status", "--wait takes a whole number of milliseconds", io);
     }
     waitMs = Number(value);
-    rest = args.filter((_, i) => i !== waitAt && (inline || i !== waitAt + 1));
+    rest = args.filter((_, i2) => i2 !== waitAt && (inline || i2 !== waitAt + 1));
   }
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
