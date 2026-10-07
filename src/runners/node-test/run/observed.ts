@@ -1,8 +1,8 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { compare } from "../../../core/fs/index.js";
+import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath, TestFileRef } from "../../../core/types/index.js";
-import type { WorktreePaths } from "../../vitest/paths.js";
 
 /**
  * The project files one test file's process loaded, from the recorder's

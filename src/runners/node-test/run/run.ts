@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { toAbsolute } from "../../../core/fs/index.js";
+import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type {
   AbsolutePath,
   NodeTestProject,
@@ -9,7 +10,6 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../../core/types/index.js";
-import { WorktreePaths } from "../../vitest/paths.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
 import { parseEvents } from "./events.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";

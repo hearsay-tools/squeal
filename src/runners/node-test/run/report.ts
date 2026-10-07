@@ -1,3 +1,4 @@
+import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type {
   CheckError,
   CheckRunResult,
@@ -5,7 +6,6 @@ import type {
   RunOutcome,
   TestFileRef,
 } from "../../../core/types/index.js";
-import type { WorktreePaths } from "../../vitest/paths.js";
 import { identify, type ReportedTest } from "../identity.js";
 import { stderrError, toCheckError } from "./errors.js";
 import type { TestEvent, TestEventData } from "./events.js";
