@@ -15,9 +15,11 @@ export function listPaths(paths: readonly RelativePath[], max = 5): string {
  * with a key, the usual mistake: a bare file name matches a file at the root
  * only.
  */
-export function unmatchedInputNotes(unmatched: UnmatchedInputs): string[] {
+export function unmatchedInputNotes(unmatched: UnmatchedInputs, testFiles: number): string[] {
+  // With no test file listed (none yet, or the listing failed), every key
+  // would read as matching none, which is not true (lessons, defect 13 probe).
   return [
-    ...unmatched.testGlobs.map(
+    ...(testFiles === 0 ? [] : unmatched.testGlobs).map(
       (glob) =>
         `${POLICY_FILE}: inputs key "${glob}" matches no test file; keys and input globs ` +
         "match worktree-relative paths from the start, so write " +

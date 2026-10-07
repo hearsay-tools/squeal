@@ -120,7 +120,8 @@ export async function bootstrap(context: SchedulerContext, ledger: Ledger): Prom
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
   const persisted = persistedNoteTexts(store, worktreeId);
-  for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFilePaths(ledger)))) {
+  const testFiles = testFilePaths(ledger);
+  for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
     if (!persisted.has(text)) context.note(text);
   }
 }

@@ -67,7 +67,10 @@ function reloadPolicy(
   context.policy = policy;
   const applied = context.keys.setPolicy(policy);
   const testFiles = [...ledger.files.values()].map((file) => file.ref.path);
-  for (const text of unmatchedInputNotes(context.keys.unmatchedInputs(testFiles))) {
+  for (const text of unmatchedInputNotes(
+    context.keys.unmatchedInputs(testFiles),
+    testFiles.length,
+  )) {
     context.note(text);
   }
   return applied;
