@@ -25,3 +25,22 @@ Use /reviewer. Range: 001-85's commits as landed. Output `reviews/wave-10.md`. O
 ## 001-87 attended check of wave 10
 
 Use /worker. Shape: survey. Attended Claude Code session in tmux on a scratch fixture (never this repository's store), as `lessons.md` "Attended check after wave 6.5" did, with the new plugin build. Cases: idle wake for a check pending at Stop; a mid-turn break during `sleep 20` arrives after it through PostToolBatch only, header current and naming the file; an edit made from outside while idle does not wake; Esc mid-turn then a prompt carries the news. Append a dated subsection to `lessons.md` under "Reports out of order mid-turn"; close defect 14 there or name what still fails.
+
+## 001-88 Squeal tells the agent how to use it, in the right place
+
+Use /worker. Shape: slice. Runs after 001-85 and its review land; before 001-87, which then also records whether the agent runs Vitest itself.
+
+Outcome: an agent in a Squeal repository stops running Vitest to learn what its edits did, keeps working while results come in, and reaches for `squeal status --wait` or `squeal why` only when it needs them.
+
+Read: Matt Pocock's `writing-for-agents` and `writing-great-skills` (github.com/mattpocock/skills; fetch them, cite what you apply): context load, steps before reference, disclosed reference behind context pointers. Spec D7, D9; the current `plugins/claude-code/skills/squeal/SKILL.md`.
+
+Decided by the human:
+- The skill's description triggers when the agent is about to run tests (vitest, npm test) or check whether a change broke something, not "before claiming done".
+- The body is steps first; counts, commands and policy move to `references/*.md`, reached by pointers.
+- A short primer is injected by SessionStart where Squeal validates (and again after compaction): Squeal runs the Vitest tests; do not run Vitest to learn whether edits broke something; results arrive after your tool calls; run tests yourself only without a daemon, with unknown results, or when the repo's own gate requires it; Squeal does not cover typecheck, build or other suites.
+- Every pointer to `squeal status --wait` says the default first: results arrive with your next tool call, so keep working; wait only when you need the result before your next step (for example before saying the task is done). The agent must not read a hint as "always run this".
+- A FAIL report ends with one line, once per message: `Full output: squeal why "<name>"`.
+
+Own: `plugins/claude-code/skills/squeal/` (SKILL.md and a new `references/`), `src/harness/claude-code/hooks/session-start.ts` (the primer), `src/core/delivery/format.ts` (the pointer lines), their tests, D9 in `spec.md`, one `status.md` line. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: the primer appears in SessionStart registration for startup, resume and compact, and not in a repository without a store or config; the skill description and body match the decisions; a FAIL report carries the `why` line once; every `status --wait` pointer states the next-tool-call default; the hook latency test passes; the primer plus header stay under the 10,000-character cap with 40 known failures.
