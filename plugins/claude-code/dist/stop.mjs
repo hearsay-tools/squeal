@@ -62,6 +62,11 @@ function dotGit(root) {
   return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
 }
 
+// src/core/fs/json.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -195,7 +200,7 @@ var boolean = (v) => typeof v === "boolean" ? null : "true or false";
 var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings(v) === null;
-  if (!isList && !(isObject(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs2) => strings(globs2) === null))) {
     return "an array of strings, or an object from test-file glob to an array of strings";
   }
   const globs = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
@@ -243,7 +248,7 @@ function loadPolicy(root) {
   } catch (error) {
     return defaultsBecause(`not valid JSON (${error.message})`);
   }
-  if (!isObject(parsed)) {
+  if (!isRecord(parsed)) {
     return defaultsBecause(
       `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
     );
@@ -270,7 +275,7 @@ function merge(shape, defaults, given, prefix, problems) {
       if (expected === null) result[key] = value;
       else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isObject(value)) {
+    } else if (!isRecord(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
     } else {
       const nested = defaults[key] ?? {};
@@ -278,9 +283,6 @@ function merge(shape, defaults, given, prefix, problems) {
     }
   }
   return result;
-}
-function isObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -297,6 +299,16 @@ function testFileId(ref) {
 // src/core/state/fingerprint.ts
 import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
+
+// src/core/text.ts
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+
+// src/core/state/fingerprint.ts
 var SUMMARY_MAX_CHARS = 300;
 var VOLATILE = [
   [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
@@ -552,11 +564,6 @@ function planDelta(input) {
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
-// src/core/store/open.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
-import { join as join6 } from "node:path";
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
 // src/core/store/connection.ts
 var Connection = class {
   #statements = /* @__PURE__ */ new Map();
@@ -621,6 +628,11 @@ function rollback(db) {
     if (!/no transaction is active/.test(String(error))) throw error;
   }
 }
+
+// src/core/store/open.ts
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
+import { join as join6 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/paths.ts
 import { join as join4 } from "node:path";
@@ -2133,7 +2145,7 @@ function readAll(store, worktreeId) {
   if (raw === null) return {};
   try {
     const value = JSON.parse(raw);
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+    return isRecord(value) ? value : {};
   } catch {
     return {};
   }
@@ -2260,10 +2272,6 @@ var INDENT = "      ";
 var STATUS_POINTER = "`squeal status` lists every known failure.";
 var upper = (outcome) => outcome.toUpperCase();
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-function cap(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
-}
 function checkName(check) {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
@@ -2649,7 +2657,6 @@ function isRegistered(context) {
 }
 
 // src/harness/claude-code/text.ts
-var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 var LISTED_FAILURES = 10;
 function headerLine2(consumer, header) {
   const text = formatRegistration({
@@ -2678,20 +2685,20 @@ function list(names) {
 function knownFailuresReason(revision, current, earlier2 = []) {
   const verb = current.length === 1 ? "exists" : "exist";
   const sentences = [
-    `Squeal policy stop.blockOnKnownFailures is on and ${plural3(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
+    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
   ];
   const named = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
   const pending = earlier2.filter((f) => f.validity === "pending");
   if (pending.length > 0) {
     const its = pending.length === 1 ? "its re-run" : "their re-runs";
     sentences.push(
-      `${plural3(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named(pending)}.`
+      `${plural(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named(pending)}.`
     );
   }
   const unrun = earlier2.filter((f) => f.validity !== "pending");
   if (unrun.length > 0) {
     sentences.push(
-      `${plural3(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named(unrun)}.`
+      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named(unrun)}.`
     );
   }
   return sentences.join(" ");

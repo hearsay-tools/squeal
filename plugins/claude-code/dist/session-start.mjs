@@ -55,6 +55,11 @@ function dotGit(root) {
   return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
 }
 
+// src/core/fs/json.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -66,6 +71,13 @@ function testFileId(ref) {
 // src/core/state/fingerprint.ts
 import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
+
+// src/core/text.ts
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+
+// src/core/state/fingerprint.ts
 var SUMMARY_MAX_CHARS = 300;
 var VOLATILE = [
   [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
@@ -361,11 +373,6 @@ function toNote(item) {
   return [{ at: at2, revision, text }];
 }
 
-// src/core/store/open.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
-import { join as join5 } from "node:path";
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
 // src/core/store/connection.ts
 var Connection = class {
   #statements = /* @__PURE__ */ new Map();
@@ -430,6 +437,11 @@ function rollback(db) {
     if (!/no transaction is active/.test(String(error))) throw error;
   }
 }
+
+// src/core/store/open.ts
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
+import { join as join5 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/paths.ts
 import { join as join3 } from "node:path";
@@ -1942,7 +1954,7 @@ function readAll(store, worktreeId) {
   if (raw === null) return {};
   try {
     const value = JSON.parse(raw);
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+    return isRecord(value) ? value : {};
   } catch {
     return {};
   }
@@ -2068,9 +2080,6 @@ var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
 var STATUS_POINTER = "`squeal status` lists every known failure.";
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-function cap(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
-}
 function checkName(check) {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
