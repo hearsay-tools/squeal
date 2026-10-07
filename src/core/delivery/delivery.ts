@@ -18,7 +18,14 @@ import {
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { readLiveHeader, tellLiveness, toldLiveness, worktreeLiveness } from "./liveness.js";
+import {
+  readLiveHeader,
+  tellLiveness,
+  tellRevision,
+  toldLiveness,
+  toldRevision,
+  worktreeLiveness,
+} from "./liveness.js";
 import {
   currentKeys,
   endTurn,
@@ -152,6 +159,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         return null;
       }
       if (idle) startTurn(store, consumer);
+      const told = toldRevision(store, consumer);
+      const header = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      tellRevision(store, consumer, header.revision);
       const label =
         delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
           ? "baseline"
@@ -159,7 +169,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
-        header: readLiveHeader(store, consumer.worktreeId, at, states),
+        header,
         label,
         entries: delta.entries,
         ...(changed === null ? {} : { liveness: changed }),
@@ -179,6 +189,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         );
         const header = readLiveHeader(store, consumer.worktreeId, at, states);
         tellLiveness(store, consumer, header.daemon?.state ?? null);
+        tellRevision(store, consumer, header.revision);
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
         return {
@@ -192,8 +203,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     unregister: async (consumer) => {
       store.transaction(() => {
         store.consumers.unregister(consumer);
-        tellLiveness(store, consumer, null);
-        writeTurn(store, consumer, null);
+        forget(store, consumer);
       });
     },
 
@@ -275,8 +285,7 @@ export function expireConsumers(
       const record = store.consumers.get(consumer);
       if (record === null || !idle(record, cutoff)) return false;
       store.consumers.unregister(consumer);
-      tellLiveness(store, consumer, null);
-      writeTurn(store, consumer, null);
+      forget(store, consumer);
       return true;
     });
     if (!gone) continue;
@@ -284,6 +293,13 @@ export function expireConsumers(
     expired.push(consumer);
   }
   return expired;
+}
+
+/** Drops what an unregistered consumer was told and its turn state, beside its view. */
+function forget(store: Store, consumer: Consumer): void {
+  tellLiveness(store, consumer, null);
+  tellRevision(store, consumer, null);
+  writeTurn(store, consumer, null);
 }
 
 /** `ConsumerRepo.idleSince` for one record. */

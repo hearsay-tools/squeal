@@ -11,6 +11,7 @@ import type {
   TurnState,
   WorktreeId,
 } from "../types/index.js";
+import { readSlot, writeSlot } from "./slots.js";
 
 /*
  * Each consumer's turn state (task 001-85; lessons, defect 14), the part of
@@ -19,12 +20,8 @@ import type {
  * delivered the same news with a newer header; so the waiter speaks only to
  * an idle agent, and only about the test files it stopped while waiting for.
  *
- * Like told liveness it lives in `meta`, one row per worktree:
- * `{ "<session>\n<agent>": TurnState }`, written inside the delivery's
- * transaction, with consumers no longer registered dropped on every write.
- * Not a `consumers` column: a schema step makes every older hook and daemon
- * sharing the store report "store version newer", and a missing row reads as
- * the state a consumer starts in.
+ * Like told liveness it lives in `meta` (`slots.ts`); a missing row reads
+ * as the state a consumer starts in.
  */
 
 /** `meta` key of a worktree's turn states. */
@@ -36,21 +33,6 @@ export function turnMetaKey(worktreeId: WorktreeId): string {
 export const START_IDLE: TurnState = { turn: "idle", testFiles: [], newTestFiles: false };
 
 const IN_TURN: TurnState = { turn: "in-turn" };
-
-type Turns = Record<string, TurnState>;
-
-const slot = (consumer: Consumer) => `${consumer.sessionId}\n${consumer.agentId}`;
-
-function readAll(store: Store, worktreeId: WorktreeId): Turns {
-  const raw = store.meta.get(turnMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value: unknown = JSON.parse(raw);
-    return isRecord(value) ? (value as Turns) : {};
-  } catch {
-    return {};
-  }
-}
 
 function parse(value: unknown): TurnState {
   if (!isRecord(value)) return START_IDLE;
@@ -71,23 +53,12 @@ function parse(value: unknown): TurnState {
 }
 
 export function readTurn(store: Store, consumer: Consumer): TurnState {
-  return parse(readAll(store, consumer.worktreeId)[slot(consumer)]);
+  return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
 }
 
 /** Records `consumer`'s turn state; `null` forgets it (it starts idle). Call inside a transaction. */
 export function writeTurn(store: Store, consumer: Consumer, state: TurnState | null): void {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer)),
-  );
-  const all = readAll(store, consumer.worktreeId);
-  const next: Turns = {};
-  for (const [key, value] of Object.entries(all)) {
-    if (registered.has(key)) next[key] = value;
-  }
-  if (state === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = state;
-  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
-  store.meta.set(turnMetaKey(consumer.worktreeId), JSON.stringify(next));
+  writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, state);
 }
 
 export function startTurn(store: Store, consumer: Consumer): void {
