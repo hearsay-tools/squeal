@@ -1,0 +1,158 @@
+import { join } from "node:path";
+import { compare, sameList, toAbsolute } from "../../core/fs/index.js";
+import type {
+  AbsolutePath,
+  NodeTestProject,
+  RelativePath,
+  RunnerAdapter,
+  RunReport,
+  TestFileRef,
+} from "../../core/types/index.js";
+import type { NodeTestAdapterOptions } from "./adapter.js";
+import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
+import { listTestFiles } from "./adapter-files.js";
+import { Observed } from "./adapter-observed.js";
+import { enumerate } from "./enumerate.js";
+import { createNodeTestGraph } from "./graph/index.js";
+import { runNodeTest } from "./run/run.js";
+
+/** One project as `createNodeTestAdapter` resolved it. */
+export interface ProjectContext {
+  readonly project: NodeTestProject;
+  /** The worktree root, real path. */
+  readonly root: AbsolutePath;
+  /** The project's `cwd`, a directory. */
+  readonly cwd: AbsolutePath;
+  readonly adapterVersion: string;
+  /** `node-test project "<name>"`. */
+  readonly label: string;
+  readonly options: NodeTestAdapterOptions;
+  /** Notes prefixed with the project. */
+  readonly note: (text: string) => void;
+}
+
+/** How many incomplete closures one note names before it only counts (review wave 2, N4). */
+const NAMED_INCOMPLETE = 3;
+
+/**
+ * The adapter of one project whose graph builds: the static graph,
+ * `runNodeTest` and `enumerate` in the call order of review wave 1's
+ * inputs, and the paths runs loaded beyond the graph ({@link Observed}).
+ * Rejects when the graph cannot be built; `createNodeTestAdapter` turns that
+ * into the project's runner failure.
+ */
+export async function openProject(context: ProjectContext): Promise<RunnerAdapter> {
+  const { project, root, cwd, options, note } = context;
+  const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
+
+  let files = listTestFiles(root, project);
+  const [graph, firstProbe] = await Promise.all([
+    createNodeTestGraph({ root, cwd, argv: project.argv, testFiles: files }),
+    probeNode(project, cwd),
+  ]);
+  let probe: NodeProbe = firstProbe;
+  if (!probe.ok) note(`${probe.error}; every check of the project is unknown until it runs`);
+  const observed = new Observed(graph, options.observed, note);
+
+  const noted = new Set<string>();
+  const once = (text: string) => {
+    if (noted.has(text)) return;
+    noted.add(text);
+    note(text);
+  };
+  const notes = () => {
+    for (const text of graph.notes()) once(text.replace(/^node-test: /, ""));
+    // B1: what the preloads load by a computed specifier is known only after a run.
+    for (const reason of graph.preloads().incomplete) once(`preload closure incomplete: ${reason}`);
+    const incomplete = graph.incompleteClosures();
+    if (incomplete.length > 0) {
+      const named = incomplete
+        .slice(0, NAMED_INCOMPLETE)
+        .map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
+      const more = incomplete.length > NAMED_INCOMPLETE ? ", ..." : "";
+      once(
+        `${incomplete.length} test file(s) with an incomplete static closure, keyed by what their runs load: ${named.join(", ")}${more}`,
+      );
+    }
+  };
+  notes();
+
+  return {
+    name: "node-test",
+    adapterVersion: context.adapterVersion,
+    async invalidate(paths) {
+      observed.refresh();
+      graph.invalidate(paths);
+      if (paths.some((p) => p.kind !== "change")) {
+        const next = listTestFiles(root, project);
+        if (!sameList(next, files)) {
+          files = next;
+          graph.setTestFiles(files);
+        }
+      }
+      notes();
+      const recreate = observed.takeRecreate(paths.map((p) => p.path));
+      if (!probe.ok) {
+        probe = await probeNode(project, cwd);
+        if (probe.ok) {
+          note(`${project.node ?? "node"} runs again (${probe.version})`);
+          return { recreatedProjects: [project.name] };
+        }
+      }
+      return { recreatedProjects: recreate ? [project.name] : [] };
+    },
+    async affected(changed) {
+      observed.refresh();
+      const { direct, transitive } = graph.affected(changed);
+      const grown = observed.takeGrown(new Set(files)).filter((f) => !direct.includes(f));
+      const rest = [...new Set([...transitive, ...grown])].sort(compare);
+      return { direct: direct.map(ref), transitive: rest.map(ref) };
+    },
+    async closure(testFile) {
+      observed.refresh();
+      const closure = graph.closure(testFile.path);
+      const extra = observed.of(testFile.path);
+      const paths =
+        extra === undefined ? closure.paths : [...new Set([...closure.paths, ...extra])];
+      return { testFile, paths: [...paths].sort(compare) };
+    },
+    enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
+    testFiles: async () => files.map(ref),
+    async environment() {
+      const preloads = [...new Set([...graph.preloads().paths, ...observed.preloads()])];
+      return [
+        projectEnvironment(root, project, probe, preloads.sort(compare), context.adapterVersion),
+      ];
+    },
+    async run(testFiles, runOptions): Promise<RunReport> {
+      if (!probe.ok) return unavailable(`${context.label}: ${probe.error}`);
+      const tempDir = options.tempDir;
+      const { report, observed: seen } = await runNodeTest({
+        root,
+        project,
+        files: testFiles,
+        logDir: join(runOptions.logDir, "node-test", encodeURIComponent(project.name)),
+        timeoutMs: runOptions.timeoutMs,
+        ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency() }),
+        ...(tempDir === undefined
+          ? {}
+          : { env: { ...process.env, TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir } }),
+      });
+      observed.record(seen, new Set(files));
+      return report;
+    },
+    close: async () => {},
+  };
+}
+
+/** A run of a project that cannot run: nothing completed (001 D12). */
+export function unavailable(failure: string): RunReport {
+  return {
+    end: "crashed",
+    durationMs: 0,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure,
+  };
+}
