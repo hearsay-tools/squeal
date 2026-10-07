@@ -93,7 +93,7 @@ export async function createNodeTestAdapter(
     for (const text of graph.notes()) {
       if (noted.has(text)) continue;
       noted.add(text);
-      note(`${label}: ${text}`);
+      note(`${label}: ${text.replace(/^node-test: /, "")}`);
     }
   };
   notes();
