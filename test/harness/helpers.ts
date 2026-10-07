@@ -71,7 +71,7 @@ export function squealRepo(): SquealRepo {
   // `none`: no daemon ever ran, so no last heartbeat either (`setDaemon(null)` would keep it).
   const daemon: SquealRepo["daemon"] = (state, staleSince = 1) => {
     if (state === "none") return store.worktrees.upsert(row);
-    // A daemon past its start scan: a registration may be told "none of your changes" (001-96).
+    // A daemon past its start scan: a registration may be told "none of the files changed here" (001-96).
     store.meta.set(bootstrappedMetaKey(worktreeId), "1");
     store.worktrees.setDaemon(worktreeId, {
       // Nobody listens here; the hooks' socket probe falls back to the runtime dir.

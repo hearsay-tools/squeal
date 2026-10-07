@@ -16,7 +16,7 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
  * Task 001-94, review wave 10b B1: the revision a consumer registered at is
- * where "your changes" start, so a registration of a consumer still
+ * where its changes start, so a registration of a consumer still
  * registered (SessionStart `resume`) keeps it.
  */
 
@@ -79,8 +79,8 @@ describe("a registration of a consumer still registered", () => {
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toEqual(["src/x.ts"]);
-    expect(text).toContain("touches your changes: src/x.ts");
-    expect(text).not.toContain("none of your changes");
+    expect(text).toContain("touches files changed here since this session started: src/x.ts");
+    expect(text).not.toContain("none of the files changed here");
   });
 });
 
@@ -119,7 +119,7 @@ describe("a start revision", () => {
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toBeUndefined();
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 
   it("of a daemon restarted while the consumer stayed registered gives neither line (wave 10c B1 probe)", async () => {
@@ -129,7 +129,7 @@ describe("a start revision", () => {
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toBeUndefined();
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 
   it("that absorbed an edit before it was recorded gives neither line, never none", async () => {
@@ -142,7 +142,7 @@ describe("a start revision", () => {
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toBeUndefined();
-    expect(text).not.toContain("none of your changes");
+    expect(text).not.toContain("none of the files changed here");
   });
 
   it("that is the registration revision gives neither line", async () => {
@@ -158,7 +158,9 @@ describe("a start revision", () => {
     await delivery.register(C1, { atStart: true });
     restart(2, ["src/other.ts"]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
-    expect((await failing()).text).toContain("touches your changes: src/x.ts");
+    expect((await failing()).text).toContain(
+      "touches files changed here since this session started: src/x.ts",
+    );
   });
 });
 
@@ -168,12 +170,14 @@ describe("a start revision", () => {
  * changes" appears only while the daemon that had finished its start scan
  * when the consumer registered is still the one recorded.
  */
-describe("none of your changes", () => {
+describe("none of the files changed here", () => {
   it("is said when the live daemon had scanned at registration", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
-    expect((await failing()).text).toContain("none of your changes are in its imports");
+    expect((await failing()).text).toContain(
+      "none of the files changed here since this session started are in its imports",
+    );
   });
 
   it("is not said for a registration after tool calls (review wave 10d, S2)", async () => {
@@ -191,7 +195,7 @@ describe("none of your changes", () => {
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toBeUndefined();
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 
   it("is not said once another daemon started, even with no start revision", async () => {
@@ -225,7 +229,9 @@ describe("none of your changes", () => {
     await delivery.register(C1, { atStart: true });
     liveDaemon(store, WT, { startedAt: 2 });
     apply(edit(["src/x.ts"]), result(A, "fail"));
-    expect((await failing()).text).toContain("touches your changes: src/x.ts");
+    expect((await failing()).text).toContain(
+      "touches files changed here since this session started: src/x.ts",
+    );
   });
 });
 
@@ -327,7 +333,7 @@ describe("whose closure a failure is read against (S2)", () => {
     apply(edit(["src/x.ts"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toBeUndefined();
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 
   it("reads another worktree's closure stored under this worktree's key", async () => {
@@ -355,12 +361,16 @@ describe("whose closure a failure is read against (S2)", () => {
     store.results.putMany([failed]);
     sink.applyResults(OTHER, other, [failed], NONE);
     const delta = await delivery.onToolBoundary(C2);
-    expect(formatDelta(delta as Delta)).toContain("touches your changes: src/y.ts");
+    expect(formatDelta(delta as Delta)).toContain(
+      "touches files changed here since this session started: src/y.ts",
+    );
 
     // This worktree's daemon stores its own closure last; the other worktree's is gone.
     storedBy(WT, ["src/a.test.ts", "src/x.ts"]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
-    expect((await failing()).text).toContain("touches your changes: src/x.ts");
+    expect((await failing()).text).toContain(
+      "touches files changed here since this session started: src/x.ts",
+    );
   });
 });
 

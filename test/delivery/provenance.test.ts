@@ -86,22 +86,22 @@ describe("whether the agent's changes reach a failure (task 001-91)", () => {
       changesInClosure: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts"],
     };
     expect(lines(delta([touched]))).toContain(
-      "      touches your changes: src/a.ts, src/b.ts, src/c.ts and 2 more",
+      "      touches files changed here since this session started: src/a.ts, src/b.ts, src/c.ts and 2 more",
     );
     expect(lines(delta([{ ...failure, changesInClosure: ["src/x.ts"] }]))).toContain(
-      "      touches your changes: src/x.ts",
+      "      touches files changed here since this session started: src/x.ts",
     );
   });
 
   it("says when none of the changes are in its imports", () => {
     expect(lines(delta([{ ...failure, changesInClosure: [] }]))).toContain(
-      "      none of your changes are in its imports",
+      "      none of the files changed here since this session started are in its imports",
     );
   });
 
   it("says nothing when it is not known", () => {
     const text = formatDelta(delta([failure]));
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 });
 

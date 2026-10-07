@@ -6,7 +6,7 @@ import { result } from "../state/helpers.js";
 import { ADDS, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
- * Task 001-94, review wave 10b B1: "touches your changes" counts from the
+ * Task 001-94, review wave 10b B1: "touches files changed here" counts from the
  * revision the session first registered at. SessionStart `resume` and
  * `compact` keep it, so an edit made before either still counts.
  */
@@ -69,15 +69,15 @@ describe("an edit before SessionStart resume or compact", () => {
     const text = context(
       await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps()),
     );
-    expect(text).toContain("touches your changes: src/math.ts");
-    expect(text).not.toContain("none of your changes");
+    expect(text).toContain("touches files changed here since this session started: src/math.ts");
+    expect(text).not.toContain("none of the files changed here");
   });
 });
 
 /*
  * Task 001-96 (review wave 10c B1, S1): SessionStart waits for the spawned
  * daemon's heartbeat only, never for its start scan. No `start` revision is
- * the agent's, and "none of your changes" needs a daemon that had scanned
+ * the agent's, and "none of the files changed here" needs a daemon that had scanned
  * when the session registered.
  */
 describe("SessionStart after spawning a daemon", () => {
@@ -154,7 +154,7 @@ describe("SessionStart after spawning a daemon", () => {
     r.apply(); // the agent edits src/math.ts
     failAfterReadme(r);
     const text = await postToolBatch(r);
-    expect(text).toContain("touches your changes: src/math.ts");
+    expect(text).toContain("touches files changed here since this session started: src/math.ts");
   });
 
   it("counts none of a restarted daemon's start revision as the agent's (case 2, wave 10c B1 probe)", async () => {
@@ -166,7 +166,7 @@ describe("SessionStart after spawning a daemon", () => {
     failAfterReadme(r);
     const text = await postToolBatch(r);
     expect(text).toContain("FAIL  src/math.test.ts > math > adds");
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 
   it("gives neither line for an agent edit absorbed into the start revision (case 3)", async () => {
@@ -177,10 +177,10 @@ describe("SessionStart after spawning a daemon", () => {
     failAfterReadme(r);
     const text = await postToolBatch(r);
     expect(text).toContain("FAIL  src/math.test.ts > math > adds");
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 
-  it("never says none of your changes after a new worktree's seeding", async () => {
+  it("never says none of the files changed here after a new worktree's seeding", async () => {
     const r = repo();
     r.daemon("none");
     // An empty cache: the scan hashes every file without a revision, the agent's early edit too.
@@ -188,7 +188,7 @@ describe("SessionStart after spawning a daemon", () => {
     failAfterReadme(r);
     const text = await postToolBatch(r);
     expect(text).toContain("FAIL  src/math.test.ts > math > adds");
-    expect(text).not.toContain("your changes");
+    expect(text).not.toContain("changed here");
   });
 });
 

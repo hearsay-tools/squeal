@@ -12,12 +12,12 @@ import {
 import { readAll, readSlot, slot, writeSlot } from "./slots.js";
 
 /*
- * Where "your changes" start (task 001-91, D6): the revision a consumer
+ * Where the changes a consumer is told about start (task 001-91, D6): the revision a consumer
  * registered at. Task 001-94 (review wave 10b): a consumer still registered
  * keeps it (B1); one that left and comes back within `CONSUMER_EXPIRY_MS`
  * keeps it too, minus the revisions made while it was away (N4). Task 001-96
  * (review wave 10c B1, S1): a `start` revision is never the agent's
- * (`changedAfter`), and "none of your changes" needs the daemon that was
+ * (`changedAfter`), and "none of the files changed here" needs the daemon that was
  * live and past its start scan at registration (`seesEveryChange`).
  */
 
@@ -90,7 +90,7 @@ export function scannedDaemon(
  * worktree's every file, a file created while no daemon ran), so an agent
  * edit made before a start scan after registration can be in none. True only
  * while the daemon that had finished its start scan at registration is the
- * one recorded; "none of your changes" needs it (task 001-96).
+ * one recorded; "none of the files changed here" needs it (task 001-96).
  */
 export function seesEveryChange(store: Store, worktreeId: WorktreeId, r: Registration): boolean {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
