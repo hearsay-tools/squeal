@@ -149,7 +149,6 @@ export function startWaiting(
   const { store, worktreeId } = context;
   ledger.checkpoints.finish("abandoned");
   ledger.queue.clear();
-  // A tier in flight finds its files replaced and records nothing for them (`recordTier`).
   ledger.files.clear();
   const files = store.testFileKeys.list(worktreeId).map((row) => ledger.addFile(row.testFile));
   ledger.markUnknown(
