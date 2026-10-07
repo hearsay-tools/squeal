@@ -86,3 +86,23 @@ Measured by `test/runners/vitest/reresolution-survey.test.ts` (commit of this ta
 | R4 (resolution: worktree root) | add `root.js` beside `root.ts` | root | none | root | none | root | none |
 
 Outcome: keep. Adding or deleting a `package.json` re-points the directory it sits in, and only `closuresToReresolve` re-resolves its importers: the manifest is in no closure and in no module graph, so `rekey` and `affected` both miss it, while the directory's `index` or entry is in the closure and in that directory. Every other moved closure is covered by `rekey` or `affected`; the heuristic's other picks re-fetch closures that do not move. Editing a `package.json` `main` (a content change) moves nothing in any rule, the fetched closure included: Vite keeps the importer's transform. That is outside this row and is reported to the coordinator.
+
+## Batch 3
+
+Batch 2 landed (`9c8b609..53c0598`, version 0.1.1). Batch 3 runs 001-70, 001-73, 001-77 and the 001-78 review in parallel.
+
+## 001-70 one per-user directory
+
+Use /worker. Shape: finish (the board row is the scope). Seam: `src/core/daemon/paths.ts` (`runtimeDir`, `tempDir`, `userDirName`, `userTmpDir`, `checkPrivateDir`). Own: `src/core/daemon/paths.ts`, `src/core/daemon/scratch.ts` (the `userTmpDir` call only), `test/daemon/paths*.test.ts`, socket and hardening tests under `test/daemon/`, D1's socket sentence. Leave `server.ts` and `desk.ts` to 001-77.
+
+## 001-73 split the two modules past 300 lines
+
+Use /worker. Shape: finish. Moves only, no behaviour change. Own: `src/core/scheduler/scheduler.ts`, a new `src/core/scheduler/runner-work.ts`, `src/runners/vitest/adapter.ts`, `stale.ts`, `broken.ts`, their `index.ts` barrels, and tests only if an import path changes. Leave `src/core/daemon/` alone.
+
+## 001-77 a daemon unlinks only the socket it bound
+
+Use /worker. Shape: repair. Outcome: when another repository reuses a worktree path, or the same path is re-cloned, the old daemon's exit never removes the new daemon's socket (found by 001-65; socket paths are keyed by the root path only, `socketPathFor`). Seam: `src/core/daemon/server.ts` close. First edit: record `dev`/`ino` of the socket file after `listen`, and on close unlink only if the path still has that inode. Same for any socket `desk.ts` owns. Own: `src/core/daemon/server.ts`, `src/core/daemon/desk.ts`, `test/daemon/server*.test.ts` or a new `test/daemon/socket-handover.test.ts`, one D10 sentence, one `status.md` line. Done when: the two `scratch-identity.test.ts` handover scenarios, extended or copied into the new test, show the newcomer still answering on its socket after the old daemon exits; full suite green.
+
+## 001-78 review of 001-72
+
+Use /reviewer. Range `53771a4..53c0598`, the 001-72 commits only (`c968a73`, `c8b5261` and their cherry-picks). Output `reviews/wave-9.md`. Outcome: whether keeping `closuresToReresolve` is right and the table is complete: a wrong keep only costs runs, a missed case is a missed re-run. Re-run the survey test from `c968a73`; probe a `package.json` edit (not add or delete) that changes `main`, a nested `package.json`, and a monorepo with two Vitest projects. Do not re-check what earlier reviews list under "What fits".
