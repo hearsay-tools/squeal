@@ -153,6 +153,21 @@ describe("a timeout's load average", () => {
     expect(formatDelta(deltaOf(entry))).toContain("load average 7.25 when it ran");
   });
 
+  it("is found past newer results of the check from other worktrees (review wave 10b, N2)", async () => {
+    apply(edit([]), timeout(7.25));
+    const others = Array.from({ length: 8 }, (_, i) =>
+      result(A, "fail", {
+        worktreeId: OTHER,
+        key: `k-other-${i}`,
+        message: "Test timed out in 5000ms.",
+      }),
+    );
+    store.results.putMany(
+      others.map((r, i) => ({ ...r, provenance: { ...r.provenance, recordedAt: 10_000 + i } })),
+    );
+    expect((await failingEntry()).loadAverage).toBe(7.25);
+  });
+
   it("is absent from a failure text stored before it was recorded", async () => {
     apply(edit([]), timeout());
     const stored = store.results.latestForCheck(A);
