@@ -15,7 +15,7 @@ import type {
   TestFileRef,
 } from "../../core/types/index.js";
 import { affectedTestFiles } from "./affected.js";
-import { instanceTempDirs, runnerFailure } from "./broken.js";
+import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { projectEnvironment } from "./environment.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
@@ -30,7 +30,7 @@ import {
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { checkNames, compareRefs } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
-import { cachedFiles, FALLBACK_NOTE, staleTransforms } from "./stale.js";
+import { invalidateStructural } from "./stale.js";
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -61,8 +61,6 @@ export class VitestAdapter implements RunnerAdapter {
   #generation = 0;
   #queue: Promise<unknown> = Promise.resolve();
   #closed = false;
-  /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
-  readonly #fellBack = new WeakSet<Vitest>();
   readonly #note: (text: string) => void;
 
   /**
@@ -155,23 +153,7 @@ export class VitestAdapter implements RunnerAdapter {
         return { recreatedProjects: [...names].sort() };
       }
       for (const p of abs) vitest.invalidateFile(p.abs);
-      const structural = abs.filter((p) => p.kind !== "change");
-      if (structural.length > 0) {
-        // Spec 001 D4: an add or delete re-transforms only the importers whose
-        // resolution it can change, never the whole graph (lessons, defect 11).
-        const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
-        const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-        const stale = staleTransforms(vitest, added, deleted);
-        for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
-        if (stale === null && !this.#fellBack.has(vitest)) {
-          this.#fellBack.add(vitest);
-          this.#note(FALLBACK_NOTE);
-        }
-        const testGlob = structural.some((p) =>
-          vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),
-        );
-        if (testGlob) vitest.clearSpecificationsCache();
-      }
+      invalidateStructural(vitest, abs, this.#note);
       return { recreatedProjects: [] };
     });
   }
@@ -278,19 +260,8 @@ export class VitestAdapter implements RunnerAdapter {
         }
         const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
         if (broken !== null && this.#vitest === vitest) {
-          // Spec 001 D5: a runner failure, never a `fail` stored under a key
-          // (lessons, defect 12). The next call starts a new instance.
-          execution = {
-            end: "crashed",
-            failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
-            hung: false,
-          };
           this.#vitest = null;
-          await vitest
-            .close()
-            .catch((error: unknown) =>
-              collector.note(`close() of a broken instance failed: ${String(error)}`),
-            );
+          execution = await closeBroken(vitest, collector, broken);
         }
         const report = buildReport(collector, execution, Math.round(performance.now() - started));
         // One persisted note for status, besides the crash's delivered line (D5).

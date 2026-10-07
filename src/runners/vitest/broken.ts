@@ -3,6 +3,7 @@ import type { SerializedError, Vitest } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { errorText, type RunCollector } from "./reporter.js";
+import type { RunExecution } from "./run.js";
 
 /**
  * Where an instance keeps its own files: the directories the forks pool
@@ -35,6 +36,29 @@ export function runnerFailure(collector: RunCollector, files: InstanceFiles): st
   ];
   const error = errors.find((e) => isRunnerFailure(e, files));
   return error === undefined ? null : (errorText(error).split("\n")[0] ?? "");
+}
+
+/**
+ * Closes an instance `runnerFailure` found broken and returns the run's
+ * execution as a crash. Spec 001 D5: a runner failure, never a `fail`
+ * stored under a key (lessons, defect 12). The caller starts a new instance
+ * on its next call.
+ */
+export async function closeBroken(
+  vitest: Vitest,
+  collector: RunCollector,
+  broken: string,
+): Promise<RunExecution> {
+  await vitest
+    .close()
+    .catch((error: unknown) =>
+      collector.note(`close() of a broken instance failed: ${String(error)}`),
+    );
+  return {
+    end: "crashed",
+    failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
+    hung: false,
+  };
 }
 
 /**
