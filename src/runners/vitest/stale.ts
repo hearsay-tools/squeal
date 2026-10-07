@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename, dirname, join } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath, InvalidatedPath } from "../../core/types/index.js";
 import { expandsFromDisk } from "./dynamic.js";
 import { depToPath, resolutionBases, resolutionCandidates } from "./graph.js";
 
@@ -12,6 +12,38 @@ type Transform = NonNullable<ModuleNode["transformResult"]>;
 
 /** Per instance: whether its module nodes carry Vite's internal `invalidationState`. */
 const tracksSoftInvalidation = new WeakMap<Vitest, boolean>();
+
+/** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
+const fellBack = new WeakSet<Vitest>();
+
+/**
+ * Invalidates what the adds and deletes among `paths` can make wrong; the
+ * caller has invalidated every path itself. `note` hears the fallback to
+ * full invalidation once per instance.
+ */
+export function invalidateStructural(
+  vitest: Vitest,
+  paths: readonly { readonly kind: InvalidatedPath["kind"]; readonly abs: AbsolutePath }[],
+  note: (text: string) => void,
+): void {
+  const structural = paths.filter((p) => p.kind !== "change");
+  if (structural.length > 0) {
+    // Spec 001 D4: an add or delete re-transforms only the importers whose
+    // resolution it can change, never the whole graph (lessons, defect 11).
+    const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
+    const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
+    const stale = staleTransforms(vitest, added, deleted);
+    for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
+    if (stale === null && !fellBack.has(vitest)) {
+      fellBack.add(vitest);
+      note(FALLBACK_NOTE);
+    }
+    const testGlob = structural.some((p) =>
+      vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),
+    );
+    if (testGlob) vitest.clearSpecificationsCache();
+  }
+}
 
 /**
  * Files whose cached transforms an add or delete can make wrong, or `null`
