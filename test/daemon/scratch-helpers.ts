@@ -58,7 +58,7 @@ export function linkedFixture(
   git(repo.root, ["worktree", "add", "-q", "--detach", linkedRoot]);
   const root = realpathSync(linkedRoot);
   const worktreeId = worktreeIdFor(root);
-  const tempDir = daemonTempDir(repo.commonDir, root);
+  const tempDir = daemonScratch(repo.commonDir, root).tempDir;
   cleanups.push(() => rmSync(tempDir, { recursive: true, force: true }));
   return {
     ...repo,
@@ -67,14 +67,6 @@ export function linkedFixture(
     worktreeId,
     socketPath: socketPathFor(worktreeId, { XDG_RUNTIME_DIR: repo.runtimeDir }),
   };
-}
-
-/**
- * The daemon's temp directory for a worktree, `/tmp/squeal-<uid>/tmp/<key>/`.
- * Writes the repository id when no daemon has yet; a daemon keeps it.
- */
-export function daemonTempDir(commonDir: string, root: string): string {
-  return daemonScratch(commonDir, root).tempDir;
 }
 
 /** A directory of the test's own standing in for the spawner's `TMPDIR`. */

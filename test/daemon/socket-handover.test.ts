@@ -1,6 +1,7 @@
 import { realpathSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/store/index.js";
 import type { PingResponse } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
@@ -17,7 +18,7 @@ import {
   stopProcess,
   waitFor,
 } from "./helpers.js";
-import { daemonTempDir, exitWithin } from "./scratch-helpers.js";
+import { exitWithin } from "./scratch-helpers.js";
 
 /*
  * Board row 001-77, found by 001-65: a socket path is keyed by the root path
@@ -50,7 +51,7 @@ function swap(root: string, replacement: string): void {
 }
 
 function start(cli: string, repo: FixtureRepo): SpawnedProcess {
-  const tempDir = daemonTempDir(repo.commonDir, repo.root);
+  const tempDir = daemonScratch(repo.commonDir, repo.root).tempDir;
   cleanups.push(() => rmSync(tempDir, { recursive: true, force: true }));
   const spawned = spawnCli(cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
   processes.push(spawned);

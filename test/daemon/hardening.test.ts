@@ -10,49 +10,23 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { locateDaemon } from "../../src/core/daemon/ensure.js";
 import { socketPathFor, userTmpDir } from "../../src/core/daemon/paths.js";
 import {
-  type BuiltCli,
-  buildCli,
   childEnv,
-  createFixtureRepo,
+  daemonSuite,
   type FixtureRepo,
   readNotes,
   SLOW,
-  type SpawnedProcess,
-  spawnDaemon,
   stopProcess,
   waitFor,
   waitReady,
   withStore,
 } from "./helpers.js";
 
-let built: BuiltCli;
-beforeAll(() => {
-  built = buildCli();
-});
-afterAll(() => built.cleanup());
-
-const processes: SpawnedProcess[] = [];
-const cleanups: (() => void)[] = [];
-afterEach(async () => {
-  for (const process of processes.splice(0)) await stopProcess(process);
-  for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
-
-function fixture(files?: Record<string, string>): FixtureRepo {
-  const repo = createFixtureRepo(files === undefined ? {} : { files });
-  cleanups.push(repo.cleanup);
-  return repo;
-}
-
-function daemon(repo: FixtureRepo): SpawnedProcess {
-  const spawned = spawnDaemon(built.cli, repo);
-  processes.push(spawned);
-  return spawned;
-}
+const suite = daemonSuite();
+const { fixture, daemon } = suite;
 
 const policyNotes = (repo: FixtureRepo) =>
   readNotes(repo).filter((text) => text.startsWith("squeal.config.json"));
@@ -121,7 +95,7 @@ describe("squeal daemon: socket directory without XDG_RUNTIME_DIR (review S8)", 
   /** A short private directory for a TMPDIR, removed after the test. */
   function shortTmp(): string {
     const tmp = realpathSync(mkdtempSync("/tmp/sq-"));
-    cleanups.push(() => rmSync(tmp, { recursive: true, force: true }));
+    suite.cleanup(() => rmSync(tmp, { recursive: true, force: true }));
     return tmp;
   }
 
@@ -154,7 +128,7 @@ describe("squeal daemon: socket directory without XDG_RUNTIME_DIR (review S8)", 
     const uid = 3_000_000_000 + Math.floor(Math.random() * 1_000_000);
     const dir = `/tmp/squeal-${uid}`;
     mkdirSync(dir, { mode: 0o700 });
-    cleanups.push(() => {
+    suite.cleanup(() => {
       for (const name of readdirSync("/tmp").filter((n) => n.startsWith(`squeal-${uid}`))) {
         rmSync(join("/tmp", name), { recursive: true, force: true });
       }

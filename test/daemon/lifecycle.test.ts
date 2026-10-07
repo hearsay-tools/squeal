@@ -1,54 +1,27 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
 import { SCHEMA_VERSION, storePaths } from "../../src/core/store/index.js";
 import { notesMetaKey } from "../../src/core/types/index.js";
 import { rootVersion } from "../../src/harness/claude-code/build.js";
 import {
-  type BuiltCli,
-  buildCli,
-  createFixtureRepo,
+  daemonSuite,
   delay,
   type FixtureRepo,
   LOADED,
   ping,
   readNotes,
   SLOW,
-  type SpawnedProcess,
   spawnCli,
-  spawnDaemon,
-  stopProcess,
   waitFor,
   waitReady,
   withStore,
 } from "./helpers.js";
 
-let built: BuiltCli;
-beforeAll(() => {
-  built = buildCli();
-});
-afterAll(() => built.cleanup());
-
-const processes: SpawnedProcess[] = [];
-const repos: FixtureRepo[] = [];
-afterEach(async () => {
-  for (const process of processes.splice(0)) await stopProcess(process);
-  for (const repo of repos.splice(0)) repo.cleanup();
-});
-
-function fixture(files?: Record<string, string>): FixtureRepo {
-  const repo = createFixtureRepo(files === undefined ? {} : { files });
-  repos.push(repo);
-  return repo;
-}
-
-function daemon(repo: FixtureRepo): SpawnedProcess {
-  const spawned = spawnDaemon(built.cli, repo);
-  processes.push(spawned);
-  return spawned;
-}
+const suite = daemonSuite();
+const { fixture, daemon } = suite;
 
 describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
   it("five concurrent starts yield exactly one serving daemon; the others exit", async () => {
@@ -149,7 +122,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     });
     expect(record?.daemon?.heartbeatAt).toBeGreaterThan(0);
 
-    const stop = spawnCli(built.cli, ["stop"], { cwd: repo.root, env: repo.env });
+    const stop = spawnCli(suite.cli, ["stop"], { cwd: repo.root, env: repo.env });
     expect(await stop.exited).toEqual({ code: 0, signal: null });
     expect(stop.stdout()).toMatch(/stopped/);
     expect(await spawned.exited).toEqual({ code: 0, signal: null });
@@ -199,8 +172,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     const linkedRoot = join(repo.root, "..", "linked");
     git(repo.root, ["worktree", "add", "-q", "-b", "linked", linkedRoot]);
     const linked: FixtureRepo = { ...repo, ...(await linkedRepo(repo, linkedRoot)) };
-    const spawned = spawnDaemon(built.cli, linked);
-    processes.push(spawned);
+    const spawned = daemon(linked);
     await waitReady(linked, spawned);
     git(repo.root, ["worktree", "remove", "--force", linkedRoot]);
     expect(await Promise.race([spawned.exited, delay(30_000).then(() => null)])).toEqual({
@@ -233,7 +205,7 @@ describe("ensureDaemon (spec 001 D10, for the hooks of 001-31)", SLOW, () => {
   it("spawns on a cold start without waiting, and finds it alive on a warm one", async () => {
     const repo = fixture();
     process.env.XDG_RUNTIME_DIR = repo.runtimeDir;
-    process.env.SQUEAL_CLI = built.cli;
+    process.env.SQUEAL_CLI = suite.cli;
     expect(await probeDaemon(repo.root, 100)).toEqual({ state: "absent", code: "ENOENT" });
 
     const started = performance.now();
@@ -267,13 +239,13 @@ describe("ensureDaemon (spec 001 D10, for the hooks of 001-31)", SLOW, () => {
   it("squeal start spawns the daemon and prints its status", async () => {
     const repo = fixture();
     writeFileSync(join(repo.root, ".keep"), "");
-    const start = spawnCli(built.cli, ["start"], { cwd: repo.root, env: repo.env });
+    const start = spawnCli(suite.cli, ["start"], { cwd: repo.root, env: repo.env });
     expect(await start.exited).toEqual({ code: 0, signal: null });
     expect(start.stdout()).toMatch(/^Squeal daemon spawned for /m);
     expect(start.stdout()).toMatch(/Revision: \d+/);
     const answer = await ping(repo.socketPath, 500);
     expect(answer).not.toBeNull();
-    const again = spawnCli(built.cli, ["start", repo.root], { cwd: "/", env: repo.env });
+    const again = spawnCli(suite.cli, ["start", repo.root], { cwd: "/", env: repo.env });
     expect(await again.exited).toEqual({ code: 0, signal: null });
     expect(again.stdout()).toMatch(/^Squeal daemon alive for /m);
     if (answer !== null) {
