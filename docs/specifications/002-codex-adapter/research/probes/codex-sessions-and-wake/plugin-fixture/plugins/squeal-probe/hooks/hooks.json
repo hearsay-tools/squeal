@@ -1,0 +1,6 @@
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "sh \"${PLUGIN_ROOT}/scripts/log.sh\"", "timeout": 5 }] }],
+    "PostToolUse": [{ "hooks": [{ "type": "command", "command": "sh \"${PLUGIN_ROOT}/scripts/log.sh\"", "timeout": 5 }] }]
+  }
+}

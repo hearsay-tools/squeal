@@ -1,0 +1,7 @@
+{
+  "name": "squeal-probe",
+  "version": "0.0.1",
+  "description": "Throwaway probe plugin: one hook per event, one skill, one bin.",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}
