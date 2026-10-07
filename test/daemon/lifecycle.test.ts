@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
 import { SCHEMA_VERSION, storePaths } from "../../src/core/store/index.js";
 import { notesMetaKey } from "../../src/core/types/index.js";
+import { rootVersion } from "../../src/harness/claude-code/build.js";
 import {
   type BuiltCli,
   buildCli,
@@ -144,7 +145,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
       root: repo.root,
       commonDir: repo.commonDir,
       isMain: true,
-      daemon: { socketPath: repo.socketPath, squealVersion: "0.0.0" },
+      daemon: { socketPath: repo.socketPath, squealVersion: rootVersion() },
     });
     expect(record?.daemon?.heartbeatAt).toBeGreaterThan(0);
 

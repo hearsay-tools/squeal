@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readStatus } from "../../src/core/status/index.js";
+import { rootVersion } from "../../src/harness/claude-code/build.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);
@@ -144,6 +145,6 @@ describe("squeal", () => {
     const { code, stdout } = run(["--version"], fakeRepo().main);
 
     expect(code).toBe(0);
-    expect(stdout).toBe("0.0.0\n");
+    expect(stdout).toBe(`${rootVersion()}\n`);
   });
 });
