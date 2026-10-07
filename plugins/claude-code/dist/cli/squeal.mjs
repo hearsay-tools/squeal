@@ -8508,7 +8508,8 @@ function entryDirectories(path, bases, root) {
   for (let dir = dirname13(path); dir.startsWith(`${root}/`); dir = dirname13(dir)) {
     const manifest = join25(dir, "package.json");
     if (!existsSync10(manifest)) continue;
-    if (packageEntries(manifest).some((entry2) => bases.includes(join25(dir, entry2)))) found.push(dir);
+    const named = packageEntries(manifest).map((entry2) => join25(dir, entry2).replace(/\/+$/, ""));
+    if (named.some((entry2) => bases.includes(entry2))) found.push(dir);
   }
   return found;
 }
@@ -10118,7 +10119,7 @@ function parseNotes(raw) {
 init_fs();
 init_store2();
 import { existsSync as existsSync7, realpathSync as realpathSync4 } from "node:fs";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync4 } from "node:fs";
@@ -10156,15 +10157,98 @@ function isBusy2(error) {
 
 // src/core/daemon/scratch.ts
 init_paths2();
-import { mkdirSync as mkdirSync5, rmSync as rmSync5 } from "node:fs";
-import { join as join11 } from "node:path";
-function daemonScratch(commonDir, worktreeId) {
-  const workDir = storePaths(commonDir).dir;
-  return { workDir, tempDir: join11(workDir, "tmp", worktreeId) };
+import { mkdirSync as mkdirSync6, rmSync as rmSync5 } from "node:fs";
+import { join as join12 } from "node:path";
+
+// src/core/daemon/paths.ts
+init_fs();
+import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync5, readFileSync as readFileSync5 } from "node:fs";
+import { tmpdir as tmpdir2 } from "node:os";
+import { dirname as dirname6, isAbsolute as isAbsolute3, join as join11, resolve as resolve6 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? join11(tempDir(env), userDirName());
 }
-function prepareScratch(scratch) {
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name = `squeal-${worktreeId}.sock`;
+  const path = join11(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join11(userTmpDir(), name);
+}
+function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
+  const dir = dirname6(socketPath);
+  if (dir === xdgRuntimeDir(env)) {
+    mkdirSync5(dir, { recursive: true, mode: 448 });
+    return;
+  }
+  preparePrivateDir(dir, uid);
+}
+function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
+  mkdirSync5(dirname6(dir), { recursive: true });
+  try {
+    mkdirSync5(dir, { mode: 448 });
+    chmodSync2(dir, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid, role);
+}
+function checkPrivateDir(dir, uid, role = "socket directory") {
+  const refusal = role === "socket directory" ? "refusing to bind in it" : "refusing to use it";
+  const stat5 = lstatSync2(dir);
+  if (!stat5.isDirectory()) {
+    throw new Error(`${role} ${dir} is not a directory; ${refusal}`);
+  }
+  if (stat5.uid !== uid) {
+    throw new Error(`${role} ${dir} is owned by uid ${stat5.uid}, not ${uid}; ${refusal}`);
+  }
+  if ((stat5.mode & 63) !== 0) {
+    const mode = (stat5.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; ${refusal}`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join11("/tmp", `squeal-${uid}`);
+}
+function linkedWorktreeDir(root) {
+  const dotGit = join11(root, ".git");
+  try {
+    if (!lstatSync2(dotGit).isFile()) return null;
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync5(dotGit, "utf8"));
+  return match?.[1] ? resolve6(root, match[1]) : null;
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
+}
+function tempDir(env) {
+  if (process.platform === "win32") return tmpdir2();
+  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
+  const dir = isAbsolute3(given) ? given : "/tmp";
+  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
+}
+function userDirName() {
+  return `squeal-${currentUid()}`;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/daemon/scratch.ts
+function daemonScratch(commonDir, worktreeId, uid = currentUid()) {
+  const userDir = userTmpDir(uid);
+  return { workDir: storePaths(commonDir).dir, userDir, tempDir: join12(userDir, "tmp", worktreeId) };
+}
+function prepareScratch(scratch, uid = currentUid()) {
+  preparePrivateDir(scratch.userDir, uid, "temp directory");
   rmSync5(scratch.tempDir, { recursive: true, force: true });
-  mkdirSync5(scratch.tempDir, { recursive: true });
+  mkdirSync6(scratch.tempDir, { recursive: true });
+}
+function removeScratch(scratch) {
+  rmSync5(scratch.tempDir, { recursive: true, force: true });
 }
 function adoptScratch(scratch) {
   process.chdir(scratch.workDir);
@@ -10197,7 +10281,7 @@ async function openDaemon(rootArgument, now) {
   let commonDir;
   try {
     root = realpathSync4(rootArgument);
-    if (!existsSync7(join12(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    if (!existsSync7(join13(root, ".git"))) throw new Error(`${root} has no .git entry`);
     const out = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
     commonDir = realpathSync4(out.trim());
   } catch (error) {
@@ -10215,13 +10299,6 @@ async function openDaemon(rootArgument, now) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
   }
   if (lock2 === null) return exit("lost-lock", 0, `another daemon serves ${root}`);
-  const scratch = daemonScratch(commonDir, worktreeId);
-  try {
-    prepareScratch(scratch);
-  } catch (error) {
-    lock2.release();
-    return exit("start-failed", 1, `could not prepare ${scratch.tempDir}: ${message(error)}`);
-  }
   let store;
   try {
     const opened = openStore(commonDir, {
@@ -10243,7 +10320,19 @@ async function openDaemon(rootArgument, now) {
     lock2.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
   }
-  return { root, commonDir, worktreeId, store, lock: lock2, scratch };
+  const scratch = daemonScratch(commonDir, worktreeId);
+  const daemon = { root, commonDir, worktreeId, store, lock: lock2, scratch };
+  try {
+    prepareScratch(scratch);
+  } catch (error) {
+    return abandon(
+      daemon,
+      now,
+      void 0,
+      `could not prepare ${scratch.tempDir}: ${message(error)}`
+    );
+  }
+  return daemon;
 }
 function abandon(opened, now, log, text) {
   const report2 = log ?? (() => {
@@ -10254,6 +10343,11 @@ function abandon(opened, now, log, text) {
   } catch (error) {
     report2(`shutdown: store.close failed: ${message(error)}`);
   }
+  try {
+    removeScratch(opened.scratch);
+  } catch (error) {
+    report2(`shutdown: temp dir removal failed: ${message(error)}`);
+  }
   opened.lock.release();
   return exit("start-failed", 1, text);
 }
@@ -10262,78 +10356,6 @@ function exit(reason2, code, text) {
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
-}
-
-// src/core/daemon/paths.ts
-init_fs();
-import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync6, readFileSync as readFileSync5 } from "node:fs";
-import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname6, isAbsolute as isAbsolute3, join as join13, resolve as resolve6 } from "node:path";
-function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? join13(tempDir(env), userDirName());
-}
-var MAX_SOCKET_PATH_BYTES = 103;
-function socketPathFor(worktreeId, env = process.env) {
-  const name = `squeal-${worktreeId}.sock`;
-  const path = join13(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join13("/tmp", userDirName(), name);
-}
-function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
-  const dir = dirname6(socketPath);
-  if (dir === xdgRuntimeDir(env)) {
-    mkdirSync6(dir, { recursive: true, mode: 448 });
-    return;
-  }
-  mkdirSync6(dirname6(dir), { recursive: true });
-  try {
-    mkdirSync6(dir, { mode: 448 });
-    chmodSync2(dir, 448);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-  checkPrivateDir(dir, uid);
-}
-function checkPrivateDir(dir, uid) {
-  const stat5 = lstatSync2(dir);
-  if (!stat5.isDirectory()) {
-    throw new Error(`socket directory ${dir} is not a directory; refusing to bind in it`);
-  }
-  if (stat5.uid !== uid) {
-    throw new Error(
-      `socket directory ${dir} is owned by uid ${stat5.uid}, not ${uid}; refusing to bind in it`
-    );
-  }
-  if ((stat5.mode & 63) !== 0) {
-    const mode = (stat5.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`socket directory ${dir} has mode ${mode}, not 700; refusing to bind in it`);
-  }
-}
-function linkedWorktreeDir(root) {
-  const dotGit = join13(root, ".git");
-  try {
-    if (!lstatSync2(dotGit).isFile()) return null;
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  const match = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync5(dotGit, "utf8"));
-  return match?.[1] ? resolve6(root, match[1]) : null;
-}
-function xdgRuntimeDir(env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
-}
-function tempDir(env) {
-  if (process.platform === "win32") return tmpdir2();
-  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
-  const dir = isAbsolute3(given) ? given : "/tmp";
-  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
-}
-function userDirName() {
-  return `squeal-${currentUid()}`;
-}
-function currentUid() {
-  return process.getuid?.() ?? 0;
 }
 
 // src/core/daemon/daemon.ts
@@ -10591,7 +10613,7 @@ var Daemon = class {
   /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
    * the tier in flight, abandons the open checkpoint), `runner.close()`,
-   * `setDaemon(null)`, `store.close()`. Then the socket, which closing
+   * the temp directory, `setDaemon(null)`, `store.close()`. Then the socket, which closing
    * unlinks, and last the lock, so a successor never sees this daemon's
    * socket go away after binding its own.
    */
@@ -10605,6 +10627,7 @@ var Daemon = class {
       const { store, worktreeId, lock: lock2 } = this.opened;
       await this.#step("loop.close", () => this.#loop?.close());
       await this.#step("runner.close", () => this.#runner?.close());
+      await this.#step("temp dir removal", () => removeScratch(this.opened.scratch));
       await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
