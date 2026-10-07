@@ -185,3 +185,15 @@ Decided: classify a path beyond a symlinked directory by the ignore status of th
 Own: `src/core/watcher/`, `src/harness/shared/` (S1, S2 only; ask before `src/harness/codex/`), tests under `test/watcher/`, `test/daemon/`, `test/harness/`, D2 and D9 sentences in `spec.md`, one `status.md` line. Leave `src/core/scheduler/`, `src/core/daemon/` (001-113), `src/core/status/` (001-116) and `src/runners/vitest/`, `src/core/keys/` (001-117) alone. Do not run `npm run build` or touch any `dist`. Commit as you go.
 
 Done when: the review's B1 fixture is a daemon test for both plugins where the added test file is listed, run and reported within the normal debounce; a symlinked `node_modules` still validates (001-111's test); S1 and S2 have tests.
+
+## After the 0.1.25 landing
+
+001-113, 001-116, 001-117 and 001-118 landed as 0.1.25 (`581f502`); full suite 188 files passed, 1 skipped, 1586 tests, and `test/e2e/torn-status.test.ts` with `SQUEAL_PROBE_TORN_STATUS=1` 2 of 2. Two reviews on gpt-6.1-sol, in parallel.
+
+## 001-114 review of 001-113 and 001-116
+
+Use /reviewer. Range: 001-113 (`8e2928b` to `8f62569` as cherry-picked) and 001-116 (`e6a87b2` to `e6b1501`), build `581f502`. Output `reviews/wave-11e.md`. For 001-113 this is the last round on the 001-100 slice. Outcome: (1) can a reinstall under a running daemon still store a false result, wedge, or leave a session without a daemon (the exit, the next hook's spawn, an edit during `npm ci`, a reinstall inside one workspace, a reinstall with no session to respawn the daemon); (2) can any status read, `--wait` poll or Stop poll still pair a revision with another revision's states, and does the read transaction ever block the daemon's writer or exceed the hook budget. Run `test/e2e/torn-status.test.ts` with `SQUEAL_PROBE_TORN_STATUS=1`.
+
+## 001-119 re-review of 001-118
+
+Use /reviewer. Range: 001-118 (`b8dc449` to `25ebd10` as cherry-picked), build `581f502`. Output `reviews/wave-11g.md`. Last round on the 001-111 slice. Outcome: are `reviews/wave-11f.md` B1, S1, S2 closed. Probe: the B1 fixture in both plugins; a symlinked `node_modules` under `node_modules/` and `node_modules` patterns; a committed and an untracked source link; a link to a directory outside the worktree and one into another repository; nested links; the scratch tree's location; the extra `check-ignore` cost; "Not validated" wording and custom tool names.
