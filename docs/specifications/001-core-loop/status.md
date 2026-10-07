@@ -83,6 +83,8 @@ Started: 2026-10-02
 
 - 2026-10-07, wave 11 (001-101, `lessons.md` defect 17; the crash case decided by the coordinator): D9 amended. Deny-once fires only for a `pass -> fail` of a check this worktree had seen pass (own or inherited), also across unknown results between the pass and the failure, which every delta now reads as `pass -> fail`; a first-seen failure, baseline or new, never denies and waits for the tool boundary. No separate no-dependencies guard: a worktree waiting for an install runs nothing (001-100). `REGRESSION_KINDS` removed.
 
+- 2026-10-07, wave 11 (001-104, `research/per-package-keys.md` F2; the note's wiring deferred to 001-105 by the coordinator): D3 amended. The hidden lockfile counts only under npm's rule (every package folder listed, every listed folder present, none newer; links by `lstat`); otherwise the installed-dependency fingerprint hashes the package folders' paths, names and versions, and `installedDependencies` returns one note. On `cezar` the check takes 9 to 11 ms (median, warm), flags the main checkout's unlisted `@fontsource/poppins` and passes two worktree installs.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
