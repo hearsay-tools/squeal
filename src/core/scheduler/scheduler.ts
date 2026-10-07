@@ -11,9 +11,10 @@ import type {
   SchedulerStatus,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
-import { bootstrap } from "./bootstrap.js";
+import { baseline, scan } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
+import { awaitsInstall, reconcileWaiting, startWaiting, stopWaiting } from "./install.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
@@ -51,6 +52,8 @@ class TierScheduler implements Scheduler {
   #closed = false;
   /** The pump stopped on an error; idle until the next batch or request. */
   #stalled = false;
+  /** No runner call until an install (`awaitsInstall`, task 001-100). */
+  #awaitingInstall = false;
 
   constructor(private readonly options: SchedulerOptions) {}
 
@@ -90,7 +93,10 @@ class TierScheduler implements Scheduler {
       const ledger = new Ledger(context);
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
-      await bootstrap(context, ledger);
+      await scan(context, ledger);
+      this.#awaitingInstall = await awaitsInstall(options.root);
+      if (this.#awaitingInstall) startWaiting(context, ledger);
+      else await this.#baseline(context, ledger);
       this.#context = context;
     });
     this.#pump();
@@ -114,12 +120,23 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return;
     await this.#lock.run(async () => {
       const { context, ledger } = this.#started();
+      if (this.#awaitingInstall) {
+        this.#awaitingInstall = await reconcileWaiting(context, ledger, batch);
+        if (!this.#awaitingInstall) await this.#baseline(context, ledger);
+        return;
+      }
       const applied = await reconcileBatch(context, ledger, batch);
       if (applied === null) return;
       const { revision, content } = applied;
       this.#runnerWork.queueRefine(revision, content);
     });
     this.#pump();
+  }
+
+  /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
+  async #baseline(context: SchedulerContext, ledger: Ledger): Promise<void> {
+    stopWaiting(context);
+    await baseline(context, ledger);
   }
 
   /**
@@ -167,7 +184,11 @@ class TierScheduler implements Scheduler {
     this.#closed = true;
     await this.#pumping;
     this.#runnerWork.cancel();
-    await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
+    await this.#lock.run(() => {
+      this.#ledger?.checkpoints.finish("abandoned");
+      // A daemon that is gone waits for nothing; the next one decides again.
+      if (this.#awaitingInstall) stopWaiting(this.options);
+    });
     for (const resolve of this.#idle.splice(0)) resolve();
   }
 

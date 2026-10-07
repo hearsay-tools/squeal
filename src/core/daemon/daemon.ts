@@ -242,6 +242,7 @@ class Daemon {
         nodeTest,
         runnerModule,
         { createCompositeRunner },
+        { awaitsInstall },
       ] = await Promise.all([
         import("../daemon-loop/index.js"),
         import("../state/index.js"),
@@ -249,6 +250,7 @@ class Daemon {
         import("../../runners/node-test/adapter.js"),
         import("./runner.js"),
         import("./composite-runner.js"),
+        import("../scheduler/index.js"),
       ]);
       const { storePaths } = await import("../store/index.js");
       const around = this.options.ownsProcess
@@ -278,7 +280,9 @@ class Daemon {
       ]);
       this.#vitest = vitestRunner;
       this.#runner = runner;
-      await vitestRunner?.open();
+      // Task 001-100: while no dependencies are installed nothing loads Vitest, so the
+      // first call after the install imports it from the worktree's own `node_modules`.
+      if (!(await awaitsInstall(root))) await vitestRunner?.open();
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop({
         root,
