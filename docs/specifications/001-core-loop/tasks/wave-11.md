@@ -171,3 +171,17 @@ Decided: S1 as the review says (keep the manifest subpath through the bare-requi
 Own: `src/runners/vitest/graph.ts`, `packages.ts`, `loads.ts`, `src/core/keys/dependencies.ts`, `src/core/types/` (additive), tests under `test/runners/vitest/`, `test/keys/`, `test/fixtures/vitest/`, D3 and D4 in `spec.md`, one `status.md` line. Leave `src/core/scheduler/` and `src/core/daemon/` (001-113) and `src/core/status/` (001-116) alone. Do not run `npm run build` or touch any `dist`. Commit as you go.
 
 Done when: the review's three fixtures are adapter tests that change the key and flip the result, each failing before its fix; an edit of a `require`d helper re-runs its test; the `cezar` share is re-measured (report the number).
+
+## 001-118 a symlinked source directory is observed
+
+Use /worker. Shape: repair. First repair round on the 001-111 slice. From `reviews/wave-11f.md` B1 (proven in both plugins): 001-111 treats every path beyond a symlinked directory as ignored, so a test file added under a symlinked source directory (`src -> ../linked-source`) never enters a revision, even through a forced full-suite checkpoint that then reports completed. Also S1 and S2 (the "Not validated" wording for a Bash call that changed nothing, and custom editing tools).
+
+Outcome: a symlinked directory that git does not ignore is observed like any project directory; only ignored install trees (a symlinked `node_modules`) stay out; no checkpoint completes while a listed test file is unknown to the watcher.
+
+Read: `reviews/wave-11f.md` (B1 has the fixture and fix steps; S1, S2); spec D2; `src/core/watcher/` as 001-111 left it.
+
+Decided: classify a path beyond a symlinked directory by the ignore status of the symlink's own path (checked with `check-ignore` on the link itself, which git accepts): ignored link, ignored subtree; not ignored, its descendants are candidates and the watcher observes the link's target. A batch git refuses is still split. S1: a Bash call whose revision changed nothing says nothing extra; S2 as the review proposes.
+
+Own: `src/core/watcher/`, `src/harness/shared/` (S1, S2 only; ask before `src/harness/codex/`), tests under `test/watcher/`, `test/daemon/`, `test/harness/`, D2 and D9 sentences in `spec.md`, one `status.md` line. Leave `src/core/scheduler/`, `src/core/daemon/` (001-113), `src/core/status/` (001-116) and `src/runners/vitest/`, `src/core/keys/` (001-117) alone. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the review's B1 fixture is a daemon test for both plugins where the added test file is listed, run and reported within the normal debounce; a symlinked `node_modules` still validates (001-111's test); S1 and S2 have tests.
