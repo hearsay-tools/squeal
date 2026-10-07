@@ -2375,7 +2375,10 @@ var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
   const path = join7(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join7("/tmp", userDirName(), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join7(userTmpDir(), name);
+}
+function userTmpDir(uid = currentUid()) {
+  return join7("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
