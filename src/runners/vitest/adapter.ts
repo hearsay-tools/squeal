@@ -1,4 +1,5 @@
 import type { TestSpecification, Vitest } from "vitest/node";
+import { compare } from "../../core/fs/index.js";
 import { findInstalledLockfile } from "../../core/keys/index.js";
 import type {
   AbsolutePath,
@@ -220,7 +221,7 @@ export class VitestAdapter implements RunnerAdapter {
       for (const project of vitest.projects) {
         envs.push(projectEnvironment(project, await projectInputs(vitest, project), context));
       }
-      return envs.sort((a, b) => (a.project < b.project ? -1 : a.project > b.project ? 1 : 0));
+      return envs.sort((a, b) => compare(a.project, b.project));
     });
   }
 
