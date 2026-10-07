@@ -2,32 +2,52 @@ import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { storePaths } from "../store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import { currentUid, preparePrivateDir, userTmpDir } from "./paths.js";
 
 /**
  * Where a daemon process lives outside its worktree (spec 001 D10, lessons
  * defect 13): its working directory is the store directory,
  * `<common-dir>/squeal/`, and its temp directory is
- * `<common-dir>/squeal/tmp/<worktree-hash>/`, not the `TMPDIR` of the hook
- * that spawned it, which may be a scratch directory another tool removes.
+ * `/tmp/squeal-<uid>/tmp/<worktree-hash>/`. Not the `TMPDIR` of the hook
+ * that spawned it, which may be a scratch directory another tool removes,
+ * and not under the store, because a test that makes a temp directory must
+ * not find itself inside a repository (review wave 7.6, B1).
  */
 export interface DaemonScratch {
   readonly workDir: AbsolutePath;
+  /** `/tmp/squeal-<uid>`, private to this user, made like the socket fallback directory. */
+  readonly userDir: AbsolutePath;
   readonly tempDir: AbsolutePath;
 }
 
-export function daemonScratch(commonDir: AbsolutePath, worktreeId: WorktreeId): DaemonScratch {
-  const workDir = storePaths(commonDir).dir;
-  return { workDir, tempDir: join(workDir, "tmp", worktreeId) };
+export function daemonScratch(
+  commonDir: AbsolutePath,
+  worktreeId: WorktreeId,
+  uid: number = currentUid(),
+): DaemonScratch {
+  const userDir = userTmpDir(uid);
+  return { workDir: storePaths(commonDir).dir, userDir, tempDir: join(userDir, "tmp", worktreeId) };
 }
 
 /**
- * Creates the temp directory empty. Called under the daemon lock, so no
- * other daemon of the worktree is using what it removes: a previous daemon
- * that died left its files here.
+ * Creates the temp directory empty, inside a user directory that must be
+ * private (`preparePrivateDir`). Called under the daemon lock, so no other
+ * daemon of the worktree is using what it removes: a previous daemon that
+ * died left its files here.
  */
-export function prepareScratch(scratch: DaemonScratch): void {
+export function prepareScratch(scratch: DaemonScratch, uid: number = currentUid()): void {
+  preparePrivateDir(scratch.userDir, uid, "temp directory");
   rmSync(scratch.tempDir, { recursive: true, force: true });
   mkdirSync(scratch.tempDir, { recursive: true });
+}
+
+/**
+ * Removes the temp directory at shutdown, after the runner closed and before
+ * the lock goes, so nothing of a retired worktree stays behind (review wave
+ * 7.6, S1) and no successor is using it yet.
+ */
+export function removeScratch(scratch: DaemonScratch): void {
+  rmSync(scratch.tempDir, { recursive: true, force: true });
 }
 
 /**
