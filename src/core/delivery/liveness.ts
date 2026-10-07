@@ -1,4 +1,3 @@
-import { isRecord } from "../fs/index.js";
 import { readHeader } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import type {
@@ -7,11 +6,14 @@ import type {
   DaemonRecord,
   EpochMs,
   KnownState,
+  RelativePath,
+  RevisionNumber,
   StatusHeader,
   Store,
   WorktreeId,
   WorktreeRecord,
 } from "../types/index.js";
+import { readSlot, writeSlot } from "./slots.js";
 
 /**
  * Daemon liveness from the heartbeat the daemon records in `worktrees`,
@@ -40,29 +42,47 @@ export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs):
 
 /**
  * The shared header (D6) with the worktree's daemon liveness and the paths
- * its revision changed (task 001-85), which every delivered message names.
+ * changed since revision `since` (`changedSince`), which every delivered
+ * message names (task 001-85; task 001-89, review wave 10 S4 (b)).
  */
 export function readLiveHeader(
   store: Store,
   worktreeId: WorktreeId,
   now: EpochMs,
   states?: readonly KnownState[],
+  since: RevisionNumber | null = null,
 ): StatusHeader {
   const header = readHeader(store, worktreeId, states);
-  const revision = header.revision === 0 ? null : store.revisions.get(worktreeId, header.revision);
   return {
     ...header,
     daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
-    changedPaths: revision?.changes.map((c) => c.path) ?? [],
+    changedPaths: changedSince(store, worktreeId, header.revision, since),
   };
+}
+
+/**
+ * The paths revisions after `since` up to `revision` changed, oldest first,
+ * each once: what changed since a consumer's last report, so a check that
+ * broke at one revision and is reported at a later one names both edits.
+ * With nothing after `since`, or no `since`, the paths `revision` changed.
+ */
+export function changedSince(
+  store: Store,
+  worktreeId: WorktreeId,
+  revision: RevisionNumber,
+  since: RevisionNumber | null,
+): readonly RelativePath[] {
+  const from = since === null || since >= revision ? revision : Math.max(since + 1, 1);
+  const paths = new Set<RelativePath>();
+  for (let n = from; n <= revision && n > 0; n++) {
+    for (const change of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change.path);
+  }
+  return [...paths];
 }
 
 /*
  * What each consumer was last told about liveness, the liveness part of its
- * view. `consumer_views` is keyed by check, so this lives in `meta`, one row
- * per worktree: `{ "<session>\n<agent>": "alive" | "down" }`. Written in the
- * delivery's transaction; consumers no longer registered are dropped on
- * every write.
+ * view (`slots.ts`): `"alive" | "down"`.
  */
 
 /** `meta` key of a worktree's told liveness. */
@@ -70,28 +90,14 @@ export function livenessMetaKey(worktreeId: WorktreeId): string {
   return `liveness-told:${worktreeId}`;
 }
 
-type Told = Record<string, DaemonLiveness["state"]>;
-
-const slot = (consumer: Consumer) => `${consumer.sessionId}\n${consumer.agentId}`;
-
-function readAll(store: Store, worktreeId: WorktreeId): Told {
-  const raw = store.meta.get(livenessMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value: unknown = JSON.parse(raw);
-    return isRecord(value) ? (value as Told) : {};
-  } catch {
-    return {};
-  }
-}
-
 /**
  * Liveness last told to `consumer`. A consumer registered before liveness
  * was tracked was told nothing, which read as a validating daemon: `alive`.
  */
 export function toldLiveness(store: Store, consumer: Consumer): DaemonLiveness["state"] {
-  const told = readAll(store, consumer.worktreeId)[slot(consumer)];
-  return told === "down" ? "down" : "alive";
+  return readSlot(store, livenessMetaKey(consumer.worktreeId), consumer) === "down"
+    ? "down"
+    : "alive";
 }
 
 /** Records what `consumer` was told; `null` forgets it. Call inside a transaction. */
@@ -100,14 +106,27 @@ export function tellLiveness(
   consumer: Consumer,
   state: DaemonLiveness["state"] | null,
 ): void {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer)),
-  );
-  const next: Told = {};
-  for (const [key, value] of Object.entries(readAll(store, consumer.worktreeId))) {
-    if (registered.has(key)) next[key] = value;
-  }
-  if (state === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = state;
-  store.meta.set(livenessMetaKey(consumer.worktreeId), JSON.stringify(next));
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, state);
+}
+
+/*
+ * The revision each consumer was last told about, in a delivered header or
+ * its registration (task 001-89, review wave 10 S4 (b)): the next header
+ * names the paths changed since.
+ */
+
+/** `meta` key of a worktree's told revisions. */
+export function revisionMetaKey(worktreeId: WorktreeId): string {
+  return `revision-told:${worktreeId}`;
+}
+
+/** The revision last told to `consumer`; `null` when none was recorded (registered by 0.1.8 or older). */
+export function toldRevision(store: Store, consumer: Consumer): RevisionNumber | null {
+  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
+  return typeof told === "number" ? told : null;
+}
+
+/** Records the revision `consumer` was told about; `null` forgets it. Call inside a transaction. */
+export function tellRevision(store: Store, consumer: Consumer, revision: RevisionNumber | null) {
+  writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
 }
