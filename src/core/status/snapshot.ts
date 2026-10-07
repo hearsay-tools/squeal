@@ -71,9 +71,9 @@ export function createStatusBuilder(
   };
 }
 
-/** The D7 snapshot of the worktree at `root` from an open store; call it inside one read transaction. */
+/** The D7 snapshot of the worktree at `root` from an open store, read in one read transaction. */
 export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): StatusSnapshot {
-  return snapshot(store, worktreeIdFor(root), root, now);
+  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now));
 }
 
 function snapshot(
