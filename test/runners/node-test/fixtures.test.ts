@@ -244,7 +244,7 @@ describe("node:test fixtures under the current Node", () => {
       return { hash: hash.digest("hex"), files: files.map((f) => relative(root, f)) };
     };
 
-    it("writes 1,000 modules and 200 test files, deterministically, under 10 s (0.14 s at calm load; a shared host reaches load 100)", SLOW, async () => {
+    it("writes 1,000 modules and 200 test files, deterministically, under 10 s", SLOW, async () => {
       mkdirSync(tmp, { recursive: true });
       const [a, b] = [join(tmp, "a"), join(tmp, "b")];
       expect(generate(a)).toBeLessThan(10_000);
