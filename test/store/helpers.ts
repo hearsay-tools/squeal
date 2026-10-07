@@ -20,10 +20,17 @@ afterEach(() => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 });
 
-/** A fresh temporary directory, removed after the test. */
+/**
+ * A fresh temporary directory, removed after the test. The removal retries:
+ * a detached stand-in CLI that a hook spawned (`quietCli`) can still write
+ * its marker after the hook returned, so a single pass can meet
+ * `ENOTEMPTY` under load (001 `reviews/wave-10d.md` N4, and its Codex twin).
+ */
 export function tempDir(prefix = "squeal-store-"): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+  cleanups.push(() =>
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }),
+  );
   return dir;
 }
 
