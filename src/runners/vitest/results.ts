@@ -1,3 +1,4 @@
+import { loadavg } from "node:os";
 import type { SerializedError, TestCase, TestModule } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
 import type {
@@ -27,6 +28,23 @@ export function toCheckError(error: SerializedError, paths: WorktreePaths): Chec
     location: frame ? paths.location(frame.file, frame.line, frame.column) : null,
     diff: diff === null ? null : paths.relativizeText(diff),
   };
+}
+
+/** Vitest's message for a test or hook that ran past its timeout. */
+const TIMEOUT = /^(?:Test|Hook) timed out in \d+ms/;
+
+/** The one-minute load average; `null` on Windows, where Node reports 0. */
+const currentLoad = () => (process.platform === "win32" ? null : (loadavg()[0] ?? null));
+
+/**
+ * Task 001-91, lessons defect 16: a timeout under load reads like a broken
+ * test, so a timed-out test's error carries the load average as its result
+ * comes in (`onTestCaseResult`). Every other error is returned as it is.
+ */
+export function withLoad(error: CheckError, load: () => number | null = currentLoad): CheckError {
+  if (!TIMEOUT.test(error.message)) return error;
+  const value = load();
+  return value === null ? error : { ...error, loadAverage: value };
 }
 
 /**
@@ -93,7 +111,8 @@ export function toCheckRunResult(
     location: location
       ? { path: testFile.path, line: location.line, column: location.column }
       : null,
-    errors: outcome === "fail" ? (result.errors ?? []).map((e) => toCheckError(e, paths)) : [],
+    errors:
+      outcome === "fail" ? (result.errors ?? []).map((e) => withLoad(toCheckError(e, paths))) : [],
   };
 }
 
