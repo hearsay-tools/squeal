@@ -4,6 +4,10 @@ Current and planned tasks. The coordinator keeps this file; workers do not edit 
 
 Status values: `planned`, `running`, `review`, `done`, `dropped`.
 
+## Standing models
+
+Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers, researchers and reviewers: `--backend claude --model opus --effort high`. Researchers may also run `--backend codex --model gpt-6-astra --effort high` (human, 2026-10-07). Never Fable for a worker (human rule). A quota or spend refusal preserves the work and asks the human; no silent substitution. The human's newest instruction outranks this section.
+
 ## Feature 001: core validation loop
 
 Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
@@ -187,10 +191,34 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-88 Squeal tells the agent how to use it, in the right place | done, before 001-87 (brief in `specifications/001-core-loop/tasks/wave-10.md`) | Skill description triggers on running tests; steps-first body with `references/`; a SessionStart primer (also after compaction): don't run Vitest to learn what edits did; `status --wait` pointers say results arrive with the next tool call by default; FAIL reports end with one `squeal why` line. | Primer, description, body and pointers as in the brief; hook p95 and the 10,000-character cap hold. |
 | 001-87 attended check of wave 10 | done: defect 14 narrowed, not closed (`lessons.md` "Defect 14 after wave 10") | Attended tmux session on a scratch fixture: idle wake for a pending check, mid-turn break during a long `sleep`, an outside edit while idle, Esc then a prompt; and whether the agent runs Vitest itself or relies on the reports. | Recorded in `lessons.md`; defect 14 closed or named. |
 
+## Feature 002: Codex adapter
+
+Spec: `specifications/002-codex-adapter/spec.md` (not yet written; stage research, see `status.md`). Decided 2026-10-07 with 003 in parallel (ADR 0004).
+
+### Research (parallel, from `specifications/002-codex-adapter/research/README.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 002-01 research: codex-hooks | running | Topic `codex-hooks`: configuration surfaces and trust, every event's payload under `exec` and interactive, mid-turn `additionalContext` timing, deny and block, Stop semantics, timeouts and per-hook cost, and the sandbox against the store, the socket and a detached daemon. | `research/codex-hooks.md` committed with every question tagged or "not determined, because". |
+| 002-02 research: codex-sessions-and-wake | running | Topic `codex-sessions-and-wake`: how Cezar drives Codex through `codex app-server` and what that protocol offers, idle-wake channels (`codex queue`, async hooks, notify), identity in shells, hooks and subagents, plugin packaging and the `squeal init` install path, where the primer lives, worktree lifecycle, and which events fire in non-interactive sessions. | `research/codex-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
+
+## Feature 003: node:test runner
+
+Spec: `specifications/003-node-test-runner/spec.md` (not yet written; stage research, see `status.md`). Decided 2026-10-07 with 002 in parallel (ADR 0004). The promise holds: only the needed tests run, only the delta is delivered.
+
+### Research (parallel, from `specifications/003-node-test-runner/research/README.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 003-01 research: node-test-runner-api | running (Astra) | Topic `node-test-runner-api`: `run()` and the `TestsStream` events, in-process against spawning the project's `node --test` with a custom reporter, enumeration without running, the flags and globs in the project's npm scripts, per-file process cost and `isolation: 'none'`, results in detail, sharp edges. | `research/node-test-runner-api.md` committed with every question tagged or "not determined, because". |
+| 003-02 research: node-test-module-graph | running | Topic `node-test-module-graph`: static import graph and resolvers under tsx, observed graph through loader hooks or coverage, which graph the key uses so a fresh worktree can look results up, resolution changes without a transform cache, direct against transitive importers, prior art in Node's own watch mode, Jest and testmon. | `research/node-test-module-graph.md` committed with every question tagged or "not determined, because". |
+
 ## Later
 
-- 002 pytest runner adapter.
-- 003 inherited-pass re-verification policy, if dogfooding shows stale escapes.
-- 004 Pi and OpenCode adapters.
-- 005 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
+- 004 slow suites by policy: a check class (e2e, integration) that runs at checkpoints rather than on every revision, with its own timeout, a load guard and inherited results across worktrees; after 003. Dogfood first on this repository's `test/e2e` under Vitest. The human's e2e blocker, 2026-10-07.
+- 005 `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share.
+- 006 pytest runner adapter.
+- 007 inherited-pass re-verification policy, if dogfooding shows stale escapes.
+- 008 Pi and OpenCode adapters.
+- 009 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
 - macOS verification before any public release.
