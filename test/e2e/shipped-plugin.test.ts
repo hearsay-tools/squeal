@@ -17,7 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { recorded } from "../harness/helpers.js";
+import { archivePlugin, type HookName, PLUGINS } from "./plugins.js";
 
 /*
  * Review wave 3, S5: the plugin exactly as a marketplace install copies it.
@@ -27,6 +27,8 @@ import { recorded } from "../harness/helpers.js";
  * shipped CLI as the daemon, which loads the project's Vitest; an edit then
  * reaches PostToolBatch as `PASS -> FAIL`. Committed bundles are what this
  * tests, so run `npm run build` and commit before trusting a local result.
+ * Spec 002: the same for `plugins/codex`, on PostToolUse, each hook run as
+ * Codex runs it (`plugins.ts`).
  */
 
 const VITEST_VERSION = (
@@ -53,11 +55,6 @@ describe("math", () => {
 });
 `;
 
-let base: string;
-let plugin: string;
-let project: string;
-let env: Record<string, string>;
-
 const git = (cwd: string, args: string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
 
@@ -66,26 +63,6 @@ function hasNodeModulesAbove(dir: string): boolean {
     if (existsSync(join(at, "node_modules"))) return true;
     if (dirname(at) === at) return false;
   }
-}
-
-const cliIn = (cwd: string, args: string[]): Promise<BundleRun> =>
-  runNode(
-    ["--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs"), ...args],
-    "",
-    env,
-    cwd,
-  );
-
-const hook = (name: string, input: string): Promise<BundleRun> =>
-  runNode(
-    ["--disable-warning=ExperimentalWarning", join(plugin, "dist", `${name}.mjs`)],
-    input,
-    env,
-  );
-
-async function status(): Promise<StatusResult> {
-  const run = await cliIn(project, ["status", "--json"]);
-  return JSON.parse(run.stdout) as StatusResult;
 }
 
 async function until<T>(what: string, ms: number, probe: () => Promise<T | null>): Promise<T> {
@@ -98,78 +75,96 @@ async function until<T>(what: string, ms: number, probe: () => Promise<T | null>
   }
 }
 
-beforeAll(() => {
-  // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
-  base = realpathSync(mkdtempSync("/tmp/squeal-ship-"));
-  plugin = join(base, "plugin");
-  project = join(base, "project");
-  const archive = execFileSync("git", ["archive", "HEAD", "plugins/claude-code"], {
-    cwd: REPO_ROOT,
-    maxBuffer: 64 * 1024 * 1024,
+describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (kind) => {
+  let base: string;
+  let plugin: string;
+  let project: string;
+  let env: Record<string, string>;
+
+  const cliIn = (cwd: string, args: string[]): Promise<BundleRun> =>
+    runNode(
+      ["--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs"), ...args],
+      "",
+      env,
+      cwd,
+    );
+
+  const hook = (name: HookName): Promise<BundleRun> => kind.run(plugin, name, project, {}, env);
+
+  async function status(): Promise<StatusResult> {
+    const run = await cliIn(project, ["status", "--json"]);
+    return JSON.parse(run.stdout) as StatusResult;
+  }
+
+  beforeAll(() => {
+    // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
+    base = realpathSync(mkdtempSync("/tmp/squeal-ship-"));
+    plugin = join(base, "plugin");
+    project = join(base, "project");
+    archivePlugin(kind, plugin);
+
+    mkdirSync(join(project, "src"), { recursive: true });
+    mkdirSync(join(project, "test"));
+    writeFileSync(
+      join(project, "package.json"),
+      `${JSON.stringify({ name: "fixture", private: true, type: "module" })}\n`,
+    );
+    writeFileSync(join(project, "src/math.ts"), MATH("+", 0));
+    writeFileSync(join(project, "test/math.test.ts"), MATH_TEST);
+    writeFileSync(join(project, "vitest.config.ts"), "export default { test: {} };\n");
+    writeFileSync(join(project, "squeal.config.json"), "{}\n");
+    writeFileSync(join(project, ".gitignore"), "node_modules/\n");
+    execFileSync(
+      "npm",
+      [
+        "install",
+        "--prefer-offline",
+        "--no-audit",
+        "--no-fund",
+        "--loglevel=error",
+        `vitest@${VITEST_VERSION}`,
+      ],
+      { cwd: project, stdio: "pipe" },
+    );
+    git(project, ["init", "-q", "-b", "main"]);
+    git(project, ["add", "-A"]);
+    git(project, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
+
+    const runtime = mkdtempSync("/tmp/sq-");
+    env = { XDG_RUNTIME_DIR: runtime };
+  }, 120_000);
+
+  afterAll(async () => {
+    if (project !== undefined && existsSync(project)) await cliIn(project, ["stop"]);
+    if (base !== undefined) rmSync(base, { recursive: true, force: true });
+    if (env?.XDG_RUNTIME_DIR !== undefined)
+      rmSync(env.XDG_RUNTIME_DIR, { recursive: true, force: true });
   });
-  mkdirSync(join(base, "archive"));
-  execFileSync("tar", ["-x", "-C", join(base, "archive")], { input: archive });
-  execFileSync("mv", [join(base, "archive/plugins/claude-code"), plugin]);
 
-  mkdirSync(join(project, "src"), { recursive: true });
-  mkdirSync(join(project, "test"));
-  writeFileSync(
-    join(project, "package.json"),
-    `${JSON.stringify({ name: "fixture", private: true, type: "module" })}\n`,
-  );
-  writeFileSync(join(project, "src/math.ts"), MATH("+", 0));
-  writeFileSync(join(project, "test/math.test.ts"), MATH_TEST);
-  writeFileSync(join(project, "vitest.config.ts"), "export default { test: {} };\n");
-  writeFileSync(join(project, "squeal.config.json"), "{}\n");
-  writeFileSync(join(project, ".gitignore"), "node_modules/\n");
-  execFileSync(
-    "npm",
-    [
-      "install",
-      "--prefer-offline",
-      "--no-audit",
-      "--no-fund",
-      "--loglevel=error",
-      `vitest@${VITEST_VERSION}`,
-    ],
-    { cwd: project, stdio: "pipe" },
-  );
-  git(project, ["init", "-q", "-b", "main"]);
-  git(project, ["add", "-A"]);
-  git(project, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
-
-  const runtime = mkdtempSync("/tmp/sq-");
-  env = { XDG_RUNTIME_DIR: runtime };
-}, 120_000);
-
-afterAll(async () => {
-  if (project !== undefined && existsSync(project)) await cliIn(project, ["stop"]);
-  if (base !== undefined) rmSync(base, { recursive: true, force: true });
-  if (env?.XDG_RUNTIME_DIR !== undefined)
-    rmSync(env.XDG_RUNTIME_DIR, { recursive: true, force: true });
-});
-
-describe("the plugin as a marketplace install ships it", () => {
   it("has no node_modules above the plugin copy", () => {
     expect(hasNodeModulesAbove(plugin)).toBe(false);
     expect(existsSync(join(plugin, "hooks/hooks.json"))).toBe(true);
   });
 
-  it("runs bin/squeal --version and status without loading Vitest", async () => {
+  it("runs bin/squeal --version", (ctx) => {
+    if (!kind.bin)
+      ctx.skip("Codex ships no bin/: the agent's squeal comes from the npm install (spec 002 D1)");
     const bin = execFileSync(join(plugin, "bin/squeal"), ["--version"], {
       cwd: project,
       encoding: "utf8",
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
     });
     expect(bin).toBe(`${ROOT_VERSION}\n`);
+  });
 
+  it("runs the bundled CLI's status without loading Vitest", async () => {
     const before = await cliIn(project, ["status"]);
     expect(before.stderr).not.toMatch(/ERR_MODULE_NOT_FOUND|\n\s+at /);
     expect(before.stdout).not.toBe("");
   });
 
-  it("starts the shipped daemon from SessionStart and delivers PASS -> FAIL on PostToolBatch", async () => {
-    const start = await hook("session-start", recorded("session-start", project));
+  it(`starts the shipped daemon from SessionStart and delivers PASS -> FAIL on ${kind.boundary}`, async () => {
+    const start = await hook("session-start");
     expect(start).toMatchObject({ stderr: "", code: 0 });
 
     const socket = socketPathFor(worktreeIdFor(project), env);
@@ -183,7 +178,7 @@ describe("the plugin as a marketplace install ships it", () => {
     });
     expect(baseline.available && baseline.knownFailures).toEqual([]);
 
-    const registered = await hook("post-tool-batch", recorded("post-tool-batch", project));
+    const registered = await hook("post-tool-batch");
     expect(registered.code).toBe(0);
     expect(registered.stdout).toContain("registered at revision");
 
@@ -193,7 +188,7 @@ describe("the plugin as a marketplace install ships it", () => {
       return s.available && s.knownFailures.some((f) => f.validity === "current") ? s : null;
     });
 
-    const batch = await hook("post-tool-batch", recorded("post-tool-batch", project));
+    const batch = await hook("post-tool-batch");
     expect(batch).toMatchObject({ stderr: "", code: 0 });
     const context = (
       JSON.parse(batch.stdout) as { hookSpecificOutput: { additionalContext: string } }
@@ -202,7 +197,7 @@ describe("the plugin as a marketplace install ships it", () => {
     expect(context).toContain("FAIL  test/math.test.ts > math > adds");
     expect(context).toContain("PASS -> FAIL");
 
-    const end = await hook("session-end", recorded("session-end", project));
+    const end = await hook("session-end");
     expect(end).toMatchObject({ stdout: "", stderr: "", code: 0 });
   }, 180_000);
 });

@@ -1,13 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { expectAgrees } from "./agree.js";
-import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, OTHER_SESSION, until } from "./harness.js";
+import {
+  type E2E,
+  e2eSuite,
+  HOOK_BUDGET_MS,
+  MATH,
+  OTHER_SESSION,
+  PLUGINS,
+  until,
+} from "./harness.js";
 
 /*
  * Spec 001 goal 6, D10 and D11, end to end, and review wave 3 S2 and S3: a
  * SIGKILLed daemon is replaced by the next SessionStart; a consumer told at a
  * tool boundary while no daemon validates hears it once, and once more when
  * one does again; a bad `squeal.config.json` is one note and a running daemon.
+ * Spec 002: each for both plugins.
  */
 
 const fixture = e2eSuite();
@@ -32,9 +41,9 @@ async function kill(e: E2E, pid: number): Promise<void> {
   );
 }
 
-describe("a dead daemon", () => {
+describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
   it("is replaced by the next SessionStart", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     const first = await registered(e);
     await kill(e, first.pid);
 
@@ -55,7 +64,7 @@ describe("a dead daemon", () => {
   }, 240_000);
 
   it("is named in the delivered header once while down and once when replaced", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     const first = await registered(e);
     await kill(e, first.pid);
     const down = await until("status to report the daemon down", DOWN_WAIT_MS, async () => {
@@ -94,13 +103,13 @@ describe("a dead daemon", () => {
   }, 240_000);
 });
 
-describe("a bad squeal.config.json", () => {
+describe.each(PLUGINS)("a bad squeal.config.json, $name", (plugin) => {
   const BAD = `${JSON.stringify({ stop: { waitMs: "500" }, runner: { tierSzie: 2 } }, null, 2)}\n`;
   const policyNotes = (s: StatusSnapshot) =>
     s.daemonNotes.filter((n) => n.text.includes("squeal.config.json"));
 
   it("yields one note and a running daemon", async (ctx) => {
-    const e = fixture(ctx, { policy: BAD });
+    const e = fixture(ctx, plugin, { policy: BAD });
     const first = await registered(e);
     const status = await e.status(e.main);
     expect(status.daemon.state).toBe("alive");

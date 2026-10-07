@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { expectAgrees, headerRevision } from "./agree.js";
-import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION, STRINGS } from "./harness.js";
+import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION, PLUGINS, STRINGS } from "./harness.js";
 
 /*
  * Spec 001 goals 4 and 7 and Testing, end to end: a second worktree's daemon
  * bootstraps from the shared store with zero runs and reports its results as
  * inherited; an edit there runs only its affected test files and tells the
- * first worktree's consumer nothing.
+ * first worktree's consumer nothing. Spec 002: each for both plugins.
  */
 
 const fixture = e2eSuite();
@@ -36,9 +36,9 @@ async function twoWorktrees(e: E2E) {
   return { main, wt2, second };
 }
 
-describe("a second worktree", () => {
+describe.each(PLUGINS)("a second worktree, $name", (plugin) => {
   it("bootstraps with zero runs and inherited provenance", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     const { main, wt2, second } = await twoWorktrees(e);
 
     expect(e.runs(e.main).length).toBeGreaterThan(0);
@@ -70,7 +70,7 @@ describe("a second worktree", () => {
   // Goal 4: inherited results are reported as inherited, and D9's skill reads
   // "the header's pending and inherited counts" (StatusHeader.inheritedCount).
   it("names inherited results in the registration it delivers", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     const { wt2 } = await twoWorktrees(e);
     const later = await e.hook("session-start", wt2, { session_id: "late-session" });
     expect(later.text).toContain("registered at revision");
@@ -82,7 +82,7 @@ describe("a second worktree", () => {
   // the delta reads PASS -> FAIL from the prior known state, not "first
   // observed: FAIL".
   it("calls a break of an inherited pass PASS -> FAIL before any tool boundary", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     const { wt2 } = await twoWorktrees(e);
     await e.edit(wt2, "strings", STRINGS("?"), (s) => s.knownFailures.length === 1);
     const delivered = await e.hook("post-tool-batch", wt2, { session_id: OTHER_SESSION });
@@ -90,7 +90,7 @@ describe("a second worktree", () => {
   }, 240_000);
 
   it("runs only the affected files of an edit there and tells the first worktree nothing", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     const { main, wt2 } = await twoWorktrees(e);
     const registered = await e.hook("post-tool-batch", e.main);
     expect(registered.text).toMatch(/^SQUEAL · registered at revision \d+\n/);

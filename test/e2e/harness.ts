@@ -16,11 +16,12 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse, StatusSnapshot } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { recorded } from "../harness/helpers.js";
 import { type Install, vitestInstall } from "./install.js";
+import { archivePlugin, type HookName, type Plugin } from "./plugins.js";
 import { MATH, SLOW, type Source, STRINGS } from "./sources.js";
 import { daemonPids, metric, type RunRow, readRuns, until } from "./support.js";
 
+export { type HookName, PLUGINS, type Plugin } from "./plugins.js";
 export { MATH, SLOW, SLOW_MS, STRINGS } from "./sources.js";
 export { hasNodeModulesAbove, until } from "./support.js";
 
@@ -32,7 +33,8 @@ export { hasNodeModulesAbove, until } from "./support.js";
  * daemons spawned by those bundles from the shipped CLI, and no `SQUEAL_CLI`
  * anywhere: the hooks get PATH, HOME and a private XDG_RUNTIME_DIR only.
  * Committed bundles are what runs, so build and commit before trusting a
- * local result.
+ * local result. Spec 002 runs every scenario for the Codex plugin too, each
+ * hook as its harness runs it (`plugins.ts`).
  */
 
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
@@ -43,13 +45,6 @@ const SETTLE_WAIT_MS = 90_000;
 
 /** The recorded hook JSON's session is the default consumer; this is a second one. */
 export const OTHER_SESSION = "0d7c5b1e-3f0a-4b8e-9a51-2c6e8f4d7a90";
-
-export type HookName =
-  | "session-start"
-  | "post-tool-batch"
-  | "pre-tool-use"
-  | "stop"
-  | "session-end";
 
 export interface Hooked extends BundleRun {
   /** additionalContext, permissionDecisionReason or a block reason; `null` when the hook printed nothing. */
@@ -85,6 +80,7 @@ export class E2E {
   #edits = 0;
 
   private constructor(
+    readonly kind: Plugin,
     readonly base: string,
     readonly runtime: string,
     readonly install: string,
@@ -94,10 +90,10 @@ export class E2E {
     this.#env = { XDG_RUNTIME_DIR: runtime };
   }
 
-  static create(install: string, options: FixtureOptions = {}): E2E {
+  static create(kind: Plugin, install: string, options: FixtureOptions = {}): E2E {
     // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
     const base = realpathSync(mkdtempSync("/tmp/squeal-e2e-"));
-    const e2e = new E2E(base, realpathSync(mkdtempSync("/tmp/sq-")), install);
+    const e2e = new E2E(kind, base, realpathSync(mkdtempSync("/tmp/sq-")), install);
     try {
       e2e.#build(options);
     } catch (error) {
@@ -109,15 +105,7 @@ export class E2E {
   }
 
   #build(options: FixtureOptions): void {
-    const archive = execFileSync("git", ["archive", "HEAD", "plugins/claude-code"], {
-      cwd: REPO_ROOT,
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    const unpacked = join(this.base, "archive");
-    mkdirSync(unpacked);
-    execFileSync("tar", ["-x", "-C", unpacked], { input: archive });
-    execFileSync("mv", [join(unpacked, "plugins/claude-code"), this.plugin]);
-    rmSync(unpacked, { recursive: true });
+    archivePlugin(this.kind, this.plugin);
 
     const repo = this.main;
     cpSync(join(FIXTURE, "project"), repo, { recursive: true });
@@ -161,17 +149,18 @@ export class E2E {
     writeFileSync(join(root, "src", `${file}.ts`), `// edit ${this.#edits++}\n${body}`);
   }
 
-  /** Runs a hook bundle the way hooks.json does, fed the recorded input with `cwd` set to `root`. */
+  /** Runs a hook the way the plugin's harness does, fed the recorded input with `cwd` set to `root`. */
   async hook(name: HookName, root: string, overrides: object = {}): Promise<Hooked> {
-    const run = await runNode(
-      ["--disable-warning=ExperimentalWarning", join(this.plugin, "dist", `${name}.mjs`)],
-      recorded(name, root, overrides),
-      this.#env,
-    );
+    const run = await this.kind.run(this.plugin, name, root, overrides, this.#env);
     const json = run.stdout === "" ? null : (JSON.parse(run.stdout) as HookJson);
     const out = json?.hookSpecificOutput;
     const text = out?.additionalContext ?? out?.permissionDecisionReason ?? json?.reason ?? null;
-    metric({ hook: name, ms: Math.round(run.ms), delivered: text !== null });
+    metric({
+      plugin: this.kind.name,
+      hook: name,
+      ms: Math.round(run.ms),
+      delivered: text !== null,
+    });
     return { ...run, json, text };
   }
 
@@ -239,7 +228,7 @@ export class E2E {
     const started = performance.now();
     this.write(root, file, body);
     const settled = await this.settle(root, `the edit of src/${file}.ts to settle`, accept, before);
-    metric({ settle: file, ms: Math.round(performance.now() - started) });
+    metric({ plugin: this.kind.name, settle: file, ms: Math.round(performance.now() - started) });
     return settled;
   }
 
@@ -268,7 +257,7 @@ export class E2E {
  * Registers the suite's install and cleanup; returns a fixture factory that
  * skips the test, with the reason, when Vitest cannot be installed.
  */
-export function e2eSuite(): (ctx: TestContext, options?: FixtureOptions) => E2E {
+export function e2eSuite(): (ctx: TestContext, kind: Plugin, options?: FixtureOptions) => E2E {
   let install: Install = { ok: false, reason: "the install did not run" };
   const fixtures: E2E[] = [];
   beforeAll(async () => {
@@ -277,10 +266,10 @@ export function e2eSuite(): (ctx: TestContext, options?: FixtureOptions) => E2E 
   afterEach(async () => {
     await Promise.all(fixtures.splice(0).map((f) => f.cleanup()));
   }, 120_000);
-  return (ctx, options) => {
+  return (ctx, kind, options) => {
     const ready = install;
     if (!ready.ok) return ctx.skip(`end to end skipped: ${ready.reason}`);
-    const fixture = E2E.create(ready.dir, options);
+    const fixture = E2E.create(kind, ready.dir, options);
     fixtures.push(fixture);
     return fixture;
   };
