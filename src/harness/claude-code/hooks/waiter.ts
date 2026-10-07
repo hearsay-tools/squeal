@@ -2,9 +2,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { formatDelta } from "../../../core/delivery/index.js";
 import { storePaths } from "../../../core/store/index.js";
 import type { Delta } from "../../../core/types/index.js";
+import { acquireWaiterLock } from "../../../core/waiter-lock/index.js";
 import type { HookContext } from "../context.js";
 import { type Handler, type HookDeps, isRegistered, withContext } from "../hook.js";
-import { acquireWaiterLock } from "../waiter-lock.js";
 
 /**
  * The waiter's `asyncRewake` hook timeout in hooks.json, seconds. Spec 001

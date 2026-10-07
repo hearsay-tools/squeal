@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { readPolicy } from "../../../core/daemon/policy.js";
 import {
   formatDelta,
   formatRegistration,
@@ -9,6 +10,7 @@ import { isPending, toKnownFailure } from "../../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../../core/status/index.js";
 import { storePaths } from "../../../core/store/index.js";
 import type { KnownFailure } from "../../../core/types/index.js";
+import { removeWaiterLock } from "../../../core/waiter-lock/index.js";
 import type { HookContext } from "../context.js";
 import { ensureIfStale } from "../ensure.js";
 import { isFork } from "../fork.js";
@@ -19,9 +21,7 @@ import {
   isRegistered,
   withContext,
 } from "../hook.js";
-import { readHookPolicy } from "../policy.js";
 import { fullSuiteReason, knownFailuresLine, knownFailuresReason, statusText } from "../text.js";
-import { removeWaiterLock } from "../waiter-lock.js";
 
 /**
  * The longest `stop.waitMs` honoured. Every hook has `timeout: 2` (D9); Node
@@ -78,7 +78,7 @@ export function stopBusyTimeoutMs(waitMs: number): number {
  */
 export const stop: Handler = (input, location, deps) => {
   if (isFork(input)) return forkStop(input, location, deps);
-  const policy = readHookPolicy(location.root).stop;
+  const policy = readPolicy(location.root).stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext(
     input,

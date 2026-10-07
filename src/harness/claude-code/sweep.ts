@@ -1,7 +1,7 @@
 import { storePaths } from "../../core/store/index.js";
 import type { Consumer, WorktreeId } from "../../core/types/index.js";
+import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { HookContext } from "./context.js";
-import { removeWaiterLock } from "./waiter-lock.js";
 
 /**
  * Unregisters every consumer of `sessionId`, main agent and subagents, in
