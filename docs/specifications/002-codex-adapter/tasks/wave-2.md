@@ -39,3 +39,17 @@ Owns: `docs/specifications/002-codex-adapter/lessons.md` and throwaway probes un
 Done when: `lessons.md` has a verdict, setup, one section per proof item with transcript excerpts or hook logs, and defects named and numbered; every item proven or explicitly "not shown, because".
 
 Use /worker.
+
+## 002-17 trust through Codex
+
+Outcome: `squeal init --harness codex --trust` shows the user the Squeal hooks Codex has not trusted and, on their yes, has Codex trust them, so no `/hooks` step is needed. Approved by the human 2026-10-07.
+
+Read: spec 002 D1 (trust) and goal 8; `research/wave-0-checks.md` finding 3 and its probes `bin/as-trust.mjs` and `logs/q3-trust-api.txt` (the exact protocol: `initialize`, `initialized`, `hooks/list` with `cwds`, then `config/batchWrite` with `keyPath: hooks.state."<key>".trusted_hash`, `value: currentHash`, `mergeStrategy: "replace"`, `reloadUserConfig: true`); `src/cli/codex/init.ts`, `launcher.ts`, `hash.ts`.
+
+Shape: slice. Test first. Seam: a new `src/cli/codex/trust.ts` that spawns `codex app-server` from the worktree root (`CODEX_HOME` and `PATH` as the user's environment has them), lists the hooks whose `pluginId` is `squeal@squeal`, and returns the untrusted or modified ones with event, command and `currentHash`. `initCodex` with `--trust`: after its usual output, print those hooks; on a terminal ask one yes/no question (default no); `--yes` answers yes without asking; with no terminal and no `--yes`, print and exit 1 changing nothing. On yes, one `config/batchWrite` for exactly those hooks, then list again and print each hook's new status. Codex writes its own config; Squeal never opens a file under `CODEX_HOME`. Plugin not installed: say so with the two install commands, exit 1. `codex` not on `PATH`, or app-server failing or silent for 10 s: one line, exit 1. Kill the app-server on every path.
+
+Owns: `src/cli/codex/trust.ts`, the `--trust` and `--yes` wiring in `src/cli/codex/init.ts` and `src/cli/main.ts` (its usage text), `test/cli/codex-trust.test.ts`, a section in `plugins/codex/README.md`, the `init` line in `plugins/claude-code/skills/squeal/references/commands.md`. Leave alone: `hooks.json` (pinned), `src/harness/**`, `src/core/**`, `src/runners/**`.
+
+Done when: unit tests against a stub app-server (a script speaking the JSON-RPC lines) cover yes, no, `--yes`, no terminal, nothing to trust, plugin missing, `codex` missing, a silent app-server; a live test, skipped when `codex` is not on `PATH`, installs the plugin from this checkout into a scratch `CODEX_HOME` with `codex plugin marketplace add` and `codex plugin add`, runs `--trust --yes`, and shows every Squeal hook `trusted` in `hooks/list`, with the scratch `CODEX_HOME/config.toml` changed only by Codex, a scratch `HOME/.codex` untouched, and no bypass flag anywhere; lint, typecheck, full suite green. Never touch the real `~/.codex`. Do not run `npm run build`.
+
+Use /worker.

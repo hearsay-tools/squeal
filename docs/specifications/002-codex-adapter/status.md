@@ -25,6 +25,8 @@ Started: 2026-10-07
 
 - 2026-10-07, wave 2 (002-18, 002-15), 0.1.19: SubagentStart injects the header and primer (D3 as amended); the status line names no cause it cannot know, and the optional silent PreToolUse registration was not taken, since it would register a consumer before it hears the primer; N3 accepted: Codex SessionEnd sweeps only its `cwd` (Codex gives it nothing else, `CLAUDE_PROJECT_DIR` is foreign there, the rollout format is unverified), and the next SessionStart sweep or expiry catches a consumer left in another repository. The e2e suite runs every scenario for both plugins, Codex hooks through `bash -c` from the archived `hooks.json` in the thread's `cwd`; the one Codex skip is `bin/squeal`, which Codex does not ship (D1). `squeal init --harness codex` seeds `nodeTest` like `squeal init`.
 
+- 2026-10-07, decided by the human: build the trust command (row 002-17, `squeal init --harness codex --trust`), and install the plugin into the real `~/.codex` with its hooks trusted for dogfooding with a Cezar Codex worker (row 002-19). The coordinator orders 002-19 after 002-16's scratch proof and 002-17, so a defective plugin never reaches every Codex session on the machine.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
