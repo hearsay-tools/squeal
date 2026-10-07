@@ -78,7 +78,8 @@ function withDefaults(entry: Partial<NodeTestProject>): NodeTestProject {
 }
 
 function entryProblem(entry: unknown, at: string, kept: readonly NodeTestProject[]): string | null {
-  if (!isRecord(entry)) return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
+  if (!isRecord(entry))
+    return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
   const named = nonEmptyString(entry.name) === null ? (entry.name as string) : null;
   const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
   for (const key of Object.keys(entry)) {

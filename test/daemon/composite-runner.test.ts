@@ -1,5 +1,10 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { vitestDetected } from "../../src/core/daemon/runner.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type {
   AffectedTestFiles,
   CheckRunResult,
@@ -9,6 +14,8 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../src/core/types/index.js";
+import { git } from "../hash/git-repo.js";
+import { childEnv, daemonSuite, type FixtureRepo, readNotes, SLOW, waitReady } from "./helpers.js";
 
 /*
  * Spec 003 D7: "The daemon holds one `RunnerAdapter` per configured or
@@ -150,9 +157,16 @@ describe("createCompositeRunner (spec 003 D7)", () => {
   it("fans out affected and merges direct and transitive, sorted", async () => {
     const D = ref("test:unit", "test/unit/d.test.ts");
     const vitest = fake("vitest", { "": [] }, { affected: { direct: [B], transitive: [A] } });
-    const node = fake("node-test", { "test:unit": [] }, { affected: { direct: [C], transitive: [D] } });
+    const node = fake(
+      "node-test",
+      { "test:unit": [] },
+      { affected: { direct: [C], transitive: [D] } },
+    );
     const composite = createCompositeRunner([node, vitest]);
-    expect(await composite.affected(["src/lib.ts"])).toEqual({ direct: [B, C], transitive: [A, D] });
+    expect(await composite.affected(["src/lib.ts"])).toEqual({
+      direct: [B, C],
+      transitive: [A, D],
+    });
     expect(vitest.calls).toEqual(["affected src/lib.ts"]);
     expect(node.calls).toEqual(["affected src/lib.ts"]);
   });
@@ -232,7 +246,9 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(report.completedFiles).toEqual([A]);
     expect(report.results).toEqual([passed(A)]);
     expect(report.fileDurations).toEqual([{ testFile: A, durationMs: 5 }]);
-    expect(report.failure).toBe("node-test: node exited with signal SIGSEGV before any file completed");
+    expect(report.failure).toBe(
+      "node-test: node exited with signal SIGSEGV before any file completed",
+    );
   });
 
   it("turns an adapter whose run rejects into a crashed part of the run", async () => {
@@ -267,5 +283,86 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     await expect(createCompositeRunner([vitest, node]).close()).rejects.toThrow(/busy/);
     expect(vitest.calls).toEqual(["close"]);
     expect(node.calls).toEqual(["close"]);
+  });
+});
+
+/** A committed repository under /tmp, where `vitest` does not resolve, holding `files`. */
+function bareRepo(files: Readonly<Record<string, string>>): FixtureRepo {
+  const main = realpathSync(mkdtempSync("/tmp/sq-bare-"));
+  for (const [path, content] of Object.entries(files)) {
+    mkdirSync(dirname(join(main, path)), { recursive: true });
+    writeFileSync(join(main, path), content);
+  }
+  git(main, ["init", "-q", "-b", "main"]);
+  git(main, ["add", "-A"]);
+  git(main, ["commit", "-qm", "fixture"]);
+  const worktreeId = worktreeIdFor(main);
+  const runtimeDir = realpathSync(mkdtempSync("/tmp/sq-"));
+  return {
+    root: main,
+    commonDir: join(main, ".git"),
+    worktreeId,
+    runtimeDir,
+    socketPath: socketPathFor(worktreeId, { XDG_RUNTIME_DIR: runtimeDir }),
+    env: childEnv(runtimeDir),
+    cleanup: () => {
+      rmSync(main, { recursive: true, force: true });
+      rmSync(runtimeDir, { recursive: true, force: true });
+    },
+  };
+}
+
+const MANIFEST = '{ "type": "module" }\n';
+const NODE_TEST_CONFIG = JSON.stringify({
+  nodeTest: [{ name: "test:unit", include: ["test/*.test.mjs"] }],
+});
+const NODE_TEST_FILE = `import test from "node:test";\ntest("works", () => {});\n`;
+
+describe("vitestDetected (spec 003 D7)", () => {
+  it.each([
+    ["a Vitest config", { "vitest.config.ts": "export default {};\n" }, true],
+    ["a Vite config", { "vite.config.mjs": "export default {};\n" }, true],
+    [
+      "vitest in devDependencies",
+      { "package.json": '{ "devDependencies": { "vitest": "^4" } }' },
+      true,
+    ],
+    ["neither", { "package.json": MANIFEST, "test/a.test.mjs": NODE_TEST_FILE }, false],
+  ])("is %s -> %s", (_, files, expected) => {
+    const repo = bareRepo(files);
+    try {
+      expect(vitestDetected(repo.root)).toBe(expected);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+describe("squeal daemon with node:test projects (spec 003 D7)", SLOW, () => {
+  const suite = daemonSuite();
+
+  function started(files: Readonly<Record<string, string>>) {
+    const repo = bareRepo(files);
+    suite.cleanup(repo.cleanup);
+    return { repo, spawned: suite.daemon(repo) };
+  }
+
+  it("starts with one nodeTest project and no Vitest, without the Vitest note", async () => {
+    const { repo, spawned } = started({
+      "package.json": MANIFEST,
+      "squeal.config.json": NODE_TEST_CONFIG,
+      "test/a.test.mjs": NODE_TEST_FILE,
+    });
+    await waitReady(repo, spawned);
+    expect(readNotes(repo).filter((text) => /vitest/i.test(text))).toEqual([]);
+    expect(spawned.child.exitCode).toBeNull();
+  });
+
+  it("keeps the Vitest note when neither runner is configured or detected", async () => {
+    const { repo, spawned } = started({ "package.json": MANIFEST });
+    await waitReady(repo, spawned);
+    expect(readNotes(repo)).toContainEqual(
+      expect.stringMatching(/^vitest could not start: vitest\/node does not resolve/),
+    );
   });
 });

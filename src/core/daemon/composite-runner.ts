@@ -42,7 +42,11 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
 
   const environment = async () => {
     const parts = await each((adapter) => adapter.environment());
-    for (const { adapter, value } of parts) own(adapter, value.map((e) => e.project));
+    for (const { adapter, value } of parts)
+      own(
+        adapter,
+        value.map((e) => e.project),
+      );
     return parts.flatMap((part) => part.value);
   };
 
@@ -76,7 +80,11 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
     enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
     async testFiles() {
       const parts = await each((adapter) => adapter.testFiles());
-      for (const { adapter, value } of parts) own(adapter, value.map((f) => f.project));
+      for (const { adapter, value } of parts)
+        own(
+          adapter,
+          value.map((f) => f.project),
+        );
       return parts.flatMap((part) => part.value);
     },
     environment,
