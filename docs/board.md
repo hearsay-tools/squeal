@@ -133,8 +133,8 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 001-63 daemon temp directory and the runner's children | running (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | B1: Vitest's temp directory moves to a private `/tmp/squeal-<uid>/tmp/<hash>/`, outside every repository. B2, decided (b): keep the root as cwd around runner calls and amend D10 to say a runner-started child may hold the root until the daemon exits. S1 remove the temp directory at shutdown; S2 D4 figures; N1 trailing slash in `entryDirectories`; N2, N3, N4, N5. | A test run by a real daemon makes temp dirs outside any repository; with an esbuild plugin, `git worktree remove` succeeds and the daemon exits; no temp directory left after stop or removal; full suite green. |
-| 001-64 re-review of 001-63 | planned | `/reviewer` over 001-63's range, second and last round on the 001-61 slice. | `reviews/wave-7.7.md` committed. |
+| 001-63 daemon temp directory and the runner's children | done (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | B1: Vitest's temp directory moves to a private `/tmp/squeal-<uid>/tmp/<hash>/`, outside every repository. B2, decided (b): keep the root as cwd around runner calls and amend D10 to say a runner-started child may hold the root until the daemon exits. S1 remove the temp directory at shutdown; S2 D4 figures; N1 trailing slash in `entryDirectories`; N2, N3, N4, N5. | A test run by a real daemon makes temp dirs outside any repository; with an esbuild plugin, `git worktree remove` succeeds and the daemon exits; no temp directory left after stop or removal; full suite green. |
+| 001-64 re-review of 001-63 | running (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | `/reviewer` over `09bfc7c..57671b7`, second and last round on the 001-61 slice. | `reviews/wave-7.7.md` committed. |
 
 ### Wave 8: first quality pass (after waves 7.5 and 7.6 land)
 
