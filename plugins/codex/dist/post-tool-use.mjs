@@ -259,6 +259,16 @@ function refinedMetaKey(worktreeId) {
 function awaitingInstallMetaKey(worktreeId) {
   return `awaiting-install.${worktreeId}`;
 }
+function parseAwaitingInstall(raw) {
+  if (raw === "true") return [];
+  if (raw === null || !raw.startsWith("[")) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
+}
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
@@ -275,19 +285,22 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
+  const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
+  const awaiting = missing !== null;
   return {
     revision,
     counts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
-      atCurrentRevision: last !== null && last.revision === revision,
+      atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null
     },
-    testFilesListed: keys.length > 0 || last !== null,
+    testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
-    ...store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true" ? { awaitingInstall: true } : {}
+    ...awaiting ? { awaitingInstall: true } : {},
+    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
   };
 }
 function readRefined(store, worktreeId) {
@@ -2553,10 +2566,10 @@ function validityText(entry2, revision) {
 }
 function seenLine(entry2, revision) {
   const from = inheritedFrom(entry2);
+  const baseline = entry2.baseline === true;
   const parts = [
     change(entry2),
-    from === null ? `seen by Squeal's run at revision ${entry2.observedAt}` : `seen by Squeal's run in ${from}, inherited at revision ${entry2.observedAt}`,
-    entry2.baseline === true ? "at start (baseline)" : null,
+    from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry2.observedAt}` : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry2.observedAt}`,
     validityText(entry2, revision)
   ];
   return parts.filter((p) => p !== null).join(", ");
@@ -2607,7 +2620,14 @@ function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
 }
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
-var AWAITING_INSTALL_SENTENCE = "No dependencies are installed in this worktree; Squeal lists and runs no tests until an install.";
+var MISSING_INSTALLS_SHOWN = 3;
+function awaitingInstallSentence(header) {
+  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
+  const missing = header.missingInstalls ?? [];
+  const more = missing.length - MISSING_INSTALLS_SHOWN;
+  const where = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  return `No dependencies are installed ${where}; Squeal lists and runs no tests until an install.`;
+}
 var CHANGED_PATHS_SHOWN = 3;
 function changedText(paths) {
   if (paths === void 0 || paths.length === 0) return "";
@@ -2621,7 +2641,8 @@ function headerLine(header) {
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision) + (header.awaitingInstall === true ? ` ${AWAITING_INSTALL_SENTENCE}` : installSentences(header));
+  const awaiting = awaitingInstallSentence(header);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
@@ -2723,7 +2744,7 @@ function formatDelta(delta) {
   const { header, entries } = delta;
   const changed = entries.filter((e) => e.kind !== "fail-retired");
   const retired = entries.filter((e) => e.kind === "fail-retired");
-  const title = entries.length === 0 ? livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's run at start (baseline) found ${plural(entries.length, "failing check")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+  const title = entries.length === 0 ? livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${plural(entries.length, "failing check")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
