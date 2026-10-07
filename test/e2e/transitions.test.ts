@@ -45,7 +45,9 @@ describe("transitions on PostToolBatch", () => {
     expect(fail.ms).toBeLessThan(HOOK_BUDGET_MS);
     expect(fail.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
     expect(headerRevision(fail.text ?? "")).toBe(broken.revision);
-    expect(fail.text).toContain(`FAIL  ${ADDS}\n      PASS -> FAIL\n      expected -1 to be 3`);
+    expect(fail.text).toContain(
+      `FAIL  ${ADDS}\n      PASS -> FAIL, seen by Squeal's run at revision ${broken.revision}\n      expected -1 to be 3`,
+    );
     expect(fail.text).not.toContain("pending;");
     expectAgrees(fail.text, await e.status(e.main));
 
