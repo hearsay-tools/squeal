@@ -120,6 +120,17 @@ describe("revisions", () => {
     expect(store.revisions.get("a", 3)).toBeNull();
     expect(store.revisions.latest("c")).toBeNull();
   });
+
+  it("lists the revisions of one worktree in a range, oldest first", () => {
+    const store = open(fakeCommonDir());
+    const base = { createdAt: 5, head: null, dirty: true, trigger: "watch" as const, changes: [] };
+    for (let n = 0; n < 4; n++) store.revisions.append({ ...base, worktreeId: "a" });
+    store.revisions.append({ ...base, worktreeId: "b" });
+    expect(store.revisions.range("a", 1, 3).map((r) => r.number)).toEqual([2, 3]);
+    expect(store.revisions.range("a", 0, 9).map((r) => r.number)).toEqual([1, 2, 3, 4]);
+    expect(store.revisions.range("a", 4, 9)).toEqual([]);
+    expect(store.revisions.range("b", 0, 9).map((r) => r.worktreeId)).toEqual(["b"]);
+  });
 });
 
 describe("file hashes", () => {

@@ -48,6 +48,16 @@ export function createRevisionRepo(conn: Connection): RevisionRepo {
       );
       return row === null ? null : toRevision(row);
     },
+    range: (worktreeId, after, upTo) =>
+      conn
+        .all(
+          `SELECT * FROM revisions WHERE worktree_id = ? AND number > ? AND number <= ?
+           ORDER BY number`,
+          worktreeId,
+          after,
+          upTo,
+        )
+        .map(toRevision),
   };
 }
 

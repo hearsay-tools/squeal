@@ -45,6 +45,8 @@ export interface RevisionRepo {
   append(revision: Omit<Revision, "number">): Revision;
   latest(worktreeId: WorktreeId): Revision | null;
   get(worktreeId: WorktreeId, number: RevisionNumber): Revision | null;
+  /** Revisions numbered after `after` up to `upTo`, oldest first, in one query (review wave 10b, N3). */
+  range(worktreeId: WorktreeId, after: RevisionNumber, upTo: RevisionNumber): readonly Revision[];
 }
 
 export interface FileHashRepo {
