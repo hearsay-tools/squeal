@@ -108,6 +108,23 @@ describe("runNodeTest", () => {
     expect(report.failure).toMatch(/edge\/test\/pass\.test\.ts \(signal SIGKILL\)/);
   });
 
+  it("leaves a file whose process died out of a run that completed the others", SLOW, async () => {
+    mkdirSync(scratch, { recursive: true });
+    const picky = join(scratch, "node-that-dies-on-pass");
+    const exec = `exec ${JSON.stringify(process.execPath)} "$@"`;
+    writeFileSync(picky, `#!/bin/sh\ncase "$*" in *pass.test.ts*) kill -KILL $$;; esac\n${exec}\n`);
+    chmodSync(picky, 0o755);
+    const p = project("edge", "edge", ["--import", "tsx"], { node: picky });
+    const tier = files(p, "test/pass.test.ts", "test/fail.test.ts");
+    const { report } = await run({ project: p, files: tier });
+    expect(report.end).toBe("completed");
+    expect(report.completedFiles).toEqual(files(p, "test/fail.test.ts"));
+    expect(report.results.map((r) => r.check.testPath)).not.toContain("edge/test/pass.test.ts");
+    expect(report.failure).toMatch(
+      /without a complete report for edge\/test\/pass\.test\.ts \(signal SIGKILL\)/,
+    );
+  });
+
   it("is crashed with the reason when the project's Node cannot start", async () => {
     const p = project("edge", "edge", [], { node: join(scratch, "no-such-node") });
     const { report } = await run({ project: p, files: files(p, "test/pass.test.ts") });
