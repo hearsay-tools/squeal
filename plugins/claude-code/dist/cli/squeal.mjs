@@ -7608,7 +7608,7 @@ var init_change_feed = __esm({
           onDropped: (reason2) => this.onLost(() => this.options.onDropped?.(reason2)),
           onError: (error) => this.onLost(() => this.options.onError(error))
         });
-        await this.reconcile("start");
+        await this.reconcile("interval");
       }
       reconcile(trigger) {
         return this.enqueue(() => this.reconcileNow(trigger));
@@ -9077,7 +9077,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.13";
+  if (true) return "0.1.14";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

@@ -387,7 +387,7 @@ function changedAfter(store, worktreeId, r, revision) {
   )) {
     if (r.gaps.some(([after, upTo]) => number > after && number <= upTo)) continue;
     const start = trigger === "start";
-    if (number === r.since && !start) continue;
+    if (number === r.since && (!start || r.scanned !== void 0)) continue;
     for (const change2 of changes) (start ? unknown : changed).add(change2.path);
   }
   return { changed, unknown };
@@ -2334,7 +2334,7 @@ function createDelivery(store, options) {
     });
   }
   return {
-    register: async (consumer, { inTurn = false } = {}) => store.transaction(() => {
+    register: async (consumer, { inTurn = false, atStart = false } = {}) => store.transaction(() => {
       const at = now();
       const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at);
@@ -2349,7 +2349,7 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
       if (!registered) {
-        const alive = header.daemon?.state === "alive";
+        const alive = atStart && header.daemon?.state === "alive";
         tellRegistered(store, consumer, header.revision, {
           at,
           scanned: scannedDaemon(store, consumer.worktreeId, alive)

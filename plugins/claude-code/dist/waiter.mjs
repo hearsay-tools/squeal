@@ -426,7 +426,7 @@ function changedAfter(store, worktreeId, r, revision) {
   )) {
     if (r.gaps.some(([after, upTo]) => number > after && number <= upTo)) continue;
     const start = trigger === "start";
-    if (number === r.since && !start) continue;
+    if (number === r.since && (!start || r.scanned !== void 0)) continue;
     for (const change2 of changes) (start ? unknown : changed).add(change2.path);
   }
   return { changed, unknown };
@@ -2373,7 +2373,7 @@ function createDelivery(store, options) {
     });
   }
   return {
-    register: async (consumer, { inTurn = false } = {}) => store.transaction(() => {
+    register: async (consumer, { inTurn = false, atStart = false } = {}) => store.transaction(() => {
       const at2 = now();
       const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at2);
@@ -2388,7 +2388,7 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
       if (!registered) {
-        const alive = header.daemon?.state === "alive";
+        const alive = atStart && header.daemon?.state === "alive";
         tellRegistered(store, consumer, header.revision, {
           at: at2,
           scanned: scannedDaemon(store, consumer.worktreeId, alive)
@@ -2520,13 +2520,14 @@ function recoveryProvenance(entry2, revision) {
   if (from !== null) parts.push(`inherited from ${from}`);
   return parts.length === 0 ? null : parts.join("; ");
 }
+var CHANGED_HERE = "files changed here since this session started";
 function touchesLine(entry2) {
   const paths = entry2.changesInClosure;
   if (paths === void 0) return null;
-  if (paths.length === 0) return "none of your changes are in its imports";
+  if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
   const more = paths.length - TOUCHED_SHOWN;
   const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `touches your changes: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `touches ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
 }
 function loadLine(entry2) {
   return entry2.loadAverage === void 0 ? null : `load average ${entry2.loadAverage.toFixed(2)} when it ran`;
