@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import type { readHeader as ReadHeader } from "../../src/core/delivery/index.js";
-import { readStatus } from "../../src/core/status/index.js";
-import type { openStore as OpenStore } from "../../src/core/store/index.js";
+import { buildSnapshot, readStatus } from "../../src/core/status/index.js";
+import {
+  isStoreOpenFailure,
+  type openStore as OpenStore,
+  openStore,
+} from "../../src/core/store/index.js";
 import type { StatusHeader, Store } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { recorded, squealRepo } from "../harness/helpers.js";
@@ -112,6 +116,20 @@ describe("status reads see one committed state (lessons defect 23)", () => {
       revision: 4,
       counts: { pending: 1, current: 0 },
     });
+  });
+
+  it("a snapshot built from a wrapped store, as the e2e probe builds it, is one read too", () => {
+    const { repo, edit } = calmRepo();
+    const opened = openStore(repo.commonDir, { create: false });
+    if (isStoreOpenFailure(opened)) throw new Error(opened.reason);
+    const wrapped = new Proxy(opened, {});
+    hooks.afterRead = edit;
+
+    const status = buildSnapshot(wrapped, repo.main, NOW);
+
+    opened.close();
+    expect(hooks.afterRead).toBeNull();
+    expect(status).toMatchObject({ revision: 3, counts: { pending: 0, current: 1 } });
   });
 
   it("a --wait poll that ends on quiet returns the snapshot it judged", async () => {

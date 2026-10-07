@@ -21,11 +21,19 @@ export function connectionOf(store: Store): Connection {
 }
 
 /**
+ * The connection again, under a key a `Proxy` of the store forwards, so a
+ * wrapped store (a test's paused reader) still reads in one transaction.
+ */
+const CONNECTION = Symbol("squeal.connection");
+
+/**
  * Runs `fn`, which only reads, in one read transaction of the store's
  * connection: status reads see one committed state (lessons defect 23).
  */
 export function readTransaction<T>(store: Store, fn: () => T): T {
-  return connectionOf(store).read(fn);
+  const conn = (store as { [CONNECTION]?: Connection })[CONNECTION];
+  if (conn === undefined) throw new Error("squeal store: not opened by openStore");
+  return conn.read(fn);
 }
 
 export function createStore(conn: Connection, schemaVersion: number, paths: StorePaths): Store {
@@ -51,6 +59,7 @@ export function createStore(conn: Connection, schemaVersion: number, paths: Stor
     close: () => conn.close(),
   };
   connections.set(store, conn);
+  Object.defineProperty(store, CONNECTION, { value: conn });
   return store;
 }
 
