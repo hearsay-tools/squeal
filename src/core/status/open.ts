@@ -1,5 +1,11 @@
 import { findWorktreeRoot, resolveCommonDir } from "../fs/index.js";
-import { isBusy, isStoreOpenFailure, openStore, storePaths } from "../store/index.js";
+import {
+  isBusy,
+  isStoreOpenFailure,
+  openStore,
+  readTransaction,
+  storePaths,
+} from "../store/index.js";
 import {
   type AbsolutePath,
   PAYLOAD_SCHEMA_VERSION,
@@ -36,7 +42,8 @@ export function unavailable(
 /**
  * Opens the store of the worktree containing `cwd` for reading and runs `fn`.
  * Never creates the store and never runs `integrity_check` (that is daemon
- * start, D12). Every failure becomes a `StatusUnavailable`: missing store,
+ * start, D12). `fn` runs in one read transaction, so it sees one committed
+ * state of the store (lessons defect 23). Every failure becomes a `StatusUnavailable`: missing store,
  * newer schema (D8), unreadable file, or a lock held past the busy timeout.
  */
 export function withStatusStore<T>(
@@ -70,7 +77,8 @@ export function withStatusStore<T>(
       }
     }
     store = opened;
-    return fn({ store, root });
+    const context = { store, root };
+    return readTransaction(store, () => fn(context));
   } catch (error) {
     if (isBusy(error)) {
       return unavailable("timeout", `store busy for more than ${busyTimeoutMs} ms`);
