@@ -28,6 +28,8 @@ Worker notes for whoever continues or reviews 001-105 (scheme B of `research/per
 | Reading the lockfile (staleness check, parse) | 19 ms |
 | Closure walk of all 632 through the adapter (Vitest start included) | 13.6 s |
 
+Real bootstrap (the coordinator asked for it): `/tmp/sq105/A`, a clone of the `origin/main` export with its `npm ci` install copied in, ran under a Squeal daemon built from this branch (`tsc` into `node_modules/.cache/squeal-105`, not `dist`). `/tmp/sq105/B`, a `git worktree add` of it with the main checkout's `node_modules` (root, `packages/cezar`, `packages/web`) copied in and the one unlisted folder `@fontsource/poppins` removed, so npm, and Squeal, trust its hidden lockfile, started fresh with `baseline.onStart: "lookup-only"` while A's baseline was still running. `compare-worktrees.mts` over the store: B keyed all 632 files, 323 share A's key, none of them reaching `child_process`; B's status showed 537 results already inherited from the part of the suite A had finished (A's baseline, 14,593 tests at load 25, was stopped there). The share equals the script's, since both go through the same adapter and keys.
+
 The research counted 324; this run 323. Not traced; the environment set here also holds the config's bare imports for the `web` project (`@tailwindcss/vite`, `@vitejs/plugin-react`), which the research's `perfile.mjs` derived the same way, so the difference is likely one file's first hop. Both are above the 300 the board row asks for.
 
 ## Decisions the spec did not settle
