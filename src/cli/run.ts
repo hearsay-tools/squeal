@@ -27,7 +27,7 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
   }
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
-  const socketPath = daemonSocket(root);
+  const socketPath = await daemonSocket(root);
   const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
   if (response === null) {
     io.stderr(`squeal: no daemon running for ${root}; start one with squeal start\n`);

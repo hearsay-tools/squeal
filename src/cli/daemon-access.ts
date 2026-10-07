@@ -1,7 +1,6 @@
 import { requestDaemon } from "../core/daemon/client.js";
-import { socketPathFor } from "../core/daemon/paths.js";
-import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
+import { locateDaemon, noDaemonCode, recordedDaemon } from "../core/daemon/ensure.js";
+import { findWorktreeRoot } from "../core/fs/index.js";
 import type { AbsolutePath, DaemonRequest, DaemonResponse } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 
@@ -17,26 +16,13 @@ export function worktreeRoot(path: string | undefined, io: CliIo): AbsolutePath 
 }
 
 /**
- * The daemon socket of a worktree: the path its daemon recorded in the store
- * (D10), else the one this environment's runtime dir gives (D1).
+ * The daemon socket of a worktree, by the rule hooks use (`locateDaemon`,
+ * D1): the socket recorded in the store while its heartbeat is fresh and a
+ * daemon is there, else the one this environment's runtime dir gives.
  */
-export function daemonSocket(root: AbsolutePath): AbsolutePath {
-  const worktreeId = worktreeIdFor(root);
-  const commonDir = resolveCommonDir(root);
-  if (commonDir !== null) {
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
-    if (!isStoreOpenFailure(store)) {
-      try {
-        const recorded = store.worktrees.get(worktreeId)?.daemon?.socketPath;
-        if (recorded !== undefined) return recorded;
-      } catch {
-        // An unreadable record falls back to the computed path.
-      } finally {
-        store.close();
-      }
-    }
-  }
-  return socketPathFor(worktreeId);
+export async function daemonSocket(root: AbsolutePath): Promise<AbsolutePath> {
+  const record = recordedDaemon(root, 1_000);
+  return (await locateDaemon(root, CLI_SOCKET_TIMEOUT_MS, { record })).socketPath;
 }
 
 /** Sends a request; `null` when no daemon listens (`ENOENT`, `ECONNREFUSED`). Other errors throw. */
@@ -47,8 +33,7 @@ export async function askDaemon(
   try {
     return await requestDaemon(socketPath, request, CLI_SOCKET_TIMEOUT_MS);
   } catch (error) {
-    const code = (error as { code?: unknown }).code;
-    if (code === "ENOENT" || code === "ECONNREFUSED") return null;
+    if (noDaemonCode(error) !== null) return null;
     throw error;
   }
 }
