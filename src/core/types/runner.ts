@@ -175,7 +175,11 @@ export interface RunReport {
   readonly completedFiles: readonly TestFileRef[];
   readonly results: readonly CheckRunResult[];
   readonly fileErrors: readonly FileLevelError[];
-  /** Set when `end` is not `completed`. */
+  /**
+   * Set when `end` is not `completed`, and when some file of a completed run
+   * did not complete (a node:test file whose process died, spec 003 D5): it
+   * names that file, so the scheduler's `unknown` reason reads well.
+   */
   readonly failure: string | null;
   /**
    * The duration of each completed file, when the runner reports one (Vitest:
