@@ -25,3 +25,17 @@ Owns: `test/e2e/**`, `test/fixtures/e2e/**`. Leave alone: everything under `src/
 Done when: every e2e file runs for both plugins where the scenario applies, with each Codex skip named; the Claude Code cases unchanged; green at calm load on Node 22 and 24 (nvm is installed; the committed bundles are what run).
 
 Use /worker.
+
+## 002-16 proof in a scratch Codex home
+
+Outcome: evidence that the shipped Codex plugin does what spec 002's goals say, in real Codex sessions, written to a new `lessons.md` in this spec folder.
+
+Shape: survey (proof). Use the installed Codex CLI 0.160.1 with the host's model provider, as `research/probes/codex-hooks/README.md` did: a scratch `CODEX_HOME` under `/tmp` holding a filtered copy of the provider settings and no credentials (the provider reads its key from the environment), never `~/.codex/auth.json`, never an edit under `~/.codex`. Install the plugin from this repository with `codex plugin marketplace add <this checkout>` and `codex plugin add squeal@squeal` into that `CODEX_HOME`, then trust its hooks with the hashes `squeal init --harness codex --print-launcher-config` computes, or through the TUI's `/hooks`; never `--dangerously-bypass-hook-trust`. Work on a scratch git repository with a small Vitest suite and `squeal.config.json`.
+
+Prove, in one `codex exec` run and one app-server thread driven the way Cezar drives it (`research/probes/codex-hooks/bin/as.mjs` shows how): (1) SessionStart registers `(session_id, main)` and injects the header and primer; (2) an edit that breaks a test yields a `PASS -> FAIL` through PostToolUse in the same turn, and the fix its `FAIL -> PASS`; (3) a subagent's tool calls deliver only to `(session_id, agent_id)`, and SubagentStart gives it the header and primer; (4) the next `apply_patch` after an undelivered regression is denied once; (5) SessionEnd unregisters at `exec` end and at stdin EOF; (6) every hook exits 0 within its budget with no daemon. Also: `reviews/wave-1.md` N4 (does an internal `/review` thread fire tool hooks without `agent_id`, and what does it receive) and N5 (Stop p95 at calm load). Record what the agent did with the reports, as 001's `lessons.md` does.
+
+Owns: `docs/specifications/002-codex-adapter/lessons.md` and throwaway probes under `docs/specifications/002-codex-adapter/research/probes/proof/` with a README. No product code. Stop every daemon you start.
+
+Done when: `lessons.md` has a verdict, setup, one section per proof item with transcript excerpts or hook logs, and defects named and numbered; every item proven or explicitly "not shown, because".
+
+Use /worker.
