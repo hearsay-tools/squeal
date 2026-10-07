@@ -6,7 +6,7 @@ Task 002-16, 2026-10-07. Squeal plugin 0.1.21 from `faa202d`, installed into a s
 
 The shipped Codex plugin does what goals 1, 3, 5 and 6 say, under `codex exec` and under a Cezar-shaped app-server thread. Every proof item is proven, in both modes where it applies. In the three working sessions (exec1, as1, as2) 11 transition reports reached a model, each at the first hook that could carry it, none twice, all in the turn that caused them. The `apply_patch` deny fired once per regression and the model re-issued the edit unprompted. No agent ran Vitest itself.
 
-Two things fall short. First, an inline `/review` thread fires Squeal's hooks as the main agent and takes the main agent's undelivered report (defect 2, review N4 confirmed). Second, the per-tool 80 ms p95 of goal 7 was met only in the bundle test, not in real sessions, and never at calm load: the host stayed between load 7 and 34 for the whole task (N5 below). No hook failed, timed out or exceeded 375 ms in 142 runs, so the 2 s budget held everywhere.
+Two things fall short. First, an inline `/review` thread fires Squeal's hooks as the main agent and takes the main agent's undelivered report (defect 2, review N4 confirmed). Second, the per-tool 80 ms p95 of goal 7 was met only in the bundle test, not in real sessions, and never at calm load: the host stayed between load 7 and 41 for the whole task (N5 below). No hook failed, timed out or exceeded 375 ms in 142 runs, so the 2 s budget held everywhere.
 
 No blocker for 002. Defect 1 is a core (001) defect that stops the daemon in a repository with a symlinked `node_modules`.
 
@@ -31,6 +31,7 @@ No blocker for 002. Defect 1 is a core (001) defect that stops the daemon in a r
 | as1 | app-server, r2, two turns, then `review/start` inline | turn 1: give `greet` a `greeting` parameter defaulting to "hi"; turn 2: a subagent renames `mul` to `times` in `src/math.js` only | registration; `PASS -> FAIL` (greet) at PostToolUse; the subagent's registration naming the known failure; the subagent's `PASS -> FAIL` (mul); the parent's own `PASS -> FAIL` (mul) | Turn 1: read the Squeal skill on its own, ran `squeal status --wait 60000` in the same code cell as the patch, reported that the old test still expects "hello ada" and left it (the task said minimal). Turn 2: reported both failures. The reviewer ran `squeal status --wait 60000` and cited Squeal in its findings. |
 | as2 | app-server, r7 | the exec1 prompt | as exec1 | as exec1 |
 | n4inline | app-server, r3, logging hook on | turn 1: read `src/math.js`; outside edit breaks `mul`; inline review; turn 2: "is any test failing, from what you were told?" | registration; then the main agent's `PASS -> FAIL` went into the review thread (defect 2) | Turn 2: "Yes, the review reports that the `mul multiplies` test is failing, according to Squeal." |
+| n4inline2 | app-server, r3b, logging hook on | as n4inline | as n4inline | As n4inline: "The review reports that [...] is failing, confirmed by Squeal". |
 | n4detached | app-server, r4 | as n4inline with `delivery: "detached"` | registration | Codex refused: "paginated threads do not support detached review". |
 | nd-r9 | app-server, r9, no Squeal | `ls`, append to README, `sleep 2`, a subagent runs `ls src` | nothing | "No message from Squeal was received." |
 | nd-r5 | app-server, r5, daemon `SIGSTOP`ped | same | registration with "No daemon has validated since ..."; nothing after the edit | Quoted only "Known failures: 0". |
@@ -136,9 +137,9 @@ Over the six app-server threads Codex reported 142 Squeal hook runs: 141 `comple
 
 ## Review wave 1, N4: an internal review thread fires tool hooks as the main agent
 
-Confirmed, defect 2. In n4inline a silent logging hook in the scratch user layer recorded every hook's stdin (`logs/n4inline.stdin.jsonl`). The inline review ran in its own thread (rollout `...-c375-70b1-aedb-8be359068163`, `source: {"subagent": "review"}`), but its UserPromptSubmit, PreToolUse and PostToolUse carried the parent's `session_id`, no `agent_id` and no `agent_type`, a new `turn_id`, and the review's own `transcript_path`. No SessionStart, SubagentStart or Stop fired for it. Codex reported the runs under the parent's thread id.
+Confirmed twice, defect 2. In n4inline (r3) and again in n4inline2 (r3b) a silent logging hook in the scratch user layer recorded every hook's stdin. The first run's stdin log was overwritten by the detached attempt, so the fields below come from n4inline2 (`logs/n4inline2.stdin.jsonl`, `logs/n4inline2.session-meta.jsonl`, `logs/n4inline2.hooks.jsonl`). The first run's summary, printed before it was lost, matched it on event, `session_id`, `agent_id`, `agent_type`, `turn_id` and `transcript_path`.
 
-So Squeal took the review for the main agent. The outside edit's `PASS -> FAIL` was recorded and undelivered when the review started; the review's UserPromptSubmit returned it (`logs/n4inline.hooks.jsonl`, +14,084 ms) and marked it delivered to `(session_id, main)`:
+Both runs: turn 1 reads a file; an outside edit breaks `mul` and the daemon records `PASS -> FAIL` while no hook runs; `review/start` with `delivery: "inline"`; turn 2 asks whether a test is failing. The review ran in its own thread, but its UserPromptSubmit returned the main agent's undelivered delta and marked `(session_id, main)` told (n4inline at +14,084 ms, n4inline2 at +42,310 ms):
 
 ```text
 [userPromptSubmit, review turn] SQUEAL · 1 check changed at revision 1
@@ -147,21 +148,41 @@ FAIL  test/math.test.js > mul multiplies
       expected 5 to be 6 // Object.is equality
 ```
 
-The main agent's next UserPromptSubmit and Stop said nothing. It learned of the failure only because the reviewer wrote "which Squeal reports as failing" into a finding that Codex copied into the main thread. A review that did not mention it would have lost the report. The review also got no primer, and its turn ended with no Stop, so the main consumer stayed in a turn until the next prompt. `delivery: "detached"` is not available for an app-server thread ("paginated threads do not support detached review"), so inline is the case that matters for Cezar and the TUI.
+The main agent's next UserPromptSubmit and Stop said nothing. In both runs it answered turn 2 from the review's prose ("The review reports that `test/math.test.js > mul multiplies` is failing, confirmed by Squeal"), because the reviewer had cited Squeal in a finding that Codex copied into the main thread. A review that did not mention it would have lost the report. The review also got no primer, and no Stop ended its turn, so the main consumer stayed in a turn until the next prompt.
+
+Every field the hooks received, main thread against review thread, in n4inline2 (main thread id `01a1185a-4716-7c01-b1ca-853a7eeea04c`):
+
+| Field | Main thread's hooks | Review thread's hooks |
+| --- | --- | --- |
+| Events | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd | UserPromptSubmit, PreToolUse, PostToolUse only; no SessionStart, SubagentStart, Stop or SubagentStop |
+| `session_id` | `01a1185a-4716-...` | `01a1185a-4716-...`, the parent's |
+| `agent_id`, `agent_type` | absent | absent |
+| `turn_id` | `01a1185a-4742-...` (turn 1), `01a1185b-1d9c-...` (turn 2) | `01a1185a-eb43-7a10-b50d-ad4317188252`, its own; not the turn id `review/start` returned (`01a1185a-eb0c-...`) |
+| `transcript_path` | `.../rollout-2026-10-07T23-52-12-01a1185a-4716-7c01-b1ca-853a7eeea04c.jsonl`: ends in `session_id` | `.../rollout-2026-10-07T23-52-54-01a1185a-eb11-7ad3-9c79-ff5c7b0691eb.jsonl`: ends in the review thread's id, not `session_id` |
+| `cwd` | `/tmp/p16/r3b` | `/tmp/p16/r3b` |
+| `model`, `permission_mode` | `gpt-6.1-sol`, `bypassPermissions` | the same |
+| `source` | `startup`, on SessionStart only | absent (no SessionStart) |
+| `prompt` (UserPromptSubmit) | the user's text | "Review the current code changes (staged, unstaged, and untracked files) and provide prioritized findings." |
+| `tool_name`, `tool_use_id` | `Bash`, `exec-<uuid>` | the same shape |
+| `stop_hook_active` (Stop), `reason` (SessionEnd) | `false`, `other` | none |
+| First line of the rollout at `transcript_path` (`session_meta`) | `id` = `session_id`, no `parent_thread_id`, `source: "vscode"` (the app-server client) | `id: 01a1185a-eb11-...`, `session_id` and `parent_thread_id` = the parent's, `source: {"subagent": "review"}`, `thread_source: "subagent"`, `multi_agent_version: "disabled"` |
+| Codex's `hook/started` and `hook/completed` | `threadId` = main | `threadId` = main too, so an app-server client cannot tell them apart either |
+
+So the stdin fields that differ are `transcript_path`, whose file name ends in an id other than `session_id`, and `turn_id`. The `prompt` text differs too but is not a contract. The rollout's `session_meta` names the review outright, but 002-18 left the rollout format unverified (N3). `delivery: "detached"` is not available for an app-server thread (n4detached: "paginated threads do not support detached review"), so inline is the case that matters for Cezar and the TUI.
 
 ## Review wave 1, N5: Stop p95 at calm load
 
-Not shown at calm load, because the host's load average never fell below 4 during the task (7.5 to 34). Measured instead:
+Not measured at calm load. The host's 1-minute load average stayed between 7.4 and 41.3 for the whole task, never under the test's threshold of 4, and the coordinator called off the wait. For comparison, 002-14 measured Stop at 76 ms p95 at load 3.9. The best Stop numbers here:
 
-- `test/harness/codex/latency.test.ts`, at load 17.18 (`logs/latency-1.txt`): Stop p95 86 ms, Stop (silent) p95 103 ms, SubagentStart p95 129 ms, all others 67 to 81 ms. The test reports and does not assert above load 4.
-- Real sessions, Codex's own `durationMs` at load 9 to 34 (`logs/hook-durations-all.txt`): Stop p50 110, p95 259 ms over 9 runs; PostToolUse p95 195 ms over 51; PreToolUse p95 209 ms over 54. In nd-r9, where the fast path ran, PreToolUse and PostToolUse took 1 to 2 ms.
+- `test/harness/codex/latency.test.ts` at load 17.18 (`logs/latency-1.txt`, best of up to 3 rounds of 20 cold runs): Stop p95 86 ms, Stop (silent) p95 103 ms, SubagentStart p95 129 ms; every other hook 67 to 81 ms. Above load 4 the test reports and does not assert.
+- Real sessions, Codex's own `durationMs`: the best is as1 at load about 9, Stop 74 and 78 ms (2 runs). Over all 9 Stop runs at load 9 to 34, p50 110 ms and p95 259 ms. PostToolUse p95 195 ms over 51 runs and PreToolUse p95 209 ms over 54 (`logs/hook-durations-all.txt`). In nd-r9, where the `sh` fast path exits before Node, PreToolUse and PostToolUse took 1 to 2 ms.
 
-Every one is far inside the 2 s timeout. Whether Stop stays under 80 ms p95 at calm load, as 002-14 measured (76 ms at load 3.9), is still open.
+Every run is far inside the 2 s timeout. Whether Stop stays under 80 ms p95 at calm load is still open.
 
 ## Defects
 
 1. **The daemon cannot start in a repository whose `node_modules` is a symlink.** Core (001), not the Codex adapter. `squeal start` in r1 with `node_modules -> /tmp/p16/nm/node_modules` printed "Daemon: running", then the daemon exited: "could not start: squeal: git check-ignore -z --stdin exited 128 [...] fatal: pathspec 'node_modules/.package-lock.json' is beyond a symbolic link" (`logs/symlink-node-modules.status.txt`). Every later hook spawns a daemon that dies the same way (nd-r6), so the repository is never validated. `git check-ignore` rejects the whole batch for one path under a symlinked directory. Repositories and worktrees that link a shared `node_modules` are common.
-2. **An inline `/review` thread takes the main agent's undelivered report.** Codex adapter, review N4 above. Its hooks carry the parent's `session_id` and no `agent_id`, so `(session_id, main)` is marked told while the main agent never sees the report. Stdin tells the threads apart only by `transcript_path` and `turn_id`.
+2. **An inline `/review` thread takes the main agent's undelivered report.** Codex adapter, review N4 above. Its hooks carry the parent's `session_id` and no `agent_id`, so `(session_id, main)` is marked told while the main agent never sees the report. Stdin tells the threads apart only by `transcript_path`, whose file name ends in the review thread's id rather than `session_id`, and by `turn_id`; the N4 section lists every field.
 3. **A hung daemon leaves edits unannounced.** Core (001 D9 and D10), seen in nd-r5. With the daemon stopped, an edit got no report and no "no daemon is validating" line at PostToolUse, unlike nd-r6, where the daemon was dead. The only signal was a clause in the registration header, and the agent summarised the session's Squeal messages as "Known failures: 0". 001's lessons (D1) saw the same header and an agent that read it; this agent did not.
 
 ## Notes for the next row (002-19, dogfooding)

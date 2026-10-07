@@ -1,0 +1,38 @@
++200ms thread 01a1185a-4716-7c01-b1ca-853a7eeea04c
++350ms hook sessionStart completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++350ms hook sessionStart completed 79ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++475ms hook userPromptSubmit completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++475ms hook userPromptSubmit completed 118ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++33363ms hook preToolUse completed 4ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++33363ms hook preToolUse completed 70ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++33477ms hook postToolUse completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++33477ms hook postToolUse completed 74ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++36001ms hook stop completed 6ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++36001ms hook stop completed 90ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++36003ms turn end "completed"
++42131ms sh: Known failures: 1
+  FAIL  test/math.test.js > mul multiplies
++42133ms review/start {"turn":{"id":"01a1185a-eb0c-7af3-bf26-f238cd0efbb4","items":[{"type":"userMessage","id":"01a1185a-eb0c-7af3-bf26-f238cd0efbb4","clientId":null,"content":[{"type":"text","text":"current changes","text_elements":[]}]}],"itemsView":"notLoaded","status":"inProgress","error":null,"startedAt":null,"completedAt":null,"durationMs":null},"reviewThreadId":"01a1185a-4716-7c01-b1ca-853a7eeea04c"}
++42371ms hook userPromptSubmit completed 6ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++42371ms hook userPromptSubmit completed 120ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45059ms hook preToolUse completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45059ms hook preToolUse completed 89ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45287ms hook postToolUse completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45287ms hook postToolUse completed 83ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45383ms hook preToolUse completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45383ms hook preToolUse completed 92ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45564ms hook postToolUse completed 6ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++45564ms hook postToolUse completed 103ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++48894ms hook preToolUse completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++48895ms hook preToolUse completed 88ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++49186ms hook postToolUse completed 5ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++49186ms hook postToolUse completed 102ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++55075ms review end "completed"
++55194ms hook userPromptSubmit completed 6ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++55195ms hook userPromptSubmit completed 99ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++57654ms hook stop completed 6ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++57655ms hook stop completed 110ms thread=01a1185a-4716-7c01-b1ca-853a7eeea04c
++57659ms turn end "completed"
++57659ms stdin EOF
++57826ms app-server exit {"code":0,"sig":null}
+exit 0
