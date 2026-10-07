@@ -6,7 +6,7 @@ import { findInstalledLockfile } from "../keys/index.js";
 import type { AbsolutePath } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { type Failures, settleFailures } from "./failures.js";
-import { type MissingInstall, missingInstall } from "./install.js";
+import { installDirs, type MissingInstall, missingInstall } from "./install.js";
 import type { Ledger } from "./ledger.js";
 import { readEnvironments } from "./revision.js";
 
@@ -24,15 +24,18 @@ export interface InstallCheck {
  * Task 001-107 (review wave 11, S1; D5 as amended): `npm ci` removes
  * `node_modules` before it installs, so a tier that ran meanwhile saw
  * packages vanish, and one restored with identical content keeps its key. A
- * tier whose stamp moved stores nothing. The stamp is the names of the root
+ * tier whose stamp moved stores nothing. The stamp is, for the root and,
+ * while the root holds no install, every workspace that declares
+ * dependencies (`installDirs`, review wave 11c S1): the names of its
  * `node_modules` entries, dot entries left out (npm 7's `ci` empties the
  * directory and keeps it; Vite and Vitest create `.vite` in it on a first
- * run), and the inode, mtime and size of the root `package.json` and of the
+ * run), and the inode, mtime and size of its `package.json` and of its
  * installed lockfile. `missingInstall`, which reads files, runs again only
  * when the stamp moves.
  */
 export class InstallStamps {
-  #lockfile: AbsolutePath | null = null;
+  /** Absolute directories and their installed lockfiles, as the last `check` found them. */
+  #dirs: { readonly dir: AbsolutePath; readonly lockfile: AbsolutePath | null }[] = [];
   #last: InstallCheck | null = null;
   /** The stamp `takeChange` saw last; `null` before its first call. */
   #taken: string | null = null;
@@ -44,7 +47,11 @@ export class InstallStamps {
     const stamp = await this.stamp();
     if (this.#last?.stamp === stamp) return this.#last;
     const missing = await missingInstall(this.root);
-    this.#lockfile = (await findInstalledLockfile(this.root, this.root))?.path ?? null;
+    this.#dirs = [];
+    for (const relative of await installDirs(this.root)) {
+      const dir = join(this.root, relative);
+      this.#dirs.push({ dir, lockfile: (await findInstalledLockfile(dir, dir))?.path ?? null });
+    }
     this.#last = { stamp: await this.stamp(), missing };
     return this.#last;
   }
@@ -64,10 +71,15 @@ export class InstallStamps {
 
   /** One directory listing and stats; no file is read. */
   async stamp(): Promise<string> {
-    const paths = [join(this.root, "package.json")];
-    if (this.#lockfile !== null) paths.push(this.#lockfile);
-    const parts = await Promise.all(paths.map(statPart));
-    return [await entriesPart(join(this.root, "node_modules")), ...parts].join("|");
+    const dirs = this.#dirs.length > 0 ? this.#dirs : [{ dir: this.root, lockfile: null }];
+    const parts = await Promise.all(
+      dirs.map(async ({ dir, lockfile }) => {
+        const paths = [join(dir, "package.json"), ...(lockfile === null ? [] : [lockfile])];
+        const stats = await Promise.all(paths.map(statPart));
+        return [await entriesPart(join(dir, "node_modules")), ...stats].join("|");
+      }),
+    );
+    return parts.join("/");
   }
 }
 

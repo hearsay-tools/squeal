@@ -51,6 +51,12 @@ export interface SchedulerOptions {
    * persisting notes. Errors storing a revision reject `handleBatch`.
    */
   readonly onError?: (error: Error) => void;
+  /**
+   * The install went under the running scheduler (a reinstall, task
+   * 001-113): it stores nothing more. Persist `note` and close; the next
+   * daemon starts fresh. Without it the scheduler persists the note itself.
+   */
+  readonly onReinstall?: (note: string) => void;
   readonly hasher?: Hasher;
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
   readonly env?: NodeJS.ProcessEnv;

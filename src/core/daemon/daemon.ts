@@ -309,6 +309,8 @@ class Daemon {
         describeFailure,
         now: this.#now,
         onError: (error) => this.#note(`daemon error: ${error.message}`),
+        // Task 001-113: a fresh daemon waits for the install with no runner open.
+        onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
         onDropped: (reason) =>
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
       });

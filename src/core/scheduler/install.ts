@@ -26,6 +26,10 @@ export const AWAITING_INSTALL_REASON = "no dependencies are installed in this wo
 
 const AWAITING_INSTALL_NOTE = `${AWAITING_INSTALL_REASON}; Squeal lists and runs no tests until an install`;
 
+/** Why a daemon exits when the install goes under it (task 001-113). */
+export const REINSTALL_NOTE =
+  "dependencies were removed under a running daemon (a reinstall); this daemon exits and the next session starts a fresh one";
+
 /** What still waits for an install: workspace directories, or none named. */
 export interface MissingInstall {
   /**
@@ -62,14 +66,33 @@ export async function missingInstall(root: AbsolutePath): Promise<MissingInstall
   const patterns = workspacePatterns(manifest);
   if (!declaresOwnDependencies(manifest) && patterns.length === 0) return null;
   if (await installedIn(root)) return null;
-  const declaring: RelativePath[] = [];
-  for (const dir of await expandWorkspaces(root, patterns)) {
-    if (declaresOwnDependencies(await readManifest(join(root, dir)))) declaring.push(dir);
-  }
+  const declaring = await declaringWorkspaces(root, patterns);
   const missing: RelativePath[] = [];
   for (const dir of declaring) if (!(await installedIn(join(root, dir)))) missing.push(dir);
   if (declaring.length > 0 && missing.length === 0) return null;
   return { workspaces: missing.length === declaring.length ? [] : missing };
+}
+
+/**
+ * The directories whose install `missingInstall` reads, relative to `root`
+ * (`""` for the root): the root, and while it holds no install, every
+ * workspace that declares dependencies (review wave 11c, S1).
+ */
+export async function installDirs(root: AbsolutePath): Promise<RelativePath[]> {
+  if (await installedIn(root)) return [""];
+  const patterns = workspacePatterns(await readManifest(root));
+  return ["", ...(await declaringWorkspaces(root, patterns))];
+}
+
+async function declaringWorkspaces(
+  root: AbsolutePath,
+  patterns: readonly string[],
+): Promise<RelativePath[]> {
+  const declaring: RelativePath[] = [];
+  for (const dir of await expandWorkspaces(root, patterns)) {
+    if (declaresOwnDependencies(await readManifest(join(root, dir)))) declaring.push(dir);
+  }
+  return declaring;
 }
 
 /**
@@ -110,10 +133,10 @@ async function statOrNull(path: AbsolutePath): Promise<Stats | null> {
 }
 
 /**
- * Starts the wait: after the stat cache's bootstrap and before any runner
- * call, or while the daemon runs, when the install goes (task 001-107,
- * review wave 11 S1: `npm ci` removes `node_modules` first). The test files
- * an earlier daemon listed, or this one, become `unknown` with
+ * Starts the wait, after the stat cache's bootstrap and before any runner
+ * call. Only a daemon's start waits: one whose install goes while it runs
+ * exits instead (task 001-113), so no runner is open during a wait. The test
+ * files an earlier daemon listed become `unknown` with
  * `AWAITING_INSTALL_REASON`; nothing is listed, keyed or queued, and the
  * open checkpoint is abandoned. One note, unless an earlier start persisted
  * it. The header says so from the meta key.
@@ -173,8 +196,9 @@ export async function reconcileWaiting(
 
 /**
  * Whether a revision's change to `path` can end the install of the root: an
- * installed lockfile (D3) or the root `package.json`. The scheduler then
- * decides the wait again (task 001-107).
+ * installed lockfile (D3), a workspace's included, or the root
+ * `package.json`. The scheduler then checks the install again, and exits
+ * when it went (task 001-113).
  */
 export function touchesInstall(path: RelativePath): boolean {
   return path === "package.json" || isInstalledLockfile(path);
