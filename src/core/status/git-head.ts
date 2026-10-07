@@ -1,7 +1,6 @@
-import { readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { isMissing } from "../fs/index.js";
-import { resolveCommonDir } from "../store/index.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { gitDirOf, isMissing, resolveCommonDir } from "../fs/index.js";
 import type { AbsolutePath, CommitSha } from "../types/index.js";
 
 const SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
@@ -19,7 +18,7 @@ const MAX_REF_DEPTH = 5;
  * (which carries `HEAD`) status reads it here.
  */
 export function readGitHead(root: AbsolutePath): CommitSha {
-  const gitDir = worktreeGitDir(root);
+  const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
   let value = read(join(gitDir, "HEAD"));
@@ -30,19 +29,6 @@ export function readGitHead(root: AbsolutePath): CommitSha {
     value = read(join(gitDir, ref)) ?? read(join(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
-}
-
-/** `<root>/.git` when it is a directory, else the `gitdir:` it points to. */
-function worktreeGitDir(root: AbsolutePath): AbsolutePath | null {
-  const dotGit = join(root, ".git");
-  try {
-    if (statSync(dotGit).isDirectory()) return dotGit;
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  const line = /^gitdir:\s*(.+?)\s*$/m.exec(read(dotGit) ?? "");
-  return line?.[1] === undefined ? null : resolve(root, line[1]);
 }
 
 function packed(commonDir: AbsolutePath, ref: string): string | null {

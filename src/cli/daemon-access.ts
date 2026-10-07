@@ -1,12 +1,7 @@
 import { requestDaemon } from "../core/daemon/client.js";
 import { socketPathFor } from "../core/daemon/paths.js";
-import { findWorktreeRoot } from "../core/status/index.js";
-import {
-  isStoreOpenFailure,
-  openStore,
-  resolveCommonDir,
-  worktreeIdFor,
-} from "../core/store/index.js";
+import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRequest, DaemonResponse } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 

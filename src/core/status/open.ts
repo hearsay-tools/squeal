@@ -1,6 +1,5 @@
-import { existsSync, realpathSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { isStoreOpenFailure, openStore, resolveCommonDir, storePaths } from "../store/index.js";
+import { findWorktreeRoot, resolveCommonDir } from "../fs/index.js";
+import { isStoreOpenFailure, openStore, storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   PAYLOAD_SCHEMA_VERSION,
@@ -22,22 +21,7 @@ export interface StatusContext {
   readonly root: AbsolutePath;
 }
 
-/**
- * The worktree that contains `path`: the nearest ancestor (or `path` itself)
- * with a `.git` entry. Spec 001 D1: "A **worktree** is one git working tree:
- * the nearest ancestor of a path that is a git top level." Returns `null`
- * outside any worktree.
- */
-export function findWorktreeRoot(path: AbsolutePath): AbsolutePath | null {
-  let dir = resolve(path);
-  if (existsSync(dir)) dir = realpathSync(dir);
-  for (;;) {
-    if (existsSync(join(dir, ".git"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
+export { findWorktreeRoot };
 
 export function unavailable(
   reason: StatusUnavailable["reason"],
