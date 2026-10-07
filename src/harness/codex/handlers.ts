@@ -85,11 +85,20 @@ export const stop: CodexHandler = async (input, location, deps) => {
   return block("block" in outcome ? outcome.block : outcome.news);
 };
 
-/** SubagentStart: register `(session_id, agent_id)`. D3 gives it no output. */
+/**
+ * SubagentStart: register `(session_id, agent_id)` and inject the header and
+ * the primer, which Codex puts in the subagent's first request (D3 as amended,
+ * review wave 1, S2). Without them a subagent's first boundary finds it
+ * registered and says only a delta, so it never hears the primer.
+ */
 export const subagentStart: CodexHandler = async (input, location, deps) => {
   if (input.agent_id === undefined) return null;
-  await startSession({ session_id: input.session_id, agent_id: input.agent_id }, location, deps);
-  return null;
+  const text = await startSession(
+    { session_id: input.session_id, agent_id: input.agent_id },
+    location,
+    deps,
+  );
+  return text === null ? null : additionalContext("SubagentStart", text);
 };
 
 /** SubagentStop: unregister `(session_id, agent_id)`; the parent's view is untouched. */
@@ -111,7 +120,15 @@ export const interrupt: CodexHandler = (input, location, deps) =>
     return null;
   });
 
-/** SessionEnd: unregister the session's consumers, main agent and subagents. */
+/**
+ * SessionEnd: unregister the session's consumers, main agent and subagents,
+ * in the store of `cwd` only (review wave 1, N3). The Claude Code adapter adds
+ * the store of its project directory; Codex gives SessionEnd only the current
+ * `cwd`, a Claude Code variable here would be a launcher's (D4), and the rollout
+ * at `transcript_path` has no verified format. A consumer left in a repository
+ * the thread left by a `turn/start` `cwd` is caught by the next `startup` or
+ * `resume` SessionStart of the session there, or by daemon expiry (001 D10).
+ */
 export const sessionEnd: CodexHandler = async (input, location, deps) => {
   await endSession(input, [location], deps);
   return null;

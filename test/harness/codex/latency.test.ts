@@ -99,7 +99,7 @@ const CASES: readonly Case[] = [
   { hook: "stop", name: "stop", fixture: "stop", before: flip },
   // Nothing to deliver: Stop ends the turn, recording the pending files.
   { hook: "stop", name: "stop (silent)", fixture: "stop" },
-  { hook: "subagent-start", name: "subagent-start (silent)", fixture: "subagent-start" },
+  { hook: "subagent-start", name: "subagent-start", fixture: "subagent-start" },
   {
     hook: "subagent-stop",
     name: "subagent-stop (silent)",

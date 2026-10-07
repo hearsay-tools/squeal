@@ -107,7 +107,14 @@ describe("every recorded Codex event", () => {
         }
         break;
       case "SubagentStart":
-        expect(out).toEqual(SILENT);
+        expect(json(out)).toEqual({
+          hookSpecificOutput: {
+            hookEventName: "SubagentStart",
+            additionalContext: expect.stringMatching(
+              /^SQUEAL · registered at revision 2\n[\s\S]*do not run Vitest/,
+            ),
+          },
+        });
         expect(r.store.consumers.get(me)).not.toBeNull();
         break;
       case "SubagentStop":
