@@ -18,6 +18,8 @@ function run(argv: string[], cwd: string) {
     },
     cwd,
     now: () => NOW,
+    // A Codex shell's CODEX_SESSION_ID would add a line to status (spec 002 D6).
+    env: {},
   };
   const code = main(argv, io);
   return { code, stdout, stderr };

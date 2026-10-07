@@ -1,6 +1,7 @@
 import { squealVersion } from "../core/daemon/version.js";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
+import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
 import { init } from "./init.js";
 import { removeCommand } from "./remove.js";
@@ -19,6 +20,10 @@ Usage:
   squeal why <check> [--json]   History and provenance of one check
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
+  squeal init --harness codex [--print-launcher-config]
+                                Write squeal.config.json and print the Codex plugin
+                                install and trust steps; or print the hooks and their
+                                trust as thread/start config for a launcher
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
@@ -41,6 +46,8 @@ export interface CliIo {
   readonly cwd?: string;
   /** Clock for heartbeat ages. Default `Date.now`. */
   readonly now?: () => EpochMs;
+  /** Environment, read for `CODEX_SESSION_ID` (spec 002 D6). Default `process.env`. */
+  readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
 /**
@@ -99,8 +106,10 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   if (parsed.positional.length > 0) return usage("status", "takes no arguments", io);
   if (waitMs !== null) return statusWaitCommand(waitMs, parsed.json, io);
   const now = io.now ?? Date.now;
-  const result = readStatus(io.cwd ?? process.cwd(), { now });
-  io.stdout(parsed.json ? json(result) : formatStatus(result, now()));
+  const cwd = io.cwd ?? process.cwd();
+  const result = readStatus(cwd, { now });
+  const codex = parsed.json ? null : codexStatusLine(cwd, io.env ?? process.env);
+  io.stdout(parsed.json ? json(result) : `${formatStatus(result, now())}${codex ?? ""}`);
   return result.available ? 0 : 1;
 }
 

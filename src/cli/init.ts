@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { findWorktreeRoot, isRecord } from "../core/fs/index.js";
 import { DEFAULT_POLICY } from "../core/types/index.js";
+import { initCodex, printLauncherConfig } from "./codex/init.js";
 import type { CliIo } from "./main.js";
 
 /*
@@ -31,13 +32,52 @@ type JsonObject = Record<string, unknown>;
  * Exit 0 when the repository is set up (including when nothing changed), 1
  * when settings cannot be read or written or the directory is not in a git
  * worktree, 2 on a usage error. Settings are written first and restored when
- * the config cannot be written, so a failure changes nothing.
+ * the config cannot be written, so a failure changes nothing. With
+ * `--harness codex`, see `initCodex`.
  */
 export function init(args: readonly string[], io: CliIo): number {
-  if (args.length > 0) {
-    io.stderr("squeal init: takes no arguments\n\nUsage: squeal init\n");
+  const parsed = parseInitArgs(args);
+  if (typeof parsed === "string") {
+    io.stderr(`squeal init: takes no arguments but those below; ${parsed}\n\n${INIT_USAGE}`);
     return 2;
   }
+  if (parsed.harness === "codex") {
+    return parsed.printLauncherConfig ? printLauncherConfig(io) : initCodex(io);
+  }
+  return initClaudeCode(io);
+}
+
+const INIT_USAGE = `Usage: squeal init [--harness claude-code]
+       squeal init --harness codex [--print-launcher-config]
+`;
+
+interface InitArgs {
+  readonly harness: "claude-code" | "codex";
+  readonly printLauncherConfig: boolean;
+}
+
+/** Spec 002 D1: no `--harness` keeps the Claude Code behaviour. */
+function parseInitArgs(args: readonly string[]): InitArgs | string {
+  let harness: string = "claude-code";
+  let printLauncher = false;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] as string;
+    if (arg === "--print-launcher-config") printLauncher = true;
+    else if (arg.startsWith("--harness=")) harness = arg.slice("--harness=".length);
+    else if (arg === "--harness") {
+      const value = args[++i];
+      if (value === undefined) return "--harness takes claude-code or codex";
+      harness = value;
+    } else return `unknown argument "${arg}"`;
+  }
+  if (harness !== "claude-code" && harness !== "codex") {
+    return `unknown harness "${harness}": claude-code or codex`;
+  }
+  if (printLauncher && harness !== "codex") return "--print-launcher-config needs --harness codex";
+  return { harness, printLauncherConfig: printLauncher };
+}
+
+function initClaudeCode(io: CliIo): number {
   const cwd = io.cwd ?? process.cwd();
   const root = findWorktreeRoot(cwd);
   if (root === null) {

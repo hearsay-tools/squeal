@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CODEX_HASH_VERSION, type HooksFile, hookHashes } from "../../src/cli/codex/hash.js";
+import {
+  CODEX_HASH_VERSION,
+  type HooksFile,
+  hookHashes,
+  LAUNCHER_KEY_SOURCE,
+} from "../../src/cli/codex/hash.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 
 /*
@@ -93,5 +98,38 @@ describe(`the trust hash port (Codex ${CODEX_HASH_VERSION})`, () => {
 
   it("names keys by event label, group and handler position", () => {
     expect([...computed(probe("PostToolUse")).keys()]).toContain(`${KEY_SOURCE}:pre_tool_use:1:0`);
+  });
+});
+
+describe("launcher hooks (thread/start config)", () => {
+  // `probes/wave-0-checks/bin/q2-appserver.sh`: two hooks declared in `thread/start`
+  // `config` and trusted only by these hashes, which Codex then ran.
+  const B =
+    "/home/agent/projects/squeal/.ai/cezar/worktrees/fdeedfc7-56f7-493a-82c7-4c4ce46afa71/docs/specifications/002-codex-adapter/research/probes/wave-0-checks/bin";
+  const shellProbe =
+    'echo "$0|$-|$(shopt -q login_shell 2>/dev/null && echo login || echo non-login)|launcher" >> /tmp/w0c/logs/q2-shell.txt; ' +
+    `sh ${B}/hook.sh launcher-SessionStart`;
+
+  it("reproduces the recorded launcher hashes under the session-flags key source", () => {
+    const recorded = readFileSync(LOG.replace("q3-trust.txt", "q2-launcher-hashes.txt"), "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => line.split(" "));
+    const file: HooksFile = {
+      hooks: {
+        SessionStart: [{ hooks: [{ type: "command", command: shellProbe, timeout: 2 }] }],
+        PostToolUse: [
+          {
+            matcher: "*",
+            hooks: [
+              { type: "command", command: `sh ${B}/hook.sh launcher-PostToolUse`, timeout: 2 },
+            ],
+          },
+        ],
+      },
+    };
+    expect(hookHashes(file, LAUNCHER_KEY_SOURCE).map(({ key, hash }) => [key, hash])).toEqual(
+      recorded,
+    );
   });
 });
