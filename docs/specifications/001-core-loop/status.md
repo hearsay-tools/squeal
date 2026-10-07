@@ -101,6 +101,8 @@ Started: 2026-10-02
 
 - 2026-10-08, wave 11 (001-116, `lessons.md` defect 23, from 002-20; the read transaction decided by the coordinator): D7 amended. `squeal status`, `--json`, each `--wait` poll, the delivery status builder and each poll of Stop's wait read inside one deferred `BEGIN` ... `COMMIT`, so a revision committed with its re-key between two reads no longer shows as the new revision with nothing pending. New helper `readTransaction` in `src/core/store/` (additive); no type changes.
 
+- 2026-10-08, wave 11 (001-116, `lessons.md` defect 23, from 002-20; the read transaction decided by the coordinator): D7 amended. `squeal status`, `--json`, each `--wait` poll, the delivery status builder and each poll of Stop's wait read inside one deferred `BEGIN` ... `COMMIT`, so a revision committed with its re-key between two reads no longer shows as the new revision with nothing pending. `buildSnapshot` opens the read transaction itself, also for a store wrapped in a `Proxy`. New helper `readTransaction` in `src/core/store/` (additive); no type changes. The 002-20 probe `test/e2e/torn-status.test.ts` passes for both plugins with `SQUEAL_PROBE_TORN_STATUS=1`.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
