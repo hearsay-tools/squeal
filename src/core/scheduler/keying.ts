@@ -7,6 +7,7 @@ import {
   createDeclaredInputs,
   createInputMatcher,
   type DeclaredInputs,
+  type DependencyKeys,
   environmentHash,
   inputGlobs,
   type KeyChange,
@@ -20,6 +21,7 @@ import { type HeadState, reconcile, statCandidates } from "../revision/index.js"
 import type {
   AbsolutePath,
   CandidateBatch,
+  EnvironmentHash,
   FileChange,
   FileHash,
   Policy,
@@ -47,6 +49,8 @@ export interface KeyingOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Called with every extra file whenever the list grows. */
   readonly onExtraFiles: (paths: readonly RelativePath[]) => void;
+  /** Records a status note: a stale hidden lockfile, once per change (task 001-104). */
+  readonly note?: (text: string) => void;
 }
 
 /** Bumped when the provisional encoding changes; never equal to a real environment hash. */
@@ -72,6 +76,8 @@ export class WorktreeKeys {
   readonly #extra = new Set<RelativePath>();
   readonly #untracked = new Set<RelativePath>();
   readonly #lockfiles: Lockfiles;
+  /** How each project's installed dependencies enter its keys (D3, task 001-105). */
+  #dependencies = new Map<ProjectName, DependencyKeys>();
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
   #declared: DeclaredInputs = createDeclaredInputs([], []);
@@ -82,7 +88,7 @@ export class WorktreeKeys {
     this.#policy = options.policy;
     this.#isDeclared = createInputMatcher(inputGlobs(options.policy.inputs));
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
-    this.#lockfiles = new Lockfiles(options.root);
+    this.#lockfiles = new Lockfiles(options.root, (text) => options.note?.(text));
     this.index = new KeyIndex((path) => this.cache.hashOf(path));
   }
 
@@ -137,24 +143,32 @@ export class WorktreeKeys {
       this.#environments.set(environment.project, environment);
       for (const path of environment.files) this.#environmentFiles.add(path);
     }
-    const fingerprints = await this.#lockfiles.set(environments);
+    this.#dependencies = await this.#lockfiles.set(environments);
     const lockPaths = this.#lockfiles.paths();
     await this.track([...this.#environmentFiles, ...lockPaths]);
     await this.#watchIgnored(lockPaths);
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
-    return environments.flatMap((environment) => {
+    const hashes = new Map<ProjectName, EnvironmentHash>();
+    for (const environment of environments) {
       const core = coreEnvironmentInputs({
         squealVersion,
-        installedDependencies: fingerprints.get(environment.project) ?? "none",
+        installedDependencies: this.#dependencies.get(environment.project)?.environment ?? "none",
         allowlist: policy.env.allowlist,
         ...(env === undefined ? {} : { env }),
       });
-      return this.index.setEnvironment(
-        environment.project,
-        environmentHash(core, environment, hashOf),
-      );
+      hashes.set(environment.project, environmentHash(core, environment, hashOf));
+    }
+    // Task 001-105: each test file's packages are keyed against the new install.
+    return this.index.setInstalled(hashes, (ref) => {
+      const runner = this.#runnerClosures.get(testFileId(ref));
+      return runner === undefined ? "" : this.#dependencySegment(runner);
     });
+  }
+
+  /** A test file's installed-dependency segment of its key (D3, task 001-105). */
+  #dependencySegment(runner: RunnerClosure): string {
+    return this.#dependencies.get(runner.testFile.project)?.of(runner.packages) ?? "";
   }
 
   /**
@@ -236,6 +250,7 @@ export class WorktreeKeys {
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
     const update = this.index.setClosure(
       assembleClosure(runner, this.#declared.for(runner.testFile.path)),
+      this.#dependencySegment(runner),
     );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
