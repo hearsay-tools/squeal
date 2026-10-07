@@ -15,21 +15,26 @@ const scanned = new WeakMap<object, boolean>();
  * Reads the source on disk, never the code Vite emitted, which has the
  * expansion done. The same path for every project: Vitest does not pass a
  * plugin given at `createVitest` to a project with its own Vite server.
+ *
+ * `node_modules` is scanned too: only a module with a cached transform gets
+ * here, so a dependency Vitest inlines, never one it externalizes. A module
+ * with no source on disk, served by a plugin's `load`, counts as expanding
+ * (reviews/wave-7.5.md B1): there are few, and their transforms are cheap.
  */
 export function expandsFromDisk(file: AbsolutePath, transform: object): boolean {
-  if (file.includes("/node_modules/")) return false;
   let found = scanned.get(transform);
   if (found === undefined) {
-    found = DYNAMIC_SPECIFIER.test(readSource(file));
+    const source = readSource(file);
+    found = source === null || DYNAMIC_SPECIFIER.test(source);
     scanned.set(transform, found);
   }
   return found;
 }
 
-function readSource(file: AbsolutePath): string {
+function readSource(file: AbsolutePath): string | null {
   try {
     return readFileSync(file, "utf8");
   } catch {
-    return "";
+    return null;
   }
 }

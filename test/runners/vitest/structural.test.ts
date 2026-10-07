@@ -281,3 +281,94 @@ describe("vitest adapter: an add re-resolves every resolution path", SLOW, () =>
     expect(paths(await fx.adapter.affected(["src/later.ts"]))).toEqual(["test/later.test.ts"]);
   });
 });
+
+const countsTwo = (from: string) =>
+  [
+    'import { expect, it } from "vitest";',
+    `import { count } from "${from}";`,
+    'it("counts two plugins", () => expect(count).toBe(2));',
+    "",
+  ].join("\n");
+
+const globsPlugins = [
+  'const plugins = import.meta.glob("/src/plugins/*.ts", { eager: true });',
+  "export const count = Object.keys(plugins).length;",
+].join("\n");
+
+/*
+ * Review wave 7.5, B1 and B2: adds that `invalidateAll` re-ran right and the
+ * targeted rules left stale. A glob in a module with no source of its own on
+ * disk (a virtual module, an inlined dependency) never enters a closure
+ * (N5), so `affected` stays empty there; the run must still read the disk.
+ */
+describe("vitest adapter: an add re-resolves past the scan and the index fallback", SLOW, () => {
+  it.each([
+    [
+      "a virtual module",
+      "virtual:plugins",
+      {
+        "vitest.config.ts": [
+          'import { defineConfig } from "vitest/config";',
+          'import { include } from "./vitest.shared.ts";',
+          'const id = "virtual:plugins";',
+          'const key = "\\0virtual:plugins";',
+          "export default defineConfig({",
+          "  plugins: [{",
+          '    name: "plugins",',
+          "    resolveId: (source) => (source === id ? key : undefined),",
+          `    load: (loaded) => (loaded === key ? ${JSON.stringify(globsPlugins)} : undefined),`,
+          "  }],",
+          "  test: { include },",
+          "});",
+          "",
+        ].join("\n"),
+      },
+    ],
+    [
+      "an inlined dependency",
+      "globby-lib",
+      {
+        "vitest.config.ts": [
+          'import { defineConfig } from "vitest/config";',
+          'import { include } from "./vitest.shared.ts";',
+          'export default defineConfig({ test: { include, server: { deps: { inline: ["globby-lib"] } } } });',
+          "",
+        ].join("\n"),
+        "node_modules/globby-lib/package.json":
+          '{ "name": "globby-lib", "type": "module", "main": "index.js" }\n',
+        "node_modules/globby-lib/index.js": `${globsPlugins}\n`,
+      },
+    ],
+  ])("import.meta.glob in %s picks up the new file", async (_, from, files) => {
+    const fx = await openFixture("basic", {
+      ...files,
+      "src/plugins/a.ts": "export const name = 'a';\n",
+      "test/registry.test.ts": countsTwo(from),
+    });
+    const test = [ref("test/registry.test.ts")];
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+
+    fx.write("src/plugins/b.ts", "export const name = 'b';\n");
+    await fx.adapter.invalidate([{ path: "src/plugins/b.ts", kind: "add" }]);
+
+    expect(await fx.adapter.affected(["src/plugins/b.ts"])).toEqual([]);
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+  });
+
+  it("the file a package.json main names appears: the directory leaves its index", async () => {
+    const fx = await openFixture("basic", {
+      "src/pkg/package.json": '{ "main": "lib.ts" }\n',
+      "src/pkg/index.ts": 'export const which = "index";\n',
+      "src/uses.ts": 'export { which } from "./pkg";\n',
+      "test/pkg.test.ts": readsTest("../src/uses.ts", "lib"),
+    });
+    const test = [ref("test/pkg.test.ts")];
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+
+    fx.write("src/pkg/lib.ts", 'export const which = "lib";\n');
+    await fx.adapter.invalidate([{ path: "src/pkg/lib.ts", kind: "add" }]);
+
+    expect(paths(await fx.adapter.affected(["src/pkg/lib.ts"]))).toEqual(["test/pkg.test.ts"]);
+    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+  });
+});
