@@ -1,0 +1,9 @@
+statuses: {"completed":136,"blocked":1}
+event               n   p50   p95   max (ms)
+postToolUse         50    91   195   205
+preToolUse          53    84   209   319
+sessionStart         6   119   375   375
+stop                 8    94   259   259
+subagentStart        5   103   304   304
+subagentStop         5    77   169   169
+userPromptSubmit    10    87   152   152

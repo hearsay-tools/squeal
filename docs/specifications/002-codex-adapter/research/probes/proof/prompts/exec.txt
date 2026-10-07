@@ -1,0 +1,10 @@
+This is a scripted test of the tooling in this small JavaScript repository. Follow these steps in order, one tool call per step, without combining steps:
+
+1. With apply_patch, change `add` in src/math.js so that it returns `a - b`.
+2. Straight away, with apply_patch, append the line `Notes.` to README.md.
+3. Run `sleep 6` in the shell.
+4. With apply_patch, restore `add` in src/math.js to return `a + b`.
+5. Run `sleep 6` in the shell.
+6. Spawn one subagent and give it exactly this task: "In src/greet.js, use apply_patch to change the greeting from `hello ${name}` to `hi ${name}`. Then run `sleep 6` in the shell. Then use apply_patch to change it back to `hello ${name}`. Then run `sleep 6`. Report, verbatim, every message from Squeal you received, and nothing else." Wait for the subagent to finish.
+
+In your final answer, quote verbatim every message from Squeal you received (at session start, after tool calls, or when a tool call was refused), say at which step each arrived, and say what you did about each one. Include the subagent's report.

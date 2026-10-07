@@ -1,0 +1,4 @@
+Added marketplace `squeal` from /home/agent/projects/squeal/.ai/cezar/worktrees/958c3155-605f-4fe5-bcae-e0583a1e06ac.
+Installed marketplace root: /home/agent/projects/squeal/.ai/cezar/worktrees/958c3155-605f-4fe5-bcae-e0583a1e06ac
+Added plugin `squeal` from marketplace `squeal`.
+Installed plugin root: /tmp/p16/codex/plugins/cache/squeal/squeal/0.1.21

@@ -1,0 +1,52 @@
++41516ms developer:
++41516ms developer:
+SQUEAL · registered at revision 0
+Revision 0: 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.
+Known failures: 0
+
+Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. Squeal does not cover typecheck, build or other test suites.
++41516ms user: This is a scripted test of the tooling in this small JavaScript repository. Follow these steps in order, one tool call per step, without combining steps:⏎⏎1. Wi…
++41516ms developer:
+SQUEAL · 1 check changed at revision 3
+Revision 3 (changed README.md, src/math.js): 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at revision 3; last completed at revision 0.
+
+PASS  test/math.test.js > add sums
+      FAIL -> PASS
+      at test/math.test.js:3:1
++41649ms developer:
+SQUEAL · registered at revision 3
+Revision 3 (changed src/math.js): 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at revision 3; last completed at revision 0.
+Known failures: 0
+
+Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. Squeal does not cover typecheck, build or other test suites.
++45097ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/src/greet.js\n@@\n-  return `hello ${name}`;\n+  return `hi ${name}`;\n*** End Patch"));⏎
++45190ms output: [{"type":"input_text","text":"Script failed\nWall time 0.1 seconds\nOutput:\n"},{"type":"input_text","text":"Script error:\napply_patch verification failed: Fai…
++47574ms call exec: text(await tools.exec_command({cmd:"cat src/greet.js",max_output_tokens:1000}));⏎
++47804ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{\"chunk_id\":\"b2868f\",\"wall_time_seconds\":0…
++51358ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/src/greet.js\n@@\n-export const greet = (name) => `hello ${name}`;\n+export const greet = (name) => `hi ${name}`;\n*** End Patch"));⏎
++51564ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{}"}]
++53913ms call exec: text(await tools.exec_command({cmd:"sleep 6"}));⏎
++60131ms developer:
+SQUEAL · 1 check changed at revision 4
+Revision 4 (changed src/greet.js): 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at revision 4; last completed at revision 0.
+
+FAIL  test/greet.test.js > greet says hello
+      PASS -> FAIL, seen by Squeal's run at revision 4
+      expected 'hi ada' to be 'hello ada' // Object.is equality
+      at test/greet.test.js:3:55
+      touches files changed here since this session started: src/greet.js
+
+Full output: squeal why "test/greet.test.js > greet says hello"
++60134ms output: [{"type":"input_text","text":"Script completed\nWall time 6.2 seconds\nOutput:\n"},{"type":"input_text","text":"{\"chunk_id\":\"cd16ef\",\"wall_time_seconds\":5…
++63004ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/src/greet.js\n@@\n-export const greet = (name) => `hi ${name}`;\n+export const greet = (name) => `hello ${name}`;\n*** End Patch"));⏎
++63200ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{}"}]
++66122ms call exec: text(await tools.exec_command({cmd:"sleep 6"}));⏎
++72357ms developer:
+SQUEAL · 1 check changed at revision 5
+Revision 5 (changed src/greet.js): 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at revision 5; last completed at revision 0.
+
+PASS  test/greet.test.js > greet says hello
+      FAIL -> PASS
+      at test/greet.test.js:3:1
++72360ms output: [{"type":"input_text","text":"Script completed\nWall time 6.2 seconds\nOutput:\n"},{"type":"input_text","text":"{\"chunk_id\":\"631747\",\"wall_time_seconds\":5…
++86175ms assistant: ```text⏎SQUEAL · registered at revision 0⏎Revision 0: 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.⏎Known failures: 0⏎⏎Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool c…

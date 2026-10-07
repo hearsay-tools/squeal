@@ -1,0 +1,44 @@
++175ms thread 01a11840-2dea-79c3-90e1-ed2eaf90eb57
++334ms hook sessionStart completed 87ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++411ms hook userPromptSubmit completed 72ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++6109ms hook preToolUse completed 81ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++6236ms hook postToolUse completed 84ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++6306ms hook preToolUse completed 67ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++6423ms hook postToolUse completed 73ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++11477ms hook preToolUse completed 73ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++11600ms hook postToolUse completed 80ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++15413ms hook preToolUse completed 69ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++15491ms hook postToolUse completed 72ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++15561ms hook preToolUse completed 66ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++15994ms hook postToolUse completed 74ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++20884ms hook stop completed 78ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++20887ms turn end "completed"
++21000ms hook userPromptSubmit completed 87ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++24820ms hook preToolUse completed 67ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++24929ms hook postToolUse completed 69ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++24947ms hook subagentStart completed 74ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++28135ms hook preToolUse completed 88ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++30485ms hook preToolUse completed 89ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++30637ms hook postToolUse completed 110ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++37878ms hook preToolUse completed 74ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++37953ms hook postToolUse completed 67ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++38036ms hook preToolUse completed 73ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++38477ms hook postToolUse completed 74ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++45304ms hook subagentStop completed 77ms thread=01a11840-8e60-7c11-809e-9d18c0695472
++45406ms hook postToolUse completed 91ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++50587ms hook stop completed 74ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++50591ms turn end "completed"
++50592ms review/start "01a11840-f308-76b1-ba07-daa41bef902b"
++50723ms hook userPromptSubmit completed 66ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++64155ms hook preToolUse completed 69ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++64317ms hook postToolUse completed 65ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++68477ms hook preToolUse completed 68ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++68597ms hook postToolUse completed 72ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++72997ms hook preToolUse completed 62ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++73110ms hook postToolUse completed 71ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++76570ms hook preToolUse completed 84ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++77569ms hook postToolUse completed 72ms thread=01a11840-2dea-79c3-90e1-ed2eaf90eb57
++90529ms review end "completed"
++90529ms stdin EOF
++90664ms app-server exit {"code":0,"sig":null}
+exit 143

@@ -1,0 +1,15 @@
++188ms thread 01a11845-ccef-7e63-952d-efe89469f866
++355ms hook sessionStart completed 4ms thread=01a11845-ccef-7e63-952d-efe89469f866
++356ms hook sessionStart completed 99ms thread=01a11845-ccef-7e63-952d-efe89469f866
++442ms hook userPromptSubmit completed 4ms thread=01a11845-ccef-7e63-952d-efe89469f866
++442ms hook userPromptSubmit completed 82ms thread=01a11845-ccef-7e63-952d-efe89469f866
++3367ms hook preToolUse completed 5ms thread=01a11845-ccef-7e63-952d-efe89469f866
++3368ms hook preToolUse completed 80ms thread=01a11845-ccef-7e63-952d-efe89469f866
++3496ms hook postToolUse completed 5ms thread=01a11845-ccef-7e63-952d-efe89469f866
++3496ms hook postToolUse completed 88ms thread=01a11845-ccef-7e63-952d-efe89469f866
++6155ms hook stop completed 5ms thread=01a11845-ccef-7e63-952d-efe89469f866
++6155ms hook stop completed 110ms thread=01a11845-ccef-7e63-952d-efe89469f866
++6158ms turn end "completed"
++12267ms sh: Known failures: 1
+  FAIL  test/math.test.js > mul multiplies
++12269ms review/start {"code":-32600,"message":"paginated threads do not support detached review"}

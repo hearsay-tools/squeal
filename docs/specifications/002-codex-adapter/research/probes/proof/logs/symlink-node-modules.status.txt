@@ -1,0 +1,3 @@
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-07T21:19:45.178Z, revision 0: daemon exited: could not start: squeal: git check-ignore -z --stdin exited 128 in /tmp/p16/r1: fatal: pathspec 'node_modules/.package-lock.json' is beyond a symbolic link

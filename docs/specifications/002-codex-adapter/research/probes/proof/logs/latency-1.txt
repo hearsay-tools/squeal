@@ -1,0 +1,24 @@
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/958c3155-605f-4fe5-bcae-e0583a1e06ac
+stdout | test/harness/codex/latency.test.ts > bundled Codex hook latency > stays under 80 ms p95 over 20 cold runs per hook
+Codex hook latency ms, best of up to 3 rounds of 20 cold runs, load 17.18
+┌─────────┬───────────────────────────────┬────────┬─────┬─────┬─────┐
+│ (index) │ hook                          │ rounds │ p50 │ p95 │ max │
+├─────────┼───────────────────────────────┼────────┼─────┼─────┼─────┤
+│ 0       │ 'session-start'               │ 3      │ 77  │ 81  │ 96  │
+│ 1       │ 'user-prompt-submit'          │ 1      │ 69  │ 78  │ 81  │
+│ 2       │ 'pre-tool-use (apply_patch)'  │ 1      │ 60  │ 68  │ 68  │
+│ 3       │ 'pre-tool-use (Bash, silent)' │ 3      │ 58  │ 67  │ 77  │
+│ 4       │ 'post-tool-use'               │ 1      │ 69  │ 79  │ 82  │
+│ 5       │ 'post-tool-use (silent)'      │ 1      │ 64  │ 76  │ 83  │
+│ 6       │ 'stop'                        │ 3      │ 77  │ 86  │ 94  │
+│ 7       │ 'stop (silent)'               │ 3      │ 92  │ 103 │ 110 │
+│ 8       │ 'subagent-start'              │ 3      │ 98  │ 129 │ 138 │
+│ 9       │ 'subagent-stop (silent)'      │ 1      │ 65  │ 68  │ 70  │
+│ 10      │ 'interrupt (silent)'          │ 2      │ 70  │ 78  │ 80  │
+│ 11      │ 'session-end (silent)'        │ 2      │ 58  │ 67  │ 75  │
+└─────────┴───────────────────────────────┴────────┴─────┴─────┴─────┘
+ ✓ test/harness/codex/latency.test.ts > bundled Codex hook latency > stays under 80 ms p95 over 20 cold runs per hook 37828ms
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  23:37:42
+   Duration  38.54s (tests 99%, transform 1%)

@@ -1,0 +1,43 @@
++160ms thread 01a11849-0c48-7371-91d3-54083e65276f
++627ms hook sessionStart completed 7ms thread=01a11849-0c48-7371-91d3-54083e65276f
++627ms hook sessionStart completed 375ms thread=01a11849-0c48-7371-91d3-54083e65276f
++710ms hook userPromptSubmit completed 5ms thread=01a11849-0c48-7371-91d3-54083e65276f
++710ms hook userPromptSubmit completed 78ms thread=01a11849-0c48-7371-91d3-54083e65276f
++3750ms hook preToolUse completed 6ms thread=01a11849-0c48-7371-91d3-54083e65276f
++3750ms hook preToolUse completed 91ms thread=01a11849-0c48-7371-91d3-54083e65276f
++3910ms hook postToolUse completed 6ms thread=01a11849-0c48-7371-91d3-54083e65276f
++3910ms hook postToolUse completed 115ms thread=01a11849-0c48-7371-91d3-54083e65276f
++6841ms hook preToolUse completed 11ms thread=01a11849-0c48-7371-91d3-54083e65276f
++6842ms hook preToolUse completed 176ms thread=01a11849-0c48-7371-91d3-54083e65276f
++7047ms hook postToolUse completed 13ms thread=01a11849-0c48-7371-91d3-54083e65276f
++7048ms hook postToolUse completed 166ms thread=01a11849-0c48-7371-91d3-54083e65276f
++13925ms hook preToolUse completed 10ms thread=01a11849-0c48-7371-91d3-54083e65276f
++13926ms hook preToolUse completed 133ms thread=01a11849-0c48-7371-91d3-54083e65276f
++16114ms hook postToolUse completed 9ms thread=01a11849-0c48-7371-91d3-54083e65276f
++16114ms hook postToolUse completed 157ms thread=01a11849-0c48-7371-91d3-54083e65276f
++19329ms hook preToolUse completed 6ms thread=01a11849-0c48-7371-91d3-54083e65276f
++19330ms hook preToolUse completed 110ms thread=01a11849-0c48-7371-91d3-54083e65276f
++19581ms hook postToolUse completed 7ms thread=01a11849-0c48-7371-91d3-54083e65276f
++19581ms hook postToolUse completed 134ms thread=01a11849-0c48-7371-91d3-54083e65276f
++19786ms hook subagentStart completed 10ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++19786ms hook subagentStart completed 304ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++21689ms hook preToolUse completed 7ms thread=01a11849-0c48-7371-91d3-54083e65276f
++21689ms hook preToolUse completed 137ms thread=01a11849-0c48-7371-91d3-54083e65276f
++22061ms hook preToolUse completed 14ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++22061ms hook preToolUse completed 154ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++22260ms hook postToolUse completed 7ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++22261ms hook postToolUse completed 138ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++24809ms hook subagentStop completed 10ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++24811ms hook subagentStop completed 169ms thread=01a11849-575c-7db0-acd0-74cfd985ce96
++25004ms hook postToolUse completed 8ms thread=01a11849-0c48-7371-91d3-54083e65276f
++25004ms hook postToolUse completed 176ms thread=01a11849-0c48-7371-91d3-54083e65276f
++28462ms hook preToolUse completed 9ms thread=01a11849-0c48-7371-91d3-54083e65276f
++28462ms hook preToolUse completed 129ms thread=01a11849-0c48-7371-91d3-54083e65276f
++28678ms hook postToolUse completed 16ms thread=01a11849-0c48-7371-91d3-54083e65276f
++28679ms hook postToolUse completed 160ms thread=01a11849-0c48-7371-91d3-54083e65276f
++31690ms hook stop completed 10ms thread=01a11849-0c48-7371-91d3-54083e65276f
++31690ms hook stop completed 151ms thread=01a11849-0c48-7371-91d3-54083e65276f
++31694ms turn end "completed"
++31694ms stdin EOF
++31941ms app-server exit {"code":0,"sig":null}
+exit 0

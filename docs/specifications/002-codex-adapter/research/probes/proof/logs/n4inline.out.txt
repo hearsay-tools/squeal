@@ -1,0 +1,34 @@
++538ms thread 01a11843-9015-7ff1-87cb-c9954f55236d
++885ms hook sessionStart completed 20ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++886ms hook sessionStart completed 212ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++1023ms hook userPromptSubmit completed 14ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++1024ms hook userPromptSubmit completed 122ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++4126ms hook preToolUse completed 6ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++4126ms hook preToolUse completed 319ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++4405ms hook postToolUse completed 14ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++4405ms hook postToolUse completed 195ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++7373ms hook stop completed 10ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++7373ms hook stop completed 259ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++7425ms turn end "completed"
++13614ms sh: Known failures: 1
+  FAIL  test/math.test.js > mul multiplies
++13615ms review/start {"turn":{"id":"01a11843-c370-7921-b1f9-f72556405e65","items":[{"type":"userMessage","id":"01a11843-c370-7921-b1f9-f72556405e65","clientId":null,"content":[{"type":"text","text":"current changes","text_elements":[]}]}],"itemsView":"notLoaded","status":"inProgress","error":null,"startedAt":null,"completedAt":null,"durationMs":null},"reviewThreadId":"01a11843-9015-7ff1-87cb-c9954f55236d"}
++13981ms hook userPromptSubmit completed 11ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++13981ms hook userPromptSubmit completed 152ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++17927ms hook preToolUse completed 19ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++17929ms hook preToolUse completed 135ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++18201ms hook postToolUse completed 7ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++18201ms hook postToolUse completed 116ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++22213ms hook preToolUse completed 9ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++22216ms hook preToolUse completed 135ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++22447ms hook postToolUse completed 10ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++22448ms hook postToolUse completed 155ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++28626ms review end "completed"
++28798ms hook userPromptSubmit completed 5ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++28798ms hook userPromptSubmit completed 123ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++31646ms hook stop completed 6ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++31646ms hook stop completed 148ms thread=01a11843-9015-7ff1-87cb-c9954f55236d
++31649ms turn end "completed"
++31650ms stdin EOF
++31779ms app-server exit {"code":0,"sig":null}
+exit 143

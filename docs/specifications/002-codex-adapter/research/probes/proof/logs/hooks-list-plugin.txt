@@ -1,0 +1,9 @@
+squeal@squeal:hooks/hooks.json:pre_tool_use:0:0 sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96 trusted
+squeal@squeal:hooks/hooks.json:post_tool_use:0:0 sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1 trusted
+squeal@squeal:hooks/hooks.json:session_start:0:0 sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc trusted
+squeal@squeal:hooks/hooks.json:session_end:0:0 sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89 trusted
+squeal@squeal:hooks/hooks.json:user_prompt_submit:0:0 sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4 trusted
+squeal@squeal:hooks/hooks.json:subagent_start:0:0 sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d trusted
+squeal@squeal:hooks/hooks.json:subagent_stop:0:0 sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa trusted
+squeal@squeal:hooks/hooks.json:stop:0:0 sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234 trusted
+squeal@squeal:hooks/hooks.json:interrupt:0:0 sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31 trusted

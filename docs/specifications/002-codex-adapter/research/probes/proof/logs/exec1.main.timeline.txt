@@ -1,0 +1,38 @@
++246ms developer:
++346ms developer:
+SQUEAL · registered at revision 0
+Revision 0: 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.
+Known failures: 0
+
+Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. Squeal does not cover typecheck, build or other test suites.
++436ms user: This is a scripted test of the tooling in this small JavaScript repository. Follow these steps in order, one tool call per step, without combining steps:⏎⏎1. Wi…
++3282ms assistant: I’ll follow the six steps in order, using a separate tool call for each, and record every Squeal message for the final report.
++4170ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/src/math.js\n@@\n-  return a + b;\n+  return a - b;\n*** End Patch"));⏎
++4279ms output: [{"type":"input_text","text":"Script failed\nWall time 0.1 seconds\nOutput:\n"},{"type":"input_text","text":"Script error:\napply_patch verification failed: Fai…
++7138ms call exec: text(await tools.exec_command({cmd:"cat src/math.js README.md",max_output_tokens:2000}));⏎
++7359ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{\"chunk_id\":\"132325\",\"wall_time_seconds\":0…
++10430ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/src/math.js\n@@\n-export const add = (a, b) => a + b;\n+export const add = (a, b) => a - b;\n*** End Patch"));⏎
++10615ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{}"}]
++13695ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/README.md\n@@\n # scratch\n+Notes.\n*** End Patch"));⏎
++13808ms output:
+[{"type":"input_text","text":"Script failed\nWall time 0.1 seconds\nOutput:\n"},{"type":"input_text","text":"Script error:\nCommand blocked by PreToolUse hook: SQUEAL · 1 check changed at revision 1\nRevision 1 (changed src/math.js): 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at revision 1; last completed at revision 0.\n\nFAIL  test/math.test.js > add sums\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected -1 to be 5 // Object.is equality\n      at test/math.test.js:3:44\n      touches files changed here since this session started: src/math.js\n\nFull output: squeal why \"test/math.test.js > add sums\"\n\nSqueal policy interrupt.onRegression denied this apply_patch call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.. Command: *** Begin Patch\n*** Update File: /tmp/p16/r1/README.md\n@@\n # scratch\n+Notes.\n*** End Patch"}]
++16813ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/README.md\n@@\n # scratch\n+Notes.\n*** End Patch"));⏎
++16984ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{}"}]
++19036ms call exec: text(await tools.exec_command({cmd:"sleep 6"}));⏎
++25239ms output: [{"type":"input_text","text":"Script completed\nWall time 6.2 seconds\nOutput:\n"},{"type":"input_text","text":"{\"chunk_id\":\"20d175\",\"wall_time_seconds\":5…
++28544ms call exec: text(await tools.apply_patch("*** Begin Patch\n*** Update File: /tmp/p16/r1/src/math.js\n@@\n-export const add = (a, b) => a - b;\n+export const add = (a, b) => a + b;\n*** End Patch"));⏎
++28743ms output: [{"type":"input_text","text":"Script completed\nWall time 0.2 seconds\nOutput:\n"},{"type":"input_text","text":"{}"}]
++31058ms call exec: text(await tools.exec_command({cmd:"sleep 6"}));⏎
++37267ms developer:
+SQUEAL · 1 check changed at revision 3
+Revision 3 (changed README.md, src/math.js): 5 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at revision 3; last completed at revision 0.
+
+PASS  test/math.test.js > add sums
+      FAIL -> PASS
+      at test/math.test.js:3:1
++37270ms output: [{"type":"input_text","text":"Script completed\nWall time 6.2 seconds\nOutput:\n"},{"type":"input_text","text":"{\"chunk_id\":\"a41252\",\"wall_time_seconds\":5…
++41411ms call spawn_agent: {"task_name":"greeting_test","message":"gAAAAABqxre9FsO_eJyBGK_HWMRugkT-kkGBT3_QT7QTjezmftU7o_Mb2zn4L-WY-ZsWTWYyCDb2Pf1oloRg0FXyf1gUrSkE_lYtAmyL9N9NxR3GFKHrKg1G_ajz4GDIj-ois0wKOBQp7PYKW_4fkZxFykL2MRUwySXbWYsN5aZX8tv58LGfp3DRK87F7UpWImGKyzmXyV8ZJYGelCyK7VkbmzVEY83ZlNA_qPXJ60ViY9zI-zVOo36tY8ge88kUx1Apyhx4hQSj7ljtBK-j2n3pLR6n5KuzGfQmwbUYRh8yjdget9WI_hVrcVpexFko5MOk9sBgn1HtO_QM1pU60zVSMMRL0bOBb8xbXdFS…
++41646ms output: {"task_name":"/root/greeting_test"}
++44172ms call wait_agent: {"timeout_ms":60000}
++86367ms output: {"message":"Wait completed.","timed_out":false}
++112699ms assistant: Completed all six steps. Step 1 initially failed because the patch expected a different code format; I read the file and retried successfully. Step 2 was blocked by Squeal, then succeeded when reissued. Both functions were restored, and `Notes.` was appended to README.md.⏎⏎These are all Squeal messa…

@@ -1,0 +1,43 @@
++214ms thread 01a11848-8b65-7ae2-9733-a8e6088f9210
++476ms hook sessionStart completed 7ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++477ms hook sessionStart completed 190ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++574ms hook userPromptSubmit completed 4ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++574ms hook userPromptSubmit completed 92ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++3237ms hook preToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++3238ms hook preToolUse completed 89ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++3475ms hook postToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++3475ms hook postToolUse completed 196ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12044ms hook preToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12044ms hook preToolUse completed 98ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12268ms hook postToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12268ms hook postToolUse completed 181ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12370ms hook preToolUse completed 7ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12370ms hook preToolUse completed 98ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12562ms hook postToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++12562ms hook postToolUse completed 187ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++14860ms hook preToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++14860ms hook preToolUse completed 80ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++17069ms hook postToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++17069ms hook postToolUse completed 187ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++19897ms hook preToolUse completed 4ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++19897ms hook preToolUse completed 65ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++20103ms hook postToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++20103ms hook postToolUse completed 171ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++20116ms hook subagentStart completed 5ms thread=01a11848-d884-78b3-a504-a1da6539c216
++20116ms hook subagentStart completed 171ms thread=01a11848-d884-78b3-a504-a1da6539c216
++22687ms hook preToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++22687ms hook preToolUse completed 67ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++23322ms hook preToolUse completed 8ms thread=01a11848-d884-78b3-a504-a1da6539c216
++23322ms hook preToolUse completed 124ms thread=01a11848-d884-78b3-a504-a1da6539c216
++23563ms hook postToolUse completed 8ms thread=01a11848-d884-78b3-a504-a1da6539c216
++23564ms hook postToolUse completed 190ms thread=01a11848-d884-78b3-a504-a1da6539c216
++25878ms hook subagentStop completed 7ms thread=01a11848-d884-78b3-a504-a1da6539c216
++25878ms hook subagentStop completed 74ms thread=01a11848-d884-78b3-a504-a1da6539c216
++26055ms hook postToolUse completed 5ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++26055ms hook postToolUse completed 168ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++29825ms hook stop completed 7ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++29825ms hook stop completed 205ms thread=01a11848-8b65-7ae2-9733-a8e6088f9210
++29828ms turn end "completed"
++29828ms stdin EOF
++29962ms app-server exit {"code":0,"sig":null}
+exit 0
