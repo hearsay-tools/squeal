@@ -14,7 +14,7 @@ import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER } from "../../../src/harness/shared/primer.js";
 import { outsideGit } from "../bundle-helpers.js";
 import { type SquealRepo, SUBTRACTS, squealRepo } from "../helpers.js";
-import { codexInput, codexRecorded } from "./helpers.js";
+import { codexInput, codexRecorded, sessionOf } from "./helpers.js";
 
 /* Spec 002 goals 2 to 6 on the handlers, from recorded `codex exec` input. */
 
@@ -25,6 +25,8 @@ const hook = (r: SquealRepo, name: CodexHookName, fixture: string) =>
   runCodexHook(name, codexRecorded("exec", fixture, r.root), deps);
 
 const SESSION = String(codexInput("exec", "session-start", "/").session_id);
+/** Moves a recorded input of another session into this one. */
+const IN_SESSION = sessionOf("exec", "session-start");
 const AGENT = String(codexInput("exec", "subagent-start", "/").agent_id);
 const consumer = (r: SquealRepo, agentId: string = MAIN_AGENT): Consumer => ({
   worktreeId: r.worktreeId,
@@ -117,7 +119,7 @@ describe("Stop and Interrupt (goals 4 and 6)", () => {
     r.apply(r.fail(), r.fail(SUBTRACTS));
     const again = runCodexHook(
       "stop",
-      codexRecorded("exec", "stop-hook-active", r.root, { session_id: SESSION }),
+      codexRecorded("exec", "stop-hook-active", r.root, IN_SESSION),
       deps,
     );
     expect(await again).toEqual(SILENT);
@@ -132,7 +134,7 @@ describe("Stop and Interrupt (goals 4 and 6)", () => {
     await hook(r, "pre-tool-use", "pre-tool-use");
     r.apply(r.fail());
     // The TUI's recorded Interrupt (Escape mid-tool), in this session.
-    const input = codexRecorded("tui", "interrupt", r.root, { session_id: SESSION });
+    const input = codexRecorded("tui", "interrupt", r.root, IN_SESSION);
     expect(await runCodexHook("interrupt", input, deps)).toEqual(SILENT);
     expect(readTurn(r.store, consumer(r)).turn).toBe("idle");
     expect((await hook(r, "user-prompt-submit", "user-prompt-submit")).stdout).toContain(

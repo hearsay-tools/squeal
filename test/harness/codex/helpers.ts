@@ -8,10 +8,16 @@ import type { CodexHookName } from "../../../src/harness/codex/index.js";
 export type Mode = "exec" | "app-server" | "tui";
 export const MODES: readonly Mode[] = ["exec", "app-server", "tui"];
 
+/**
+ * A fixture directory: a mode, or `review`, an app-server thread with an
+ * inline `/review` whose `review-*` hooks are not a consumer's (spec 002 D2).
+ */
+export type FixtureDir = Mode | "review";
+
 const FIXTURES = join(REPO_ROOT, "test/fixtures/codex-hooks");
 
 /** The recorded fixtures of `mode`, by file name without `.json`. */
-export function fixtureNames(mode: Mode): string[] {
+export function fixtureNames(mode: FixtureDir): string[] {
   return readdirSync(join(FIXTURES, mode))
     .filter((f) => f.endsWith(".json"))
     .map((f) => f.slice(0, -5))
@@ -20,7 +26,7 @@ export function fixtureNames(mode: Mode): string[] {
 
 /** The recorded input as an object, `cwd` pointed at `cwd`. */
 export function codexInput(
-  mode: Mode,
+  mode: FixtureDir,
   name: string,
   cwd: string,
   overrides: object = {},
@@ -29,9 +35,19 @@ export function codexInput(
   return { ...input, cwd, ...overrides };
 }
 
+/**
+ * Overrides that move a recorded input into the session of `mode/name`: its
+ * `session_id` and the `transcript_path` named after it, so the input stays a
+ * consumer's (spec 002 D2) rather than a thread under someone else's session.
+ */
+export function sessionOf(mode: FixtureDir, name: string): object {
+  const { session_id, transcript_path } = codexInput(mode, name, "/");
+  return { session_id, transcript_path };
+}
+
 /** The recorded input as stdin text, `cwd` pointed at `cwd`. */
 export function codexRecorded(
-  mode: Mode,
+  mode: FixtureDir,
   name: string,
   cwd: string,
   overrides: object = {},

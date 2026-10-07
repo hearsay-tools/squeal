@@ -1,7 +1,7 @@
 import { locate } from "../shared/context.js";
 import type { HookDeps } from "../shared/hook.js";
 import type { CodexHandler } from "./hook.js";
-import { parseCodexInput } from "./input.js";
+import { isUnservedThread, parseCodexInput } from "./input.js";
 
 /** What one Codex hook process writes. It always exits 0. */
 export interface CodexHookResult {
@@ -17,7 +17,9 @@ const SILENT: CodexHookResult = { stdout: "", stderr: "" };
  * thread's working directory in every mode (`research/wave-0-checks.md` 2);
  * no Codex hook reads a `CLAUDE_*` variable, which Codex passes through from
  * whatever launched it (D4). Malformed input, a cwd outside any git worktree,
- * a missing or unreadable store and every thrown error end silent.
+ * a missing or unreadable store and every thrown error end silent, and so
+ * does a thread that is not a consumer (`isUnservedThread`, D2), before any
+ * handler locates or opens a store.
  * `SQUEAL_HOOK_DEBUG=1` reports the swallowed error on stderr, which Codex
  * does not show the model after exit 0.
  */
@@ -29,7 +31,7 @@ export async function runCodexHandler(
 ): Promise<CodexHookResult> {
   try {
     const input = parseCodexInput(stdin);
-    if (input === null) return SILENT;
+    if (input === null || isUnservedThread(input)) return SILENT;
     const location = locate(input.cwd);
     if (location === null) return SILENT;
     const output = await handler(input, location, deps);
