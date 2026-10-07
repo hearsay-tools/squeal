@@ -36,6 +36,8 @@ export interface Resolver {
    * CommonJS, so its static imports resolve with the `require` conditions.
    */
   moduleFormat(file: AbsolutePath): ModuleFormat;
+  /** Releases build-only filesystem and resolver caches; keeps compact lookup summaries for edits. */
+  release(): void;
   /** Drops every cached stat, read and resolver (D4: on add, delete, manifest change). */
   clear(): void;
 }
@@ -206,6 +208,10 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
       if (COMMONJS.test(file)) return { format: "commonjs", manifest: null };
       if (MODULE.test(file)) return { format: "module", manifest: null };
       return scopeOf(dirname(file));
+    },
+    release() {
+      fileSystem.purge();
+      resolvers.clear();
     },
     clear() {
       fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
