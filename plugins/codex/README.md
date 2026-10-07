@@ -13,13 +13,19 @@ codex plugin add squeal@squeal
 
 `hearsay-tools/squeal` is a private repository today, and whether `codex plugin marketplace add` fetches it with the user's git credentials is unverified; until the repository is public, a user without access adds the marketplace from a local clone instead: `codex plugin marketplace add /path/to/squeal`.
 
-Then trust the hooks once: open the TUI, run `/hooks`, and trust the hooks of `squeal@squeal`. Codex skips untrusted hooks without a word, so until then Squeal says nothing. `squeal status` run in a Codex shell adds a line when it finds no consumer for `CODEX_SESSION_ID` in this worktree, and names the trust step; in the session that created the store the hooks may have run and not registered yet, so the line names no cause it cannot know.
+Then trust the hooks once, with `squeal init --harness codex --trust` (below) or in the TUI: run `/hooks` and trust the hooks of `squeal@squeal`. Codex skips untrusted hooks without a word, so until then Squeal says nothing. `squeal status` run in a Codex shell adds a line when it finds no consumer for `CODEX_SESSION_ID` in this worktree, and names the trust step; in the session that created the store the hooks may have run and not registered yet, so the line names no cause it cannot know.
 
 In the project, `squeal init --harness codex` writes `squeal.config.json` with every default policy key if it is absent, and prints the commands above. It writes nothing under `~/.codex`. The agent's `squeal` comes from the npm package: Codex does not put a plugin's `bin/` on the shell's `PATH`.
 
+## Trust from the command line
+
+`squeal init --harness codex --trust`, run in the project after the install, does what `/hooks` does without the TUI. It starts `codex app-server` in the worktree root with the user's `PATH` and `CODEX_HOME`, asks it for the hooks (`hooks/list`), and prints each hook of `squeal@squeal` that Codex lists as `untrusted` or `modified`, with its event, its hash and its command. On a terminal it asks once, default no; `--yes` answers yes without asking, for a script the user runs on purpose. With no terminal and no `--yes` it prints the hooks and exits 1, changing nothing. On yes it sends one `config/batchWrite` setting `hooks.state."<key>".trusted_hash` to the hash Codex reported, for exactly those hooks, lists the hooks again and prints each one's status. Exit 0 when every Squeal hook is trusted.
+
+Codex writes its own `config.toml`; Squeal opens no file under `CODEX_HOME` and computes no hash for this, so a Codex release that changes the hash format does not break it. The command never passes `--dangerously-bypass-hook-trust`. When Codex lists no hook of `squeal@squeal` the command names the two install commands; when `codex` is not on `PATH`, or the app-server exits or stays silent for 10 seconds, it says so in one line. Either way it exits 1 and the app-server is stopped.
+
 ## Trust and updates
 
-Codex trusts a hook by a SHA-256 over its declaration, with the command text before `${PLUGIN_ROOT}` is expanded, keyed by `squeal@squeal:hooks/hooks.json` and the hook's position. A version raise keeps the trust; a changed declaration loses it for that hook only, and the user trusts it again with `/hooks`. `test/plugins/codex/hooks-json.test.ts` pins the hashes, so a change that needs a new trust fails until the table is updated on purpose.
+Codex trusts a hook by a SHA-256 over its declaration, with the command text before `${PLUGIN_ROOT}` is expanded, keyed by `squeal@squeal:hooks/hooks.json` and the hook's position. A version raise keeps the trust; a changed declaration loses it for that hook only, and the user trusts it again with `--trust` or `/hooks`. `test/plugins/codex/hooks-json.test.ts` pins the hashes, so a change that needs a new trust fails until the table is updated on purpose.
 
 ## Launchers
 
