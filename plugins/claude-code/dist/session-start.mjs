@@ -1,3 +1,6 @@
+import { createRequire as __squealCreateRequire } from "node:module";
+const require = __squealCreateRequire(import.meta.url);
+
 // src/harness/shared/context.ts
 import { existsSync as existsSync5 } from "node:fs";
 import { join as join7 } from "node:path";

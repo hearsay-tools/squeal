@@ -1,13 +1,6 @@
 import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
-// src/harness/shared/stop.ts
-import { setTimeout as sleep2 } from "node:timers/promises";
-
-// src/core/daemon/policy.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join2 } from "node:path";
-
 // src/core/fs/errors.ts
 function isMissing(error) {
   const code = error?.code;
@@ -69,68 +62,6 @@ function dotGit(root) {
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/daemon.ts
-var DAEMON_SOCKET_TIMEOUT_MS = 100;
-function bootstrappedMetaKey(worktreeId) {
-  return `daemon-bootstrapped:${worktreeId}`;
-}
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5 },
-  nodeTest: [],
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
-}
-function refinedMetaKey(worktreeId) {
-  return `refined.${worktreeId}`;
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
-
-// src/core/notes.ts
-function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
-}
-function parseList(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-function toNote(item) {
-  if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
-  if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text }];
-}
-
-// src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute2, posix } from "node:path";
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -202,164 +133,6 @@ function splitTopLevel(body) {
   }
   parts.push(body.slice(start));
   return parts;
-}
-
-// src/core/daemon/policy-node-test.ts
-function compiles(globs2) {
-  for (const glob of globs2) {
-    try {
-      globToRegExp(glob);
-    } catch (error) {
-      return { problem: `has a glob Squeal cannot use: ${error.message}` };
-    }
-  }
-  return null;
-}
-var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
-var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
-var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
-var insideRoot = (v) => {
-  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
-  const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
-};
-var FIELDS = {
-  name: nonEmptyString,
-  cwd: insideRoot,
-  node: nonEmptyString,
-  argv: strings,
-  env: variables,
-  include: globs,
-  exclude: globs
-};
-var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
-function nodeTestProjects(value, path) {
-  if (!Array.isArray(value)) return "an array of projects";
-  const kept = [];
-  const problems = [];
-  value.forEach((entry2, index) => {
-    const at2 = `${path}[${index}]`;
-    const problem = entryProblem(entry2, at2, kept);
-    if (problem === null) kept.push(withDefaults(entry2));
-    else problems.push(problem);
-  });
-  return { kept, problems };
-}
-function withDefaults(entry2) {
-  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
-}
-function entryProblem(entry2, at2, kept) {
-  if (!isRecord(entry2))
-    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
-  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
-  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
-  for (const key of Object.keys(entry2)) {
-    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
-  }
-  for (const [key, field] of Object.entries(FIELDS)) {
-    const given = entry2[key];
-    if (given === void 0 && !REQUIRED.has(key)) continue;
-    const expected = field(given);
-    if (expected === null) continue;
-    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
-    return `"${at2}.${key}" ${why}; ${skipped}`;
-  }
-  if (kept.some((project) => project.name === named)) {
-    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
-  }
-  return null;
-}
-
-// src/core/daemon/policy.ts
-var POLICY_FILE = "squeal.config.json";
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
-var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var inputs = (v) => {
-  const isList = strings2(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
-    return "an array of strings, or an object from test-file glob to an array of strings";
-  }
-  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  return compiles(globs2);
-};
-var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
-var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
-var orNull = (leaf) => (v) => {
-  const expected = v === null ? null : leaf(v);
-  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
-};
-var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
-var SHAPE = {
-  interrupt: { onRegression: boolean },
-  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
-  baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
-  inputs,
-  env: { allowlist: strings2 },
-  runner: {
-    tierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger)
-  },
-  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
-  daemon: { idleExitMinutes: aboveZero },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
-};
-function loadPolicy(root) {
-  let text;
-  try {
-    text = readFileSync2(join2(root, POLICY_FILE), "utf8");
-  } catch (error) {
-    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
-    return defaultsBecause(`could not be read: ${String(error)}`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return defaultsBecause(`not valid JSON (${error.message})`);
-  }
-  if (!isRecord(parsed)) {
-    return defaultsBecause(
-      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
-    );
-  }
-  const problems = [];
-  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  return { policy: merged, problems };
-}
-function readPolicy(root) {
-  return loadPolicy(root).policy;
-}
-function defaultsBecause(problem) {
-  return { policy: DEFAULT_POLICY, problems: [problem] };
-}
-function merge(shape, defaults, given, prefix, problems) {
-  const result = { ...defaults };
-  for (const [key, value] of Object.entries(given)) {
-    const path = `${prefix}${key}`;
-    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
-    if (rule === void 0) {
-      problems.push(`unknown key "${path}"`);
-    } else if (typeof rule === "function") {
-      const expected = rule(value);
-      if (expected === null) result[key] = value;
-      else if (typeof expected === "object" && "kept" in expected) {
-        result[key] = expected.kept;
-        problems.push(...expected.problems);
-      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
-      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isRecord(value)) {
-      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
-    } else {
-      const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
-    }
-  }
-  return result;
-}
-function isNumber(value) {
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 // src/core/keys/closure.ts
@@ -460,6 +233,31 @@ function formatCheck(check) {
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+function bootstrappedMetaKey(worktreeId) {
+  return `daemon-bootstrapped:${worktreeId}`;
+}
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return `notes.${worktreeId}`;
+}
+function refinedMetaKey(worktreeId) {
+  return `refined.${worktreeId}`;
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -489,9 +287,6 @@ function readRefined(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
-}
-function isPending(header) {
-  return header.counts.pending + header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
 }
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
@@ -546,37 +341,7 @@ function transitionKind(from, to) {
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync2, mkdirSync, rmSync } from "node:fs";
-import { join as join3 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-function waiterLockPath(locksDir, consumer) {
-  const id = createHash2("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join3(locksDir, `waiter-${id}.sqlite`);
-}
-function removeWaiterLock(locksDir, consumer) {
-  const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync2(path)) return;
-  const db = lock(path);
-  if (db === null) return;
-  try {
-    rmSync(path, { force: true });
-  } finally {
-    db.close();
-  }
-}
-function lock(path) {
-  const db = new DatabaseSync(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-    return db;
-  } catch {
-    db.close();
-    return null;
-  }
-}
 
 // src/core/delivery/slots.ts
 var slot = (consumer) => `${consumer.sessionId}
@@ -614,14 +379,14 @@ function registeredMetaKey(worktreeId) {
 function parkedMetaKey(worktreeId) {
   return `revision-registered-left:${worktreeId}`;
 }
-var isNumber2 = (value) => typeof value === "number";
-var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber2);
+var isNumber = (value) => typeof value === "number";
+var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber);
 function toRegistration(value) {
-  if (isNumber2(value)) return { since: value, gaps: [] };
-  if (!isRecord(value) || !isNumber2(value.since) || !Array.isArray(value.gaps)) return null;
+  if (isNumber(value)) return { since: value, gaps: [] };
+  if (!isRecord(value) || !isNumber(value.since) || !Array.isArray(value.gaps)) return null;
   if (!value.gaps.every(isGap)) return null;
   const r = { since: value.since, gaps: value.gaps };
-  return isNumber2(value.scanned) ? { ...r, scanned: value.scanned } : r;
+  return isNumber(value.scanned) ? { ...r, scanned: value.scanned } : r;
 }
 var stored = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
 function registration(store, consumer) {
@@ -666,7 +431,7 @@ function unpark(store, consumer, at2) {
   if (value === void 0) return null;
   writeParked(store, consumer, at2, null);
   const r = toRegistration(value);
-  if (r === null || !isRecord(value) || !isNumber2(value.leftAt) || !isNumber2(value.leftTime)) {
+  if (r === null || !isRecord(value) || !isNumber(value.leftAt) || !isNumber(value.leftTime)) {
     return null;
   }
   return value.leftTime < at2 - CONSUMER_EXPIRY_MS ? null : { ...r, leftAt: value.leftAt, leftTime: value.leftTime };
@@ -676,7 +441,7 @@ function writeParked(store, consumer, at2, value) {
   const all = readAll(store, key);
   const next = {};
   for (const [k, v] of Object.entries(all)) {
-    if (isRecord(v) && isNumber2(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) next[k] = v;
+    if (isRecord(v) && isNumber(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) next[k] = v;
   }
   if (value === null) delete next[slot(consumer)];
   else next[slot(consumer)] = value;
@@ -844,6 +609,27 @@ function planDelta(input) {
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
+// src/core/notes.ts
+function readDaemonNotes(store, worktreeId) {
+  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+}
+function parseList(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function toNote(item) {
+  if (typeof item !== "object" || item === null) return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  if (revision !== null && typeof revision !== "number") return [];
+  return [{ at: at2, revision, text }];
+}
+
 // src/core/store/connection.ts
 var Connection = class {
   #statements = /* @__PURE__ */ new Map();
@@ -910,19 +696,19 @@ function rollback(db) {
 }
 
 // src/core/store/open.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, renameSync, rmSync as rmSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { existsSync as existsSync3, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
+import { join as join4 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { join as join4 } from "node:path";
+import { join as join2 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join4(commonDir, "squeal");
+  const dir = join2(commonDir, "squeal");
   return {
     dir,
-    database: join4(dir, "store.sqlite"),
-    runsDir: join4(dir, "runs"),
-    locksDir: join4(dir, "locks")
+    database: join2(dir, "store.sqlite"),
+    runsDir: join2(dir, "runs"),
+    locksDir: join2(dir, "locks")
   };
 }
 
@@ -1162,7 +948,7 @@ function bool(row, column) {
 function json(row, column) {
   return JSON.parse(str(row, column));
 }
-function oneOf2(row, column, values) {
+function oneOf(row, column, values) {
   const value = str(row, column);
   if (!values.includes(value)) {
     throw new TypeError(`squeal store: ${column} has unexpected value ${value}`);
@@ -1170,7 +956,7 @@ function oneOf2(row, column, values) {
   return value;
 }
 function oneOfOrNull(row, column, values) {
-  return row[column] === null ? null : oneOf2(row, column, values);
+  return row[column] === null ? null : oneOf(row, column, values);
 }
 function locationParams(location2) {
   return [location2?.path ?? null, location2?.line ?? null, location2?.column ?? null];
@@ -1191,7 +977,7 @@ function checkParams(check) {
 function checkFrom(row) {
   const project = str(row, "check_project");
   const testPath = str(row, "check_test_path");
-  if (oneOf2(row, "check_kind", ["test", "file"]) === "file") {
+  if (oneOf(row, "check_kind", ["test", "file"]) === "file") {
     return { kind: "file", project, testPath };
   }
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
@@ -1218,8 +1004,8 @@ function flag(value) {
 }
 
 // src/core/store/prune.ts
-import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
-import { join as join5, resolve as resolve2, sep } from "node:path";
+import { existsSync as existsSync2, rmSync } from "node:fs";
+import { join as join3, resolve as resolve2, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -1241,7 +1027,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync3(join5(worktree.root, ".git"))) continue;
+    if (existsSync2(join3(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -1338,7 +1124,7 @@ function pragmaNumber(conn, name) {
 function removeRunLog(paths, logDir) {
   const runsDir = resolve2(paths.runsDir);
   const target = resolve2(logDir);
-  if (target.startsWith(runsDir + sep)) rmSync2(target, { recursive: true, force: true });
+  if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
 }
 
 // src/core/store/repos/consumers.ts
@@ -1457,14 +1243,14 @@ function createViewRepo(conn) {
 function toView2(row) {
   return {
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES),
+    outcome: oneOf(row, "outcome", OUTCOMES),
     fingerprint: strOrNull(row, "fingerprint"),
     toldAt: num(row, "told_at")
   };
 }
 
 // src/core/store/repos/results.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 var OUTCOMES2 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
@@ -1539,7 +1325,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text = JSON.stringify(errors);
-  const id = createHash3("sha256").update(JSON.stringify([summary, text])).digest("hex");
+  const id = createHash2("sha256").update(JSON.stringify([summary, text])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -1552,7 +1338,7 @@ function toResult(row) {
   return {
     check: checkFrom(row),
     key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES2),
+    outcome: oneOf(row, "outcome", OUTCOMES2),
     durationMs: num(row, "duration_ms"),
     location: location(row),
     fingerprint: strOrNull(row, "fingerprint"),
@@ -1648,7 +1434,7 @@ function toCheckpoint(row) {
     id: str(row, "id"),
     worktreeId: str(row, "worktree_id"),
     revision: num(row, "revision"),
-    kind: oneOf2(row, "kind", CHECKPOINT_KINDS),
+    kind: oneOf(row, "kind", CHECKPOINT_KINDS),
     testFiles: json(row, "test_files"),
     startedAt: num(row, "started_at"),
     completedAt: numOrNull(row, "completed_at"),
@@ -1739,8 +1525,8 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
-    validity: oneOf2(row, "validity", VALIDITIES),
+    outcome: oneOf(row, "outcome", OUTCOMES3),
+    validity: oneOf(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
     commit: strOrNull(row, "commit_sha"),
@@ -1787,9 +1573,9 @@ function toTransition(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    kind: oneOf2(row, "kind", KINDS),
+    kind: oneOf(row, "kind", KINDS),
     from: oneOfOrNull(row, "from_outcome", OUTCOMES3),
-    to: oneOf2(row, "to_outcome", OUTCOMES3),
+    to: oneOf(row, "to_outcome", OUTCOMES3),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -1842,7 +1628,7 @@ function toTestFile(row) {
       testFile,
       paths: json(row, "closure_paths"),
       complete: bool(row, "complete"),
-      method: oneOf2(row, "method", METHODS)
+      method: oneOf(row, "method", METHODS)
     },
     updatedAt: num(row, "updated_at"),
     updatedBy: str(row, "updated_by")
@@ -1975,7 +1761,7 @@ function toRevision(row) {
     createdAt: num(row, "created_at"),
     head: strOrNull(row, "head"),
     dirty: bool(row, "dirty"),
-    trigger: oneOf2(row, "trigger", TRIGGERS),
+    trigger: oneOf(row, "trigger", TRIGGERS),
     changes: json(row, "changes")
   };
 }
@@ -2163,9 +1949,9 @@ function isStoreOpenFailure(value) {
 }
 function openStore(commonDir, options = {}) {
   const paths = storePaths(commonDir);
-  if (!existsSync4(paths.database)) {
+  if (!existsSync3(paths.database)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync2(paths.dir, { recursive: true });
+    mkdirSync(paths.dir, { recursive: true });
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
@@ -2216,11 +2002,11 @@ function isCorruption(error) {
   return typeof code === "number" && [11, 26].includes(code & 255);
 }
 function recover(paths, options) {
-  mkdirSync2(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync2(join6(paths.locksDir, "store-recovery.sqlite"));
+  mkdirSync(paths.locksDir, { recursive: true });
+  const lock = new DatabaseSync2(join4(paths.locksDir, "store-recovery.sqlite"));
   try {
-    lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
-    lock2.exec("BEGIN EXCLUSIVE");
+    lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
+    lock.exec("BEGIN EXCLUSIVE");
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
@@ -2234,39 +2020,39 @@ function recover(paths, options) {
     }
     return fresh2;
   } finally {
-    rollback(lock2);
-    lock2.close();
+    rollback(lock);
+    lock.close();
   }
 }
 function moveAside(database, at2) {
   let movedTo = `${database}.corrupt-${at2}`;
-  for (let n = 1; existsSync4(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
+  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
   renameSync(database, movedTo);
-  if (existsSync4(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
-  rmSync3(`${database}-shm`, { force: true });
+  if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
+  rmSync2(`${database}-shm`, { force: true });
   return movedTo;
 }
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join5 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join7(gitDir, "HEAD"));
+  let value = read2(join5(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join5(gitDir, ref)) ?? read2(join5(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -2274,7 +2060,7 @@ function packed(commonDir, ref) {
 }
 function read2(path) {
   try {
-    return readFileSync3(path, "utf8").trim();
+    return readFileSync2(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -2556,7 +2342,7 @@ function createDelivery(store, options) {
     const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at2);
     return live.state === toldLiveness(store, consumer) ? null : live;
   }
-  function deliver(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
+  function deliver2(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
     const select = (states) => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
@@ -2656,12 +2442,12 @@ function createDelivery(store, options) {
         forget(store, consumer);
       });
     },
-    onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    onToolBoundary: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);
-      return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
+      return deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
-    startTurn: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    startTurn: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
     endTurn: async (consumer) => {
       store.transaction(() => {
         if (store.consumers.get(consumer) === null) return;
@@ -2673,7 +2459,7 @@ function createDelivery(store, options) {
       const deadline = performance.now() + timeoutMs;
       for (; ; ) {
         if (signal?.aborted) return null;
-        const delta = deliver(consumer, { heardFrom: false, idle: true });
+        const delta = deliver2(consumer, { heardFrom: false, idle: true });
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
@@ -2970,7 +2756,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync5, mkdirSync as mkdirSync3 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
 
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
@@ -2979,7 +2765,7 @@ function requestDaemon(socketPath, request, timeoutMs) {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled = false;
-    const settle = (error, response) => {
+    const settle2 = (error, response) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -2988,7 +2774,7 @@ function requestDaemon(socketPath, request, timeoutMs) {
       else resolve3(response);
     };
     const timer = setTimeout(
-      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
     socket.setEncoding("utf8");
@@ -2999,18 +2785,18 @@ function requestDaemon(socketPath, request, timeoutMs) {
       const end = buffer.indexOf("\n");
       if (end < 0) return;
       try {
-        settle(null, JSON.parse(buffer.slice(0, end)));
+        settle2(null, JSON.parse(buffer.slice(0, end)));
       } catch {
-        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
+        settle2(failure("EPROTO", `malformed answer from ${socketPath}`));
       }
     });
     socket.on(
       "error",
-      (error) => settle(failure(error.code ?? "EIO", error.message))
+      (error) => settle2(failure(error.code ?? "EIO", error.message))
     );
     socket.on(
       "close",
-      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
+      () => settle2(failure("ECONNRESET", `${socketPath} closed without an answer`))
     );
   });
 }
@@ -3019,22 +2805,22 @@ function failure(code, message) {
 }
 
 // src/core/daemon/paths.ts
-import { dirname as dirname2, isAbsolute as isAbsolute3, join as join8 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join6 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join8(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
+  const path = join6(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join6(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join8("/tmp", `squeal-${uid}`);
+  return join6("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
+  return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : null;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
@@ -3097,12 +2883,12 @@ async function ensureDaemon(root, options = {}) {
   if (probe.state === "alive") return "alive";
   if (probe.state === "unresponsive") return "unavailable";
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync5(cli)) return "unavailable";
+  if (cli === null || !existsSync4(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
-    mkdirSync3(cwd, { recursive: true });
+    mkdirSync2(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root], {
       cwd,
       detached: true,
@@ -3170,7 +2956,6 @@ function openContext(input, location2, options = {}) {
 }
 
 // src/harness/shared/hook.ts
-var HOOK_TIMEOUT_MS = 2e3;
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -3189,185 +2974,175 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/shared/text.ts
-var LISTED_FAILURES = 10;
-function headerLine2(consumer, header) {
-  const text = formatRegistration({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    consumer,
-    header,
-    knownFailures: []
-  });
-  return text.split("\n")[1] ?? "";
-}
-function statusText(consumer, header, failures) {
-  return [
-    `SQUEAL \xB7 status at revision ${header.revision}`,
-    headerLine2(consumer, header),
-    knownFailuresLine(failures)
-  ].join("\n");
-}
-function knownFailuresLine(failures) {
-  return `Known failures: ${failures}`;
-}
-function list(names) {
-  const shown = names.slice(0, LISTED_FAILURES);
-  const more = names.length - shown.length;
-  return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
-}
-function knownFailuresReason(revision, current, earlier2 = []) {
-  const verb = current.length === 1 ? "exists" : "exist";
-  const sentences = [
-    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
-  ];
-  const named = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
-  const pending = earlier2.filter((f) => f.validity === "pending");
-  if (pending.length > 0) {
-    const its = pending.length === 1 ? "its re-run" : "their re-runs";
-    sentences.push(
-      `${plural(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named(pending)}.`
-    );
-  }
-  const unrun = earlier2.filter((f) => f.validity !== "pending");
-  if (unrun.length > 0) {
-    sentences.push(
-      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named(unrun)}.`
-    );
-  }
-  return sentences.join(" ");
-}
-function fullSuiteReason(header) {
-  const last = header.fullSuite.lastCompletedRevision;
-  const before = last === null ? "none completed at any revision" : `the last one completed at revision ${last}`;
-  return `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ${header.revision}; ${before}. \`squeal run --all\` starts one.`;
+// src/harness/shared/primer.ts
+var PRIMER = [
+  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
+  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+  "Squeal does not cover typecheck, build or other test suites."
+].join(" ");
+var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
+function withPrimer(registration2) {
+  return `${formatRegistration(registration2, REGISTRATION_MAX)}
+
+${PRIMER}`;
 }
 
-// src/harness/shared/stop.ts
-var STOP_WAIT_CAP_MS = 1500;
-var STOP_MARGIN_MS = 250;
-var STOP_POLL_MS = 100;
-function stopBusyTimeoutMs(waitMs) {
-  return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
-}
-function stopTurn(input, location2, deps) {
-  const policy = readPolicy(location2.root).stop;
-  const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
-  return withContext(
-    input,
-    location2,
-    deps,
-    async (context) => {
-      if (input.agent_id !== void 0 && !isRegistered(context)) return null;
-      await ensureIfStale(context, deps);
-      if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
-      const { store, consumer } = context;
-      const news = await newsText(context);
-      const states = store.knownStates.list(consumer.worktreeId);
-      const header = readLiveHeader(store, consumer.worktreeId, (deps.now ?? Date.now)(), states);
-      const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-      const current = failures.filter((f) => f.validity === "current");
-      const reasons = [];
-      if (!input.stopHookActive) {
-        if (policy.blockOnKnownFailures && current.length > 0) {
-          reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
-        }
-        if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
-          reasons.push(fullSuiteReason(header));
-        }
-      }
-      if (reasons.length > 0) {
-        const text = news ?? statusText(consumer, header, failures.length);
-        return { block: `${reasons.join("\n")}
-
-${text}` };
-      }
-      if (input.agent_id !== void 0) await finishSubagent(context);
-      else if (news === null) await context.delivery.endTurn(consumer);
-      return news === null ? null : { news };
-    },
-    { busyTimeoutMs: stopBusyTimeoutMs(wait) }
-  );
-}
-async function stopFork(input, location2, deps) {
-  await withContext(input, location2, deps, async (context) => {
-    if (isRegistered(context)) await finishSubagent(context);
-    return null;
-  });
-}
-function earlier(failures) {
-  return failures.filter((f) => f.validity !== "current");
-}
-async function finishSubagent(context) {
-  await context.delivery.unregister(context.consumer);
-  removeWaiterLock(storePaths(context.commonDir).locksDir, context.consumer);
-}
-async function newsText(context) {
-  const { store, delivery, consumer } = context;
+// src/harness/shared/deliver.ts
+async function deliver(context, deps) {
+  await ensureIfStale(context, deps);
   if (!isRegistered(context)) {
-    const registration2 = await delivery.register(consumer, { inTurn: true });
-    return registration2.knownFailures.length > 0 ? formatRegistration(registration2) : null;
+    const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
+    return withPrimer(registration2);
   }
-  const delta = await delivery.onToolBoundary(consumer);
-  if (delta === null) return null;
-  const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail").length;
-  return `${formatDelta(delta)}
-${knownFailuresLine(failures)}`;
-}
-async function waitForPending(context, waitMs, pollMs) {
-  const deadline = performance.now() + waitMs;
-  for (; ; ) {
-    const header = readHeader(context.store, context.consumer.worktreeId);
-    if (!isPending(header)) return;
-    const left = deadline - performance.now();
-    if (left <= 0) return;
-    await sleep2(Math.min(pollMs, left));
-  }
+  const delta = await context.delivery.onToolBoundary(context.consumer);
+  return delta === null ? null : formatDelta(delta);
 }
 
-// src/harness/claude-code/fork.ts
-var FORK_AGENT_TYPES = /* @__PURE__ */ new Set([""]);
-function isFork(input) {
-  return input.agent_id !== void 0 && input.agent_type !== void 0 && FORK_AGENT_TYPES.has(input.agent_type);
-}
-
-// src/harness/claude-code/hook.ts
-function additionalContext(input, text) {
-  return {
-    output: {
-      hookSpecificOutput: { hookEventName: input.hook_event_name, additionalContext: text }
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute3, posix } from "node:path";
+function compiles(globs2) {
+  for (const glob of globs2) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
     }
-  };
+  }
+  return null;
+}
+var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+var insideRoot = (v) => {
+  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  return isAbsolute3(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+};
+var FIELDS = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  node: nonEmptyString,
+  argv: strings,
+  env: variables,
+  include: globs,
+  exclude: globs
+};
+var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+function nodeTestProjects(value, path) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry2, index) => {
+    const at2 = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at2, kept);
+    if (problem === null) kept.push(withDefaults(entry2));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function entryProblem(entry2, at2, kept) {
+  if (!isRecord(entry2))
+    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  for (const key of Object.keys(entry2)) {
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(FIELDS)) {
+    const given = entry2[key];
+    if (given === void 0 && !REQUIRED.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at2}.${key}" ${why}; ${skipped}`;
+  }
+  if (kept.some((project) => project.name === named)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  }
+  return null;
 }
 
-// src/harness/claude-code/hooks/stop.ts
-var stop = async (input, location2, deps) => {
-  if (isFork(input)) {
-    await stopFork(input, location2, deps);
-    return null;
+// src/core/daemon/policy.ts
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings2(v) === null;
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
   }
-  const outcome = await stopTurn(
-    { ...input, stopHookActive: input.stop_hook_active === true },
-    location2,
-    deps
-  );
-  if (outcome === null) return null;
-  if ("block" in outcome) return { output: { decision: "block", reason: outcome.block } };
-  return additionalContext(input, outcome.news);
+  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs2);
 };
+var atLeastZero = (v) => isNumber2(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero = (v) => isNumber2(v) && v > 0 ? null : "a number > 0";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
+};
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean },
+  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+  inputs,
+  env: { allowlist: strings2 },
+  runner: {
+    tierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger)
+  },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  daemon: { idleExitMinutes: aboveZero },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+};
+function isNumber2(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
 
-// src/harness/claude-code/main.ts
-import { readFileSync as readFileSync4 } from "node:fs";
+// src/harness/codex/output.ts
+var CONTEXT_CAP_CHARS = 8e3;
+var CUT_LINE = "SQUEAL \xB7 cut to fit a Codex hook; `squeal status` has the rest.";
+function capContext(text) {
+  if (text.length <= CONTEXT_CAP_CHARS) return text;
+  const tail = text.endsWith(`
+
+${PRIMER}`) ? `
+
+${PRIMER}` : "";
+  const room = CONTEXT_CAP_CHARS - tail.length - CUT_LINE.length - 1;
+  const head = text.slice(0, text.length - tail.length).slice(0, room);
+  const end = head.lastIndexOf("\n");
+  return `${end > 0 ? head.slice(0, end) : head}
+${CUT_LINE}${tail}`;
+}
+function additionalContext(event, text) {
+  return { hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text) } };
+}
+
+// src/harness/codex/handlers.ts
+var postToolUse = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
+  const text = await deliver(context, deps);
+  return text === null ? null : additionalContext("PostToolUse", text);
+});
+
+// src/harness/codex/main.ts
+import { readFileSync as readFileSync3 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// src/harness/claude-code/input.ts
-function parseHookInput(text) {
+// src/harness/codex/input.ts
+function parseCodexInput(text) {
   let value;
   try {
     value = JSON.parse(text);
   } catch {
     return null;
   }
-  if (typeof value !== "object" || value === null) return null;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const v = value;
   if (typeof v.session_id !== "string" || v.session_id === "") return null;
   if (typeof v.cwd !== "string" || v.cwd === "") return null;
@@ -3378,62 +3153,47 @@ function parseHookInput(text) {
     hook_event_name: v.hook_event_name,
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
+    ...typeof v.turn_id === "string" ? { turn_id: v.turn_id } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}
   };
 }
 
-// src/harness/claude-code/run.ts
-var SILENT = { stdout: "", stderr: "", exitCode: 0 };
-var PROJECT_DIR_FALLBACK = /* @__PURE__ */ new Set(["session-end"]);
-async function runHandler(name, handler, stdin, deps) {
+// src/harness/codex/run.ts
+var SILENT = { stdout: "", stderr: "" };
+async function runCodexHandler(name, handler, stdin, deps) {
   try {
-    const input = parseHookInput(stdin);
+    const input = parseCodexInput(stdin);
     if (input === null) return SILENT;
-    const location2 = locate(input.cwd) ?? projectDir(name, deps);
+    const location2 = locate(input.cwd);
     if (location2 === null) return SILENT;
-    const outcome = await handler(input, location2, deps);
-    if (outcome === null) return SILENT;
-    return {
-      stdout: outcome.output === void 0 ? "" : JSON.stringify(outcome.output),
-      stderr: outcome.stderr ?? "",
-      exitCode: outcome.exitCode ?? 0
-    };
+    const output = await handler(input, location2, deps);
+    return output === null ? SILENT : { stdout: JSON.stringify(output), stderr: "" };
   } catch (error) {
     if (deps.env.SQUEAL_HOOK_DEBUG === "1") {
-      return { ...SILENT, stderr: `squeal ${name} hook: ${String(error)}
+      return { ...SILENT, stderr: `squeal codex ${name} hook: ${String(error)}
 ` };
     }
     return SILENT;
   }
 }
-function projectDir(name, deps) {
-  const dir = deps.env.CLAUDE_PROJECT_DIR;
-  return PROJECT_DIR_FALLBACK.has(name) && dir !== void 0 && dir !== "" ? locate(dir) : null;
-}
 
-// src/harness/claude-code/main.ts
+// src/harness/codex/main.ts
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync4(0, "utf8");
+    stdin = readFileSync3(0, "utf8");
   } catch {
   }
-  const result = await runHandler(name, handler, stdin, {
+  const result = await runCodexHandler(name, handler, stdin, {
     env: process.env,
-    // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs (review wave 3, B1).
-    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url)),
-    ...waiterTimeout(process.env.SQUEAL_WAITER_TIMEOUT_MS)
+    // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs.
+    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url))
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);
-  process.exitCode = result.exitCode;
-}
-function waiterTimeout(value) {
-  const ms = Number(value);
-  return value !== void 0 && Number.isInteger(ms) && ms > 0 ? { waiterTimeoutMs: ms } : {};
 }
 
-// src/harness/claude-code/entries/stop.ts
-await runMain("stop", stop);
+// src/harness/codex/entries/post-tool-use.ts
+await runMain("post-tool-use", postToolUse);
