@@ -145,12 +145,34 @@ describe("a start revision", () => {
     expect(text).not.toContain("none of the files changed here");
   });
 
-  it("that is the registration revision gives neither line", async () => {
+  it("that is the registration revision, before the marker, gives neither line", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    liveDaemon(store, WT, { scanned: false, startedAt: 2 });
+    startScan(["src/x.ts"]);
+    await delivery.register(C1, { atStart: true });
+    liveDaemon(store, WT, { startedAt: 2 });
+    apply(edit(["README.md"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toBeUndefined();
+  });
+
+  it("that is the registration revision of a scanned daemon is not the session's (wave 10d S1, P6)", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    restart(2, ["src/x.ts"]);
+    await delivery.register(C1, { atStart: true });
+    apply(edit(["src/x.ts"]), result(A, "fail")); // the session's own edit, under the watcher
+    expect((await failing()).text).toContain(
+      "touches files changed here since this session started: src/x.ts",
+    );
+  });
+
+  it("that is the registration revision of a scanned daemon leaves none said", async () => {
     apply(edit(["src/a.test.ts"]), result(A, "pass"));
     restart(2, ["src/x.ts"]);
     await delivery.register(C1, { atStart: true });
     apply(edit(["README.md"]), result(A, "fail"));
-    expect((await failing()).entry.changesInClosure).toBeUndefined();
+    expect((await failing()).text).toContain(
+      "none of the files changed here since this session started are in its imports",
+    );
   });
 
   it("whose paths miss the closure leaves the agent's changes named", async () => {

@@ -64,13 +64,13 @@ describe("ChangeFeed", () => {
     expect(errors).toEqual([]);
   });
 
-  it("emits a start batch from git status and the tracked paths", async () => {
+  it("emits a start reconciliation from git status and the tracked paths", async () => {
     write(root, "src/a.ts", "dirty\n");
     write(root, "src/new.ts");
     write(root, "src/debug.log");
     rmSync(join(root, "README.md"));
     await startFeed();
-    expect(log.batches[0]?.trigger).toBe("start");
+    expect(log.batches[0]?.trigger).toBe("interval");
     const paths = log.batches[0]?.paths ?? [];
     expect(paths.map((p) => p.path)).toEqual([
       "README.md",
@@ -153,7 +153,7 @@ describe("ChangeFeed", () => {
     move("src/storm", "src/stormed");
     await expectReportedToMatchDisk();
     expect(onDisk().filter((p) => p.startsWith("src/stormed/"))).toHaveLength(count);
-    expect(log.batches.filter((b) => b.trigger !== "start" && b.trigger !== "watch")).toEqual([]);
+    expect(log.batches.slice(1).filter((b) => b.trigger !== "watch")).toEqual([]);
   });
 
   it("produces no candidates from inside a nested worktree once its .git entry exists", async () => {
@@ -209,8 +209,10 @@ describe("ChangeFeed", () => {
     write(root, "src/new.ts", "created while paused\n");
     await delay(200);
     expect(log.batches.filter((b) => b.trigger === "watch")).toEqual([]);
-    await waitFor(() => log.batches.some((b) => b.trigger === "interval"));
-    const batch = log.batches.find((b) => b.trigger === "interval");
+    // The first batch is the start reconciliation, also `interval` (review wave 10d, S1).
+    const later = () => log.batches.slice(1).find((b) => b.trigger === "interval");
+    await waitFor(() => later() !== undefined);
+    const batch = later();
     const stat = (path: string) => batch?.paths.find((p) => p.path === path)?.stat;
     expect(stat("src/a.ts")?.size).toBe("edited while paused\n".length);
     expect(stat("out/gen.js")?.size).toBe("regenerated while paused\n".length);

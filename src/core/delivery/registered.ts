@@ -177,10 +177,12 @@ function writeParked(store: Store, consumer: Consumer, at: EpochMs, value: Parke
 /**
  * What revisions after `r.since` up to `revision` changed, gaps left out, in
  * one query (N3). `changed` holds the paths of revisions the daemon saw as
- * they happened. `unknown` holds the paths of `start` revisions, including
- * `r.since` when it is one: a start scan records what changed while no
- * daemon ran, and absorbs an edit made before it ran, so whose they are is
- * not known (task 001-96, review wave 10c B1).
+ * they happened. `unknown` holds the paths of `start` revisions: a start
+ * scan records what changed while no daemon ran, and absorbs an edit made
+ * before it ran, so whose they are is not known (task 001-96, review wave
+ * 10c B1). That includes `r.since` when it is one and the registration has
+ * no `scanned`: only a registration made before the scan can have an edit
+ * in it (task 001-99, review wave 10d S1).
  */
 export function changedAfter(
   store: Store,
@@ -197,7 +199,7 @@ export function changedAfter(
   )) {
     if (r.gaps.some(([after, upTo]) => number > after && number <= upTo)) continue;
     const start = trigger === "start";
-    if (number === r.since && !start) continue;
+    if (number === r.since && (!start || r.scanned !== undefined)) continue;
     for (const change of changes) (start ? unknown : changed).add(change.path);
   }
   return { changed, unknown };

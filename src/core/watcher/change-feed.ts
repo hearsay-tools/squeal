@@ -48,7 +48,7 @@ export type WatcherTimings = { -readonly [K in keyof typeof WATCHER_TIMINGS]: nu
 export interface ChangeFeed {
   /** The spec the backend currently watches; `null` before `start`. */
   readonly spec: WatchSpec | null;
-  /** Starts the backend, then emits the `start` reconciliation batch. */
+  /** Starts the backend, then emits a reconciliation batch (`interval`, see `Feed.start`). */
   start(): Promise<void>;
   /** Queues a reconciliation pass and resolves once its batch was delivered. */
   reconcile(trigger: RevisionTrigger): Promise<void>;
@@ -105,7 +105,10 @@ class Feed implements ChangeFeed {
       onDropped: (reason) => this.onLost(() => this.options.onDropped?.(reason)),
       onError: (error) => this.onLost(() => this.options.onError(error)),
     });
-    await this.reconcile("start");
+    // Review wave 10d, S1: `start` is the stat cache's bootstrap revision only (`keys.bootstrap`),
+    // whose changes were made while no daemon ran. This pass holds what changed while this
+    // daemon started, an agent's edit among them, so it is an ordinary reconciliation.
+    await this.reconcile("interval");
   }
 
   reconcile(trigger: RevisionTrigger): Promise<void> {
