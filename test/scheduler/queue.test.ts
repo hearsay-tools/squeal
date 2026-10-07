@@ -62,6 +62,31 @@ describe("RunQueue", () => {
     ]);
   });
 
+  it("runs recent work ahead of a backlog, each group in D5's order (task 001-100, defect 19)", () => {
+    const queue = new RunQueue();
+    const durations = new Map<string, number>([
+      ["test/edited-slow.test.ts", 5_000],
+      ["test/edited-fast.test.ts", 10],
+    ]);
+    queue.add(ref("test/backlog-failing.test.ts"), Priority.failing);
+    queue.add(ref("test/backlog-direct.test.ts"), Priority.direct);
+    queue.add(ref("test/edited-slow.test.ts"), Priority.direct, false, true);
+    queue.add(ref("test/edited-fast.test.ts"), Priority.transitive, false, true);
+    queue.add(ref("test/edited-failing.test.ts"), Priority.failing, false, true);
+    // A backlog entry an edit reaches becomes recent and stays so.
+    queue.add(ref("test/backlog-later.test.ts"), Priority.neverRun);
+    queue.add(ref("test/backlog-later.test.ts"), Priority.neverRun, false, true);
+    queue.add(ref("test/backlog-later.test.ts"), Priority.neverRun);
+    expect(queue.ordered((r) => durations.get(r.path) ?? null).map((r) => r.path)).toEqual([
+      "test/edited-failing.test.ts",
+      "test/edited-slow.test.ts",
+      "test/edited-fast.test.ts",
+      "test/backlog-later.test.ts",
+      "test/backlog-failing.test.ts",
+      "test/backlog-direct.test.ts",
+    ]);
+  });
+
   it("tells projects apart and remembers a forced entry", () => {
     const queue = new RunQueue();
     queue.add(ref("test/a.test.ts", "unit"), Priority.transitive);
