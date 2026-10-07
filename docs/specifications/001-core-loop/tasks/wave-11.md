@@ -43,3 +43,35 @@ Outcome: whether a worker whose lockfile differs a little from a validated workt
 ## 001-103 review of wave 11
 
 Use /reviewer. Range `49b5a28..9d92249`, the 001-100 and 001-101 commits and their build (the 002/003 commits in between are another coordinator's and out of scope). Output `reviews/wave-11.md`. Outcome: whether waiting for an install or recent-first ordering can hide a failure or leave a check falsely current, and whether the new delta reading (pass, unknown, fail reads PASS -> FAIL everywhere) or the narrowed deny-once can lose or mislabel a transition. Probe: a worktree that installs while a session is registered (what the header and the first reports say); a monorepo root with workspaces but per-package lockfiles; a `node:test` project with no dependencies (spec 003's runner) still validating; `run --all` while waiting; a revision during the first tier after the install; an edit-caused file starved by repeated edits (does the backlog ever finish); a runner crash between a pass and a fail, told and untold; Codex hooks through the shared deny module.
+
+## After 001-102
+
+The human chose both rows from `research/per-package-keys.md`: the stale hidden-lockfile check first, then scheme B. 001-105 waits for 001-104 (both in `src/core/keys/`). A review (001-106) follows 001-105.
+
+## 001-104 a stale hidden lockfile never stands for the install
+
+Use /worker. Shape: slice.
+
+Outcome: an install that bypassed `node_modules/.package-lock.json` (a package folder it does not list, or a folder newer than it) can never keep an environment hash from changing.
+
+Read: `research/per-package-keys.md` (finding on line 66, `probes/per-package-keys/freshness.mjs`), npm's rule for trusting the hidden lockfile (docs URL in its sources); spec D3 (installed-dependency fingerprint).
+
+Seam: the installed-dependency fingerprint in `src/core/keys/environment.ts`. Apply npm's rule: the hidden lockfile counts only when every package folder in the `node_modules` hierarchy is listed in it and no folder it references is newer than it. Compare workspace links with `lstat`, never follow them. When the rule fails, the fingerprint falls back to a hash of the package folders' `package.json` files (name, version, and the folder's own path) so a change still re-keys, and one note says the hidden lockfile is stale.
+
+Own: `src/core/keys/environment.ts` and a new helper beside it, `test/keys/`, D3 in `spec.md`, one `status.md` line. Leave `src/core/scheduler/` and `src/core/delivery/` alone (001-103 is reviewing them). Do not run `npm run build` or touch `plugins/claude-code/dist` or `plugins/codex/dist`. Commit as you go.
+
+Done when: a fixture with a package folder the hidden lockfile does not list, and one with a folder newer than it, each get a different environment hash from the clean install, with the note; a clean install keeps its hash; the check costs under 25 ms on a `cezar`-sized `node_modules` (measured).
+
+## 001-105 per-package dependency keys (scheme B)
+
+Use /worker. Shape: slice. After 001-104 lands.
+
+Outcome: a worktree whose install differs from a validated one's in packages a test file does not use keeps that file's result, and never reuses a result its dependencies could change.
+
+Read: `research/per-package-keys.md` in full (scheme B, "What D3 would say", the board-row done-when); spec D3, D4 (closure from the transform graph).
+
+Decided by the human: scheme B. The environment hash keeps the runner's lockfile closure (`vitest` and its peers), the packages imported by setup and `globalSetup` closures and by the config files, and `patches/`; each test file's key adds the sorted `location@version#integrity` set of the lockfile closure of the installed packages its closure imports directly, with types-only packages as constants and unresolved names as absent; a file whose closure reaches `child_process`, `worker_threads` or `module` keeps today's whole-lockfile fingerprint. A stale hidden lockfile (001-104) falls back to the whole fingerprint for every file.
+
+Seam: `src/core/keys/` (closure to key), then `src/runners/vitest/` for the first-hop package entries from the transform graph. Own: `src/core/keys/`, `src/runners/vitest/graph.ts` and the closure path, `src/core/types/` (additive), tests under `test/keys/`, `test/runners/vitest/`, `test/fixtures/vitest/`, D3 and D4 in `spec.md`, one `status.md` line. Leave `src/runners/node-test/` to spec 003 (it keys the same way later, if its coordinator chooses). Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the research's board-row done-when holds: on a `cezar` clone, between the main checkout's install and a fresh `npm ci` of `origin/main`, at least 300 of 632 test files keep their key and none of the files that reach `child_process` does; in a fixture, bumping a declared transitive dependency of an externalized package, an inlined package's dependency, a setup file's package and a config plugin each re-keys exactly the tests that use them, and bumping `@types/node` re-keys none; a package folder added without rewriting the hidden lockfile re-keys every file; keying cost stays under 300 ms for a full closure pass on `cezar`.
