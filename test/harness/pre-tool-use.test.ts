@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import {
+  type HookDeps,
+  type HookName,
+  type HookResult,
+  runHook,
+} from "../../src/harness/claude-code/index.js";
 import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 
 /*
@@ -15,7 +20,7 @@ const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
 const BASH = { tool_name: "Bash", tool_input: { command: "sleep 15" } };
 const READ = { tool_name: "Read", tool_input: { file_path: "/repo/src/math.ts" } };
 
-const hook = (name: string, r: SquealRepo, overrides: object = {}) =>
+const hook = (name: HookName, r: SquealRepo, overrides: object = {}) =>
   runHook(name, recorded(name, r.root, overrides), deps);
 
 /** Registered with `math > adds` passing, then a regression the consumer was not told. */
