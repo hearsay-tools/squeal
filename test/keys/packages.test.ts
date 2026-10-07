@@ -161,6 +161,17 @@ describe("per-package dependency keys (001-105)", () => {
     expect(after.of(plain)).toBe(before.of(plain));
   });
 
+  it("keys a package whose manifest a test imports by its version, even with no runtime file (001-109, N2)", async () => {
+    const before = await keysOf(BASE);
+    const after = await keysOf(bump("node_modules/@types/node", "24.0.0"));
+    const manifest = {
+      imports: [{ from: "test", name: "@types/node", manifest: true }],
+      builtins: [],
+    };
+    expect(after.of(manifest)).not.toBe(before.of(manifest));
+    expect(after.of(uses("@types/node"))).toBe(before.of(uses("@types/node")));
+  });
+
   describe("opaque packages (001-109, review wave-11b B3)", () => {
     const code = (source: string) => ({ "index.js": source });
     const OPAQUE: Readonly<Record<string, FixturePackage>> = {

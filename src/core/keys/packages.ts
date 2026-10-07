@@ -75,11 +75,14 @@ export class InstalledGraph {
   identities(imports: readonly PackageImport[], exclude?: ReadonlySet<string>): string[] {
     const found = new Set<string>();
     const starts = new Set<string>();
-    for (const { from, name } of imports) {
+    for (const { from, name, manifest } of imports) {
       const local = this.#local(from);
       const location = local === null ? null : this.#resolve(local, name);
+      const entry = location === null ? undefined : this.#packages[location];
       if (location === null) found.add(absent(local ?? from, name));
-      else starts.add(location);
+      else if (manifest === true && entry !== undefined && isInstalled(location)) {
+        found.add(identityOf(location, entry));
+      } else starts.add(location);
     }
     for (const location of starts) {
       for (const identity of this.#closure(location)) found.add(identity);
@@ -143,7 +146,7 @@ export class InstalledGraph {
         identities.push(`workspace:${location}`);
         continue;
       }
-      const identity = `${location}@${text(entry.version)}#${text(entry.integrity ?? entry.resolved)}`;
+      const identity = identityOf(location, entry);
       if (this.scans.typesOnly(this.#scanId(identity), join(this.dir, location))) {
         identities.push(`${location}@types-only`);
         continue;
@@ -173,6 +176,11 @@ export class InstalledGraph {
 /** A location under some `node_modules`: an installed package, not a workspace. */
 function isInstalled(location: string): boolean {
   return location.startsWith("node_modules/") || location.includes("/node_modules/");
+}
+
+/** An installed package's identity: `location@version#integrity`. */
+function identityOf(location: string, entry: LockEntry): string {
+  return `${location}@${text(entry.version)}#${text(entry.integrity ?? entry.resolved)}`;
 }
 
 function absent(from: string, name: string): string {
