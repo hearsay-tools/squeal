@@ -157,3 +157,21 @@ Use /worker. Shape: repair. Outcome: `squeal remove` never exits 1 after deletin
 ## 001-98 review of 001-96
 
 Use /reviewer. Range `272fe53..1bd3c4f`, 001-96's commits (`4f9108d`, `cbfbedf`, `662ee66` as cherry-picked) and the build; 001-97 is in the range but out of scope. Output `reviews/wave-10d.md`. Design as built: option (a) plus the coordinator's rule (the worker's report in its commits; D6): the registration revision is taken at registration with the live daemon's scanned marker; start revisions at or after it are unknown and silence both lines; "none of your changes" only while the scanned daemon is still the recorded one. Outcome: whether attribution can now say anything false, and whether the first tool call after a session starts behaves (no wrong line, no added latency). Probe: the review wave-10c restart probe; an edit in the first 500 ms of a session; a session registered before the start revision and resumed after it; two sessions on one worktree; a real clone of squeal and of cezar (how soon attribution starts); SessionStart and PostToolBatch p95 at low load.
+
+## 001-99 attribution follow-ups
+
+Use /worker. Shape: repair. From `reviews/wave-10d.md` (PASS with S1, S2, N1 to N6). No re-review unless the change reaches beyond the brief.
+
+Outcome: no attribution line can be false, and attribution starts as soon as D6 says.
+
+Read: `reviews/wave-10d.md` (each finding has fix steps); spec D6; `src/core/delivery/attribution.ts`, `delivery.ts`; `src/core/watcher/` reconciliation (S1), `src/core/scheduler/keying.ts` start revisions.
+
+Fix, in this order:
+- **S2 (false line):** a registration that follows the session's tool calls (PostToolBatch, UserPromptSubmit, and PreToolUse if it registers) never records `scanned`, so "none of your changes" cannot appear for a session whose own edits predate its registration. Test: the review's `-p` probe.
+- **N1 (wording, decided by the coordinator):** the positive line names what it knows, changes in this worktree since the session started, not "your" changes: `touches files changed here since this session started: src/x.ts`. Change the negative line to match (`none of the files changed here since this session started are in its imports`). Amend D6 and `reports.md`.
+- **S1:** the watcher's start reconciliation is not a daemon `start` revision unless it is the daemon's own bootstrap revision; a session registering while a `start` revision is the latest is not silenced for files it changes later. Per the review's fix.
+- **N2, N3 (board text, report to the coordinator, do not edit the board), N6.**
+
+Own: `src/core/delivery/`, `src/core/scheduler/keying.ts` and `src/core/watcher/` (S1 only), `src/harness/claude-code/hooks/` (only where S2 needs the registration path), `src/core/types/` (additive), tests under `test/delivery/`, `test/harness/`, `test/watcher/`, `test/scheduler/`, `plugins/claude-code/skills/squeal/references/reports.md`, D6 in `spec.md`, one `status.md` line. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: the S2 probe is a test that fails before and passes after; the S1 probes (edits at 0.5 s and 1.2 s after start) get their line; the new wording is in every attribution line and the e2e header tests still parse; hook latency unchanged.
