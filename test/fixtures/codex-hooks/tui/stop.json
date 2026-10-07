@@ -1,0 +1,11 @@
+{
+  "session_id": "01a1172b-22f4-7b83-92b4-0d50a7973936",
+  "turn_id": "01a1172b-e37a-7f51-a7de-fd240b85e07b",
+  "transcript_path": "/tmp/cxh/home/sessions/2026/10/07/rollout-2026-10-07T18-21-05-01a1172b-22f4-7b83-92b4-0d50a7973936.jsonl",
+  "cwd": "/tmp/cxh/q2i",
+  "hook_event_name": "Stop",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "stop_hook_active": false,
+  "last_assistant_message": "Hi!"
+}
