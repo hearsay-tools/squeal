@@ -6,7 +6,8 @@ import {
   type HookResult,
   runHook,
 } from "../../src/harness/claude-code/index.js";
-import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
+import { check, result } from "../state/helpers.js";
+import { ADDS, FILE, recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-93 (lessons, defect 14 after wave 10, case 5b): PreToolUse runs on
@@ -85,5 +86,94 @@ describe("PreToolUse on every tool (task 001-93)", () => {
     const fork = { ...BASH, agent_id: SUBAGENT, agent_type: "" };
     expect(await hook("pre-tool-use", r, fork)).toEqual(SILENT);
     expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
+  });
+});
+
+/*
+ * Task 001-101 (lessons, defect 17): a `Write` of a plan file was denied by
+ * 59 baseline failures of a worktree with no dependencies installed. Only a
+ * `PASS -> FAIL` of a check this worktree knew passing denies, never a
+ * first-seen failure, and nothing denies while no dependencies are installed.
+ */
+describe("PreToolUse denies only a PASS -> FAIL (task 001-101)", () => {
+  const EDIT = { tool_name: "Write" };
+  const denies = (out: HookResult) => out.stdout.includes('"permissionDecision":"deny"');
+
+  it("denies nothing for 59 failures first observed by the baseline", async () => {
+    const r = squealRepo();
+    await hook("session-start", r);
+    const checks = Array.from({ length: 59 }, (_, i) => check(`math > case ${i}`, FILE));
+    r.store.checkpoints.start({
+      id: "cp-base",
+      worktreeId: r.worktreeId,
+      revision: 1,
+      kind: "baseline",
+      testFiles: [FILE],
+      startedAt: 1,
+    });
+    const failures = checks.map((c) =>
+      result(c, "fail", { worktreeId: r.worktreeId, message: "Cannot find package 'vitest'" }),
+    );
+    r.store.transaction(() => r.store.results.putMany(failures));
+    r.sink.applyResults(r.worktreeId, 1, failures, { checkpointId: "cp-base" });
+
+    expect(await hook("pre-tool-use", r, EDIT)).toEqual(SILENT);
+    const told = await hook("post-tool-batch", r);
+    expect(told.stdout).toContain("found 59 failing checks");
+  });
+
+  it("denies nothing for a failing test written in this turn", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await hook("session-start", r);
+    r.apply(r.fail(check("math > divides", FILE)));
+    expect(await hook("pre-tool-use", r, EDIT)).toEqual(SILENT);
+    expect((await hook("post-tool-batch", r)).stdout).toContain("math > divides");
+  });
+
+  it("denies once for an inherited pass that then fails here", async () => {
+    const r = squealRepo();
+    r.apply(result(ADDS, "pass", { worktreeId: "wt-elsewhere" }));
+    await hook("session-start", r);
+    r.apply(r.fail());
+    const deny = await hook("pre-tool-use", r, EDIT);
+    expect(denies(deny)).toBe(true);
+    expect(deny.stdout).toContain("PASS -> FAIL");
+    expect(await hook("pre-tool-use", r, EDIT)).toEqual(SILENT);
+  });
+
+  it("denies once for a pass inherited after registration that then fails here", async () => {
+    const r = squealRepo();
+    await hook("session-start", r);
+    r.apply(result(ADDS, "pass", { worktreeId: "wt-elsewhere" }));
+    r.apply(r.fail());
+    expect(denies(await hook("pre-tool-use", r, EDIT))).toBe(true);
+  });
+
+  it.each([
+    ["told the pass and the crash", true],
+    ["registered before the pass and told neither", false],
+  ])("denies once for a pass, a runner crash, then a failure: %s", async (_, told) => {
+    const r = squealRepo();
+    if (told) r.apply(r.pass());
+    await hook("session-start", r);
+    if (!told) r.apply(r.pass());
+    r.sink.markUnknown(r.worktreeId, 2, [FILE], "runner crashed");
+    if (told) expect((await hook("post-tool-batch", r)).stdout).toContain("PASS -> UNKNOWN");
+    r.apply(r.fail());
+    const deny = await hook("pre-tool-use", r, EDIT);
+    expect(denies(deny)).toBe(true);
+    expect(deny.stdout).toContain("PASS -> FAIL");
+    expect(await hook("pre-tool-use", r, EDIT)).toEqual(SILENT);
+  });
+
+  it("denies nothing for a failure, a runner crash, then the failure again", async () => {
+    const r = squealRepo();
+    await hook("session-start", r);
+    r.apply(r.fail());
+    expect((await hook("post-tool-batch", r)).stdout).toContain("first observed");
+    r.sink.markUnknown(r.worktreeId, 2, [FILE], "runner crashed");
+    r.apply(r.fail());
+    expect(await hook("pre-tool-use", r, EDIT)).toEqual(SILENT);
   });
 });

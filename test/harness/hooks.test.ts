@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
 import { createStatusBuilder } from "../../src/core/status/index.js";
-import { REGRESSION_KINDS } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { ADDS, recorded, type SquealRepo, SUBAGENT, SUBTRACTS, squealRepo } from "./helpers.js";
@@ -147,7 +146,7 @@ describe("PreToolUse", () => {
 
   it("denies an edit once per undelivered regression with a factual reason", async () => {
     const r = await regressed();
-    const peeked = await delivery(r).peek(r.consumer(), { kinds: REGRESSION_KINDS });
+    const peeked = await delivery(r).peek(r.consumer(), { kinds: ["pass-to-fail"] });
     expect(peeked).not.toBeNull();
     // Peeking above marked the regression delivered; put the view back as it was.
     r.store.views.writeMany(r.consumer(), [

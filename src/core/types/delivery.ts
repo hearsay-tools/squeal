@@ -172,7 +172,7 @@ export interface Registration {
 }
 
 export interface PeekOptions {
-  /** Kinds to return and mark delivered, e.g. `REGRESSION_KINDS`. */
+  /** Kinds to return and mark delivered, e.g. `["pass-to-fail"]`. */
   readonly kinds: readonly DeltaKind[];
 }
 

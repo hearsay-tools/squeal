@@ -49,7 +49,9 @@ export interface PlanInput {
  * before the failure. A consumer registered before a check's first pass was
  * never told the pass, yet the pass was known: the delta reads `PASS -> FAIL`
  * from it, not "first observed" (goal 3). Changed failures are walked past,
- * since the consumer was told none of them.
+ * since the consumer was told none of them. A pass followed only by unknown
+ * results (a runner crash between runs) is the state before the failure too
+ * (task 001-101).
  */
 export function beforeFailing(
   history: readonly Transition[],
@@ -59,10 +61,21 @@ export function beforeFailing(
   if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
     return null;
   }
-  const entered = history.findLast((t) => t.kind !== "fail-changed");
-  return entered?.from == null
-    ? null
-    : { outcome: entered.from, fingerprint: entered.fromFingerprint };
+  const at = history.findLastIndex((t) => t.kind !== "fail-changed");
+  const entered = history[at];
+  if (entered?.from == null) return null;
+  const passed = entered.from === "unknown" ? passBeforeUnknown(history, at) : null;
+  return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
+}
+
+/** The pass the transitions into unknown before `end` left, `null` when they left something else. */
+function passBeforeUnknown(history: readonly Transition[], end: number): Observation | null {
+  for (let i = end - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
+    const from = history[i]?.from;
+    if (from === "pass") return { outcome: "pass", fingerprint: null };
+    if (from !== "unknown") return null;
+  }
+  return null;
 }
 
 /** Regressions first, then changed failures, baseline findings, unknowns, recoveries, retired failures. */
@@ -121,11 +134,15 @@ export function planDelta(input: PlanInput): DeltaPlan {
     const id = checkIdentity(state.check);
     const before = told.get(id) ?? null;
     told.delete(id);
+    // A failure told after an unknown reads as a regression when a pass preceded the unknown.
     const prior =
-      before === null && state.outcome === "fail" && input.history !== undefined
+      (before === null || before.outcome === "unknown") &&
+      state.outcome === "fail" &&
+      input.history !== undefined
         ? beforeFailing(input.history(state.check), state)
         : null;
-    const kind = transitionKind(before ?? prior, state);
+    const from = before === null || prior?.outcome === "pass" ? prior : before;
+    const kind = transitionKind(from, state);
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
     const baseline =
@@ -135,7 +152,7 @@ export function planDelta(input: PlanInput): DeltaPlan {
     entries.push({
       check: state.check,
       kind,
-      from: (before ?? prior)?.outcome ?? null,
+      from: from?.outcome ?? null,
       to: state.outcome,
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
