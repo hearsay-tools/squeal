@@ -45,6 +45,8 @@ export class Graph {
   private preloadIncomplete: string[] = [];
   /** Reads and candidates of resolving the preloads themselves from `cwd`. */
   private preloadExtra: AbsolutePath[] = [];
+  /** Bare preloads outside the worktree's own modules: loaders Squeal does not model. */
+  private outsidePreloads: string[] = [];
   /** Paths a run loaded outside the static closure, per test file (D3, D5). */
   private readonly observed = new Map<AbsolutePath, ReadonlySet<AbsolutePath>>();
 
@@ -153,20 +155,55 @@ export class Graph {
     return this.index;
   }
 
+  /**
+   * D1 as amended (S3): every preload resolves from `cwd`. One that resolves
+   * to a worktree module, a symlinked workspace package included, roots the
+   * preload closure; a bare one under `node_modules` is the installed-
+   * dependency fingerprint's and gets the unrecognized-loader note.
+   */
   private resolvePreloads(): void {
     this.preloadRoots.length = 0;
     this.preloadIncomplete = [];
     this.preloadExtra = [];
+    this.outsidePreloads = [];
     const from = join(this.cwd, "[argv]");
-    for (const { specifier, kind } of this.chain.preloads) {
+    for (const { specifier, kind, path } of this.chain.preloads) {
       const resolution = this.resolver.resolve(specifier, from, kind);
+      const inside = resolution.path !== null && this.table.inWorktree(resolution.path);
       if (resolution.path === null) {
         this.preloadIncomplete.push(`preload ${JSON.stringify(specifier)} does not resolve`);
-      } else {
-        this.preloadRoots.push(resolution.path);
+      }
+      if (inside || (path && resolution.path !== null)) {
+        this.preloadRoots.push(resolution.path as AbsolutePath);
+      } else if (!path) {
+        this.outsidePreloads.push(specifier);
       }
       this.preloadExtra.push(...resolution.reads, ...resolution.candidates);
     }
+  }
+
+  /**
+   * Notes for preloads: a bare one outside the worktree's modules is an
+   * unrecognized loader; a worktree one importing `node:module` may register
+   * hooks that change resolution.
+   */
+  preloadNotes(): string[] {
+    const rules = this.chain.rules === "tsx" ? "tsx's" : "Node's own";
+    const notes = this.outsidePreloads.map(
+      (loader) =>
+        `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${rules} rules`,
+    );
+    for (const root of this.preloadRoots) {
+      const hooks = this.table
+        .specifiers(root)
+        .some((s) => s.specifier === "node:module" || s.specifier === "module");
+      if (hooks) {
+        notes.push(
+          `node-test: preload ${JSON.stringify(this.rel(root))} imports node:module and may register module hooks; resolving with ${rules} rules`,
+        );
+      }
+    }
+    return notes;
   }
 
   private present(index: ClosureIndex, bits: Uint32Array, extra: readonly string[]) {

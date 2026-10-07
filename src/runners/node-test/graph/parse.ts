@@ -7,6 +7,8 @@ export const parserReady: Promise<void> = init();
 export interface ParsedSpecifier {
   readonly specifier: string;
   readonly kind: "import" | "require" | "glob";
+  /** An `import()`: tsx keeps it an ESM import even in a module it compiles to CommonJS. */
+  readonly dynamic?: true;
 }
 
 export interface ParsedModule {
@@ -23,6 +25,8 @@ export const PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
 
 /** A literal `require("x")`; `myrequire(` and `require(x)` do not match. */
 const REQUIRE = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
+/** Any call of `require`, literal or not; `x.require(` and `myrequire(` do not match. */
+const REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
 
 /**
  * Specifiers of one module (spec 003 D3): es-module-lexer for `import`,
@@ -45,7 +49,11 @@ export function parseModule(source: string, name: string): ParsedModule {
           );
           continue;
         }
-        specifiers.push({ specifier: record.specifier, kind: record.glob ? "glob" : "import" });
+        specifiers.push(
+          record.glob
+            ? { specifier: record.specifier, kind: "glob" }
+            : { specifier: record.specifier, kind: "import", dynamic: true },
+        );
         continue;
       }
       if (!record.typeOnly) specifiers.push({ specifier: record.specifier, kind: "import" });
@@ -53,8 +61,18 @@ export function parseModule(source: string, name: string): ParsedModule {
   } catch (error) {
     incomplete.push(`${name} does not parse as a module: ${(error as Error).message}`);
   }
+  const literal = new Set<number>();
   for (const match of source.matchAll(REQUIRE)) {
     if (match[2] !== undefined) specifiers.push({ specifier: match[2], kind: "require" });
+    literal.add(match.index);
+  }
+  // N6: a computed `require(x)` hides its target as a computed `import(p)` does.
+  for (const match of source.matchAll(REQUIRE_CALL)) {
+    if (!literal.has(match.index)) {
+      incomplete.push(
+        `require() with a computed specifier at ${name}:${position(source, match.index)}`,
+      );
+    }
   }
   return { specifiers, incomplete };
 }
