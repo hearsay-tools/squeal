@@ -1,8 +1,9 @@
-import type { SerializedError, TestCase } from "vitest/node";
+import type { SerializedError, TestCase, TestModule } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
 import type {
   CheckError,
   CheckRunResult,
+  EnumeratedCheck,
   RunOutcome,
   TestFileRef,
 } from "../../core/types/index.js";
@@ -49,6 +50,24 @@ export function checkNames(tests: Iterable<TestCase>): Map<string, string> {
     names.set(test.id, name);
   }
   return names;
+}
+
+/** The checks of one parsed test module, named by `checkNames`. */
+export function enumeratedChecks(module: TestModule, testFile: TestFileRef): EnumeratedCheck[] {
+  const names = checkNames(module.children.allTests());
+  return [...module.children.allTests()].map((test) => ({
+    check: {
+      kind: "test",
+      project: testFile.project,
+      testPath: testFile.path,
+      fullName: names.get(test.id) ?? test.fullName,
+    },
+    // Research Q2: `test.each` parses to one entry with a `-dynamic` id.
+    templated: test.options.each === true || test.id.endsWith("-dynamic"),
+    location: test.location
+      ? { path: testFile.path, line: test.location.line, column: test.location.column }
+      : null,
+  }));
 }
 
 /** `fullName` is the check name from `checkNames`. */
