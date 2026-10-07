@@ -259,7 +259,7 @@ export function formatDelta(delta: Delta): string {
     entries.length === 0
       ? livenessTitle(delta.liveness, header.revision)
       : delta.label === "baseline"
-        ? `SQUEAL · Squeal's run at start (baseline) found ${plural(entries.length, "failing check")} at revision ${header.revision}`
+        ? `SQUEAL · Squeal's baseline run found ${plural(entries.length, "failing check")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),

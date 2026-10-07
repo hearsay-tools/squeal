@@ -37,17 +37,19 @@ function validityText(entry: TransitionEntry, revision: number): string | null {
 
 /**
  * The change and who saw it, for a failure: Squeal's run at a revision of
- * this worktree, at start when it was the baseline, or in another worktree
- * at a commit when inherited. Replaces "baseline finding".
+ * this worktree, its baseline run when it was the baseline, or a run in
+ * another worktree at a commit when inherited. Replaces "baseline finding".
+ * A baseline runs at start or, after a wait, at the install, so it names its
+ * revision and not "at start" (task 001-107, review wave 11 N1).
  */
 export function seenLine(entry: TransitionEntry, revision: number): string {
   const from = inheritedFrom(entry);
+  const baseline = entry.baseline === true;
   const parts = [
     change(entry),
     from === null
-      ? `seen by Squeal's run at revision ${entry.observedAt}`
-      : `seen by Squeal's run in ${from}, inherited at revision ${entry.observedAt}`,
-    entry.baseline === true ? "at start (baseline)" : null,
+      ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry.observedAt}`
+      : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry.observedAt}`,
     validityText(entry, revision),
   ];
   return parts.filter((p) => p !== null).join(", ");

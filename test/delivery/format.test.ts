@@ -242,11 +242,11 @@ describe("formatDelta", () => {
   it("labels baseline findings", () => {
     const finding = entry({ kind: "first-seen-fail", to: "fail", baseline: true });
     expect(formatDelta(delta([finding], "baseline")).split("\n")[0]).toBe(
-      "SQUEAL · Squeal's run at start (baseline) found 1 failing check at revision 184",
+      "SQUEAL · Squeal's baseline run found 1 failing check at revision 184",
     );
     const mixed = formatDelta(delta([regression, finding]));
     expect(mixed).toContain(
-      "      first observed: FAIL, seen by Squeal's run at revision 184, at start (baseline)",
+      "      first observed: FAIL, seen by Squeal's baseline run at revision 184",
     );
   });
 

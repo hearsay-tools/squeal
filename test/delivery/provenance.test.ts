@@ -51,7 +51,7 @@ describe("who saw a failure (task 001-91)", () => {
     const baseline = { ...failure, kind: "first-seen-fail" as const, from: null, baseline: true };
     const text = formatDelta({ ...delta([baseline]), label: "baseline" });
     expect(text).toContain(
-      "      first observed: FAIL, seen by Squeal's run at revision 9, at start (baseline)",
+      "      first observed: FAIL, seen by Squeal's baseline run at revision 9",
     );
     expect(text).not.toContain("baseline finding");
   });
