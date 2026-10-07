@@ -12,6 +12,13 @@ export interface BundleRun {
   readonly ms: number;
 }
 
+/**
+ * Where the bundles run from: the committed `dist`, or `SQUEAL_TEST_DIST`, so a
+ * worker that may not rebuild `dist` can measure its change from bundles built
+ * elsewhere (`bundleOptions(<dir>)`).
+ */
+const DIST = process.env.SQUEAL_TEST_DIST ?? PLUGIN_DIST;
+
 /** Runs a hook bundle the way hooks.json does: `node --disable-warning=... <bundle>`, stdin piped. */
 export function runBundle(
   name: string,
@@ -19,7 +26,7 @@ export function runBundle(
   env: Readonly<Record<string, string>> = {},
 ): Promise<BundleRun> {
   return runNode(
-    ["--disable-warning=ExperimentalWarning", join(PLUGIN_DIST, `${name}.mjs`)],
+    ["--disable-warning=ExperimentalWarning", join(DIST, `${name}.mjs`)],
     stdin,
     env,
   );
