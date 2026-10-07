@@ -23,7 +23,7 @@ Every SQUEAL message and `squeal status` carry a header like `Revision 12: 40 cu
 - **inherited**: a current result reused from another worktree whose files were byte-identical. It is as current as your own. The header says `Inherited: 30 of 40 current.`; `squeal status` names the worktree and commit it came from.
 - **Full-suite checkpoint**: whether a `squeal run --all` or baseline run completed at this revision. It is a request, not a coverage state: without one, current results are still current.
 - **No dependencies are installed in this worktree**: the daemon found no installed lockfile (such as `node_modules/.package-lock.json`), so failures that cannot find a package are expected until an install. It appears beside failures only.
-- **These results follow a dependency install**: the installed lockfile changed since your last report, so the recoveries or failures in the message may come from the install rather than from your edits.
+- **These results follow a dependency install**: an installed lockfile was written since your last report, so the recoveries or failures in the message may come from the install rather than from your edits. A deleted lockfile is not an install, and a report that says no dependencies are installed never says this.
 
 ## Reading a failure
 
@@ -36,12 +36,12 @@ FAIL  tests/auth.test.ts > login > expired token
 ```
 
 - **seen by Squeal's run at revision N**: Squeal's own runner produced the result, not a test command of yours. `at start (baseline)` marks a failure found by the run when the daemon started; `in <worktree> at commit <sha>, inherited at revision N` marks a result reused from another worktree.
-- **touches your changes: ...**: files changed in this worktree since your session registered that the failing test imports (at most three, then a count). **none of your changes are in its imports** means no such file is in its imports; the failure may still be an effect of the environment or of a change outside its imports. Without either line, Squeal does not know the test's imports yet.
+- **touches your changes: ...**: files changed in this worktree since your session registered that the failing test imports (at most three, then a count). **none of your changes are in its imports** means no such file is in its imports; the failure may still be an effect of the environment or of a change outside its imports. Without either line, Squeal does not know which of the changes are yours or what the test imports here: your session registered before the daemon finished its start scan or under Squeal 0.1.9 or older, or the stored imports were collected in another worktree whose version of the test file differs. Changes made while your session was not registered (after it ended, before a resume) are not counted as yours.
 - **load average N when it ran**: on a test that timed out, the machine's one-minute load when it did. A timeout under a high load can pass when the test runs alone.
 
 ## Many recoveries
 
-Up to five recovered checks are listed one by one. Above five, a report says `31 checks recovered (FAIL -> PASS)` and then the shorter list: either the checks still failing (`still failing: 2` and their names) or the recovered checks, grouped by test file with counts (`16 in tests/a.test.ts`). Checks no longer reported by the runner are summarized the same way. New failures are always listed in full.
+Up to five recovered checks are listed one by one. Above five, a report says `31 checks recovered (FAIL -> PASS)` and then the shorter list: either the checks still failing (`still failing: 2` and their names) or the recovered checks, grouped by test file with counts (`16 in tests/a.test.ts`) when that takes fewer lines than their names. Checks no longer reported by the runner are summarized the same way. New failures are always listed in full.
 
 ## No daemon validating
 
