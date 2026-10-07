@@ -11,7 +11,7 @@ import {
   type Store,
   type TransitionEntry,
 } from "../../src/core/types/index.js";
-import { check, FILE, freshStore, result, setKey, WT } from "../state/helpers.js";
+import { check, FILE, freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
@@ -191,5 +191,74 @@ describe("a consumer that left and registers again (N4)", () => {
     expect(entry !== undefined && "changesInClosure" in entry && entry.changesInClosure).toEqual(
       [],
     );
+  });
+});
+
+/*
+ * Review wave 10b S2: the stored closure is repository-wide, newest wins. A
+ * failure is read against it only when it is this worktree's: written by
+ * this worktree, or by one whose current key for the test file is this
+ * worktree's. Otherwise neither line appears.
+ */
+describe("whose closure a failure is read against (S2)", () => {
+  function storedBy(worktreeId: string, paths: readonly string[]): void {
+    store.testFiles.put({
+      testFile: FILE,
+      closure: {
+        testFile: FILE,
+        paths,
+        complete: false,
+        method: "static imports plus declared inputs",
+      },
+      updatedAt: 2,
+      updatedBy: worktreeId,
+    });
+  }
+
+  beforeEach(async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    await delivery.register(C1);
+  });
+
+  it("ignores another worktree's closure under a different key (S2 probe)", async () => {
+    setKey(store, "k-other", { worktreeId: OTHER });
+    storedBy(OTHER, ["src/a.test.ts"]);
+    apply(edit(["src/x.ts"]), result(A, "fail"));
+    const { entry, text } = await failing();
+    expect(entry.changesInClosure).toBeUndefined();
+    expect(text).not.toContain("your changes");
+  });
+
+  it("reads another worktree's closure stored under this worktree's key", async () => {
+    setKey(store, "k1", { worktreeId: OTHER });
+    storedBy(OTHER, ["src/a.test.ts", "src/x.ts"]);
+    apply(edit(["src/x.ts"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toEqual(["src/x.ts"]);
+  });
+
+  it("gives each worktree its own when both wrote one", async () => {
+    const C2: Consumer = { worktreeId: OTHER, sessionId: "s2", agentId: "main" };
+    liveDaemon(store, OTHER);
+    setKey(store, "k-other", { worktreeId: OTHER });
+    await delivery.register(C2);
+    storedBy(OTHER, ["src/a.test.ts", "src/y.ts"]);
+    const other = store.revisions.append({
+      worktreeId: OTHER,
+      createdAt: 1,
+      head: null,
+      dirty: true,
+      trigger: "watch",
+      changes: [{ path: "src/y.ts", oldHash: null, newHash: "y" }],
+    }).number;
+    const failed = result(A, "fail", { worktreeId: OTHER, key: "k-other", revision: other });
+    store.results.putMany([failed]);
+    sink.applyResults(OTHER, other, [failed], NONE);
+    const delta = await delivery.onToolBoundary(C2);
+    expect(formatDelta(delta as Delta)).toContain("touches your changes: src/y.ts");
+
+    // This worktree's daemon stores its own closure last; the other worktree's is gone.
+    storedBy(WT, ["src/a.test.ts", "src/x.ts"]);
+    apply(edit(["src/x.ts"]), result(A, "fail"));
+    expect((await failing()).text).toContain("touches your changes: src/x.ts");
   });
 });
