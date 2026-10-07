@@ -1,0 +1,10 @@
+{
+  "name": "squeal",
+  "plugins": [
+    {
+      "name": "squeal",
+      "source": "./plugins/codex",
+      "description": "Continuous validation for coding agents: test transitions at tool boundaries, honest status on demand."
+    }
+  ]
+}
