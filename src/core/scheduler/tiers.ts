@@ -61,7 +61,6 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
     if (!ledger.queue.isForced(ref)) {
       const hits = store.results.byKey(key, context.now());
       if (hits.length > 0) {
-        ledger.counters.hits++;
         ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
         continue;
       }
@@ -90,7 +89,6 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = new Set();
-  ledger.counters.started++;
   store.transaction(() => {
     store.runs.start({
       id: runId,
@@ -157,10 +155,6 @@ export function recordTier(
   const duringRun = ledger.tierChanges ?? new Set<RelativePath>();
   ledger.tierChanges = null;
   const completed = new Set(report.completedFiles.map(testFileId));
-  const counters = ledger.counters;
-  if (report.end === "completed") counters.completed++;
-  else if (report.end === "crashed") counters.crashed++;
-  else counters.timedOut++;
 
   const provenance: Provenance = {
     worktreeId,

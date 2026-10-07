@@ -28,8 +28,12 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     expect(keyDuringRun).toMatch(/^[0-9a-f]{64}$/);
     const firstKey = keyDuringRun as unknown as CheckKey;
     // Ran twice: the unstable tier and the re-queued run under the new key.
+    const [unstable] = h.runsOf("test/math.test.ts");
     expect(h.runsOf("test/math.test.ts")).toHaveLength(2);
-    expect(h.scheduler.status().discarded).toBe(1);
+    // The unstable run completed, and the store kept no result of math from it.
+    expect(store.runs.get(unstable?.options.runId ?? "")?.end).toBe("completed");
+    const kept = store.results.listForCheck(check("test/math.test.ts", "adds"), 10);
+    expect(kept.map((r) => r.provenance.runId)).not.toContain(unstable?.options.runId);
     // Nothing stored under the key whose inputs moved during the run.
     expect(store.results.byKey(firstKey)).toEqual([]);
 
@@ -46,7 +50,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     // The scheduler reconciled the change itself: a revision records it.
     const revision = store.revisions.latest(h.worktreeId);
     expect(revision?.changes.map((c) => c.path)).toEqual(["src/math.ts"]);
-    expect(h.scheduler.status().testFiles.current).toBe(5);
+    expect(h.header().counts).toEqual({ current: 11, pending: 0, stale: 0, unknown: 0 });
     // The baseline completed: the re-queued file got its result.
     expect(store.checkpoints.lastCompleted(h.worktreeId)?.kind).toBe("baseline");
   });
@@ -93,11 +97,11 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     expect(unknown[0]?.reason).toContain("Worker forks emitted error");
     expect(h.sink.stateOf(check("test/plain.test.ts", "is plain"))?.outcome).toBe("unknown");
     // Not retried in a loop: unknown until the next change or run --all.
-    expect(h.scheduler.status()).toMatchObject({
-      queued: 0,
-      running: 0,
-      runs: { crashed: 1 },
-      testFiles: { current: 4, pending: 0, stale: 0, unknown: 2 },
+    const ends = h.runner.runs.map((run) => store.runs.get(run.options.runId)?.end);
+    expect(ends.filter((end) => end === "crashed")).toHaveLength(1);
+    expect(h.header()).toMatchObject({
+      counts: { current: 8, pending: 0, stale: 0, unknown: 3 },
+      testFilesWithoutChecks: { pending: 0, unknown: 1 },
     });
   });
 
@@ -131,11 +135,9 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       [{ kind: "file", project: "", testPath: "test/kill.test.ts" }, "pass"],
       [check("test/kill.test.ts", "survives"), "pass"],
     ]);
-    expect(h.scheduler.status().testFiles).toEqual({
-      current: 6,
-      pending: 0,
-      stale: 0,
-      unknown: 0,
+    expect(h.header()).toMatchObject({
+      counts: { current: 13, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 0 },
     });
   });
 
@@ -180,7 +182,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       check("test/plain.test.ts", "is plain too"),
       { kind: "file", project: "", testPath: "test/plain.test.ts" },
     ]);
-    expect(h.scheduler.status().testFiles.current).toBe(4);
+    expect(h.header().counts).toEqual({ current: 8, pending: 0, stale: 0, unknown: 0 });
   });
 
   it("re-keys every test file and runs them again when the installed lockfile changes (S8)", async () => {

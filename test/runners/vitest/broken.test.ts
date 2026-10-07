@@ -212,7 +212,8 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     const crashed = new Set(
       broken.filter((r) => r.report.end === "crashed").map((r) => r.options.runId),
     );
-    expect(a.scheduler.status().testFiles.unknown).toBeGreaterThan(0);
+    // The store records the crash; a forced re-run keeps the earlier results current (D5).
+    expect([...crashed].map((id) => store.runs.get(id)?.end)).toEqual(["crashed"]);
     const notes = JSON.parse(store.meta.get(notesMetaKey(a.worktreeId)) ?? "[]") as DaemonNote[];
     // One note per broken instance, written by the adapter alone.
     const brokenNotes = notes.filter((n) =>
@@ -240,7 +241,7 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     await a.scheduler.idle();
     const last = a.runner.runs.at(-1)?.report;
     expect(last?.end).toBe("completed");
-    expect(a.scheduler.status().testFiles.unknown).toBe(0);
+    expect(a.header().counts.unknown).toBe(0);
   });
 
   it("an install the reconciliation pass finds recreates the instance", async () => {
@@ -263,6 +264,6 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     await h.scheduler.idle();
 
     expect(recreated).toEqual([[""]]);
-    expect(h.scheduler.status().testFiles.unknown).toBe(0);
+    expect(h.header().counts.unknown).toBe(0);
   });
 });

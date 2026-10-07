@@ -21,7 +21,6 @@ import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
-import { statusOf } from "./status.js";
 import {
   executeTier,
   queueFullSuite,
@@ -147,7 +146,7 @@ class TierScheduler implements Scheduler {
   }
 
   status(): SchedulerStatus {
-    return statusOf(this.#ledger);
+    return { revision: this.#ledger?.revision.number ?? 0 };
   }
 
   idle(): Promise<void> {

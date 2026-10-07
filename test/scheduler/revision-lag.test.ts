@@ -69,11 +69,9 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
       { runs: runsBefore + 1, paths: ["src/math.ts"] },
       { runs: runsBefore + 1, paths: ["src/math.ts"] },
     ]);
-    expect(h.scheduler.status()).toMatchObject({
+    expect(h.header()).toMatchObject({
       revision: first + 2,
-      queued: 0,
-      running: 0,
-      testFiles: { current: 2, pending: 0 },
+      counts: { current: 4, pending: 0, stale: 0, unknown: 0 },
     });
   });
 
