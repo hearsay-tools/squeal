@@ -7,7 +7,11 @@ import { createDelivery, readHeader } from "../../src/core/delivery/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
-import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
+import {
+  appendNote,
+  createScheduler,
+  type SchedulerOptions,
+} from "../../src/core/scheduler/index.js";
 import {
   isStoreOpenFailure,
   openStore,
@@ -132,11 +136,6 @@ function recording(inner: RunnerAdapter, environmentRoot?: string): RecordingRun
     failure: "vitest.config.ts: Unexpected token",
     invalidate: (paths) => guarded("invalidate", () => inner.invalidate(paths)),
     affected: (paths) => guarded("affected", () => inner.affected(paths)),
-    affectedDetailed: (paths) =>
-      guarded("affected", async () => {
-        if (inner.affectedDetailed) return inner.affectedDetailed(paths);
-        return { direct: [], transitive: await inner.affected(paths) };
-      }),
     closure: (testFile) => guarded("closure", () => inner.closure(testFile)),
     enumerate: (testFile) => serial(() => inner.enumerate(testFile)),
     testFiles: () => guarded("testFiles", () => inner.testFiles()),
@@ -203,9 +202,17 @@ export async function openHarness(
   commonDir: string,
   options: HarnessOptions = {},
 ): Promise<Harness> {
-  const runner = recording(await createVitestAdapter({ root }), options.environmentRoot);
-  for (const call of options.failing ?? []) runner.failing.add(call);
   const worktreeId = worktreeIdFor(root);
+  let scheduler: Scheduler | null = null;
+  // As the daemon's note: persisted for `squeal status`, stamped with the revision (D7).
+  const note = (text: string) =>
+    appendNote(store, worktreeId, {
+      at: Date.now(),
+      revision: scheduler?.status().revision ?? null,
+      text,
+    });
+  const runner = recording(await createVitestAdapter({ root, note }), options.environmentRoot);
+  for (const call of options.failing ?? []) runner.failing.add(call);
   const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
   const errors: Error[] = [];
@@ -218,7 +225,7 @@ export async function openHarness(
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     },
   };
-  const scheduler = createScheduler({
+  scheduler = createScheduler({
     root,
     worktreeId,
     store,
