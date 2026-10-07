@@ -45,3 +45,7 @@ Use a name exactly as a SQUEAL message or `squeal status` printed it. Any unique
 ## squeal run --all
 
 Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in headers and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
+
+## squeal remove
+
+Takes Squeal out of the repository: stops the daemon of every worktree, then deletes the store and the daemons' temp directories. `--config` also deletes `squeal.config.json`. Run it only when the user asks to remove Squeal. Exit 1 means a daemon did not stop and nothing was deleted; its output names the worktree. It prints what remains: the plugin, and the config when kept.

@@ -91,8 +91,9 @@ export async function removeCommand(
     );
   }
   io.stdout(
-    "  The plugin: claude plugin uninstall squeal, and the marketplace and enabledPlugins " +
-      "entries squeal init added to .claude/settings.json.\n",
+    "  The plugin: claude plugin uninstall squeal@squeal --scope project (the scope it was " +
+      "installed with), and the extraKnownMarketplaces and enabledPlugins entries squeal init " +
+      "added to .claude/settings.json.\n",
   );
   return 0;
 }
