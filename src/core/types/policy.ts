@@ -41,8 +41,6 @@ export interface Policy {
      * test timeout)". `null` means no limit.
      */
     readonly timeoutMs: number | null;
-    /** Default `1` in v1. */
-    readonly maxConcurrentRuns: number;
   };
   readonly daemon: {
     /** Spec 001 D10: idle exit "with no registered consumers (default 60 minutes)". */
@@ -86,7 +84,7 @@ export const DEFAULT_POLICY: Policy = {
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 600_000, maxConcurrentRuns: 1 },
+  runner: { tierSize: 4, timeoutMs: 600_000 },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };
