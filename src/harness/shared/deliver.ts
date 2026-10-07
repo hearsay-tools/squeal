@@ -5,24 +5,34 @@ import { type HookDeps, isRegistered } from "./hook.js";
 import { withPrimer } from "./primer.js";
 
 /**
- * Tools that change files in the worktree: Claude Code's edit tools, Codex's
- * `apply_patch` (its `Edit` and `Write` too), and a shell in either.
+ * Claude Code's tools known not to change files in the worktree. Any other
+ * named tool may: an edit tool, a shell, a subagent, or a custom tool such as
+ * an MCP server's write (review wave 11f, S2). Codex's tool filter is 002-21's.
  */
-const EDITING_TOOLS: ReadonlySet<string> = new Set([
-  "Edit",
-  "Write",
-  "MultiEdit",
-  "NotebookEdit",
-  "Bash",
-  "apply_patch",
+const READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
+  "Read",
+  "Grep",
+  "Glob",
+  "LS",
+  "NotebookRead",
+  "WebFetch",
+  "WebSearch",
+  "TodoWrite",
+  "BashOutput",
+  "KillShell",
+  "ExitPlanMode",
+  "AskUserQuestion",
+  "ListMcpResourcesTool",
+  "ReadMcpResourceTool",
 ]);
 
 /**
- * Whether tool calls named `toolNames` may have changed files; with no names
- * the harness did not say, which counts as an edit (task 001-112).
+ * Whether tool calls named `toolNames` may have changed files: any tool not
+ * known to be read-only may; with no names the harness did not say, which
+ * counts as an edit (task 001-112).
  */
 export function mayEdit(toolNames: readonly string[] | undefined): boolean {
-  return toolNames === undefined || toolNames.some((name) => EDITING_TOOLS.has(name));
+  return toolNames === undefined || toolNames.some((name) => !READ_ONLY_TOOLS.has(name));
 }
 
 /**

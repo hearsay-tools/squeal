@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import {
@@ -145,6 +147,29 @@ describe("a boundary while no daemon validates and none was started", () => {
     expect(out.stdout).toBe("");
   });
 
+  it("counts a custom editing tool as an edit, at every boundary (review wave 11f, S2)", async () => {
+    const r = await registered();
+    r.daemon("stale", STALE);
+    const { deps } = recording("unavailable");
+    await runHook("post-tool-batch", batch(r.root, "Edit"), deps);
+
+    // What the custom tool wrote; no daemon sees it.
+    writeFileSync(join(r.root, "custom.ts"), "export const x = 1;\n");
+    const first = await runHook(
+      "post-tool-batch",
+      batch(r.root, "mcp__filesystem__write_file"),
+      deps,
+    );
+    const second = await runHook(
+      "post-tool-batch",
+      batch(r.root, "mcp__filesystem__write_file"),
+      deps,
+    );
+
+    expect(context(first)).toBe(`SQUEAL · ${LINE}`);
+    expect(context(second)).toBe(`SQUEAL · ${LINE}`);
+  });
+
   it("counts a batch that names no tools as an edit", async () => {
     const r = await registered();
     r.daemon("stale", STALE);
@@ -187,12 +212,15 @@ describe("a boundary while no daemon validates and none was started", () => {
 });
 
 describe("mayEdit", () => {
-  it("is true for a tool that changes files, a shell, or tools not named", () => {
+  it("is true for a tool that changes files, a shell, an unknown tool, or tools not named", () => {
     expect(mayEdit(["Read", "Edit"])).toBe(true);
     expect(mayEdit(["Bash"])).toBe(true);
     expect(mayEdit(["apply_patch"])).toBe(true);
+    expect(mayEdit(["Agent"])).toBe(true);
+    // Review wave 11f, S2: a named custom tool is not known to be read-only.
+    expect(mayEdit(["Read", "mcp__filesystem__write_file"])).toBe(true);
     expect(mayEdit(undefined)).toBe(true);
-    expect(mayEdit(["Read", "Grep", "Glob"])).toBe(false);
+    expect(mayEdit(["Read", "Grep", "Glob", "WebFetch", "TodoWrite"])).toBe(false);
     expect(mayEdit([])).toBe(false);
   });
 });
