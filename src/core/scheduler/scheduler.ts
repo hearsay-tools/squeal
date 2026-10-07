@@ -86,6 +86,7 @@ class TierScheduler implements Scheduler {
         policy: options.policy,
         squealVersion: options.squealVersion,
         onExtraFiles: (paths) => options.onExtraFiles?.(paths),
+        note: (message) => this.#note(message),
         ...(options.env === undefined ? {} : { env: options.env }),
       });
       const context: SchedulerContext = {
