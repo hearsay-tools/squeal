@@ -257,6 +257,28 @@ describe("formatDelta", () => {
     expect(line({ ...header, testFilesListed: true })).toBe(line(header));
   });
 
+  it("names the files the revision changed, three and a count of the rest (task 001-85)", () => {
+    const line = (changedPaths: string[]) =>
+      formatDelta({ ...delta([regression]), header: { ...header, changedPaths } }).split("\n")[1];
+    const counts =
+      ": 47 current, 3 pending, 0 stale, 12 unknown. " +
+      "Full-suite checkpoint: none completed at revision 184; last completed at revision 170.";
+    expect(line(["src/auth.ts"])).toBe(`Revision 184 (changed src/auth.ts)${counts}`);
+    expect(line(["a.ts", "b.ts", "c.ts"])).toBe(`Revision 184 (changed a.ts, b.ts, c.ts)${counts}`);
+    expect(line(["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"])).toBe(
+      `Revision 184 (changed a.ts, b.ts, c.ts and 2 more)${counts}`,
+    );
+    expect(line([])).toBe(`Revision 184${counts}`);
+    // A registration's header line is the same line.
+    const registration = formatRegistration({
+      schemaVersion: 1,
+      consumer,
+      header: { ...header, changedPaths: ["src/auth.ts"] },
+      knownFailures: [],
+    });
+    expect(registration.split("\n")[1]).toBe(`Revision 184 (changed src/auth.ts)${counts}`);
+  });
+
   it("counts inherited current results, only when there are any", () => {
     const line = (inheritedCount: number) =>
       formatDelta({ ...delta([regression]), header: { ...header, inheritedCount } }).split("\n")[1];
