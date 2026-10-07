@@ -6,7 +6,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`.
 
 ## Standing models
 
-Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers, researchers and reviewers: `--backend claude --model opus --effort high`. Researchers may also run `--backend codex --model gpt-6-astra --effort high` (human, 2026-10-07). Never Fable for a worker (human rule). A quota or spend refusal preserves the work and asks the human; no silent substitution. The human's newest instruction outranks this section.
+Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers and researchers: `--backend claude --model opus --effort high`. Reviewers: `--backend codex --model gpt-6.1-sol --effort high` (human, 2026-10-07; earlier reviews ran on Opus). Researchers may also run `--backend codex --model gpt-6-astra --effort high` (human, 2026-10-07). Never Fable for a worker (human rule). A quota or spend refusal preserves the work and asks the human; no silent substitution. The human's newest instruction outranks this section.
 
 ## Feature 001: core validation loop
 
