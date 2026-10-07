@@ -157,3 +157,17 @@ Use /reviewer. Range: 001-111 (`ac0c5a0`, `f53a56f`, `4551941`) and 001-112 (`59
 ## 001-116 status reads in one transaction
 
 Use /worker. Shape: repair. Defect 23. Outcome: every status read (`squeal status`, `--json`, `--wait`'s poll, Stop's wait for pending) sees one committed state of the store, so it never pairs a new revision with older states. Read: `lessons.md` "Torn status reads"; spec D7, D8 (WAL, readers), D9 (Stop's wait). Seam: `withStatusStore` in `src/core/status/`, then the polls in `src/cli/status-wait.ts` and `src/harness/shared/stop.ts`. Decided: one SQLite read transaction (`BEGIN` ... `COMMIT`, deferred, so WAL readers never block the writer) around each snapshot, each `--wait` poll and each Stop poll; nothing else changes. Own: `src/core/status/`, `src/cli/status-wait.ts`, `src/harness/shared/stop.ts` (the poll only), `src/core/store/` only if a read-transaction helper is missing (additive; ask before anything else there), tests under `test/status/`, `test/cli/`, `test/harness/`, D7 in `spec.md`, one `status.md` line. Leave `src/harness/codex/` to the 002/003 coordinator and `src/core/scheduler/`, `src/core/daemon/` to 001-113. Do not run `npm run build` or touch any `dist`. Commit as you go. Done when: a deterministic test that commits a revision with its re-key between two reads (an injected hook or a second connection) shows the snapshot, the `--wait` poll and Stop's poll each consistent; the 002/003 coordinator's opt-in `test/e2e/torn-status.test.ts`, once on `main`, passes with `SQUEAL_PROBE_TORN_STATUS=1`; Stop and `--wait` latency unchanged within the hook budget.
+
+## 001-117 three key escapes from the last review
+
+Use /worker. Shape: repair. From `reviews/wave-11d.md` (PASS, last round on the 001-105 slice), S1 to S3, each a proven complete-key PASS -> FAIL. The coordinator folds them in without another review round; the checks and each fix's failing-then-passing test are the gate.
+
+Outcome: none of the three escapes keeps a key: a types-only manifest read by `require`, a test calling an opaque package also used by a config plugin, a project helper loaded by a relative `require`.
+
+Read: `reviews/wave-11d.md` S1, S2, S3 (each has a fixture and a fix); spec D3, D4.
+
+Decided: S1 as the review says (keep the manifest subpath through the bare-require seam). S2 as the review says (test opacity on the complete identities before subtracting environment ones; the plugin-only fixture keeps scoped keys). S3 the preferred fix: a literal relative `require` (and `require.resolve` of a relative path) resolves into a closure target with its missing-path candidates, and the reached project file is scanned and walked like any other, so both a package bump and an edit of the helper re-key and re-run the test; a relative target that cannot be resolved statically sends the file to the whole fingerprint.
+
+Own: `src/runners/vitest/graph.ts`, `packages.ts`, `loads.ts`, `src/core/keys/dependencies.ts`, `src/core/types/` (additive), tests under `test/runners/vitest/`, `test/keys/`, `test/fixtures/vitest/`, D3 and D4 in `spec.md`, one `status.md` line. Leave `src/core/scheduler/` and `src/core/daemon/` (001-113) and `src/core/status/` (001-116) alone. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the review's three fixtures are adapter tests that change the key and flip the result, each failing before its fix; an edit of a `require`d helper re-runs its test; the `cezar` share is re-measured (report the number).
