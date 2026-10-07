@@ -2,7 +2,7 @@ import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
-import { META_STORE_RECOVERED } from "../store/index.js";
+import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckBreakdown,
@@ -57,19 +57,21 @@ export function createStatusBuilder(
   const now = options.now ?? Date.now;
   return {
     build(worktreeId) {
-      const worktree = store.worktrees.get(worktreeId);
-      if (worktree === null) {
-        return unavailable(
-          "not-registered",
-          `worktree ${worktreeId} is not registered in the store`,
-        );
-      }
-      return snapshot(store, worktreeId, worktree.root, now());
+      return readTransaction(store, () => {
+        const worktree = store.worktrees.get(worktreeId);
+        if (worktree === null) {
+          return unavailable(
+            "not-registered",
+            `worktree ${worktreeId} is not registered in the store`,
+          );
+        }
+        return snapshot(store, worktreeId, worktree.root, now());
+      });
     },
   };
 }
 
-/** The D7 snapshot of the worktree at `root` from an open store. */
+/** The D7 snapshot of the worktree at `root` from an open store; call it inside one read transaction. */
 export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): StatusSnapshot {
   return snapshot(store, worktreeIdFor(root), root, now);
 }

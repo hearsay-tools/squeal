@@ -55,6 +55,28 @@ export class Connection {
     }
   }
 
+  /**
+   * Runs `fn`, which only reads, in a deferred `BEGIN` transaction, so every
+   * statement in it sees one committed state of the store. In WAL a reader
+   * never blocks the writer and the writer never blocks it (spec 001 D8).
+   * Inside an open transaction it just runs `fn`: that is one state already.
+   */
+  read<T>(fn: () => T): T {
+    if (this.#depth > 0) return fn();
+    this.db.exec("BEGIN");
+    this.#depth++;
+    try {
+      const result = fn();
+      this.db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      rollback(this.db);
+      throw error;
+    } finally {
+      this.#depth--;
+    }
+  }
+
   /** Idempotent. */
   close(): void {
     if (this.#closed) return;

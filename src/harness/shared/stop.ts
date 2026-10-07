@@ -8,7 +8,7 @@ import {
 } from "../../core/delivery/index.js";
 import { isPending, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
-import { storePaths } from "../../core/store/index.js";
+import { readTransaction, storePaths } from "../../core/store/index.js";
 import type { KnownFailure } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
@@ -164,12 +164,14 @@ async function newsText(context: HookContext): Promise<string | null> {
 /**
  * Polls the header until nothing is pending at the current revision, the
  * runner part of the revision included (review wave 4.5, S1), or `waitMs`
- * passed.
+ * passed. Each read is one read transaction, so it never pairs a new revision
+ * with the previous revision's states (lessons defect 23).
  */
 async function waitForPending(context: HookContext, waitMs: number, pollMs: number) {
   const deadline = performance.now() + waitMs;
   for (;;) {
-    const header = readHeader(context.store, context.consumer.worktreeId);
+    const { store, consumer } = context;
+    const header = readTransaction(store, () => readHeader(store, consumer.worktreeId));
     if (!isPending(header)) return;
     const left = deadline - performance.now();
     if (left <= 0) return;

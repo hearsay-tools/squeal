@@ -20,6 +20,14 @@ export function connectionOf(store: Store): Connection {
   return conn;
 }
 
+/**
+ * Runs `fn`, which only reads, in one read transaction of the store's
+ * connection: status reads see one committed state (lessons defect 23).
+ */
+export function readTransaction<T>(store: Store, fn: () => T): T {
+  return connectionOf(store).read(fn);
+}
+
 export function createStore(conn: Connection, schemaVersion: number, paths: StorePaths): Store {
   const worktrees = createWorktreeRepo(conn);
   const store: Store = {
