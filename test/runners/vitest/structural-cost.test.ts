@@ -17,8 +17,15 @@ function largeGraph(): Record<string, string> {
     ].join("\n");
   }
   for (let j = 0; j < TESTS; j++) files[`test/gen/t${j}.test.ts`] = testImporting(j);
+  files[MANIFEST] = manifest(0);
   return files;
 }
+
+const MANIFEST = "src/gen/package.json";
+
+/** The graph's manifest; `script` moves only its `scripts`, no resolution field. */
+const manifest = (script: number) =>
+  `${JSON.stringify({ name: "gen", type: "module", scripts: { gen: `echo ${script}` } })}\n`;
 
 function testImporting(module: number): string {
   return [
@@ -44,11 +51,18 @@ const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.len
  * costs about what it costs after a plain edit. The graph is large enough that
  * the walk, not one transform, dominates. The add's `invalidate` is reported
  * apart: its first call scans the source of every module once (001-56, D4).
+ *
+ * Reviews/wave-9b.md S3: an edit of the graph's `package.json` re-transforms
+ * every module under it, unless its resolution fields are the ones recorded at
+ * the edit before. The first edit has none recorded and pays it.
  */
 describe("vitest adapter: affected() after an add on a large graph", SLOW, () => {
   it("stays under a quarter of the cold walk", async () => {
     const fx = await openFixture("basic", largeGraph());
     const [, cold] = await timed(() => fx.adapter.affected(["src/gen/m100.ts"]));
+    fx.write(MANIFEST, manifest(1));
+    await fx.adapter.invalidate([{ path: MANIFEST, kind: "change" }]);
+    const [, firstManifestEdit] = await timed(() => fx.adapter.affected([MANIFEST]));
 
     const warm: number[] = [];
     const afterAdd: number[] = [];
@@ -56,6 +70,7 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
     const afterEdit: number[] = [];
     const sourceWarm: number[] = [];
     const sourceAfterAdd: number[] = [];
+    const afterManifestEdit: number[] = [];
     for (let i = 0; i < ROUNDS; i++) {
       // A new test file: its own transform and a fresh test glob are part of the cost.
       const added = `test/gen/new${i}.test.ts`;
@@ -70,6 +85,9 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
       fx.write(added, `${testImporting(i)}// edited\n`);
       await fx.adapter.invalidate([{ path: added, kind: "change" }]);
       afterEdit.push((await timed(() => fx.adapter.affected([added])))[1]);
+      fx.write(MANIFEST, manifest(i + 2));
+      await fx.adapter.invalidate([{ path: MANIFEST, kind: "change" }]);
+      afterManifestEdit.push((await timed(() => fx.adapter.affected([MANIFEST])))[1]);
 
       // A new source file that an existing module imported before it existed.
       const missing = `src/gen/later${i}.ts`;
@@ -94,6 +112,8 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
       invalidateAdd: median(invalidateAdd),
       afterAdd: median(afterAdd),
       afterEdit: median(afterEdit),
+      firstManifestEdit,
+      afterManifestEdit: median(afterManifestEdit),
       sourceWarm: median(sourceWarm),
       sourceAfterAdd: median(sourceAfterAdd),
     };
@@ -109,5 +129,8 @@ describe("vitest adapter: affected() after an add on a large graph", SLOW, () =>
     // that margin its noise does not matter, so do not tighten it.
     expect(measured.afterAdd).toBeLessThan(measured.cold / 4);
     expect(measured.sourceAfterAdd).toBeLessThan(measured.cold / 4);
+    // Without the record every manifest edit costs `firstManifestEdit`, 0.7 to
+    // 0.9 s here: a quarter of it leaves a wide margin both ways.
+    expect(measured.afterManifestEdit).toBeLessThan(measured.firstManifestEdit / 4);
   });
 });
