@@ -34,6 +34,8 @@ Started: 2026-10-07
 
 - 2026-10-08, 002-21 (0.1.24): a Codex hook with no `agent_id` whose `transcript_path` file name does not end in `<session_id>.jsonl` is answered silently before any store is opened, in `runCodexHandler`, so every entry is covered; the recorded `/review` payloads are fixtures. 002-20: the Codex transitions flake is a product race, not the harness. `buildSnapshot`, `squeal status --wait` and Stop's wait read the revision and the known states without one read transaction, so under load a status can pair a new revision with the previous revision's states (12 of 12 with a widened window; 1 of 12 had `runnerPartPending` already false, so a harness check would not close it). Relayed to the 001 coordinator with the opt-in red test `test/e2e/torn-status.test.ts` (`SQUEAL_PROBE_TORN_STATUS=1`).
 
+- 2026-10-08, 002-19 started (approved by the human 2026-10-07): the Codex plugin 0.1.24 installed into the real `~/.codex` from the main checkout `/home/agent/projects/squeal` with `codex plugin marketplace add` and `codex plugin add squeal@squeal`, its hooks trusted with `squeal init --harness codex --trust --yes`; a Cezar Codex worker does row 003-27 as the dogfooding task. Uninstall: `codex plugin remove squeal@squeal`.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.

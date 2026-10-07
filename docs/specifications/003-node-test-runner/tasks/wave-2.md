@@ -63,3 +63,15 @@ Owns: `src/runners/node-test/**`, `src/core/daemon/node-test-runners.ts`, `src/c
 Done when: the review's three probes (preload computed import, missing `cwd` beside Vitest, two adapters over one store) are tests that fail on `faa202d` and pass; an edit of the preload's helper re-runs the file and a worktree with a different helper misses; lint, typecheck, full suite green on Node 22 and 24. Do not run `npm run build`.
 
 Use /worker.
+
+## 003-25 re-review of 003-24
+
+Outcome: `reviews/wave-2.5.md` in this spec folder: are `reviews/wave-2.md` B1, S1 and S2 closed, and did the fixes open anything.
+
+Range: the 003-24 commits on main: `b11ee2b`, `07310ab`, `5e2d00d`, `edc5d48`, `2ed5f49`, `9fc408a`, `917ba99`, and `d63887b` (0.1.24, landed at `cf0f21f`). The 002 and 001 commits around them are out of scope.
+
+Questions: (1) B1: can a preload's run-time import still escape every key (a preload of a preload, a preload under `node_modules` that loads a worktree file, two worktrees observing different helpers at once)? Does adapter version 2 re-run exactly the passes stored before preload observation? (2) S1: does any other build failure (a bad `argv`, an unreadable `tsconfig`, a symlink loop) still reject composite calls? (3) S2: is the accepted bound (re-key at the next revision) what the code does, with two real daemons on one store, and is there a case where a pass applied under a key lacking an observed path survives a local edit? (4) The new `observedPreloads` key: merge safety, an older daemon reading it, size growth. (5) Start cost and the enumeration ratio test under load.
+
+Rules: change no code; label findings proven, plausible or unverified; only a proven break blocks; probes under `/tmp`; never this repository's store, never `/home/agent/projects/cezar`. This is the second and last review round on this slice: a remaining blocker goes to the human, not to a third round.
+
+Use /reviewer.
