@@ -1,5 +1,6 @@
 import type { Dirent, Stats } from "node:fs";
 import { lstat, readdir, realpath } from "node:fs/promises";
+import { dirname } from "node:path";
 import { hasGitEntry, isMissing, mapConcurrent, toAbsolute, toRelative } from "../fs/index.js";
 import type { AbsolutePath, CandidatePath, FileStat, RelativePath } from "../types/index.js";
 import type { Exclusions } from "./exclusions.js";
@@ -141,7 +142,7 @@ export async function candidatesForReconcile(
     if (stat !== undefined) out.set(rel, stat);
   });
   const links = await topLinks(ctx.root, [...out.keys()]);
-  const linkedDirs = await observedLinks(ctx, nested, links);
+  const linkedDirs = await observedLinks(ctx, links);
   for (const link of linkedDirs.keys()) {
     for (const rel of await walkFiles(ctx, nested, link)) {
       out.set(rel, await statOrNull(ctx.root, rel));
@@ -168,22 +169,41 @@ async function topLinks(
 
 /**
  * The links among `links` observed like project directories: git ignores
- * neither the link nor a directory at its path, no `.git` entry makes the
- * target another repository, and the target is neither the root nor a
- * directory above it. Links inside a target are not followed, so no walk loops.
+ * neither the link nor a directory at its path, the target is not in another
+ * repository, and the target is neither the root nor a directory above it.
+ * Links inside a target are not followed, so no walk loops.
  */
 async function observedLinks(
   ctx: CandidateContext,
-  nested: NestedRepoProbe,
   links: ReadonlyMap<RelativePath, AbsolutePath>,
 ): Promise<Map<RelativePath, AbsolutePath>> {
   const observed = new Map<RelativePath, AbsolutePath>();
   for (const [rel, target] of links) {
-    if (ctx.root === target || ctx.root.startsWith(`${target}/`)) continue;
-    if (!(await nested.isInside(rel))) observed.set(rel, target);
+    if (holdsRoot(ctx.root, target)) continue;
+    if (!(await inOtherRepository(ctx.root, target))) observed.set(rel, target);
   }
   for (const link of await ignoredLinks(ctx.root, [...observed.keys()])) observed.delete(link);
   return observed;
+}
+
+/**
+ * True when `target`, or a directory above it that does not also hold the
+ * root, has a `.git` entry: the target belongs to a repository other than
+ * the root's, at that repository's root or below it, whether that repository
+ * is nested in this worktree or outside it. A repository enclosing both the
+ * root and the target is not another one, so an ordinary directory beside a
+ * worktree that lives inside a checkout is still observed.
+ */
+async function inOtherRepository(root: AbsolutePath, target: AbsolutePath): Promise<boolean> {
+  for (let dir = target; !holdsRoot(root, dir); dir = dirname(dir)) {
+    if (await hasGitEntry(dir)) return true;
+  }
+  return false;
+}
+
+/** True when `dir` is the root or a directory above it. */
+function holdsRoot(root: AbsolutePath, dir: AbsolutePath): boolean {
+  return root === dir || root.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
 }
 
 /** Caches "does this directory hold a `.git` entry" for one batch. */
