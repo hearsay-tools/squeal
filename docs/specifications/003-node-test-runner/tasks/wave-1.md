@@ -49,3 +49,15 @@ Owns: `src/runners/node-test/enumerate.ts`, `test/runners/node-test/enumerate.te
 Done when: enumeration of the reference and edge fixtures equals the names a run produces for literal calls, the expected names derived from a recorded event stream in the test by the D2 rule; `duplicate.test.ts` yields the four suffixed names with original lines; a loop-built name is one `templated` entry; a file with an `enum` enumerates nothing; enumeration of 200 generated test files under 200 ms; lint, typecheck, full suite green.
 
 Use /worker.
+
+## 003-15 review of wave 1
+
+Outcome: `reviews/wave-1.md` in this spec folder, with a verdict on the node:test runner parts as landed in 0.1.16 (not yet wired into the daemon; 003-16 does that).
+
+Range: the 003 commits of `68aeb58..f9b55f4` on main: `src/runners/node-test/`, `test/runners/node-test/`, `test/fixtures/node-test/streams/`, the `RunReport` comments in `src/core/types/runner.ts`, the dependency changes in `package.json`. The 002 commits in the same range are 002-14's.
+
+Questions: (1) Can a stale or incomplete closure pose as current: a resolution the graph misses that tsx makes (loader chains, `.js`/`.ts` pairs, `exports` conditions, symlinked workspaces, `tsconfig` `extends`), a structural change `invalidate` treats as a plain edit, observed paths dropped or preloads leaking into a test's closure? (2) Can a run report a pass it did not see: completion without a drained stream, a deadline that leaves a group alive, a file-level error read as a pass, a parent with `subtestsFailed` hiding a real failure of its own, duplicate suffixes that differ between enumeration and a run? (3) Does everything bundle and run from a plugin install with no `node_modules` (graph, enumeration, the runtime `.mjs` from `dist/node-test/`)? (4) Anything 003-16 must know before wiring: the `ExperimentalWarning` of `stripTypeScriptTypes`, the cost bounds under load, the API shapes.
+
+Rules: change no code; label every finding proven, plausible or unverified, and only a proven break blocks; probes under `/tmp`, never this repository's store.
+
+Use /reviewer.

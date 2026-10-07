@@ -37,3 +37,15 @@ Owns: `plugins/codex/` except `dist/` and `skills/`, `.agents/plugins/marketplac
 Done when: a test reads `hooks.json` and asserts exactly the nine entries, the timeouts, one-string commands, and that its handler hashes equal a pinned table (a changed declaration fails it with a message that users must trust again); the hash port reproduces the recorded `currentHash` values of `logs/q3-trust.txt`; the fast-path command run under `bash -c` exits 0 with no output in 10 ms p95 outside a Squeal repository and reaches `node` inside one (a subdirectory and a linked worktree included); `--print-launcher-config` output parses as Codex `thread/start` `config`; init touches nothing under a scratch `HOME/.codex`; the status line appears only with `CODEX_SESSION_ID` set and no consumer; `check:version` fails a `plugins/codex` change without a raise; lint, typecheck, full suite green. Do not run `npm run build`.
 
 Use /worker.
+
+## 002-14 review of wave 1
+
+Outcome: `reviews/wave-1.md` in this spec folder, with a verdict on the Codex adapter as landed in 0.1.16.
+
+Range: the 002 commits of `68aeb58..f9b55f4` on main: everything under `src/harness/`, `src/cli/`, `plugins/codex/`, `.agents/plugins/`, `scripts/check-version-bump.ts`, `test/harness/`, `test/cli/`, `test/plugins/`, `test/fixtures/codex-hooks/`. The 003 commits in the same range are 003-15's.
+
+Questions: (1) Can a Codex hook block or speak falsely: `stop_hook_active`, Interrupt, a subagent's events reaching the parent's consumer, the fast path firing outside a Squeal repository or missing one, a `CLAUDE_*` value inherited from a launching Claude Code session? (2) Is the shared build behaviour-neutral for the Claude Code plugin apart from the `createRequire` banner? (3) Does the install path respect trust: does `init --harness codex` write anything under `~/.codex`, does the hash pin catch every declaration change, does `--print-launcher-config` produce config Codex 0.160.1 accepts and trusts? (4) Should SubagentStart inject the header and primer, and does Codex accept `additionalContext` there (probe it in a scratch `CODEX_HOME`)? (5) The bundled Codex hook p95 at load under 4, or "not measured" with the load seen.
+
+Rules: change no code; label every finding proven, plausible or unverified, and only a proven break blocks; probes under `/tmp` with a scratch `CODEX_HOME`, never this repository's store, never `~/.codex/auth.json` or `~/.codex/config.toml`.
+
+Use /reviewer.
