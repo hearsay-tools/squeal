@@ -20,6 +20,7 @@ import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { projectEnvironment } from "./environment.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
+import { closurePackages, environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
 import {
   findProject,
@@ -190,7 +191,8 @@ export class VitestAdapter implements RunnerAdapter {
         .map((f) => this.paths.toRelative(f))
         .filter((p): p is RelativePath => p !== null)
         .sort();
-      return { testFile, paths };
+      // Task 001-105: the installed packages the closure imports, for the key.
+      return { testFile, paths, packages: closurePackages(graph, this.paths) };
     });
   }
 
@@ -219,7 +221,11 @@ export class VitestAdapter implements RunnerAdapter {
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
-        envs.push(projectEnvironment(project, await projectInputs(vitest, project), context));
+        const inputs = await projectInputs(vitest, project);
+        envs.push({
+          ...projectEnvironment(project, inputs, context),
+          packages: await environmentPackages(project, inputs, this.paths),
+        });
       }
       return envs.sort((a, b) => compare(a.project, b.project));
     });

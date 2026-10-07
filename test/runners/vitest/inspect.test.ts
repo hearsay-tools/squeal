@@ -20,6 +20,8 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
         "test/__snapshots__/math.test.ts.snap",
         "test/math.test.ts",
       ],
+      // Task 001-105: `vitest` resolves from the repository, outside this worktree's install.
+      packages: { imports: [], builtins: [] },
     });
     expect((await fx.adapter.closure(ref("test/strings.test.ts"))).paths).toEqual([
       "src/strings.ts",
