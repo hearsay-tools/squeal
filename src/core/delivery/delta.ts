@@ -82,9 +82,9 @@ export function isBaselineEntry(e: DeltaEntry): boolean {
   return e.kind !== "fail-retired" && e.baseline === true;
 }
 
-/** The part of a plan about entries of `kinds`: their view writes and removals, nothing else. */
-export function restrictPlan(plan: DeltaPlan, kinds: ReadonlySet<DeltaKind>): DeltaPlan {
-  const entries = plan.entries.filter((e) => kinds.has(e.kind));
+/** The part of a plan about the entries `keep` accepts: their view writes and removals, nothing else. */
+export function restrictPlan(plan: DeltaPlan, keep: (entry: DeltaEntry) => boolean): DeltaPlan {
+  const entries = plan.entries.filter(keep);
   const ids = new Set(entries.map((e) => checkIdentity(e.check)));
   return {
     entries,

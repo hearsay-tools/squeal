@@ -230,7 +230,9 @@ describe("Stop and SubagentStop", () => {
     const out = await runHook("stop", recorded("stop", r.root), deps());
     const text = (json(out) as { hookSpecificOutput: { additionalContext: string } })
       .hookSpecificOutput.additionalContext;
-    expect(text).toMatch(/^SQUEAL · 1 check changed at revision 2\nRevision 2: /);
+    expect(text).toMatch(
+      /^SQUEAL · 1 check changed at revision 2\nRevision 2 \(changed src\/math\.ts\): /,
+    );
     expect(text).toContain("PASS -> FAIL");
     expect(text).toMatch(/\nKnown failures: 1$/);
   });
@@ -248,7 +250,7 @@ describe("Stop and SubagentStop", () => {
       reason:
         "Squeal policy stop.blockOnKnownFailures is on and 1 known failure exists at revision 1: src/math.test.ts > math > subtracts.\n\n" +
         "SQUEAL · status at revision 1\n" +
-        "Revision 1: 2 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\n" +
+        "Revision 1 (changed src/math.ts): 2 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\n" +
         "Known failures: 1",
     });
   });

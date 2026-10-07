@@ -11,6 +11,7 @@ import {
   type ResultRecord,
   type StateSink,
   type Store,
+  type TestFileRef,
   type TransitionKind,
 } from "../../src/core/types/index.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
@@ -396,6 +397,7 @@ describe("register", () => {
       refinedRevision: null,
       runnerPartPending: false,
       daemon: { state: "down", since: null },
+      changedPaths: ["src/a.ts"],
     });
   });
 
@@ -411,6 +413,7 @@ describe("register", () => {
       refinedRevision: null,
       runnerPartPending: false,
       daemon: { state: "down", since: null },
+      changedPaths: [],
     });
     expect(knownFailures).toEqual([]);
   });
@@ -521,13 +524,62 @@ describe("baseline findings", () => {
 });
 
 describe("waitForDelta", () => {
-  it("resolves with the first non-empty delta", async () => {
+  const SECOND: TestFileRef = { project: "", path: "src/b.test.ts" };
+  const C = check("c", SECOND);
+
+  /** Registered, then idle: `FILE`'s re-run was queued when the turn ended. */
+  async function idle() {
     await delivery.register(C1);
+    setKey(store, "k1", { pending: "queued" });
+    await delivery.endTurn(C1);
+  }
+
+  it("resolves with the first delta about a test file pending when the turn ended", async () => {
+    await idle();
     const waiting = delivery.waitForDelta(C1, { timeoutMs: 5_000 });
     setTimeout(() => apply(fail()), 30);
     const delta = await waiting;
     expect(delta?.entries.map((e) => e.kind)).toEqual(["first-seen-fail"]);
     expect(await delivery.onToolBoundary(C1)).toBeNull();
+  });
+
+  it("starts a turn when it delivers, so it says nothing more until the next one ends", async () => {
+    await idle();
+    apply(fail());
+    expect(await delivery.waitForDelta(C1, { timeoutMs: 40 })).not.toBeNull();
+    apply(pass());
+    expect(await delivery.waitForDelta(C1, { timeoutMs: 40 })).toBeNull();
+    expect(await kindsFor(C1)).toEqual(["fail-to-pass"]);
+  });
+
+  it("says nothing in a turn; the turn's start delivers instead", async () => {
+    await idle();
+    expect(await delivery.startTurn(C1)).toBeNull();
+    apply(fail());
+    expect(await delivery.waitForDelta(C1, { timeoutMs: 40 })).toBeNull();
+    expect((await delivery.startTurn(C1))?.entries.map((e) => e.kind)).toEqual(["first-seen-fail"]);
+  });
+
+  it("delivers only the test files it waited for and leaves the rest", async () => {
+    await idle();
+    apply(result(C, "fail", { key: "k2" }), fail());
+    const delta = await delivery.waitForDelta(C1, { timeoutMs: 40 });
+    expect(delta?.entries.map((e) => e.check)).toEqual([A]);
+    expect((await delivery.startTurn(C1))?.entries.map((e) => e.check)).toEqual([C]);
+  });
+
+  it("waits for a difference not yet delivered when the turn ended", async () => {
+    await delivery.register(C1);
+    apply(fail());
+    await delivery.endTurn(C1);
+    expect((await delivery.waitForDelta(C1, { timeoutMs: 40 }))?.entries).toHaveLength(1);
+  });
+
+  it("waits for nothing after registration", async () => {
+    await delivery.register(C1);
+    setKey(store, "k1", { pending: "queued" });
+    apply(fail());
+    expect(await delivery.waitForDelta(C1, { timeoutMs: 40 })).toBeNull();
   });
 
   it("resolves null on timeout", async () => {

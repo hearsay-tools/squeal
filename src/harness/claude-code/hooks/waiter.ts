@@ -39,7 +39,11 @@ export function isInteractive(env: HookDeps["env"]): boolean {
  * UserPromptSubmit (D9; lessons, defect 10: an interrupted turn runs no
  * Stop): one per consumer, held by a lock; it blocks until the consumer's
  * delta is non-empty, then exits 2 with the delta on stderr, which wakes an
- * idle agent. Timeout, a lost lock race, an unregistered consumer or `-p`
+ * idle agent. Task 001-85 (lessons, defect 14): the delta it waits for is
+ * the idle one (`HarnessDelivery.waitForDelta`), so it prints only while the
+ * consumer is idle and only for the test files pending when the turn ended;
+ * a message it wrote mid-turn would land after PostToolBatch's newer one.
+ * Timeout, a lost lock race, an unregistered consumer or `-p`
  * mode exit 0 silently. Main agents only: a subagent that stopped cannot be
  * woken, and a wake would land in its parent's context.
  *

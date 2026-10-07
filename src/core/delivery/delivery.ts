@@ -6,7 +6,7 @@ import {
   type Consumer,
   type ConsumerRecord,
   type Delta,
-  type DeltaKind,
+  type DeltaEntry,
   type EpochMs,
   type HarnessDelivery,
   type KnownState,
@@ -18,6 +18,7 @@ import {
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { readLiveHeader, tellLiveness, toldLiveness, worktreeLiveness } from "./liveness.js";
+import { endTurn, readTurn, startTurn, waitedFor, writeTurn } from "./turn.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -30,6 +31,13 @@ export interface DeliveryOptions {
 
 /** A store read costs well under a millisecond; four reads a second keep an idle wake-up prompt. */
 export const DEFAULT_POLL_INTERVAL_MS = 250;
+
+interface DeliverOptions {
+  readonly heardFrom: boolean;
+  readonly keep?: ((entry: DeltaEntry) => boolean) | null;
+  readonly liveness?: boolean;
+  readonly idle?: boolean;
+}
 
 const isEmpty = (plan: DeltaPlan) =>
   plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
@@ -51,7 +59,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     consumer: Consumer,
     states: readonly KnownState[],
     toldAt: EpochMs,
-    kinds: ReadonlySet<DeltaKind> | null,
+    keep: ((entry: DeltaEntry) => boolean) | null,
   ): DeltaPlan {
     const full = planDelta({
       view: store.views.list(consumer),
@@ -62,7 +70,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
       history: (check) => store.transitions.history(consumer.worktreeId, check),
     });
-    return kinds === null ? full : restrictPlan(full, kinds);
+    return keep === null ? full : restrictPlan(full, keep);
   }
 
   /** The daemon's liveness when it differs from what `consumer` was told, else `null`. */
@@ -74,30 +82,39 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   /**
    * Reads the delta, writes the view and returns the delta, in one
    * transaction. `heardFrom` records the consumer as seen even when nothing
-   * is delivered; a waiter's empty polls do not count. `kinds` limits the
-   * delivery to entries of those kinds (`peek`). `liveness` includes a
+   * is delivered; a waiter's empty polls do not count. `keep` limits the
+   * delivery to the entries it accepts (`peek`). `liveness` includes a
    * change of daemon liveness: tool boundaries only, since a peek is for
    * regressions and waking an idle agent to say the daemon stopped helps no
-   * one (review wave 3, S2).
+   * one (review wave 3, S2). `idle` is the waiter's (task 001-85): nothing
+   * unless the consumer is idle, only entries it waited for, and a delivery
+   * starts a turn, since it wakes the agent.
    */
   function deliver(
     consumer: Consumer,
-    heardFrom: boolean,
-    kinds: ReadonlySet<DeltaKind> | null = null,
-    liveness = false,
+    { heardFrom, keep = null, liveness = false, idle = false }: DeliverOptions,
   ): Delta | null {
+    const select = (): ((entry: DeltaEntry) => boolean) | null | "silent" => {
+      if (!idle) return keep;
+      const turn = readTurn(store, consumer);
+      return turn.turn === "idle" ? (entry) => waitedFor(turn, entry) : "silent";
+    };
     if (!heardFrom) {
       // Read-only first: an idle waiter takes no write lock until there is something to write.
       if (store.consumers.get(consumer) === null) return null;
+      const only = select();
+      if (only === "silent") return null;
       const states = store.knownStates.list(consumer.worktreeId);
       const quiet = !liveness || livenessChange(consumer, now()) === null;
-      if (quiet && isEmpty(plan(consumer, states, now(), kinds))) return null;
+      if (quiet && isEmpty(plan(consumer, states, now(), only))) return null;
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
+      const only = select();
+      if (only === "silent") return null;
       const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
-      const delta = plan(consumer, states, at, kinds);
+      const delta = plan(consumer, states, at, only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness ? livenessChange(consumer, at) : null;
@@ -105,6 +122,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const delivered = delta.entries.length > 0 || changed !== null;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) return null;
+      if (idle) startTurn(store, consumer);
       const label =
         delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
           ? "baseline"
@@ -132,6 +150,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         );
         const header = readLiveHeader(store, consumer.worktreeId, at, states);
         tellLiveness(store, consumer, header.daemon?.state ?? null);
+        writeTurn(store, consumer, null);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
@@ -144,18 +163,37 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.transaction(() => {
         store.consumers.unregister(consumer);
         tellLiveness(store, consumer, null);
+        writeTurn(store, consumer, null);
       });
     },
 
-    onToolBoundary: async (consumer) => deliver(consumer, true, null, true),
+    onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
 
-    peek: async (consumer, { kinds }) => deliver(consumer, true, new Set(kinds)),
+    peek: async (consumer, { kinds }) => {
+      const only = new Set(kinds);
+      return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
+    },
+
+    startTurn: async (consumer) =>
+      store.transaction(() => {
+        const delta = deliver(consumer, { heardFrom: true, liveness: true });
+        if (store.consumers.get(consumer) !== null) startTurn(store, consumer);
+        return delta;
+      }),
+
+    endTurn: async (consumer) => {
+      store.transaction(() => {
+        if (store.consumers.get(consumer) === null) return;
+        const states = store.knownStates.list(consumer.worktreeId);
+        endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
+      });
+    },
 
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
       for (;;) {
         if (signal?.aborted) return null;
-        const delta = deliver(consumer, false);
+        const delta = deliver(consumer, { heardFrom: false, idle: true });
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
@@ -213,6 +251,7 @@ export function expireConsumers(
       if (record === null || !idle(record, cutoff)) return false;
       store.consumers.unregister(consumer);
       tellLiveness(store, consumer, null);
+      writeTurn(store, consumer, null);
       return true;
     });
     if (!gone) continue;

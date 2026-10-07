@@ -49,6 +49,17 @@ function at(location: SourceLocation): string {
 const NOT_LISTED_SENTENCE =
   "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 
+/** Paths a header names before the rest is counted (task 001-85). */
+export const CHANGED_PATHS_SHOWN = 3;
+
+/** `(changed a, b, c and N more)` after the revision number; nothing without a change set. */
+function changedText(paths: readonly string[] | undefined): string {
+  if (paths === undefined || paths.length === 0) return "";
+  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).join(", ");
+  const more = paths.length - CHANGED_PATHS_SHOWN;
+  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
+}
+
 function headerLine(header: StatusHeader): string {
   const { revision, counts, testFilesWithoutChecks: files } = header;
   const inherited =
@@ -65,7 +76,7 @@ function headerLine(header: StatusHeader): string {
       ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.`
       : "";
   return (
-    `Revision ${revision}: ${counts.current} current, ${counts.pending} pending, ` +
+    `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ` +
     `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header)}.` +
     livenessSentence(header.daemon, revision)

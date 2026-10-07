@@ -77,7 +77,7 @@ describe("liveness in delivered text", () => {
 
     expect(context(first)).toBe(
       "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1: 1 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision. " +
+        "Revision 1 (changed src/math.ts): 1 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision. " +
         "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.",
     );
     expect(second.stdout).toBe("");

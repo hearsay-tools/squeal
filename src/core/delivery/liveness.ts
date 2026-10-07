@@ -38,16 +38,22 @@ export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs):
   return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
 
-/** The shared header (D6) with the worktree's daemon liveness. */
+/**
+ * The shared header (D6) with the worktree's daemon liveness and the paths
+ * its revision changed (task 001-85), which every delivered message names.
+ */
 export function readLiveHeader(
   store: Store,
   worktreeId: WorktreeId,
   now: EpochMs,
   states?: readonly KnownState[],
 ): StatusHeader {
+  const header = readHeader(store, worktreeId, states);
+  const revision = header.revision === 0 ? null : store.revisions.get(worktreeId, header.revision);
   return {
-    ...readHeader(store, worktreeId, states),
+    ...header,
     daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
+    changedPaths: revision?.changes.map((c) => c.path) ?? [],
   };
 }
 
