@@ -1,4 +1,5 @@
 import { formatCheck, fullSuiteText, runnerPartText } from "../state/index.js";
+import { plural } from "../text.js";
 import type {
   CommitSha,
   EpochMs,
@@ -35,7 +36,7 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
     "",
     worktreeLine(result),
     daemonLine(result, now),
-    `Inherited: ${result.inherited.count} current ${plural(result.inherited.count, "result")}`,
+    `Inherited: ${plural(result.inherited.count, "current result")}`,
     ...result.inherited.sources.map(
       (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`,
     ),
@@ -116,10 +117,6 @@ function daemonLine(s: StatusSnapshot, now: EpochMs): string {
 
 export function shortCommit(commit: CommitSha): string {
   return commit === null ? "no commit" : commit.slice(0, 7);
-}
-
-export function plural(count: number, word: string): string {
-  return count === 1 ? word : `${word}s`;
 }
 
 function age(ms: number): string {
