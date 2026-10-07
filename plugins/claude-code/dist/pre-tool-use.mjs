@@ -1,3 +1,6 @@
+import { createRequire as __squealCreateRequire } from "node:module";
+const require = __squealCreateRequire(import.meta.url);
+
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync2 } from "node:fs";
 import { join as join2 } from "node:path";

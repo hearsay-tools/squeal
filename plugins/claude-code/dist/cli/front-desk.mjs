@@ -1,3 +1,6 @@
+import { createRequire as __squealCreateRequire } from "node:module";
+const require = __squealCreateRequire(import.meta.url);
+
 // src/core/daemon/front-desk.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { parentPort } from "node:worker_threads";

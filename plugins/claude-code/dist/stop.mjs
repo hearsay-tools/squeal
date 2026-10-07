@@ -1,3 +1,6 @@
+import { createRequire as __squealCreateRequire } from "node:module";
+const require = __squealCreateRequire(import.meta.url);
+
 // src/harness/shared/stop.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 

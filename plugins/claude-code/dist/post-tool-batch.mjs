@@ -1,3 +1,6 @@
+import { createRequire as __squealCreateRequire } from "node:module";
+const require = __squealCreateRequire(import.meta.url);
+
 // src/core/fs/errors.ts
 function isMissing(error) {
   const code = error?.code;
