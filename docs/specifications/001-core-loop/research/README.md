@@ -60,3 +60,14 @@ Squeal runs one daemon per worktree. All daemons of one repository read and writ
 4. Shared store format and concurrency: several daemons and many short-lived hook scripts read and write concurrently. Compare SQLite (node:sqlite in Node 22+, better-sqlite3) against JSON files with atomic rename and a lock file. Consider crash safety, read latency for hook scripts that must respond in under 100 ms, and schema migration.
 5. Daemon lifecycle: how should a hook script start a detached daemon if none is running, discover a running one, and avoid starting two? pid files, unix sockets, lock files, stale detection after a crash or machine sleep. How does the daemon learn that its worktree was removed?
 6. How should hook scripts talk to the daemon: read files only, unix socket, or local HTTP? Weigh dependency-free scripts, latency and failure isolation.
+
+## Topic: pull-advances-push
+
+Added 2026-10-07 after a dogfooding report: a Stop or PostToolBatch report sometimes repeats news the agent already read through `squeal status --wait`, because a pull never touches the consumer's delivery view (D6, D7, D9: "push transitions, pull state"). Question: can a pull inside a session advance that session's view without ever losing a transition, and if not, what else avoids the repeat?
+
+1. What a Bash tool subprocess can see of its Claude Code session and agent identity (environment variables, inherited file descriptors, parent process, anything Squeal's hooks could record for it), at Claude Code 2.1.292, in an interactive session (tmux), in `-p` mode, and inside a subagent (`Task` / `claude --agent`). Verify by experiment on a scratch repository, never this repository's store. Record exact variable names and values seen.
+2. If 1 gives a reliable identity: can `status --wait` advance the consumer's view without losing a transition? Name the race (a transition recorded between the read and the advance, two pulls racing a push, a subagent pulling for the main agent) and what a store transaction in `src/core/delivery/` would need. Read the code; probe if cheap.
+3. If 1 does not: the fallback. For example a hook-side rule that drops from a push the transitions already printed by a pull, keyed by something both sides can see. Compare at most two options by cost and by what could be lost.
+4. What Codex, Pi and OpenCode expose to a tool subprocess for the same purpose, docs only, one line each, so the design is not Claude-only.
+
+Recommendation: feasible or not; the design; the D6, D7, D9 sentences it would change; and what a board row's done-when would be.
