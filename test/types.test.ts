@@ -10,6 +10,7 @@ describe("core types", () => {
       inputs: [],
       env: { allowlist: [] },
       runner: { tierSize: 4, timeoutMs: 600_000 },
+      nodeTest: [],
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null },
     });
