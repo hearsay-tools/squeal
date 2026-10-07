@@ -1,0 +1,15 @@
+{
+  "session_id": "01a11739-028d-7db0-a6da-628fd8a3aac0",
+  "turn_id": "01a11739-036e-7ad1-8b98-8232274372ce",
+  "transcript_path": "/home/agent/.codex/sessions/2026/10/07/rollout-2026-10-07T18-36-14-01a11739-028d-7db0-a6da-628fd8a3aac0.jsonl",
+  "cwd": "/tmp/cxh/q5b",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cat /home/agent/.codex/plugins/cache/apptension-dev/superpowers/6.4.2/skills/using-superpowers/SKILL.md"
+  },
+  "tool_response": "---\nname: using-superpowers\ndescription: Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions\n---\n",
+  "tool_use_id": "exec-653d8877-781b-431a-8a90-5c748f1b2f96"
+}

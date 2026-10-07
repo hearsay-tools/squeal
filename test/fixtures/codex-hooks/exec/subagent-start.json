@@ -1,0 +1,11 @@
+{
+  "session_id": "01a11729-e175-7433-b300-3637cf90f1c7",
+  "turn_id": "01a1172a-294a-76a0-a8f1-d8fa6f5d78d8",
+  "transcript_path": "/home/agent/.codex/sessions/2026/10/07/rollout-2026-10-07T18-20-01-01a1172a-28d5-7522-91ff-2c4a65f25950.jsonl",
+  "cwd": "/tmp/cxh/q2",
+  "hook_event_name": "SubagentStart",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "agent_id": "01a1172a-28d5-7522-91ff-2c4a65f25950",
+  "agent_type": "default"
+}

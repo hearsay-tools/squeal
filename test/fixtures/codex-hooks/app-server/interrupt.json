@@ -1,0 +1,9 @@
+{
+  "session_id": "01a11739-028d-7db0-a6da-628fd8a3aac0",
+  "turn_id": "01a11739-036e-7ad1-8b98-8232274372ce",
+  "transcript_path": "/home/agent/.codex/sessions/2026/10/07/rollout-2026-10-07T18-36-14-01a11739-028d-7db0-a6da-628fd8a3aac0.jsonl",
+  "cwd": "/tmp/cxh/q5b",
+  "hook_event_name": "Interrupt",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions"
+}

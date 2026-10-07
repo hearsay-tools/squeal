@@ -1,0 +1,14 @@
+{
+  "session_id": "01a11729-e175-7433-b300-3637cf90f1c7",
+  "turn_id": "01a11729-e27e-7f11-bea6-077060299e4a",
+  "transcript_path": "/home/agent/.codex/sessions/2026/10/07/rollout-2026-10-07T18-19-43-01a11729-e175-7433-b300-3637cf90f1c7.jsonl",
+  "cwd": "/tmp/cxh/q2",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "apply_patch",
+  "tool_input": {
+    "command": "*** Begin Patch\n*** Update File: /tmp/cxh/q2/a.js\n@@\n export const add = (a, b) => a + b;\n+// probe\n*** End Patch"
+  },
+  "tool_use_id": "exec-304d3a4e-18ca-489e-bab7-cc14525e46cb"
+}

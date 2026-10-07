@@ -1,0 +1,9 @@
+{
+  "session_id": "01a1172b-2864-7cf0-b3cd-dc43cc8c7873",
+  "transcript_path": "/home/agent/.codex/sessions/2026/10/07/rollout-2026-10-07T18-21-07-01a1172b-2864-7cf0-b3cd-dc43cc8c7873.jsonl",
+  "cwd": "/tmp/csw/r1",
+  "hook_event_name": "SessionStart",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "source": "fork"
+}
