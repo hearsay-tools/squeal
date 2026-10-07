@@ -160,6 +160,6 @@ describe("expireConsumers and the registration revision (task 001-94, N4)", () =
     append(); // revision 2, while it was gone
     clock = NOW;
     await delivery.register(gone);
-    expect(registration(store, gone)).toEqual({ since: 0, gaps: [[1, 2]] });
+    expect(registration(store, gone)).toEqual({ since: 0, gaps: [[1, 2]], scanned: 1 });
   });
 });

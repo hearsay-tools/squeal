@@ -27,7 +27,7 @@ import {
   toldRevision,
   worktreeLiveness,
 } from "./liveness.js";
-import { bootstrapped, park, tellRegistered } from "./registered.js";
+import { park, scannedDaemon, tellRegistered } from "./registered.js";
 import {
   currentKeys,
   endTurn,
@@ -208,7 +208,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           const alive = header.daemon?.state === "alive";
           tellRegistered(store, consumer, header.revision, {
             at,
-            bootstrapped: bootstrapped(store, consumer.worktreeId, alive),
+            scanned: scannedDaemon(store, consumer.worktreeId, alive),
           });
         }
         if (inTurn) startTurn(store, consumer);

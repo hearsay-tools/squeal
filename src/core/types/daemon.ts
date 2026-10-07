@@ -159,11 +159,11 @@ export interface DaemonExit {
 
 /**
  * `meta` key of a worktree's bootstrap marker: the `DaemonRecord.startedAt`
- * of the daemon that finished its start scan (`bootstrap`). Changes made
- * while no daemon ran become that scan's `start` revision, so a consumer
- * registered before it would count them as its own (task 001-94, review
- * wave 10b B2); delivery records a registration revision only once the
- * marker matches the live daemon.
+ * of the daemon that finished its start scan (`bootstrap`). The scan hashes
+ * files it has no hash for without a revision, so an edit made before it
+ * can be in no revision; a consumer registered while the marker matches the
+ * live daemon may be told "none of your changes" while that daemon lives
+ * (task 001-96, review wave 10c). No hook waits for it.
  */
 export function bootstrappedMetaKey(worktreeId: WorktreeId): string {
   return `daemon-bootstrapped:${worktreeId}`;

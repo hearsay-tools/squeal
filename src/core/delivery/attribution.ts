@@ -13,7 +13,7 @@ import type {
   TransitionEntry,
   WorktreeId,
 } from "../types/index.js";
-import { changedAfter, registration } from "./registered.js";
+import { changedAfter, registration, seesEveryChange } from "./registered.js";
 
 /*
  * Task 001-91, lessons defect 16: whether the agent's changes reach a failure
@@ -74,7 +74,10 @@ function closureFor(store: Store, worktreeId: WorktreeId) {
  * Each failure with the closure paths changed since `consumer` registered
  * (`TransitionEntry.changesInClosure`) and a timeout's load. The closure is
  * this worktree's (`closureFor`); an inherited result is read against this
- * worktree's changes, the ones the agent made.
+ * worktree's changes, the ones the agent made. A closure that holds a path a
+ * `start` revision changed gets neither line: those changes may or may not
+ * be the agent's (`changedAfter`, task 001-96). "None of your changes" also
+ * needs `seesEveryChange`.
  */
 export function attribute(
   store: Store,
@@ -85,17 +88,21 @@ export function attribute(
   if (!entries.some((e) => e.to === "fail")) return entries;
   const from = registration(store, consumer);
   const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
+  const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
   const closureOf = closureFor(store, consumer.worktreeId);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const { project, testPath } = entry.check;
     const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
-      changed === null || closure === undefined ? undefined : closure.filter((p) => changed.has(p));
+      changed === null || closure === undefined || closure.some((p) => changed.unknown.has(p))
+        ? undefined
+        : closure.filter((p) => changed.changed.has(p));
+    const told = touched?.length === 0 && !sure ? undefined : touched;
     const load = loadOf(store, consumer.worktreeId, entry);
     return {
       ...entry,
-      ...(touched === undefined ? {} : { changesInClosure: touched }),
+      ...(told === undefined ? {} : { changesInClosure: told }),
       ...(load === undefined ? {} : { loadAverage: load }),
     };
   });
