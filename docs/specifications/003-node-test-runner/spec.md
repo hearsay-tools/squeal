@@ -1,0 +1,105 @@
+# 003 node:test runner
+
+Stage and amendments: `status.md`. Research: `research/node-test-runner-api.md`, `research/node-test-module-graph.md` (Node 22.23.3 and 24.21.0, tsx 4.21 to 4.23, Linux). Spec 001 is the reference: its D3 (fingerprints and keys), D5 (scheduler and validity), D6 (state and delivery), D11 (policy) and D12 (errors) hold unless a section here says otherwise. The runner implements `RunnerAdapter` from `src/core/types/runner.ts`.
+
+## Problem
+
+Squeal's only runner is Vitest, and a project without it is a runner-failure state. The human's projects keep their unit and e2e suites in Node's built-in test runner behind npm scripts (cezarion: `node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/*.test.ts`, and the same over `test/e2e/*.test.ts`), so Squeal sees none of them. node:test gives Squeal nothing Vitest gave it: no module graph, no transform cache, no warm instance, no collection-only mode, and a `run()` API bound to the daemon's own Node. The promise still holds, by the human's decision: only the test files whose inputs changed run, and only the delta reaches the agent.
+
+## Goals
+
+Each goal is testable, on Node 22 and Node 24, on a fixture shaped like the reference project: `*.test.ts` files under `packages/<name>`, run through `node --import <preload> --import tsx --test`.
+
+1. An agent editing a module imported by two of two hundred test files gets a `PASS -> FAIL` for those two within one tool call of the result, and the other files run only if their closure holds a changed path.
+2. Check keys are computed from files alone, before any run: a second worktree inherits every result whose closure hashes match, with zero runs (001 goal 4).
+3. Check identity `(project, relative test path, full name from nesting)` is stable across runs and worktrees; duplicate names in one file are suffixed by their original source line.
+4. A syntax error or a failing import in a test file is a `fail` of the file-level check plus every check previously known in it (001 D4), with the error text from the file's stderr, never a pass; a test that never ends is ended by Squeal's deadline, with the file's checks `unknown` and the completed files kept (001 D12).
+5. Every run checks the static closure against the files the test actually loaded: an observed path outside the static closure makes the result incomplete, is stored with its hash, blocks inheritance when its content differs, and schedules the file when it changes.
+6. Graph work stays small: a cold build of all closures under 100 ms at 1,000 modules, a full re-resolve after an add, delete, `package.json` or `tsconfig.json` change no slower than the cold build, a plain edit under five percent of it. The run's floor is the project's Node plus tsx start, about 0.6 to 0.9 s per file on the research host, not Squeal's work.
+7. Tests run under the project's own Node, loader chain, preloads, cwd and environment; the daemon never imports project code in-process.
+8. Hooks, `squeal status`, `squeal why` and the reports work unchanged for node:test checks, and a repository with both a Vitest suite and node:test suites validates both in one daemon and one store.
+
+## Non-goals
+
+- When slow suites run. This spec makes e2e files runnable and keyed; a check class that runs at checkpoints is spec 004.
+- Running an npm script. The adapter never executes `npm run`; `squeal init` reads a narrowly recognized `node ... --test ...` script to seed configuration and otherwise prints a template.
+- `isolation: 'none'` and in-process `run()`. A long-lived process re-runs an edited module from its cache and emits a placeholder pass (research, runner-api 5), and `run()` cannot select the project's Node (2).
+- Exact static enumeration of dynamic test names. Before a first run, a file's checks are its literal declarations; after it, the observed names stand, as 001 does for `test.each`.
+- Snapshot updates, coverage, `--test-only` and `--test-name-pattern`: whole files run, with Node's defaults for `only`, `skip` and `todo`.
+- Node pin discovery from `.nvmrc`, `engines` or Volta. One configured executable per project.
+- Windows and macOS, including process-tree termination there.
+
+## Design
+
+### D1. Configuration and projects
+
+`squeal.config.json` gains `nodeTest`, a list of projects, each with `name`, `cwd` (relative to the worktree root, default the root), `node` (an executable path or name, default the `node` on the daemon's PATH), `argv` (the flags before `--test`, in order, such as `--import ../../scripts/test-git-env.mjs --import tsx`), `env` (variables merged over the daemon's environment, never replacing it), `include` (test-file globs relative to `cwd`) and optional `exclude`. The 001 policy loader rules apply: a bad entry is a problem note with that project skipped, never a crash. `squeal init` seeds entries from `package.json` scripts of the exact form `node [flags...] --test <globs...>`, one entry per script, named after the script; any other form prints a template and a note. A project is `(runner "node-test", name)`; a repository may hold Vitest projects beside them.
+
+The environment hash of a node:test project (001 D3): Squeal and adapter versions; the resolved executable's `node --version` and its path; platform and arch; `argv` and `env`; the closure of every `--import` and `--require` preload, resolved from `cwd` through D3's graph, as 001 treats `setupFiles`; the installed-dependency fingerprint; `env.allowlist`. A missing executable is a runner failure state: every check of the project `unknown`, one note.
+
+### D2. Test files and identity
+
+`testFiles()` expands `include` minus `exclude` under `cwd` with Squeal's own matcher. A full name joins suite names and the test name with ` > `, built from `nesting` and declaration order on Node 22 and from `parentId` on Node 24; `test:pass` carries `skip` and `todo` directives, which map to the `skip` outcome. Squeal adds `--enable-source-maps` to every run so `line` and `column` are original TypeScript positions (research, runner-api 3); when two tests in one file share a full name, the second and later carry that line as a suffix (001 D4). Runtime `testId`, `testNumber` and ordinals are never keys.
+
+### D3. Closure and keys
+
+A graph builder under `src/runners/node-test/graph/` parses every project file in the worktree that the resolver reaches: es-module-lexer for `import`, `export ... from` and literal `import()`, dropping `typeOnly` records, plus a scan for literal `require(...)`. Specifiers resolve with oxc-resolver configured from the project's loader chain: with `--import tsx` or `tsx/esm` in `argv`, `extensionAlias` `.js -> .ts, .tsx, .js` (and the `.mjs`, `.cjs` twins), extensionless and directory `index` lookup, `tsconfig: "auto"`, conditions `node` and `import` (`require` for require edges), symlinks to real paths; without tsx, Node's own rules, explicit extensions only, with `.ts` allowed under `--experimental-strip-types`; an unrecognized loader uses Node's rules with one note. Research found this configuration equal to the observed closure for 200 of 201 test files, the last behind a computed `import(p)`, at 47 ms cold for 903 modules (module-graph 1).
+
+The closure of a test file is: the file; its transitive static closure within the worktree, with `node_modules` excluded and a symlinked workspace package resolved to its real path inside the worktree; for every unresolved specifier, its resolution candidates (001 D3); for every template-literal `import()`, the files its glob matches; every `package.json` and `tsconfig.json` a resolution read; and the policy `inputs` that match. A non-literal `import()` marks the closure `complete: false` with the specifier's location as the reason, before any run. `fs` reads and child processes are not modelled; they are declared `inputs`. The key is 001 D3's: `sha256(envHash, project, relative path, sorted (path, hash) over the closure)`. The closure of a preload goes to the environment hash, separated from the tests' closures by reachability.
+
+A result stores, beside the closure, the observed paths of D5 that the static closure missed, each with its hash. A lookup counts as current only when those hashes match too; a change to one of them marks the file pending through the reverse index; the stored result stays `complete: false` with the reason. The key never depends on store state.
+
+### D4. Invalidation and affected
+
+`invalidate(paths)`: a content change of a file in the graph re-parses it and updates its edges (under 0.1 ms); an add, a delete, or any change to a `package.json` or `tsconfig.json` clears the resolver cache and re-resolves every closure from the cached parses (33 ms at 1,000 modules; with the cache kept, up to 200 closures were wrong, with it cleared, none; module-graph 4). This one rule replaces 001 D4's add, delete and manifest rules, which existed to repair Vite's transform cache. A changed `include` match refreshes `testFiles()`. A change to the project's entry in `squeal.config.json` recreates the project (`recreatedProjects`), re-keying it through the environment hash.
+
+`affected(changed)`: a reverse index from path to the test files that import it in one hop, and to the test files whose closure holds it. `direct` is the one-hop importers plus any changed test file; `transitive` is the rest of the closure holders; every test file of the project when a preload's closure or the project configuration changed. One lookup per changed path, under 0.1 ms at 1,000 modules (module-graph 5); a reverse BFS is the fallback if the index grows too large (open question 5).
+
+### D5. Running
+
+`run(testFiles, options)` spawns the project's Node once per tier, in its own process group, with `cwd` the project's, the environment merged, `TMPDIR` as 001 D10 sets it, and the command line `<node> --enable-source-maps --import <squeal recorder> <argv...> --test --test-reporter=<squeal reporter> --test-reporter-destination=<logDir>/events.ndjson --test-concurrency=<tier size> <files...>`. The recorder comes first so it sees what the project's preloads import (module-graph 2); the reporter is a module in Squeal's dist that writes every `TestsStream` event as one NDJSON line; stdout and stderr go to `logDir` for `squeal why`. Nothing in the project's own `argv` is dropped or reordered.
+
+Results come from the event stream, never from the exit code or console output: `test:pass`, `test:fail` and `test:complete` with their directives and `details`; a `CheckError` from `details.error` with its `cause` (message, stack, `actual`, `expected`, `operator`) and the mapped location; the file wrapper's `test:complete` at nesting 0 is the file's completion and its whole-process `duration_ms` (`fileDurations`); `test:stderr` chunks are kept per file. A file whose wrapper fails with no named check is a `FileLevelError` whose text is that file's stderr, where the syntax error or module-not-found stack lives (runner-api 6). A file with no wrapper completion when the process ends is not completed: `completedFiles` lists only files with one, and a process that ends with none is `crashed`.
+
+Squeal's `runner.timeoutMs` is the only deadline: on expiry the process group gets SIGTERM, then SIGKILL after two seconds, the run ends `timed-out`, completed files keep their results (001 D12). Node's `--test-timeout` is not passed: on Node 24 it reports a timeout and leaves the child alive, and a busy loop never services it (runner-api 6). The exit code is recorded in the run log and trusted for nothing.
+
+Observed closure: the recorder is a `module.registerHooks` resolve hook, loaded through `--import`, that appends `(parent, url)` edges per process to `<logDir>/graph-<pid>.ndjson`; `module.register` misses `require` and coverage gives sets without edges (module-graph 2). After the run, reachability from each test file's URL gives its observed closure, with preloads separated. Every observed path inside the worktree, outside `node_modules` and outside the static closure is recorded on the result as D3 says. A test that spawns `node` itself is not observed past the spawn (open question 3).
+
+### D6. Enumeration
+
+`enumerate(testFile)` parses the file with oxc-parser and walks calls to `test`, `it`, `describe`, `suite` and `t.test` with a literal first argument, building full names from the call nesting; a call with a non-literal name is one `templated` entry. After the file has run, the observed names stand (001 D4's `test.each` rule). No dry run exists: `--test-dry-run` is rejected and a name filter still evaluates the module (runner-api 3).
+
+### D7. Two runners in one daemon
+
+The daemon holds one `RunnerAdapter` per configured or detected runner behind a composite in `src/core/daemon/`: `testFiles()` and `environment()` concatenate, `affected()` and `invalidate()` fan out and merge, `run()` dispatches by project, `close()` closes each. `RunnerAdapter` is unchanged. The runner-failure note "project without Vitest" applies only when no runner is configured or detected. Status, reports, `squeal why` and the store need no change: a node:test check is a check.
+
+### D8. Policy and amendments to 001
+
+001 D11 gains the `nodeTest` key of D1 and loses the sentence that a project without Vitest is a runner failure, replaced by D7's rule. 001 D4's add, delete and manifest rules stay Vitest's; D3's closure definition gains "for node:test, as 003 D3 defines it". `runner.timeoutMs` and `runner.tierSize` apply to both runners.
+
+## Testing
+
+- Fixtures: a reference-shaped project (`packages/demo`, tsx, one preload, `test/unit/*.test.ts` and `test/e2e/*.test.ts`); an edge-case test file with every specifier form of D3; the research's 1,000-module generator for cost (`research/probes/node-test-module-graph/gen-fixture.mjs`, moved under `test/fixtures/`).
+- Graph tests, on Node 22 and 24: `closure()` of the edge-case file holds each specifier form and equals the recorder's observed closure; `import type` targets and the preload's closure are absent from it, and the preload's closure is in `environment().files`; a computed `import(p)` makes the closure incomplete, and after a run the loaded path is recorded and blocks inheritance when it changes; after deleting a module, replacing a file by a directory `index`, editing a workspace `exports` and adding a tsconfig `paths` entry, `closure()` equals a fresh build's; `affected()` splits direct and transitive as the index says; cost asserted relative to the cold build.
+- Runner tests, on recorded event streams from both Node versions and on live runs: result mapping with skip, todo, nesting and duplicate names; a syntax error and a missing import become one `FileLevelError` with the stderr text; a busy-loop file is killed at the deadline with the other file's result kept; a process that dies before any wrapper is `crashed`; the project's `argv`, `cwd`, `env` and preloads reach the child, checked by markers.
+- Integration: a repository with a Vitest suite and two node:test projects runs a baseline, inherits it into a second worktree with zero runs, and delivers a `PASS -> FAIL` in a node:test file through the Claude Code hooks; `squeal init` seeds the two cezarion-shaped scripts and refuses a piped one.
+- End to end, as 001's `test/e2e`: the shipped plugin against the reference-shaped fixture, transitions and lifecycle.
+- Proof: a dogfooding row on a cezarion worktree with its `test:unit` and `test:package` scripts configured and a Cezar worker on Claude Code, reported in `lessons.md`.
+
+## Open questions
+
+Owner is the coordinator unless noted.
+
+1. tsx loads `a.ts` for `./a.js` from a `.ts` importer and `a.js` from a `.mjs` importer; the resolver picks `a.ts` for both. Vary `extensionAlias` by importer, or note such pairs as an unsupported layout? Decide in wave 1 from the fixture.
+2. `tsconfig.json`: in the closure of the files it resolves for, in the environment hash, or both? Proposed: closure only, through the resolution reads of D3, so it is never counted twice.
+3. The recorder does not follow a test that spawns `node` itself, which e2e suites do. `NODE_OPTIONS` would reach unrelated processes. Proposed: not covered; such suites declare `inputs`, and spec 004 decides their cadence.
+4. Static enumeration of names built in loops or imported from data: how `enumerate` reports what it cannot see. Proposed: one `templated` entry per non-literal call.
+5. Memory of the reverse closure index at 10,000 modules (112,360 entries at 903). Measure in wave 1; the reverse BFS is the fallback.
+6. Node pin discovery from `.nvmrc`, `engines` or Volta, and a project with no `node` on the daemon's PATH. Later.
+
+## References
+
+- ADR 0004: `../../decisions/0004-codex-and-node-test-next.md`.
+- Spec 001: `../001-core-loop/spec.md` D3, D4, D5, D11, D12.
+- Research: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`; from 001, `research/vitest-internals.md`, `research/result-fingerprinting-prior-art.md`.
+- Interface: `src/core/types/runner.ts`.

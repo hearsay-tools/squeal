@@ -1,6 +1,6 @@
 # 002 Codex adapter: status
 
-Stage: research
+Stage: draft (spec written 2026-10-07 from the two findings; awaiting the human's review)
 Started: 2026-10-07
 
 ## Decisions so far
@@ -17,7 +17,7 @@ Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wak
 
 ## Open questions
 
-The findings' open questions, until `spec.md` is written.
+See `spec.md`, section Open questions.
 
 ## Links
 

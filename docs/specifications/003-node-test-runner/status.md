@@ -1,6 +1,6 @@
 # 003 node:test runner: status
 
-Stage: research
+Stage: draft (spec written 2026-10-07 from the two findings; awaiting the human's review)
 Started: 2026-10-07
 
 ## Decisions so far
@@ -18,7 +18,7 @@ Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-mod
 
 ## Open questions
 
-The findings' open questions, until `spec.md` is written.
+See `spec.md`, section Open questions.
 
 ## Links
 
