@@ -65,7 +65,7 @@ describe("turn state", () => {
     expect(turn).toEqual({ turn: "idle", testFiles: [], newTestFiles: true });
     expect(waitedFor(turn, entry())).toBe(true);
     expect(waitedFor(turn, entry({ kind: "pass-to-fail", from: "pass" }))).toBe(false);
-    expect(waitedFor({ ...turn, newTestFiles: false }, entry())).toBe(false);
+    expect(waitedFor(START_IDLE, entry())).toBe(false);
   });
 
   it("keeps one row per worktree and drops consumers no longer registered", async () => {
