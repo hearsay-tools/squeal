@@ -17,22 +17,23 @@ const tracksSoftInvalidation = new WeakMap<Vitest, boolean>();
 const fellBack = new WeakSet<Vitest>();
 
 /**
- * Invalidates what the adds and deletes among `paths` can make wrong; the
- * caller has invalidated every path itself. `note` hears the fallback to
- * full invalidation once per instance.
+ * Invalidates what the adds and deletes among `paths`, and the edited
+ * `package.json` files, can make wrong; the caller has invalidated every path
+ * itself. `note` hears the fallback to full invalidation once per instance.
  */
 export function invalidateStructural(
   vitest: Vitest,
   paths: readonly { readonly kind: InvalidatedPath["kind"]; readonly abs: AbsolutePath }[],
   note: (text: string) => void,
 ): void {
-  const structural = paths.filter((p) => p.kind !== "change");
+  const structural = paths.filter((p) => p.kind !== "change" || isPackageJson(p.abs));
   if (structural.length > 0) {
     // Spec 001 D4: an add or delete re-transforms only the importers whose
     // resolution it can change, never the whole graph (lessons, defect 11).
     const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
     const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-    const stale = staleTransforms(vitest, added, deleted);
+    const manifests = structural.filter((p) => p.kind === "change").map((p) => p.abs);
+    const stale = staleTransforms(vitest, added, deleted, manifests);
     for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
     if (stale === null && !fellBack.has(vitest)) {
       fellBack.add(vitest);
@@ -46,7 +47,8 @@ export function invalidateStructural(
 }
 
 /**
- * Files whose cached transforms an add or delete can make wrong, or `null`
+ * Files whose cached transforms an add, a delete or an edited `package.json`
+ * (`manifests`) can make wrong, or `null`
  * when this Vite keeps no `invalidationState` and the stale set cannot be
  * known: the caller then invalidates every cached transform.
  *
@@ -64,6 +66,9 @@ export function invalidateStructural(
  *   directory of an added or deleted `package.json`, and under the directory
  *   of a `package.json` whose entry the added path can now resolve: Vite fell
  *   back to the directory's `index` while that entry was missing;
+ * - a resolved import under the directory of an edited `package.json`: the
+ *   directory, or the package by name, may now resolve to another entry
+ *   (reviews/wave-9.md S2);
  * - `import.meta.glob` or a template-literal dynamic import in its source.
  *
  * Every other transform stays cached (lessons, defect 11). The deleted files
@@ -73,6 +78,7 @@ export function staleTransforms(
   vitest: Vitest,
   added: readonly AbsolutePath[],
   deleted: readonly AbsolutePath[],
+  manifests: readonly AbsolutePath[] = [],
 ): Set<AbsolutePath> | null {
   const stale = new Set<AbsolutePath>();
   const gone = new Set<AbsolutePath>(deleted);
@@ -80,7 +86,9 @@ export function staleTransforms(
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
       const targets = new Set<AbsolutePath>(deleted);
-      const directories = [...added, ...deleted].filter(isPackageJson).map((p) => `${dirname(p)}/`);
+      const directories = [...added, ...deleted, ...manifests]
+        .filter(isPackageJson)
+        .map((p) => `${dirname(p)}/`);
       for (const path of added) {
         const bases = resolutionBases(path, extensions);
         for (const base of bases) {
