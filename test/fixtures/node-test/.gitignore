@@ -1,0 +1,3 @@
+.tmp/
+big/
+!node_modules/

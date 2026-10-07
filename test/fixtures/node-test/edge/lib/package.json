@@ -1,0 +1,9 @@
+{
+  "name": "@edge/lib",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sub": "./src/sub.ts"
+  }
+}

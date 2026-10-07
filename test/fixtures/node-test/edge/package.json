@@ -1,0 +1,12 @@
+{
+  "name": "@edge/app",
+  "private": true,
+  "type": "module",
+  "workspaces": ["lib"],
+  "imports": {
+    "#hash/*": "./src/hash/*.ts"
+  },
+  "dependencies": {
+    "@edge/lib": "*"
+  }
+}
