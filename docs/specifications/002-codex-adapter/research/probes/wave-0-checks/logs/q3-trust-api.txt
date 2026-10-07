@@ -1,0 +1,10 @@
+before: preToolUse=untrusted preToolUse=untrusted postToolUse=untrusted sessionStart=untrusted sessionEnd=untrusted userPromptSubmit=untrusted subagentStart=untrusted stop=untrusted interrupt=untrusted
+batchWrite: {"status":"ok","version":"sha256:a3f08978609d76d5b7b0b169f0d05b2b0b2814101180949934f43270f3687a28","filePath":"$CODEX_HOME/config.toml","overriddenMetadata":null}
+after:  preToolUse=trusted preToolUse=trusted postToolUse=trusted sessionStart=trusted sessionEnd=trusted userPromptSubmit=trusted subagentStart=trusted stop=trusted interrupt=trusted
+$ sed -n /hooks.state/,+2p $CODEX_HOME/config.toml
+[hooks.state."squeal-codex@squeal:hooks/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:3a83d005564fa32bf14a63dc3ce4b39bffa7fb6d241666f40726ca0175d55140"
+[hooks.state."squeal-codex@squeal:hooks/hooks.json:pre_tool_use:1:0"]
+trusted_hash = "sha256:87d90eabdad68722196150ce1ca2b47a9f2bdbec9d6998609ff004553816b891"
+hooks that ran:
+SessionStart UserPromptSubmit PreToolUse PostToolUse Stop SessionEnd 

@@ -1,0 +1,87 @@
+################ layout: one
+$ codex plugin marketplace add /tmp/w0c/r-q1-one
+Added marketplace `squeal` from /tmp/w0c/r-q1-one.
+Installed marketplace root: /tmp/w0c/r-q1-one
+$ codex plugin list
+Marketplace `squeal`
+/tmp/w0c/r-q1-one/.claude-plugin/marketplace.json
+
+PLUGIN               STATUS         VERSION  SOURCE
+squeal@squeal        not installed           /tmp/w0c/r-q1-one/plugins/claude-code
+squeal-codex@squeal  not installed           /tmp/w0c/r-q1-one/plugins/codex
+$ codex plugin add squeal@squeal
+Added plugin `squeal` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal/0.1.14
+exit 0
+$ codex plugin add squeal-codex@squeal
+Added plugin `squeal-codex` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal-codex/0.1.14
+exit 0
+$ cat $CODEX_HOME/plugins/cache/squeal/*/*/.*-plugin/plugin.json
+plugins/cache/squeal/squeal-codex/0.1.14/.codex-plugin/plugin.json: { "name": "squeal-codex", "version": "0.1.14", "description": "Codex plugin stand-in." }
+plugins/cache/squeal/squeal/0.1.14/.claude-plugin/plugin.json: { "name": "squeal", "version": "0.1.14", "description": "Claude Code plugin stand-in." }
+$ config.toml after
+[marketplaces.squeal]
+source_type = "local"
+source = "/tmp/w0c/r-q1-one"
+
+[plugins."squeal@squeal"]
+enabled = true
+
+[plugins."squeal-codex@squeal"]
+enabled = true
+
+################ layout: dup
+$ codex plugin marketplace add /tmp/w0c/r-q1-dup
+Added marketplace `squeal` from /tmp/w0c/r-q1-dup.
+Installed marketplace root: /tmp/w0c/r-q1-dup
+$ codex plugin list
+Marketplace `squeal`
+/tmp/w0c/r-q1-dup/.claude-plugin/marketplace.json
+
+PLUGIN         STATUS         VERSION  SOURCE
+squeal@squeal  not installed           /tmp/w0c/r-q1-dup/plugins/claude-code
+$ codex plugin add squeal@squeal
+Added plugin `squeal` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal/0.1.14
+exit 0
+$ codex plugin add squeal-codex@squeal
+Error: plugin `squeal-codex` was not found in marketplace `squeal`
+exit 0
+$ cat $CODEX_HOME/plugins/cache/squeal/*/*/.*-plugin/plugin.json
+plugins/cache/squeal/squeal/0.1.14/.claude-plugin/plugin.json: { "name": "squeal", "version": "0.1.14", "description": "Claude Code plugin stand-in." }
+$ config.toml after
+[marketplaces.squeal]
+source_type = "local"
+source = "/tmp/w0c/r-q1-dup"
+
+[plugins."squeal@squeal"]
+enabled = true
+
+################ layout: split
+$ codex plugin marketplace add /tmp/w0c/r-q1-split
+Added marketplace `squeal` from /tmp/w0c/r-q1-split.
+Installed marketplace root: /tmp/w0c/r-q1-split
+$ codex plugin list
+Marketplace `squeal`
+/tmp/w0c/r-q1-split/.agents/plugins/marketplace.json
+
+PLUGIN         STATUS         VERSION  SOURCE
+squeal@squeal  not installed           /tmp/w0c/r-q1-split/plugins/codex
+$ codex plugin add squeal@squeal
+Added plugin `squeal` from marketplace `squeal`.
+Installed plugin root: $CODEX_HOME/plugins/cache/squeal/squeal/0.1.14
+exit 0
+$ codex plugin add squeal-codex@squeal
+Error: plugin `squeal-codex` was not found in marketplace `squeal`
+exit 0
+$ cat $CODEX_HOME/plugins/cache/squeal/*/*/.*-plugin/plugin.json
+plugins/cache/squeal/squeal/0.1.14/.codex-plugin/plugin.json: { "name": "squeal", "version": "0.1.14", "description": "Codex plugin stand-in." }
+$ config.toml after
+[marketplaces.squeal]
+source_type = "local"
+source = "/tmp/w0c/r-q1-split"
+
+[plugins."squeal@squeal"]
+enabled = true
+

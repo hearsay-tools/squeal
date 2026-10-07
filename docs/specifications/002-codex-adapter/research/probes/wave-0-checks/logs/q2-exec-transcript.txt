@@ -1,0 +1,3 @@
+"I’ll run `pwd`, then have one subagent run it and report its output.\n"
+cmd: /bin/bash -lc pwd -> "/tmp/w0c/r-q2/pkg/sub\n"
+"Main: `/tmp/w0c/r-q2/pkg/sub`\nSubagent: `/tmp/w0c/r-q2/pkg/sub`"
