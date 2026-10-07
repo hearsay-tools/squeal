@@ -3402,6 +3402,9 @@ import { readFileSync as readFileSync4 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // src/harness/codex/input.ts
+function isUnservedThread(input) {
+  return input.agent_id === void 0 && input.transcript_path !== void 0 && !input.transcript_path.endsWith(`${input.session_id}.jsonl`);
+}
 function parseCodexInput(text) {
   let value;
   try {
@@ -3423,7 +3426,8 @@ function parseCodexInput(text) {
     ...typeof v.turn_id === "string" ? { turn_id: v.turn_id } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
-    ...typeof v.source === "string" ? { source: v.source } : {}
+    ...typeof v.source === "string" ? { source: v.source } : {},
+    ...typeof v.transcript_path === "string" && v.transcript_path !== "" ? { transcript_path: v.transcript_path } : {}
   };
 }
 
@@ -3432,7 +3436,7 @@ var SILENT = { stdout: "", stderr: "" };
 async function runCodexHandler(name, handler, stdin, deps) {
   try {
     const input = parseCodexInput(stdin);
-    if (input === null) return SILENT;
+    if (input === null || isUnservedThread(input)) return SILENT;
     const location2 = locate(input.cwd);
     if (location2 === null) return SILENT;
     const output = await handler(input, location2, deps);
