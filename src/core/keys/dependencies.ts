@@ -1,0 +1,57 @@
+import { createHash } from "node:crypto";
+import type { RunnerPackages } from "../types/index.js";
+import type { InstalledDependencies } from "./environment.js";
+import { OPAQUE_BUILTINS } from "./packages.js";
+
+/** Bumped when the encodings below change. */
+const SCOPED_ENCODING = "squeal-installed-scoped/1";
+const PACKAGES_ENCODING = "squeal-packages/1";
+
+/** How one project's installed dependencies enter its environment hash and its check keys. */
+export interface DependencyKeys {
+  /** The installed-dependency input of the environment hash. */
+  readonly environment: string;
+  /** The installed-dependency segment of one test file's key. */
+  of(packages: RunnerPackages | undefined): string;
+}
+
+/**
+ * Spec 001 D3 as amended by task 001-105 (scheme B of
+ * `research/per-package-keys.md`). With a package graph and the runner's
+ * environment-wide packages, the environment hash holds the lockfile closure
+ * of those packages plus the patches, and each test file's key adds the
+ * closure of the packages its own closure imports, without the environment's.
+ * A test file whose runner reports no packages, or whose closure imports
+ * `child_process`, `worker_threads`, `module` or `cluster`, keys by the whole
+ * fingerprint, as before. Without a graph (another lockfile format, a stale
+ * hidden lockfile) or without environment-wide packages, or when those
+ * import such a builtin, the environment hash holds the whole fingerprint
+ * and no test file adds anything.
+ */
+export function dependencyKeys(
+  installed: InstalledDependencies,
+  environment: RunnerPackages | undefined,
+): DependencyKeys {
+  const { graph, fingerprint } = installed;
+  if (graph === null || environment === undefined || isOpaque(environment)) {
+    return { environment: fingerprint, of: () => "" };
+  }
+  const shared = graph.identities(environment.imports);
+  const excluded = new Set(shared);
+  const whole = `whole:${fingerprint}`;
+  return {
+    environment: hash([SCOPED_ENCODING, shared, installed.patches]),
+    of: (packages) =>
+      packages === undefined || isOpaque(packages)
+        ? whole
+        : hash([PACKAGES_ENCODING, graph.identities(packages.imports, excluded)]),
+  };
+}
+
+function isOpaque(packages: RunnerPackages): boolean {
+  return packages.builtins.some((name) => OPAQUE_BUILTINS.has(name));
+}
+
+function hash(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
