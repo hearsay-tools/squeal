@@ -1,0 +1,249 @@
+# Raw output for ../../per-package-keys.md (001-102), 2026-10-07
+
+## observe.mjs on fixture/ (Vitest 5.0.3, Vite 8.3.3), trimmed to non-Vitest entries
+## /test/child-noenv.test.js
+  static /test/child-noenv.test.js -> ["node:child_process",VITEST]
+## /test/child.test.js
+  static /test/child.test.js -> ["node:child_process",VITEST]
+## /test/data.test.js
+  static /test/data.test.js -> ["node:fs","node:module",VITEST]
+## /test/dyn.test.js
+  static /test/dyn.test.js -> [VITEST,"/node_modules/dyn/index.js"]
+## /test/ext-cjs.test.js
+  static /test/ext-cjs.test.js -> [VITEST,"/node_modules/ext-cjs/index.js"]
+## /test/ext-esm.test.js
+  static /test/ext-esm.test.js -> [VITEST,"/src.js"]
+  static /src.js -> ["/node_modules/ext-esm/index.js"]
+## /test/inl.test.js
+  static /test/inl.test.js -> [VITEST,"/node_modules/inl/index.js"]
+## /test/none.test.js
+  static /test/none.test.js -> [VITEST]
+## /test/setup.test.js
+  static /test/setup.test.js -> [VITEST]
+## /test/thread.test.js
+  static /test/thread.test.js -> ["node:worker_threads",VITEST]
+## runtime /test/dyn.test.js
+   /test/dyn.test.js inlined importer=
+   /setup.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+   /node_modules/dyn/index.js external importer=/test/dyn.test.js
+## runtime /test/setup.test.js
+   /test/setup.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+## runtime /test/data.test.js
+   /test/data.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+   node:fs external importer=
+   node:module external importer=
+## runtime /test/none.test.js
+   /test/none.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+## runtime /test/ext-cjs.test.js
+   /test/ext-cjs.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/ext-cjs/index.js external importer=/test/ext-cjs.test.js
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+## runtime /test/child-noenv.test.js
+   /setup.js inlined importer=
+   /test/child-noenv.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+   node:child_process external importer=
+## runtime /test/ext-esm.test.js
+   /test/ext-esm.test.js inlined importer=
+   /src.js inlined importer=/test/ext-esm.test.js
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/ext-esm/index.js external importer=/src.js
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+## runtime /test/inl.test.js
+   /test/inl.test.js inlined importer=
+   /node_modules/inl/index.js inlined importer=/test/inl.test.js
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+   /node_modules/inl-trans/index.js inlined importer=/node_modules/inl/index.js
+## runtime /test/thread.test.js
+   /test/thread.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+   node:worker_threads external importer=
+## runtime /test/child.test.js
+   /test/child.test.js inlined importer=
+   /node_modules/vitest/dist/index.js external importer=
+   /setup.js inlined importer=
+   /node_modules/setup-pkg/index.js external importer=/setup.js
+   node:child_process external importer=
+
+## config-deps.mjs on fixture/
+(root) configFileDependencies: [ '/vitest.config.js' ] plugins: [ 'alias', 'builtin:oxc-runtime', 'builtin:vite-json', 'magic' ]
+
+## trace.mjs on fixture/: per test file, installed packages Node resolved (runner packages filtered)
+test/child.test.js child-pkg setup-pkg
+test/child-noenv.test.js setup-pkg
+test/thread.test.js setup-pkg
+test/ext-cjs.test.js ext-cjs phantom setup-pkg
+test/none.test.js setup-pkg
+test/setup.test.js setup-pkg
+test/data.test.js data-pkg setup-pkg
+test/dyn.test.js computed-target dyn setup-pkg
+test/inl.test.js setup-pkg
+test/ext-esm.test.js ext-esm ext-trans setup-pkg
+
+## scenarios.sh
+child-pkg | failing: test/child.test.js test/thread.test.js | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test
+computed-target | failing: test/dyn.test.js | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","t
+data-pkg | failing: test/data.test.js | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","test/ex
+dyn | failing:  | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/ext-cjs.test.js","test/ext-esm.test.js","te
+ext-cjs | failing:  | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","test/ext-esm.test.js","te
+ext-esm | failing:  | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","test/ext-cjs.test.js","te
+ext-trans | failing: test/ext-esm.test.js | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","tes
+gs-pkg | failing: test/setup.test.js | {"files":10,"envSame":{":hop":false,":graph":false},"kept":{},"changed":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.tes
+inl | failing:  | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","test/ext-cjs.test.js","test/e
+inl-trans | failing: test/inl.test.js | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","test/ex
+phantom | failing: test/ext-cjs.test.js | {"files":10,"envSame":{":hop":true,":graph":true},"kept":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.test.js","test/
+plugin-pkg | failing: test/setup.test.js | {"files":10,"envSame":{":hop":false,":graph":false},"kept":{},"changed":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn
+setup-pkg | failing: test/setup.test.js | {"files":10,"envSame":{":hop":false,":graph":false},"kept":{},"changed":{"hop":["test/child-noenv.test.js","test/child.test.js","test/data.test.js","test/dyn.
+
+## cezar: installed lockfile diff, main checkout (/home/agent/projects/cezar, 13351da8) vs npm ci of origin/main c7fa7178
+474 563 differ: 95
+node_modules/@types/node: 20.19.43 -> 24.19.1
+node_modules/undici-types: 6.21.0 -> 7.24.6
+packages/api-client: 0.12.2 -> 0.15.1
+packages/cezar: 0.12.2 -> 0.15.1
+packages/contract: 0.12.2 -> 0.15.1
+packages/web: 0.12.2 -> 0.15.1
+node_modules/@fontsource/poppins: - -> 5.3.0
+... (89 additions)
+
+## cezar: perfile.mjs walk (unloaded run, then a run contended by the traced suite)
+projects 4 files 632 { createMs: 141, walkMs: 8515 }
+projects 4 files 632 { createMs: 331, walkMs: 20439 }
+
+## cezar: compare.mjs, as specified
+files 632 envSame {"server:hop":false,"server:graph":false,"contract:hop":false,"contract:graph":false,"api-client:hop":false,"api-client:graph":false,"web:hop":false,"web:graph":false} graph kept 0
+
+## cezar: compare.mjs, types-only packages as constants, WHY=1
+envSame {"server:hop":true,"server:graph":true,"contract:hop":true,"contract:graph":true,"api-client:hop":true,"api-client:graph":true,"web:hop":true,"web:graph":true}
+graph kept 630 changed ["packages/cezar/src/ci-wait/controller.test.ts","packages/cezar/src/ci-wait/mcp.test.ts"]
+packages/cezar/src/ci-wait/controller.test.ts absent:packages/cezar:@modelcontextprotocol/sdk absent:node_modules/@modelcontextprotocol/sdk:@cfworker/json-schema node_modules/@modelcontextprotocol/sdk ...
+packages/cezar/src/ci-wait/mcp.test.ts absent:packages/cezar:@modelcontextprotocol/sdk absent:node_modules/@modelcontextprotocol/sdk:@cfworker/json-schema node_modules/@hono/node-server@1.19.14 node_m ...
+
+## cezar: builtins reached by each file's closure
+{ files: 632, childProcess: 306, workerThreads: 0 }
+
+## cezar: cost.mjs, three runs
+{"lockEntries":563,"parseMs":7.2,"typesOnlyScanMs":37.4,"typesOnly":55,"files":632,"keyAllFilesMs":113.3,"setSize":{"min":159,"max":539},"beyondEnv":{"median":4,"max":309}}
+{"lockEntries":563,"parseMs":8.6,"typesOnlyScanMs":25.6,"typesOnly":55,"files":632,"keyAllFilesMs":104.1,"setSize":{"min":159,"max":539},"beyondEnv":{"median":4,"max":309}}
+{"lockEntries":563,"parseMs":5.9,"typesOnlyScanMs":25.3,"typesOnly":55,"files":632,"keyAllFilesMs":99.2,"setSize":{"min":159,"max":539},"beyondEnv":{"median":4,"max":309}}
+
+## cezar: traced full run (NODE_OPTIONS=--import=trace.mjs), origin/main export
+real	10m27.010s
+user	41m25.124s
+sys	23m2.998s
+tests 14593 failed 2
+
+## cezar: soundness.mjs over the trace
+with a worktree package loaded outside their key: 9
+test files attributed: 632; with a package loaded outside their key: 30
+  21 files (in a child process): outside the worktree: @openai/codex   e.g. outside:- -> file:///home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex/bin/codex.js   e.g. packages/cezar/src/core/pi-runner.test.ts
+  21 files (in a child process): outside the worktree: @openai/codex-linux-x64   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex -> @openai/codex-linux-x64/package.json   e.g. packages/cezar/src/core/pi-runner.test.ts
+  10 files (in a child process): outside the worktree: tree-sitter   e.g. outside:/home/agent/.local/share/cursor-agent/versions/2026.10.01-e373342/index.js -> tree-sitter   e.g. packages/cezar/src/core/pi-runner.test.ts
+  10 files (in a child process): outside the worktree: node-gyp-build   e.g. outside:/home/agent/.local/share/cursor-agent/versions/2026.10.01-e373342/node_modules/tree-sitter -> node-gyp-build   e.g. packages/cezar/src/core/pi-runner.test.ts
+  10 files (in a child process): outside the worktree: tree-sitter-bash   e.g. outside:/home/agent/.local/share/cursor-agent/versions/2026.10.01-e373342/index.js -> tree-sitter-bash   e.g. packages/cezar/src/core/pi-runner.test.ts
+  9 files (in a child process): outside the worktree: @earendil-works/pi-coding-agent   e.g. outside:- -> file:///home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js   e.g. packages/cezar/src/server/automa
+  4 files (in a child process): node_modules/@hono/node-server   e.g. packages/cezar/src/delegation/transport.ts -> @hono/node-server   e.g. packages/cezar/src/artifacts/cli.test.ts
+  4 files (in a child process): node_modules/ws   e.g. packages/cezar/src/preview/cdp.ts -> ws   e.g. packages/cezar/src/artifacts/cli.test.ts
+  4 files (in a child process): node_modules/smol-toml   e.g. packages/cezar/src/agent-config/model-settings/shared.ts -> smol-toml   e.g. packages/cezar/src/artifacts/cli.test.ts
+  3 files (in a child process): node_modules/ms   e.g. node_modules/vite -> ms   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  3 files (in a child process): outside the worktree: npm   e.g. outside:- -> file:///tmp/cez-vitest-tmp-EqTDqD/cez%20Windows%20&%20prefix-HypNHl/toolchain/node_modules/npm/bin/npm-cli.js   e.g. packages/cezar/src/application-update/windows.test.ts
+  3 files (in a child process): node_modules/hono   e.g. packages/cezar/src/delegation/routes.ts -> hono   e.g. packages/cezar/src/artifacts/cli.test.ts
+  2 files (in a child process): node_modules/.vite-temp   e.g. node_modules/vite -> file:///tmp/ppk/cezar-origin/node_modules/.vite-temp/vitest.config.ts.timestamp-1791401446052-ba6e3d78dfb3b8.mjs   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.t
+  2 files (in a child process): node_modules/zod   e.g. packages/cezar/src/autosave-windows.ts -> zod   e.g. packages/cezar/src/git-worktree-race.test.ts
+  1 files (in a child process): node_modules/@tailwindcss/vite   e.g. node_modules/.vite-temp -> file:///tmp/ppk/cezar-origin/node_modules/@tailwindcss/vite/dist/index.mjs   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@tailwindcss/node   e.g. node_modules/@tailwindcss/vite -> @tailwindcss/node   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/enhanced-resolve   e.g. node_modules/@tailwindcss/node -> enhanced-resolve   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/tailwindcss   e.g. node_modules/@tailwindcss/node -> tailwindcss   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@jridgewell/remapping   e.g. node_modules/@tailwindcss/node -> @jridgewell/remapping   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@jridgewell/trace-mapping   e.g. node_modules/@jridgewell/remapping -> @jridgewell/trace-mapping   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@jridgewell/resolve-uri   e.g. node_modules/@jridgewell/trace-mapping -> @jridgewell/resolve-uri   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@jridgewell/gen-mapping   e.g. node_modules/@jridgewell/remapping -> @jridgewell/gen-mapping   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@tailwindcss/oxide   e.g. node_modules/@tailwindcss/vite -> @tailwindcss/oxide   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@vitejs/plugin-react   e.g. node_modules/.vite-temp -> file:///tmp/ppk/cezar-origin/node_modules/@vitejs/plugin-react/dist/index.js   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/tapable   e.g. node_modules/enhanced-resolve -> tapable   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): node_modules/@tailwindcss/oxide-linux-x64-gnu   e.g. node_modules/@tailwindcss/oxide -> @tailwindcss/oxide-linux-x64-gnu   e.g. packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts
+  1 files (in a child process): outside the worktree: jiti   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@earendil-works/pi-coding-agent -> jiti   e.g. packages/cezar/src/server/automations-api.test.ts
+  1 files (in a child process): outside the worktree: @wjarka/cezarion   e.g. outside:- -> file:///tmp/cez-vitest-tmp-EqTDqD/cez%20Windows%20&%20prefix-HypNHl/npm%20prefix/node_modules/@wjarka/cezarion/dist/index.js   e.g. packages/cezar/src/application-update
+  1 files (in a child process): outside the worktree: cezarion   e.g. outside:- -> file:///tmp/cez-vitest-tmp-EqTDqD/cez%20Windows%20&%20prefix-nvpTQi/npm%20prefix/node_modules/cezarion/bin.js   e.g. packages/cezar/src/application-update/windows.test.ts
+  1 files (in a child process): outside the worktree: graceful-fs   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> graceful-fs   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: semver   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> semver/functions/satisfies   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: proc-log   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> proc-log   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: @npmcli/redact   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> @npmcli/redact   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: @npmcli/config   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> @npmcli/config   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: walk-up-path   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> walk-up-path   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: ini   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> ini   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: nopt   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> nopt   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: abbrev   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/nopt -> abbrev   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: which   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> which   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: isexe   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/which -> isexe   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: ci-info   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> ci-info   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: node-gyp   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> node-gyp/bin/node-gyp.js   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: fs-minipass   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> fs-minipass   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: minipass   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/fs-minipass -> minipass   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: chalk   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> chalk   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: supports-color   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> supports-color   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: @npmcli/package-json   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> @npmcli/package-json   e.g. packages/cezar/src/run-store-unavailable-cli.test.
+  1 files (in a child process): outside the worktree: json-parse-even-better-errors   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/package-json -> json-parse-even-better-errors   e.g. packages/cezar/src/run-sto
+  1 files (in a child process): outside the worktree: @npmcli/map-workspaces   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/config -> @npmcli/map-workspaces   e.g. packages/cezar/src/run-store-unavailable-cli.t
+  1 files (in a child process): outside the worktree: @npmcli/name-from-folder   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/map-workspaces -> @npmcli/name-from-folder   e.g. packages/cezar/src/run-store-unava
+  1 files (in a child process): outside the worktree: minimatch   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/map-workspaces -> minimatch   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: brace-expansion   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/minimatch -> brace-expansion   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: balanced-match   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/brace-expansion -> balanced-match   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: glob   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm/node_modules/@npmcli/map-workspaces -> glob   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files (in a child process): outside the worktree: @isaacs/string-locale-compare   e.g. outside:/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/npm -> @isaacs/string-locale-compare   e.g. packages/cezar/src/run-store-unavailable-cli.test.ts
+  1 files: node_modules/@fontsource/poppins   e.g. packages/web/package.json -> @fontsource/poppins/package.json   e.g. packages/web/src/design-guardian.test.ts
+failed bare resolutions: 5
+  173 files: canvas from node_modules/jsdom
+  81 files: bufferutil from node_modules/ws
+  56 files: supports-color from node_modules/debug
+  3 files: bufferutil from node_modules/vite
+  3 files: fsevents from node_modules/vite
+packages loaded by processes with no test file (main process, globalSetup): 47
+
+## cezar main checkout: hidden lockfile older than a package folder
+2026-09-12 10:51:50.219142193 +0200 .package-lock.json
+2026-09-14 22:21:24.444806675 +0200 @fontsource/poppins
+poppins entries in .package-lock.json: 0
+
+## design-guardian.test.ts with the main checkout's node_modules copied onto origin/main: 18 passed; with origin/main's install: 18 passed
+
+## pnpm 10.34.6 install of the fixture: node -e require('ext-cjs').cjs() ->
+cjs+phantom-v1
+
+## freshness.mjs: npm's rule for trusting the hidden lockfile, two runs each
+{"root":"/home/agent/projects/cezar","listed":470,"newer":[],"missing":0,"unlistedTopLevel":["@fontsource/poppins"],"ms":9.6}
+{"root":"/tmp/ppk/cezar-origin","listed":559,"newer":[],"missing":0,"unlistedTopLevel":[],"ms":18.6}
+{"root":"/home/agent/projects/cezar","listed":470,"newer":[],"missing":0,"unlistedTopLevel":["@fontsource/poppins"],"ms":13.8}
+{"root":"/tmp/ppk/cezar-origin","listed":559,"newer":[],"missing":0,"unlistedTopLevel":[],"ms":13.8}
+
+## fallback variants on cezar (files whose closure reaches the listed builtins key by the whole lockfile)
+child_process, worker_threads: kept 326 of 632
+child_process, worker_threads, module: kept 324 of 632 (66 files reach node:module; design-guardian.test.ts falls back)
+
+## cezar: untraced full run, same export, for the trace's overhead
+real	8m27.849s
+user	36m59.710s
+sys	20m12.601s
+ 21:50:58 up 6 days,  6:16,  8 users,  load average: 9.15, 18.28, 22.46
+
+tests 14593 failed 0
+traced run failures: packages/cezar/src/runs/retention-enforce.test.ts, 2 tests, Error: STACK_TRACE_ERROR
