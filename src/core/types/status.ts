@@ -77,6 +77,12 @@ export interface StatusHeader {
    */
   readonly testFilesListed?: boolean;
   /**
+   * `true` while the daemon waits for an install and lists and runs nothing
+   * (`awaitingInstallMetaKey`; spec 001 D5 as amended, task 001-100). Set by
+   * `readHeader` only when `true`; absent reads as not waiting.
+   */
+  readonly awaitingInstall?: boolean;
+  /**
    * Checks whose current result is inherited from another worktree, a part
    * of `counts.current`. Goal 4: inherited results are reported as
    * inherited; D9's skill reads "the header's pending and inherited counts".

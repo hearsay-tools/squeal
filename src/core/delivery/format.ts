@@ -64,6 +64,10 @@ function at(location: SourceLocation): string {
 const NOT_LISTED_SENTENCE =
   "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 
+/** Spec 001 D5 as amended (task 001-100): the daemon waits for an install. */
+const AWAITING_INSTALL_SENTENCE =
+  "No dependencies are installed in this worktree; Squeal lists and runs no tests until an install.";
+
 /** Paths a header names before the rest is counted (task 001-85). */
 export const CHANGED_PATHS_SHOWN = 3;
 
@@ -95,7 +99,7 @@ function headerLine(header: StatusHeader): string {
     `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header)}.` +
     livenessSentence(header.daemon, revision) +
-    installSentences(header)
+    (header.awaitingInstall === true ? ` ${AWAITING_INSTALL_SENTENCE}` : installSentences(header))
   );
 }
 

@@ -1,5 +1,6 @@
 import { testFileId } from "../keys/index.js";
 import {
+  awaitingInstallMetaKey,
   type CheckKey,
   type KnownFailure,
   type KnownState,
@@ -57,6 +58,9 @@ export function readHeader(
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    ...(store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true"
+      ? { awaitingInstall: true }
+      : {}),
   };
 }
 
