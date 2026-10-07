@@ -133,12 +133,18 @@ const status = (root: string): StatusSnapshot => {
   return result;
 };
 
-/** Status once nothing is pending past revision `after` and `accept` holds. */
+/**
+ * Status once nothing is pending past revision `after` and `accept` holds.
+ * The runner part of a revision counts as pending (001 D2): an observed-only
+ * path re-keys its test file only in the refinement, through `affected`, so
+ * `counts.pending` alone reads 0 until then.
+ */
 const settle = (root: string, what: string, accept: (s: StatusSnapshot) => boolean, after = -1) =>
   until(what, SETTLE_MS, async () => {
     const s = status(root);
     const quiet =
       s.revision > after &&
+      s.runnerPartPending !== true &&
       s.counts.pending + s.testFilesWithoutChecks.pending + s.testFilesWithoutChecks.unknown === 0;
     if (quiet && accept(s)) return s;
     // The last of these is the timeout's message.
