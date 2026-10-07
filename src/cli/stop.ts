@@ -1,4 +1,5 @@
-import { askDaemon, daemonSocket, delay, worktreeRoot } from "./daemon-access.js";
+import { setTimeout as sleep } from "node:timers/promises";
+import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 
 /** Shutdown waits for the tier in flight (D10); the CLI waits this long before saying so. */
@@ -28,7 +29,7 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
       io.stdout(`Stop requested; the daemon for ${root} is finishing the tier in flight\n`);
       return 0;
     }
-    await delay(50);
+    await sleep(50);
   }
   io.stdout(`Squeal daemon stopped for ${root}\n`);
   return 0;

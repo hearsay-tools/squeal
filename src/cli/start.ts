@@ -1,6 +1,7 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { ensureDaemon, probeDaemon } from "../core/daemon/ensure.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
-import { delay, worktreeRoot } from "./daemon-access.js";
+import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 
 /** A spawned daemon binds its socket in about 100 ms; a loaded machine gets more. */
@@ -31,7 +32,7 @@ export async function startCommand(args: readonly string[], io: CliIo): Promise<
         io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer\n`);
         return 1;
       }
-      await delay(50);
+      await sleep(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
