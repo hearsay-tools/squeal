@@ -15,6 +15,10 @@ Started: 2026-10-07
 
 - 2026-10-07, at approval: open questions 1 to 3 are the wave-0 research row 002-11; 4 waits for a host where bubblewrap works; 5 is measured in dogfooding; 6 (a policy-gated `codex queue` wake) stays with the human and is not planned.
 
+- 2026-10-07, wave 0 (002-10): the harness-neutral hook logic is `src/harness/shared/` (context, ensure, sweep, primer, text, deliver, deny, prompt, session, stop, waiter, hook); the Claude Code hooks keep their stdin fields, output shapes, fork detection and every `CLAUDE_*` read. No behaviour change; bundles rebuilt as 0.1.15.
+- 2026-10-07, wave 0 (002-11, `research/wave-0-checks.md`): D1, D4 and goal 6 amended. The Codex plugin has its own `.agents/plugins/marketplace.json`; commands are one string with `${PLUGIN_ROOT}` literal; the fast path tests `$PWD` and never `CLAUDE_PROJECT_DIR`; plugin trust survives a version raise and a test pins the `hooks.json` hashes; `--print-launcher-config` emits `hooks.state` from a ported hash. SessionEnd at TUI exit is not guaranteed when the TUI's thread lives in Codex's managed daemon, so goal 6 leaves the TUI to expiry. Open questions 1 to 3 closed; row 002-17 added for trust through `config/batchWrite`.
+- 2026-10-07, before wave 1 (coordinator): D2 amended. No `harness` field on the consumer record: nothing reads it, and it would be a schema step.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
