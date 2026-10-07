@@ -39,7 +39,7 @@ A settled status is a clean exit, not a finished row. In the worker's own worktr
 
 ## 6. Integrate
 
-Onto this branch, in ownership order, the bundle-owning branch last with its bundle commit left out: `git merge --ff-only` when the branch sits on your head, otherwise `git cherry-pick -x <first>^..<last>`. A conflict keeps both sides' intent. Then once: `npm ci`, `npm run build`, commit the bundles before the end-to-end suite runs (it archives from HEAD) *(Squeal)*, full suite, lint, typecheck. Land only on green:
+Onto this branch, in ownership order, the bundle-owning branch last with its bundle commit left out: `git merge --ff-only` when the branch sits on your head, otherwise `git cherry-pick -x <first>^..<last>`. A conflict keeps both sides' intent. Then once: `npm ci`, raise the patch version in `package.json` when the bundles will change, `npm run build`, commit the bundles with the version before the end-to-end suite runs (it archives from HEAD); CI fails a bundle change without a raise (`npm run check:version -- origin/main`) *(Squeal)*; full suite, lint, typecheck. Land only on green:
 
 ```sh
 git push origin <branch> && git push origin HEAD:main && git -C <main checkout> merge --ff-only <branch>

@@ -17,6 +17,21 @@ Then run `squeal init` once through Claude Code's Bash tool, for example by aski
 
 The project needs its own Vitest (`npm install -D vitest`): the daemon resolves `vitest/node` from the project root. A project without it gets a runner failure note in `squeal status`, not a crash.
 
+## Update an installed plugin
+
+Claude Code compares the `version` in `.claude-plugin/plugin.json` with the one it installed, and changes nothing while they match, however many commits land (Claude Code docs, [Plugin loading reference, Versions and updates](https://code.claude.com/docs/en/plugins/loading#versions-and-updates): the manifest's version comes first and "keeps every user on the cached copy until its author changes the string"). Every landing that changes `dist/` raises the version, so after one:
+
+```sh
+claude plugin marketplace update squeal
+claude plugin update squeal@squeal --scope project
+```
+
+The first refreshes Claude Code's clone of this repository; the second installs the new version when it differs from the installed one, and otherwise prints that the plugin is already at the latest version. Then run `/reload-plugins` in a running session, or start a new one: a running session keeps the hooks it loaded. Use the `--scope` you installed with. `claude plugin list` shows the installed version; `bin/squeal --version` prints the version of the bundles it runs.
+
+The marketplace does not auto-update unless you turn it on, under `/plugin` **Marketplaces** or with `autoUpdate` on its `extraKnownMarketplaces` entry; then Claude Code updates the plugin in the background and asks for `/reload-plugins`.
+
+## Develop
+
 For development, load this directory for one session: `claude --plugin-dir plugins/claude-code`. Claude Code ignores a `--plugin-dir` that does not exist without any message, and a relative path resolves against the current directory, so pass an absolute path when in doubt. The `init` event of `--output-format stream-json` lists the loaded plugins under `plugins`; Squeal is loaded when `squeal` is there (lessons, surprise 10).
 
 ## Contents
@@ -28,9 +43,10 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 | `dist/cli/squeal.mjs`, `bin/squeal` | The CLI on the Bash tool's PATH, and the daemon the hooks spawn. |
 | `dist/cli/front-desk.mjs` | The daemon's socket worker thread, loaded beside the CLI. |
 | `skills/squeal/SKILL.md` | When and how to pull `squeal status`, wait with `squeal status --wait`, `squeal why`, `squeal run --all`; policy keys. |
-| `package.json` | Marks the bundles as ES modules; its version follows the root package. The bundles carry the version from the build. |
+| `.claude-plugin/plugin.json` | The manifest. `npm run build` writes its `version` from the root `package.json`, the one version source; the marketplace entry carries none. |
+| `package.json` | Marks the bundles as ES modules; the build writes its version too. The bundles carry the version from the build. |
 
-`dist/` is committed: a marketplace install copies this directory as it is in git. `npm run build` regenerates it; `test/harness/plugin.test.ts` fails when the committed bundles differ from a fresh build, and CI runs `git diff --exit-code -- plugins/claude-code/dist` after its build. `test/e2e/shipped-plugin.test.ts` runs a `git archive` copy of this directory with no `node_modules` above it against a project with its own Vitest.
+`dist/` is committed: a marketplace install copies this directory as it is in git. `npm run build` regenerates it; `test/harness/plugin.test.ts` fails when the committed bundles differ from a fresh build, and CI runs `git diff --exit-code -- plugins/claude-code/dist` after its build. A change to `dist/` must raise the root `package.json` version, or installed plugins never see it: CI runs `scripts/check-version-bump.ts` on pull requests and pushes to `main`, and `npm run check:version -- <base> [head]` runs it locally. `test/e2e/shipped-plugin.test.ts` runs a `git archive` copy of this directory with no `node_modules` above it against a project with its own Vitest.
 
 ## Behaviour
 
