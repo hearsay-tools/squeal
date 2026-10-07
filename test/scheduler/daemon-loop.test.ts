@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { storePaths } from "../../src/core/store/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type WatcherBackend } from "../../src/core/types/index.js";
+import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
@@ -61,6 +62,52 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       expect(store.revisions.latest(worktreeId)?.changes.map((c) => c.path)).toEqual([
         "src/gen/client.ts",
       ]);
+    } finally {
+      await loop.close();
+      await runner.close();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  it("records an edit made after the start scan, before the watcher starts, in no start revision (001-99, wave 10d S1)", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const root = repo.main;
+    const worktreeId = worktreeIdFor(root);
+    const runner = await createVitestAdapter({ root });
+    const inner = createWatcherBackend(process.platform);
+    // `keys.bootstrap` has run when the feed starts its watch; the agent edits now.
+    const backend: WatcherBackend = {
+      name: inner.name,
+      watch: (spec, listener) => {
+        writeFileSync(
+          join(root, "src/math.ts"),
+          "export const add = (a: number, b: number) => a + b + 0;\n",
+        );
+        return inner.watch(spec, listener);
+      },
+    };
+    const errors: Error[] = [];
+    const loop = createDaemonLoop({
+      root,
+      worktreeId,
+      store,
+      runner,
+      sink: new RecordingSink(store, worktreeId),
+      policy: DEFAULT_POLICY,
+      squealVersion: "0.0.0-test",
+      runsDir: storePaths(repo.commonDir).runsDir,
+      onError: (error) => errors.push(error),
+      backend,
+      timings: { reconcileIntervalMs: 60_000 },
+    });
+    try {
+      await loop.start();
+      const latest = store.revisions.latest(worktreeId)?.number ?? 0;
+      const touching = store.revisions
+        .range(worktreeId, 0, latest)
+        .filter((r) => r.changes.some((c) => c.path === "src/math.ts"));
+      expect(touching.map((r) => r.trigger)).toEqual(["interval"]);
     } finally {
       await loop.close();
       await runner.close();
