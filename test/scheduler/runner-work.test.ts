@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readDaemonNotes } from "../../src/core/status/notes.js";
+import { readDaemonNotes } from "../../src/core/notes.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 

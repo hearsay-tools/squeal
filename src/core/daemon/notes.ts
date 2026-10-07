@@ -1,10 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import { appendNote } from "../scheduler/notes.js";
+import { appendNote, withNote } from "../notes.js";
 import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type DaemonNote,
-  MAX_PERSISTED_NOTES,
   notesMetaKey,
   type Store,
   type WorktreeId,
@@ -46,7 +45,7 @@ export function noteInNewerStore(
     const key = notesMetaKey(worktreeId);
     db.exec("BEGIN IMMEDIATE");
     const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key);
-    const notes = [...parseNotes(row?.value), note].slice(-MAX_PERSISTED_NOTES);
+    const notes = withNote(row?.value, note);
     db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(
       key,
       JSON.stringify(notes),
@@ -57,15 +56,5 @@ export function noteInNewerStore(
     return false;
   } finally {
     db?.close();
-  }
-}
-
-function parseNotes(raw: unknown): unknown[] {
-  if (typeof raw !== "string") return [];
-  try {
-    const value: unknown = JSON.parse(raw);
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
   }
 }
