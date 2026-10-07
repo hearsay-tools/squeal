@@ -355,20 +355,27 @@ describe("vitest adapter: an add re-resolves past the scan and the index fallbac
     expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
   });
 
-  it("the file a package.json main names appears: the directory leaves its index", async () => {
-    const fx = await openFixture("basic", {
-      "src/pkg/package.json": '{ "main": "lib.ts" }\n',
-      "src/pkg/index.ts": 'export const which = "index";\n',
-      "src/uses.ts": 'export { which } from "./pkg";\n',
-      "test/pkg.test.ts": readsTest("../src/uses.ts", "lib"),
-    });
-    const test = [ref("test/pkg.test.ts")];
-    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
+  // Reviews/wave-7.6.md N1: a `main` with a trailing slash names a directory's `index`.
+  it.each([
+    { main: "lib.ts", entry: "src/pkg/lib.ts" },
+    { main: "lib/", entry: "src/pkg/lib/index.ts" },
+  ])(
+    "the file a package.json main $main names appears: the directory leaves its index",
+    async ({ main, entry }) => {
+      const fx = await openFixture("basic", {
+        "src/pkg/package.json": `${JSON.stringify({ main })}\n`,
+        "src/pkg/index.ts": 'export const which = "index";\n',
+        "src/uses.ts": 'export { which } from "./pkg";\n',
+        "test/pkg.test.ts": readsTest("../src/uses.ts", "lib"),
+      });
+      const test = [ref("test/pkg.test.ts")];
+      expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["fail"]);
 
-    fx.write("src/pkg/lib.ts", 'export const which = "lib";\n');
-    await fx.adapter.invalidate([{ path: "src/pkg/lib.ts", kind: "add" }]);
+      fx.write(entry, 'export const which = "lib";\n');
+      await fx.adapter.invalidate([{ path: entry, kind: "add" }]);
 
-    expect(paths(await fx.adapter.affected(["src/pkg/lib.ts"]))).toEqual(["test/pkg.test.ts"]);
-    expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
-  });
+      expect(paths(await fx.adapter.affected([entry]))).toEqual(["test/pkg.test.ts"]);
+      expect(outcomes(await fx.adapter.run(test, fx.runOptions()))).toEqual(["pass"]);
+    },
+  );
 });
