@@ -107,6 +107,8 @@ export function quietCli(): { cli: string; ran: string } {
 /**
  * The drift check: `actual` holds exactly the files of `expected` ending in
  * `suffix` (every file when empty), byte for byte, at the same relative paths.
+ * `Buffer.equals`, not `toEqual`, which walks a 400 kB bundle byte by byte
+ * (review 002 wave 1, S3).
  */
 export function expectSameFiles(actual: string, expected: string, suffix = ""): void {
   const files = (dir: string): string[] =>
@@ -116,6 +118,7 @@ export function expectSameFiles(actual: string, expected: string, suffix = ""): 
       .sort();
   expect(files(actual)).toEqual(files(expected));
   for (const file of files(expected)) {
-    expect(readFileSync(join(actual, file)), file).toEqual(readFileSync(join(expected, file)));
+    const same = readFileSync(join(actual, file)).equals(readFileSync(join(expected, file)));
+    expect(same, `${file} differs from the build`).toBe(true);
   }
 }

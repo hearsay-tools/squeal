@@ -37,6 +37,9 @@ const CONTRACT = [
   "user-prompt-submit",
 ];
 
+/** As the Claude Code drift test: under a loaded full suite the comparison outran 5 s (S3). */
+const BUILD = { timeout: 60_000 };
+
 let built: Awaited<ReturnType<typeof buildCodexBundles>>;
 beforeAll(async () => {
   built = await buildCodexBundles();
@@ -161,7 +164,7 @@ describe("node:test runtime copy (task 003-13)", () => {
 describe.skipIf(!existsSync(join(CODEX_PLUGIN_DIR, CODEX_MANIFEST)))(
   "committed Codex plugin",
   () => {
-    it("has the bundles exactly as `npm run build:plugin` produces them", () => {
+    it("has the bundles exactly as `npm run build:plugin` produces them", BUILD, () => {
       expectSameFiles(CODEX_PLUGIN_DIST, built.dir, ".mjs");
     });
 
