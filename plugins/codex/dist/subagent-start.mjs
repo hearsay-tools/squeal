@@ -3045,11 +3045,35 @@ async function startSession(input, location2, deps) {
   return text;
 }
 
+// src/harness/codex/output.ts
+var CONTEXT_CAP_CHARS = 8e3;
+var CUT_LINE = "SQUEAL \xB7 cut to fit a Codex hook; `squeal status` has the rest.";
+function capContext(text) {
+  if (text.length <= CONTEXT_CAP_CHARS) return text;
+  const tail = text.endsWith(`
+
+${PRIMER}`) ? `
+
+${PRIMER}` : "";
+  const room = CONTEXT_CAP_CHARS - tail.length - CUT_LINE.length - 1;
+  const head = text.slice(0, text.length - tail.length).slice(0, room);
+  const end = head.lastIndexOf("\n");
+  return `${end > 0 ? head.slice(0, end) : head}
+${CUT_LINE}${tail}`;
+}
+function additionalContext(event, text) {
+  return { hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text) } };
+}
+
 // src/harness/codex/handlers.ts
 var subagentStart = async (input, location2, deps) => {
   if (input.agent_id === void 0) return null;
-  await startSession({ session_id: input.session_id, agent_id: input.agent_id }, location2, deps);
-  return null;
+  const text = await startSession(
+    { session_id: input.session_id, agent_id: input.agent_id },
+    location2,
+    deps
+  );
+  return text === null ? null : additionalContext("SubagentStart", text);
 };
 
 // src/harness/codex/main.ts
