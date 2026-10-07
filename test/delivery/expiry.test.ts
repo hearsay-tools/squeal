@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { expireConsumers } from "../../src/core/delivery/index.js";
+import { createDelivery, expireConsumers } from "../../src/core/delivery/index.js";
+import { registration } from "../../src/core/delivery/registered.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   CONSUMER_EXPIRY_MS,
@@ -11,6 +12,7 @@ import {
 } from "../../src/core/types/index.js";
 import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
+import { fixedStatus, liveDaemon } from "./fakes.js";
 
 const WT = "0123456789abcdef";
 const MIN = 60_000;
@@ -132,5 +134,32 @@ describe("expireConsumers: waiterless interactive consumers (lessons, defects 8 
     leaveLockFile(locksDir, c);
     expect(expireConsumers(store, NOW)).toEqual([]);
     expect(registered(store)).toEqual(["gone"]);
+  });
+});
+
+describe("expireConsumers and the registration revision (task 001-94, N4)", () => {
+  it("parks a waiterless consumer's registration for its next registration", async () => {
+    const { store, locksDir } = setup();
+    liveDaemon(store, WT);
+    const append = () =>
+      store.revisions.append({
+        worktreeId: WT,
+        createdAt: 1,
+        head: null,
+        dirty: true,
+        trigger: "watch",
+        changes: [],
+      }).number;
+    const gone = consumer("gone");
+    let clock = NOW - 11 * MIN;
+    const delivery = createDelivery(store, { status: fixedStatus(), now: () => clock });
+    await delivery.register(gone);
+    append(); // revision 1, the agent's
+    leaveLockFile(locksDir, gone);
+    expect(expireConsumers(store, NOW, { locksDir })).toEqual([gone]);
+    append(); // revision 2, while it was gone
+    clock = NOW;
+    await delivery.register(gone);
+    expect(registration(store, gone)).toEqual({ since: 0, gaps: [[1, 2]] });
   });
 });

@@ -11,9 +11,11 @@ import type { Consumer, Store } from "../types/index.js";
  * are dropped on every write.
  */
 
-const slot = (consumer: Consumer) => `${consumer.sessionId}\n${consumer.agentId}`;
+/** A consumer's name in a row. */
+export const slot = (consumer: Consumer) => `${consumer.sessionId}\n${consumer.agentId}`;
 
-function readAll(store: Store, key: string): Record<string, unknown> {
+/** Every value in the row `key`; empty when it is missing or unreadable. */
+export function readAll(store: Store, key: string): Record<string, unknown> {
   const raw = store.meta.get(key);
   if (raw === null) return {};
   try {

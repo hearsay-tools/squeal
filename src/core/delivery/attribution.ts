@@ -4,49 +4,18 @@ import type {
   Consumer,
   DeltaEntry,
   KnownState,
-  RelativePath,
   RevisionNumber,
   StatusHeader,
   Store,
   TransitionEntry,
   WorktreeId,
 } from "../types/index.js";
-import { readSlot, writeSlot } from "./slots.js";
+import { changedAfter, registration } from "./registered.js";
 
 /*
  * Task 001-91, lessons defect 16: whether the agent's changes reach a failure
  * and the load a timeout ran under, read from the store at delivery.
  */
-
-/** `meta` key of a worktree's registration revisions. */
-export function registeredMetaKey(worktreeId: WorktreeId): string {
-  return `revision-registered:${worktreeId}`;
-}
-
-/** The revision `consumer` registered at; `null` when none was recorded (registered by 0.1.9 or older). */
-export function registeredRevision(store: Store, consumer: Consumer): RevisionNumber | null {
-  const at = readSlot(store, registeredMetaKey(consumer.worktreeId), consumer);
-  return typeof at === "number" ? at : null;
-}
-
-/** Records the revision `consumer` registered at; `null` forgets it. Call inside a transaction. */
-export function tellRegistered(store: Store, consumer: Consumer, revision: RevisionNumber | null) {
-  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, revision);
-}
-
-/** The paths revisions after `since` up to `revision` changed. */
-function changedAfter(
-  store: Store,
-  worktreeId: WorktreeId,
-  since: RevisionNumber,
-  revision: RevisionNumber,
-): ReadonlySet<RelativePath> {
-  const paths = new Set<RelativePath>();
-  for (let n = since + 1; n <= revision; n++) {
-    for (const change of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change.path);
-  }
-  return paths;
-}
 
 /** A summary that reads as a test or hook timeout (`withLoad` in the Vitest runner). */
 const TIMED_OUT = /timed out in \d+ms/;
@@ -77,7 +46,7 @@ export function attribute(
   revision: RevisionNumber,
 ): readonly DeltaEntry[] {
   if (!entries.some((e) => e.to === "fail")) return entries;
-  const since = registeredRevision(store, consumer);
+  const since = registration(store, consumer);
   const changed = since === null ? null : changedAfter(store, consumer.worktreeId, since, revision);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;

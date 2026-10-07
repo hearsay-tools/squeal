@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createStateSink } from "../../src/core/state/index.js";
 import {
+  bootstrappedMetaKey,
   type Consumer,
   MAIN_AGENT,
   type PolicyFile,
@@ -68,17 +69,19 @@ export function squealRepo(): SquealRepo {
   store.worktrees.upsert(row);
   setKey(store, "k1", { file: FILE, worktreeId });
   // `none`: no daemon ever ran, so no last heartbeat either (`setDaemon(null)` would keep it).
-  const daemon: SquealRepo["daemon"] = (state, staleSince = 1) =>
-    state === "none"
-      ? store.worktrees.upsert(row)
-      : store.worktrees.setDaemon(worktreeId, {
-          // Nobody listens here; the hooks' socket probe falls back to the runtime dir.
-          socketPath: `/tmp/squeal-test-${worktreeId}.sock`,
-          startedAt: 1,
-          heartbeatAt: state === "alive" ? Date.now() : staleSince,
-          heartbeatIntervalMs: state === "alive" ? 3_600_000 : 5_000,
-          squealVersion: "0.0.0-test",
-        });
+  const daemon: SquealRepo["daemon"] = (state, staleSince = 1) => {
+    if (state === "none") return store.worktrees.upsert(row);
+    // A daemon past its start scan: registrations record where the agent's changes start (001-94).
+    store.meta.set(bootstrappedMetaKey(worktreeId), "1");
+    store.worktrees.setDaemon(worktreeId, {
+      // Nobody listens here; the hooks' socket probe falls back to the runtime dir.
+      socketPath: `/tmp/squeal-test-${worktreeId}.sock`,
+      startedAt: 1,
+      heartbeatAt: state === "alive" ? Date.now() : staleSince,
+      heartbeatIntervalMs: state === "alive" ? 3_600_000 : 5_000,
+      squealVersion: "0.0.0-test",
+    });
+  };
   daemon("alive");
   const sink = createStateSink(store);
   let revision = 0;

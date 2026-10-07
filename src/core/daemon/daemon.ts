@@ -10,7 +10,7 @@ import type {
   Policy,
   WorktreeId,
 } from "../types/index.js";
-import { DEFAULT_POLICY } from "../types/index.js";
+import { bootstrappedMetaKey, DEFAULT_POLICY } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { type DaemonTimings, startTimers } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
@@ -273,6 +273,8 @@ class Daemon {
       });
       this.#loop = loop;
       await loop.start();
+      // Past the start scan: registrations from here on record where an agent's changes start.
+      store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
       // Idle counts from ready: the baseline is work, and the hook that spawned
       // this daemon registers its consumer while it runs.
       this.#lastActive = this.#now();

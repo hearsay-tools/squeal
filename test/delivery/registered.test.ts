@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
 import { createStateSink } from "../../src/core/state/index.js";
-import type {
-  Consumer,
-  Delta,
-  HarnessDelivery,
-  ResultRecord,
-  StateSink,
-  Store,
-  TransitionEntry,
+import {
+  CONSUMER_EXPIRY_MS,
+  type Consumer,
+  type Delta,
+  type HarnessDelivery,
+  type ResultRecord,
+  type StateSink,
+  type Store,
+  type TransitionEntry,
 } from "../../src/core/types/index.js";
 import { check, FILE, freshStore, result, setKey, WT } from "../state/helpers.js";
-import { fixedStatus } from "./fakes.js";
+import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
  * Task 001-94, review wave 10b B1: the revision a consumer registered at is
@@ -32,6 +33,7 @@ beforeEach(() => {
   sink = createStateSink(store);
   delivery = createDelivery(store, { status: fixedStatus() });
   setKey(store, "k1");
+  liveDaemon(store, WT);
   store.testFiles.put({
     testFile: FILE,
     closure: {
@@ -79,5 +81,115 @@ describe("a registration of a consumer still registered", () => {
     expect(entry.changesInClosure).toEqual(["src/x.ts"]);
     expect(text).toContain("touches your changes: src/x.ts");
     expect(text).not.toContain("none of your changes");
+  });
+});
+
+describe("a registration before the daemon's start scan (B2)", () => {
+  /** The start scan records what changed while no daemon ran. */
+  function startScan(paths: readonly string[]): void {
+    store.revisions.append({
+      worktreeId: WT,
+      createdAt: 1,
+      head: null,
+      dirty: true,
+      trigger: "start",
+      changes: paths.map((path) => ({ path, oldHash: "old", newHash: `h-${path}` })),
+    });
+  }
+
+  it("records no revision, so a start revision is never the agent's (B2 probe)", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    liveDaemon(store, WT, { scanned: false, startedAt: 2 });
+    await delivery.register(C1);
+    startScan(["src/x.ts"]);
+    liveDaemon(store, WT, { startedAt: 2 });
+    apply(edit(["README.md"]), result(A, "fail"));
+    const { entry, text } = await failing();
+    expect(entry.changesInClosure).toBeUndefined();
+    expect(text).not.toContain("your changes");
+  });
+
+  it("records none while the marker is an earlier daemon's", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    liveDaemon(store, WT, { startedAt: 1 });
+    liveDaemon(store, WT, { scanned: false, startedAt: 2 });
+    await delivery.register(C1);
+    apply(edit(["src/x.ts"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toBeUndefined();
+  });
+
+  it("records none while no daemon is alive", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    store.worktrees.setDaemon(WT, null);
+    await delivery.register(C1);
+    liveDaemon(store, WT, { startedAt: 3 });
+    apply(edit(["src/x.ts"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toBeUndefined();
+  });
+
+  it("records the revision once the scan is recorded", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    startScan(["src/x.ts"]);
+    liveDaemon(store, WT, { startedAt: 2 });
+    await delivery.register(C1);
+    apply(edit(["README.md"]), result(A, "fail"));
+    const { text } = await failing();
+    expect(text).toContain("none of your changes are in its imports");
+  });
+});
+
+describe("a consumer that left and registers again (N4)", () => {
+  let clock = 1_000;
+
+  beforeEach(() => {
+    delivery = createDelivery(store, { status: fixedStatus(), now: () => clock });
+    store.testFiles.put({
+      testFile: FILE,
+      closure: {
+        testFile: FILE,
+        paths: ["src/a.test.ts", "src/x.ts", "src/y.ts"],
+        complete: false,
+        method: "static imports plus declared inputs",
+      },
+      updatedAt: 1,
+      updatedBy: WT,
+    });
+  });
+
+  it("keeps its changes from before it left, without the ones made while it was away", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    await delivery.register(C1);
+    edit(["src/x.ts"]); // the agent
+    await delivery.unregister(C1);
+    edit(["src/y.ts"]); // someone else, while the session was gone
+    await delivery.register(C1);
+    apply(edit(["README.md"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toEqual(["src/x.ts"]);
+  });
+
+  it("starts over after the consumer expiry", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    await delivery.register(C1);
+    edit(["src/x.ts"]);
+    await delivery.unregister(C1);
+    clock += CONSUMER_EXPIRY_MS + 1;
+    await delivery.register(C1);
+    apply(edit(["README.md"]), result(A, "fail"));
+    expect((await failing()).entry.changesInClosure).toEqual([]);
+  });
+
+  it("is kept for its session and agent only", async () => {
+    apply(edit(["src/a.test.ts"]), result(A, "pass"));
+    await delivery.register(C1);
+    edit(["src/x.ts"]);
+    await delivery.unregister(C1);
+    const other: Consumer = { ...C1, sessionId: "s2" };
+    await delivery.register(other);
+    apply(edit(["README.md"]), result(A, "fail"));
+    const delta = await delivery.onToolBoundary(other);
+    const entry = delta?.entries.find((e) => e.to === "fail");
+    expect(entry !== undefined && "changesInClosure" in entry && entry.changesInClosure).toEqual(
+      [],
+    );
   });
 });

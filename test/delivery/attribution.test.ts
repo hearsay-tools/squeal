@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { registeredMetaKey } from "../../src/core/delivery/attribution.js";
 import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
+import { registeredMetaKey } from "../../src/core/delivery/registered.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import type {
   CheckError,
@@ -14,7 +14,7 @@ import type {
 } from "../../src/core/types/index.js";
 import { withLoad } from "../../src/runners/vitest/results.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
-import { fixedStatus } from "./fakes.js";
+import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
  * Task 001-91, lessons defect 16: delivery reads, from the store, whether a
@@ -36,6 +36,7 @@ beforeEach(() => {
   sink = createStateSink(store);
   delivery = createDelivery(store, { status: fixedStatus() });
   setKey(store, "k1");
+  liveDaemon(store, WT);
 });
 
 /** A revision changing `paths`; returns its number. */
