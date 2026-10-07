@@ -2277,19 +2277,21 @@ function currentUid() {
 
 // src/core/daemon/ensure.ts
 async function probeDaemon(root, timeoutMs, options = {}) {
-  let socketPath;
   try {
-    socketPath = socketPathFor(worktreeIdFor(root), options.env);
+    return (await locateDaemon(root, timeoutMs, options)).probe;
   } catch (error) {
     return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
   }
+}
+async function locateDaemon(root, timeoutMs, options = {}) {
+  const socketPath = socketPathFor(worktreeIdFor(root), options.env);
   const record = options.record === void 0 ? recordedDaemon(root) : options.record;
   const now = options.now ?? Date.now;
   if (record !== null && record.socketPath !== socketPath && daemonLiveness(record, now()).state === "alive") {
-    const recorded = await ping(record.socketPath, timeoutMs);
-    if (recorded.state !== "absent") return recorded;
+    const probe = await ping(record.socketPath, timeoutMs);
+    if (probe.state !== "absent") return { socketPath: record.socketPath, probe };
   }
-  return ping(socketPath, timeoutMs);
+  return { socketPath, probe: await ping(socketPath, timeoutMs) };
 }
 async function ping(socketPath, timeoutMs) {
   try {
@@ -2297,16 +2299,20 @@ async function ping(socketPath, timeoutMs) {
     if (response.ok && response.type === "ping") return { state: "alive", ping: response };
     return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
   } catch (error) {
-    const code = error.code;
-    if (code === "ENOENT" || code === "ECONNREFUSED") return { state: "absent", code };
+    const code = noDaemonCode(error);
+    if (code !== null) return { state: "absent", code };
     return { state: "unresponsive", reason: error.message };
   }
 }
-function recordedDaemon(root) {
+function noDaemonCode(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ECONNREFUSED" ? code : null;
+}
+function recordedDaemon(root, busyTimeoutMs = 100) {
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return null;
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    const store = openStore(commonDir, { create: false, busyTimeoutMs });
     if (isStoreOpenFailure(store)) return null;
     try {
       return store.worktrees.get(worktreeIdFor(root))?.daemon ?? null;
