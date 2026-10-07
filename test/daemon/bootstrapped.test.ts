@@ -3,9 +3,10 @@ import { bootstrappedMetaKey } from "../../src/core/types/index.js";
 import { daemonSuite, readNotes, SLOW, waitFor, waitReady, withStore } from "./helpers.js";
 
 /*
- * Task 001-94, review wave 10b B2 (b): the daemon records that its start
- * scan is done, as its own `startedAt`, so a hook registers a consumer's
- * changes from after the scan's `start` revision and never before it.
+ * Task 001-94, review wave 10b B2; task 001-96: the daemon records that its
+ * start scan is done, as its own `startedAt`. A consumer registered after it
+ * may be told "none of your changes" while that daemon lives; no hook waits
+ * for it.
  */
 
 const suite = daemonSuite();
@@ -35,7 +36,7 @@ describe("the bootstrap marker", SLOW, () => {
     await waitReady(repo, spawned);
     const { startedAt, marker } = read();
     expect(marker).toBe(String(startedAt));
-    // Measurement for SessionStart's wait (SPAWN_SETTLE_MS, 750 ms), printed for the report.
+    // How long after a spawn a registration can carry the marker, printed for the report.
     console.log(
       `bootstrap marker: heartbeat ${heartbeat - spawnedAt} ms, marker ${scanned - spawnedAt} ms after spawn`,
     );

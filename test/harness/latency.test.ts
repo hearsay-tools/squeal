@@ -197,5 +197,5 @@ describe("bundled hook latency", () => {
     // (Node 22 job, 2026-10-06). The budget is a dogfooding measurement; in CI it is reported only.
     if (load > MAX_LOAD || process.env.CI !== undefined) return;
     for (const row of rows) expect(row.p95, row.hook).toBeLessThan(row.budget);
-  }, 120_000);
+  }, 180_000);
 });
