@@ -49,3 +49,7 @@ Queues every test file that has no result for the current files (`--force` queue
 ## squeal remove
 
 Takes Squeal out of the repository: stops the daemon of every worktree, then deletes the store and the daemons' temp directories. `--config` also deletes `squeal.config.json`. Run it only when the user asks to remove Squeal. Exit 1 means a daemon did not stop and nothing was deleted; its output names the worktree. Exit 3 means it deleted what it could, and the paths it could not delete are listed under "Still there" with their error codes: tell the user. It prints what remains: the plugin, the config when kept, and the `squeal.config.json` of every other worktree, where the next session starts Squeal again. A deleted config that git tracks is a change to commit.
+
+## squeal init
+
+Sets Squeal up in a repository; the user runs it, or asks you to. `squeal init --harness codex --trust` shows the Squeal hooks Codex has not trusted and asks the user whether Codex should trust them. Never answer that question for the user, and never add `--yes` unless the user asked for it: trusting hooks lets them run code in every Codex session.
