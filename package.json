@@ -37,7 +37,9 @@
   },
   "dependencies": {
     "acorn": "^8.19.0",
-    "chokidar": "^5.0.0"
+    "chokidar": "^5.0.0",
+    "enhanced-resolve": "^5.26.0",
+    "es-module-lexer": "^3.0.3"
   },
   "optionalDependencies": {
     "@parcel/watcher": "^2.6.0"
