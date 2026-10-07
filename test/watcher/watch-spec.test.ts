@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { checkIgnored, gitStatus } from "../../src/core/watcher/git.js";
@@ -23,6 +23,35 @@ describe("git helpers", () => {
     const ignored = await checkIgnored(root, ["src/a.ts", "out/gen.js", "src/x.log", "gone/y.log"]);
     expect([...ignored].sort()).toEqual(["gone/y.log", "out/gen.js", "src/x.log"]);
     expect(await checkIgnored(root, [])).toEqual(new Set());
+  });
+
+  it("counts a path beyond a symlinked directory as ignored and classifies the rest", async () => {
+    // Defect 21: git rejects the whole batch with "is beyond a symbolic link".
+    write(root, "../shared/node_modules/.package-lock.json", "{}\n");
+    symlinkSync("../shared/node_modules", join(root, "node_modules"));
+    const ignored = await checkIgnored(root, [
+      "src/a.ts",
+      "node_modules",
+      "node_modules/.package-lock.json",
+      "node_modules/vitest/package.json",
+      "out/gen.js",
+    ]);
+    // `node_modules/` matches directories only, and the link is a file to git.
+    expect([...ignored].sort()).toEqual([
+      "node_modules/.package-lock.json",
+      "node_modules/vitest/package.json",
+      "out/gen.js",
+    ]);
+  });
+
+  it("splits a batch git rejects so one unclassifiable path does not fail the rest", async () => {
+    const ignored = await checkIgnored(root, ["src/a.ts", "out/gen.js", "../outside.ts", "x.log"]);
+    expect([...ignored].sort()).toEqual(["../outside.ts", "out/gen.js", "x.log"]);
+  });
+
+  it("still fails when git cannot classify anything", async () => {
+    const gone = join(root, "gone");
+    await expect(checkIgnored(gone, ["src/a.ts", "out/gen.js"])).rejects.toThrow(/check-ignore/);
   });
 
   it("reports dirty paths and nested repositories from git status", async () => {

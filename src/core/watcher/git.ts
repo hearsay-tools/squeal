@@ -1,9 +1,16 @@
-import { runGit, splitNul } from "../fs/index.js";
+import { lstat } from "node:fs/promises";
+import { isMissing, runGit, splitNul, toAbsolute } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
+import { selfAndAncestors } from "./paths.js";
 
 /**
  * Paths among `paths` that git ignores. One `git check-ignore --stdin` call.
  * Tracked files are never reported, even when a pattern matches them.
+ *
+ * A path beyond a symlinked directory counts as ignored without asking git,
+ * which rejects the whole batch for it: git can never track such a path, so it
+ * is watched only as an extra file. A batch git rejects anyway is split until
+ * the path it names stands alone, and that path counts as ignored too.
  *
  * Spec 001 D2: "at batch time, run the paths through one `git check-ignore
  * --stdin`".
@@ -12,11 +19,71 @@ export async function checkIgnored(
   root: AbsolutePath,
   paths: readonly RelativePath[],
 ): Promise<Set<RelativePath>> {
-  if (paths.length === 0) return new Set();
+  const links = new SymlinkProbe(root);
+  const ignored = new Set<RelativePath>();
+  const asked: RelativePath[] = [];
+  for (const path of paths) {
+    if (await links.isBeyond(path)) ignored.add(path);
+    else asked.push(path);
+  }
+  for (const path of await checkIgnoredBatch(root, asked)) ignored.add(path);
+  return ignored;
+}
+
+async function checkIgnoredBatch(
+  root: AbsolutePath,
+  paths: readonly RelativePath[],
+): Promise<string[]> {
+  if (paths.length === 0) return [];
   const input = `${paths.join("\0")}\0`;
-  // Exit 1 means no path is ignored.
-  const out = await runGit(root, ["check-ignore", "-z", "--stdin"], { input, okCodes: [0, 1] });
-  return new Set(splitNul(out));
+  try {
+    // Exit 1 means no path is ignored.
+    return splitNul(
+      await runGit(root, ["check-ignore", "-z", "--stdin"], { input, okCodes: [0, 1] }),
+    );
+  } catch (error) {
+    const [only] = paths;
+    // A lone path git names in its refusal is unclassifiable; any other failure is git's own.
+    if (paths.length === 1 && only !== undefined) {
+      if ((error as Error).message.includes(`'${only}'`)) return [only];
+      throw error;
+    }
+    const half = Math.ceil(paths.length / 2);
+    return [
+      ...(await checkIgnoredBatch(root, paths.slice(0, half))),
+      ...(await checkIgnoredBatch(root, paths.slice(half))),
+    ];
+  }
+}
+
+/** Caches "is this directory a symlink" for one `checkIgnored` call. */
+class SymlinkProbe {
+  private readonly cache = new Map<RelativePath, Promise<boolean>>();
+
+  constructor(private readonly root: AbsolutePath) {}
+
+  /** True when a directory above `path`, below the root, is a symlink. */
+  async isBeyond(path: RelativePath): Promise<boolean> {
+    const dirs = [...selfAndAncestors(path)].slice(1);
+    for (const dir of dirs.reverse()) {
+      let hit = this.cache.get(dir);
+      if (!hit) {
+        hit = isSymlink(toAbsolute(this.root, dir));
+        this.cache.set(dir, hit);
+      }
+      if (await hit) return true;
+    }
+    return false;
+  }
+}
+
+async function isSymlink(abs: AbsolutePath): Promise<boolean> {
+  try {
+    return (await lstat(abs)).isSymbolicLink();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
 }
 
 /**
