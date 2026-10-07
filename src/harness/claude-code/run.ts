@@ -1,5 +1,6 @@
-import { locate } from "./context.js";
-import type { Handler, HookDeps } from "./hook.js";
+import { locate } from "../shared/context.js";
+import type { HookDeps } from "../shared/hook.js";
+import type { Handler } from "./hook.js";
 import { parseHookInput } from "./input.js";
 
 export interface HookResult {

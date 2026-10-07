@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
-import { PRIMER } from "../../src/harness/claude-code/primer.js";
+import { PRIMER } from "../../src/harness/shared/primer.js";
 
 /*
  * Task 001-88: the skill fires when the agent is about to run tests or check

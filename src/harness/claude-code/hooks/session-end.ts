@@ -1,18 +1,11 @@
-import { locate } from "../context.js";
-import { type Handler, withContext } from "../hook.js";
-import { unregisterSession } from "../sweep.js";
+import { locate } from "../../shared/context.js";
+import { endSession } from "../../shared/session.js";
+import type { Handler } from "../hook.js";
 
 /**
- * SessionEnd (D9): unregister the session's consumers, the main agent and
- * every subagent, and remove waiter lock files no waiter holds. SessionEnd
- * carries no `agent_id`, and a subagent ends with its session.
- *
- * Lessons, defect 5: one `/exit` left its consumer registered. So the hook
- * ignores `reason` (every reason ends the session), never consults or starts
- * the daemon, looks the session up in every worktree of the store, and also
+ * SessionEnd (D9), as `endSession` says. Lessons, defect 5: the hook also
  * sweeps the store of `CLAUDE_PROJECT_DIR` when the session's cwd moved to
- * another repository. A SessionEnd that still misses is caught by the next
- * SessionStart of the same session id, or by daemon-side expiry (D10).
+ * another repository.
  */
 export const sessionEnd: Handler = async (input, location, deps) => {
   const locations = [location];
@@ -21,11 +14,6 @@ export const sessionEnd: Handler = async (input, location, deps) => {
   if (fromProject !== null && fromProject.commonDir !== location.commonDir) {
     locations.push(fromProject);
   }
-  for (const at of locations) {
-    await withContext(input, at, deps, async (context) => {
-      await unregisterSession(context, input.session_id, { removeLocks: true });
-      return null;
-    });
-  }
+  await endSession(input, locations, deps);
   return null;
 };

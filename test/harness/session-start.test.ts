@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
-import { PRIMER } from "../../src/harness/claude-code/primer.js";
+import { PRIMER } from "../../src/harness/shared/primer.js";
 import { check } from "../state/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
