@@ -90,8 +90,6 @@ export async function bootstrap(context: SchedulerContext, ledger: Ledger): Prom
     recheck.map((file) => file.ref),
     failures,
   );
-  // Each test file is one lookup, however many times it is keyed.
-  ledger.counters.misses -= recheck.length;
   const misses = [
     ...first.filter((file) => !fromStore.has(file.id)),
     ...lookup(recheck.map((file) => file.ref)),

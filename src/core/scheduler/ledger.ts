@@ -58,15 +58,6 @@ export class Ledger {
   broken = false;
   /** The last test file listing failed; the next revision lists again. */
   listingFailed = false;
-  readonly counters = {
-    hits: 0,
-    misses: 0,
-    discarded: 0,
-    started: 0,
-    completed: 0,
-    crashed: 0,
-    timedOut: 0,
-  };
 
   readonly #dirty = new Set<string>();
   readonly #removed: TestFileRef[] = [];
@@ -143,12 +134,10 @@ export class Ledger {
       }
       const hits = this.context.store.results.byKey(key, this.context.now());
       if (hits.length > 0) {
-        this.counters.hits++;
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
         continue;
       }
-      this.counters.misses++;
       misses.push(file);
       if (file.blocked !== null) {
         // The runner cannot run it; it stays `unknown` until the runner recovers.
@@ -224,7 +213,6 @@ export class Ledger {
    * while the file ran; it is not counted (review S5).
    */
   discard(file: FileState, key: CheckKey): void {
-    this.counters.discarded++;
     file.discards = file.key === key ? file.discards + 1 : 0;
     if (file.discards >= MAX_DISCARDS) {
       this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);

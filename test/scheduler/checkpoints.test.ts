@@ -39,11 +39,16 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
       expect(row.pending).toBeNull();
       expect(store.results.byKey(row.key).length).toBeGreaterThan(0);
     }
-    const status = h.scheduler.status();
-    expect(status.testFiles).toEqual({ current: 5, pending: 0, stale: 0, unknown: 0 });
     // Six tests plus one file-level check per test file (S1).
-    expect(status.checks).toEqual({ current: 11, pending: 0, stale: 0, unknown: 0 });
-    expect(status.lookups).toEqual({ hits: 0, misses: 5 });
+    expect(h.header()).toMatchObject({
+      counts: { current: 11, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 0 },
+    });
+    // No lookup hit: the store's runs cover every test file.
+    const stored = h.runner.runs.flatMap(
+      (run) => store.runs.get(run.options.runId)?.testFiles ?? [],
+    );
+    expect(stored.map((f) => f.path).sort()).toEqual(ALL_TEST_FILES);
     expect(
       h.sink.stateOf({
         kind: "test",
@@ -105,12 +110,10 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     await b.scheduler.idle();
 
     expect(b.runner.runs).toEqual([]);
-    expect(b.scheduler.status().lookups).toEqual({ hits: 5, misses: 0 });
-    expect(b.scheduler.status().testFiles).toEqual({
-      current: 5,
-      pending: 0,
-      stale: 0,
-      unknown: 0,
+    expect(b.header()).toMatchObject({
+      counts: { current: 11, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 0 },
+      inheritedCount: 11,
     });
     for (const path of ALL_TEST_FILES) expect(b.keyOf(path)).toBe(a.keyOf(path));
 
@@ -141,11 +144,9 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
 
     expect(h.runner.runs).toEqual([]);
     expect(store.checkpoints.lastCompleted(h.worktreeId)).toBeNull();
-    expect(h.scheduler.status().testFiles).toEqual({
-      current: 0,
-      pending: 0,
-      stale: 0,
-      unknown: 5,
+    expect(h.header()).toMatchObject({
+      counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 5 },
     });
     expect(h.keyOf("test/math.test.ts")).toMatch(/^[0-9a-f]{64}$/);
 
@@ -170,7 +171,10 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     await second.scheduler.idle();
 
     expect(second.runner.runs).toEqual([]);
-    expect(second.scheduler.status().lookups).toEqual({ hits: 5, misses: 0 });
+    expect(second.header()).toMatchObject({
+      counts: { current: 11, pending: 0, stale: 0, unknown: 0 },
+      testFilesWithoutChecks: { pending: 0, unknown: 0 },
+    });
     expect(second.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
     // Nothing changed while no daemon ran: no revision.
     expect(store.revisions.latest(second.worktreeId)).toBeNull();

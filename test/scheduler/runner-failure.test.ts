@@ -196,6 +196,6 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     expect(checkpoint.testFiles.map((f) => f.path).sort()).toEqual(ALL_TEST_FILES);
     expect(store.checkpoints.get(checkpoint.id)?.end).toBe("abandoned");
     expect(h.runner.runs).toEqual([]);
-    expect(h.scheduler.status().testFiles.unknown).toBe(5);
+    expect(h.header().testFilesWithoutChecks).toEqual({ pending: 0, unknown: 5 });
   });
 });

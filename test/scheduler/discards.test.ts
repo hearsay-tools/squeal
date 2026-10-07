@@ -41,8 +41,11 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
     await Promise.all(batches);
     await h.scheduler.idle();
 
-    expect(h.runsOf("test/math.test.ts")).toHaveLength(baselineRuns + 4);
-    expect(h.scheduler.status().discarded).toBe(3);
+    const runs = h.runsOf("test/math.test.ts").slice(baselineRuns);
+    expect(runs).toHaveLength(4);
+    // Three were discarded: the store kept a result of `adds` from the last run only.
+    const kept = new Set(store.results.listForCheck(adds, 10).map((r) => r.provenance.runId));
+    expect(runs.map((run) => kept.has(run.options.runId))).toEqual([false, false, false, true]);
     expect(h.sink.callsOf("markUnknown")).toEqual([]);
     expect(store.transitions.history(h.worktreeId, adds).map((t) => t.kind)).not.toContain(
       "to-unknown",
