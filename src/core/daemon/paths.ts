@@ -31,9 +31,7 @@ export function socketPathFor(
 ): AbsolutePath {
   const name = `squeal-${worktreeId}.sock`;
   const path = join(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES
-    ? path
-    : join("/tmp", userDirName(), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join(userTmpDir(), name);
 }
 
 /**
@@ -55,6 +53,19 @@ export function prepareSocketDir(
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     return;
   }
+  preparePrivateDir(dir, uid);
+}
+
+/**
+ * Creates `dir` with mode 0700 when it is missing, then checks it as
+ * `checkPrivateDir` does. For a directory of this user's own in a shared,
+ * sticky temp dir (review S8), where another user could have made it first.
+ */
+export function preparePrivateDir(
+  dir: AbsolutePath,
+  uid: number = currentUid(),
+  role = "socket directory",
+): void {
   mkdirSync(dirname(dir), { recursive: true });
   try {
     mkdirSync(dir, { mode: 0o700 });
@@ -63,24 +74,33 @@ export function prepareSocketDir(
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
-  checkPrivateDir(dir, uid);
+  checkPrivateDir(dir, uid, role);
 }
 
 /** Throws unless `dir` is a directory, not a symlink, owned by `uid`, with no group or other permissions. */
-export function checkPrivateDir(dir: AbsolutePath, uid: number): void {
+export function checkPrivateDir(dir: AbsolutePath, uid: number, role = "socket directory"): void {
+  const refusal = role === "socket directory" ? "refusing to bind in it" : "refusing to use it";
   const stat = lstatSync(dir);
   if (!stat.isDirectory()) {
-    throw new Error(`socket directory ${dir} is not a directory; refusing to bind in it`);
+    throw new Error(`${role} ${dir} is not a directory; ${refusal}`);
   }
   if (stat.uid !== uid) {
-    throw new Error(
-      `socket directory ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to bind in it`,
-    );
+    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; ${refusal}`);
   }
   if ((stat.mode & 0o077) !== 0) {
     const mode = (stat.mode & 0o777).toString(8).padStart(3, "0");
-    throw new Error(`socket directory ${dir} has mode ${mode}, not 700; refusing to bind in it`);
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; ${refusal}`);
   }
+}
+
+/**
+ * `/tmp/squeal-<uid>`: this user's directory in the system temp dir, never
+ * the inherited `TMPDIR` and never inside a repository. The socket fallback
+ * (`socketPathFor`) and the daemon's temp directories (`daemonScratch`) live
+ * here.
+ */
+export function userTmpDir(uid: number = currentUid()): AbsolutePath {
+  return join("/tmp", `squeal-${uid}`);
 }
 
 /**
@@ -119,6 +139,6 @@ function userDirName(): string {
 }
 
 /** The real uid; `process.getuid` is missing only on Windows, where no other user shares the temp dir. */
-function currentUid(): number {
+export function currentUid(): number {
   return process.getuid?.() ?? 0;
 }

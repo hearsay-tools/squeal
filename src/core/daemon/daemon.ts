@@ -17,7 +17,7 @@ import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js
 import { linkedWorktreeDir, prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import type { RecoveringRunner } from "./runner.js";
-import { adoptScratch, inRootWhileRunning } from "./scratch.js";
+import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
 import { squealVersion } from "./version.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
@@ -29,7 +29,7 @@ export interface DaemonOptions {
   readonly env?: NodeJS.ProcessEnv;
   /**
    * The process is this daemon's (`squeal daemon`): it leaves the root as its
-   * working directory and takes its temp directory under the store (D10,
+   * working directory and takes its own temp directory (D10,
    * `adoptScratch`). A daemon started inside a test leaves its process alone.
    */
   readonly ownsProcess?: boolean;
@@ -47,7 +47,7 @@ export interface RunningDaemon {
   /** Settles once the scheduler started (baseline lookup done, watcher on) or the daemon gave up. */
   readonly ready: Promise<void>;
   readonly exited: Promise<DaemonExit>;
-  /** Shuts down in the D10 order: loop, runner, `setDaemon(null)`, store, socket, lock. */
+  /** Shuts down in the D10 order: loop, runner, temp dir, `setDaemon(null)`, store, socket, lock. */
   stop(reason: Extract<DaemonExitReason, "stop-requested" | "signal">): Promise<DaemonExit>;
 }
 
@@ -337,7 +337,7 @@ class Daemon {
   /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
    * the tier in flight, abandons the open checkpoint), `runner.close()`,
-   * `setDaemon(null)`, `store.close()`. Then the socket, which closing
+   * the temp directory, `setDaemon(null)`, `store.close()`. Then the socket, which closing
    * unlinks, and last the lock, so a successor never sees this daemon's
    * socket go away after binding its own.
    */
@@ -350,6 +350,7 @@ class Daemon {
       const { store, worktreeId, lock } = this.opened;
       await this.#step("loop.close", () => this.#loop?.close());
       await this.#step("runner.close", () => this.#runner?.close());
+      await this.#step("temp dir removal", () => removeScratch(this.opened.scratch));
       await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());

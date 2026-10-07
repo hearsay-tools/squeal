@@ -12,7 +12,7 @@ import type {
 } from "../types/index.js";
 import { acquireDaemonLock, type DaemonLock } from "./lock.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
-import { type DaemonScratch, daemonScratch, prepareScratch } from "./scratch.js";
+import { type DaemonScratch, daemonScratch, prepareScratch, removeScratch } from "./scratch.js";
 
 /** What a daemon owns once it won its worktree. */
 export interface OpenedDaemon {
@@ -31,8 +31,8 @@ export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
 /**
  * Daemon start up to the open store: realpath of the root; the common dir
  * from git (D1); the worktree id; the exclusive lock (D10), losers exit;
- * the temp directory, emptied (D10, lessons defect 13); then the store with `integrity_check` (D12), exiting with a note on a
- * newer schema (D8). Spec 001 D10 as amended after the wave 3 review: the
+ * the store with `integrity_check` (D12), exiting with a note on a newer
+ * schema (D8); then the temp directory, emptied (D10, lessons defect 13). Spec 001 D10 as amended after the wave 3 review: the
  * daemon takes the lock "before opening the store, so losers never run the
  * integrity check".
  */
@@ -66,14 +66,6 @@ export async function openDaemon(
   }
   if (lock === null) return exit("lost-lock", 0, `another daemon serves ${root}`);
 
-  const scratch = daemonScratch(commonDir, worktreeId);
-  try {
-    prepareScratch(scratch);
-  } catch (error) {
-    lock.release();
-    return exit("start-failed", 1, `could not prepare ${scratch.tempDir}: ${message(error)}`);
-  }
-
   let store: Store;
   try {
     const opened = openStore(commonDir, {
@@ -95,10 +87,23 @@ export async function openDaemon(
     lock.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
   }
-  return { root, commonDir, worktreeId, store, lock, scratch };
+  // After the store, so a start that fails on it leaves no temp directory behind.
+  const scratch = daemonScratch(commonDir, worktreeId);
+  const daemon = { root, commonDir, worktreeId, store, lock, scratch };
+  try {
+    prepareScratch(scratch);
+  } catch (error) {
+    return abandon(
+      daemon,
+      now,
+      undefined,
+      `could not prepare ${scratch.tempDir}: ${message(error)}`,
+    );
+  }
+  return daemon;
 }
 
-/** A start that failed before the daemon owned anything else: a note, then the store and the lock go. */
+/** A start that failed before the daemon owned anything else: a note, then the store, the temp directory and the lock go. */
 export function abandon(
   opened: OpenedDaemon,
   now: () => EpochMs,
@@ -111,6 +116,11 @@ export function abandon(
     opened.store.close();
   } catch (error) {
     report(`shutdown: store.close failed: ${message(error)}`);
+  }
+  try {
+    removeScratch(opened.scratch);
+  } catch (error) {
+    report(`shutdown: temp dir removal failed: ${message(error)}`);
   }
   opened.lock.release();
   return exit("start-failed", 1, text);
