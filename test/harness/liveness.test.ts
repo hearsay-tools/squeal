@@ -6,6 +6,7 @@ import {
   runHook,
   SPAWN_SETTLE_MS,
 } from "../../src/harness/claude-code/index.js";
+import { mayEdit } from "../../src/harness/shared/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
@@ -19,7 +20,7 @@ const context = (out: HookResult): string =>
   (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
     .hookSpecificOutput.additionalContext;
 
-function recording(result: "alive" | "spawned" = "alive", onEnsure?: () => void) {
+function recording(result: "alive" | "spawned" | "unavailable" = "alive", onEnsure?: () => void) {
   const calls: (EnsureDaemonOptions & { root: string })[] = [];
   const deps: HookDeps = {
     env: {},
@@ -93,6 +94,104 @@ describe("liveness in delivered text", () => {
       recording().deps,
     );
     expect(context(out)).toContain(" No daemon is running; results are as of revision 1.");
+  });
+});
+
+/*
+ * Lessons, defect 22 (task 001-112): with a daemon that holds the lock and
+ * does not answer, no daemon validates and none is started; every boundary
+ * with an edit says so, past the liveness told once.
+ */
+describe("a boundary while no daemon validates and none was started", () => {
+  const STALE = Date.UTC(2026, 0, 2, 14, 2);
+  const LINE =
+    "Not validated: no daemon has validated since 2026-01-02T14:02:00.000Z; this edit has no result.";
+  const batch = (root: string, ...tools: string[]) =>
+    recorded("post-tool-batch", root, {
+      tool_calls: tools.map((tool_name, i) => ({
+        tool_name,
+        tool_input: {},
+        tool_use_id: `t${i}`,
+      })),
+    });
+
+  it("says the edit has no result at every boundary with an edit", async () => {
+    const r = await registered();
+    r.daemon("stale", STALE);
+    const { deps } = recording("unavailable");
+
+    const first = await runHook("post-tool-batch", batch(r.root, "Read", "Edit"), deps);
+    const second = await runHook("post-tool-batch", batch(r.root, "Bash"), deps);
+
+    expect(context(first)).toBe(
+      "SQUEAL · no daemon is validating at revision 1\n" +
+        "Revision 1 (changed src/math.ts): 1 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision. " +
+        "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.\n" +
+        LINE,
+    );
+    expect(context(second)).toBe(`SQUEAL · ${LINE}`);
+  });
+
+  it("says nothing more at a boundary without an edit", async () => {
+    const r = await registered();
+    r.daemon("stale", STALE);
+    const { deps } = recording("unavailable");
+    await runHook("post-tool-batch", batch(r.root, "Edit"), deps);
+
+    const out = await runHook("post-tool-batch", batch(r.root, "Read", "Grep"), deps);
+
+    expect(out.stdout).toBe("");
+  });
+
+  it("counts a batch that names no tools as an edit", async () => {
+    const r = await registered();
+    r.daemon("stale", STALE);
+    const { deps } = recording("unavailable");
+    await runHook("post-tool-batch", batch(r.root, "Edit"), deps);
+
+    const out = await runHook(
+      "post-tool-batch",
+      recorded("post-tool-batch", r.root, { tool_calls: undefined }),
+      deps,
+    );
+
+    expect(context(out)).toBe(`SQUEAL · ${LINE}`);
+  });
+
+  it("says no daemon is running when none ever heartbeat", async () => {
+    const r = await registered();
+    r.daemon("none");
+    const { deps } = recording("unavailable");
+    await runHook("post-tool-batch", batch(r.root, "Edit"), deps);
+
+    const out = await runHook("post-tool-batch", batch(r.root, "Write"), deps);
+
+    expect(context(out)).toBe(
+      "SQUEAL · Not validated: no daemon is running; this edit has no result.",
+    );
+  });
+
+  it("is not said for a dead daemon a boundary replaced: the new one will validate the edit", async () => {
+    const r = await registered();
+    r.daemon("stale", STALE);
+    const { deps } = recording("spawned");
+
+    const first = await runHook("post-tool-batch", batch(r.root, "Edit"), deps);
+    const second = await runHook("post-tool-batch", batch(r.root, "Edit"), deps);
+
+    expect(context(first)).not.toContain("Not validated");
+    expect(second.stdout).toBe("");
+  });
+});
+
+describe("mayEdit", () => {
+  it("is true for a tool that changes files, a shell, or tools not named", () => {
+    expect(mayEdit(["Read", "Edit"])).toBe(true);
+    expect(mayEdit(["Bash"])).toBe(true);
+    expect(mayEdit(["apply_patch"])).toBe(true);
+    expect(mayEdit(undefined)).toBe(true);
+    expect(mayEdit(["Read", "Grep", "Glob"])).toBe(false);
+    expect(mayEdit([])).toBe(false);
   });
 });
 
