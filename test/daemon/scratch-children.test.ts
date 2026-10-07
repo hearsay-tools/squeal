@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { git } from "../hash/git-repo.js";
 import {
   type BuiltCli,
@@ -13,7 +14,6 @@ import {
 } from "./helpers.js";
 import {
   alive,
-  daemonTempDir,
   exitWithin,
   heldBy,
   inside,
@@ -99,7 +99,7 @@ describe.runIf(process.platform === "linux")(
         10_000,
         "the service gone with the daemon",
       );
-      expect(existsSync(daemonTempDir(repo.commonDir, repo.root))).toBe(false);
+      expect(existsSync(daemonScratch(repo.commonDir, repo.root).tempDir)).toBe(false);
     });
   },
 );

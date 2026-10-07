@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/store/index.js";
 import { git } from "../hash/git-repo.js";
 import {
@@ -16,7 +17,7 @@ import {
   waitReady,
   withStore,
 } from "./helpers.js";
-import { daemonTempDir, exitWithin, resultOf, TMP_TEST } from "./scratch-helpers.js";
+import { exitWithin, resultOf, TMP_TEST } from "./scratch-helpers.js";
 
 /*
  * Review wave 7.7, B1, and research `daemon-under-harnesses.md` on a re-clone
@@ -86,7 +87,7 @@ describe.runIf(process.platform === "linux")(
       const oldRepo = at(a, root);
       const old = start(built.cli, oldRepo);
       await waitReady(oldRepo, old);
-      const oldTemp = daemonTempDir(a.commonDir, root);
+      const oldTemp = daemonScratch(a.commonDir, root).tempDir;
       writeFileSync(join(oldTemp, "old-marker"), "");
 
       const staged = join(b.root, "..", "staged");
@@ -96,7 +97,7 @@ describe.runIf(process.platform === "linux")(
       const newRepo = at(b, root);
       const newcomer = start(built.cli, newRepo);
       await waitReady(newRepo, newcomer);
-      const newTemp = daemonTempDir(b.commonDir, root);
+      const newTemp = daemonScratch(b.commonDir, root).tempDir;
       cleanups.push(() => rmSync(newTemp, { recursive: true, force: true }));
       const baseline = await resultOf(newRepo, newcomer, "test/tmp.test.ts");
 
@@ -136,7 +137,7 @@ describe.runIf(process.platform === "linux")(
       git(repo.root, ["clone", "-q", "--bare", repo.root, source]);
       const old = start(built.cli, repo);
       await waitReady(repo, old);
-      const oldTemp = daemonTempDir(repo.commonDir, repo.root);
+      const oldTemp = daemonScratch(repo.commonDir, repo.root).tempDir;
       writeFileSync(join(oldTemp, "old-marker"), "");
 
       const clone = join(repo.root, "..", "clone");
@@ -151,7 +152,7 @@ describe.runIf(process.platform === "linux")(
       };
       const newcomer = start(built.cli, cloned);
       await waitReady(cloned, newcomer);
-      const newTemp = daemonTempDir(repo.commonDir, repo.root);
+      const newTemp = daemonScratch(repo.commonDir, repo.root).tempDir;
       cleanups.push(() => rmSync(newTemp, { recursive: true, force: true }));
 
       expect(old.child.exitCode).toBeNull();

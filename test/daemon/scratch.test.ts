@@ -31,7 +31,6 @@ import {
 } from "./helpers.js";
 import {
   callerTempDir,
-  daemonTempDir,
   exitWithin,
   held,
   inside,
@@ -91,7 +90,7 @@ describe.runIf(process.platform === "linux")(
       // directory and the daemon's temp directory as their `os.tmpdir()`.
       expect((await resultOf(repo, spawned, "test/cwd.test.ts")).outcome).toBe("pass");
       expect((await resultOf(repo, spawned, "test/tmp.test.ts")).outcome).toBe("pass");
-      const tempDir = daemonTempDir(repo.commonDir, repo.root);
+      const tempDir = daemonScratch(repo.commonDir, repo.root).tempDir;
       expect(tempDir).toMatch(/^\/tmp\/squeal-\d+\/tmp\/[0-9a-f]+$/);
       expect(readdirSync(tempDir).some((name) => name.startsWith("x-"))).toBe(true);
       expect(readdirSync(callerTmp)).toEqual([]);
@@ -120,7 +119,7 @@ describe.runIf(process.platform === "linux")(
 
     it("answers on its socket within a hook's budget, empties its temp directory when it starts and removes the leftover after, and removes it on squeal stop", async () => {
       const repo = linkedFixture(cleanups, {});
-      const tempDir = daemonTempDir(repo.commonDir, repo.root);
+      const tempDir = daemonScratch(repo.commonDir, repo.root).tempDir;
       // A daemon that died left its files, too many to remove before the socket.
       mkdirSync(join(tempDir, "left-by-a-dead-daemon"), { recursive: true });
       for (let i = 0; i < 2_000; i++) {

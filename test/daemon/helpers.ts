@@ -12,6 +12,7 @@ import {
 } from "node:fs";
 import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { afterAll, afterEach, beforeAll } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { isStoreOpenFailure, openStore, worktreeIdFor } from "../../src/core/store/index.js";
@@ -269,4 +270,53 @@ export async function stopProcess(process: SpawnedProcess): Promise<void> {
   const timer = setTimeout(() => process.child.kill("SIGKILL"), 60_000);
   await process.exited;
   clearTimeout(timer);
+}
+
+/** One daemon test file's CLI, fixtures and daemons. */
+export interface DaemonSuite {
+  /** The built `squeal` binary, from `beforeAll`. */
+  readonly cli: string;
+  /** A fixture repository, removed after the test. */
+  fixture(files?: Record<string, string>): FixtureRepo;
+  /** A daemon serving `repo`, stopped after the test. */
+  daemon(repo: FixtureRepo): SpawnedProcess;
+  /** Runs after the test's daemons stop, last registered first. */
+  cleanup(fn: () => void): void;
+}
+
+/** Builds the CLI once per file; after each test, stops its daemons and then runs its cleanups. */
+export function daemonSuite(): DaemonSuite {
+  let built: BuiltCli | null = null;
+  const processes: SpawnedProcess[] = [];
+  const cleanups: (() => void)[] = [];
+  beforeAll(() => {
+    built = buildCli();
+  });
+  afterAll(() => built?.cleanup());
+  afterEach(async () => {
+    for (const process of processes.splice(0)) await stopProcess(process);
+    for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+  });
+  const cli = (): string => {
+    if (built === null) throw new Error("daemonSuite: the CLI is built in beforeAll");
+    return built.cli;
+  };
+  return {
+    get cli() {
+      return cli();
+    },
+    fixture(files) {
+      const repo = createFixtureRepo(files === undefined ? {} : { files });
+      cleanups.push(repo.cleanup);
+      return repo;
+    },
+    daemon(repo) {
+      const spawned = spawnDaemon(cli(), repo);
+      processes.push(spawned);
+      return spawned;
+    },
+    cleanup(fn) {
+      cleanups.push(fn);
+    },
+  };
 }

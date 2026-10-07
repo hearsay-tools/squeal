@@ -1,50 +1,23 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readStatus } from "../../src/core/status/index.js";
 import type { StatusResult, StatusSnapshot } from "../../src/core/types/index.js";
 import {
-  type BuiltCli,
-  buildCli,
-  createFixtureRepo,
+  daemonSuite,
   delay,
   type FixtureRepo,
   LOADED,
   ping,
   SLOW,
-  type SpawnedProcess,
   spawnCli,
-  spawnDaemon,
-  stopProcess,
   waitFor,
   waitReady,
   withStore,
 } from "./helpers.js";
 
-let built: BuiltCli;
-beforeAll(() => {
-  built = buildCli();
-});
-afterAll(() => built.cleanup());
-
-const processes: SpawnedProcess[] = [];
-const repos: FixtureRepo[] = [];
-afterEach(async () => {
-  for (const process of processes.splice(0)) await stopProcess(process);
-  for (const repo of repos.splice(0)) repo.cleanup();
-});
-
-function fixture(files?: Record<string, string>): FixtureRepo {
-  const repo = createFixtureRepo(files === undefined ? {} : { files });
-  repos.push(repo);
-  return repo;
-}
-
-function daemon(repo: FixtureRepo): SpawnedProcess {
-  const spawned = spawnDaemon(built.cli, repo);
-  processes.push(spawned);
-  return spawned;
-}
+const suite = daemonSuite();
+const { fixture, daemon } = suite;
 
 function snapshot(repo: FixtureRepo): StatusSnapshot {
   const result: StatusResult = readStatus(repo.root);
@@ -114,7 +87,7 @@ describe("squeal daemon: serving while working (spec 001 D9, D10)", SLOW, () => 
     await waitReady(repo);
     await settled(repo);
 
-    const run = spawnCli(built.cli, ["run", "--all", "--force", "--wait"], {
+    const run = spawnCli(suite.cli, ["run", "--all", "--force", "--wait"], {
       cwd: repo.root,
       env: repo.env,
     });
@@ -135,7 +108,7 @@ describe("squeal daemon: serving while working (spec 001 D9, D10)", SLOW, () => 
     const repo = fixture();
     daemon(repo);
     await waitReady(repo);
-    const run = spawnCli(built.cli, ["run", "--all"], { cwd: repo.root, env: repo.env });
+    const run = spawnCli(suite.cli, ["run", "--all"], { cwd: repo.root, env: repo.env });
     expect(await run.exited).toEqual({ code: 0, signal: null });
     const id = /Checkpoint ([0-9a-f-]{36}) started/.exec(run.stdout())?.[1];
     expect(id).toBeDefined();
@@ -145,7 +118,7 @@ describe("squeal daemon: serving while working (spec 001 D9, D10)", SLOW, () => 
 
   it("squeal run --all reports a missing daemon instead of hanging", async () => {
     const repo = fixture();
-    const run = spawnCli(built.cli, ["run", "--all"], { cwd: repo.root, env: repo.env });
+    const run = spawnCli(suite.cli, ["run", "--all"], { cwd: repo.root, env: repo.env });
     expect(await run.exited).toEqual({ code: 1, signal: null });
     expect(run.stderr()).toMatch(/no daemon running for .*; start one with squeal start/);
   });
