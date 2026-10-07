@@ -36,6 +36,8 @@ Started: 2026-10-07
 
 - 2026-10-08, wave 2.5 (003-24), 0.1.24: B1 closed: paths a preload loads at run time outside its static closure persist in `nodeTest.observedPreloads.<project>` (a sibling key, since an older daemon would read a reserved entry as a test file), enter `environment().files` and make every file of the project affected; adapter version 2, so passes stored before preload observation run once more. S1 closed: an unbuildable project degrades inside the adapter. S2 bounded, accepted by the coordinator: the adapter re-reads the observed keys on every `invalidate`, `affected` and `closure`, so another worktree's observation re-keys at this worktree's next revision; with no local edit at all the scheduler never asks the runner, which row 003-26 closes. N1 to N4 fixed; the enumeration cost bound is a ratio to the cold graph build.
 
+- 2026-10-08, re-review 003-25 (`reviews/wave-2.5.md`, FAIL at 7e15b70, gpt-6.1-sol): S1 and the S2 bound hold; B1 remains for one shape, proven on the shipped plugin: Node runs every `--require` preload before any `--import`, so the recorder (an `--import`) never sees what a `--require` preload loads by a computed specifier; editing that file re-runs nothing and another worktree inherits. The incomplete-closure note names the gap but leaves the pass current. Second failing review on the slice: taken to the human (process).
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.

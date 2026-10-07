@@ -297,7 +297,7 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 003-24 review fixes | done (0.1.24) | B1 (paths a preload loads at run time outside its static closure persist per project and enter `environment().files`; a preload's `incomplete` reason is noted), S1 (a project whose graph cannot be built degrades inside the adapter, never rejecting composite calls), S2 (a running daemon learns observed paths another worktree wrote and never holds a pass under a key that lacks one), N1 to N4, and the enumeration cost test's fixed 200 ms bound. | Each of the review's three probes is a test; the Vitest suite and the healthy project stay current beside a broken `cwd`; full suite green on Node 22 and 24. |
-| 003-25 re-review of 003-24 | running (gpt-6.1-sol; brief in `specifications/003-node-test-runner/tasks/wave-2.md`) | `/reviewer` on gpt-6.1-sol: are B1, S1, S2 closed, and did the fixes open anything (inheritance, two daemons, start cost). | `reviews/wave-2.5.md` committed. |
+| 003-25 re-review of 003-24 | done, FAIL with B1 (`reviews/wave-2.5.md`): a `--require` preload's computed load escapes; second round, with the human | `/reviewer` on gpt-6.1-sol: are B1, S1, S2 closed, and did the fixes open anything (inheritance, two daemons, start cost). | `reviews/wave-2.5.md` committed. |
 
 ### Wave 3: proof
 
