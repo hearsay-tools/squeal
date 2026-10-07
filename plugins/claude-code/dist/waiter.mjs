@@ -164,6 +164,11 @@ function formatCheck(check) {
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
+// src/core/types/daemon.ts
+function bootstrappedMetaKey(worktreeId) {
+  return `daemon-bootstrapped:${worktreeId}`;
+}
+
 // src/core/types/delivery.ts
 var MAIN_AGENT = "main";
 
@@ -335,39 +340,118 @@ function writeSlot(store, key, consumer, value) {
   store.meta.set(key, JSON.stringify(next));
 }
 
-// src/core/delivery/attribution.ts
+// src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
   return `revision-registered:${worktreeId}`;
 }
-function registeredRevision(store, consumer) {
-  const at2 = readSlot(store, registeredMetaKey(consumer.worktreeId), consumer);
-  return typeof at2 === "number" ? at2 : null;
+function parkedMetaKey(worktreeId) {
+  return `revision-registered-left:${worktreeId}`;
 }
-function tellRegistered(store, consumer, revision) {
-  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, revision);
+var isNumber = (value) => typeof value === "number";
+var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber);
+function toRegistration(value) {
+  if (isNumber(value)) return { since: value, gaps: [] };
+  if (!isRecord(value) || !isNumber(value.since) || !Array.isArray(value.gaps)) return null;
+  return value.gaps.every(isGap) ? { since: value.since, gaps: value.gaps } : null;
 }
-function changedAfter(store, worktreeId, since, revision) {
+var stored = (r) => r.gaps.length === 0 ? r.since : r;
+function registration(store, consumer) {
+  return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
+}
+function bootstrapped(store, worktreeId, alive) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (!alive || daemon === null) return false;
+  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
+  return marker !== null && Number(marker) === daemon.startedAt;
+}
+function tellRegistered(store, consumer, revision, { at: at2, bootstrapped: bootstrapped2 }) {
+  const parked = unpark(store, consumer, at2);
+  let next = null;
+  if (bootstrapped2) next = parked === null ? { since: revision, gaps: [] } : back(parked, revision);
+  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, next && stored(next));
+}
+function back(parked, revision) {
+  const away = [parked.leftAt, revision];
+  return {
+    since: parked.since,
+    gaps: revision > parked.leftAt ? [...parked.gaps, away] : parked.gaps
+  };
+}
+function park(store, consumer, at2) {
+  const key = registeredMetaKey(consumer.worktreeId);
+  const current = registration(store, consumer);
+  if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
+  if (current === null) return;
+  const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
+  writeParked(store, consumer, at2, { ...current, leftAt, leftTime: at2 });
+}
+function unpark(store, consumer, at2) {
+  const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
+  if (value === void 0) return null;
+  writeParked(store, consumer, at2, null);
+  const r = toRegistration(value);
+  if (r === null || !isRecord(value) || !isNumber(value.leftAt) || !isNumber(value.leftTime)) {
+    return null;
+  }
+  return value.leftTime < at2 - CONSUMER_EXPIRY_MS ? null : { ...r, leftAt: value.leftAt, leftTime: value.leftTime };
+}
+function writeParked(store, consumer, at2, value) {
+  const key = parkedMetaKey(consumer.worktreeId);
+  const all = readAll(store, key);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) {
+    if (isRecord(v) && isNumber(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) next[k] = v;
+  }
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key, JSON.stringify(next));
+}
+function changedAfter(store, worktreeId, r, revision) {
   const paths = /* @__PURE__ */ new Set();
-  for (let n = since + 1; n <= revision; n++) {
-    for (const change2 of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change2.path);
+  for (const { number, changes } of store.revisions.range(worktreeId, r.since, revision)) {
+    if (r.gaps.some(([after, upTo]) => number > after && number <= upTo)) continue;
+    for (const change2 of changes) paths.add(change2.path);
   }
   return paths;
 }
+
+// src/core/delivery/attribution.ts
 var TIMED_OUT = /timed out in \d+ms/;
+var LOAD_RESULTS_READ = 50;
 function loadOf(store, worktreeId, entry2) {
   if (entry2.summary === null || !TIMED_OUT.test(entry2.summary)) return void 0;
   const from = entry2.origin.kind === "inherited" ? entry2.origin.worktreeId : worktreeId;
-  const result = store.results.listForCheck(entry2.check, 5).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
+  const result = store.results.listForCheck(entry2.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
+}
+function closureFor(store, worktreeId) {
+  const keys = /* @__PURE__ */ new Map();
+  const keyOf = (id, ref) => {
+    let byFile2 = keys.get(id);
+    if (byFile2 === void 0) {
+      byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
+      keys.set(id, byFile2);
+    }
+    return byFile2.get(testFileId(ref)) ?? null;
+  };
+  return (ref) => {
+    const record = store.testFiles.get(ref);
+    if (record === null) return void 0;
+    if (record.updatedBy === worktreeId) return record.closure.paths;
+    const key = keyOf(worktreeId, ref);
+    return key !== null && key === keyOf(record.updatedBy, ref) ? record.closure.paths : void 0;
+  };
 }
 function attribute(store, consumer, entries, revision) {
   if (!entries.some((e) => e.to === "fail")) return entries;
-  const since = registeredRevision(store, consumer);
-  const changed = since === null ? null : changedAfter(store, consumer.worktreeId, since, revision);
+  const from = registration(store, consumer);
+  const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
+  const closureOf = closureFor(store, consumer.worktreeId);
   return entries.map((entry2) => {
     if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
     const { project, testPath } = entry2.check;
-    const closure = store.testFiles.get({ project, path: testPath })?.closure.paths;
+    const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
     const touched = changed === null || closure === void 0 ? void 0 : closure.filter((p) => changed.has(p));
     const load = loadOf(store, consumer.worktreeId, entry2);
     return {
@@ -1582,19 +1666,19 @@ function createRevisionRepo(conn) {
         "SELECT coalesce(max(number), 0) AS n FROM revisions WHERE worktree_id = ?",
         revision.worktreeId
       );
-      const stored = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
+      const stored2 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
       conn.run(
         `INSERT INTO revisions (worktree_id, number, created_at, head, dirty, trigger, changes)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        stored.worktreeId,
-        stored.number,
-        stored.createdAt,
-        stored.head,
-        flag(stored.dirty),
-        stored.trigger,
-        JSON.stringify(stored.changes)
+        stored2.worktreeId,
+        stored2.number,
+        stored2.createdAt,
+        stored2.head,
+        flag(stored2.dirty),
+        stored2.trigger,
+        JSON.stringify(stored2.changes)
       );
-      return stored;
+      return stored2;
     }),
     latest: (worktreeId) => {
       const row = conn.get(
@@ -1610,7 +1694,14 @@ function createRevisionRepo(conn) {
         number
       );
       return row === null ? null : toRevision(row);
-    }
+    },
+    range: (worktreeId, after, upTo) => conn.all(
+      `SELECT * FROM revisions WHERE worktree_id = ? AND number > ? AND number <= ?
+           ORDER BY number`,
+      worktreeId,
+      after,
+      upTo
+    ).map(toRevision)
   };
 }
 function toRevision(row) {
@@ -2063,19 +2154,24 @@ function worktreeLiveness(worktree, now) {
 }
 function readLiveHeader(store, worktreeId, now, states, since = null) {
   const header = readHeader(store, worktreeId, states);
+  const changes = changedSince(store, worktreeId, header.revision, since);
+  const installed = [...changes.values()].find(
+    (c) => c.newHash !== null && isInstalledLockfile(c.path)
+  );
   return {
     ...header,
     daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
-    changedPaths: changedSince(store, worktreeId, header.revision, since)
+    changedPaths: [...changes.keys()],
+    ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
 }
 function changedSince(store, worktreeId, revision, since) {
-  const from = since === null || since >= revision ? revision : Math.max(since + 1, 1);
-  const paths = /* @__PURE__ */ new Set();
-  for (let n = from; n <= revision && n > 0; n++) {
-    for (const change2 of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change2.path);
+  const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
+  const changes = /* @__PURE__ */ new Map();
+  for (const r of store.revisions.range(worktreeId, after, revision)) {
+    for (const change2 of r.changes) changes.set(change2.path, change2);
   }
-  return [...paths];
+  return changes;
 }
 function livenessMetaKey(worktreeId) {
   return `liveness-told:${worktreeId}`;
@@ -2261,6 +2357,7 @@ function createDelivery(store, options) {
   return {
     register: async (consumer, { inTurn = false } = {}) => store.transaction(() => {
       const at2 = now();
+      const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at2);
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
@@ -2272,7 +2369,13 @@ function createDelivery(store, options) {
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       tellLiveness(store, consumer, header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
-      tellRegistered(store, consumer, header.revision);
+      if (!registered) {
+        const alive = header.daemon?.state === "alive";
+        tellRegistered(store, consumer, header.revision, {
+          at: at2,
+          bootstrapped: bootstrapped(store, consumer.worktreeId, alive)
+        });
+      }
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       return {
@@ -2284,6 +2387,7 @@ function createDelivery(store, options) {
     }),
     unregister: async (consumer) => {
       store.transaction(() => {
+        park(store, consumer, now());
         store.consumers.unregister(consumer);
         forget(store, consumer);
       });
@@ -2323,7 +2427,6 @@ function createDelivery(store, options) {
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
-  tellRegistered(store, consumer, null);
   writeTurn(store, consumer, null);
 }
 
@@ -2336,9 +2439,13 @@ function checkName(check) {
 var fileName = (check) => `${check.project === "" ? "" : `[${check.project}] `}${check.testPath}`;
 function nameLines(checks) {
   if (checks.length <= LISTED_MAX) return checks.map(checkName);
-  const byFile = /* @__PURE__ */ new Map();
-  for (const check of checks) byFile.set(fileName(check), (byFile.get(fileName(check)) ?? 0) + 1);
-  const files = [...byFile].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
+  const grouped = byFile(checks);
+  return grouped.length < checks.length ? grouped : checks.map(checkName);
+}
+function byFile(checks) {
+  const byFile2 = /* @__PURE__ */ new Map();
+  for (const check of checks) byFile2.set(fileName(check), (byFile2.get(fileName(check)) ?? 0) + 1);
+  const files = [...byFile2].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
   const lines = files.slice(0, FILES_SHOWN).map(([file, n]) => `${n} in ${file}`);
   const rest = files.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
@@ -2407,10 +2514,11 @@ function loadLine(entry2) {
   return entry2.loadAverage === void 0 ? null : `load average ${entry2.loadAverage.toFixed(2)} when it ran`;
 }
 function installSentences(header) {
-  const none = header.dependenciesInstalled === false ? " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install." : "";
-  const lockfile = header.changedPaths?.find(isInstalledLockfile);
-  const install = lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
-  return `${none}${install}`;
+  if (header.dependenciesInstalled === false) {
+    return " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.";
+  }
+  const lockfile = header.installedLockfile;
+  return lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
 }
 
 // src/core/delivery/format.ts

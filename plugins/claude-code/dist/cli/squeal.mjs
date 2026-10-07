@@ -1032,6 +1032,9 @@ var init_common = __esm({
 });
 
 // src/core/types/daemon.ts
+function bootstrappedMetaKey(worktreeId) {
+  return `daemon-bootstrapped:${worktreeId}`;
+}
 var DAEMON_SOCKET_TIMEOUT_MS;
 var init_daemon = __esm({
   "src/core/types/daemon.ts"() {
@@ -2532,7 +2535,14 @@ function createRevisionRepo(conn) {
         number
       );
       return row === null ? null : toRevision(row);
-    }
+    },
+    range: (worktreeId, after, upTo) => conn.all(
+      `SELECT * FROM revisions WHERE worktree_id = ? AND number > ? AND number <= ?
+           ORDER BY number`,
+      worktreeId,
+      after,
+      upTo
+    ).map(toRevision)
   };
 }
 function toRevision(row) {
@@ -2967,7 +2977,7 @@ function merge(shape, defaults, given, prefix, problems) {
   }
   return result;
 }
-function isNumber(value) {
+function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 function describeProblems(problems) {
@@ -3003,8 +3013,8 @@ var init_policy2 = __esm({
       }
       return null;
     };
-    atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-    aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+    atLeastZero = (v) => isNumber2(v) && v >= 0 ? null : "a number >= 0";
+    aboveZero = (v) => isNumber2(v) && v > 0 ? null : "a number > 0";
     positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
     orNull = (leaf) => (v) => {
       const expected = v === null ? null : leaf(v);
@@ -9067,7 +9077,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.11";
+  if (true) return "0.1.12";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9910,6 +9920,10 @@ function lock(path) {
 // src/core/delivery/attribution.ts
 init_keys();
 
+// src/core/delivery/registered.ts
+init_fs();
+init_types();
+
 // src/core/delivery/slots.ts
 init_fs();
 var slot = (consumer) => `${consumer.sessionId}
@@ -9924,6 +9938,9 @@ function readAll(store, key) {
     return {};
   }
 }
+function readSlot(store, key, consumer) {
+  return readAll(store, key)[slot(consumer)];
+}
 function writeSlot(store, key, consumer, value) {
   const registered = new Set(
     store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
@@ -9937,12 +9954,42 @@ function writeSlot(store, key, consumer, value) {
   store.meta.set(key, JSON.stringify(next));
 }
 
-// src/core/delivery/attribution.ts
+// src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
   return `revision-registered:${worktreeId}`;
 }
-function tellRegistered(store, consumer, revision) {
-  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, revision);
+function parkedMetaKey(worktreeId) {
+  return `revision-registered-left:${worktreeId}`;
+}
+var isNumber = (value) => typeof value === "number";
+var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber);
+function toRegistration(value) {
+  if (isNumber(value)) return { since: value, gaps: [] };
+  if (!isRecord(value) || !isNumber(value.since) || !Array.isArray(value.gaps)) return null;
+  return value.gaps.every(isGap) ? { since: value.since, gaps: value.gaps } : null;
+}
+function registration(store, consumer) {
+  return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
+}
+function park(store, consumer, at) {
+  const key = registeredMetaKey(consumer.worktreeId);
+  const current = registration(store, consumer);
+  if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
+  if (current === null) return;
+  const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
+  writeParked(store, consumer, at, { ...current, leftAt, leftTime: at });
+}
+function writeParked(store, consumer, at, value) {
+  const key = parkedMetaKey(consumer.worktreeId);
+  const all = readAll(store, key);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) {
+    if (isRecord(v) && isNumber(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) next[k] = v;
+  }
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key, JSON.stringify(next));
 }
 
 // src/core/delivery/delta.ts
@@ -10014,6 +10061,7 @@ function planDelta(input) {
 }
 
 // src/core/delivery/liveness.ts
+init_keys();
 init_state2();
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -10061,6 +10109,7 @@ function expireConsumers(store, now = Date.now(), options = {}) {
     const gone = store.transaction(() => {
       const record = store.consumers.get(consumer);
       if (record === null || !idle(record, cutoff)) return false;
+      park(store, consumer, now);
       store.consumers.unregister(consumer);
       forget(store, consumer);
       return true;
@@ -10074,7 +10123,6 @@ function expireConsumers(store, now = Date.now(), options = {}) {
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
-  tellRegistered(store, consumer, null);
   writeTurn(store, consumer, null);
 }
 function idle(record, cutoff) {
@@ -10088,9 +10136,6 @@ init_text();
 // src/core/delivery/collapse.ts
 init_state2();
 init_text();
-
-// src/core/delivery/provenance.ts
-init_keys();
 
 // src/core/daemon/lifecycle.ts
 init_store2();
@@ -10703,6 +10748,7 @@ var Daemon = class {
       });
       this.#loop = loop;
       await loop.start();
+      store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
       this.#lastActive = this.#now();
       if (this.#phase === "starting") this.#setPhase("ready");
       this.#log(`serving ${root} on ${this.#socketPath}`);
