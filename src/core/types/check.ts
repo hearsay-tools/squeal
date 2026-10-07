@@ -53,4 +53,10 @@ export interface CheckError {
   /** First source-mapped frame. Research Q4: "Failure location: `errors[0].stacks[0]`". */
   readonly location: SourceLocation | null;
   readonly diff: string | null;
+  /**
+   * The one-minute load average when a test or hook timed out, recorded by
+   * the runner as the result came in; absent for every other error, on
+   * Windows, and in failure texts stored before task 001-91.
+   */
+  readonly loadAverage?: number;
 }

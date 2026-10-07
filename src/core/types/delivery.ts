@@ -3,6 +3,7 @@ import type {
   AbsolutePath,
   EpochMs,
   PayloadSchemaVersion,
+  RelativePath,
   RevisionNumber,
   SourceLocation,
   WorktreeId,
@@ -76,6 +77,20 @@ export interface TransitionEntry {
    * findings." Absent means false.
    */
   readonly baseline?: boolean;
+  /**
+   * For a failure: the paths of its test file's closure (`TestFileRecord`)
+   * changed in this worktree since the consumer registered, the revisions
+   * after its registration revision. Empty when none is; absent when it is
+   * not known (no closure stored, or a consumer registered before the
+   * registration revision was recorded). Inherited results are read against
+   * this worktree's changes too. Task 001-91, lessons defect 16.
+   */
+  readonly changesInClosure?: readonly RelativePath[];
+  /**
+   * For a failure that is a test or hook timeout: the one-minute load
+   * average when it ran (`CheckError.loadAverage`). Task 001-91.
+   */
+  readonly loadAverage?: number;
 }
 
 /**
@@ -132,6 +147,13 @@ export interface Delta {
    * Tool-boundary deliveries only; a peek and the idle waiter leave it.
    */
   readonly liveness?: DaemonLiveness;
+  /**
+   * Checks whose known state is `fail` at delivery, any validity, so a
+   * report with many recoveries can name what still fails instead of what
+   * recovered (task 001-91, lessons defect 15). Absent reads as unknown: the
+   * recovered list is shown.
+   */
+  readonly stillFailing?: readonly CheckId[];
 }
 
 /**

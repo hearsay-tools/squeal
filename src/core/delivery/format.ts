@@ -1,4 +1,4 @@
-import { formatCheck, fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS } from "../state/index.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -12,6 +12,7 @@ import type {
   StatusHeader,
   TransitionEntry,
 } from "../types/index.js";
+import { type Collapsed, checkName, collapse } from "./collapse.js";
 
 /*
  * Human rendering of deltas and registrations, a separate layer over the
@@ -35,11 +36,6 @@ type Shown = KnownOutcome | "resolved";
 
 const upper = (outcome: Shown) => outcome.toUpperCase();
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-
-/** `squeal why` resolves a capped name by the part before `...`. */
-function checkName(check: CheckId): string {
-  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
-}
 
 /**
  * Task 001-88: a FAIL report ends with one line naming the command that prints
@@ -168,6 +164,39 @@ function retiredBlock(entry: RetiredEntry): Block {
   );
 }
 
+/** A collapsed list (`collapse`) as one block that counts as `count` of `outcome`. */
+function collapsedBlock({ head, lines }: Collapsed, outcome: Shown, count: number): Block {
+  return block(
+    head,
+    lines,
+    Array.from({ length: count }, () => outcome),
+  );
+}
+
+/** Recoveries, one block each up to `LISTED_MAX`, else one summary (task 001-91). */
+function recoveryBlocks(entries: readonly TransitionEntry[], delta: Delta): Block[] {
+  const head = `PASS  ${plural(entries.length, "check")} recovered (FAIL -> PASS)`;
+  const collapsed = collapse(
+    head,
+    entries.map((e) => e.check),
+    delta.stillFailing,
+  );
+  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", entries.length)];
+  return entries.map((e) => entryBlock(e, delta.header.revision));
+}
+
+/** Retired failures, collapsed like recoveries (task 001-91). */
+function retiredBlocks(entries: readonly RetiredEntry[], delta: Delta): Block[] {
+  const head = `RESOLVED  ${plural(entries.length, "check")} no longer reported by the runner (FAIL -> RESOLVED)`;
+  const collapsed = collapse(
+    head,
+    entries.map((e) => e.check),
+    delta.stillFailing,
+  );
+  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", entries.length)];
+  return entries.map(retiredBlock);
+}
+
 /** Spec 001 D12: a crashed tier yields "one factual line", so unknowns group by reason. */
 function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
   const byReason = new Map<string, TransitionEntry[]>();
@@ -231,8 +260,11 @@ export function formatDelta(delta: Delta): string {
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
-    ...changed.filter((e) => e.to === "pass").map((e) => entryBlock(e, header.revision)),
-    ...retired.map(retiredBlock),
+    ...recoveryBlocks(
+      changed.filter((e) => e.to === "pass"),
+      delta,
+    ),
+    ...retiredBlocks(retired, delta),
   ];
   const failed = changed.find((e) => e.to === "fail");
   const overflow = (left: Block[]) => {
