@@ -10,6 +10,11 @@ import type {
   RelativePath,
   RunnerEnvironment,
 } from "../types/index.js";
+import {
+  HIDDEN_LOCKFILE,
+  packageFoldersFingerprint,
+  staleHiddenLockfile,
+} from "./hidden-lockfile.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const ENVIRONMENT_ENCODING = "squeal-environment/1";
@@ -102,7 +107,7 @@ export function coreEnvironmentInputs(options: CoreEnvironmentOptions): CoreEnvi
  * the patches directory each package manager applies. First match wins.
  */
 const LOCKFILES: readonly { readonly path: string; readonly patches: string | null }[] = [
-  { path: "node_modules/.package-lock.json", patches: "patches" },
+  { path: HIDDEN_LOCKFILE, patches: "patches" },
   { path: "node_modules/.yarn-state.yml", patches: null },
   { path: ".pnp.cjs", patches: ".yarn/patches" },
   { path: ".pnp.js", patches: ".yarn/patches" },
@@ -149,21 +154,44 @@ export async function findInstalledLockfile(
 
 /**
  * Fingerprint of the installed dependencies of a project, or `"none"` when no
- * installed lockfile exists.
- *
- * Spec 001 D3: "the installed-dependency fingerprint (installed lockfile
- * metadata under `node_modules` plus `patches/`)". Unlike Vitest, which adds
- * the patches directory's mtime, this hashes the patch contents, because an
- * mtime differs between two worktrees with identical patches.
+ * installed lockfile exists. The fingerprint of `installedDependencies`.
  */
 export async function installedDependenciesFingerprint(
   projectRoot: AbsolutePath,
   worktreeRoot: AbsolutePath,
 ): Promise<string> {
+  return (await installedDependencies(projectRoot, worktreeRoot)).fingerprint;
+}
+
+/** The installed-dependency fingerprint and the note to show beside it. */
+export interface InstalledDependencies {
+  readonly fingerprint: string;
+  /** Why npm's hidden lockfile does not describe the install, or `null`. */
+  readonly note: string | null;
+}
+
+/**
+ * Spec 001 D3: "the installed-dependency fingerprint (installed lockfile
+ * metadata under `node_modules` plus `patches/`)". Unlike Vitest, which adds
+ * the patches directory's mtime, this hashes the patch contents, because an
+ * mtime differs between two worktrees with identical patches.
+ *
+ * Task 001-104: npm's hidden lockfile stands for the install only while npm
+ * itself would trust it (`staleHiddenLockfile`). Otherwise the package
+ * folders are fingerprinted instead, so an install that bypassed the file
+ * still re-keys, and the note says so. `note` is `null` otherwise.
+ */
+export async function installedDependencies(
+  projectRoot: AbsolutePath,
+  worktreeRoot: AbsolutePath,
+): Promise<InstalledDependencies> {
   const found = await locateLockfile(projectRoot, worktreeRoot);
-  if (found === null) return "none";
+  if (found === null) return { fingerprint: "none", note: null };
   const { dir, format, content } = found;
-  const hash = createHash("sha256").update(`${format.path}\0`).update(content);
+  const stale = format.path === HIDDEN_LOCKFILE ? staleHiddenLockfile(dir, content) : null;
+  const hash = createHash("sha256").update(`${format.path}\0`);
+  if (stale === null) hash.update(content);
+  else hash.update(`stale\0${packageFoldersFingerprint(dir, content)}`);
   if (format.patches !== null) {
     const patchesDir = join(dir, format.patches);
     for (const path of await listEntries(patchesDir)) {
@@ -171,7 +199,13 @@ export async function installedDependenciesFingerprint(
       if (bytes !== null) hash.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
     }
   }
-  return hash.digest("hex");
+  const lockfile = toRelative(worktreeRoot, join(dir, format.path)) ?? format.path;
+  const note =
+    stale === null
+      ? null
+      : `${lockfile} does not describe the installed packages (${stale}); ` +
+        "dependencies are keyed by their package.json files until npm rewrites it";
+  return { fingerprint: hash.digest("hex"), note };
 }
 
 /**

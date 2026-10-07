@@ -17,7 +17,9 @@ export {
   coreEnvironmentInputs,
   environmentHash,
   findInstalledLockfile,
+  type InstalledDependencies,
   type InstalledLockfile,
+  installedDependencies,
   installedDependenciesFingerprint,
   isInstalledLockfile,
 } from "./environment.js";
