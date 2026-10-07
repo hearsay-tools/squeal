@@ -80,7 +80,7 @@ describe("formatDelta", () => {
         "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
         "",
         "FAIL  tests/auth/login.test.ts > login > expired token",
-        "      PASS -> FAIL",
+        "      PASS -> FAIL, seen by Squeal's run at revision 184",
         "      expected 401, received 500",
         "      at src/auth.ts:42:7",
         "",
@@ -127,9 +127,11 @@ describe("formatDelta", () => {
         entry({ kind: "fail-changed", from: "fail", to: "fail" }),
       ]),
     );
-    expect(text).toContain("      first observed: FAIL\n");
-    expect(text).toContain("      SKIP -> FAIL\n");
-    expect(text).toContain("      FAIL -> FAIL, failure changed");
+    expect(text).toContain("      first observed: FAIL, seen by Squeal's run at revision 184\n");
+    expect(text).toContain("      SKIP -> FAIL, seen by Squeal's run at revision 184\n");
+    expect(text).toContain(
+      "      FAIL -> FAIL, failure changed, seen by Squeal's run at revision 184",
+    );
   });
 
   it("states provenance that is not own and current", () => {
@@ -153,7 +155,7 @@ describe("formatDelta", () => {
       ]),
     );
     expect(text).toContain(
-      "      observed at revision 183, revision 184 pending; inherited from worktree wt-main at commit 0123456789ab\n",
+      "      PASS -> FAIL, seen by Squeal's run in worktree wt-main at commit 0123456789ab, inherited at revision 183, revision 184 pending\n",
     );
     expect(text).toContain("      stale, observed at revision 180");
   });
@@ -171,7 +173,7 @@ describe("formatDelta", () => {
     expect(text.split("\n").slice(2)).toEqual([
       "",
       "FAIL  tests/auth/login.test.ts > login > expired token",
-      "      PASS -> FAIL",
+      "      PASS -> FAIL, seen by Squeal's run at revision 184",
       "      expected 401, received 500",
       "      at src/auth.ts:42:7",
       "",
@@ -189,10 +191,10 @@ describe("formatDelta", () => {
       origin: { kind: "inherited", worktreeId: "0123456789abcdef", commit: "0123456789abcdef0123" },
     });
     expect(formatDelta(delta([{ ...inherited, originRoot: "/repo/main" }]))).toContain(
-      "      inherited from /repo/main at commit 0123456789ab",
+      "      first observed: FAIL, seen by Squeal's run in /repo/main at commit 0123456789ab, inherited at revision 184",
     );
     expect(formatDelta(delta([inherited]))).toContain(
-      "      inherited from worktree 0123456789abcdef at commit 0123456789ab",
+      "      first observed: FAIL, seen by Squeal's run in worktree 0123456789abcdef at commit 0123456789ab, inherited at revision 184",
     );
   });
 
@@ -240,10 +242,12 @@ describe("formatDelta", () => {
   it("labels baseline findings", () => {
     const finding = entry({ kind: "first-seen-fail", to: "fail", baseline: true });
     expect(formatDelta(delta([finding], "baseline")).split("\n")[0]).toBe(
-      "SQUEAL · baseline: 1 failing check found at revision 184",
+      "SQUEAL · Squeal's run at start (baseline) found 1 failing check at revision 184",
     );
     const mixed = formatDelta(delta([regression, finding]));
-    expect(mixed).toContain("      baseline finding, first observed: FAIL");
+    expect(mixed).toContain(
+      "      first observed: FAIL, seen by Squeal's run at revision 184, at start (baseline)",
+    );
   });
 
   it("states the full-suite checkpoint as a request, not a coverage state (lessons, surprise 7)", () => {
