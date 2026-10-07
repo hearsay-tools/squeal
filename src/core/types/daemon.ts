@@ -148,7 +148,9 @@ export type DaemonExitReason =
   | "root-removed"
   | "worktree-removed"
   | "stop-requested"
-  | "signal";
+  | "signal"
+  /** The install went under the running daemon (a reinstall); the next hook starts a fresh one (task 001-113). */
+  | "reinstalled";
 
 export interface DaemonExit {
   readonly reason: DaemonExitReason;

@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
-import type { CheckId, RelativePath, TestFileRef } from "../types/index.js";
+import {
+  type CheckId,
+  type RelativePath,
+  type RevisionNumber,
+  refinedMetaKey,
+  type Store,
+  type TestFileRef,
+  type WorktreeId,
+} from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
@@ -41,23 +49,42 @@ import { readEnvironments, resolveClosures } from "./revision.js";
  * persisted the same one (review wave 4.5, S5).
  *
  * `scan` is step 1, which needs no runner: the `start` revision and the
- * revision the ledger starts at.
+ * revision the ledger starts at. It returns the paths no runner has seen
+ * change: those of the `start` revision and of every revision after the
+ * refined one (`refinedMetaKey`), which an earlier daemon stored and never
+ * refined, as one that exited at a reinstall did (task 001-113). The
+ * baseline queues them as edits (D5 step 4).
  */
-export async function scan(context: SchedulerContext, ledger: Ledger): Promise<void> {
+export async function scan(context: SchedulerContext, ledger: Ledger): Promise<Set<RelativePath>> {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
+  const refined = readRefined(store, worktreeId) ?? latest?.number ?? 0;
   const revision = (await keys.bootstrap(context.head)) ?? latest;
   ledger.revision =
     revision === null
       ? { number: 0, ...(await context.head()) }
       : { number: revision.number, head: revision.head, dirty: revision.dirty };
+  const changed = new Set<RelativePath>();
+  if (revision === null) return changed;
+  for (const { changes } of store.revisions.range(worktreeId, refined, revision.number)) {
+    for (const change of changes) changed.add(change.path);
+  }
+  return changed;
+}
+
+/** `null` when absent or not a number, as the header reads it. */
+function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | null {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : null;
 }
 
 /**
  * Steps 2 to 4: environments, listing, keys, lookup and the baseline
- * checkpoint. `changed` holds the paths revisions changed while the daemon
- * waited for an install: a miss they edited or whose closure they touch is
- * queued recent, ahead of the rest (review wave 11, S2; D5 step 4).
+ * checkpoint. `changed` holds the paths no runner saw change: those `scan`
+ * returned and those revisions changed while the daemon waited for an
+ * install. A miss they edited or whose closure they touch is queued recent,
+ * ahead of the rest (review wave 11, S2; D5 step 4).
  */
 export async function baseline(
   context: SchedulerContext,

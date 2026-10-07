@@ -186,6 +186,8 @@ export interface HarnessOptions {
   readonly allowErrors?: boolean;
   /** `SchedulerOptions.reloadPolicy`. */
   readonly reloadPolicy?: SchedulerOptions["reloadPolicy"];
+  /** `SchedulerOptions.onReinstall`. */
+  readonly onReinstall?: SchedulerOptions["onReinstall"];
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -231,6 +233,7 @@ export async function openHarness(
     onExtraFiles: (paths) => extraFiles.push([...paths]),
     onError: (error) => errors.push(error),
     ...(options.reloadPolicy === undefined ? {} : { reloadPolicy: options.reloadPolicy }),
+    ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
   });
   cleanups.push(async () => {
     await scheduler.close();

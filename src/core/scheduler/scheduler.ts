@@ -15,8 +15,8 @@ import { baseline, scan } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import {
-  type MissingInstall,
   missingInstall,
+  REINSTALL_NOTE,
   reconcileWaiting,
   startWaiting,
   stopWaiting,
@@ -63,8 +63,11 @@ class TierScheduler implements Scheduler {
   #stalled = false;
   /** No runner call until an install (`awaitsInstall`, task 001-100). */
   #awaitingInstall = false;
-  /** Paths revisions changed during the wait: edits the baseline queues recent (review wave 11, S2). */
+  /** Paths no runner saw change: edits the baseline queues recent (review wave 11, S2; `scan`). */
   #waitChanges = new Set<RelativePath>();
+  /** The install went under this scheduler: it stores nothing more (`#reinstall`, task 001-113). */
+  #reinstalled = false;
+  #reinstallTold = false;
   readonly #install: InstallStamps;
 
   constructor(private readonly options: SchedulerOptions) {
@@ -108,7 +111,7 @@ class TierScheduler implements Scheduler {
       const ledger = new Ledger(context);
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
-      await scan(context, ledger);
+      this.#waitChanges = await scan(context, ledger);
       // A daemon killed while waiting left its flag (review wave 11, N5); this one decides again.
       stopWaiting(context);
       const missing = await missingInstall(options.root);
@@ -135,8 +138,9 @@ class TierScheduler implements Scheduler {
    * tier.
    */
   async handleBatch(batch: CandidateBatch): Promise<void> {
-    if (this.#closed) return;
+    if (this.#closed || this.#reinstalled) return;
     await this.#lock.run(async () => {
+      if (this.#reinstalled) return;
       const { context, ledger } = this.#started();
       if (this.#awaitingInstall) {
         this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
@@ -144,19 +148,18 @@ class TierScheduler implements Scheduler {
         return;
       }
       const applied = await reconcileBatch(context, ledger, batch);
-      if (applied === null) return;
-      const { revision, content } = applied;
-      if (revision.changes.some((change) => touchesInstall(change.path))) {
+      // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
+      const touched = applied?.revision.changes.some((change) => touchesInstall(change.path));
+      if (touched || batch.trigger === "interval") {
         const { missing } = await this.#install.check();
-        if (missing !== null) {
-          this.#wait(context, ledger, missing);
-          for (const change of revision.changes) this.#waitChanges.add(change.path);
-          return;
-        }
+        // The revision stays unrefined, so the next daemon's `scan` reads its paths as edits.
+        if (missing !== null) return this.#reinstall(ledger);
       }
-      this.#runnerWork.queueRefine(revision, content);
+      if (applied === null) return;
+      this.#runnerWork.queueRefine(applied.revision, applied.content);
     });
-    this.#pump();
+    if (this.#reinstalled) this.#tellReinstall();
+    else this.#pump();
   }
 
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
@@ -168,15 +171,27 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * The install went while the daemon runs (`npm ci` removes `node_modules`
-   * first; task 001-107, review wave 11 S1): the wait starts as at a start.
-   * Runner parts not applied yet are dropped, and the tier in flight records
-   * nothing (`recordTier`). Under the lock.
+   * The install went while the scheduler runs (`npm ci` removes
+   * `node_modules` first), at the root or in a workspace: it stores nothing
+   * more and its daemon exits, so the next hook's fresh daemon waits for the
+   * install with no runner open (task 001-113, review wave 11c B1 and B2). The
+   * open checkpoint is abandoned, runner parts not applied yet and the queue
+   * are dropped, and the tier in flight records nothing. Under the lock;
+   * `#tellReinstall` follows outside it.
    */
-  #wait(context: SchedulerContext, ledger: Ledger, missing: MissingInstall): void {
-    this.#awaitingInstall = true;
+  #reinstall(ledger: Ledger): void {
+    this.#reinstalled = true;
     this.#runnerWork.dropRefinements();
-    startWaiting(context, ledger, missing);
+    ledger.queue.clear();
+    ledger.checkpoints.finish("abandoned");
+  }
+
+  /** Once: `onReinstall`, or the note itself when no daemon listens. */
+  #tellReinstall(): void {
+    if (this.#reinstallTold) return;
+    this.#reinstallTold = true;
+    if (this.options.onReinstall) this.options.onReinstall(REINSTALL_NOTE);
+    else this.#note(REINSTALL_NOTE);
   }
 
   /**
@@ -193,13 +208,13 @@ class TierScheduler implements Scheduler {
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
-        if (this.#awaitingInstall) return abandonFullSuite(ledger);
+        if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
         if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
         return queueFullSuite(ledger, force);
       })) ??
       (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
-        if (this.#awaitingInstall) return abandonFullSuite(ledger);
+        if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
         await retryRunner(context, ledger);
         return queueFullSuite(ledger, force);
       }));
@@ -259,7 +274,7 @@ class TierScheduler implements Scheduler {
       try {
         while (!this.#closed) {
           await this.#runnerWork.drain();
-          if (this.#closed || this.#awaitingInstall) break;
+          if (this.#closed || this.#awaitingInstall || this.#reinstalled) break;
           const install = await this.#install.check();
           if (install.missing === null && this.#install.takeChange(install)) {
             // Task 001-109 (review wave-11b S2, agreed with the coordinator).
@@ -270,10 +285,10 @@ class TierScheduler implements Scheduler {
             continue;
           }
           const next = await this.#lock.run(() => {
-            if (this.#awaitingInstall) return null;
+            if (this.#awaitingInstall || this.#reinstalled) return null;
             const { context, ledger } = this.#started();
             if (install.missing !== null) {
-              this.#wait(context, ledger, install.missing);
+              this.#reinstall(ledger);
               return null;
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
@@ -286,7 +301,7 @@ class TierScheduler implements Scheduler {
           const selected: Tier = tier;
           const report = await executeTier(context, selected);
           const changed = await unstableInputs(context, selected);
-          const installMoved = (await this.#install.stamp()) !== install.stamp;
+          const installMoved = this.#reinstalled || (await this.#install.stamp()) !== install.stamp;
           const moved = await this.#lock.run(() =>
             recordTier(context, ledger, selected, report, changed, installMoved),
           );
@@ -301,13 +316,16 @@ class TierScheduler implements Scheduler {
         if (tier !== null) await this.#requeue(tier);
       } finally {
         this.#pumping = null;
+        if (this.#reinstalled) this.#tellReinstall();
         if (!this.#closed && !this.#stalled && this.#hasWork()) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
   }
 
+  /** Never while waiting or reinstalled, so the pump cannot re-arm into a wait (review wave 11c, B1). */
   #hasWork(): boolean {
+    if (this.#awaitingInstall || this.#reinstalled) return false;
     return this.#runnerWork.size > 0 || (this.#ledger?.queue.size ?? 0) > 0;
   }
 
