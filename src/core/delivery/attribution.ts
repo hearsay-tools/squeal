@@ -83,8 +83,8 @@ export function attribute(
   revision: RevisionNumber,
 ): readonly DeltaEntry[] {
   if (!entries.some((e) => e.to === "fail")) return entries;
-  const since = registration(store, consumer);
-  const changed = since === null ? null : changedAfter(store, consumer.worktreeId, since, revision);
+  const from = registration(store, consumer);
+  const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
   const closureOf = closureFor(store, consumer.worktreeId);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
