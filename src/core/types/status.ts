@@ -4,6 +4,7 @@ import type {
   CommitSha,
   EpochMs,
   PayloadSchemaVersion,
+  RelativePath,
   RevisionNumber,
   SourceLocation,
   WorktreeId,
@@ -97,6 +98,12 @@ export interface StatusHeader {
    * `readHeader`; absent reads as `false`.
    */
   readonly runnerPartPending?: boolean;
+  /**
+   * The paths the current revision changed, from its revision record (task
+   * 001-85: every report says what its revision changed). Set by
+   * `readLiveHeader`; absent or empty names nothing.
+   */
+  readonly changedPaths?: readonly RelativePath[];
 }
 
 /**

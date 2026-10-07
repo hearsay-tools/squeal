@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readTurn } from "../../src/core/delivery/turn.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { fakeRepo } from "../status/helpers.js";
 import { recorded, squealRepo } from "./helpers.js";
@@ -21,15 +22,16 @@ function deps(overrides: Partial<HookDeps> = {}): HookDeps {
 const prompt = (root: string) => recorded("user-prompt-submit", root);
 
 describe("UserPromptSubmit", () => {
-  it("is silent for a registered consumer and records it as heard from", async () => {
+  it("records a registered consumer as heard from, in a turn, and is silent with nothing new", async () => {
     const r = squealRepo();
     r.apply(r.fail());
-    r.store.consumers.register(r.consumer(), 1_000);
+    await runHook("session-start", recorded("session-start", r.root), deps({ now: () => 1_000 }));
 
     const out = await runHook("user-prompt-submit", prompt(r.root), deps({ now: () => 9_000 }));
 
     expect(out).toEqual(SILENT);
     expect(r.store.consumers.get(r.consumer())?.lastSeenAt).toBe(9_000);
+    expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
   });
 
   it("registers on a fresh store and injects the header (review wave 6, S1)", async () => {

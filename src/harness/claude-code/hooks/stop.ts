@@ -58,6 +58,10 @@ export function stopBusyTimeoutMs(waitMs: number): number {
  * (`stop_hook_active`) never blocks again, so a policy the agent cannot meet
  * cannot loop.
  *
+ * Task 001-85: a main agent's Stop that says nothing ends the turn, so its
+ * consumer is idle and the waiter may wake it for the test files pending now;
+ * one that speaks keeps the turn going, and the Stop after it decides.
+ *
  * `stop.blockOnKnownFailures` blocks only on failures current at this
  * revision; failures whose re-run is pending are named as such, never as
  * existing (review wave 3, S1). A subagent that stops without a block can
@@ -110,6 +114,7 @@ export const stop: Handler = (input, location, deps) => {
         return { output: { decision: "block", reason: `${reasons.join("\n")}\n\n${text}` } };
       }
       if (input.agent_id !== undefined) await finishSubagent(context);
+      else if (news === null) await context.delivery.endTurn(consumer);
       return news === null ? null : additionalContext(input, news);
     },
     { busyTimeoutMs: stopBusyTimeoutMs(wait) },

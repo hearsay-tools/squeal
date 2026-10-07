@@ -153,6 +153,23 @@ export interface PeekOptions {
   readonly kinds: readonly DeltaKind[];
 }
 
+/**
+ * Where a consumer is in its agent's turns, task 001-85. `in-turn` from a
+ * prompt (or a wake) until a Stop that ends the turn silently; `idle` after
+ * it, with what the idle waiter may wake the agent for: the test files
+ * (`testFileId`) pending when the turn ended, and with `newTestFiles` checks
+ * first observed since, because the runner part of that revision was pending
+ * and the test files it adds were not listed yet. A consumer starts idle and
+ * waiting for nothing.
+ */
+export type TurnState =
+  | { readonly turn: "in-turn" }
+  | {
+      readonly turn: "idle";
+      readonly testFiles: readonly string[];
+      readonly newTestFiles: boolean;
+    };
+
 export interface WaitOptions {
   /** Silent expiry. Spec 001 D9: "Its `timeout` is explicit and long; expiry is silent". */
   readonly timeoutMs: number;
@@ -192,8 +209,27 @@ export interface HarnessDelivery {
    */
   peek(consumer: Consumer, options: PeekOptions): Promise<Delta | null>;
 
-  /** Resolves with the first non-empty delta, or `null` on timeout or abort. */
+  /**
+   * Resolves with the first non-empty delta for an idle consumer, or `null`
+   * on timeout or abort. Spec 001 D9 as amended (task 001-85): only while the
+   * consumer is idle (`TurnState`), and only entries of the test files that
+   * were pending when its turn ended; every other difference stays for the
+   * next prompt or tool boundary. Delivering wakes the agent, so the consumer
+   * is in a turn again.
+   */
   waitForDelta(consumer: Consumer, options: WaitOptions): Promise<Delta | null>;
+
+  /**
+   * A turn starts (a prompt): the consumer is in a turn, and the delta not yet
+   * delivered is returned as `onToolBoundary` would. Task 001-85.
+   */
+  startTurn(consumer: Consumer): Promise<Delta | null>;
+
+  /**
+   * A turn ended silently: the consumer is idle, waiting for the test files
+   * pending now and those with a difference not yet delivered. Task 001-85.
+   */
+  endTurn(consumer: Consumer): Promise<void>;
 
   status(worktreeId: WorktreeId): Promise<StatusResult>;
 }

@@ -36,6 +36,12 @@ export interface SquealRepo {
   consumer(agentId?: string): Consumer;
   /** Applies results at the next revision, as the daemon would after a run. */
   apply(...results: ResultRecord[]): void;
+  /**
+   * An edit at the next revision gives `FILE` the key `key` and queues its
+   * re-run, so its checks are pending; the next `apply` with results is that
+   * run, under `key`.
+   */
+  queue(key: string): void;
   pass(c?: typeof ADDS): ResultRecord;
   fail(c?: typeof ADDS, message?: string): ResultRecord;
   policy(policy: PolicyFile): void;
@@ -76,7 +82,11 @@ export function squealRepo(): SquealRepo {
   daemon("alive");
   const sink = createStateSink(store);
   let revision = 0;
-  const options = () => ({ key: "k1", worktreeId, revision });
+  let key = "k1";
+  let queued = false;
+  const options = () => ({ key, worktreeId, revision });
+  const keyRow = (pending: "queued" | null) =>
+    store.testFileKeys.upsertMany([{ worktreeId, testFile: FILE, key, revision, pending }]);
   return {
     repo,
     root: repo.main,
@@ -98,7 +108,18 @@ export function squealRepo(): SquealRepo {
       );
       // The scheduler's order: results under their key first, then the sink.
       store.transaction(() => store.results.putMany(results));
+      if (queued && results.length > 0) {
+        queued = false;
+        keyRow(null);
+      }
       sink.applyResults(worktreeId, revision, results, { checkpointId: null });
+    },
+    queue(next) {
+      this.apply();
+      key = next;
+      queued = true;
+      keyRow("queued");
+      sink.refresh(worktreeId, revision, { checkpointId: null });
     },
     pass: (c = ADDS) => result(c, "pass", options()),
     fail: (c = ADDS, message = "expected 3 to be 4") =>

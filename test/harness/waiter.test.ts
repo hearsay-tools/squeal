@@ -7,7 +7,7 @@ import {
   runHook,
   waiterLockPath,
 } from "../../src/harness/claude-code/index.js";
-import { recorded, squealRepo } from "./helpers.js";
+import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };
 const INTERACTIVE = { CLAUDE_CODE_SESSION_ATTENDED: "1", CLAUDE_CODE_ENTRYPOINT: "cli" };
@@ -22,11 +22,21 @@ function deps(overrides: Partial<HookDeps> = {}): HookDeps {
   };
 }
 
+/**
+ * Registered, then idle waiting for `math > adds`: its re-run was queued when
+ * a Stop ended the turn (task 001-85), so its result, at revision 3, wakes.
+ */
 async function registered() {
   const r = squealRepo();
   r.apply(r.pass());
   await runHook("session-start", recorded("session-start", r.root), deps());
+  await idle(r);
   return r;
+}
+
+async function idle(r: SquealRepo) {
+  r.queue("k2");
+  expect(await runHook("stop", recorded("stop", r.root), deps())).toEqual(SILENT);
 }
 
 describe("idle waiter", () => {
@@ -38,7 +48,7 @@ describe("idle waiter", () => {
 
     expect(out.exitCode).toBe(2);
     expect(out.stdout).toBe("");
-    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed at revision 2\n/);
+    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed at revision 3\n/);
     expect(out.stderr).toContain("PASS -> FAIL");
     // Delivered: the next tool boundary has nothing new.
     const batch = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps());
@@ -110,6 +120,7 @@ describe("idle waiter", () => {
     const waiting = runHook("waiter", recorded("session-start", r.root), deps());
     await new Promise((resolve) => setTimeout(resolve, 150));
     await runHook("session-start", recorded("session-start", r.root), deps());
+    await idle(r);
     r.apply(r.fail());
     expect((await waiting).exitCode).toBe(2);
   });
