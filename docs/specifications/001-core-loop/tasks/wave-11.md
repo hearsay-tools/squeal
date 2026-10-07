@@ -39,3 +39,7 @@ Done when: a baseline with 59 first-seen failures denies nothing; a check that p
 Use /researcher. Topic: `research/README.md` "per-package-keys". Output `research/per-package-keys.md`, probes under `research/probes/per-package-keys/` (throwaway, `node_modules` out of git).
 
 Outcome: whether a worker whose lockfile differs a little from a validated worktree's could inherit most results without ever reusing a result its dependencies could change.
+
+## 001-103 review of wave 11
+
+Use /reviewer. Range `49b5a28..9d92249`, the 001-100 and 001-101 commits and their build (the 002/003 commits in between are another coordinator's and out of scope). Output `reviews/wave-11.md`. Outcome: whether waiting for an install or recent-first ordering can hide a failure or leave a check falsely current, and whether the new delta reading (pass, unknown, fail reads PASS -> FAIL everywhere) or the narrowed deny-once can lose or mislabel a transition. Probe: a worktree that installs while a session is registered (what the header and the first reports say); a monorepo root with workspaces but per-package lockfiles; a `node:test` project with no dependencies (spec 003's runner) still validating; `run --all` while waiting; a revision during the first tier after the install; an edit-caused file starved by repeated edits (does the backlog ever finish); a runner crash between a pass and a fail, told and untold; Codex hooks through the shared deny module.
