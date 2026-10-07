@@ -1,4 +1,4 @@
-import { existsSync, lutimesSync, readdirSync, statSync, symlinkSync, utimesSync } from "node:fs";
+import { lstatSync, lutimesSync, readdirSync, statSync, symlinkSync, utimesSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { writeFile } from "../hash/git-repo.js";
 
@@ -33,12 +33,12 @@ export function writeInstall(
   const listed: Record<string, unknown> = { "": { name: "app" } };
   for (const [location, pkg] of Object.entries(packages)) {
     if (pkg.link !== undefined) {
-      if (existsSync(join(root, location))) continue;
+      listed[location] = { resolved: pkg.link, link: true };
+      if (lstatSync(join(root, location), { throwIfNoEntry: false })) continue;
       symlinkSync(
         relative(dirname(join(root, location)), join(root, pkg.link)),
         join(root, location),
       );
-      listed[location] = { resolved: pkg.link, link: true };
       continue;
     }
     const name = location.slice(location.lastIndexOf("node_modules/") + "node_modules/".length);

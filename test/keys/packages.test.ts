@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   type DependencyKeys,
@@ -191,6 +192,25 @@ describe("per-package dependency keys (001-105)", () => {
     expect(stale.note).toContain("node_modules/sideloaded");
     const after = dependencyKeys(stale, ENVIRONMENT);
     expect(after.environment).not.toBe(before.environment);
+  });
+
+  it("keys a project below the worktree root against its own install", async () => {
+    // Review N8's case the scheme B way: `packages/app/node_modules` holds the project's install.
+    const app = join(root, "packages/app");
+    writeInstall(app, BASE);
+    const keysOfApp = async () =>
+      dependencyKeys(await installedDependencies(app, root), {
+        imports: [{ from: "packages/app", name: "vitest" }],
+        builtins: [],
+      });
+    const appTest = { imports: [{ from: "packages/app/test", name: "ext" }], builtins: [] };
+    const appOther = { imports: [{ from: "packages/app/test", name: "other" }], builtins: [] };
+    const before = await keysOfApp();
+    writeInstall(app, bump("node_modules/trans", "1.0.1"));
+    const after = await keysOfApp();
+    expect(after.environment).toBe(before.environment);
+    expect(after.of(appTest)).not.toBe(before.of(appTest));
+    expect(after.of(appOther)).toBe(before.of(appOther));
   });
 
   it("keeps the whole fingerprint for lockfile formats other than npm's hidden lockfile", async () => {
