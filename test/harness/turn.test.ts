@@ -150,6 +150,20 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
   });
 
+  it("a tool call puts a consumer left idle in a turn (review wave 10, S2)", async () => {
+    const r = await inTurn();
+    r.queue("k2");
+    // Squeal's Stop is silent, but another Stop hook blocks: the agent works on.
+    expect(await hook("stop", r)).toEqual(SILENT);
+    expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
+    expect(await hook("post-tool-batch", r)).toEqual(SILENT);
+    expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
+
+    const waiter = await waiterAround(r, () => r.apply(r.fail()));
+    expect(waiter).toEqual(SILENT);
+    expect(context(await hook("post-tool-batch", r))).toContain("PASS -> FAIL");
+  });
+
   it("a session starts idle and waiting for nothing", async () => {
     const r = squealRepo();
     r.apply(r.pass());

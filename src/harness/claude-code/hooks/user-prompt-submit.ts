@@ -42,8 +42,8 @@ export const userPromptSubmit: Handler = (input, location, deps) => {
     if (daemonLiveness(record, now).state !== "alive") {
       if ((await ensure(location, deps, record)) === "spawned") await settle(context, deps);
     }
-    const registration = await context.delivery.register(context.consumer);
-    await context.delivery.startTurn(context.consumer);
+    // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
+    const registration = await context.delivery.register(context.consumer, { inTurn: true });
     return additionalContext(input, formatRegistration(registration));
   });
 };

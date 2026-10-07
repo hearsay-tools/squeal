@@ -150,7 +150,7 @@ async function finishSubagent(context: HookContext): Promise<void> {
 async function newsText(context: HookContext): Promise<string | null> {
   const { store, delivery, consumer } = context;
   if (!isRegistered(context)) {
-    const registration = await delivery.register(consumer);
+    const registration = await delivery.register(consumer, { inTurn: true });
     return registration.knownFailures.length > 0 ? formatRegistration(registration) : null;
   }
   const delta = await delivery.onToolBoundary(consumer);
