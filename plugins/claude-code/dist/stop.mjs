@@ -2317,7 +2317,7 @@ function formatRegistration(registration) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync5 } from "node:fs";
+import { existsSync as existsSync5, mkdirSync as mkdirSync3 } from "node:fs";
 
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
@@ -2447,8 +2447,12 @@ async function ensureDaemon(root, options = {}) {
   const cli = daemonCliEntry(options.cli, options.env);
   if (cli === null || !existsSync5(cli)) return "unavailable";
   try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return "unavailable";
+    const cwd = storePaths(commonDir).dir;
+    mkdirSync3(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root], {
-      cwd: root,
+      cwd,
       detached: true,
       stdio: "ignore"
     });
