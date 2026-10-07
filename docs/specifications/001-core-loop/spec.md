@@ -45,7 +45,7 @@ A **repository** is the set of worktrees sharing one git common directory. The *
 
 Hook scripts resolve the common directory without spawning git: if `<root>/.git` is a directory, that is it; if it is a file, follow its `gitdir:` entry and then `<gitdir>/commondir`. The daemon uses `git rev-parse --path-format=absolute --git-common-dir` and records the result.
 
-The unix socket for liveness is `<runtime dir>/squeal-<worktree-hash>.sock`, never under the worktree, because socket paths are limited to 104 bytes on macOS and nested worktree paths exceed that. Without a runtime directory it lives in a per-user directory under the temp dir, created mode 0700 and checked for owner and mode, never a fixed name in a shared directory. Probing tries the socket recorded in the store first when its heartbeat is fresh.
+The unix socket for liveness is `<runtime dir>/squeal-<worktree-hash>.sock`, never under the worktree, because socket paths are limited to 104 bytes on macOS and nested worktree paths exceed that. Without a runtime directory it lives in a per-user directory under the temp dir, created mode 0700 and checked for owner and mode, never a fixed name in a shared directory. Hooks and the CLI pick the socket by one rule: the one recorded in the store first when its heartbeat is fresh and a daemon answers there, else the computed one.
 
 ### D2. Watcher and revisions
 
