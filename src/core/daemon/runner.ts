@@ -68,7 +68,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
         reported = null;
         return created;
       } catch (cause) {
-        error = new Error(`Vitest could not start: ${messageOf(cause)}`, { cause });
+        error = new Error(`${options.name} could not start: ${messageOf(cause)}`, { cause });
         if (error.message !== reported && !closed) {
           reported = error.message;
           options.onFailure(error.message);

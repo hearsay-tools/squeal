@@ -175,7 +175,7 @@ describe("squeal daemon: serving while working (spec 001 D9, D10)", SLOW, () => 
     expect(broken.counts.current).toBe(0);
     expect(broken.knownFailures).toEqual([]);
     expect(broken.fullSuite.atCurrentRevision).toBe(false);
-    expect(broken.daemonNotes.map((n) => n.text).join("\n")).toMatch(/Vitest could not start/);
+    expect(broken.daemonNotes.map((n) => n.text).join("\n")).toMatch(/vitest could not start/);
     await delay(1_000);
     expect(second.child.exitCode).toBeNull();
     expect((await ping(repo.socketPath, 500))?.phase).toBe("ready");
