@@ -18,6 +18,8 @@ import { REPO_ROOT } from "../../../src/harness/claude-code/build.js";
 const PLUGIN = join(REPO_ROOT, "plugins/codex");
 const readJson = (path: string): unknown => JSON.parse(readFileSync(join(PLUGIN, path), "utf8"));
 const hooksJson = readJson("hooks/hooks.json") as HooksFile;
+/** As the Claude Code hooks: node:sqlite must not write a warning to a hook's stderr on Node 22. */
+const NODE = "node --disable-warning=ExperimentalWarning";
 
 const all = Object.entries(hooksJson.hooks).flatMap(([event, groups]) =>
   groups.flatMap((group) => group.hooks.map((hook) => ({ event, matcher: group.matcher, hook }))),
@@ -29,16 +31,16 @@ const all = Object.entries(hooksJson.hooks).flatMap(([event, groups]) =>
  * user must trust the changed hooks again (`/hooks` in the TUI).
  */
 const PINNED: Readonly<Record<string, string>> = {
-  "session_start:0:0": "sha256:7e93ecb03dc286c33b94dbb4d02aac267aeb7e7774dd38902e2811037aae7889",
+  "session_start:0:0": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc",
   "user_prompt_submit:0:0":
-    "sha256:99d0a808c4d10b0fde56f0b2643d44c334751a713b33f51f552689f2c2932cc3",
-  "pre_tool_use:0:0": "sha256:a6ba49607b132b3e6c8d82b7a34b9007ba31956bd79903cdc846aceedcd67aa8",
-  "post_tool_use:0:0": "sha256:0d223fa997899ca3d134252818a7a63c10724ab73147fa852a42060076adda93",
-  "stop:0:0": "sha256:b12e266e37eed5c3d357bedb1033e2597dab78086956aa4f226d79d52944d57b",
-  "subagent_start:0:0": "sha256:381c9dd53469eefbffc0e212f6d1b31b3662a77fbfd5f6f2b8d60a252440a060",
-  "subagent_stop:0:0": "sha256:dfaf3d7dedb0ff43021702d23222664f722e1dc58d0c7ad55b4ad9f6b4565c95",
-  "interrupt:0:0": "sha256:52408cd2f6e874fded60beb198998db543bece6021995c5c58ee3572f0dce301",
-  "session_end:0:0": "sha256:d1a5f7bb8570fe98e5275cb18587be495f74dcca39845c4b2339448236822336",
+    "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4",
+  "pre_tool_use:0:0": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96",
+  "post_tool_use:0:0": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1",
+  "stop:0:0": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234",
+  "subagent_start:0:0": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d",
+  "subagent_stop:0:0": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa",
+  "interrupt:0:0": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31",
+  "session_end:0:0": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89",
 };
 
 describe("plugins/codex/hooks/hooks.json", () => {
@@ -75,10 +77,10 @@ describe("plugins/codex/hooks/hooks.json", () => {
       if (event === "PreToolUse" || event === "PostToolUse") {
         expect(hook.command, event).toMatch(/^s\(\) \{ /);
         expect(hook.command, event).toContain(
-          `s "$PWD" 2>/dev/null || exit 0; exec node "\${PLUGIN_ROOT}/dist/${name}.mjs"`,
+          `s "$PWD" 2>/dev/null || exit 0; exec ${NODE} "\${PLUGIN_ROOT}/dist/${name}.mjs"`,
         );
       } else {
-        expect(hook.command, event).toBe(`node "\${PLUGIN_ROOT}/dist/${name}.mjs"`);
+        expect(hook.command, event).toBe(`${NODE} "\${PLUGIN_ROOT}/dist/${name}.mjs"`);
       }
     }
   });
