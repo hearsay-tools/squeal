@@ -23,6 +23,7 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | `env.allowlist` | `[]` | Environment variables whose values are part of a result's identity. |
 | `runner.tierSize` | `4` | Test files per run. |
 | `runner.timeoutMs` | `600000` | Limit per run; `null` for none. |
+| `nodeTest` | `[]` | node:test projects validated beside Vitest. Each entry has `name` (unique), `include` (test-file globs relative to `cwd`, at least one) and optionally `exclude`, `cwd` (relative to the repository root, default the root), `node` (executable path or name, default `node` on the daemon's PATH), `argv` (the flags before `--test`, in order, for example `["--import", "tsx"]`) and `env` (variables merged over the daemon's environment). A bad entry is skipped with a note in `squeal status`; the other projects are kept. Results arrive once the node:test runner lands; until then a configured project lists no test files. |
 | `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
 | `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
 | `store.maxSizeMb` | `null` | Size cap of the store; `null` for none. |

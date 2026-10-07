@@ -42,6 +42,12 @@ export interface Policy {
      */
     readonly timeoutMs: number | null;
   };
+  /**
+   * Spec 003 D1: node:test projects, validated beside any Vitest project of
+   * the repository (D7). A bad entry is a problem with that project skipped
+   * (001 D11). Default `[]`.
+   */
+  readonly nodeTest: readonly NodeTestProject[];
   readonly daemon: {
     /** Spec 001 D10: idle exit "with no registered consumers (default 60 minutes)". */
     readonly idleExitMinutes: number;
@@ -60,6 +66,27 @@ export interface Policy {
  * worktree-relative, compiled by `globToRegExp` in src/core/keys.
  */
 export type PolicyInputs = readonly string[] | Readonly<Record<string, readonly string[]>>;
+
+/**
+ * One node:test project (spec 003 D1). Its identity is `(runner "node-test",
+ * name)`.
+ */
+export interface NodeTestProject {
+  /** Unique among `nodeTest` entries; `squeal init` names it after the npm script. */
+  readonly name: string;
+  /** Relative to the worktree root; absent means the root. */
+  readonly cwd?: string;
+  /** An executable path or name; absent means the `node` on the daemon's PATH. */
+  readonly node?: string;
+  /** The flags before `--test`, in order, such as `["--import", "tsx"]`. Default `[]`. */
+  readonly argv: readonly string[];
+  /** Merged over the daemon's environment, never replacing it. Default `{}`. */
+  readonly env: Readonly<Record<string, string>>;
+  /** Test-file globs relative to `cwd`. At least one. */
+  readonly include: readonly string[];
+  /** Globs relative to `cwd` removed from `include`. */
+  readonly exclude?: readonly string[];
+}
 
 /** True when `A` and `B` are the same type. */
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -85,6 +112,7 @@ export const DEFAULT_POLICY: Policy = {
   inputs: [],
   env: { allowlist: [] },
   runner: { tierSize: 4, timeoutMs: 600_000 },
+  nodeTest: [],
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };
