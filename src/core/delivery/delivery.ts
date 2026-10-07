@@ -17,6 +17,7 @@ import {
   WAITERLESS_EXPIRY_MS,
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
+import { annotate, tellRegistered, withDependencies } from "./attribution.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import {
   readLiveHeader,
@@ -160,8 +161,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const header = readLiveHeader(store, consumer.worktreeId, at, states, told);
-      tellRevision(store, consumer, header.revision);
+      const live = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      tellRevision(store, consumer, live.revision);
+      const { entries, header, stillFailing } = annotate(
+        store,
+        consumer,
+        delta.entries,
+        live,
+        states,
+      );
       const label =
         delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
           ? "baseline"
@@ -171,7 +179,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         consumer,
         header,
         label,
-        entries: delta.entries,
+        entries,
+        stillFailing,
         ...(changed === null ? {} : { liveness: changed }),
       };
     });
@@ -187,16 +196,19 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           consumer,
           states.map((s) => toView(s, at)),
         );
-        const header = readLiveHeader(store, consumer.worktreeId, at, states);
+        const live = readLiveHeader(store, consumer.worktreeId, at, states);
+        const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
+        const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
         tellLiveness(store, consumer, header.daemon?.state ?? null);
         tellRevision(store, consumer, header.revision);
+        tellRegistered(store, consumer, header.revision);
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
           header,
-          knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
+          knownFailures,
         };
       }),
 
@@ -299,6 +311,7 @@ export function expireConsumers(
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
+  tellRegistered(store, consumer, null);
   writeTurn(store, consumer, null);
 }
 
