@@ -3,7 +3,7 @@ import { classify } from "./files.js";
 import type { Ledger } from "./ledger.js";
 
 /** `Scheduler.status()`: counts of the daemon's own work since it started; `null` before `start`. */
-export function statusOf(ledger: Ledger | null, notes: readonly string[]): SchedulerStatus {
+export function statusOf(ledger: Ledger | null): SchedulerStatus {
   const testFiles = counts();
   const checks = counts();
   let running = 0;
@@ -33,7 +33,6 @@ export function statusOf(ledger: Ledger | null, notes: readonly string[]): Sched
       active === null
         ? null
         : { id: active.record.id, kind: active.record.kind, remaining: active.remaining },
-    notes: [...notes],
   };
 }
 

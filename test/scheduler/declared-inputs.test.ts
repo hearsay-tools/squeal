@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readDaemonNotes } from "../../src/core/status/notes.js";
+import { readDaemonNotes } from "../../src/core/notes.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -67,7 +67,6 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
       'squeal.config.json: inputs glob "fixture/*.json" matches no file',
     ];
     expect(texts()).toEqual(expected);
-    expect(h.scheduler.status().notes).toEqual(expected);
   });
 
   it("notes them again after a policy reload, and not twice for one start", async () => {

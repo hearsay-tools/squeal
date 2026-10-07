@@ -40,8 +40,6 @@ export interface SchedulerStatus {
     readonly kind: CheckpointKind;
     readonly remaining: number;
   } | null;
-  /** Factual notes, newest last: runner errors the scheduler worked around. */
-  readonly notes: readonly string[];
 }
 
 /**

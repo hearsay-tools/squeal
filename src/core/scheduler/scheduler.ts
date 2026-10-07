@@ -1,5 +1,6 @@
 import { createFsHasher, type Hasher, readObjectFormat } from "../hash/index.js";
 import { testFileId } from "../keys/index.js";
+import { appendNote } from "../notes.js";
 import { type HeadState, statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
 import {
@@ -28,7 +29,6 @@ import { NOTHING_CHANGED } from "./context.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
-import { appendNote, plainText } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import type { FailureDescriber } from "./records.js";
 import { applyRunnerPart, fetchRunnerPart } from "./refinement.js";
@@ -87,9 +87,6 @@ export interface SchedulerOptions {
   readonly now?: () => EpochMs;
 }
 
-/** Notes kept in memory for `status()`; older ones are dropped. */
-const MAX_NOTES = 20;
-
 /**
  * Work that calls the runner outside a tier: the refinement of a revision, a
  * `run --all` while a runner failure is outstanding. `run` never rejects;
@@ -107,7 +104,6 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
 
 class TierScheduler implements Scheduler {
   readonly #lock = new Mutex();
-  readonly #notes: string[] = [];
   readonly #idle: (() => void)[] = [];
   /** Runner work in arrival order, applied between tiers by the pump. */
   readonly #runnerWork: RunnerTask[] = [];
@@ -248,7 +244,7 @@ class TierScheduler implements Scheduler {
   }
 
   status(): SchedulerStatus {
-    return statusOf(this.#ledger, this.#notes);
+    return statusOf(this.#ledger);
   }
 
   idle(): Promise<void> {
@@ -409,11 +405,8 @@ class TierScheduler implements Scheduler {
     this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
   }
 
-  /** Keeps a note for `status()` and persists it for `squeal status` (D7, review S6). */
-  #note(coloured: string): void {
-    const message = plainText(coloured);
-    this.#notes.push(message);
-    if (this.#notes.length > MAX_NOTES) this.#notes.shift();
+  /** Persists a note for `squeal status` (D7, review S6). */
+  #note(message: string): void {
     const { store, worktreeId, now } = this.options;
     const revision = this.#ledger?.revision.number ?? null;
     try {

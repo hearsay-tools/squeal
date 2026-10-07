@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { appendNote } from "../../src/core/scheduler/notes.js";
-import { type DaemonNote, MAX_PERSISTED_NOTES, notesMetaKey } from "../../src/core/types/index.js";
-import { fakeCommonDir, open } from "../store/helpers.js";
+import { appendNote, readDaemonNotes, withNote } from "../src/core/notes.js";
+import { type DaemonNote, MAX_PERSISTED_NOTES, notesMetaKey } from "../src/core/types/index.js";
+import { fakeCommonDir, open } from "./store/helpers.js";
 
 /*
  * Spec 001 D7: status shows "the latest persisted daemon notes (runner
@@ -58,5 +58,18 @@ describe("persisted notes", () => {
         text: "runner closure of test/a.test.ts failed: [PARSE_ERROR] Expected ;",
       },
     ]);
+  });
+
+  it("keep stored items as they are, which the read skips when malformed", () => {
+    const store = open(fakeCommonDir());
+    const foreign = { at: 1, revision: 1, text: "newer", severity: "info" };
+    store.meta.set(notesMetaKey("wt"), JSON.stringify([foreign, { at: "x" }]));
+    const note = { at: 2, revision: 2, text: "ours" };
+    appendNote(store, "wt", note);
+
+    const stored = store.meta.get(notesMetaKey("wt"));
+    expect(JSON.parse(stored ?? "[]")).toEqual([foreign, { at: "x" }, note]);
+    expect(withNote(stored, note)).toEqual([foreign, { at: "x" }, note, note]);
+    expect(readDaemonNotes(store, "wt")).toEqual([{ at: 1, revision: 1, text: "newer" }, note]);
   });
 });
