@@ -29,6 +29,8 @@ export interface ReconcileCandidates {
   readonly paths: CandidatePath[];
   /** Symlinked directories observed like project directories, with the realpath of each target. */
   readonly linkedDirs: ReadonlyMap<RelativePath, AbsolutePath>;
+  /** Every symlinked directory among the candidates, observed or not, with its target's realpath. */
+  readonly links: ReadonlyMap<RelativePath, AbsolutePath>;
 }
 
 /**
@@ -138,38 +140,50 @@ export async function candidatesForReconcile(
     const stat = stats[i];
     if (stat !== undefined) out.set(rel, stat);
   });
-  const linkedDirs = await observedLinks(ctx, nested, [...out.keys()]);
+  const links = await topLinks(ctx.root, [...out.keys()]);
+  const linkedDirs = await observedLinks(ctx, nested, links);
   for (const link of linkedDirs.keys()) {
     for (const rel of await walkFiles(ctx, nested, link)) {
       out.set(rel, await statOrNull(ctx.root, rel));
     }
   }
-  return { paths: sortCandidates(out), linkedDirs };
+  return { paths: sortCandidates(out), linkedDirs, links };
+}
+
+/** The symlinked directories among `paths` below the root and beyond no other link, with each target's realpath. */
+async function topLinks(
+  root: AbsolutePath,
+  paths: readonly RelativePath[],
+): Promise<Map<RelativePath, AbsolutePath>> {
+  const probe = new SymlinkProbe(root);
+  const links = new Map<RelativePath, AbsolutePath>();
+  for (const rel of paths) {
+    const abs = toAbsolute(root, rel);
+    if (!(await isLinkedDir(abs)) || (await probe.linkAbove(rel)) !== null) continue;
+    const target = await realpath(abs).catch(() => null);
+    if (target !== null) links.set(rel, target);
+  }
+  return links;
 }
 
 /**
- * The symlinked directories among `paths`, below the root and beyond no other
- * link, that are observed like project directories: git ignores neither the
- * link nor a directory at its path, no `.git` entry makes the target another
- * repository, and the target is neither the root nor a directory above it.
- * Links inside a target are not followed, so no walk loops.
+ * The links among `links` observed like project directories: git ignores
+ * neither the link nor a directory at its path, no `.git` entry makes the
+ * target another repository, and the target is neither the root nor a
+ * directory above it. Links inside a target are not followed, so no walk loops.
  */
 async function observedLinks(
   ctx: CandidateContext,
   nested: NestedRepoProbe,
-  paths: readonly RelativePath[],
+  links: ReadonlyMap<RelativePath, AbsolutePath>,
 ): Promise<Map<RelativePath, AbsolutePath>> {
-  const probe = new SymlinkProbe(ctx.root);
-  const links = new Map<RelativePath, AbsolutePath>();
-  for (const rel of paths) {
-    const abs = toAbsolute(ctx.root, rel);
-    if (!(await isLinkedDir(abs)) || (await probe.linkAbove(rel)) !== null) continue;
-    const target = await realpath(abs).catch(() => null);
-    if (target === null || ctx.root === target || ctx.root.startsWith(`${target}/`)) continue;
-    if (!(await nested.isInside(rel))) links.set(rel, target);
+  const observed = new Map<RelativePath, AbsolutePath>();
+  for (const [rel, target] of links) {
+    if (ctx.root === target || ctx.root.startsWith(`${target}/`)) continue;
+    if (!(await nested.isInside(rel))) observed.set(rel, target);
   }
-  for (const link of await ignoredLinks(ctx.root, [...links.keys()])) links.delete(link);
-  return links;
+  for (const link of await ignoredLinks(ctx.root, [...observed.keys()])) observed.delete(link);
+  return observed;
 }
 
 /** Caches "does this directory hold a `.git` entry" for one batch. */
