@@ -17,12 +17,14 @@ vi.mock("../../src/core/store/index.js", async (importOriginal) => {
 });
 
 const { openDaemon } = await import("../../src/core/daemon/open.js");
+const { removeScratch } = await import("../../src/core/daemon/scratch.js");
 
 const repos: FixtureRepo[] = [];
 const opened: OpenedDaemon[] = [];
 afterEach(() => {
   for (const daemon of opened.splice(0)) {
     daemon.store.close();
+    removeScratch(daemon.scratch);
     daemon.lock.release();
   }
   for (const repo of repos.splice(0)) repo.cleanup();
