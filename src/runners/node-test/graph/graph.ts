@@ -64,16 +64,24 @@ export class Graph {
 
   /** Cold build, or a full re-resolve after a reset. */
   build(testFiles: readonly RelativePath[]): void {
-    this.testFiles = testFiles.map((f) => this.abs(f));
-    this.resolvePreloads();
-    this.table.reach([...this.preloadRoots, ...this.testFiles]);
-    this.index = null;
+    try {
+      this.testFiles = testFiles.map((f) => this.abs(f));
+      this.resolvePreloads();
+      this.table.reach([...this.preloadRoots, ...this.testFiles]);
+      this.index = null;
+    } finally {
+      this.resolver.release();
+    }
   }
 
   setTestFiles(testFiles: readonly RelativePath[]): void {
-    this.testFiles = testFiles.map((f) => this.abs(f));
-    this.table.reach(this.testFiles);
-    this.index = null;
+    try {
+      this.testFiles = testFiles.map((f) => this.abs(f));
+      this.table.reach(this.testFiles);
+      this.index = null;
+    } finally {
+      this.resolver.release();
+    }
   }
 
   invalidate(paths: readonly InvalidatedPath[]): void {
@@ -87,7 +95,11 @@ export class Graph {
       this.build(this.testFiles.map((f) => this.rel(f)));
       return;
     }
-    for (const { path } of paths) if (this.table.reparse(this.abs(path))) this.index = null;
+    try {
+      for (const { path } of paths) if (this.table.reparse(this.abs(path))) this.index = null;
+    } finally {
+      this.resolver.release();
+    }
   }
 
   closure(testFile: RelativePath): TestFileClosure {
