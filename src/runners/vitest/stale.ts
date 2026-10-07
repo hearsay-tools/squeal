@@ -17,16 +17,33 @@ const tracksSoftInvalidation = new WeakMap<Vitest, boolean>();
 /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
 const fellBack = new WeakSet<Vitest>();
 
-/** Per instance: each manifest's resolution fields as last invalidated, as JSON (reviews/wave-9b.md S3). */
+/** Per instance: each manifest's fields outside `IGNORED_FIELDS` as last invalidated, as JSON (reviews/wave-9b.md S3). */
 const manifestFields = new WeakMap<Vitest, Map<AbsolutePath, string>>();
 
-/** The `package.json` fields that decide how an import of or inside its directory resolves. */
-const RESOLUTION_FIELDS = ["name", "main", "module", "browser", "exports", "imports"] as const;
+/**
+ * The `package.json` fields no resolver reads. Every other field counts, so a
+ * field a project names in `resolve.mainFields`, or one a plugin reads, stales
+ * its importers when edited (reviews/wave-9c.md B1).
+ */
+const IGNORED_FIELDS: ReadonlySet<string> = new Set([
+  "scripts",
+  "version",
+  "description",
+  "keywords",
+  "author",
+  "contributors",
+  "license",
+  "repository",
+  "bugs",
+  "homepage",
+  "funding",
+  "private",
+]);
 
 /**
  * Invalidates what the adds and deletes among `paths`, and the edited
  * `package.json` files, can make wrong; the caller has invalidated every path
- * itself. An edited `package.json` whose resolution fields are the ones
+ * itself. An edited `package.json` whose fields outside `IGNORED_FIELDS` are the ones
  * recorded at its last edit makes nothing wrong. `note` hears the fallback to
  * full invalidation once per instance.
  */
@@ -111,10 +128,15 @@ function resolutionMoved(
   return manifest.kind !== "change" || before === undefined || before !== after;
 }
 
-/** The resolution fields of a `package.json` as JSON; `null` when it cannot be read. */
+/** The fields of a `package.json` outside `IGNORED_FIELDS` as JSON; `null` when it cannot be read. */
 function resolutionFields(manifest: AbsolutePath): string | null {
   const fields = readManifest(manifest);
-  return fields === null ? null : JSON.stringify(RESOLUTION_FIELDS.map((field) => fields[field]));
+  if (fields === null) return null;
+  const kept = Object.keys(fields)
+    .filter((field) => !IGNORED_FIELDS.has(field))
+    .sort()
+    .map((field) => [field, fields[field]]);
+  return JSON.stringify(kept);
 }
 
 /**

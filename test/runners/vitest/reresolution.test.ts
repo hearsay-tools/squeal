@@ -241,3 +241,44 @@ describe("re-resolution after package.json edits that change no resolution field
     expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["pass"]);
   });
 });
+
+/*
+ * Reviews/wave-9c.md B1: a field the project names in `resolve.mainFields` is
+ * read by the resolver, so an edit of only that field is not skipped.
+ */
+describe("re-resolution after an edit of a field named in resolve.mainFields", SLOW, () => {
+  it("follows an edit of only that field", async () => {
+    const manifest = "src/pkg/package.json";
+    const withSource = (entry: string) => json({ name: "a", source: entry });
+    const fx = await openFixture("basic", {
+      "vitest.config.ts": [
+        'import { defineConfig } from "vitest/config";',
+        'import { include } from "./vitest.shared.ts";',
+        "const resolve = { mainFields: ['source'] };",
+        "export default defineConfig({",
+        "  environments: { ssr: { resolve }, client: { resolve } },",
+        '  test: { include, setupFiles: ["test/setup.ts"], globalSetup: ["test/global-setup.ts"], testTimeout: 60_000 },',
+        "});",
+        "",
+      ].join("\n"),
+      ...module("src/pkg/lib.ts"),
+      ...module("src/pkg/other.ts"),
+      "src/uses.ts": 'export { which } from "./pkg";\n',
+      [manifest]: withSource("lib.ts"),
+      [pkg.path]: readsTest("../src/uses.ts", "src/pkg/other.ts"),
+    });
+    const edit = async (content: string) => {
+      fx.write(manifest, content);
+      await fx.adapter.invalidate([{ path: manifest, kind: "change" }]);
+      return (await fx.adapter.closure(pkg)).paths;
+    };
+    expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["fail"]);
+    expect(await edit(json({ name: "a", source: "lib.ts", scripts: { gen: "one" } }))).toContain(
+      "src/pkg/lib.ts",
+    );
+    const moved = await edit(withSource("other.ts"));
+    expect(moved).toContain("src/pkg/other.ts");
+    expect(moved).not.toContain("src/pkg/lib.ts");
+    expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["pass"]);
+  });
+});
