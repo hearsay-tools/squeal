@@ -66,6 +66,8 @@ const CASES: readonly Case[] = [
   { hook: "post-tool-batch", input: "post-tool-batch", before: flip },
   { hook: "pre-tool-use", input: "pre-tool-use", before: flip },
   { hook: "stop", input: "stop", before: flip },
+  // Task 001-85: a prompt starts a turn and carries the delta.
+  { hook: "user-prompt-submit", input: "user-prompt-submit", before: flip },
   {
     hook: "session-end",
     input: "session-end",
