@@ -54,3 +54,23 @@ Done when: the primer appears in SessionStart registration for startup, resume a
 ## 001-89 turn state and attribution fixes
 
 Use /worker. Shape: repair. Outcome: no transition can be marked delivered without reaching the agent, the waiter never speaks mid-turn because of a stale idle state, an idle agent is woken only by a result still owed to it, and a header names the edits since the agent's last report. Read: `reviews/wave-10.md` S1 to S5 (each has fix steps), N2, "Inputs for the next wave". Seam: `src/harness/claude-code/hooks/user-prompt-submit.ts`, the discarded `startTurn` result (S1). Then S2 (a tool call, in PostToolBatch, marks the consumer in a turn), S3 (trim the waited-for set as each file's result lands), S4 (b) (`changedPaths` is the union over revisions since the consumer's last told revision, capped as today), S5 (silent Stop and silent UserPromptSubmit cases in `latency.test.ts`; if a silent Stop misses 80 ms p95 at low load, fold `endTurn` into the delivery transaction). Own: `user-prompt-submit.ts`, `post-tool-batch.ts`, `stop.ts`, `src/core/delivery/` except `format.ts`, `test/delivery/`, `test/harness/` except tests of `session-start.ts` and the skill, D6 and D9 sentences, one `status.md` line. Leave `format.ts`, `session-start.ts`, `SKILL.md` to 001-88. Done when: probes P1 and P2 of the review are tests; a stale idle state is corrected by the next tool call (test); a header after two revisions since the last report names both revisions' files; the latency cases exist and report p95.
+
+## 001-90 squeal remove
+
+Use /worker. Shape: slice.
+
+Outcome: one command takes Squeal out of a repository: every worktree's daemon stopped, the shared state and this repository's temp directories gone, and a message saying what is left.
+
+Read: spec D1 (store location, socket), D7 (CLI), D10 (lifecycle, temp directory keyed by repository id), D11 (`squeal.config.json`, committed); `src/cli/stop.ts`, `src/cli/daemon-access.ts` (`daemonSocket`, `askDaemon`), `src/core/daemon/scratch.ts` (repository id, temp dir naming).
+
+Seam: a new `src/cli/remove.ts`, registered in `src/cli/main.ts` beside `stop`. First edit: list every worktree recorded in the store with a daemon, ask each to stop through `locateDaemon`, then wait until each worktree lock is free.
+
+Behaviour:
+- Stops every daemon of the repository, not only this worktree's; refuses with the worktree path and exit 1 if one does not stop within a few seconds. Deletes nothing in that case.
+- Deletes `<common-dir>/squeal/` (store, locks, runs, `repository-id`) and the repository's temp directories under `/tmp/squeal-<uid>/tmp/` (by its repository id), only after every lock is free.
+- `--config` also deletes `squeal.config.json` at the worktree root; without it, the config stays and the message says the next session will start Squeal again.
+- Prints what it removed and what remains: the plugin (`claude plugin uninstall squeal`) and the config when kept. Idempotent: on a repository with nothing to remove it says so and exits 0.
+
+Own: `src/cli/remove.ts`, `src/cli/main.ts` (one command), `src/cli/index.ts` if it lists commands, `test/cli/remove.test.ts`, `plugins/claude-code/skills/squeal/references/commands.md` (one entry), `plugins/claude-code/README.md` (uninstall section), D7 in `spec.md`, one `status.md` line. Leave `src/core/daemon/` alone unless the stop path needs a hook; ask first. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: a test with two worktrees and two real daemons runs `squeal remove`, both daemons exit, `<common-dir>/squeal/` and the temp directories are gone, and a SessionStart hook afterwards in a worktree without a config prints nothing; a daemon that will not stop makes it exit 1 with nothing deleted; `--config` removes the config; a second run says nothing to remove.
