@@ -20,7 +20,7 @@ Done when: recorded hook JSON tests show (1) mid-turn news through PostToolBatch
 
 ## 001-86 review of 001-85
 
-Use /reviewer. Range: 001-85's commits as landed. Output `reviews/wave-10.md`. Outcome: whether any transition can now be lost or delayed past the next prompt or tool boundary. Probe: a waiter wake whose turn runs no UserPromptSubmit; Stop blocked by `blockOnKnownFailures`; compaction; a subagent's Stop; two sessions on one worktree; a store from 0.1.7 opened by the new code and the reverse; the hook p95.
+Use /reviewer. Range `6d414e5..13d2cb5` (001-85 plus two coordinator test fixes: the e2e header parser and the bundled waiter test). Note from the worker: the turn state lives in `meta`, one row per worktree, so two sessions on one worktree is the first probe; the latency test only asserts below load 4, so measure p95 on a quiet window or report that CI asserted it. Output `reviews/wave-10.md`. Outcome: whether any transition can now be lost or delayed past the next prompt or tool boundary. Probe: a waiter wake whose turn runs no UserPromptSubmit; Stop blocked by `blockOnKnownFailures`; compaction; a subagent's Stop; two sessions on one worktree; a store from 0.1.7 opened by the new code and the reverse; the hook p95.
 
 ## 001-87 attended check of wave 10
 
