@@ -156,3 +156,15 @@ export interface DaemonExit {
   readonly code: 0 | 1;
   readonly message: string;
 }
+
+/**
+ * `meta` key of a worktree's bootstrap marker: the `DaemonRecord.startedAt`
+ * of the daemon that finished its start scan (`bootstrap`). Changes made
+ * while no daemon ran become that scan's `start` revision, so a consumer
+ * registered before it would count them as its own (task 001-94, review
+ * wave 10b B2); delivery records a registration revision only once the
+ * marker matches the live daemon.
+ */
+export function bootstrappedMetaKey(worktreeId: WorktreeId): string {
+  return `daemon-bootstrapped:${worktreeId}`;
+}

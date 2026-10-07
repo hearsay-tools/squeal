@@ -17,7 +17,7 @@ import {
   WAITERLESS_EXPIRY_MS,
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
-import { annotate, tellRegistered, withDependencies } from "./attribution.js";
+import { annotate, withDependencies } from "./attribution.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import {
   readLiveHeader,
@@ -27,6 +27,7 @@ import {
   toldRevision,
   worktreeLiveness,
 } from "./liveness.js";
+import { bootstrapped, park, tellRegistered } from "./registered.js";
 import {
   currentKeys,
   endTurn,
@@ -203,7 +204,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
         tellLiveness(store, consumer, header.daemon?.state ?? null);
         tellRevision(store, consumer, header.revision);
-        if (!registered) tellRegistered(store, consumer, header.revision);
+        if (!registered) {
+          const alive = header.daemon?.state === "alive";
+          tellRegistered(store, consumer, header.revision, {
+            at,
+            bootstrapped: bootstrapped(store, consumer.worktreeId, alive),
+          });
+        }
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
         return {
@@ -216,6 +223,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
     unregister: async (consumer) => {
       store.transaction(() => {
+        park(store, consumer, now());
         store.consumers.unregister(consumer);
         forget(store, consumer);
       });
@@ -298,6 +306,7 @@ export function expireConsumers(
     const gone = store.transaction(() => {
       const record = store.consumers.get(consumer);
       if (record === null || !idle(record, cutoff)) return false;
+      park(store, consumer, now);
       store.consumers.unregister(consumer);
       forget(store, consumer);
       return true;
@@ -313,7 +322,6 @@ export function expireConsumers(
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
-  tellRegistered(store, consumer, null);
   writeTurn(store, consumer, null);
 }
 
