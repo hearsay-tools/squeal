@@ -3,15 +3,16 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /*
- * CI check (001-76): when plugins/claude-code/dist differs between two commits, the root
+ * CI check (001-76): when either plugin's dist differs between two commits, the root
  * package.json version must be greater at the later one. Claude Code updates an installed
- * plugin only when the manifest's version changes, and the build writes that version from
- * package.json. Self-contained so Node runs it with type stripping:
+ * plugin only when the manifest's version changes, Codex caches each plugin by its version
+ * (spec 002 D5), and the build writes both versions from package.json. Self-contained so Node
+ * runs it with type stripping:
  *
  *   node --experimental-strip-types scripts/check-version-bump.ts <base> [head]
  */
 
-const BUNDLES = "plugins/claude-code/dist";
+const BUNDLES = ["plugins/claude-code/dist", "plugins/codex/dist"] as const;
 
 const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, encoding: "utf8" });
@@ -28,8 +29,9 @@ function parts(version: string): number[] | undefined {
 
 /** Why `head` may not ship its bundles over `base`, or `undefined` when it may. */
 export function versionBumpProblem(base: string, head: string, cwd: string): string | undefined {
-  const changed = git(cwd, ["diff", "--name-only", base, head, "--", BUNDLES]).trim() !== "";
-  if (!changed) return undefined;
+  const changed = git(cwd, ["diff", "--name-only", base, head, "--", ...BUNDLES]).trim();
+  if (changed === "") return undefined;
+  const bundles = BUNDLES.filter((dir) => changed.split("\n").some((p) => p.startsWith(`${dir}/`)));
   const before = versionAt(cwd, base);
   const after = versionAt(cwd, head);
   const b = parts(before);
@@ -39,7 +41,7 @@ export function versionBumpProblem(base: string, head: string, cwd: string): str
   }
   const index = a.findIndex((n, i) => n !== b[i]);
   if (index !== -1 && (a[index] ?? 0) > (b[index] ?? 0)) return undefined;
-  return `${BUNDLES} changed but package.json version ${after} is not greater than ${before}: bump the patch version so installed plugins update`;
+  return `${bundles.join(" and ")} changed but package.json version ${after} is not greater than ${before}: bump the patch version so installed plugins update`;
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

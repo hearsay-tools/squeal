@@ -15,13 +15,15 @@ afterEach(() => {
   cleanups = [];
 });
 
-/** A repository at version 0.1.0 with one bundle; returns it and its first commit. */
+/** A repository at version 0.1.0 with one bundle per plugin; returns it and its first commit. */
 function repo(): { root: string; base: string } {
   const dir = tempDir("squeal-version-bump-");
   cleanups.push(dir.cleanup);
   initRepo(dir.path, {
     "package.json": pkg("0.1.0"),
     "plugins/claude-code/dist/stop.mjs": "a\n",
+    "plugins/codex/dist/stop.mjs": "a\n",
+    "plugins/codex/README.md": "a\n",
     "src/index.ts": "a\n",
   });
   return { root: dir.path, base: head(dir.path) };
@@ -54,9 +56,23 @@ describe("versionBumpProblem", () => {
     expect(versionBumpProblem(base, "HEAD", root)).toBeUndefined();
   });
 
+  it("fails a Codex bundle change that keeps the version, naming the Codex bundles", () => {
+    const { root, base } = repo();
+    commit(root, { "plugins/codex/dist/stop.mjs": "b\n" });
+    expect(versionBumpProblem(base, "HEAD", root)).toMatch(
+      /^plugins\/codex\/dist changed but package\.json version 0\.1\.0 is not greater than 0\.1\.0/,
+    );
+  });
+
+  it("passes a Codex bundle change with a greater version", () => {
+    const { root, base } = repo();
+    commit(root, { "plugins/codex/dist/stop.mjs": "b\n", "package.json": pkg("0.1.1") });
+    expect(versionBumpProblem(base, "HEAD", root)).toBeUndefined();
+  });
+
   it("passes a change outside the bundles without a bump", () => {
     const { root, base } = repo();
-    commit(root, { "src/index.ts": "b\n" });
+    commit(root, { "src/index.ts": "b\n", "plugins/codex/README.md": "b\n" });
     expect(versionBumpProblem(base, "HEAD", root)).toBeUndefined();
   });
 
