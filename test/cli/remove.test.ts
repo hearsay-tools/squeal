@@ -1,0 +1,169 @@
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { type CliIo, main } from "../../src/cli/main.js";
+import { removeCommand } from "../../src/cli/remove.js";
+import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { socketPathFor, userTmpDir } from "../../src/core/daemon/paths.js";
+import { daemonScratch } from "../../src/core/daemon/scratch.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import { runHook } from "../../src/harness/claude-code/index.js";
+import { daemonSuite, SLOW, spawnCli, waitFor, waitReady } from "../daemon/helpers.js";
+import { recorded } from "../harness/helpers.js";
+import { git } from "../hash/git-repo.js";
+
+/*
+ * Task 001-90: `squeal remove` takes Squeal out of a repository. Every
+ * worktree's daemon stops, `<common-dir>/squeal/` and the daemons' temp
+ * directories go, and nothing is deleted while a daemon still holds its lock.
+ */
+
+const dirs: string[] = [];
+afterEach(() => {
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+function capture(cwd: string) {
+  const out = { stdout: "", stderr: "" };
+  const io: CliIo = {
+    stdout: (text) => {
+      out.stdout += text;
+    },
+    stderr: (text) => {
+      out.stderr += text;
+    },
+    cwd,
+  };
+  return { io, out };
+}
+
+async function run(argv: string[], cwd: string) {
+  const { io, out } = capture(cwd);
+  const code = await main(argv, io);
+  return { code, ...out };
+}
+
+/** A git repository with a store that records its worktree, and the daemon's temp directory a crashed daemon left. */
+function storedRepo() {
+  const root = realpathSync(mkdtempSync("/tmp/squeal-remove-"));
+  dirs.push(root);
+  git(root, ["init", "-q"]);
+  const commonDir = join(root, ".git");
+  const store = openStore(commonDir);
+  if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
+  const id = worktreeIdFor(root);
+  store.worktrees.upsert({ id, root, commonDir, isMain: true, registeredAt: 1, daemon: null });
+  store.close();
+  const scratch = daemonScratch(commonDir, root);
+  mkdirSync(scratch.tempDir, { recursive: true });
+  dirs.push(scratch.tempDir);
+  return { root, commonDir, id, storeDir: join(commonDir, "squeal"), tempDir: scratch.tempDir };
+}
+
+describe("squeal remove", () => {
+  const suite = daemonSuite();
+
+  it(
+    "stops the daemons of two worktrees and deletes the store and their temp directories",
+    async () => {
+      const repo = suite.fixture();
+      const linked = join(dirname(repo.root), "linked");
+      git(repo.root, ["worktree", "add", "-q", linked, "-b", "linked"]);
+      const linkedRepo = {
+        ...repo,
+        root: realpathSync(linked),
+        worktreeId: worktreeIdFor(realpathSync(linked)),
+        socketPath: socketPathFor(worktreeIdFor(realpathSync(linked)), {
+          XDG_RUNTIME_DIR: repo.runtimeDir,
+        }),
+      };
+      const daemons = [suite.daemon(repo), suite.daemon(linkedRepo)];
+      await waitReady(repo, daemons[0]);
+      await waitReady(linkedRepo, daemons[1]);
+      const scratches = [repo, linkedRepo].map((r) => daemonScratch(repo.commonDir, r.root));
+      for (const { tempDir } of scratches) expect(existsSync(tempDir)).toBe(true);
+      // A fallback directory an earlier daemon left; no daemon of the key removes it on exit.
+      const fallback = `${userTmpDir()}-${scratches[1]?.tempDir.split("/").pop()}-left`;
+      mkdirSync(fallback);
+      suite.cleanup(() => rmSync(fallback, { recursive: true, force: true }));
+
+      const remove = spawnCli(suite.cli, ["remove"], { cwd: repo.root, env: repo.env });
+      expect(await remove.exited, remove.stderr()).toEqual({ code: 0, signal: null });
+      for (const daemon of daemons) {
+        await waitFor(() => daemon.child.exitCode !== null, 10_000, "daemon exit");
+      }
+      expect(remove.stdout()).toContain(`  ${repo.root}\n`);
+      expect(remove.stdout()).toContain(`  ${linkedRepo.root}\n`);
+      expect(remove.stdout()).toContain(`  ${fallback} (a daemon's temp directory)\n`);
+      expect(remove.stdout()).toContain(`Removed:\n  ${repo.commonDir}/squeal `);
+      expect(remove.stdout()).toContain("claude plugin uninstall squeal");
+      expect(existsSync(join(repo.commonDir, "squeal"))).toBe(false);
+      for (const { tempDir } of scratches) expect(existsSync(tempDir)).toBe(false);
+      expect(existsSync(fallback)).toBe(false);
+
+      // A worktree without a config: SessionStart says nothing and starts nothing.
+      let ensured = 0;
+      const out = await runHook("session-start", recorded("session-start", linkedRepo.root), {
+        env: {},
+        ensureDaemon: async () => {
+          ensured++;
+          return "spawned";
+        },
+      });
+      expect(out).toEqual({ stdout: "", stderr: "", exitCode: 0 });
+      expect(ensured).toBe(0);
+      expect(existsSync(join(repo.commonDir, "squeal"))).toBe(false);
+
+      const again = spawnCli(suite.cli, ["remove"], { cwd: linkedRepo.root, env: repo.env });
+      expect((await again.exited).code).toBe(0);
+      expect(again.stdout()).toMatch(/^Nothing to remove: no Squeal store for this repository\./);
+    },
+    SLOW.timeout,
+  );
+
+  it("deletes nothing and exits 1 while a daemon will not let go of its lock", async () => {
+    const repo = storedRepo();
+    const lock = acquireDaemonLock(lockFileFor(repo.commonDir, repo.id));
+    try {
+      const { io, out } = capture(repo.root);
+      expect(await removeCommand([], io, { stopWaitMs: 300 })).toBe(1);
+      expect(out.stderr).toContain(`the daemon for ${repo.root} did not stop; nothing was removed`);
+      expect(existsSync(join(repo.storeDir, "store.sqlite"))).toBe(true);
+      expect(existsSync(join(repo.storeDir, "repository-id"))).toBe(true);
+      expect(existsSync(repo.tempDir)).toBe(true);
+    } finally {
+      lock?.release();
+    }
+  });
+
+  it("keeps squeal.config.json and says so, and --config deletes it", async () => {
+    const repo = storedRepo();
+    const config = join(repo.root, "squeal.config.json");
+    writeFileSync(config, "{}\n");
+
+    const kept = await run(["remove"], repo.root);
+    expect(kept.code).toBe(0);
+    expect(existsSync(repo.storeDir)).toBe(false);
+    expect(existsSync(repo.tempDir)).toBe(false);
+    expect(existsSync(config)).toBe(true);
+    expect(kept.stdout).toContain(
+      `${config}: the next Claude Code session here starts Squeal again`,
+    );
+
+    const removed = await run(["remove", "--config"], repo.root);
+    expect(removed.code).toBe(0);
+    expect(removed.stdout).toContain(`Removed:\n  ${config}\n`);
+    expect(existsSync(config)).toBe(false);
+
+    const nothing = await run(["remove", "--config"], repo.root);
+    expect(nothing.stdout).toMatch(/^Nothing to remove/);
+    expect(nothing.stdout).not.toContain("squeal.config.json");
+  });
+
+  it("rejects other arguments", async () => {
+    const result = await run(["remove", "--all"], "/");
+    expect(result).toMatchObject({ code: 2, stderr: "usage: squeal remove [--config]\n" });
+  });
+});

@@ -3,6 +3,7 @@ import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/ind
 import type { EpochMs } from "../core/types/index.js";
 import { daemonCommand } from "./daemon.js";
 import { init } from "./init.js";
+import { removeCommand } from "./remove.js";
 import { runCommand } from "./run.js";
 import { startCommand } from "./start.js";
 import { statusWaitCommand } from "./status-wait.js";
@@ -22,6 +23,9 @@ Usage:
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
   squeal stop [root]            Stop this worktree's daemon
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
   squeal daemon <root>          Run the daemon in the foreground (hooks start it)
   squeal --version              Print the version
   squeal --help                 Print this help
@@ -65,6 +69,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   if (first === "start") return startCommand(rest, io);
   if (first === "run") return runCommand(rest, io);
   if (first === "stop") return stopCommand(rest, io);
+  if (first === "remove") return removeCommand(rest, io);
   io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
   return 2;
 }
