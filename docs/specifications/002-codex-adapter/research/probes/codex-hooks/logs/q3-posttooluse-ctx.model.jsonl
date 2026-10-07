@@ -1,0 +1,7 @@
+{"type":"agent_message","text":"none\n","aggregated_output":null}
+{"type":"command_execution","text":null,"aggregated_output":"1791390195590891190\n"}
+{"type":"agent_message","text":"\"PostToolUse-3b50\"\n","aggregated_output":null}
+{"type":"command_execution","text":null,"aggregated_output":"1791390199219827006\n"}
+{"type":"agent_message","text":"\"PostToolUse-3773\"\n","aggregated_output":null}
+{"type":"command_execution","text":null,"aggregated_output":"1791390203688464182\n"}
+{"type":"agent_message","text":"1. `PostToolUse-3b50`\n2. `PostToolUse-3773`\n3. `PostToolUse-6ab1`","aggregated_output":null}

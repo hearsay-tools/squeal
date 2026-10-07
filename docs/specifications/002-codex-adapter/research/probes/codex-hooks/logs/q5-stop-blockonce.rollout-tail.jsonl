@@ -1,0 +1,3 @@
+{"role":"assistant","t":"[{\"type\":\"output_text\",\"text\":\"FIRST\"}]"}
+{"role":"user","t":"[{\"type\":\"input_text\",\"text\":\"<hook_prompt hook_run_id=\\\"stop:1:/&lt;session-flags&gt;/config.toml\\\">SQUEAL-PROBE Stop-32c9: tests/a.test.ts PASS -&gt; FAIL at revision 7. The edit was not applied and can be re-issued.</hook_prompt>\"}]"}
+{"role":"assistant","t":"[{\"type\":\"output_text\",\"text\":\"FIRST\"}]"}

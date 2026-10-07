@@ -1,0 +1,9 @@
+{"type":"thread.started"}
+{"type":"error","text":null,"message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation.","status":null}
+{"type":"error","text":null,"message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation.","status":null}
+{"type":"turn.started"}
+{"type":"agent_message","text":"The preliminary skill read was blocked: `SQUEAL-PROBE-EXIT2 PreBash-2b1f: blocked by probe hook (exit 2).` I’ll proceed with the two requested steps in order.","message":null,"status":null}
+{"type":"agent_message","text":"Step 1 was blocked: `SQUEAL-PROBE PreEdit-5306: tests/a.test.ts PASS -> FAIL at revision 7. The edit was not applied and can be re-issued.` I won’t retry it; I’ll continue to step 2.","message":null,"status":null}
+{"type":"agent_message","text":"Step 2 was blocked: `SQUEAL-PROBE-EXIT2 PreBash-63ce: blocked by probe hook (exit 2).` I won’t retry it.","message":null,"status":null}
+{"type":"agent_message","text":"DONE","message":null,"status":null}
+{"type":"turn.completed"}

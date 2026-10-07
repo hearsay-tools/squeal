@@ -1,0 +1,2 @@
+"Squeal-related tokens in context:\n\n- `HEAD-SessionStart-22bb`\n- `MID-SessionStart-22bb`\n- `TAIL-SessionStart-22bb`\n- Squeal status note nonce: `UserPromptSubmit-725a`\n\nNo context explicitly mentioned a saved file path."
+{"input_tokens":18022,"cached_input_tokens":8320,"cache_write_input_tokens":0,"output_tokens":116,"reasoning_output_tokens":47}

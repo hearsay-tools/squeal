@@ -1,0 +1,26 @@
+2026-10-07T16:23:47.413874Z event.name="codex.websocket_request"
+2026-10-07T16:23:47.413887Z event.name="codex.websocket_request"
+2026-10-07T16:23:47.563352Z event.name="codex.websocket_request"
+2026-10-07T16:23:47.563424Z event.name="codex.websocket_request"
+2026-10-07T16:23:52.120503Z event.name="codex.tool_result"
+2026-10-07T16:23:52.120552Z event.name="codex.tool_result"
+2026-10-07T16:23:52.174325Z
+2026-10-07T16:23:52.174465Z
+2026-10-07T16:23:52.179025Z event.name="codex.tool_result_ready"
+2026-10-07T16:23:52.187100Z event.name="codex.tool_result"
+2026-10-07T16:23:52.187118Z event.name="codex.tool_result"
+2026-10-07T16:23:52.187166Z event.name="codex.tool_result_ready"
+2026-10-07T16:23:52.208474Z event.name="codex.websocket_request"
+2026-10-07T16:23:52.208516Z event.name="codex.websocket_request"
+2026-10-07T16:23:56.658630Z event.name="codex.tool_result"
+2026-10-07T16:23:56.658675Z event.name="codex.tool_result"
+2026-10-07T16:23:56.706852Z event.name="codex.tool_result_ready"
+2026-10-07T16:23:56.708825Z event.name="codex.tool_result"
+2026-10-07T16:23:56.708863Z event.name="codex.tool_result"
+2026-10-07T16:23:56.708896Z event.name="codex.tool_result_ready"
+2026-10-07T16:23:56.728698Z event.name="codex.websocket_request"
+2026-10-07T16:23:56.728733Z event.name="codex.websocket_request"
+{"label":"PostToolUse","emitted":null,"t_ns":1791390232150896307,"out":"1791390232089441476\n"}
+{"label":null,"emitted":"PostToolUse-7490","t_ns":1791390232150896307,"out":null}
+{"label":"PostToolUse","emitted":null,"t_ns":1791390236683873065,"out":"1791390236628022939\n"}
+{"label":null,"emitted":"PostToolUse-10a8","t_ns":1791390236683873065,"out":null}
