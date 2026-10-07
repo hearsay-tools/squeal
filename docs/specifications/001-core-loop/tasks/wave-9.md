@@ -144,3 +144,7 @@ Use /worker. Shape: repair. Outcome: every `package.json` change that alters how
 ## 001-82 review of 001-81
 
 Use /reviewer. Range `351ef21..34d88dc`. Output `reviews/wave-9c.md`. Second and last round on the 001-79 slice: report blockers plainly; the human decides on a third. Outcome: whether `reviews/wave-9b.md` S1 to S3, N1, N2 are closed, and whether the read of Vite's internal `packageCache` and the new importer rule are sound. Probe: a Vite version or config where `packageCache` is missing (does it fall back safely, with a note?); a manifest add at an ancestor of an already cached lookup; the first edit after a start (recorded fields unknown) on the cost fixture; the root `scripts`-only edit cost (about 130 ms by the worker's estimate). Do not re-check "What fits" from earlier reviews.
+
+## 001-84 research: a pull advances its consumer's push view
+
+Use /researcher. Topic: `research/README.md` "pull-advances-push". Output `research/pull-advances-push.md`, probes under `research/probes/pull-advances-push/` (throwaway, `node_modules` out of git). Never touch this repository's store or daemons you did not start; use a scratch repository with its own Squeal (`plugins/claude-code` from this checkout, or `squeal` built here) for experiments. Never edit the board, the spec or product code. Done when each of the four questions has a tagged answer or "not determined, because", and the recommendation names the design and the spec sentences it changes.
