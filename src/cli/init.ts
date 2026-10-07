@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { findWorktreeRoot } from "../core/fs/index.js";
+import { findWorktreeRoot, isRecord } from "../core/fs/index.js";
 import { DEFAULT_POLICY } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 
@@ -26,9 +26,6 @@ export const MARKETPLACE_SOURCE = {
 } as const;
 
 type JsonObject = Record<string, unknown>;
-
-const isObject = (value: unknown): value is JsonObject =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
  * Exit 0 when the repository is set up (including when nothing changed), 1
@@ -60,7 +57,7 @@ export function init(args: readonly string[], io: CliIo): number {
     ["extraKnownMarketplaces", marketplaces],
     ["enabledPlugins", plugins],
   ] as const) {
-    if (!isObject(value)) {
+    if (!isRecord(value)) {
       io.stderr(`squeal init: ${key} in ${settingsPath} is not an object; nothing changed\n`);
       return 1;
     }
@@ -154,6 +151,6 @@ function readSettings(path: string): Settings | string {
   } catch {
     value = null;
   }
-  if (!isObject(value)) return `${path} is not a JSON object`;
+  if (!isRecord(value)) return `${path} is not a JSON object`;
   return { value, text, indent: /^([ \t]+)"/m.exec(text)?.[1] ?? 2 };
 }

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename, dirname, join } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
+import { isRecord } from "../../core/fs/index.js";
 import type { AbsolutePath, InvalidatedPath } from "../../core/types/index.js";
 import { expandsFromDisk } from "./dynamic.js";
 import { depToPath, resolutionBases, resolutionCandidates } from "./graph.js";
@@ -163,9 +164,6 @@ function packageEntries(manifest: AbsolutePath): string[] {
     (entry): entry is string => typeof entry === "string",
   );
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
 
 /** A dep Vite left as written that is neither a path, a virtual id nor a Node builtin. */
 function isUnresolvedBare(dep: string): boolean {

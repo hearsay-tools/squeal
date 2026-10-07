@@ -11,4 +11,5 @@ export {
   resolveCommonDir,
   worktreeIdFor,
 } from "./git-layout.js";
+export { isRecord } from "./json.js";
 export { toAbsolute, toRelative } from "./paths.js";

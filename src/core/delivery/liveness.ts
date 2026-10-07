@@ -1,3 +1,4 @@
+import { isRecord } from "../fs/index.js";
 import { readHeader } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import type {
@@ -72,9 +73,7 @@ function readAll(store: Store, worktreeId: WorktreeId): Told {
   if (raw === null) return {};
   try {
     const value: unknown = JSON.parse(raw);
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-      ? (value as Told)
-      : {};
+    return isRecord(value) ? (value as Told) : {};
   } catch {
     return {};
   }

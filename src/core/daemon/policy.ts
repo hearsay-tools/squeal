@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isMissing } from "../fs/index.js";
+import { isMissing, isRecord } from "../fs/index.js";
 import { globToRegExp } from "../keys/glob.js";
 import { readDaemonNotes } from "../notes.js";
 import {
@@ -34,7 +34,7 @@ const strings: Leaf = (v) =>
  */
 const inputs: Leaf = (v) => {
   const isList = strings(v) === null;
-  if (!isList && !(isObject(v) && Object.values(v).every((globs) => strings(globs) === null))) {
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs) => strings(globs) === null))) {
     return "an array of strings, or an object from test-file glob to an array of strings";
   }
   const globs = isList
@@ -102,7 +102,7 @@ export function loadPolicy(root: string): LoadedPolicy {
   } catch (error) {
     return defaultsBecause(`not valid JSON (${(error as Error).message})`);
   }
-  if (!isObject(parsed)) {
+  if (!isRecord(parsed)) {
     return defaultsBecause(
       `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`,
     );
@@ -139,7 +139,7 @@ function merge(
       if (expected === null) result[key] = value;
       else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
       else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isObject(value)) {
+    } else if (!isRecord(value)) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
     } else {
       const nested = (defaults as Record<string, object>)[key] ?? {};
@@ -147,10 +147,6 @@ function merge(
     }
   }
   return result;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isNumber(value: unknown): value is number {
