@@ -51,3 +51,48 @@ The research counted 324; this run 323. Not traced; the environment set here als
 - pnpm (`node_modules/.pnpm/lock.yaml` `snapshots`) and yarn keep the whole fingerprint.
 - An externalized package that itself spawns (`execa`) or calls `require.resolve` is not seen: scheme B checks only the project files' imports, as the research's 324 did.
 - `plugins/claude-code/dist` and `plugins/codex/dist` are not rebuilt (the row does not own them), so the two committed-bundle tests fail until the coordinator rebuilds.
+
+## 001-109 repair (review wave-11b B1 to B3, S1 to S3, N1 to N4)
+
+Worker notes, 2026-10-07.
+
+### Seam map additions
+
+- `src/runners/vitest/loads.ts` (new): `sourceLoads(source)` finds literal `require("x")` specifiers, a load no specifier names (`require.resolve`, `createRequire`, `import.meta.resolve`, `require(` with anything but one string literal) and the docblock environment (Vitest's own regex). `moduleLoads(file, transform)` caches it per transform object, like `dynamic.ts`. `environmentPackage(name)` maps an environment name to the package Vitest loads.
+- `src/runners/vitest/graph.ts`: `importTargets` adds the scan's literal requires as bare names or builtins, and `module` for an unnamed load. `ImportClosure` gains `rooted` (packages looked up from the project root: the entry's docblock environment) and `root`.
+- `src/runners/vitest/packages.ts`: `installedEntry` turns a `node_modules` path into a `PackageImport`, `"unnamed"` (no package, such as `.vite/deps_ssr`: reported as `module`) or `null`, and marks an import of `<name>/package.json` as `manifest`. `environmentPackages` adds `namedByConfig` (environment, reporters) and `configModules` (`snapshotSerializers`, `runner`, `snapshotEnvironment`, `diff`, which Vitest resolves to paths), and reports `runner`: `vitest` and the config files' imports.
+- `src/core/keys/package-scans.ts` (new): `PackageScans`, the types-only and opaque scans by identity. `Lockfiles` keeps one per daemon (in memory; a restart scans again).
+- `src/core/keys/packages.ts`: `InstalledGraph.opaque(identities)`; a `manifest` import adds the package's identity without its closure, even for a types-only package.
+- `src/core/keys/dependencies.ts`: a segment holding an opaque identity is `whole:`; an opaque environment identity outside the runner's closure (`RunnerPackages.runner`) puts the whole fingerprint in the environment hash.
+- `src/core/scheduler/install-stamp.ts`: `InstallStamps.takeChange` and `refreshInstall`; `scheduler.ts#pump` calls them before selecting a tier (by agreement with the coordinator). `lockfiles.ts` takes a `persisted` predicate, wired in `keying.ts` from `persistedNoteTexts`.
+
+### Measurements
+
+`measure-cezar.mts` (extended) on `/tmp/rv106/cezar` (fresh `npm ci` of `c7fa7178`) against the main checkout `/home/agent/projects/cezar` (`13351da8`), load average 7 to 42:
+
+| | |
+|---|---|
+| Kept, main checkout's lockfile read as-is | 265 of 632 (was 323), none keyed by the whole fingerprint |
+| Whole fingerprint | 367: 310 through builtins or an unnamed load (306 `child_process`; B2 adds two, `import.meta.resolve('tsx')` in `packages/cezar/src/artifacts/lifecycle.ts` and `delegation/provision.ts`), 57 through opaque packages |
+| Opaque packages behind the 57 | 56 `web` files: `commander`, `es-toolkit` (`dist/server/exec.js`), `import-meta-resolve`, `marked` (`bin/main.js`), `katex`'s and `mermaid`'s nested copies; 1 `server` file: `cross-spawn` |
+| Environment hashes | scoped in all four projects; with the config plugins checked, `@tailwindcss/vite`'s closure (`@tailwindcss/node`, `@tailwindcss/oxide`, `enhanced-resolve`) is opaque and all 632 files fell back |
+| Opaque scan of all 555 installed packages, cold | 0.75 to 0.84 s; 26 opaque |
+| A daemon's first keying (632 files, scans included) | 0.39 s, of which 0.29 s scanning the 177 packages segments reach; 97 ms with the config plugins checked (13 scans) |
+| Keying again, warm scan cache, fresh graph | 64 ms (5 ms in a quieter run) |
+| Lockfile read | 22 to 27 ms |
+
+### Decisions the spec did not settle
+
+- **The config file's imports are exempt from the opaque check, like `vitest`.** They are plugins: they run in Vitest's own process and no test file imports them, which is the human's wording for B3. Checking them sent every `cezar` file to the whole fingerprint. Setup and `globalSetup` packages, the environment's package and serializers stay checked; one that is opaque puts the whole fingerprint in the environment hash.
+- **A docblock environment keys its test file, not the environment hash.** The brief said environment-wide. The docblock is in the test file, whose edit re-resolves its closure but does not re-read the environments, so only a per-file key follows an added or changed docblock. The package is looked up from the project root, as Vitest does.
+- **`import.meta.resolve` counts as an unnamed load**, as the review's fix step said, even with a literal argument; so does `require.resolve` with one (the brief).
+- **Unreadable is opaque.** A package folder the scan cannot read, or a project file gone since its transform, falls back. A test that deletes its install before asking for a segment now gets `whole:` (`test/keys/packages.test.ts` keeps its scratch installs until `afterEach`).
+- **The opaque scan matches specifiers, not uses.** `"child_process"` and `"worker_threads"` in any string literal, `module` and `cluster` only as `node:` strings or arguments of `require`, `import`, `from`, `getBuiltinModule`; `require` without a word boundary, for bundlers' `__require`. A package is opaque when any of its code files matches, whether or not the test reaches that file (`es-toolkit`, `marked`).
+- **S2's refresh runs whenever the stamp moved**, also after a lockfile rewrite whose revision reads the environments anyway; the second read re-keys nothing.
+
+### Not done, for a later row
+
+- Persisting the opaque scans in the store, so a restart does not pay 0.3 s again.
+- Per-file opacity (only the files a package's entry reaches, or leaving `bin` files out) would keep the 56 `web` files; not decided.
+- A relative `require("./x.cjs")` loads a project file that is in no closure; it is a closure gap, not a package one, and is not scanned.
+- `node:test` (003-22) should report the same: `require` targets, unnamed loads as `module`, and `runner` for its own packages.
