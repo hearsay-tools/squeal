@@ -2865,11 +2865,11 @@ var init_notes = __esm({
 
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join13 } from "node:path";
+import { join as join14 } from "node:path";
 function loadPolicy(root) {
   let text;
   try {
-    text = readFileSync5(join13(root, POLICY_FILE), "utf8");
+    text = readFileSync5(join14(root, POLICY_FILE), "utf8");
   } catch (error) {
     if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
     return defaultsBecause(`could not be read: ${String(error)}`);
@@ -3440,12 +3440,12 @@ var init_stat_cache = __esm({
 
 // src/core/hash/hasher.ts
 import { lstat as lstat2 } from "node:fs/promises";
-import { join as join14 } from "node:path";
+import { join as join15 } from "node:path";
 function createFsHasher(root, format) {
   return {
     async stat(path) {
       try {
-        const stats = await lstat2(join14(root, path));
+        const stats = await lstat2(join15(root, path));
         if (!stats.isFile() && !stats.isSymbolicLink()) return null;
         return {
           mtimeMs: stats.mtimeMs,
@@ -3458,7 +3458,7 @@ function createFsHasher(root, format) {
         throw new Error(`squeal: cannot stat ${path} in ${root}: ${error.message}`);
       }
     },
-    hash: (path) => hashFile(join14(root, path), format),
+    hash: (path) => hashFile(join15(root, path), format),
     now: () => Date.now()
   };
 }
@@ -3886,7 +3886,7 @@ var init_git2 = __esm({
 });
 
 // src/core/scheduler/lockfiles.ts
-import { join as join15 } from "node:path";
+import { join as join16 } from "node:path";
 var Lockfiles;
 var init_lockfiles = __esm({
   "src/core/scheduler/lockfiles.ts"() {
@@ -3907,7 +3907,7 @@ var init_lockfiles = __esm({
         this.#moved.clear();
         const fingerprints = /* @__PURE__ */ new Map();
         for (const environment of environments) {
-          const root = environment.root === void 0 || environment.root === "" ? this.root : join15(this.root, environment.root);
+          const root = environment.root === void 0 || environment.root === "" ? this.root : join16(this.root, environment.root);
           this.#projects.set(environment.project, { root, lockfile: await this.#find(root) });
           fingerprints.set(
             environment.project,
@@ -4670,6 +4670,111 @@ var init_refinement = __esm({
   }
 });
 
+// src/core/scheduler/runner-work.ts
+var RunnerWork;
+var init_runner_work = __esm({
+  "src/core/scheduler/runner-work.ts"() {
+    "use strict";
+    init_keys();
+    init_types();
+    init_refinement();
+    RunnerWork = class {
+      constructor(host) {
+        this.host = host;
+      }
+      host;
+      /** Runner work in arrival order, applied between tiers by the pump. */
+      #tasks = [];
+      /** A refinement is in its runner phase: shifted off `#tasks`, not applied yet. */
+      #refining = false;
+      /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
+      #carried = /* @__PURE__ */ new Map();
+      get size() {
+        return this.#tasks.length;
+      }
+      get refining() {
+        return this.#refining;
+      }
+      /** Queues the runner part of `revision`. */
+      queueRefine(revision, content) {
+        this.#tasks.push({ run: () => this.#refine(revision, content), cancel: () => {
+        } });
+      }
+      /**
+       * The runner part of one revision, in two phases (review wave 4.5, S3).
+       * The runner phase calls the runner without the lock, so batches are
+       * reconciled meanwhile; the apply phase takes the lock, applies what the
+       * runner said, and commits it with the revision as refined (D2 as
+       * amended). Never rejects: an error is a note, and the revision counts as
+       * refined so no wait hangs on it.
+       */
+      async #refine(revision, content) {
+        const { context, ledger } = this.host.started();
+        this.#refining = true;
+        try {
+          ledger.refineChanges = /* @__PURE__ */ new Set();
+          const carried = [...this.#carried.values()];
+          this.#carried.clear();
+          const part = await fetchRunnerPart(context, ledger, revision, content, carried);
+          await this.host.lock.run(async () => {
+            const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
+            ledger.refineChanges = null;
+            const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
+            for (const ref of stale) this.#carried.set(testFileId(ref), ref);
+            ledger.commit({ refined: revision.number });
+          });
+        } catch (error) {
+          this.host.backgroundError(`could not apply revision ${revision.number}`, error);
+          this.#refinedAfterError(context, revision.number);
+        } finally {
+          ledger.refineChanges = null;
+          this.#refining = false;
+        }
+      }
+      /** Applies the queued runner work, oldest first. */
+      async drain() {
+        while (!this.host.closed()) {
+          const task = this.#tasks.shift();
+          if (!task) return;
+          await task.run();
+        }
+      }
+      /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
+      afterTier(task) {
+        if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
+        return new Promise((resolve7, reject) => {
+          this.#tasks.push({
+            run: () => this.host.lock.run(task).then(resolve7, reject),
+            cancel: () => reject(new Error("squeal scheduler: closed"))
+          });
+          this.host.pump();
+        });
+      }
+      /** Settles every queued task: the scheduler closed first. */
+      cancel() {
+        for (const task of this.#tasks.splice(0)) task.cancel();
+      }
+      /**
+       * A refinement that threw is not pending any more: nothing retries it, and
+       * its note says what failed. Its revision is recorded as refined, so waits
+       * do not wait for it forever (D2 as amended).
+       */
+      #refinedAfterError(context, revision) {
+        const { store, worktreeId } = context;
+        try {
+          store.transaction(() => {
+            const key = refinedMetaKey(worktreeId);
+            const previous = Number(store.meta.get(key) ?? Number.NaN);
+            if (!(previous >= revision)) store.meta.set(key, String(revision));
+          });
+        } catch (error) {
+          this.host.backgroundError(`could not record revision ${revision} as refined`, error);
+        }
+      }
+    };
+  }
+});
+
 // src/core/scheduler/status.ts
 function statusOf(ledger) {
   const testFiles = counts();
@@ -4807,7 +4912,7 @@ var init_stability = __esm({
 
 // src/core/scheduler/tiers.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
-import { join as join16 } from "node:path";
+import { join as join17 } from "node:path";
 function selectTier(context, ledger) {
   const { store, keys, policy } = context;
   const picked = [];
@@ -4840,7 +4945,7 @@ function selectTier(context, ledger) {
   const runId = randomUUID3();
   const tier = {
     runId,
-    logDir: join16(context.runsDir, runId),
+    logDir: join17(context.runsDir, runId),
     revision: ledger.revision,
     checkpointId,
     files: picked,
@@ -4989,11 +5094,9 @@ var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
     init_hash();
-    init_keys();
     init_notes();
     init_revision2();
     init_state2();
-    init_types();
     init_batch();
     init_bootstrap();
     init_context();
@@ -5001,8 +5104,8 @@ var init_scheduler2 = __esm({
     init_ledger();
     init_mutex();
     init_queue();
-    init_refinement();
     init_revision();
+    init_runner_work();
     init_status();
     init_tiers();
     TierScheduler = class {
@@ -5012,12 +5115,13 @@ var init_scheduler2 = __esm({
       options;
       #lock = new Mutex();
       #idle = [];
-      /** Runner work in arrival order, applied between tiers by the pump. */
-      #runnerWork = [];
-      /** A refinement is in its runner phase: shifted off `#runnerWork`, not applied yet. */
-      #refining = false;
-      /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
-      #carried = /* @__PURE__ */ new Map();
+      #runnerWork = new RunnerWork({
+        lock: this.#lock,
+        started: () => this.#started(),
+        closed: () => this.#closed,
+        pump: () => this.#pump(),
+        backgroundError: (subject, error) => this.#backgroundError(subject, error)
+      });
       #context = null;
       #ledger = null;
       #pumping = null;
@@ -5068,7 +5172,7 @@ var init_scheduler2 = __esm({
        * Stores the revision a batch creates and returns: the revision row, stat
        * cache, content re-key, `queued` phases and known states, in one
        * transaction. The runner part is queued and applied by the pump after the
-       * tier in flight, in batch order (`#refine`).
+       * tier in flight, in batch order (`RunnerWork`).
        *
        * Spec 001 D2: "Creating a revision never waits on the runner: the store
        * work [...] completes within the debounce window even while a tier is
@@ -5085,41 +5189,9 @@ var init_scheduler2 = __esm({
           const applied = await reconcileBatch(context, ledger, batch);
           if (applied === null) return;
           const { revision, content } = applied;
-          this.#runnerWork.push({ run: () => this.#refine(revision, content), cancel: () => {
-          } });
+          this.#runnerWork.queueRefine(revision, content);
         });
         this.#pump();
-      }
-      /**
-       * The runner part of one revision, in two phases (review wave 4.5, S3).
-       * The runner phase calls the runner without the lock, so batches are
-       * reconciled meanwhile; the apply phase takes the lock, applies what the
-       * runner said, and commits it with the revision as refined (D2 as
-       * amended). Never rejects: an error is a note, and the revision counts as
-       * refined so no wait hangs on it.
-       */
-      async #refine(revision, content) {
-        const { context, ledger } = this.#started();
-        this.#refining = true;
-        try {
-          ledger.refineChanges = /* @__PURE__ */ new Set();
-          const carried = [...this.#carried.values()];
-          this.#carried.clear();
-          const part = await fetchRunnerPart(context, ledger, revision, content, carried);
-          await this.#lock.run(async () => {
-            const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
-            ledger.refineChanges = null;
-            const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
-            for (const ref of stale) this.#carried.set(testFileId(ref), ref);
-            ledger.commit({ refined: revision.number });
-          });
-        } catch (error) {
-          this.#backgroundError(`could not apply revision ${revision.number}`, error);
-          this.#refinedAfterError(revision.number);
-        } finally {
-          ledger.refineChanges = null;
-          this.#refining = false;
-        }
       }
       /**
        * Queues the checkpoint at once, unless it needs the runner: while a
@@ -5131,9 +5203,9 @@ var init_scheduler2 = __esm({
         const force = request.force === true;
         const record = await this.#lock.run(() => {
           const { ledger } = this.#started();
-          if (ledger.broken || this.#runnerWork.length > 0 || this.#refining) return null;
+          if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
           return queueFullSuite(ledger, force);
-        }) ?? await this.#afterTier(async () => {
+        }) ?? await this.#runnerWork.afterTier(async () => {
           const { context, ledger } = this.#started();
           await retryRunner(context, ledger);
           return queueFullSuite(ledger, force);
@@ -5158,7 +5230,7 @@ var init_scheduler2 = __esm({
         if (this.#closed) return;
         this.#closed = true;
         await this.#pumping;
-        for (const task of this.#runnerWork.splice(0)) task.cancel();
+        this.#runnerWork.cancel();
         await this.#lock.run(() => this.#ledger?.checkpoints.finish("abandoned"));
         for (const resolve7 of this.#idle.splice(0)) resolve7();
       }
@@ -5183,10 +5255,10 @@ var init_scheduler2 = __esm({
           let tier = null;
           try {
             while (!this.#closed) {
-              await this.#drainRunnerWork();
+              await this.#runnerWork.drain();
               if (this.#closed) break;
               const next = await this.#lock.run(() => {
-                if (this.#runnerWork.length > 0) return "runner-work";
+                if (this.#runnerWork.size > 0) return "runner-work";
                 const { context: context2, ledger: ledger2 } = this.#started();
                 return selectTier(context2, ledger2);
               });
@@ -5215,27 +5287,8 @@ var init_scheduler2 = __esm({
           }
         })();
       }
-      /** Applies the queued runner work, oldest first. */
-      async #drainRunnerWork() {
-        while (!this.#closed) {
-          const task = this.#runnerWork.shift();
-          if (!task) return;
-          await task.run();
-        }
-      }
-      /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
-      #afterTier(task) {
-        if (this.#closed) return Promise.reject(new Error("squeal scheduler: closed"));
-        return new Promise((resolve7, reject) => {
-          this.#runnerWork.push({
-            run: () => this.#lock.run(task).then(resolve7, reject),
-            cancel: () => reject(new Error("squeal scheduler: closed"))
-          });
-          this.#pump();
-        });
-      }
       #hasWork() {
-        return this.#runnerWork.length > 0 || (this.#ledger?.queue.size ?? 0) > 0;
+        return this.#runnerWork.size > 0 || (this.#ledger?.queue.size ?? 0) > 0;
       }
       /** Puts the files of a tier that never got recorded back into the queue. */
       async #requeue(tier) {
@@ -5264,23 +5317,6 @@ var init_scheduler2 = __esm({
       #started() {
         if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
         return { context: this.#context, ledger: this.#ledger };
-      }
-      /**
-       * A refinement that threw is not pending any more: nothing retries it, and
-       * its note says what failed. Its revision is recorded as refined, so waits
-       * do not wait for it forever (D2 as amended).
-       */
-      #refinedAfterError(revision) {
-        const { store, worktreeId } = this.options;
-        try {
-          store.transaction(() => {
-            const key = refinedMetaKey(worktreeId);
-            const previous = Number(store.meta.get(key) ?? Number.NaN);
-            if (!(previous >= revision)) store.meta.set(key, String(revision));
-          });
-        } catch (error) {
-          this.#backgroundError(`could not record revision ${revision} as refined`, error);
-        }
       }
       /** An error of work no caller awaits: a note for status, and `onError`. */
       #backgroundError(subject, error) {
@@ -5524,9 +5560,9 @@ var init_readdirp = __esm({
       }
       // Synchronous in dirent mode; returns a promise only when stats are needed.
       _formatEntry(dirent, path) {
-        const basename8 = this._isDirent ? dirent.name : dirent;
-        const fullPath = pjoin(path, basename8);
-        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename8 };
+        const basename9 = this._isDirent ? dirent.name : dirent;
+        const fullPath = pjoin(path, basename9);
+        const entry2 = { path: fullPath.slice(this._relStart), fullPath, basename: basename9 };
         if (this._isDirent) {
           entry2.dirent = dirent;
           return entry2;
@@ -6067,9 +6103,9 @@ var init_handler = __esm({
       _watchWithNodeFs(path, listener) {
         const opts = this.fsw.options;
         const directory = sp.dirname(path);
-        const basename8 = sp.basename(path);
+        const basename9 = sp.basename(path);
         const parent = this.fsw._getWatchedDir(directory);
-        parent.add(basename8);
+        parent.add(basename9);
         const absolutePath = sp.resolve(path);
         const options = {
           persistent: opts.persistent
@@ -6079,7 +6115,7 @@ var init_handler = __esm({
         let closer;
         if (opts.usePolling) {
           const enableBin = opts.interval !== opts.binaryInterval;
-          options.interval = enableBin && isBinaryPath(basename8) ? opts.binaryInterval : opts.interval;
+          options.interval = enableBin && isBinaryPath(basename9) ? opts.binaryInterval : opts.interval;
           closer = setFsWatchFileListener(path, absolutePath, options, {
             listener,
             rawEmitter: this.fsw._emitRaw
@@ -6102,10 +6138,10 @@ var init_handler = __esm({
           return;
         }
         const dirname15 = sp.dirname(file);
-        const basename8 = sp.basename(file);
+        const basename9 = sp.basename(file);
         const parent = this.fsw._getWatchedDir(dirname15);
         let prevStats = stats;
-        if (parent.has(basename8))
+        if (parent.has(basename9))
           return;
         const listener = async (path, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
@@ -6130,9 +6166,9 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname15, basename8);
+              this.fsw._remove(dirname15, basename9);
             }
-          } else if (parent.has(basename8)) {
+          } else if (parent.has(basename9)) {
             const at = newStats.atimeMs;
             const mt = newStats.mtimeMs;
             if (!at || at <= mt || mt !== prevStats.mtimeMs) {
@@ -7275,7 +7311,7 @@ var init_parcel_backend = __esm({
 
 // src/core/watcher/backend.ts
 import { createRequire } from "node:module";
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 import { pathToFileURL } from "node:url";
 function createWatcherBackend(platform) {
   return platform === "darwin" ? createParcelBackend(loadParcel) : chokidarBackend;
@@ -7286,7 +7322,7 @@ async function loadParcel(root) {
   } catch (own) {
     let resolved;
     try {
-      resolved = createRequire(join19(root, "package.json")).resolve("@parcel/watcher");
+      resolved = createRequire(join20(root, "package.json")).resolve("@parcel/watcher");
     } catch {
       throw own;
     }
@@ -7577,7 +7613,7 @@ var init_watch_spec = __esm({
 
 // src/core/watcher/change-feed.ts
 import { realpath as realpath2 } from "node:fs/promises";
-import { basename as basename4 } from "node:path";
+import { basename as basename5 } from "node:path";
 function createChangeFeed(options) {
   return new Feed(options);
 }
@@ -7653,7 +7689,7 @@ var init_change_feed = __esm({
       }
       onDebounced(paths) {
         void this.enqueue(async () => {
-          const specChanged = paths.some((p) => SPEC_INPUTS.has(basename4(p)));
+          const specChanged = paths.some((p) => SPEC_INPUTS.has(basename5(p)));
           let widened = specChanged ? await this.rebuildSpec() : false;
           const { paths: candidates, ignoredDirs } = await candidatesFromHints(this.context(), paths);
           if (ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
@@ -7806,7 +7842,7 @@ var init_daemon_loop = __esm({
 
 // src/runners/vitest/graph.ts
 import { existsSync as existsSync8 } from "node:fs";
-import { basename as basename5, dirname as dirname12, extname as extname2, join as join20, resolve as resolve6 } from "node:path";
+import { basename as basename6, dirname as dirname12, extname as extname2, join as join21, resolve as resolve6 } from "node:path";
 async function importClosure(project, entries) {
   const files = /* @__PURE__ */ new Set();
   const missing = /* @__PURE__ */ new Set();
@@ -7851,7 +7887,7 @@ function depToPath(dep, importer, root) {
   const path = dep.split("?")[0] ?? dep;
   if (path.startsWith("/@fs/")) return path.slice("/@fs".length);
   if (path.startsWith("/@")) return null;
-  if (path.startsWith("/")) return join20(root, path);
+  if (path.startsWith("/")) return join21(root, path);
   if (path.startsWith("./") || path.startsWith("../")) return resolve6(dirname12(importer), path);
   return null;
 }
@@ -7861,7 +7897,7 @@ function resolutionCandidates(target, extensions) {
   return [
     target,
     ...extensions.map((e) => `${target}${e}`),
-    ...extensions.map((e) => join20(target, `index${e}`)),
+    ...extensions.map((e) => join21(target, `index${e}`)),
     ...twins
   ];
 }
@@ -7871,7 +7907,7 @@ function resolutionBases(path, extensions) {
   if (ext === "") return bases;
   if (extensions.includes(ext)) {
     bases.push(path.slice(0, -ext.length));
-    if (basename5(path) === `index${ext}`) bases.push(dirname12(path));
+    if (basename6(path) === `index${ext}`) bases.push(dirname12(path));
   }
   for (const [js, twins] of Object.entries(TYPESCRIPT_TWINS)) {
     if (twins.includes(ext)) bases.push(path.slice(0, -ext.length) + js);
@@ -7897,7 +7933,7 @@ var init_graph = __esm({
 });
 
 // src/runners/vitest/project.ts
-import { basename as basename6, dirname as dirname13, join as join21 } from "node:path";
+import { basename as basename7, dirname as dirname13, join as join22 } from "node:path";
 function configFiles(vitest) {
   const files = /* @__PURE__ */ new Set();
   for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
@@ -7933,7 +7969,7 @@ function snapshotPath(project, testFile) {
   if (resolveSnapshotPath) {
     return resolveSnapshotPath(testFile, ".snap", { config: project.serializedConfig });
   }
-  return join21(dirname13(testFile), "__snapshots__", `${basename6(testFile)}.snap`);
+  return join22(dirname13(testFile), "__snapshots__", `${basename7(testFile)}.snap`);
 }
 function resolveExtensions(project) {
   return (project.vite.environments.ssr?.config ?? project.vite.config).resolve.extensions;
@@ -8069,6 +8105,20 @@ function checkNames(tests) {
     names.set(test.id, name);
   }
   return names;
+}
+function enumeratedChecks(module, testFile) {
+  const names = checkNames(module.children.allTests());
+  return [...module.children.allTests()].map((test) => ({
+    check: {
+      kind: "test",
+      project: testFile.project,
+      testPath: testFile.path,
+      fullName: names.get(test.id) ?? test.fullName
+    },
+    // Research Q2: `test.each` parses to one entry with a `-dynamic` id.
+    templated: test.options.each === true || test.id.endsWith("-dynamic"),
+    location: test.location ? { path: testFile.path, line: test.location.line, column: test.location.column } : null
+  }));
 }
 function toCheckRunResult(testCase, testFile, paths, fullName) {
   const result = testCase.result();
@@ -8240,6 +8290,16 @@ function runnerFailure(collector, files) {
   const error = errors.find((e) => isRunnerFailure(e, files));
   return error === void 0 ? null : errorText(error).split("\n")[0] ?? "";
 }
+async function closeBroken(vitest, collector, broken) {
+  await vitest.close().catch(
+    (error) => collector.note(`close() of a broken instance failed: ${String(error)}`)
+  );
+  return {
+    end: "crashed",
+    failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
+    hung: false
+  };
+}
 function isRunnerFailure(error, files) {
   const text = `${error.message ?? ""}
 ${error.stack ?? ""}`;
@@ -8323,12 +8383,12 @@ var init_environment2 = __esm({
 
 // src/runners/vitest/load.ts
 import { createRequire as createRequire2 } from "node:module";
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 async function loadVitest(root) {
   let resolved;
   try {
-    resolved = createRequire2(join22(root, "package.json")).resolve("vitest/node");
+    resolved = createRequire2(join23(root, "package.json")).resolve("vitest/node");
   } catch (error) {
     const reason2 = error instanceof Error ? error.message.split("\n")[0] : String(error);
     throw new Error(
@@ -8345,7 +8405,7 @@ var init_load = __esm({
 
 // src/runners/vitest/run.ts
 import { mkdirSync as mkdirSync7, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join23 } from "node:path";
+import { join as join24 } from "node:path";
 async function execute(vitest, specs, timeoutMs, collector) {
   const run = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
@@ -8437,12 +8497,12 @@ function writeRunLog(options, collector, report2) {
     `end: ${report2.end}${report2.failure ? ` (${report2.failure})` : ""}, ${report2.durationMs} ms`,
     ""
   ];
-  const logFile = join23(options.logDir, "vitest.log");
+  const logFile = join24(options.logDir, "vitest.log");
   writeFileSync2(logFile, `${[...header, ...collector.log].join("\n")}
 `);
   collector.logFile = logFile;
   writeFileSync2(
-    join23(options.logDir, "report.json"),
+    join24(options.logDir, "report.json"),
     `${JSON.stringify({ runId: options.runId, report: report2 }, null, 2)}
 `
   );
@@ -8492,7 +8552,24 @@ var init_dynamic = __esm({
 // src/runners/vitest/stale.ts
 import { existsSync as existsSync10, readFileSync as readFileSync7 } from "node:fs";
 import { isBuiltin } from "node:module";
-import { basename as basename7, dirname as dirname14, join as join24 } from "node:path";
+import { basename as basename8, dirname as dirname14, join as join25 } from "node:path";
+function invalidateStructural(vitest, paths, note) {
+  const structural = paths.filter((p) => p.kind !== "change");
+  if (structural.length > 0) {
+    const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
+    const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
+    const stale = staleTransforms(vitest, added, deleted);
+    for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
+    if (stale === null && !fellBack.has(vitest)) {
+      fellBack.add(vitest);
+      note(FALLBACK_NOTE);
+    }
+    const testGlob = structural.some(
+      (p) => vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => ""))
+    );
+    if (testGlob) vitest.clearSpecificationsCache();
+  }
+}
 function staleTransforms(vitest, added, deleted) {
   const stale = /* @__PURE__ */ new Set();
   const gone = new Set(deleted);
@@ -8536,9 +8613,9 @@ function staleTransforms(vitest, added, deleted) {
 function entryDirectories(path, bases, root) {
   const found = [];
   for (let dir = dirname14(path); dir.startsWith(`${root}/`); dir = dirname14(dir)) {
-    const manifest = join24(dir, "package.json");
+    const manifest = join25(dir, "package.json");
     if (!existsSync10(manifest)) continue;
-    const named = packageEntries(manifest).map((entry2) => join24(dir, entry2).replace(/\/+$/, ""));
+    const named = packageEntries(manifest).map((entry2) => join25(dir, entry2).replace(/\/+$/, ""));
     if (named.some((entry2) => bases.includes(entry2))) found.push(dir);
   }
   return found;
@@ -8581,14 +8658,15 @@ function cachedFiles(vitest) {
   }
   return files;
 }
-var tracksSoftInvalidation, isPackageJson, isRecord, FALLBACK_NOTE;
+var tracksSoftInvalidation, fellBack, isPackageJson, isRecord, FALLBACK_NOTE;
 var init_stale = __esm({
   "src/runners/vitest/stale.ts"() {
     "use strict";
     init_dynamic();
     init_graph();
     tracksSoftInvalidation = /* @__PURE__ */ new WeakMap();
-    isPackageJson = (path) => basename7(path) === "package.json";
+    fellBack = /* @__PURE__ */ new WeakSet();
+    isPackageJson = (path) => basename8(path) === "package.json";
     isRecord = (value) => typeof value === "object" && value !== null;
     FALLBACK_NOTE = "vitest adapter: this Vite keeps no `invalidationState` on its module nodes, so every add or delete invalidates every cached transform; `affected` after one costs a cold walk (spec 001 D4)";
   }
@@ -8642,8 +8720,6 @@ var init_adapter = __esm({
       #generation = 0;
       #queue = Promise.resolve();
       #closed = false;
-      /** Instances that fell back to full invalidation and have said so once (reviews/wave-7.md S2). */
-      #fellBack = /* @__PURE__ */ new WeakSet();
       #note;
       /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
       async #start() {
@@ -8711,21 +8787,7 @@ var init_adapter = __esm({
             return { recreatedProjects: [...names].sort() };
           }
           for (const p of abs) vitest.invalidateFile(p.abs);
-          const structural = abs.filter((p) => p.kind !== "change");
-          if (structural.length > 0) {
-            const added = structural.filter((p) => p.kind === "add").map((p) => p.abs);
-            const deleted = structural.filter((p) => p.kind === "delete").map((p) => p.abs);
-            const stale = staleTransforms(vitest, added, deleted);
-            for (const file of stale ?? cachedFiles(vitest)) vitest.invalidateFile(file);
-            if (stale === null && !this.#fellBack.has(vitest)) {
-              this.#fellBack.add(vitest);
-              this.#note(FALLBACK_NOTE);
-            }
-            const testGlob = structural.some(
-              (p) => vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => ""))
-            );
-            if (testGlob) vitest.clearSpecificationsCache();
-          }
+          invalidateStructural(vitest, abs, this.#note);
           return { recreatedProjects: [] };
         });
       }
@@ -8761,18 +8823,7 @@ var init_adapter = __esm({
           const spec = project.createSpecification(this.paths.toAbsolute(testFile.path));
           const [module] = await vitest.parseSpecifications([spec]);
           if (!module) return [];
-          const names = checkNames(module.children.allTests());
-          return [...module.children.allTests()].map((test) => ({
-            check: {
-              kind: "test",
-              project: testFile.project,
-              testPath: testFile.path,
-              fullName: names.get(test.id) ?? test.fullName
-            },
-            // Research Q2: `test.each` parses to one entry with a `-dynamic` id.
-            templated: test.options.each === true || test.id.endsWith("-dynamic"),
-            location: test.location ? { path: testFile.path, line: test.location.line, column: test.location.column } : null
-          }));
+          return enumeratedChecks(module, testFile);
         });
       }
       testFiles() {
@@ -8816,15 +8867,8 @@ var init_adapter = __esm({
             }
             const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
             if (broken !== null && this.#vitest === vitest) {
-              execution = {
-                end: "crashed",
-                failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
-                hung: false
-              };
               this.#vitest = null;
-              await vitest.close().catch(
-                (error) => collector.note(`close() of a broken instance failed: ${String(error)}`)
-              );
+              execution = await closeBroken(vitest, collector, broken);
             }
             const report2 = buildReport(collector, execution, Math.round(performance.now() - started));
             if (broken !== null && report2.failure !== null) this.#note(report2.failure);
@@ -9018,7 +9062,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.1";
+  if (true) return "0.1.2";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9600,38 +9644,63 @@ function createHandlers(context) {
 }
 
 // src/core/daemon/server.ts
-import { chmodSync, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, statSync } from "node:fs";
 import { createServer } from "node:net";
-import { dirname as dirname4 } from "node:path";
+import { basename, dirname as dirname4, join as join9 } from "node:path";
 var IDLE_CONNECTION_MS = 2e3;
 async function createDaemonServer(socketPath, handle) {
   mkdirSync2(dirname4(socketPath), { recursive: true, mode: 448 });
-  rmSync3(socketPath, { force: true });
   const connections2 = /* @__PURE__ */ new Set();
   const server = createServer((socket) => {
     connections2.add(socket);
     socket.on("close", () => connections2.delete(socket));
     serve(socket, handle);
   });
-  await new Promise((resolve7, reject) => {
-    server.once("error", reject);
-    server.listen(socketPath, () => {
-      server.off("error", reject);
-      resolve7();
-    });
-  });
-  chmodSync(socketPath, 384);
+  const bound = await bindAt(server, socketPath);
   let closing = null;
   return {
     socketPath,
     close() {
       closing ??= new Promise((resolve7) => {
+        if (stillBound(socketPath, bound)) rmSync3(socketPath, { force: true });
         server.close(() => resolve7());
         for (const socket of connections2) socket.destroy();
       });
       return closing;
     }
   };
+}
+async function bindAt(server, socketPath) {
+  const name = `.${randomBytes(8).toString("hex")}`.slice(
+    0,
+    Math.max(2, basename(socketPath).length)
+  );
+  const staging = join9(dirname4(socketPath), name);
+  await new Promise((resolve7, reject) => {
+    server.once("error", reject);
+    server.listen(staging, () => {
+      server.off("error", reject);
+      resolve7();
+    });
+  });
+  try {
+    chmodSync(staging, 384);
+    const { dev, ino } = statSync(staging);
+    renameSync2(staging, socketPath);
+    return { dev, ino };
+  } catch (error) {
+    await new Promise((resolve7) => server.close(() => resolve7()));
+    throw error;
+  }
+}
+function stillBound(socketPath, bound) {
+  try {
+    const { dev, ino } = statSync(socketPath);
+    return dev === bound.dev && ino === bound.ino;
+  } catch {
+    return false;
+  }
 }
 function serve(socket, handle) {
   let buffer = "";
@@ -9798,11 +9867,11 @@ init_types();
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash5 } from "node:crypto";
 import { existsSync as existsSync5, mkdirSync as mkdirSync3, rmSync as rmSync4 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
   const id = createHash5("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join9(locksDir, `waiter-${id}.sqlite`);
+  return join10(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
@@ -10084,7 +10153,7 @@ function noteInNewerStore(commonDir, worktreeId, note) {
 init_fs();
 init_store2();
 import { existsSync as existsSync7, realpathSync as realpathSync3 } from "node:fs";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync4 } from "node:fs";
@@ -10122,7 +10191,7 @@ function isBusy2(error) {
 
 // src/core/daemon/scratch.ts
 init_paths2();
-import { createHash as createHash6, randomBytes } from "node:crypto";
+import { createHash as createHash6, randomBytes as randomBytes2 } from "node:crypto";
 import {
   linkSync,
   lstatSync as lstatSync3,
@@ -10130,27 +10199,26 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync as readFileSync4,
-  renameSync as renameSync2,
+  renameSync as renameSync3,
   rmSync as rmSync5,
   unlinkSync,
   writeFileSync
 } from "node:fs";
 import { rm } from "node:fs/promises";
-import { basename, dirname as dirname7, join as join11 } from "node:path";
+import { basename as basename2, dirname as dirname7, join as join12 } from "node:path";
 
 // src/core/daemon/paths.ts
 init_fs();
 import { chmodSync as chmodSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync5 } from "node:fs";
-import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname6, isAbsolute as isAbsolute3, join as join10 } from "node:path";
+import { dirname as dirname6, isAbsolute as isAbsolute3, join as join11 } from "node:path";
 function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? join10(tempDir(env), userDirName());
+  return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join10(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join10(userTmpDir(), name);
+  const path = join11(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join11(userTmpDir(), name);
 }
 function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
   const dir = dirname6(socketPath);
@@ -10171,34 +10239,24 @@ function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
   checkPrivateDir(dir, uid, role);
 }
 function checkPrivateDir(dir, uid, role = "socket directory") {
-  const refusal = role === "socket directory" ? "refusing to bind in it" : "refusing to use it";
   const stat5 = lstatSync2(dir);
   if (!stat5.isDirectory()) {
-    throw new Error(`${role} ${dir} is not a directory; ${refusal}`);
+    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
   }
   if (stat5.uid !== uid) {
-    throw new Error(`${role} ${dir} is owned by uid ${stat5.uid}, not ${uid}; ${refusal}`);
+    throw new Error(`${role} ${dir} is owned by uid ${stat5.uid}, not ${uid}; refusing to use it`);
   }
   if ((stat5.mode & 63) !== 0) {
     const mode = (stat5.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`${role} ${dir} has mode ${mode}, not 700; ${refusal}`);
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
   }
 }
 function userTmpDir(uid = currentUid()) {
-  return join10("/tmp", `squeal-${uid}`);
+  return join11("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
-}
-function tempDir(env) {
-  if (process.platform === "win32") return tmpdir2();
-  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
-  const dir = isAbsolute3(given) ? given : "/tmp";
-  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
-}
-function userDirName() {
-  return `squeal-${currentUid()}`;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
@@ -10208,14 +10266,14 @@ function currentUid() {
 function daemonScratch(commonDir, root, uid = currentUid()) {
   const userDir = userTmpDir(uid);
   const key = createHash6("sha256").update(`${repositoryId(commonDir)}\0${root}`).digest("hex").slice(0, 16);
-  return { workDir: storePaths(commonDir).dir, userDir, tempDir: join11(userDir, "tmp", key) };
+  return { workDir: storePaths(commonDir).dir, userDir, tempDir: join12(userDir, "tmp", key) };
 }
 function repositoryId(commonDir) {
   const dir = storePaths(commonDir).dir;
-  const file = join11(dir, "repository-id");
+  const file = join12(dir, "repository-id");
   mkdirSync6(dir, { recursive: true });
-  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
-  writeFileSync(draft, `${randomBytes(16).toString("hex")}
+  const draft = `${file}.${process.pid}-${randomBytes2(4).toString("hex")}`;
+  writeFileSync(draft, `${randomBytes2(16).toString("hex")}
 `);
   try {
     linkSync(draft, file);
@@ -10231,16 +10289,16 @@ function prepareScratch(scratch, uid = currentUid()) {
   try {
     preparePrivateDir(scratch.userDir, uid, "temp directory");
   } catch (error) {
-    const tempDir2 = mkdtempSync(fallbackPrefix(scratch));
+    const tempDir = mkdtempSync(fallbackPrefix(scratch));
     const text = error instanceof Error ? error.message : String(error);
     return {
-      scratch: { ...scratch, tempDir: tempDir2 },
-      refusal: `${text}; using ${tempDir2} instead`,
+      scratch: { ...scratch, tempDir },
+      refusal: `${text}; using ${tempDir} instead`,
       leftovers: removeInBackground(leftovers)
     };
   }
   try {
-    renameSync2(scratch.tempDir, `${scratch.tempDir}.old-${randomBytes(4).toString("hex")}`);
+    renameSync3(scratch.tempDir, `${scratch.tempDir}.old-${randomBytes2(4).toString("hex")}`);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -10258,16 +10316,16 @@ function removeScratch(scratch) {
 }
 function movedAside(scratch) {
   const parent = dirname7(scratch.tempDir);
-  const prefix = `${basename(scratch.tempDir)}.old-`;
-  return safeList(parent).filter((name) => name.startsWith(prefix)).map((name) => join11(parent, name));
+  const prefix = `${basename2(scratch.tempDir)}.old-`;
+  return safeList(parent).filter((name) => name.startsWith(prefix)).map((name) => join12(parent, name));
 }
 function fallbackPrefix(scratch) {
-  return `${scratch.userDir}-${basename(scratch.tempDir)}-`;
+  return `${scratch.userDir}-${basename2(scratch.tempDir)}-`;
 }
 function ownFallbacks(scratch, uid) {
   const prefix = fallbackPrefix(scratch);
   const parent = dirname7(prefix);
-  return safeList(parent).map((name) => join11(parent, name)).filter((path) => path.startsWith(prefix)).filter((path) => {
+  return safeList(parent).map((name) => join12(parent, name)).filter((path) => path.startsWith(prefix)).filter((path) => {
     const stat5 = lstatSync3(path, { throwIfNoEntry: false });
     return stat5?.isDirectory() === true && stat5.uid === uid;
   });
@@ -10318,7 +10376,7 @@ async function openDaemon(rootArgument, now) {
   let commonDir;
   try {
     root = realpathSync3(rootArgument);
-    if (!existsSync7(join12(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    if (!existsSync7(join13(root, ".git"))) throw new Error(`${root} has no .git entry`);
     const out = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
     commonDir = realpathSync3(out.trim());
   } catch (error) {
@@ -10748,7 +10806,7 @@ async function daemonCommand(args, io) {
 init_fs();
 init_types();
 import { existsSync as existsSync11, mkdirSync as mkdirSync8, readFileSync as readFileSync8, rmSync as rmSync6, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join25 } from "node:path";
+import { join as join26 } from "node:path";
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 var MARKETPLACE_SOURCE = {
@@ -10767,7 +10825,7 @@ function init(args, io) {
 `);
     return 1;
   }
-  const settingsPath = join25(root, ".claude", "settings.json");
+  const settingsPath = join26(root, ".claude", "settings.json");
   const settings = readSettings(settingsPath);
   if (typeof settings === "string") {
     io.stderr(`squeal init: ${settings}; nothing changed
@@ -10787,7 +10845,7 @@ function init(args, io) {
     }
   }
   const lines = [];
-  const configPath = join25(root, "squeal.config.json");
+  const configPath = join26(root, "squeal.config.json");
   const writeConfig = !existsSync11(configPath);
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
@@ -10813,7 +10871,7 @@ function init(args, io) {
   } : restorer(settingsPath, settings.text);
   try {
     if (text !== settings.text) {
-      mkdirSync8(join25(root, ".claude"), { recursive: true });
+      mkdirSync8(join26(root, ".claude"), { recursive: true });
       writeFileSync3(settingsPath, text);
     }
   } catch (error) {

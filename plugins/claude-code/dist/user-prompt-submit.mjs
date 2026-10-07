@@ -2198,10 +2198,9 @@ function failure(code, message) {
 }
 
 // src/core/daemon/paths.ts
-import { tmpdir as tmpdir2 } from "node:os";
 import { dirname as dirname2, isAbsolute as isAbsolute2, join as join7 } from "node:path";
 function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? join7(tempDir(env), userDirName());
+  return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
@@ -2215,15 +2214,6 @@ function userTmpDir(uid = currentUid()) {
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : null;
-}
-function tempDir(env) {
-  if (process.platform === "win32") return tmpdir2();
-  const given = env.TMPDIR || env.TMP || env.TEMP || "/tmp";
-  const dir = isAbsolute2(given) ? given : "/tmp";
-  return dir.length > 1 && dir.endsWith("/") ? dir.slice(0, -1) : dir;
-}
-function userDirName() {
-  return `squeal-${currentUid()}`;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
