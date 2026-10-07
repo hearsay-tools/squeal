@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { expectAgrees, headerRevision } from "./agree.js";
-import { e2eSuite, HOOK_BUDGET_MS, hasNodeModulesAbove, MATH } from "./harness.js";
+import { e2eSuite, HOOK_BUDGET_MS, hasNodeModulesAbove, MATH, PLUGINS } from "./harness.js";
 
 /*
  * Spec 001 goals 1 to 3 and Testing, end to end: one PASS -> FAIL, then one
  * FAIL -> PASS, on PostToolBatch, and nothing for PASS -> PASS, for a failure
  * that keeps its diagnostic, or for a break and recovery between two
- * deliveries. Every delivery agrees with `squeal status --json`.
+ * deliveries. Every delivery agrees with `squeal status --json`. Spec 002:
+ * the same for Codex, on PostToolUse.
  */
 
 const fixture = e2eSuite();
@@ -15,9 +16,9 @@ const quiet = (s: { knownFailures: readonly unknown[] }) => s.knownFailures.leng
 const failing = (s: { knownFailures: readonly { validity: string }[] }) =>
   s.knownFailures.length === 1 && s.knownFailures[0]?.validity === "current";
 
-describe("transitions on PostToolBatch", () => {
+describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
   it("delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     expect(hasNodeModulesAbove(e.plugin)).toBe(false);
 
     // No store yet: SessionStart only spawns the daemon (D9).
@@ -72,8 +73,8 @@ describe("transitions on PostToolBatch", () => {
     expect(end).toMatchObject({ code: 0, stdout: "", stderr: "" });
   }, 240_000);
 
-  it("stays silent when a check breaks and recovers between two PostToolBatch calls", async (ctx) => {
-    const e = fixture(ctx);
+  it(`stays silent when a check breaks and recovers between two ${plugin.boundary} calls`, async (ctx) => {
+    const e = fixture(ctx, plugin);
     await e.hook("session-start", e.main);
     await e.daemonReady(e.main);
     await e.settle(e.main, "a passing baseline", (s) => s.counts.current > 0 && quiet(s));

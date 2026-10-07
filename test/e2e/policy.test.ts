@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formatCheck } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { expectAgrees } from "./agree.js";
-import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, SLOW, until } from "./harness.js";
+import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, PLUGINS, SLOW, until } from "./harness.js";
 
 /*
  * Spec 001 D9 policy hooks, end to end, and review wave 3 S1: PreToolUse
@@ -12,6 +12,8 @@ import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, SLOW, until } from "./harness
  * failures for PostToolBatch (task 001-101);
  * Stop with `stop.blockOnKnownFailures` blocks only on failures current at
  * the revision and names failures whose re-run is in flight as pending.
+ * Spec 002: each for both plugins; Codex denies `apply_patch` and has its
+ * tool boundary on PostToolUse.
  */
 
 const fixture = e2eSuite();
@@ -34,9 +36,9 @@ async function registered(e: E2E): Promise<void> {
   expect(first.text).toMatch(/^SQUEAL · registered at revision \d+\n/);
 }
 
-describe("PreToolUse with interrupt.onRegression", () => {
-  it("denies once on a regression and leaves the recovery for PostToolBatch", async (ctx) => {
-    const e = fixture(ctx);
+describe.each(PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin) => {
+  it(`denies once on a regression and leaves the recovery for ${plugin.boundary}`, async (ctx) => {
+    const e = fixture(ctx, plugin);
     await registered(e);
     await e.edit(e.main, "math", MATH("+", "+"), failingOnly(MULTIPLIES));
     const told = await e.hook("post-tool-batch", e.main);
@@ -51,7 +53,7 @@ describe("PreToolUse with interrupt.onRegression", () => {
     expect(deny.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
     expect(deny.text).toContain(`FAIL  ${ADDS}\n      PASS -> FAIL`);
     expect(deny.text).not.toContain(MULTIPLIES);
-    expect(deny.text).toContain("denied this Edit call, so the edit was not applied");
+    expect(deny.text).toContain(`denied this ${plugin.editTool} call, so the edit was not applied`);
     expectAgrees(deny.text, await e.status(e.main));
 
     // The same regression never denies twice.
@@ -72,7 +74,7 @@ describe("PreToolUse with interrupt.onRegression", () => {
     expect(fixed.text).toContain(`PASS  ${ADDS}\n      FAIL -> PASS`);
   }, 240_000);
   it("never denies for a failing test file the agent wrote (task 001-101)", async (ctx) => {
-    const e = fixture(ctx);
+    const e = fixture(ctx, plugin);
     await registered(e);
     const DIVIDES = "test/divide.test.ts > divides";
     writeFileSync(
@@ -86,9 +88,12 @@ describe("PreToolUse with interrupt.onRegression", () => {
   }, 240_000);
 });
 
-describe("Stop with stop.blockOnKnownFailures", () => {
+describe.each(PLUGINS)("Stop with stop.blockOnKnownFailures, $name", (plugin) => {
   it("blocks only on current failures and names pending ones as pending", async (ctx) => {
-    const e = fixture(ctx, { slow: true, policy: { stop: { blockOnKnownFailures: true } } });
+    const e = fixture(ctx, plugin, {
+      slow: true,
+      policy: { stop: { blockOnKnownFailures: true } },
+    });
     await registered(e);
     await e.edit(e.main, "math", MATH("-"), failingOnly(ADDS));
     const slowFailed = await e.edit(e.main, "slow", SLOW(3), failingOnly(ADDS, SLOWLY));
