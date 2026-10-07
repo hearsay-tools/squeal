@@ -1,13 +1,10 @@
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { stripVTControlCharacters } from "node:util";
 import type { CheckError, DiagnosticFingerprint, SourceLocation } from "../types/index.js";
 
 /** Longest `summary`, in characters. Deltas show it whole; full text stays in the run log. */
 export const SUMMARY_MAX_CHARS = 300;
-
-// Colour codes from the runner's formatter (CSI sequences).
-// biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the point of this pattern.
-const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
 
 /*
  * Parts of a first line that change between runs of the same failure. Other
@@ -59,8 +56,8 @@ function escapeRegExp(text: string): string {
 }
 
 function firstLine(text: string): string {
-  const line = text
-    .replace(ANSI, "")
+  // Colour codes from the runner's formatter.
+  const line = stripVTControlCharacters(text)
     .split(/\r?\n/)
     .find((l) => l.trim() !== "");
   return (line ?? "").trim().replace(/\s+/g, " ");
