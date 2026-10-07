@@ -703,6 +703,27 @@ var Connection = class {
       this.#depth--;
     }
   }
+  /**
+   * Runs `fn`, which only reads, in a deferred `BEGIN` transaction, so every
+   * statement in it sees one committed state of the store. In WAL a reader
+   * never blocks the writer and the writer never blocks it (spec 001 D8).
+   * Inside an open transaction it just runs `fn`: that is one state already.
+   */
+  read(fn) {
+    if (this.#depth > 0) return fn();
+    this.db.exec("BEGIN");
+    this.#depth++;
+    try {
+      const result = fn();
+      this.db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      rollback(this.db);
+      throw error;
+    } finally {
+      this.#depth--;
+    }
+  }
   /** Idempotent. */
   close() {
     if (this.#closed) return;
@@ -1936,6 +1957,12 @@ function toRecord(row) {
 
 // src/core/store/store.ts
 var connections = /* @__PURE__ */ new WeakMap();
+var CONNECTION = /* @__PURE__ */ Symbol("squeal.connection");
+function readTransaction(store, fn) {
+  const conn = store[CONNECTION];
+  if (conn === void 0) throw new Error("squeal store: not opened by openStore");
+  return conn.read(fn);
+}
 function createStore(conn, schemaVersion, paths) {
   const worktrees = createWorktreeRepo(conn);
   const store = {
@@ -1959,6 +1986,7 @@ function createStore(conn, schemaVersion, paths) {
     close: () => conn.close()
   };
   connections.set(store, conn);
+  Object.defineProperty(store, CONNECTION, { value: conn });
   return store;
 }
 function createMetaRepo(conn) {
@@ -2116,14 +2144,16 @@ function createStatusBuilder(store, options = {}) {
   const now = options.now ?? Date.now;
   return {
     build(worktreeId) {
-      const worktree = store.worktrees.get(worktreeId);
-      if (worktree === null) {
-        return unavailable(
-          "not-registered",
-          `worktree ${worktreeId} is not registered in the store`
-        );
-      }
-      return snapshot(store, worktreeId, worktree.root, now());
+      return readTransaction(store, () => {
+        const worktree = store.worktrees.get(worktreeId);
+        if (worktree === null) {
+          return unavailable(
+            "not-registered",
+            `worktree ${worktreeId} is not registered in the store`
+          );
+        }
+        return snapshot(store, worktreeId, worktree.root, now());
+      });
     }
   };
 }
@@ -2651,7 +2681,7 @@ function livenessSentence(daemon, revision) {
 }
 function notValidatedLine(daemon) {
   const since = daemon.since === null ? "no daemon is running" : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return `Not validated: ${since}; this edit has no result.`;
+  return `Not validated: ${since}; any change this call made has no result.`;
 }
 function block(head, lines, outcomes) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
