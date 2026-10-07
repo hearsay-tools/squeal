@@ -74,3 +74,22 @@ Behaviour:
 Own: `src/cli/remove.ts`, `src/cli/main.ts` (one command), `src/cli/index.ts` if it lists commands, `test/cli/remove.test.ts`, `plugins/claude-code/skills/squeal/references/commands.md` (one entry), `plugins/claude-code/README.md` (uninstall section), D7 in `spec.md`, one `status.md` line. Leave `src/core/daemon/` alone unless the stop path needs a hook; ask first. Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
 
 Done when: a test with two worktrees and two real daemons runs `squeal remove`, both daemons exit, `<common-dir>/squeal/` and the temp directories are gone, and a SessionStart hook afterwards in a worktree without a config prints nothing; a daemon that will not stop makes it exit 1 with nothing deleted; `--config` removes the config; a second run says nothing to remove.
+
+## 001-91 reports: fewer lines, and where a result came from
+
+Use /worker. Shape: slice. Runs beside 001-90 (disjoint files); a /reviewer follows.
+
+Outcome: a report is short when many checks recover, still names what changed, and says for each failure that Squeal's runner saw it and whether the agent's changes reach it.
+
+Read: `lessons.md` "Report volume and provenance", defects 15 and 16; spec D3 (closure, installed-dependency fingerprint), D6 (delta, message format, 10,000-character cap), D9.
+
+Decided by the human:
+- Recoveries: up to 5 are listed as today. Above 5, one summary line ("31 checks recovered (FAIL -> PASS)"), then the shorter of two lists: the recovered checks, or the checks still failing ("still failing: 2" and their names). A long list is grouped by test file with counts. New failures are always listed in full. Retired checks (RESOLVED, no longer reported) collapse the same way.
+- Install context: when the worktree's installed-dependency fingerprint is empty, the header says once that no dependencies are installed, so failures that cannot find a package are expected until an install. A report whose revision changed the installed lockfile says the recoveries or failures follow an install.
+- Runner label: replace "baseline finding" with wording that says Squeal's own run saw it at revision N (and at start, when it was the baseline).
+- Attribution: each failure says whether its closure contains any file changed since the consumer was registered (the revisions since its registration revision): "touches your changes: src/x.ts" (at most 3, then "and N more") or "none of your changes are in its imports". Inherited results say the same against this worktree's changes.
+- Timeouts: a failure that is a test timeout carries the load average at the time of its run, recorded with the run.
+
+Seam: `src/core/delivery/format.ts` and `delta.ts` (the recovery collapse), then the attribution read in `src/core/delivery/` from the stored closures. Own: `src/core/delivery/`, `src/core/types/` (additive), `src/runners/vitest/run.ts` and `results.ts` (timeout load, if recorded there), `src/core/store/` (only an additive field for the load; a migration only if needed, ask first), tests under `test/delivery/`, `test/e2e/` header parsing if it changes, `plugins/claude-code/skills/squeal/references/reports.md`, D6 in `spec.md`, one `status.md` line. Leave `src/cli/` alone (001-90). Do not run `npm run build` or touch `plugins/claude-code/dist`. Commit as you go.
+
+Done when: tests show 31 recoveries with 2 still failing as one summary plus the 2 names; 31 recoveries with 20 still failing as the summary plus the recovered list grouped by file; 4 recoveries listed in full; the no-dependencies note once; the install label after a lockfile change; a failure with and without a changed file in its closure; a timeout with its load; the message stays under the cap with 40 failures.
