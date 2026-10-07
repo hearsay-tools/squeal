@@ -127,7 +127,14 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 001-61 the daemon holds nothing inside its worktree or its spawner's scratch | done (brief in `specifications/001-core-loop/tasks/wave-7.6.md`) | Defect 13: spawn and run the daemon with a working directory outside the worktree root, and with its own temp directory under `<common-dir>/squeal/tmp/<worktree-hash>/` rather than the inherited `TMPDIR`, cleaned on start. Confirm Vitest and Vite take `root` from the config, not `process.cwd()`. Amend D10. | A daemon started for a worktree has a working directory outside it and no open file or temp directory under the root or the caller's `TMPDIR`; deleting the root makes it exit (D10); the adapter and e2e suites pass with the daemon started from elsewhere. |
-| 001-62 review of 001-60 and 001-61 | running (brief in `specifications/001-core-loop/tasks/wave-7.6.md`) | `/reviewer` over `f87067b..ae24aaf`: third review of the add rule (B1, B2 of `reviews/wave-7.5.md`), and the daemon's new working and temp directories (cwd switch around runner calls, `TMPDIR` in fork workers, worktree removal without `squeal stop`). | `reviews/wave-7.6.md` committed; a 001-60 blocker goes to the human, not to a fourth round by default. |
+| 001-62 review of 001-60 and 001-61 | done: 001-60 PASS, 001-61 FAIL (`reviews/wave-7.6.md`) (brief in `specifications/001-core-loop/tasks/wave-7.6.md`) | `/reviewer` over `f87067b..ae24aaf`: third review of the add rule (B1, B2 of `reviews/wave-7.5.md`), and the daemon's new working and temp directories (cwd switch around runner calls, `TMPDIR` in fork workers, worktree removal without `squeal stop`). | `reviews/wave-7.6.md` committed; a 001-60 blocker goes to the human, not to a fourth round by default. |
+
+### Wave 7.7: daemon placement fixes (from `specifications/001-core-loop/reviews/wave-7.6.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-63 daemon temp directory and the runner's children | running (brief in `specifications/001-core-loop/tasks/wave-7.7.md`) | B1: Vitest's temp directory moves to a private `/tmp/squeal-<uid>/tmp/<hash>/`, outside every repository. B2, decided (b): keep the root as cwd around runner calls and amend D10 to say a runner-started child may hold the root until the daemon exits. S1 remove the temp directory at shutdown; S2 D4 figures; N1 trailing slash in `entryDirectories`; N2, N3, N4, N5. | A test run by a real daemon makes temp dirs outside any repository; with an esbuild plugin, `git worktree remove` succeeds and the daemon exits; no temp directory left after stop or removal; full suite green. |
+| 001-64 re-review of 001-63 | planned | `/reviewer` over 001-63's range, second and last round on the 001-61 slice. | `reviews/wave-7.7.md` committed. |
 
 ### Wave 8: first quality pass (after waves 7.5 and 7.6 land)
 
