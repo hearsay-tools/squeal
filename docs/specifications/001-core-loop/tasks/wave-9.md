@@ -106,3 +106,15 @@ Use /worker. Shape: repair. Outcome: when another repository reuses a worktree p
 ## 001-78 review of 001-72
 
 Use /reviewer. Range `53771a4..53c0598`, the 001-72 commits only (`c968a73`, `c8b5261` and their cherry-picks). Output `reviews/wave-9.md`. Outcome: whether keeping `closuresToReresolve` is right and the table is complete: a wrong keep only costs runs, a missed case is a missed re-run. Re-run the survey test from `c968a73`; probe a `package.json` edit (not add or delete) that changes `main`, a nested `package.json`, and a monorepo with two Vitest projects. Do not re-check what earlier reviews list under "What fits".
+
+## Batch 4
+
+Batch 3 landed (001-70, 001-73, 001-77, review 001-78; version 0.1.2). `reviews/wave-9.md` passed 001-72 with S1, S2 should-fix: they become 001-79. Quality slices 8 to 10 were done by the coordinator. Batch 4 runs 001-79 and 001-75 in parallel; 001-74 runs alone after them (it touches files across the tree).
+
+## 001-79 a package.json move re-resolves its importers
+
+Use /worker. Shape: repair. Outcome: deleting or editing a `package.json` re-runs every test whose closure resolution it changes, so no old result stays current. Read: `reviews/wave-9.md` S1, S2 (each has its fix steps), N1, N2; spec D3, D4. Seam: `src/core/keys/resolution.ts`, the `package.json` branch: pick `index.below(dir)`, and let a manifest content change through. Then `staleTransforms` treats a manifest `change` like an add or delete in its directory rule. Also quality slice 7: split `test/runners/vitest/structural.test.ts` at the D4 resolution-path rows into their own file, before adding rows. Own: `src/core/keys/resolution.ts`, `src/runners/vitest/stale.ts`, `adapter.ts` (`invalidate` only), `test/keys/resolution.test.ts`, `test/runners/vitest/structural*.test.ts`, `reresolution.test.ts`, the 001-72 table in this file (N1, N2 corrections), D3 and D4 sentences, one `status.md` line. Done when: the review's P1, P2a, P2a2 and P3c are tests with the run outcome asserted; `structural-cost.test.ts` keeps its guard and `afterEdit` is unchanged.
+
+## 001-75 quality slices 1 to 6 and the two drops
+
+Use /worker. Shape: finish. Outcome: the dead files, shims and copies `quality/2026-10.md` names are gone, and the two keys no code honours are removed. Read: `quality/2026-10.md` "Drop candidates" X1, X2 and "Slices" 1 to 6. Decided by the human: drop both X1 (`runner.maxConcurrentRuns`: type, default, validation, `squeal init`, skill and README text; a config that still sets it is reported as an unknown key by the loader as for any other) and X2 (`SchedulerStatus` keeps only `revision`; rewrite the 17 assertions to read the store). Own: the files each slice and drop names, outside `src/core/keys/`, `src/runners/vitest/stale.ts`, `adapter.ts` and `test/runners/vitest/structural*` (001-79). One commit per slice or drop. Amend D11 for X1 and add one `status.md` line per drop. Done when: each slice and drop has landed as its own commit; full suite green.
