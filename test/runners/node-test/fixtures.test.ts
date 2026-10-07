@@ -46,6 +46,8 @@ function runNode(
   argv: readonly string[],
   files: readonly string[],
   deadlineMs = 30_000,
+  /** Ends the run early, as the deadline would, once the events so far satisfy it. */
+  until?: (events: readonly TestEvent[]) => boolean,
 ): Promise<NodeRun> {
   const destination = join(scratch, `${randomUUID()}.ndjson`);
   const args = [
@@ -67,15 +69,22 @@ function runNode(
         // the group is already gone
       }
     };
-    const term = setTimeout(() => {
+    let hard: NodeJS.Timeout | undefined;
+    const expire = () => {
+      if (killed) return;
       killed = true;
       kill("SIGTERM");
-    }, deadlineMs);
-    const hard = setTimeout(() => kill("SIGKILL"), deadlineMs + 2_000);
+      hard = setTimeout(() => kill("SIGKILL"), 2_000);
+    };
+    const term = setTimeout(expire, deadlineMs);
+    const poll = setInterval(() => {
+      if (until?.(readEvents(destination))) expire();
+    }, 100);
     child.on("error", fail);
     child.on("exit", (code, signal) => {
       clearTimeout(term);
       clearTimeout(hard);
+      clearInterval(poll);
       // children of the runner may outlive it; the group goes with the run
       kill("SIGKILL");
       done({ code, signal, killed, events: readEvents(destination) });
@@ -187,7 +196,10 @@ describe("node:test fixtures under the current Node", () => {
     it("keeps the other file's completion when the busy loop is killed", SLOW, async () => {
       const busy = "test/busy-loop.test.ts";
       const pass = "test/pass.test.ts";
-      const run = await runNode(edge, argv, [busy, pass], 3_000);
+      // a fixed deadline races the pass file on a loaded machine; end the run once it completed
+      const run = await runNode(edge, argv, [busy, pass], 30_000, (events) =>
+        events.some((e) => e.type === "test:complete" && e.data.name === pass),
+      );
       expect(run.killed).toBe(true);
       expect(run.code === null || run.code !== 0).toBe(true);
       expect(wrapper(run, "test:complete", pass)?.data.details?.passed).toBe(true);
@@ -211,7 +223,8 @@ describe("node:test fixtures under the current Node", () => {
   describe("gen-big.mjs", () => {
     const generator = join(fixtures, "gen-big.mjs");
     // inside the fixtures, as the default output is, so tsx resolves from the repository
-    const tmp = join(fixtures, ".tmp");
+    // one directory per run: another Vitest process, such as Squeal's, may share `.tmp/`
+    const tmp = join(fixtures, ".tmp", randomUUID());
     afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
     const generate = (out: string) => {
@@ -233,7 +246,7 @@ describe("node:test fixtures under the current Node", () => {
 
     it("writes 1,000 modules and 200 test files, deterministically, under 2 s", SLOW, async () => {
       mkdirSync(tmp, { recursive: true });
-      const [a, b] = [join(tmp, `big-${randomUUID()}`), join(tmp, `big-${randomUUID()}`)];
+      const [a, b] = [join(tmp, "a"), join(tmp, "b")];
       expect(generate(a)).toBeLessThan(2_000);
       generate(b);
       const first = digest(a);
