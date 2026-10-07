@@ -1,7 +1,8 @@
-import { formatDelta, formatRegistration } from "../../../core/delivery/index.js";
+import { formatDelta } from "../../../core/delivery/index.js";
 import { ensureIfStale } from "../ensure.js";
 import { isFork } from "../fork.js";
 import { additionalContext, type Handler, isRegistered, withContext } from "../hook.js";
+import { withPrimer } from "../primer.js";
 
 /**
  * PostToolBatch (D9), the primary push channel: the consumer's delta, or
@@ -19,7 +20,7 @@ export const postToolBatch: Handler = async (input, location, deps) => {
     await ensureIfStale(context, deps);
     if (!isRegistered(context)) {
       const registration = await context.delivery.register(context.consumer, { inTurn: true });
-      return additionalContext(input, formatRegistration(registration));
+      return additionalContext(input, withPrimer(registration));
     }
     const delta = await context.delivery.onToolBoundary(context.consumer);
     return delta === null ? null : additionalContext(input, formatDelta(delta));

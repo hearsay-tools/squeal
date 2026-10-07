@@ -1,8 +1,8 @@
-import { formatRegistration, MESSAGE_CAP_CHARS } from "../../../core/delivery/index.js";
 import { usesSqueal } from "../context.js";
 import { ensure, settle } from "../ensure.js";
 import { isFork } from "../fork.js";
 import { additionalContext, type Handler, isRegistered, withContext } from "../hook.js";
+import { PRIMER, withPrimer } from "../primer.js";
 import { unregisterSession } from "../sweep.js";
 
 /**
@@ -29,25 +29,12 @@ import { unregisterSession } from "../sweep.js";
  *
  * Task 001-88: wherever Squeal is used, the registration is followed by the
  * primer, and a main agent still registered after `compact` hears the primer
- * alone, since compaction drops it from context. A repository with a config
- * but no store yet gets the primer alone.
+ * alone, since compaction drops it from context. Without a usable store
+ * nothing validates yet, so there is no primer either: the first
+ * registration, here or in UserPromptSubmit or PostToolBatch, carries it.
  */
 /** Sources after which no earlier run of the session id goes on. */
 const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
-
-/**
- * How to work with Squeal, decided by the human (task 001-88). The one
- * prohibition D6's factual wording allows, paired with what to do instead.
- */
-export const PRIMER = [
-  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-  "Squeal does not cover typecheck, build or other test suites.",
-].join(" ");
-
-/** Room the registration leaves for the primer within the message cap. */
-const REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
 
 export const sessionStart: Handler = async (input, location, deps) => {
   if (isFork(input) || !usesSqueal(location)) return null;
@@ -71,11 +58,8 @@ export const sessionStart: Handler = async (input, location, deps) => {
       });
     }
     const registration = await context.delivery.register(context.consumer);
-    return additionalContext(
-      input,
-      `${formatRegistration(registration, REGISTRATION_MAX)}\n\n${PRIMER}`,
-    );
+    return additionalContext(input, withPrimer(registration));
   });
   if (!ensured) await ensure(location, deps);
-  return outcome ?? additionalContext(input, PRIMER);
+  return outcome;
 };

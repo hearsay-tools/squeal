@@ -1,3 +1,7 @@
+// src/harness/claude-code/context.ts
+import { existsSync as existsSync5 } from "node:fs";
+import { join as join7 } from "node:path";
+
 // src/core/fs/errors.ts
 function isMissing(error) {
   const code = error?.code;
@@ -2313,8 +2317,6 @@ function formatRegistration(registration, max = MESSAGE_CAP_CHARS) {
 }
 
 // src/harness/claude-code/context.ts
-import { existsSync as existsSync5 } from "node:fs";
-import { join as join7 } from "node:path";
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -2561,6 +2563,20 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
+// src/harness/claude-code/primer.ts
+var PRIMER = [
+  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
+  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+  "Squeal does not cover typecheck, build or other test suites."
+].join(" ");
+var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
+function withPrimer(registration) {
+  return `${formatRegistration(registration, REGISTRATION_MAX)}
+
+${PRIMER}`;
+}
+
 // src/harness/claude-code/sweep.ts
 async function unregisterSession(context, sessionId, options) {
   const { store, delivery } = context;
@@ -2599,13 +2615,6 @@ function same(a, b) {
 
 // src/harness/claude-code/hooks/session-start.ts
 var SWEEP_SOURCES = /* @__PURE__ */ new Set(["startup", "resume"]);
-var PRIMER = [
-  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-  "Squeal does not cover typecheck, build or other test suites."
-].join(" ");
-var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
 var sessionStart = async (input, location2, deps) => {
   if (isFork(input) || !usesSqueal(location2)) return null;
   let ensured = false;
@@ -2624,15 +2633,10 @@ var sessionStart = async (input, location2, deps) => {
       });
     }
     const registration = await context.delivery.register(context.consumer);
-    return additionalContext(
-      input,
-      `${formatRegistration(registration, REGISTRATION_MAX)}
-
-${PRIMER}`
-    );
+    return additionalContext(input, withPrimer(registration));
   });
   if (!ensured) await ensure(location2, deps);
-  return outcome ?? additionalContext(input, PRIMER);
+  return outcome;
 };
 
 // src/harness/claude-code/main.ts

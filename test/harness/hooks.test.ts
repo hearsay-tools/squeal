@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
 import { createStatusBuilder } from "../../src/core/status/index.js";
 import { REGRESSION_KINDS } from "../../src/core/types/index.js";
-import { PRIMER } from "../../src/harness/claude-code/hooks/session-start.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { PRIMER } from "../../src/harness/claude-code/primer.js";
 import { ADDS, recorded, type SquealRepo, SUBAGENT, SUBTRACTS, squealRepo } from "./helpers.js";
 
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };

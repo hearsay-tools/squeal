@@ -2,8 +2,8 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
-import { PRIMER } from "../../src/harness/claude-code/hooks/session-start.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { PRIMER } from "../../src/harness/claude-code/primer.js";
 import { check } from "../state/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
@@ -12,6 +12,8 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * Squeal runs the Vitest tests, so it keeps working instead of running them
  * to learn what its edits did; again after compaction, which drops it.
  */
+
+const INTERACTIVE = { CLAUDE_CODE_SESSION_ATTENDED: "1", CLAUDE_CODE_ENTRYPOINT: "cli" };
 
 function deps(overrides: Partial<HookDeps> = {}): HookDeps {
   return { env: {}, ensureDaemon: async () => "alive", ...overrides };
@@ -42,7 +44,12 @@ describe("the SessionStart primer", () => {
     expect(text.endsWith(`\n\n${PRIMER}`)).toBe(true);
   });
 
-  it("comes alone where a squeal.config.json has no store yet", async () => {
+  /*
+   * Without a usable store nothing validates yet, so the primer would be
+   * false. SessionStart only spawns the daemon (D9); the first registration,
+   * in UserPromptSubmit or PostToolBatch, carries the primer instead.
+   */
+  it("is absent where a squeal.config.json has no store yet, and the first registration carries it", async () => {
     const r = noStore();
     writeFileSync(join(r.root, "squeal.config.json"), "{}\n");
     let ensured = 0;
@@ -56,8 +63,18 @@ describe("the SessionStart primer", () => {
         },
       }),
     );
-    expect(context(out)).toBe(PRIMER);
+    expect(out).toEqual({ stdout: "", stderr: "", exitCode: 0 });
     expect(ensured).toBe(1);
+
+    for (const hook of ["post-tool-batch", "user-prompt-submit"] as const) {
+      const fresh = squealRepo();
+      fresh.apply(fresh.pass());
+      const text = context(
+        await runHook(hook, recorded(hook, fresh.root), deps({ env: INTERACTIVE })),
+      );
+      expect(text).toMatch(/^SQUEAL · registered at revision \d+\n/);
+      expect(text.endsWith(`\n\n${PRIMER}`)).toBe(true);
+    }
   });
 
   it("is absent from a repository without a store or squeal.config.json", async () => {
