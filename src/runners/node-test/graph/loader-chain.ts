@@ -12,7 +12,7 @@ export interface LoaderChain {
    * recognize.
    */
   readonly rules: "tsx" | "node";
-  /** `--import` and `--require` values that are not a recognized loader, in order. */
+  /** `--import` and `--require` values written as paths (`./x.mjs`, `/abs`, `file:`), in order. */
   readonly preloads: readonly Preload[];
   /** `--conditions` / `-C` values, added to `node` and `import` or `require`. */
   readonly conditions: readonly string[];

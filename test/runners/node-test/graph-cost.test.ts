@@ -11,9 +11,12 @@ import {
 /**
  * Spec 003 goal 6 and graph test (f) on the 1,000-module fixture: a full
  * re-resolve (add, delete, manifest) costs no more than the cold build, and a
- * plain edit under five percent of it. Asserted as ratios of medians taken
+ * plain edit under five percent of it. Asserted as ratios of numbers taken
  * side by side, as `structural-cost.test.ts` does, since the host's load
- * moves every absolute number; the cold build itself is logged.
+ * moves every absolute number; the cold build itself is logged. Cold build
+ * and re-resolve compare minima: a re-resolve is the cold build minus the
+ * parse, about a tenth of it, and the host's noise only ever adds time, so
+ * medians of five flipped at a load of 67 on 24 cores.
  */
 
 const generator = resolve(import.meta.dirname, "../../fixtures/node-test/gen-big.mjs");
@@ -81,12 +84,17 @@ describe("node-test graph: cost at 1,000 modules (f)", () => {
         }),
       );
     }
-    const measured = { cold: median(colds), reresolve: median(reresolves), edit: median(edits) };
+    const measured = {
+      cold: Math.min(...colds),
+      reresolve: Math.min(...reresolves),
+      coldMedian: median(colds),
+      edit: median(edits),
+    };
     console.log(
-      `node-test graph cost, 1,000 modules, 200 test files, median of ${ROUNDS}:`,
+      `node-test graph cost, 1,000 modules, 200 test files, ${ROUNDS} rounds:`,
       Object.fromEntries(Object.entries(measured).map(([k, ms]) => [k, `${ms.toFixed(2)} ms`])),
     );
     expect(measured.reresolve).toBeLessThan(measured.cold);
-    expect(measured.edit).toBeLessThan(measured.cold * 0.05);
+    expect(measured.edit).toBeLessThan(measured.coldMedian * 0.05);
   });
 });
