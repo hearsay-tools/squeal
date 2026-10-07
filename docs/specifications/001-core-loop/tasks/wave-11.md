@@ -75,3 +75,25 @@ Decided by the human: scheme B. The environment hash keeps the runner's lockfile
 Seam: `src/core/keys/` (closure to key), then `src/runners/vitest/` for the first-hop package entries from the transform graph. Also wire 001-104's stale-lockfile note: `src/core/scheduler/lockfiles.ts` (`Lockfiles.set`) takes `installedDependencies(...)` and persists its `note` once through the scheduler's note path. Own: `src/core/keys/`, `src/core/scheduler/lockfiles.ts` and the one note call site, `src/runners/vitest/graph.ts` and the closure path, `src/core/types/` (additive), tests under `test/keys/`, `test/runners/vitest/`, `test/fixtures/vitest/`, D3 and D4 in `spec.md`, one `status.md` line. Leave `src/runners/node-test/` to spec 003. Agreed with the 002/003 coordinator (2026-10-07): a test file whose runner reports no first-hop package entries (today, every `node:test` file, until their row 003-22) keeps today's whole-lockfile fingerprint; add that as a test. Their 003-16 is moving `WorktreePaths` out of `src/runners/vitest/paths.ts` into `src/core/fs/` (a re-export stays) and editing the runner construction in `src/core/daemon/daemon.ts`: do not edit either; rebase if they land first. Do not run `npm run build` or touch any `dist`. Commit as you go.
 
 Done when: the research's board-row done-when holds: on a `cezar` clone, between the main checkout's install and a fresh `npm ci` of `origin/main`, at least 300 of 632 test files keep their key and none of the files that reach `child_process` does; in a fixture, bumping a declared transitive dependency of an externalized package, an inlined package's dependency, a setup file's package and a config plugin each re-keys exactly the tests that use them, and bumping `@types/node` re-keys none; a package folder added without rewriting the hidden lockfile re-keys every file; keying cost stays under 300 ms for a full closure pass on `cezar`.
+
+## After 001-103 and 001-104
+
+001-104 landed (0.1.18, `02d3cd1`). `reviews/wave-11.md` failed 001-100 on B1. S1 was reproduced live by the coordinator: `npm ci` in this worktree under its running daemon stored 13 PASS -> FAIL results ("vitest/node does not resolve") that a direct full run did not have. 001-107 repairs 001-100 (first repair round on that slice; 001-108 re-reviews it). 001-105 runs beside it on disjoint files.
+
+## 001-107 the install wait never claims a suite, and covers a reinstall
+
+Use /worker. Shape: repair. Outcome: while dependencies are missing or being replaced, Squeal stores nothing, claims no checkpoint, and the edits made in that time run first once the install lands.
+
+Read: `reviews/wave-11.md` (B1, S1 to S3, N1 to N5; each has fix steps); spec D5, D10; `lessons.md` defects 12 and 18.
+
+Decided by the coordinator:
+- **B1:** a `run --all` while waiting records its checkpoint `abandoned`, never `completed`; `readHeader` does not count the wait as a listing.
+- **S1 (D5 amended):** the wait also starts when an installed lockfile disappears from the worktree root while the root's `package.json` declares dependencies (`npm ci` removes `node_modules` first). A tier whose run overlapped the disappearance or a lockfile change stores nothing: its files are re-queued after the install, as the post-tier stability check does for closure paths.
+- **S2:** edits recorded during the wait count as recent when the install starts the baseline.
+- **S3:** a committed lockfile (`bun.lock`, `yarn.lock`, `pnpm-lock.yaml`, `package-lock.json`) does not count as installed on its own; installed means the root `node_modules` exists with that manager's installed marker (as D3 lists).
+- **N2:** a root that declares dependencies with installs only in workspaces counts as installed when every workspace that declares dependencies has one; the header says what is missing when not.
+- **N1, N3** (a starvation bound: at most one backlog tier for every N recent tiers, N chosen and stated), **N4, N5** (a SIGKILL'd waiting daemon's flag is cleared by the next daemon's start and ignored when no daemon is live).
+
+Seam: `src/core/scheduler/install.ts`. Own: `src/core/scheduler/` except `lockfiles.ts` (001-105 owns it), `src/core/state/header.ts`, `src/core/delivery/provenance.ts` and `format.ts` (N1 wording only), `src/core/daemon/` (N5 only), tests under `test/scheduler/`, `test/daemon/`, `test/state/`, D5, D9 (N4) and D10 in `spec.md`, one `status.md` line. Leave `src/core/keys/` and `src/runners/vitest/` to 001-105, and `src/core/daemon/daemon.ts`'s runner construction and `src/core/fs/` to the 002/003 coordinator's 003-16. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the review's B1 probe is a test; `npm ci` replacing `node_modules` under a running daemon stores no failure (fixture test that deletes and restores `node_modules` mid-tier); an edit during the wait runs within the first tier after the install; a bun fixture with a committed `bun.lock` and no `node_modules` waits; the starvation bound is a test.
