@@ -5,7 +5,13 @@ import {
   type ObservedStore,
 } from "../../runners/node-test/adapter.js";
 import { compare, isRecord } from "../fs/index.js";
-import type { AbsolutePath, NodeTestProject, ProjectName, Store } from "../types/index.js";
+import type {
+  AbsolutePath,
+  NodeTestProject,
+  ProjectName,
+  RelativePath,
+  Store,
+} from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 
 /**
@@ -14,6 +20,15 @@ import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
  */
 export function nodeTestObservedMetaKey(project: ProjectName): string {
   return `nodeTest.observed.${project}`;
+}
+
+/**
+ * Review wave 2, B1: the paths one node:test project's preloads loaded at
+ * run time outside their static closure, a sorted array, shared like
+ * {@link nodeTestObservedMetaKey}. They are environment inputs of the project.
+ */
+export function nodeTestObservedPreloadsMetaKey(project: ProjectName): string {
+  return `nodeTest.observedPreloads.${project}`;
 }
 
 /**
@@ -26,8 +41,19 @@ export function nodeTestObservedMetaKey(project: ProjectName): string {
  */
 export function observedStore(store: Store, project: ProjectName): ObservedStore {
   const key = nodeTestObservedMetaKey(project);
+  const preloadKey = nodeTestObservedPreloadsMetaKey(project);
+  // Read at every refinement (review wave 2, S2): one point query, parsed only when it changed.
+  const read = cachedRead(store, key, parseObserved);
+  const readPreloads = cachedRead(store, preloadKey, parsePaths);
   return {
-    read: () => parseObserved(store.meta.get(key)),
+    read,
+    readPreloads,
+    writePreloads(additions) {
+      store.transaction(() => {
+        const merged = new Set([...parsePaths(store.meta.get(preloadKey)), ...additions]);
+        store.meta.set(preloadKey, JSON.stringify([...merged].sort(compare)));
+      });
+    },
     write(additions) {
       store.transaction(() => {
         const merged = new Map(
@@ -52,6 +78,26 @@ export function observedStore(store: Store, project: ProjectName): ObservedStore
       });
     },
   };
+}
+
+function cachedRead<T>(store: Store, key: string, parse: (raw: string | null) => T): () => T {
+  let last: { raw: string | null; value: T } | null = null;
+  return () => {
+    const raw = store.meta.get(key);
+    if (last === null || last.raw !== raw) last = { raw, value: parse(raw) };
+    return last.value;
+  };
+}
+
+/** A missing or malformed key reads as no paths. */
+function parsePaths(raw: string | null): RelativePath[] {
+  if (raw === null) return [];
+  try {
+    const value: unknown = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 /** A missing or malformed key reads as nothing observed. */
@@ -84,9 +130,9 @@ export interface NodeTestRunnersOptions {
 /**
  * One runner per `nodeTest` entry (spec 003 D7), each behind
  * `createRecoveringRunner` as Vitest is: building the graph waits for the
- * first call or `open()`, and an adapter that cannot be built is a note and
- * a retry on the next batch. A missing Node is handled inside the adapter,
- * so it costs that project's checks only.
+ * first call or `open()`. A missing Node, a missing `cwd` and a graph that
+ * cannot be built are handled inside the adapter (review wave 2, S1), so
+ * each costs that project's checks only and never rejects a composite call.
  */
 export function createNodeTestRunners(
   projects: readonly NodeTestProject[],

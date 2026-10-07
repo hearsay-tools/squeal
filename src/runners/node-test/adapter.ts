@@ -1,20 +1,15 @@
-import { realpathSync } from "node:fs";
-import { join } from "node:path";
-import { compare, sameList, toAbsolute } from "../../core/fs/index.js";
+import { realpathSync, statSync } from "node:fs";
+import { relative, sep } from "node:path";
 import type {
   AbsolutePath,
+  InvalidatedPath,
   NodeTestProject,
   RelativePath,
   RunnerAdapter,
-  RunReport,
-  TestFileRef,
 } from "../../core/types/index.js";
-import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
-import { listTestFiles, projectCwd } from "./adapter-files.js";
-import { enumerate } from "./enumerate.js";
-import { createNodeTestGraph } from "./graph/index.js";
-import type { ObservedClosure } from "./run/observed.js";
-import { runNodeTest } from "./run/run.js";
+import { projectEnvironment } from "./adapter-environment.js";
+import { projectCwd } from "./adapter-files.js";
+import { openProject, type ProjectContext, unavailable } from "./adapter-project.js";
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -26,14 +21,22 @@ export const NODE_TEST_ADAPTER_VERSION = "1";
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
 
 /**
- * The project's `nodeTest.observed.<project>` meta key, kept by the daemon so
- * the adapter never opens the store (spec 003 D3 as amended).
+ * The project's `nodeTest.observed.<project>` and
+ * `nodeTest.observedPreloads.<project>` meta keys, kept by the daemon so the
+ * adapter never opens the store (spec 003 D3 as amended).
  */
 export interface ObservedStore {
-  /** Every worktree's observations so far; read once, when the adapter starts. */
+  /**
+   * Every worktree's observations so far: read when the adapter starts and
+   * again at each refinement (review wave 2, S2), so it must be cheap.
+   */
   read(): ObservedPaths;
   /** Merges `additions` into the key in one transaction. */
   write(additions: ObservedPaths): void;
+  /** Paths the project's preloads loaded outside their static closure, every worktree's (B1). */
+  readPreloads(): readonly RelativePath[];
+  /** Merges `additions` into the preload key in one transaction. */
+  writePreloads(additions: readonly RelativePath[]): void;
 }
 
 export interface NodeTestAdapterOptions {
@@ -41,7 +44,10 @@ export interface NodeTestAdapterOptions {
   readonly root: AbsolutePath;
   /** Absent: observations live only as long as the adapter. */
   readonly observed?: ObservedStore;
-  /** Problem notes: a missing Node, an unrecognized loader, a failed observation write. */
+  /**
+   * Problem notes: a missing Node or `cwd`, a graph that cannot be built, an
+   * unrecognized loader, incomplete closures, a failed observation write.
+   */
   readonly note?: (text: string) => void;
   /** Processes at once, read per run: policy `runner.tierSize`. Default every file of the tier. */
   readonly concurrency?: () => number;
@@ -50,18 +56,20 @@ export interface NodeTestAdapterOptions {
 }
 
 /**
- * The node:test adapter of one configured project (spec 003 D1 to D6),
- * assembled from the static graph, `runNodeTest` and `enumerate` in the call
- * order of review wave 1's inputs: `invalidate` before `affected`,
- * `setTestFiles` after a listing change, one `logDir` subdirectory per
- * project, and the observed paths a run loaded outside the static closure
- * recorded in the graph, the store and later closures.
+ * The node:test adapter of one configured project (spec 003 D1 to D6); see
+ * `openProject`. Never rejects for the project's sake: D1, "a bad entry is a
+ * problem note with that project skipped, never a crash", and the composite
+ * rejects a call as a whole when one adapter rejects (review wave 2, S1).
+ *
+ * A project whose `cwd` is not a directory, or whose graph cannot be built,
+ * lists no files, keys `runnerVersion` "unavailable", and notes why once.
+ * Each batch that could change that (the directory appears, or a path under
+ * it changed) builds it again; the first that succeeds recreates the project.
  *
  * A Node that cannot run is D1's runner failure for this project only: one
  * note, `runnerVersion` "unavailable", and every run of its files `crashed`,
  * so its checks go `unknown`. Each batch probes again; the first that finds
- * it recreates the project, which re-keys it. Rejects only when the graph
- * cannot be built.
+ * it recreates the project, which re-keys it.
  */
 export async function createNodeTestAdapter(
   project: NodeTestProject,
@@ -69,122 +77,93 @@ export async function createNodeTestAdapter(
 ): Promise<RunnerAdapter> {
   const root = realpathSync(options.root);
   const cwd = projectCwd(root, project);
-  const note = options.note ?? (() => {});
+  const where = slashes(relative(root, cwd)) || ".";
   const label = `node-test project ${JSON.stringify(project.name)}`;
-  const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
-
-  let files = listTestFiles(root, project);
-  const [graph, firstProbe] = await Promise.all([
-    createNodeTestGraph({ root, cwd, argv: project.argv, testFiles: files }),
-    probeNode(project, cwd),
-  ]);
-  let probe: NodeProbe = firstProbe;
-  if (!probe.ok)
-    note(`${label}: ${probe.error}; every check of the project is unknown until it runs`);
-
-  const observed = new Map<RelativePath, Set<RelativePath>>();
-  for (const [testFile, paths] of Object.entries(options.observed?.read() ?? {})) {
-    observed.set(testFile, new Set(paths));
-    graph.recordObserved(testFile, paths);
-  }
-
-  const noted = new Set<string>();
-  const notes = () => {
-    for (const text of graph.notes()) {
-      if (noted.has(text)) continue;
-      noted.add(text);
-      note(`${label}: ${text.replace(/^node-test: /, "")}`);
-    }
-  };
-  notes();
-
-  /** D3, D5: what each completed file loaded beyond its static closure joins its closure. */
-  const record = (seen: readonly ObservedClosure[]) => {
-    const listed = new Set(files);
-    const additions: Record<RelativePath, RelativePath[]> = {};
-    for (const { testFile, paths } of seen) {
-      if (!listed.has(testFile.path)) continue;
-      const known = observed.get(testFile.path) ?? new Set<RelativePath>();
-      const closure = new Set(graph.closure(testFile.path).paths);
-      const added = paths.filter((p) => !closure.has(p) && !known.has(p));
-      if (added.length === 0) continue;
-      for (const path of added) known.add(path);
-      observed.set(testFile.path, known);
-      graph.recordObserved(testFile.path, [...known]);
-      additions[testFile.path] = added;
-    }
-    if (Object.keys(additions).length === 0 || options.observed === undefined) return;
-    try {
-      options.observed.write(additions);
-    } catch (error) {
-      note(`${label}: could not store observed paths: ${String(error)}`);
-    }
+  const note = options.note ?? (() => {});
+  const context: ProjectContext = {
+    project,
+    root,
+    cwd,
+    label,
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    options,
+    note: (text) => note(`${label}: ${text}`),
   };
 
+  let inner: RunnerAdapter | null = null;
+  /** Why the project cannot be built; `missing` when its `cwd` is no directory. */
+  let failure: { readonly text: string; readonly missing: boolean } | null = null;
+  const attempt = async (): Promise<boolean> => {
+    const previous = failure?.text;
+    if (!isDirectory(cwd)) {
+      failure = { text: `cwd ${where} is not a directory`, missing: true };
+    } else {
+      try {
+        inner = await openProject(context);
+        failure = null;
+        return true;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        failure = { text: `its module graph cannot be built: ${reason}`, missing: false };
+      }
+    }
+    if (failure.text !== previous) {
+      context.note(`${failure.text}; the project is skipped until that changes`);
+    }
+    return false;
+  };
+  await attempt();
+
+  /** A batch that may fix the project: its directory appeared, or a path under it changed. */
+  const mayFix = (paths: readonly InvalidatedPath[]) =>
+    failure?.missing === true
+      ? isDirectory(cwd)
+      : where === "." || paths.some((p) => p.path.startsWith(`${where}/`));
+
+  const broken = () => failure?.text ?? "not started";
   return {
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     async invalidate(paths) {
-      graph.invalidate(paths);
-      if (paths.some((p) => p.kind !== "change")) {
-        const next = listTestFiles(root, project);
-        if (!sameList(next, files)) {
-          files = next;
-          graph.setTestFiles(files);
-        }
-      }
-      notes();
-      if (probe.ok) return { recreatedProjects: [] };
-      probe = await probeNode(project, cwd);
-      if (!probe.ok) return { recreatedProjects: [] };
-      note(`${label}: ${project.node ?? "node"} runs again (${probe.version})`);
+      if (inner !== null) return inner.invalidate(paths);
+      if (!mayFix(paths) || !(await attempt())) return { recreatedProjects: [] };
+      context.note(`${where} builds again; the project started`);
       return { recreatedProjects: [project.name] };
     },
-    async affected(changed) {
-      const { direct, transitive } = graph.affected(changed);
-      return { direct: direct.map(ref), transitive: transitive.map(ref) };
-    },
+    affected: async (changed) =>
+      inner === null ? { direct: [], transitive: [] } : inner.affected(changed),
     async closure(testFile) {
-      const closure = graph.closure(testFile.path);
-      const extra = observed.get(testFile.path);
-      const paths =
-        extra === undefined ? closure.paths : [...new Set([...closure.paths, ...extra])];
-      return { testFile, paths: [...paths].sort(compare) };
+      if (inner === null) throw new Error(`${label}: ${broken()}`);
+      return inner.closure(testFile);
     },
-    enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
-    testFiles: async () => files.map(ref),
-    environment: async () => [
-      projectEnvironment(root, project, probe, graph.preloads().paths, NODE_TEST_ADAPTER_VERSION),
-    ],
-    async run(testFiles, runOptions): Promise<RunReport> {
-      if (!probe.ok) return unavailable(`${label}: ${probe.error}`);
-      const tempDir = options.tempDir;
-      const { report, observed: seen } = await runNodeTest({
-        root,
-        project,
-        files: testFiles,
-        logDir: join(runOptions.logDir, "node-test", encodeURIComponent(project.name)),
-        timeoutMs: runOptions.timeoutMs,
-        ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency() }),
-        ...(tempDir === undefined
-          ? {}
-          : { env: { ...process.env, TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir } }),
-      });
-      record(seen);
-      return report;
-    },
-    close: async () => {},
+    enumerate: async (testFile) => (inner === null ? [] : inner.enumerate(testFile)),
+    testFiles: async () => (inner === null ? [] : inner.testFiles()),
+    environment: async () =>
+      inner === null
+        ? [
+            projectEnvironment(
+              root,
+              project,
+              { ok: false, error: broken() },
+              [],
+              NODE_TEST_ADAPTER_VERSION,
+            ),
+          ]
+        : inner.environment(),
+    run: async (testFiles, runOptions) =>
+      inner === null ? unavailable(`${label}: ${broken()}`) : inner.run(testFiles, runOptions),
+    close: async () => inner?.close(),
   };
 }
 
-/** A run of a project whose Node cannot run: nothing completed (001 D12). */
-function unavailable(failure: string): RunReport {
-  return {
-    end: "crashed",
-    durationMs: 0,
-    completedFiles: [],
-    results: [],
-    fileErrors: [],
-    failure,
-  };
+function isDirectory(path: AbsolutePath): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function slashes(path: string): string {
+  return path.split(sep).join("/");
 }

@@ -49,6 +49,8 @@ export class Graph {
   private outsidePreloads: string[] = [];
   /** Paths a run loaded outside the static closure, per test file (D3, D5). */
   private readonly observed = new Map<AbsolutePath, ReadonlySet<AbsolutePath>>();
+  /** Paths the preloads loaded at run time outside their static closure (review wave 2, B1). */
+  private observedPreloads: ReadonlySet<AbsolutePath> = new Set();
 
   constructor(
     private readonly root: AbsolutePath,
@@ -106,7 +108,8 @@ export class Graph {
    * D4: `direct` is every changed test file and every test file that imports
    * a changed path in one hop (or read it, or probed it as a candidate);
    * `transitive` the other test files whose closure holds a changed path or
-   * whose last run loaded it; every test file when a preload's closure holds one.
+   * whose last run loaded it; every test file when a preload's closure holds
+   * one or a preload loaded it at run time.
    */
   affected(changed: readonly RelativePath[]): AffectedPaths {
     const index = this.current();
@@ -114,7 +117,9 @@ export class Graph {
     const transitive = new Set<AbsolutePath>();
     for (const path of changed.map((p) => this.abs(p))) {
       if (index.test(path) !== undefined) direct.add(path);
-      if (index.has(index.preload, path)) for (const file of this.testFiles) transitive.add(file);
+      if (index.has(index.preload, path) || this.observedPreloads.has(path)) {
+        for (const file of this.testFiles) transitive.add(file);
+      }
       for (const file of index.holders(path)) {
         const node = this.table.node(file);
         const oneHop =
@@ -130,6 +135,19 @@ export class Graph {
 
   recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void {
     this.observed.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
+  }
+
+  recordObservedPreloads(paths: readonly RelativePath[]): void {
+    this.observedPreloads = new Set(paths.map((p) => this.abs(p)));
+  }
+
+  /** Each test file whose static closure is incomplete, with its reasons, in listing order. */
+  incompleteClosures(): readonly (readonly [RelativePath, readonly string[]])[] {
+    const index = this.current();
+    return this.testFiles.flatMap((file) => {
+      const reasons = index.incomplete(index.test(file) ?? new Uint32Array());
+      return reasons.length === 0 ? [] : [[this.rel(file), reasons] as const];
+    });
   }
 
   /** The `.js`/`.ts` pairs that the modules of current closures meet under tsx. */

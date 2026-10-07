@@ -86,6 +86,8 @@ function memoryStore(initial: ObservedPaths = {}) {
     value: () => value,
     store: {
       read: () => value,
+      readPreloads: () => [],
+      writePreloads: () => {},
       write(additions: ObservedPaths) {
         writes.push(additions);
         value = { ...value };
@@ -114,7 +116,10 @@ describe("createNodeTestAdapter", () => {
   it("lists the project's test files and its environment", SLOW, async () => {
     const { adapter, notes } = open({ exclude: ["test/unit/title.test.ts"] });
     const a = await adapter;
-    expect(notes).toEqual([]);
+    // Review wave 2, N4: the computed import is named before the file runs.
+    expect(notes).toEqual([
+      `node-test project "unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: ${UNIT}/hidden.test.ts (import() with a computed specifier at ${UNIT}/hidden.test.ts:5:28)`,
+    ]);
     expect(await a.testFiles()).toEqual([ref("hidden"), ref("math")]);
     const [env] = await a.environment();
     expect(env).toMatchObject({
@@ -233,7 +238,7 @@ describe("createNodeTestAdapter", () => {
       const node = join(scratch, `node-${randomUUID()}`);
       const { adapter, notes } = open({ node });
       const a = await adapter;
-      expect(notes).toEqual([
+      expect(notes.filter((n) => !n.includes("incomplete static closure"))).toEqual([
         expect.stringMatching(/^node-test project "unit": cannot run .*node-/),
       ]);
       expect(await a.testFiles()).toContainEqual(ref("math"));

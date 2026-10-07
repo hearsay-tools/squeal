@@ -44,6 +44,17 @@ export interface NodeTestGraph {
    */
   recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void;
   /**
+   * Paths the preloads loaded at run time outside their static closure
+   * (review wave 2, B1), replacing the last set. A change to one makes every
+   * test file affected, as a preload's own closure does.
+   */
+  recordObservedPreloads(paths: readonly RelativePath[]): void;
+  /**
+   * Each listed test file whose static closure is incomplete, with the
+   * reasons (D3: a computed `import()` or `require()`, an unparsable module).
+   */
+  incompleteClosures(): readonly (readonly [RelativePath, readonly string[]])[];
+  /**
    * Problem notes: an unrecognized loader (a `--loader`, or a bare preload
    * outside the worktree's modules), a preload that may register hooks, a
    * `.js`/`.ts` pair under tsx.
@@ -72,6 +83,8 @@ export async function createNodeTestGraph(options: NodeTestGraphOptions): Promis
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
     recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
+    recordObservedPreloads: (paths) => graph.recordObservedPreloads(paths),
+    incompleteClosures: () => graph.incompleteClosures(),
     notes: () => [
       ...loaderNotes(),
       ...graph
