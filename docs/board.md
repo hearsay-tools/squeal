@@ -199,8 +199,8 @@ Spec: `specifications/002-codex-adapter/spec.md` (not yet written; stage researc
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 002-01 research: codex-hooks | running | Topic `codex-hooks`: configuration surfaces and trust, every event's payload under `exec` and interactive, mid-turn `additionalContext` timing, deny and block, Stop semantics, timeouts and per-hook cost, and the sandbox against the store, the socket and a detached daemon. | `research/codex-hooks.md` committed with every question tagged or "not determined, because". |
-| 002-02 research: codex-sessions-and-wake | running | Topic `codex-sessions-and-wake`: how Cezar drives Codex through `codex app-server` and what that protocol offers, idle-wake channels (`codex queue`, async hooks, notify), identity in shells, hooks and subagents, plugin packaging and the `squeal init` install path, where the primer lives, worktree lifecycle, and which events fire in non-interactive sessions. | `research/codex-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
+| 002-01 research: codex-hooks | done (`c5b81cb`, `research/codex-hooks.md`) | Topic `codex-hooks`: configuration surfaces and trust, every event's payload under `exec` and interactive, mid-turn `additionalContext` timing, deny and block, Stop semantics, timeouts and per-hook cost, and the sandbox against the store, the socket and a detached daemon. | `research/codex-hooks.md` committed with every question tagged or "not determined, because". |
+| 002-02 research: codex-sessions-and-wake | done (`9952c13`, `research/codex-sessions-and-wake.md`) | Topic `codex-sessions-and-wake`: how Cezar drives Codex through `codex app-server` and what that protocol offers, idle-wake channels (`codex queue`, async hooks, notify), identity in shells, hooks and subagents, plugin packaging and the `squeal init` install path, where the primer lives, worktree lifecycle, and which events fire in non-interactive sessions. | `research/codex-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
 
 ## Feature 003: node:test runner
 
@@ -210,8 +210,8 @@ Spec: `specifications/003-node-test-runner/spec.md` (not yet written; stage rese
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 003-01 research: node-test-runner-api | running (Astra) | Topic `node-test-runner-api`: `run()` and the `TestsStream` events, in-process against spawning the project's `node --test` with a custom reporter, enumeration without running, the flags and globs in the project's npm scripts, per-file process cost and `isolation: 'none'`, results in detail, sharp edges. | `research/node-test-runner-api.md` committed with every question tagged or "not determined, because". |
-| 003-02 research: node-test-module-graph | running | Topic `node-test-module-graph`: static import graph and resolvers under tsx, observed graph through loader hooks or coverage, which graph the key uses so a fresh worktree can look results up, resolution changes without a transform cache, direct against transitive importers, prior art in Node's own watch mode, Jest and testmon. | `research/node-test-module-graph.md` committed with every question tagged or "not determined, because". |
+| 003-01 research: node-test-runner-api | done (`f99f7ba`, Astra, `research/node-test-runner-api.md`) | Topic `node-test-runner-api`: `run()` and the `TestsStream` events, in-process against spawning the project's `node --test` with a custom reporter, enumeration without running, the flags and globs in the project's npm scripts, per-file process cost and `isolation: 'none'`, results in detail, sharp edges. | `research/node-test-runner-api.md` committed with every question tagged or "not determined, because". |
+| 003-02 research: node-test-module-graph | done (`72d96da`, `research/node-test-module-graph.md`) | Topic `node-test-module-graph`: static import graph and resolvers under tsx, observed graph through loader hooks or coverage, which graph the key uses so a fresh worktree can look results up, resolution changes without a transform cache, direct against transitive importers, prior art in Node's own watch mode, Jest and testmon. | `research/node-test-module-graph.md` committed with every question tagged or "not determined, because". |
 
 ## Later
 

@@ -12,9 +12,13 @@ Started: 2026-10-07
 - Researched and built in parallel with 002 (Codex adapter). The two cross only at `squeal init` and the policy file; that seam is one later row.
 - Slow suites that should run at checkpoints rather than on every revision (the e2e blocker) are spec 004, after this one. This spec makes e2e files runnable; it does not decide when.
 
-## Open questions (research phase)
+## Research
 
-See `research/README.md`.
+Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
+
+## Open questions
+
+The findings' open questions, until `spec.md` is written.
 
 ## Links
 
