@@ -167,6 +167,14 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-83 the manifest filter ignores only fields no resolver reads | done (inline by the coordinator after the review ceiling, `4eb3371`; remaining review items accepted in `status.md`) | `reviews/wave-9c.md` B1, a regression on `main` since 001-81: the S3 filter compares a fixed field list, so an edit of a `resolve.mainFields` field (e.g. `source`) is skipped and an old result stays current. Invert it: compare the whole manifest minus `scripts`, `version`, `description`, `keywords`, `author`, `contributors`, `license`, `repository`, `bugs`, `homepage`, `funding`, `private`. Fold S1 (note when `packageCache` is missing), N2, N5. | Probe B1 is a `reresolution.test.ts` case with the run outcome; the `scripts`-only test and the cost guard pass; D4 names the ignored fields. |
 | 001-84 research: a pull advances its consumer's push view | done: feasible, hook-side credit (`research/pull-advances-push.md`); parked by the human as Later 005 (brief in `specifications/001-core-loop/tasks/wave-9.md`) | From a dogfooding report: Stop and PostToolBatch repeat news already read through `squeal status --wait`. `/researcher`: can a CLI pull identify its session and agent, can it advance the view without losing a transition, fallback otherwise. The human decides on a row after. | `research/pull-advances-push.md` committed with a recommendation. |
 
+### Wave 10: in-order delivery (from `specifications/001-core-loop/lessons.md` defect 14)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-85 the waiter wakes only an idle agent, for its own pending checks; headers name what a revision changed | running (brief in `specifications/001-core-loop/tasks/wave-10.md`) | Per-consumer turn state with no timers: UserPromptSubmit sets in-turn and delivers the delta on the prompt; a silent Stop sets idle and records pending checks; the waiter prints only while idle and only for those checks; after an interrupt the news rides on the next prompt. Headers name the revision's changed files (three plus "and N more"). Skill paragraph; D6, D9 amended. | The six recorded-JSON cases in the brief pass; hook p95 holds. |
+| 001-86 review of 001-85 | planned | `/reviewer`: can a transition be lost or delayed past the next prompt or tool boundary. | `reviews/wave-10.md` committed. |
+| 001-87 attended check of wave 10 | planned | Attended tmux session on a scratch fixture: idle wake for a pending check, mid-turn break during a long `sleep`, an outside edit while idle, Esc then a prompt. | Recorded in `lessons.md`; defect 14 closed or named. |
+
 ## Later
 
 - 002 pytest runner adapter.
