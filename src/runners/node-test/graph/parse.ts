@@ -1,4 +1,5 @@
 import { init, parse } from "es-module-lexer";
+import { codeAt } from "./code-ranges.js";
 
 /** The lexer compiles its WebAssembly once; await before {@link parseModule}. */
 export const parserReady: Promise<void> = init();
@@ -67,8 +68,13 @@ export function parseModule(source: string, name: string): ParsedModule {
     literal.add(match.index);
   }
   // N6: a computed `require(x)` hides its target as a computed `import(p)` does.
+  // Wave 2 N3: in code only; a literal `require` in a comment above stays a specifier,
+  // since a closure one path too wide only costs a re-run.
+  let code: ((offset: number) => boolean) | null = null;
   for (const match of source.matchAll(REQUIRE_CALL)) {
-    if (!literal.has(match.index)) {
+    if (literal.has(match.index)) continue;
+    code ??= codeAt(source);
+    if (code(match.index)) {
       incomplete.push(
         `require() with a computed specifier at ${name}:${position(source, match.index)}`,
       );
