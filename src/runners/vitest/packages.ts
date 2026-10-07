@@ -88,6 +88,8 @@ export async function environmentPackages(
   const imports = [...setup.imports, ...globalSetup.imports];
   const builtins = new Set([...setup.builtins, ...globalSetup.builtins]);
   const root = directoryOf(project.config.root, paths);
+  // The runner and the config file's imports (its plugins) drive the run in
+  // Vitest's own process; no test file imports them (task 001-109, B3).
   const runner: PackageImport[] = root === null ? [] : [{ from: root, name: "vitest" }];
   imports.push(...runner);
   if (root !== null) {
@@ -108,7 +110,10 @@ export async function environmentPackages(
       const builtin = builtinOf(specifier);
       const name = builtin === null ? packageName(specifier) : null;
       if (builtin !== null) builtins.add(builtin);
-      else if (name !== null) imports.push({ from, name });
+      else if (name !== null) {
+        imports.push({ from, name });
+        runner.push({ from, name });
+      }
     }
   }
   return { imports, builtins: [...builtins].sort(compare), runner };
