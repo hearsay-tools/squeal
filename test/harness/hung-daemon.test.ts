@@ -99,7 +99,7 @@ describe("a SIGSTOPped daemon (lessons, defect 22)", SLOW, () => {
     try {
       await delay(50);
       const since = withStore(repo, (s) => s.worktrees.get(repo.worktreeId)?.daemon?.heartbeatAt);
-      const line = `Not validated: no daemon has validated since ${new Date(since ?? 0).toISOString()}; this edit has no result.`;
+      const line = `Not validated: no daemon has validated since ${new Date(since ?? 0).toISOString()}; any change this call made has no result.`;
       breakMath(repo);
       const first = context(
         await runHook("post-tool-batch", recorded("post-tool-batch", repo.root, EDIT), hung),
