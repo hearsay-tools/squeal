@@ -24,6 +24,14 @@ import { changedAfter, registration } from "./registered.js";
 const TIMED_OUT = /timed out in \d+ms/;
 
 /**
+ * Results of a check `loadOf` reads, newest first from every worktree. Other
+ * worktrees running the same test push the timeout's own result down; five
+ * lost it (review wave 10b, N2). Past this many the load line is left out,
+ * never wrong.
+ */
+const LOAD_RESULTS_READ = 50;
+
+/**
  * The load average recorded with the newest failing result of `entry`'s
  * check from the worktree it came from; `undefined` when none was recorded.
  */
@@ -31,7 +39,7 @@ function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): n
   if (entry.summary === null || !TIMED_OUT.test(entry.summary)) return undefined;
   const from = entry.origin.kind === "inherited" ? entry.origin.worktreeId : worktreeId;
   const result = store.results
-    .listForCheck(entry.check, 5)
+    .listForCheck(entry.check, LOAD_RESULTS_READ)
     .find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== undefined)?.loadAverage;
 }
