@@ -234,6 +234,9 @@ function notesMetaKey(worktreeId) {
 function refinedMetaKey(worktreeId) {
   return `refined.${worktreeId}`;
 }
+function awaitingInstallMetaKey(worktreeId) {
+  return `awaiting-install.${worktreeId}`;
+}
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
@@ -261,7 +264,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     testFilesListed: keys.length > 0 || last !== null,
     inheritedCount,
     refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision
+    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    ...store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true" ? { awaitingInstall: true } : {}
   };
 }
 function readRefined(store, worktreeId) {
@@ -543,8 +547,19 @@ function beforeFailing(history, state) {
   if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
     return null;
   }
-  const entered = history.findLast((t) => t.kind !== "fail-changed");
-  return entered?.from == null ? null : { outcome: entered.from, fingerprint: entered.fromFingerprint };
+  const at = history.findLastIndex((t) => t.kind !== "fail-changed");
+  const entered = history[at];
+  if (entered?.from == null) return null;
+  const passed = entered.from === "unknown" ? passBeforeUnknown(history, at) : null;
+  return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
+}
+function passBeforeUnknown(history, end) {
+  for (let i = end - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
+    const from = history[i]?.from;
+    if (from === "pass") return { outcome: "pass", fingerprint: null };
+    if (from !== "unknown") return null;
+  }
+  return null;
 }
 var RANK = {
   "pass-to-fail": 0,
@@ -578,8 +593,9 @@ function planDelta(input) {
     const id = checkIdentity(state.check);
     const before = told.get(id) ?? null;
     told.delete(id);
-    const prior = before === null && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
-    const kind = transitionKind(before ?? prior, state);
+    const prior = (before === null || before.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
+    const from = before === null || prior?.outcome === "pass" ? prior : before;
+    const kind = transitionKind(from, state);
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
     const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
@@ -587,7 +603,7 @@ function planDelta(input) {
     entries.push({
       check: state.check,
       kind,
-      from: (before ?? prior)?.outcome ?? null,
+      from: from?.outcome ?? null,
       to: state.outcome,
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
