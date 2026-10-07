@@ -63,6 +63,22 @@ function isRecord(value) {
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
+// src/core/keys/environment.ts
+var LOCKFILES = [
+  { path: "node_modules/.package-lock.json", patches: "patches" },
+  { path: "node_modules/.yarn-state.yml", patches: null },
+  { path: ".pnp.cjs", patches: ".yarn/patches" },
+  { path: ".pnp.js", patches: ".yarn/patches" },
+  { path: "node_modules/.yarn-integrity", patches: "patches" },
+  { path: "node_modules/.pnpm/lock.yaml", patches: null },
+  { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
+  { path: "bun.lock", patches: "patches" },
+  { path: "bun.lockb", patches: "patches" }
+];
+function isInstalledLockfile(path) {
+  return LOCKFILES.some((format) => path === format.path || path.endsWith(`/${format.path}`));
+}
+
 // src/core/keys/reverse-index.ts
 function testFileId(ref) {
   return `${ref.project}\0${ref.path}`;
@@ -249,6 +265,99 @@ function lock(path) {
     db.close();
     return null;
   }
+}
+
+// src/core/delivery/slots.ts
+var slot = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll(store, key) {
+  const raw = store.meta.get(key);
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function readSlot(store, key, consumer) {
+  return readAll(store, key)[slot(consumer)];
+}
+function writeSlot(store, key, consumer, value) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
+  );
+  const all = readAll(store, key);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key, JSON.stringify(next));
+}
+
+// src/core/delivery/attribution.ts
+function registeredMetaKey(worktreeId) {
+  return `revision-registered:${worktreeId}`;
+}
+function registeredRevision(store, consumer) {
+  const at = readSlot(store, registeredMetaKey(consumer.worktreeId), consumer);
+  return typeof at === "number" ? at : null;
+}
+function tellRegistered(store, consumer, revision) {
+  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, revision);
+}
+function changedAfter(store, worktreeId, since, revision) {
+  const paths = /* @__PURE__ */ new Set();
+  for (let n = since + 1; n <= revision; n++) {
+    for (const change2 of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change2.path);
+  }
+  return paths;
+}
+var TIMED_OUT = /timed out in \d+ms/;
+function loadOf(store, worktreeId, entry2) {
+  if (entry2.summary === null || !TIMED_OUT.test(entry2.summary)) return void 0;
+  const from = entry2.origin.kind === "inherited" ? entry2.origin.worktreeId : worktreeId;
+  const result = store.results.listForCheck(entry2.check, 5).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
+  return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
+}
+function attribute(store, consumer, entries, revision) {
+  if (!entries.some((e) => e.to === "fail")) return entries;
+  const since = registeredRevision(store, consumer);
+  const changed = since === null ? null : changedAfter(store, consumer.worktreeId, since, revision);
+  return entries.map((entry2) => {
+    if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
+    const { project, testPath } = entry2.check;
+    const closure = store.testFiles.get({ project, path: testPath })?.closure.paths;
+    const touched = changed === null || closure === void 0 ? void 0 : closure.filter((p) => changed.has(p));
+    const load = loadOf(store, consumer.worktreeId, entry2);
+    return {
+      ...entry2,
+      ...touched === void 0 ? {} : { changesInClosure: touched },
+      ...load === void 0 ? {} : { loadAverage: load }
+    };
+  });
+}
+function dependenciesInstalled(store, worktreeId) {
+  const files = store.fileHashes.list(worktreeId);
+  if (files.length === 0) return void 0;
+  return files.some((f) => isInstalledLockfile(f.path));
+}
+function annotate(store, consumer, entries, header, states) {
+  return {
+    entries: attribute(store, consumer, entries, header.revision),
+    header: withDependencies(
+      store,
+      consumer.worktreeId,
+      header,
+      entries.some((e) => e.to === "fail")
+    ),
+    stillFailing: states.filter((s) => s.outcome === "fail").map((s) => s.check)
+  };
+}
+function withDependencies(store, worktreeId, header, failing) {
+  const installed = failing ? dependenciesInstalled(store, worktreeId) : void 0;
+  return installed === void 0 ? header : { ...header, dependenciesInstalled: installed };
 }
 
 // src/core/delivery/delta.ts
@@ -1902,35 +2011,6 @@ function recoveryNote(raw) {
   }
 }
 
-// src/core/delivery/slots.ts
-var slot = (consumer) => `${consumer.sessionId}
-${consumer.agentId}`;
-function readAll(store, key) {
-  const raw = store.meta.get(key);
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
-function readSlot(store, key, consumer) {
-  return readAll(store, key)[slot(consumer)];
-}
-function writeSlot(store, key, consumer, value) {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
-  );
-  const all = readAll(store, key);
-  const next = {};
-  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
-  if (value === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = value;
-  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
-  store.meta.set(key, JSON.stringify(next));
-}
-
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -1954,7 +2034,7 @@ function changedSince(store, worktreeId, revision, since) {
   const from = since === null || since >= revision ? revision : Math.max(since + 1, 1);
   const paths = /* @__PURE__ */ new Set();
   for (let n = from; n <= revision && n > 0; n++) {
-    for (const change of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change.path);
+    for (const change2 of store.revisions.get(worktreeId, n)?.changes ?? []) paths.add(change2.path);
   }
   return [...paths];
 }
@@ -2118,15 +2198,23 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const header = readLiveHeader(store, consumer.worktreeId, at, states, told);
-      tellRevision(store, consumer, header.revision);
+      const live = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      tellRevision(store, consumer, live.revision);
+      const { entries, header, stillFailing } = annotate(
+        store,
+        consumer,
+        delta.entries,
+        live,
+        states
+      );
       const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header,
         label,
-        entries: delta.entries,
+        entries,
+        stillFailing,
         ...changed === null ? {} : { liveness: changed }
       };
     });
@@ -2140,16 +2228,19 @@ function createDelivery(store, options) {
         consumer,
         states.map((s) => toView(s, at))
       );
-      const header = readLiveHeader(store, consumer.worktreeId, at, states);
+      const live = readLiveHeader(store, consumer.worktreeId, at, states);
+      const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
+      const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       tellLiveness(store, consumer, header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
+      tellRegistered(store, consumer, header.revision);
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header,
-        knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? [])
+        knownFailures
       };
     }),
     unregister: async (consumer) => {
@@ -2193,6 +2284,7 @@ function createDelivery(store, options) {
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
+  tellRegistered(store, consumer, null);
   writeTurn(store, consumer, null);
 }
 
