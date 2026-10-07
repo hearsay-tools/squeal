@@ -3,9 +3,9 @@ import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { locateDaemon } from "../core/daemon/ensure.js";
 import { acquireDaemonLock, type DaemonLock } from "../core/daemon/lock.js";
-import { currentUid, socketPathFor, userTmpDir } from "../core/daemon/paths.js";
+import { checkPrivateDir, currentUid, socketPathFor, userTmpDir } from "../core/daemon/paths.js";
 import { daemonScratch } from "../core/daemon/scratch.js";
-import { resolveCommonDir } from "../core/fs/index.js";
+import { resolveCommonDir, runGit, splitNul } from "../core/fs/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
 import type { AbsolutePath, WorktreeRecord } from "../core/types/index.js";
@@ -19,12 +19,19 @@ export interface RemoveOptions {
   readonly stopWaitMs?: number;
 }
 
+/** Some path could not be deleted; the output lists it under "Still there" (D7). */
+const PARTIAL_EXIT = 3;
+
 /**
  * `squeal remove [--config]`: stops the daemon of every worktree of the
- * repository, then deletes `<common-dir>/squeal/` and the daemons' temp
- * directories (D1, D10), holding every daemon lock while it deletes so no
- * daemon starts in between. A daemon that does not stop deletes nothing.
- * `--config` also deletes this worktree's `squeal.config.json` (D11).
+ * repository, then deletes the daemons' temp directories and
+ * `<common-dir>/squeal/` (D1, D10), holding every daemon lock while it
+ * deletes. A daemon that does not stop deletes nothing (exit 1). The temp
+ * directories go first, since finding them needs the repository id in the
+ * store; one that cannot be deleted is listed with its error code and the
+ * exit code is 3 (review wave 10c, S2). `--config` also deletes this
+ * worktree's `squeal.config.json` (D11), and the output names every other
+ * worktree that keeps one (S3).
  */
 export async function removeCommand(
   args: readonly string[],
@@ -46,6 +53,16 @@ export async function removeCommand(
   const storeDir = storePaths(commonDir).dir;
   const configPath = join(root, "squeal.config.json");
   const removed: string[] = [];
+  const failed: string[] = [];
+  const remove = (path: AbsolutePath, line: string): void => {
+    try {
+      rmSync(path, { recursive: true, force: true });
+      removed.push(line);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? String(error);
+      failed.push(`${path}: could not delete it (${code}); delete it by hand`);
+    }
+  };
 
   if (existsSync(storeDir)) {
     const worktrees = recordedWorktrees(commonDir);
@@ -61,11 +78,10 @@ export async function removeCommand(
       return 1;
     }
     try {
-      const temps = tempDirs(commonDir, worktrees);
-      rmSync(storeDir, { recursive: true, force: true });
-      for (const dir of temps) rmSync(dir, { recursive: true, force: true });
-      removed.push(`${storeDir} (store, locks, run logs, repository id)`);
-      removed.push(...temps.map((dir) => `${dir} (a daemon's temp directory)`));
+      for (const dir of tempDirs(commonDir, worktrees)) {
+        remove(dir, `${dir} (a daemon's temp directory)`);
+      }
+      remove(storeDir, `${storeDir} (store, locks, run logs, repository id)`);
       if (stopped.length > 0) {
         io.stdout(`Stopped the daemons of:\n${stopped.map((r) => `  ${r}\n`).join("")}`);
       }
@@ -74,20 +90,32 @@ export async function removeCommand(
     }
   }
   if (config && existsSync(configPath)) {
-    rmSync(configPath);
-    removed.push(configPath);
+    const tracked = await isTracked(root, "squeal.config.json");
+    remove(
+      configPath,
+      tracked ? `${configPath} (tracked by git: the deletion is a change to commit)` : configPath,
+    );
   }
 
   io.stdout(
-    removed.length === 0
+    removed.length === 0 && failed.length === 0
       ? `Nothing to remove: no Squeal store for this repository.\n`
-      : `Removed:\n${removed.map((line) => `  ${line}\n`).join("")}`,
+      : removed.length === 0
+        ? ""
+        : `Removed:\n${removed.map((line) => `  ${line}\n`).join("")}`,
   );
   io.stdout("Still there:\n");
+  for (const line of failed) io.stdout(`  ${line}\n`);
   if (existsSync(configPath)) {
     io.stdout(
       `  ${configPath}: the next Claude Code session here starts Squeal again. ` +
         `It is committed; delete it, or run squeal remove --config.\n`,
+    );
+  }
+  for (const other of await otherConfigs(root)) {
+    io.stdout(
+      `  ${other}: the next Claude Code session there starts Squeal again. ` +
+        `Delete it there, or run squeal remove --config in that worktree.\n`,
     );
   }
   io.stdout(
@@ -95,7 +123,26 @@ export async function removeCommand(
       "installed with), and the extraKnownMarketplaces and enabledPlugins entries squeal init " +
       "added to .claude/settings.json.\n",
   );
-  return 0;
+  return failed.length === 0 ? 0 : PARTIAL_EXIT;
+}
+
+/** Whether git tracks `path` in the worktree at `root`; `false` when git cannot say. */
+async function isTracked(root: AbsolutePath, path: string): Promise<boolean> {
+  const out = await runGit(root, ["ls-files", "-z", "--", path]).catch(() => "");
+  return out !== "";
+}
+
+/**
+ * The `squeal.config.json` of every other worktree git lists, where one
+ * exists: each starts Squeal again in its next session. Read from git, not
+ * the store, so it holds when no store was left to read.
+ */
+async function otherConfigs(root: AbsolutePath): Promise<AbsolutePath[]> {
+  const out = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
+  return splitNul(out)
+    .filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`)
+    .map((field) => join(field.slice("worktree ".length), "squeal.config.json"))
+    .filter((path) => existsSync(path));
 }
 
 /** Every worktree in the store; none when the store cannot be read, and the locks still guard. */
@@ -160,6 +207,8 @@ async function holdDaemonLocks(commonDir: AbsolutePath, waitMs: number): Promise
  * repository id and each recorded root: the directory, those moved aside,
  * and the fallbacks of a refused `/tmp/squeal-<uid>`. Read before the store
  * goes, since the id lives there; without an id no daemon ever made one.
+ * Under a `/tmp/squeal-<uid>` that `checkPrivateDir` refuses, as
+ * `prepareScratch` does, `tmp/<key>` was never a daemon's, so it is left.
  */
 function tempDirs(commonDir: AbsolutePath, worktrees: readonly WorktreeRecord[]): AbsolutePath[] {
   if (!existsSync(join(storePaths(commonDir).dir, "repository-id"))) return [];
@@ -168,13 +217,24 @@ function tempDirs(commonDir: AbsolutePath, worktrees: readonly WorktreeRecord[])
   for (const { root } of worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key = basename(scratch.tempDir);
-    const tmp = dirname(scratch.tempDir);
-    dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
-    if (existsSync(scratch.tempDir)) dirs.push(scratch.tempDir);
+    if (isPrivate(scratch.userDir, uid)) {
+      const tmp = dirname(scratch.tempDir);
+      dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
+      if (existsSync(scratch.tempDir)) dirs.push(scratch.tempDir);
+    }
     const fallback = `${userTmpDir(uid)}-${key}-`;
     dirs.push(...entries(dirname(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
+}
+
+function isPrivate(dir: AbsolutePath, uid: number): boolean {
+  try {
+    checkPrivateDir(dir, uid, "temp directory");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isOwnDir(path: AbsolutePath, uid: number, prefix: string): boolean {
