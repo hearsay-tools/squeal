@@ -1,0 +1,86 @@
+{
+ "hooks": {
+  "SessionStart": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" SessionStart"
+     }
+    ]
+   }
+  ],
+  "UserPromptSubmit": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" UserPromptSubmit"
+     }
+    ]
+   }
+  ],
+  "PreToolUse": [
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" PreToolUse"
+     }
+    ]
+   }
+  ],
+  "PostToolUse": [
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" PostToolUse"
+     }
+    ]
+   }
+  ],
+  "SubagentStart": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" SubagentStart"
+     }
+    ]
+   }
+  ],
+  "SubagentStop": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" SubagentStop"
+     }
+    ]
+   }
+  ],
+  "Stop": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" Stop"
+     }
+    ]
+   }
+  ],
+  "PostToolBatch": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "\"$PROBE_HOOKS/log.sh\" PostToolBatch"
+     }
+    ]
+   }
+  ]
+ }
+}

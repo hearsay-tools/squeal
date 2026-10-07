@@ -1,0 +1,116 @@
+=== probe i-main-1 t_ms=1791367024904 pid=146817 ppid=146816 cwd=/tmp/sq84/i-main
+--- env (CLAUDE*, names of everything else)
+CLAUDECODE=1
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1001/cc-socks/139935.sock
+CLAUDE_CODE_SESSION_ATTENDED=1
+CLAUDE_CODE_SESSION_ID=a5a4be69-a026-446a-9e80-244b8b874f99
+CLAUDE_EFFORT=medium
+CLAUDE_PID=139935
+other names: AGENT_VAULT_ADDR AGENT_VAULT_TOKEN AGENT_VAULT_VAULT AI_AGENT ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLIPROXY_API_KEY CODEX_CA_CERTIFICATE COREPACK_ENABLE_AUTO_PIN CURL_CA_BUNDLE DENO_CERT DISABLE_AUTOUPDATER GH_TOKEN GIT_EDITOR GIT_SSL_CAINFO HOME HTTPS_PROXY HTTP_PROXY LANG LOGNAME NODE_EXTRA_CA_CERTS NODE_USE_ENV_PROXY NO_PROXY NVM_BIN NVM_CD_FLAGS NVM_DIR NVM_INC NoDefaultCurrentDirectoryInExePath OLDPWD OPENCLAW_PROXY_URL PATH PROBE_HOOKS PROBE_LOG PROBE_OUT PWD REQUESTS_CA_BUNDLE SHELL SHLVL SSH_AUTH_SOCK SSL_CERT_FILE TEMP TERM TERM_PROGRAM TERM_PROGRAM_VERSION TMP TMPDIR TMUX TMUX_PANE USER XDG_DATA_DIRS XDG_RUNTIME_DIR _ no_proxy
+--- process chain
+146817 <- 146816 : /bin/bash ./probe.sh i-main-1 
+146816 <- 139935 : /bin/bash -c source /home/agent/.claude/shell-snapshots/snapshot-bash-1791367024517-e6m6in.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unseten
+139935 <- 139916 : claude --setting-sources project --allowedTools Bash Agent Task --model sonnet Run the Bash command `./probe.sh i-main-1`. Then use the Agent tool to start a general-purpose subagent with the instruction "Run the Bash co
+139916 <- S : tmux -L sq84 new-session -d -s i-main -x 200 -y 50 -c /tmp/sq84/i-main env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MES
+--- fds of this shell
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/worktrees/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/docs/specifications/001-core-loop/research/probes/pull-advances-push/logs/i-main.probe.txt
+10 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bc51nc89o.output
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bc51nc89o.output
+255 -> /tmp/sq84/i-main/probe.sh
+3 -> pipe:[455864788]
+--- fds of parent (146816)
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bc51nc89o.output
+10 -> socket:[455865774]
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bc51nc89o.output
+=== probe i-main-2 t_ms=1791367030505 pid=147589 ppid=147561 cwd=/tmp/sq84/i-main
+--- env (CLAUDE*, names of everything else)
+CLAUDECODE=1
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1001/cc-socks/139935.sock
+CLAUDE_CODE_SESSION_ATTENDED=1
+CLAUDE_CODE_SESSION_ID=a5a4be69-a026-446a-9e80-244b8b874f99
+CLAUDE_EFFORT=medium
+CLAUDE_PID=139935
+other names: AGENT_VAULT_ADDR AGENT_VAULT_TOKEN AGENT_VAULT_VAULT AI_AGENT ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLIPROXY_API_KEY CODEX_CA_CERTIFICATE COREPACK_ENABLE_AUTO_PIN CURL_CA_BUNDLE DENO_CERT DISABLE_AUTOUPDATER GH_TOKEN GIT_EDITOR GIT_SSL_CAINFO HOME HTTPS_PROXY HTTP_PROXY LANG LOGNAME NODE_EXTRA_CA_CERTS NODE_USE_ENV_PROXY NO_PROXY NVM_BIN NVM_CD_FLAGS NVM_DIR NVM_INC NoDefaultCurrentDirectoryInExePath OLDPWD OPENCLAW_PROXY_URL PATH PROBE_HOOKS PROBE_LOG PROBE_OUT PWD REQUESTS_CA_BUNDLE SHELL SHLVL SSH_AUTH_SOCK SSL_CERT_FILE TEMP TERM TERM_PROGRAM TERM_PROGRAM_VERSION TMP TMPDIR TMUX TMUX_PANE USER XDG_DATA_DIRS XDG_RUNTIME_DIR _ no_proxy
+--- process chain
+147589 <- 147561 : /bin/bash ./probe.sh i-main-2 
+147561 <- 139935 : /bin/bash -c source /home/agent/.claude/shell-snapshots/snapshot-bash-1791367024517-e6m6in.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unseten
+139935 <- 139916 : claude --setting-sources project --allowedTools Bash Agent Task --model sonnet Run the Bash command `./probe.sh i-main-1`. Then use the Agent tool to start a general-purpose subagent with the instruction "Run the Bash co
+139916 <- S : tmux -L sq84 new-session -d -s i-main -x 200 -y 50 -c /tmp/sq84/i-main env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MES
+--- fds of this shell
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/worktrees/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/docs/specifications/001-core-loop/research/probes/pull-advances-push/logs/i-main.probe.txt
+10 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bkxnikh4r.output
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bkxnikh4r.output
+255 -> /tmp/sq84/i-main/probe.sh
+3 -> pipe:[455859916]
+--- fds of parent (147561)
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bkxnikh4r.output
+10 -> socket:[455874757]
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/bkxnikh4r.output
+=== probe i-sub t_ms=1791367031961 pid=147787 ppid=147786 cwd=/tmp/sq84/i-main
+--- env (CLAUDE*, names of everything else)
+CLAUDECODE=1
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1001/cc-socks/139935.sock
+CLAUDE_CODE_SESSION_ATTENDED=1
+CLAUDE_CODE_SESSION_ID=a5a4be69-a026-446a-9e80-244b8b874f99
+CLAUDE_EFFORT=medium
+CLAUDE_PID=139935
+other names: AGENT_VAULT_ADDR AGENT_VAULT_TOKEN AGENT_VAULT_VAULT AI_AGENT ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLIPROXY_API_KEY CODEX_CA_CERTIFICATE COREPACK_ENABLE_AUTO_PIN CURL_CA_BUNDLE DENO_CERT DISABLE_AUTOUPDATER GH_TOKEN GIT_EDITOR GIT_SSL_CAINFO HOME HTTPS_PROXY HTTP_PROXY LANG LOGNAME NODE_EXTRA_CA_CERTS NODE_USE_ENV_PROXY NO_PROXY NVM_BIN NVM_CD_FLAGS NVM_DIR NVM_INC NoDefaultCurrentDirectoryInExePath OLDPWD OPENCLAW_PROXY_URL PATH PROBE_HOOKS PROBE_LOG PROBE_OUT PWD REQUESTS_CA_BUNDLE SHELL SHLVL SSH_AUTH_SOCK SSL_CERT_FILE TEMP TERM TERM_PROGRAM TERM_PROGRAM_VERSION TMP TMPDIR TMUX TMUX_PANE USER XDG_DATA_DIRS XDG_RUNTIME_DIR _ no_proxy
+--- process chain
+147787 <- 147786 : /bin/bash ./probe.sh i-sub 
+147786 <- 139935 : /bin/bash -c source /home/agent/.claude/shell-snapshots/snapshot-bash-1791367024517-e6m6in.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unseten
+139935 <- 139916 : claude --setting-sources project --allowedTools Bash Agent Task --model sonnet Run the Bash command `./probe.sh i-main-1`. Then use the Agent tool to start a general-purpose subagent with the instruction "Run the Bash co
+139916 <- S : tmux -L sq84 new-session -d -s i-main -x 200 -y 50 -c /tmp/sq84/i-main env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MES
+--- fds of this shell
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/worktrees/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/docs/specifications/001-core-loop/research/probes/pull-advances-push/logs/i-main.probe.txt
+10 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b91i8ca5p.output
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b91i8ca5p.output
+255 -> /tmp/sq84/i-main/probe.sh
+3 -> pipe:[455863646]
+--- fds of parent (147786)
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b91i8ca5p.output
+10 -> socket:[455865887]
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b91i8ca5p.output
+=== probe i-after-clear t_ms=1791367124647 pid=164416 ppid=164413 cwd=/tmp/sq84/i-main
+--- env (CLAUDE*, names of everything else)
+CLAUDECODE=1
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_EXECPATH=/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1001/cc-socks/139935.sock
+CLAUDE_CODE_SESSION_ATTENDED=1
+CLAUDE_CODE_SESSION_ID=66d38a9f-33aa-41eb-9286-56c88a89a6bc
+CLAUDE_EFFORT=medium
+CLAUDE_PID=139935
+other names: AGENT_VAULT_ADDR AGENT_VAULT_TOKEN AGENT_VAULT_VAULT AI_AGENT ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLIPROXY_API_KEY CODEX_CA_CERTIFICATE COREPACK_ENABLE_AUTO_PIN CURL_CA_BUNDLE DENO_CERT DISABLE_AUTOUPDATER GH_TOKEN GIT_EDITOR GIT_SSL_CAINFO HOME HTTPS_PROXY HTTP_PROXY LANG LOGNAME NODE_EXTRA_CA_CERTS NODE_USE_ENV_PROXY NO_PROXY NVM_BIN NVM_CD_FLAGS NVM_DIR NVM_INC NoDefaultCurrentDirectoryInExePath OLDPWD OPENCLAW_PROXY_URL PATH PROBE_HOOKS PROBE_LOG PROBE_OUT PWD REQUESTS_CA_BUNDLE SHELL SHLVL SSH_AUTH_SOCK SSL_CERT_FILE TEMP TERM TERM_PROGRAM TERM_PROGRAM_VERSION TMP TMPDIR TMUX TMUX_PANE USER XDG_DATA_DIRS XDG_RUNTIME_DIR _ no_proxy
+--- process chain
+164416 <- 164413 : /bin/bash ./probe.sh i-after-clear 
+164413 <- 139935 : /bin/bash -c source /home/agent/.claude/shell-snapshots/snapshot-bash-1791367024517-e6m6in.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unseten
+139935 <- 139916 : claude --setting-sources project --allowedTools Bash Agent Task --model sonnet Run the Bash command `./probe.sh i-main-1`. Then use the Agent tool to start a general-purpose subagent with the instruction "Run the Bash co
+139916 <- S : tmux -L sq84 new-session -d -s i-main -x 200 -y 50 -c /tmp/sq84/i-main env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MES
+--- fds of this shell
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/worktrees/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/docs/specifications/001-core-loop/research/probes/pull-advances-push/logs/i-main.probe.txt
+10 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b06gwty53.output
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b06gwty53.output
+255 -> /tmp/sq84/i-main/probe.sh
+3 -> pipe:[455934799]
+--- fds of parent (164413)
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b06gwty53.output
+10 -> socket:[455928451]
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-i-main/a5a4be69-a026-446a-9e80-244b8b874f99/tasks/b06gwty53.output

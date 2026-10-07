@@ -1,0 +1,4 @@
+# Raw run output can contain account details. Only hook inputs and probe output are committed.
+logs/*.stream.jsonl
+logs/*.stderr
+node_modules/

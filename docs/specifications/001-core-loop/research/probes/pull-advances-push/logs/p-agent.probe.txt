@@ -1,0 +1,93 @@
+=== probe agent-main t_ms=1791366979693 pid=137627 ppid=137626 cwd=/tmp/sq84/p-agent
+--- env (CLAUDE*, names of everything else)
+CLAUDECODE=1
+CLAUDE_CODE_AGENT=prober
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_ENTRYPOINT=sdk-cli
+CLAUDE_CODE_EXECPATH=/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CLAUDE_CODE_MESSAGING_SOCKET=/run/user/1001/cc-socks/136747.sock
+CLAUDE_CODE_SESSION_ATTENDED=0
+CLAUDE_CODE_SESSION_ID=bee17467-478c-4452-b950-653b3048800a
+CLAUDE_EFFORT=medium
+CLAUDE_PID=136747
+other names: AGENT_VAULT_ADDR AGENT_VAULT_TOKEN AGENT_VAULT_VAULT AI_AGENT ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLIPROXY_API_KEY CODEX_CA_CERTIFICATE COREPACK_ENABLE_AUTO_PIN CURL_CA_BUNDLE DENO_CERT DISABLE_AUTOUPDATER GH_TOKEN GIT_EDITOR GIT_SSL_CAINFO HOME HTTPS_PROXY HTTP_PROXY LANG LOGNAME NODE_EXTRA_CA_CERTS NODE_USE_ENV_PROXY NO_PROXY NVM_BIN NVM_CD_FLAGS NVM_DIR NVM_INC NoDefaultCurrentDirectoryInExePath OLDPWD OPENCLAW_PROXY_URL PATH PROBE_HOOKS PROBE_LOG PROBE_OUT PWD REQUESTS_CA_BUNDLE SHELL SHLVL SSH_AUTH_SOCK SSL_CERT_FILE TEMP TMP TMPDIR USER XDG_DATA_DIRS XDG_RUNTIME_DIR _ no_proxy
+--- process chain
+137627 <- 137626 : /bin/bash ./probe.sh agent-main 
+137626 <- 136747 : /bin/bash -c source /home/agent/.claude/shell-snapshots/snapshot-bash-1791366979321-cidbpd.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unseten
+136747 <- 136730 : claude -p Run the Bash command `./probe.sh agent-main` and then reply done. --setting-sources project --permission-mode bypassPermissions --model sonnet --output-format stream-json --verbose --include-hook-events --agent
+136730 <- 136729 : /bin/bash ./run.sh p-agent Run the Bash command `./probe.sh agent-main` and then reply done. --agent prober 
+136729 <- 121146 : /bin/bash -c source /home/agent/.claude/shell-snapshots/snapshot-bash-1791366823510-2ypg2j.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unseten
+for (const l of require("fs").readFileSync("logs/p-agent.hooks.jsonl","utf8").trim().split("\n")) { const j=JSON.parse(l); const i=j.in; console.log(j.event, "sid="+i.session_id, "agent_id="+(i.agent_id??"-"), "type="+(i
+121146 <- 2878702 : claude --input-format stream-json --output-format stream-json --verbose --replay-user-messages --dangerously-skip-permissions --setting-sources user,project,local --append-system-prompt Selected skill: /researcher
+Description: Answer one research topic from named sources and cheap experiments, as the evidence a spec is written from. Use when a brief calls you a researcher, names a topic from a research brief, or asks for findings 
+
+Skill files are installed on disk at: /home/agent/projects/squeal/.agents/skills/researcher
+Read any file this skill references (for example references/*.md) from that absolute directory. It is the current installed copy — use it even though your working directory is a separate worktree that does not contain 
+
+Skill instructions:
+You answer one topic from `docs/specifications/NNN-*/research/README.md`, or one question a brief states, in this isolated worktree. Recalled API is not a source. You design nothing; the coordinator writes the spec from 
+
+## 1. Read
+
+The vision, the styleguide, the spec's `status.md` for decisions already made, and the topic's numbered questions. Done when every question has a plan: an experiment, or a named source at a named version. A question that
+
+## 2. Verify
+
+Prefer an experiment when it is cheap: a fixture under `research/probes/<topic>/`, marked throwaway in its README, `node_modules` out of git. Otherwise fetch the source with bash: the official docs page, or a repository 
+
+## 3. Tag
+
+Every finding carries one tag and the version examined: `verified by experiment`, `read in official docs`, `read in source code`, `inferred`. Where sources or experiments disagree, keep the disagreement visible and name 
+
+## 4. File
+
+Write `research/<topic>.md`, one to three pages: questions answered as a table, findings per question, a recommendation for Squeal, open questions, sources with URLs and paths. Commit it with the probes. Never edit the b
+
+## 5. Report
+
+The first line of the final message is the recommendation in one clause. Then what was verified by experiment, what was only read, and the open questions. The message stands alone; the coordinator may file it verbatim.
+
+## Fan-out
+
+When the human asks for more than one opinion, the coordinator runs two researchers on deliberately different models, each writing `research/<topic>-<n>.md`, then one `/judge` over both. Your file must not read the other
+
+---
+
+You are an owned cezar worker. Your parent run ID is 87218933-9f1d-4390-9e07-76b12fad3a41. Both parents and their owned workers can exchange messages through '/home/agent/.nvm/versions/node/v24.21.0/bin/node' '/home/agen
+
+---
+
+## Task artifacts
+To let the user review a file outside the project, explicitly publish a snapshot with '/home/agent/.nvm/versions/node/v24.21.0/bin/node' '/home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/cezarion/node_modules/@wj
+
+---
+
+## Handoff (cezar)
+
+CEZ_HANDOFF_FILE (env) is the absolute path to this task's rolling handoff file. Treat it like a HANDOFF.md:
+1. At the start of work, read it — "Resume notes" left by a previous session is your starting context.
+2. After every meaningful milestone (passing tests, a commit, a PR, a scope decision), append one terse timestamped line under "## Progress log", newest at the top.
+3. Before finishing or pausing, update "## Resume notes" with what's done, what's next and any blockers. Leave it empty only when the task is truly complete.
+
+Task completion marker: when the task's goal is fully achieved and you have no question for the user, end your final message with a line containing exactly CEZ:DONE — cez then closes the session and marks the task fini
+
+Still-working marker: if you end a turn while still working on your OWN downstream work — a sub-agent you dispatched, or a long-running command you're monitoring — and are NOT waiting on the user for anything, end yo
+
+Structured question marker: when you are blocked on a decision that is genuinely the user's to make — one you cannot resolve from the request, the code, or sensible defaults — and it comes down to a few concrete choi
+
+Task reference markers: as soon as you know which GitHub pull request or issue this task is ABOUT (it was named in the task, or you just opened it), declare it by emitting, on its own line in your message text: CEZ:PR=<n
+
+## Pasted attachments
+User-attached screenshots and files (PDF, TXT, MD) are saved as real files; their absolute paths are listed in the message that carries them. Read a file from its path when you need its contents, and use the path when a 
+--- fds of this shell
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/worktrees/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/docs/specifications/001-core-loop/research/probes/pull-advances-push/logs/p-agent.probe.txt
+10 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-p-agent/bee17467-478c-4452-b950-653b3048800a/tasks/bu4qpq5jz.output
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-p-agent/bee17467-478c-4452-b950-653b3048800a/tasks/bu4qpq5jz.output
+255 -> /tmp/sq84/p-agent/probe.sh
+3 -> pipe:[455836115]
+--- fds of parent (137626)
+0 -> /dev/null
+1 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-p-agent/bee17467-478c-4452-b950-653b3048800a/tasks/bu4qpq5jz.output
+10 -> socket:[455834348]
+2 -> /home/agent/projects/squeal/.ai/cezar/tmp/c6b2c5a0-4e46-46ca-b4e6-0227bd243517/claude-1001/-tmp-sq84-p-agent/bee17467-478c-4452-b950-653b3048800a/tasks/bu4qpq5jz.output
