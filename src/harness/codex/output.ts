@@ -2,7 +2,7 @@ import { PRIMER } from "../shared/primer.js";
 
 /*
  * Codex hook output shapes (spec 002 D3): `hookSpecificOutput.additionalContext`
- * for SessionStart, UserPromptSubmit and PostToolUse; `permissionDecision` for
+ * for SessionStart, SubagentStart, UserPromptSubmit and PostToolUse; `permissionDecision` for
  * PreToolUse; `decision` and `reason` for Stop. Exit 2 is never used.
  */
 
@@ -30,7 +30,7 @@ export function capContext(text: string): string {
   return `${end > 0 ? head.slice(0, end) : head}\n${CUT_LINE}${tail}`;
 }
 
-export type ContextEvent = "SessionStart" | "UserPromptSubmit" | "PostToolUse";
+export type ContextEvent = "SessionStart" | "SubagentStart" | "UserPromptSubmit" | "PostToolUse";
 
 /** Context the model reads before its next step. */
 export function additionalContext(event: ContextEvent, text: string): object {

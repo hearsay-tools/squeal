@@ -9,6 +9,8 @@ import {
   type CodexHookResult,
   runCodexHook,
 } from "../../../src/harness/codex/index.js";
+import { CONTEXT_CAP_CHARS } from "../../../src/harness/codex/output.js";
+import { PRIMER } from "../../../src/harness/shared/primer.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { outsideGit } from "../bundle-helpers.js";
 import { type SquealRepo, SUBTRACTS, squealRepo } from "../helpers.js";
@@ -148,9 +150,27 @@ describe("Stop and Interrupt (goals 4 and 6)", () => {
 });
 
 describe("subagents (goal 5)", () => {
+  it("tell a subagent at SubagentStart what the main agent hears: header and primer", async () => {
+    const r = await inTurn();
+    const out = await hook(r, "subagent-start", "subagent-start");
+    expect(JSON.parse(out.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "SubagentStart",
+        additionalContext: expect.stringMatching(/^SQUEAL · registered at revision 1\n/),
+      },
+    });
+    expect(out.stdout).toContain(JSON.stringify(PRIMER).slice(1, -1));
+    expect(JSON.parse(out.stdout).hookSpecificOutput.additionalContext.length).toBeLessThanOrEqual(
+      CONTEXT_CAP_CHARS,
+    );
+    expect(r.store.consumers.get(consumer(r, AGENT))).not.toBeNull();
+    // The subagent heard it: its first tool boundary has nothing to add.
+    expect(await hook(r, "post-tool-use", "subagent-post-tool-use")).toEqual(SILENT);
+  });
+
   it("deliver a subagent's tool events only to (session_id, agent_id)", async () => {
     const r = await inTurn();
-    expect(await hook(r, "subagent-start", "subagent-start")).toEqual(SILENT);
+    await hook(r, "subagent-start", "subagent-start");
     r.apply(r.fail());
 
     const sub = await hook(r, "post-tool-use", "subagent-post-tool-use");
@@ -215,5 +235,18 @@ describe("no CLAUDE_* variable (D4)", () => {
     for (const file of files) {
       expect(readFileSync(join(dir, file), "utf8"), file).not.toMatch(/\bCLAUDE_[A-Z]/);
     }
+  });
+});
+
+describe("SessionEnd (goal 6)", () => {
+  it("sweeps the store of its cwd only, never one named by CLAUDE_PROJECT_DIR", async () => {
+    const first = await inTurn();
+    const moved = await inTurn();
+    const env = { CLAUDE_PROJECT_DIR: first.root };
+    const end = codexRecorded("exec", "session-end", moved.root);
+    expect(await runCodexHook("session-end", end, { ...deps, env })).toEqual(SILENT);
+    expect(moved.store.consumers.list(moved.worktreeId)).toEqual([]);
+    // Left to the next startup or resume SessionStart there, or to daemon expiry.
+    expect(first.store.consumers.get(consumer(first))).not.toBeNull();
   });
 });

@@ -101,7 +101,12 @@ describe("bundled Codex hooks, recorded JSON in and JSON out", () => {
       },
     });
     expect(await json("user-prompt-submit")).toBeNull();
-    expect(await json("subagent-start")).toBeNull();
+    expect(await json("subagent-start")).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "SubagentStart",
+        additionalContext: expect.stringMatching(/^SQUEAL · registered at revision 1\n/),
+      },
+    });
     r.apply(r.fail());
     expect(await json("pre-tool-use")).toBeNull();
     expect(await json("post-tool-use")).toEqual({
