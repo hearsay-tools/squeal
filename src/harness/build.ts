@@ -97,6 +97,10 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
     format: "esm",
     target: "node22.13",
     define: { __SQUEAL_VERSION__: JSON.stringify(rootVersion()) },
+    // CommonJS dependencies (enhanced-resolve) require Node builtins; ESM output has no require.
+    banner: {
+      js: 'import { createRequire as __squealCreateRequire } from "node:module";\nconst require = __squealCreateRequire(import.meta.url);',
+    },
     // Vitest and @parcel/watcher are resolved from the project at run time (B2); this keeps a
     // type-only or stray reference from pulling them in.
     external: ["vitest", "vitest/*", "@parcel/watcher"],

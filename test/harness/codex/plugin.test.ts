@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
@@ -69,6 +70,20 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
       for (const imported of output.imports) expect(imported.path, name).toMatch(/^node:/);
     }
   }, 60_000);
+
+  it("gives every bundle a require for CommonJS dependencies, and each parses (003-12)", () => {
+    const bundles = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter((f) =>
+      f.endsWith(".mjs"),
+    );
+    expect(bundles).toHaveLength(CONTRACT.length + 2);
+    for (const file of bundles) {
+      const path = join(built.dir, file);
+      expect(readFileSync(path, "utf8"), file).toMatch(
+        /^(#!.*\n)?import \{ createRequire as __squealCreateRequire \} from "node:module";\nconst require = __squealCreateRequire\(import\.meta\.url\);\n/,
+      );
+      execFileSync(process.execPath, ["--check", path]);
+    }
+  });
 
   it("puts no CLAUDE_* variable name in a hook bundle (D4)", () => {
     for (const name of CONTRACT) {
