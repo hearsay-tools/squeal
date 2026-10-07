@@ -168,6 +168,16 @@ function refinedMetaKey(worktreeId) {
 function awaitingInstallMetaKey(worktreeId) {
   return `awaiting-install.${worktreeId}`;
 }
+function parseAwaitingInstall(raw) {
+  if (raw === "true") return [];
+  if (raw === null || !raw.startsWith("[")) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
+}
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
@@ -184,19 +194,22 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
+  const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
+  const awaiting = missing !== null;
   return {
     revision,
     counts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
-      atCurrentRevision: last !== null && last.revision === revision,
+      atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null
     },
-    testFilesListed: keys.length > 0 || last !== null,
+    testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
-    ...store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true" ? { awaitingInstall: true } : {}
+    ...awaiting ? { awaitingInstall: true } : {},
+    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
   };
 }
 function readRefined(store, worktreeId) {
