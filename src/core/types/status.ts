@@ -83,6 +83,12 @@ export interface StatusHeader {
    */
   readonly awaitingInstall?: boolean;
   /**
+   * While `awaitingInstall`, the workspaces that declare dependencies and
+   * have none installed while others have theirs (task 001-107, review wave
+   * 11 N2). Absent when the wait names none: nothing is installed at all.
+   */
+  readonly missingInstalls?: readonly RelativePath[];
+  /**
    * Checks whose current result is inherited from another worktree, a part
    * of `counts.current`. Goal 4: inherited results are reported as
    * inherited; D9's skill reads "the header's pending and inherited counts".

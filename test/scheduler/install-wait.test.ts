@@ -4,7 +4,16 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { formatRegistration } from "../../src/core/delivery/index.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { AWAITING_INSTALL_REASON, awaitsInstall } from "../../src/core/scheduler/index.js";
+import {
+  AWAITING_INSTALL_REASON,
+  awaitsInstall,
+  missingInstall,
+} from "../../src/core/scheduler/index.js";
+import {
+  awaitingInstallMetaKey,
+  awaitingInstallValue,
+  type Store,
+} from "../../src/core/types/index.js";
 import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -45,11 +54,57 @@ describe("awaitsInstall (D5 as amended, task 001-100)", () => {
   it("does not wait once an installed lockfile is at the root", async () => {
     const deps = { devDependencies: { vitest: "^4" } };
     expect(await awaitsInstall(root(deps, "node_modules/.package-lock.json"))).toBe(false);
-    expect(await awaitsInstall(root(deps, ".pnp.cjs"))).toBe(false);
     // A lockfile below the root is a workspace package's, not the root's.
     expect(await awaitsInstall(root(deps, "packages/a/node_modules/.package-lock.json"))).toBe(
       true,
     );
+  });
+
+  it("does not count a committed lockfile as an install (review wave 11, S3)", async () => {
+    const deps = { devDependencies: { vitest: "^4" } };
+    for (const lockfile of [
+      "bun.lock",
+      "bun.lockb",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "package-lock.json",
+    ]) {
+      expect(await awaitsInstall(root(deps, lockfile)), lockfile).toBe(true);
+    }
+    expect(await awaitsInstall(root(deps, ".pnp.cjs"))).toBe(true);
+    // Installed: bun's `node_modules` beside its lockfile, Yarn's install state beside `.pnp.cjs`.
+    const bun = root(deps, "bun.lock");
+    mkdirSync(join(bun, "node_modules"));
+    expect(await awaitsInstall(bun)).toBe(false);
+    const pnp = root(deps, ".pnp.cjs");
+    mkdirSync(join(pnp, ".yarn"));
+    writeFileSync(join(pnp, ".yarn/install-state.gz"), "");
+    expect(await awaitsInstall(pnp)).toBe(false);
+  });
+
+  it("counts per-workspace installs once every workspace that declares dependencies has one (N2)", async () => {
+    const dir = root({
+      devDependencies: { biome: "^2" },
+      workspaces: ["packages/*", "!packages/skip"],
+    });
+    const workspace = (name: string, manifest: unknown, installed: boolean) => {
+      mkdirSync(join(dir, "packages", name), { recursive: true });
+      writeFileSync(join(dir, "packages", name, "package.json"), JSON.stringify(manifest));
+      if (installed) {
+        mkdirSync(join(dir, "packages", name, "node_modules"));
+        writeFileSync(join(dir, "packages", name, "node_modules/.package-lock.json"), "{}");
+      }
+    };
+    workspace("a", { dependencies: { acorn: "^8" } }, false);
+    workspace("b", { devDependencies: { vitest: "^4" } }, false);
+    workspace("c", { name: "c" }, false);
+    workspace("skip", { dependencies: { acorn: "^8" } }, false);
+    // Nothing installed anywhere: the wait names no workspace.
+    expect(await missingInstall(dir)).toEqual({ workspaces: [] });
+    workspace("a", { dependencies: { acorn: "^8" } }, true);
+    expect(await missingInstall(dir)).toEqual({ workspaces: ["packages/b"] });
+    workspace("b", { devDependencies: { vitest: "^4" } }, true);
+    expect(await missingInstall(dir)).toBeNull();
   });
 
   it("never waits for a project that declares nothing (spec 003's node:test projects)", async () => {
@@ -61,6 +116,27 @@ describe("awaitsInstall (D5 as amended, task 001-100)", () => {
     expect(await awaitsInstall(root("{ not json"))).toBe(false);
   });
 });
+
+/** The worktree row with a fresh heartbeat, as a live daemon keeps it. */
+function markDaemonLive(store: Store, worktreeId: string, root: string): void {
+  if (store.worktrees.get(worktreeId) === null) {
+    store.worktrees.upsert({
+      id: worktreeId,
+      root,
+      commonDir: join(root, ".git"),
+      isMain: true,
+      registeredAt: 1,
+      daemon: null,
+    });
+  }
+  store.worktrees.setDaemon(worktreeId, {
+    socketPath: "/run/squeal.sock",
+    startedAt: Date.now(),
+    heartbeatAt: Date.now(),
+    heartbeatIntervalMs: 3_600_000,
+    squealVersion: "0.0.0-test",
+  });
+}
 
 describe("scheduler: a worktree without installed dependencies (defect 18)", SLOW, () => {
   it("lists and runs nothing and reports no failure, then validates after an install", async () => {
@@ -89,12 +165,27 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     const notes = readDaemonNotes(store, h.worktreeId).map((n) => n.text);
     expect(notes.filter((t) => t.startsWith(AWAITING_INSTALL_REASON))).toHaveLength(1);
 
+    markDaemonLive(store, h.worktreeId, h.root);
     const { delivery, consumer } = await h.consumer();
     const registration = await delivery.register(consumer);
     expect(registration.knownFailures).toEqual([]);
     expect(formatRegistration(registration)).toContain(
       "No dependencies are installed in this worktree; Squeal lists and runs no tests until an install.",
     );
+    // N2: a wait for some workspaces names a few, then counts the rest.
+    const probe = await h.consumer("probe");
+    const key = awaitingInstallMetaKey(h.worktreeId);
+    store.meta.set(key, awaitingInstallValue(["pkg/a", "pkg/b", "pkg/c", "pkg/d", "pkg/e"]));
+    expect(formatRegistration(await probe.delivery.register(probe.consumer))).toContain(
+      "No dependencies are installed at this worktree's root or in pkg/a, pkg/b, pkg/c and 2 more;",
+    );
+    store.meta.set(key, "true");
+    // N5: with no daemon live the flag a killed daemon left says nothing.
+    store.worktrees.setDaemon(h.worktreeId, null);
+    expect(formatRegistration(await probe.delivery.register(probe.consumer))).not.toContain(
+      "Squeal lists and runs no tests",
+    );
+    markDaemonLive(store, h.worktreeId, h.root);
 
     // The agent edits: a revision, still nothing for the runner and nothing to report.
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b + 0;\n");

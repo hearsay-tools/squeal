@@ -14,7 +14,7 @@ import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
-import { awaitsInstall, reconcileWaiting, startWaiting, stopWaiting } from "./install.js";
+import { missingInstall, reconcileWaiting, startWaiting, stopWaiting } from "./install.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
@@ -95,8 +95,11 @@ class TierScheduler implements Scheduler {
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
       await scan(context, ledger);
-      this.#awaitingInstall = await awaitsInstall(options.root);
-      if (this.#awaitingInstall) startWaiting(context, ledger);
+      // A daemon killed while waiting left its flag (review wave 11, N5); this one decides again.
+      stopWaiting(context);
+      const missing = await missingInstall(options.root);
+      this.#awaitingInstall = missing !== null;
+      if (missing !== null) startWaiting(context, ledger, missing);
       else await this.#baseline(context, ledger);
       this.#context = context;
     });

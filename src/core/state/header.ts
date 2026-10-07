@@ -4,6 +4,7 @@ import {
   type CheckKey,
   type KnownFailure,
   type KnownState,
+  parseAwaitingInstall,
   type RevisionNumber,
   refinedMetaKey,
   type StatusHeader,
@@ -50,7 +51,8 @@ export function readHeader(
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
-  const awaiting = store.meta.get(awaitingInstallMetaKey(worktreeId)) === "true";
+  const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
+  const awaiting = missing !== null;
   return {
     revision,
     counts,
@@ -64,6 +66,7 @@ export function readHeader(
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...(awaiting ? { awaitingInstall: true } : {}),
+    ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
   };
 }
 
