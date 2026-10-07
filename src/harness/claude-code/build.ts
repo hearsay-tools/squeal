@@ -1,35 +1,24 @@
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type BuildOptions, build } from "esbuild";
+import type { BuildOptions } from "esbuild";
+import {
+  buildPlugin,
+  type PluginBuild,
+  bundleOptions as pluginBundleOptions,
+  hookEntries as pluginHookEntries,
+  REPO_ROOT,
+  writePluginVersions as writeVersions,
+} from "../build.js";
 
 /*
- * Bundles every hook entry point and the CLI into one file each under
- * plugins/claude-code/dist/ (spec 001 D9: hook scripts are dependency-free),
- * and writes the root version into the plugin's manifests (001-76).
- * Run by `npm run build`; self-contained so Node runs it with type stripping.
+ * The Claude Code plugin's build, on the shared one in src/harness/build.ts:
+ * bundles under plugins/claude-code/dist/ (spec 001 D9) and the root version
+ * in the plugin's manifests (001-76). Run by `npm run build:plugin`.
  */
 
-/** Repository root: this file is src/harness/claude-code/build.ts. */
-export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
+export { REPO_ROOT, rootVersion } from "../build.js";
 export const PLUGIN_DIR = join(REPO_ROOT, "plugins/claude-code");
 export const PLUGIN_DIST = join(PLUGIN_DIR, "dist");
-
-/** Hook bundle names: one per file in src/harness/claude-code/entries/. */
-export function hookEntries(): string[] {
-  return readdirSync(join(REPO_ROOT, "src/harness/claude-code/entries"))
-    .filter((f) => f.endsWith(".ts"))
-    .map((f) => f.slice(0, -3))
-    .sort();
-}
-
-/** The root manifest's version, baked into every bundle (review wave 3, B1: one version source). */
-export function rootVersion(): string {
-  const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
-    version: string;
-  };
-  return manifest.version;
-}
 
 /**
  * Plugin files that carry the root version, relative to the plugin directory. Claude Code
@@ -37,46 +26,26 @@ export function rootVersion(): string {
  */
 export const VERSIONED_PLUGIN_FILES = [".claude-plugin/plugin.json", "package.json"] as const;
 
+export const CLAUDE_CODE_PLUGIN: PluginBuild = {
+  pluginDir: PLUGIN_DIR,
+  entriesDir: "src/harness/claude-code/entries",
+  versionedFiles: VERSIONED_PLUGIN_FILES,
+};
+
+/** Hook bundle names: one per file in src/harness/claude-code/entries/. */
+export function hookEntries(): string[] {
+  return pluginHookEntries(CLAUDE_CODE_PLUGIN);
+}
+
 /** Writes `version` into each of {@link VERSIONED_PLUGIN_FILES} under `pluginDir`, keeping the rest. */
-export function writePluginVersions(pluginDir: string, version = rootVersion()): void {
-  for (const file of VERSIONED_PLUGIN_FILES) {
-    const path = join(pluginDir, file);
-    const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-    if (manifest.version === version) continue;
-    writeFileSync(path, `${JSON.stringify({ ...manifest, version }, null, 2)}\n`);
-  }
+export function writePluginVersions(pluginDir: string, version?: string): void {
+  writeVersions(pluginDir, VERSIONED_PLUGIN_FILES, version);
 }
 
 export function bundleOptions(outdir: string): BuildOptions {
-  return {
-    absWorkingDir: REPO_ROOT,
-    entryPoints: [
-      ...hookEntries().map((name) => ({
-        in: `src/harness/claude-code/entries/${name}.ts`,
-        out: name,
-      })),
-      // `bin/squeal` runs this; hooks spawn it as the daemon.
-      { in: "src/cli/index.ts", out: "cli/squeal" },
-      // The daemon's socket worker, found beside the CLI by `prepareFrontDesk`.
-      { in: "src/core/daemon/front-desk.ts", out: "cli/front-desk" },
-    ],
-    outdir,
-    outExtension: { ".js": ".mjs" },
-    bundle: true,
-    platform: "node",
-    format: "esm",
-    target: "node22.13",
-    define: { __SQUEAL_VERSION__: JSON.stringify(rootVersion()) },
-    // Vitest and @parcel/watcher are resolved from the project at run time (B2); this keeps a
-    // type-only or stray reference from pulling them in.
-    external: ["vitest", "vitest/*", "@parcel/watcher"],
-    legalComments: "none",
-    logLevel: "warning",
-    metafile: true,
-  };
+  return pluginBundleOptions(CLAUDE_CODE_PLUGIN, outdir);
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  writePluginVersions(PLUGIN_DIR);
-  await build(bundleOptions(PLUGIN_DIST));
+  await buildPlugin(CLAUDE_CODE_PLUGIN);
 }
