@@ -3515,12 +3515,12 @@ var init_policy_node_test = __esm({
 });
 
 // src/core/daemon/policy.ts
-import { readFileSync as readFileSync9 } from "node:fs";
+import { readFileSync as readFileSync10 } from "node:fs";
 import { join as join20 } from "node:path";
 function loadPolicy(root) {
   let text2;
   try {
-    text2 = readFileSync9(join20(root, POLICY_FILE), "utf8");
+    text2 = readFileSync10(join20(root, POLICY_FILE), "utf8");
   } catch (error) {
     if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
     return defaultsBecause(`could not be read: ${String(error)}`);
@@ -9201,7 +9201,7 @@ var init_daemon_loop = __esm({
 });
 
 // src/runners/vitest/loads.ts
-import { readFileSync as readFileSync10 } from "node:fs";
+import { readFileSync as readFileSync11 } from "node:fs";
 function sourceLoads(source) {
   const requires = [];
   for (const pattern2 of [REQUIRE, RESOLVE_RELATIVE]) {
@@ -9217,7 +9217,7 @@ function moduleLoads(file, transform) {
   if (loads === void 0) {
     let source = null;
     try {
-      source = readFileSync10(file, "utf8");
+      source = readFileSync11(file, "utf8");
     } catch {
     }
     loads = source === null ? { requires: [], unnamed: true, environment: null } : sourceLoads(source);
@@ -10335,7 +10335,7 @@ var init_run = __esm({
 });
 
 // src/runners/vitest/dynamic.ts
-import { readFileSync as readFileSync11 } from "node:fs";
+import { readFileSync as readFileSync12 } from "node:fs";
 function expandsFromDisk(file, transform) {
   let found = scanned2.get(transform);
   if (found === void 0) {
@@ -10347,7 +10347,7 @@ function expandsFromDisk(file, transform) {
 }
 function readSource(file) {
   try {
-    return readFileSync11(file, "utf8");
+    return readFileSync12(file, "utf8");
   } catch {
     return null;
   }
@@ -10362,7 +10362,7 @@ var init_dynamic = __esm({
 });
 
 // src/runners/vitest/stale.ts
-import { existsSync as existsSync12, readFileSync as readFileSync12 } from "node:fs";
+import { existsSync as existsSync12, readFileSync as readFileSync13 } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename as basename9, dirname as dirname17, join as join37 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
@@ -10481,7 +10481,7 @@ function packageEntries(manifest) {
 }
 function readManifest3(manifest) {
   try {
-    const fields = JSON.parse(readFileSync12(manifest, "utf8"));
+    const fields = JSON.parse(readFileSync13(manifest, "utf8"));
     return isRecord(fields) ? fields : null;
   } catch {
     return null;
@@ -17495,7 +17495,7 @@ var init_parse = __esm({
 });
 
 // src/runners/node-test/graph/modules.ts
-import { readFileSync as readFileSync13 } from "node:fs";
+import { readFileSync as readFileSync14 } from "node:fs";
 import { dirname as dirname19, relative as relative7, sep as sep8 } from "node:path";
 function sameEdges(a, b) {
   return sameSet(a.deps, b.deps) && sameSet(a.reads, b.reads) && sameSet(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n") && a.pairs.flat().join("\n") === b.pairs.flat().join("\n");
@@ -17557,7 +17557,7 @@ var init_modules = __esm({
           parsed = NO_PARSE;
           if (PARSED_EXTENSION.test(file)) {
             try {
-              parsed = parseModule(readFileSync13(file, "utf8"), relative7(this.root, file));
+              parsed = parseModule(readFileSync14(file, "utf8"), relative7(this.root, file));
             } catch {
             }
           }
@@ -18556,9 +18556,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile5 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile5;
-        const readFileSync17 = this._readFileBackend.provideSync;
+        const readFileSync18 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync17;
+        readFileSync18;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -18611,9 +18611,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readlink2 = this._readlinkBackend.provide;
         this.readlink = /** @type {FileSystem["readlink"]} */
         readlink2;
-        const readlinkSync2 = this._readlinkBackend.provideSync;
+        const readlinkSync3 = this._readlinkBackend.provideSync;
         this.readlinkSync = /** @type {SyncFileSystem["readlinkSync"]} */
-        readlinkSync2;
+        readlinkSync3;
         this._realpathBackend = createBackend(
           duration2,
           this.fileSystem.realpath,
@@ -27646,7 +27646,7 @@ var init_report = __esm({
 });
 
 // src/runners/node-test/run/run.ts
-import { mkdirSync as mkdirSync8, readdirSync as readdirSync7, readFileSync as readFileSync14, writeFileSync as writeFileSync4 } from "node:fs";
+import { mkdirSync as mkdirSync8, readdirSync as readdirSync7, readFileSync as readFileSync15, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join43, relative as relative9, sep as sep11 } from "node:path";
 async function runNodeTest(options) {
   const started = performance.now();
@@ -27763,14 +27763,14 @@ function describeExit(exit2, node) {
 }
 function readEvents(logDir, index) {
   try {
-    return parseEvents(readFileSync14(join43(logDir, `events-${index}.ndjson`), "utf8"));
+    return parseEvents(readFileSync15(join43(logDir, `events-${index}.ndjson`), "utf8"));
   } catch {
     return [];
   }
 }
 function graphs(logDir, index) {
   const prefix = `graph-${index}-`;
-  return readdirSync7(logDir).filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson")).map((name) => readFileSync14(join43(logDir, name), "utf8"));
+  return readdirSync7(logDir).filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson")).map((name) => readFileSync15(join43(logDir, name), "utf8"));
 }
 function writeRunLog2(logDir, log) {
   const files = log.runs.map((r) => ({
@@ -28044,7 +28044,7 @@ __export(runner_exports, {
   createRecoveringRunner: () => createRecoveringRunner,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync8, readFileSync as readFileSync15 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync16 } from "node:fs";
 import { join as join45 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters4 } from "node:util";
 function createRecoveringRunner(options) {
@@ -28138,7 +28138,7 @@ function vitestDetected(root) {
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync15(join45(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync16(join45(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -28406,7 +28406,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.31";
+  if (true) return "0.1.32";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -29880,47 +29880,6 @@ init_state2();
 init_state2();
 init_types();
 
-// src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash8 } from "node:crypto";
-import { existsSync as existsSync7, mkdirSync as mkdirSync3, rmSync as rmSync4 } from "node:fs";
-import { join as join16 } from "node:path";
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-function waiterLockPath(locksDir, consumer) {
-  const id = createHash8("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join16(locksDir, `waiter-${id}.sqlite`);
-}
-function removeWaiterLock(locksDir, consumer) {
-  const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync7(path)) return;
-  const db = lock(path);
-  if (db === null) return;
-  try {
-    rmSync4(path, { force: true });
-  } finally {
-    db.close();
-  }
-}
-function waiterLockState(locksDir, consumer) {
-  const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync7(path)) return "absent";
-  const db = lock(path);
-  if (db === null) return "held";
-  db.close();
-  return "free";
-}
-function lock(path) {
-  const db = new DatabaseSync2(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-    return db;
-  } catch {
-    db.close();
-    return null;
-  }
-}
-
 // src/core/delivery/attribution.ts
 init_keys();
 
@@ -30078,6 +30037,113 @@ function planDelta(input) {
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
+// src/core/delivery/expiry.ts
+init_types();
+
+// src/core/waiter-lock/waiter-lock.ts
+import { createHash as createHash8 } from "node:crypto";
+import { existsSync as existsSync7, mkdirSync as mkdirSync3, rmSync as rmSync4 } from "node:fs";
+import { join as join16 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+function waiterLockPath(locksDir, consumer) {
+  const id = createHash8("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  return join16(locksDir, `waiter-${id}.sqlite`);
+}
+function removeWaiterLock(locksDir, consumer) {
+  const path = waiterLockPath(locksDir, consumer);
+  if (!existsSync7(path)) return;
+  const db = lock(path);
+  if (db === null) return;
+  try {
+    rmSync4(path, { force: true });
+  } finally {
+    db.close();
+  }
+}
+function waiterLockState(locksDir, consumer) {
+  const path = waiterLockPath(locksDir, consumer);
+  if (!existsSync7(path)) return "absent";
+  const db = lock(path);
+  if (db === null) return "held";
+  db.close();
+  return "free";
+}
+function lock(path) {
+  const db = new DatabaseSync2(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+    return db;
+  } catch {
+    db.close();
+    return null;
+  }
+}
+
+// src/core/delivery/harness-process.ts
+init_fs();
+import { readFileSync as readFileSync8, readlinkSync as readlinkSync2 } from "node:fs";
+function readProcStat(pid) {
+  let text2;
+  try {
+    text2 = readFileSync8(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const open3 = text2.indexOf("(");
+  const close = text2.lastIndexOf(")");
+  const rest = text2.slice(close + 2).split(" ");
+  const ppid = Number(rest[1]);
+  const startTime = Number(rest[19]);
+  if (open3 < 0 || close < open3 || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+    throw new Error(`unreadable /proc/${pid}/stat`);
+  }
+  return { comm: text2.slice(open3 + 1, close), state: rest[0] ?? "", ppid, startTime };
+}
+function pidNamespace() {
+  try {
+    return readlinkSync2("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
+function harnessGone(harness, namespace) {
+  if (namespace === null || harness.pidNamespace !== namespace) return false;
+  try {
+    const stat7 = readProcStat(harness.pid);
+    return stat7 === null || stat7.startTime !== harness.startTime || stat7.state === "Z";
+  } catch {
+    return false;
+  }
+}
+function harnessMetaKey(worktreeId) {
+  return `harness-process:${worktreeId}`;
+}
+function recordHarness(store, consumer, harness) {
+  writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
+}
+function recordedHarnesses(store, worktreeId) {
+  const harnesses = /* @__PURE__ */ new Map();
+  for (const [name, value] of Object.entries(readAll(store, harnessMetaKey(worktreeId)))) {
+    const harness = toHarness(value);
+    if (harness !== null) harnesses.set(name, harness);
+  }
+  return harnesses;
+}
+function harnessOf(store, consumer) {
+  return recordedHarnesses(store, consumer.worktreeId).get(slot(consumer)) ?? null;
+}
+function sameHarness(a, b) {
+  return a.pid === b.pid && a.startTime === b.startTime && a.pidNamespace === b.pidNamespace;
+}
+function toHarness(value) {
+  if (!isRecord(value)) return null;
+  const { pid, startTime, pidNamespace: pidNamespace2 } = value;
+  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace2 === "string" ? { pid, startTime, pidNamespace: pidNamespace2 } : null;
+}
+
 // src/core/delivery/liveness.ts
 init_keys();
 init_state2();
@@ -30115,7 +30181,7 @@ function writeTurn(store, consumer, state) {
   writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, state);
 }
 
-// src/core/delivery/delivery.ts
+// src/core/delivery/expiry.ts
 function expireConsumers(store, now = Date.now(), options = {}) {
   const expired = [...store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS))];
   const { locksDir } = options;
@@ -30127,9 +30193,7 @@ function expireConsumers(store, now = Date.now(), options = {}) {
     const gone = store.transaction(() => {
       const record = store.consumers.get(consumer);
       if (record === null || !idle(record, cutoff)) return false;
-      park(store, consumer, now);
-      store.consumers.unregister(consumer);
-      forget(store, consumer);
+      drop(store, consumer, now);
       return true;
     });
     if (!gone) continue;
@@ -30138,10 +30202,49 @@ function expireConsumers(store, now = Date.now(), options = {}) {
   }
   return expired;
 }
+function dropGoneHarnesses(store, worktreeId, now, options) {
+  const namespace = pidNamespace();
+  const isGone = options.isGone ?? ((harness) => harnessGone(harness, namespace));
+  const recorded2 = recordedHarnesses(store, worktreeId);
+  const verdicts = /* @__PURE__ */ new Map();
+  const dropped = [];
+  for (const { consumer } of store.consumers.list(worktreeId)) {
+    const harness = recorded2.get(slot(consumer));
+    if (harness === void 0) continue;
+    const id = `${harness.pidNamespace}/${harness.pid}/${harness.startTime}`;
+    const gone = verdicts.get(id) ?? isGone(harness);
+    verdicts.set(id, gone);
+    if (!gone) continue;
+    const removed = store.transaction(() => {
+      const current2 = store.consumers.get(consumer) === null ? null : harnessOf(store, consumer);
+      if (current2 === null || !sameHarness(current2, harness)) return false;
+      drop(store, consumer, now);
+      return true;
+    });
+    if (!removed) continue;
+    removeWaiterLock(options.locksDir, consumer);
+    dropped.push(consumer);
+  }
+  return dropped;
+}
+function drop(store, consumer, at2) {
+  park(store, consumer, at2);
+  store.consumers.unregister(consumer);
+  forget(store, consumer);
+  store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
+}
+function departedMetaKey(worktreeId) {
+  return `departed:${worktreeId}`;
+}
+function lastDeparture(store, worktreeId) {
+  const at2 = Number(store.meta.get(departedMetaKey(worktreeId)) ?? Number.NaN);
+  return Number.isFinite(at2) ? at2 : null;
+}
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   writeTurn(store, consumer, null);
+  recordHarness(store, consumer, null);
 }
 function idle(record, cutoff) {
   return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
@@ -30163,6 +30266,9 @@ function startTimers(context) {
   const checkMs = timings.checkMs ?? Math.min(5e3, Math.max(50, idleMs / 10));
   const expireMs = timings.expireMs ?? 6e4;
   const pruneMs = timings.pruneMs ?? 60 * 6e4;
+  const presenceMs = timings.presenceMs ?? 250;
+  const graceMs = timings.departureGraceMs ?? 3e3;
+  const { presence } = context;
   const { locksDir } = storePaths(context.commonDir);
   let lastExpire = Number.NEGATIVE_INFINITY;
   const attempt = (what, fn) => {
@@ -30190,14 +30296,40 @@ function startTimers(context) {
       attempt("consumer expiry", () => expireConsumers(store, at2, { locksDir }));
     }
     attempt("idle check", () => {
-      if (store.consumers.list(worktreeId).length > 0) context.active(at2);
-      else if (at2 - context.lastActive() >= idleMs) {
+      if (presence.lastPresentAt !== null || !countPresence(at2)) return;
+      if (at2 - context.lastActive() >= idleMs) {
         context.shutdown(
           "idle",
           `daemon stopped: idle for ${duration(idleMs)} with no registered consumers`
         );
       }
     });
+  };
+  const countPresence = (at2) => {
+    if (store.consumers.list(worktreeId).length > 0) {
+      presence.lastPresentAt = at2;
+      context.active(at2);
+      return false;
+    }
+    const left = lastDeparture(store, worktreeId);
+    if (left !== null && left >= presence.since) {
+      presence.lastPresentAt = Math.max(presence.lastPresentAt ?? left, left);
+    }
+    return true;
+  };
+  const departure = () => attempt("departure check", () => {
+    const at2 = now();
+    if (!countPresence(at2) || presence.lastPresentAt === null) return;
+    if (at2 - presence.lastPresentAt >= graceMs) {
+      context.shutdown(
+        "sessions-gone",
+        `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`
+      );
+    }
+  });
+  const heartbeat = () => {
+    attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
+    attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
   };
   const prune2 = () => attempt("prune", () => {
     store.prune({
@@ -30207,11 +30339,9 @@ function startTimers(context) {
     });
   });
   const timers = [
-    setInterval(
-      () => attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now())),
-      context.heartbeatMs
-    ),
+    setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
+    setInterval(departure, presenceMs),
     setInterval(prune2, pruneMs)
   ];
   const first = setTimeout(prune2, timings.firstPruneMs ?? 6e4);
@@ -30308,7 +30438,7 @@ import {
   mkdirSync as mkdirSync6,
   mkdtempSync,
   readdirSync as readdirSync4,
-  readFileSync as readFileSync8,
+  readFileSync as readFileSync9,
   renameSync as renameSync3,
   rmSync as rmSync5,
   unlinkSync,
@@ -30391,7 +30521,7 @@ function repositoryId(commonDir) {
   } finally {
     unlinkSync(draft);
   }
-  return readFileSync8(file, "utf8").trim();
+  return readFileSync9(file, "utf8").trim();
 }
 function prepareScratch(scratch, uid = currentUid()) {
   const leftovers = ownFallbacks(scratch, uid);
@@ -30598,6 +30728,7 @@ var Daemon = class {
     this.#socketPath = socketPathFor(opened.worktreeId, options.env);
     this.#startedAt = this.#now();
     this.#lastActive = this.#startedAt;
+    this.#presence = { since: this.#startedAt, lastPresentAt: null };
   }
   opened;
   options;
@@ -30617,6 +30748,7 @@ var Daemon = class {
   #stopTimers = () => {
   };
   #lastActive;
+  #presence;
   #exit = null;
   #resolveExit = () => {
   };
@@ -30667,6 +30799,7 @@ var Daemon = class {
       linkedDir: linkedWorktreeDir(this.opened.root),
       timings: this.options.timings ?? {},
       heartbeatMs: this.#heartbeatMs(),
+      presence: this.#presence,
       lastActive: () => this.#lastActive,
       active: (at2) => {
         this.#lastActive = at2;
@@ -30949,7 +31082,7 @@ async function daemonCommand(args, io) {
 // src/cli/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync14, mkdirSync as mkdirSync9, readFileSync as readFileSync16, rmSync as rmSync6, writeFileSync as writeFileSync5 } from "node:fs";
+import { existsSync as existsSync14, mkdirSync as mkdirSync9, readFileSync as readFileSync17, rmSync as rmSync6, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join46 } from "node:path";
 var MARKETPLACE_NAME = "squeal";
 var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
@@ -31103,7 +31236,7 @@ function initClaudeCode(io) {
 var SEEDED = "seeded nodeTest project";
 function lacksNodeTest(path) {
   try {
-    const value = JSON.parse(readFileSync16(path, "utf8"));
+    const value = JSON.parse(readFileSync17(path, "utf8"));
     return isRecord(value) && !("nodeTest" in value);
   } catch {
     return false;
@@ -31123,7 +31256,7 @@ function reason(error) {
 }
 function readSettings(path) {
   if (!existsSync14(path)) return { value: {}, text: null, indent: 2 };
-  const text2 = readFileSync16(path, "utf8");
+  const text2 = readFileSync17(path, "utf8");
   let value;
   try {
     value = JSON.parse(text2);
