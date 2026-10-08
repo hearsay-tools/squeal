@@ -81,3 +81,19 @@ Owns: `test/e2e/**`. Leave alone: everything under `src/` and `plugins/`.
 Done when: the cause is named with evidence; the Codex and Claude Code transitions cases pass 10 times in a row under load; lint, typecheck, full suite green.
 
 Use /worker.
+
+## 002-19 dogfooding report
+
+Outcome: a section "Dogfooding with a Cezar Codex worker" in `lessons.md` that says, with evidence, what Squeal told a real Cezar Codex worker and what the worker did with it.
+
+The session: on 2026-10-08 the Codex plugin 0.1.24 was installed into the real `~/.codex` and trusted (`status.md`). A Cezar worker on `--backend codex --model gpt-6.1-sol` then did row 003-27 in worktree `/home/agent/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe` (removed since), Squeal worktree id `b2baa0c8131a6dc2`, Codex thread `01a1188e-2475-7030-aa81-c1396f0402c1`, from 00:48 to about 01:00 local time, at load 66 to 85.
+
+Sources, read only: the Codex rollout `~/.codex/sessions/2026/10/08/rollout-2026-10-08T00-48-51-01a1188e-2475-7030-aa81-c1396f0402c1.jsonl`; Cezar's run log `/home/agent/projects/squeal/.ai/cezar/runs/c7896f0e-662d-4172-adaf-81b907da8afe.ndjson` and its `-artifacts/`, `.handoff.md`, `.facts.json`; the shared store `/home/agent/projects/squeal/.git/squeal/store.sqlite` opened read-only (`consumers`, `revisions`, `runs`, `results`, `meta` rows for that worktree id). Never open `~/.codex/auth.json` or `config.toml`, never write the store.
+
+Shape: survey. Answer: (1) every Squeal text the model received (SessionStart header and primer, PostToolUse deltas, denies, Stop blocks, "Not validated" lines), each with its time and the tool call it followed; (2) what the agent did next each time, and whether it ran the tests itself and why (it was told to run the full suite by its brief: say whether Squeal's reports changed what it ran); (3) hook latencies the rollout or store show; (4) anything false, late, repeated or missing, against spec 002 goals 1 to 8; (5) defects, numbered after the existing ones. Short transcript excerpts, trimmed, no secrets.
+
+Owns: `docs/specifications/002-codex-adapter/lessons.md` (a new section only) and throwaway extraction scripts under `research/probes/dogfood/` with a README. No product code.
+
+Done when: the section has a verdict per goal (held, not shown, broken), the excerpts that prove it, and the defects; committed.
+
+Use /worker.
