@@ -9,6 +9,7 @@ import type {
   RelativePath,
   RunReport,
 } from "../types/index.js";
+import { backlogBudget } from "./backlog.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger, RevisionState } from "./ledger.js";
@@ -37,6 +38,8 @@ export interface Tier {
   readonly files: readonly TierFile[];
   /** The stat cache entries of every input when the tier was selected. */
   readonly snapshot: StatCache;
+  /** A backlog tier, which an edit cancels (`Scheduler.handleBatch`); `null` for an edit's tier. */
+  readonly cancel: AbortController | null;
 }
 
 /**
@@ -47,13 +50,22 @@ export interface Tier {
  * looked up once more just before it would run, because another worktree may
  * have stored it meanwhile; forced entries skip the lookup. Returns `null`
  * when nothing is left to run.
+ *
+ * While no queued file is recent, the tier is the backlog's: up to
+ * `runner.backlogTierSize` files and `backlogBudget` of last known file time,
+ * cancelled by the next edit (D5 step 5 as amended, task 001-124; lessons,
+ * defect 25: 559 tiers of 4 took 4.6 h where one `npm test` took 514 s).
  */
 export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | null {
   const { store, keys, policy } = context;
   const picked: TierFile[] = [];
+  const backlog = !ledger.queue.hasRecent();
+  const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+  const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
+  let known = 0;
   let tookBacklog = false;
   for (const ref of ledger.ordered()) {
-    if (picked.length >= policy.runner.tierSize) break;
+    if (picked.length >= size) break;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {
@@ -69,6 +81,8 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
         continue;
       }
     }
+    known += file.durationMs ?? 0;
+    if (picked.length > 0 && known > budget) break;
     tookBacklog ||= !ledger.queue.isRecent(ref);
     ledger.queue.remove(ref);
     const checkpointId = ledger.checkpoints.idFor(ref);
@@ -92,6 +106,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
       keys.cache,
       picked.flatMap((p) => p.inputs),
     ),
+    cancel: backlog ? new AbortController() : null,
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = new Set();
@@ -116,7 +131,12 @@ export async function executeTier(context: SchedulerContext, tier: Tier): Promis
   try {
     return await context.runner.run(
       tier.files.map((f) => f.file.ref),
-      { runId: tier.runId, logDir: tier.logDir, timeoutMs: context.policy.runner.timeoutMs },
+      {
+        runId: tier.runId,
+        logDir: tier.logDir,
+        timeoutMs: context.policy.runner.timeoutMs,
+        ...(tier.cancel === null ? {} : { signal: tier.cancel.signal }),
+      },
     );
   } catch (error) {
     return {
@@ -142,6 +162,8 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<S
  * - Crashed, or not completed before a timeout: nothing stored under a key,
  *   the file's checks become `unknown` (D12; files whose module ended before
  *   the cancel keep their results, review N6).
+ * - Not completed in a backlog tier an edit cancelled, a run that otherwise
+ *   ended `completed`: queued again, uncounted (task 001-124).
  * - Any input changed on disk since selection, or in a revision during the
  *   run: discarded and re-queued (D5 stability check). Returns those paths so
  *   the caller reconciles them; the watcher may not have reported them yet.
@@ -166,6 +188,7 @@ export function recordTier(
   const duringRun = ledger.tierChanges ?? new Set<RelativePath>();
   ledger.tierChanges = null;
   const completed = new Set(report.completedFiles.map(testFileId));
+  const cancelled = tier.cancel?.signal.aborted === true && report.end === "completed";
 
   const provenance: Provenance = {
     worktreeId,
@@ -181,7 +204,7 @@ export function recordTier(
     for (const { file, key, inputs, checkpointId, forced } of tier.files) {
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
-      if (installMoved) {
+      if (installMoved || (cancelled && !completed.has(file.id))) {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
         }
