@@ -106,7 +106,7 @@ Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13.md`. Range: from `75c2fbf`
 
 Questions, with probes, not only reading:
 - **Correctness first (vision principle 2):** can any of these rows let a stale result present as current? 001-146: other ways for Vite's bytes and the key's bytes to differ (a file changed during a closure walk, a rename, a file read through a symlink, a node:test file). 001-140: two lanes in flight across a revision, a superseded tier, a crash in one lane, `Tier.changes` and `Tier.run` per tier, the runner part applied while a tier runs.
-- **Never killing the wrong process (001-142):** pid reuse, the daemon's own children, a pipeline sharing its group (fixed in `bd410dd`), two overlapping runs (001-140's `afterEachRun`), `squeal stop` under load.
+- **Never killing the wrong process (001-142):** in the 0.1.49 gate, `test/runners/vitest/child-env.test.ts` once had `afterTier(since)` stop 2 marked sleepers where 1 was expected (pids 2635312 and 2635569; it passes alone 3 of 3): was the extra one started before `since` (the start-time comparison's granularity under load) or the other pool's? Also pid reuse, the daemon's own children, a pipeline sharing its group (fixed in `bd410dd`), two overlapping runs (001-140's `afterEachRun`), `squeal stop` under load.
 - **Store (001-141):** does the batched prune ever delete a result that became live between batches, and does `auto_vacuum` still reach a new store.
 - **Recorder (001-144, 001-147):** can a path a Vitest fork or thread read before its last message be lost; does a nested Squeal's subtree stay with that Squeal only.
 - **Tests:** do 001-145's and 001-146's test changes still test what their names say, or do they now pass by waiting out the behaviour?
