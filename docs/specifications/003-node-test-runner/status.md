@@ -56,6 +56,8 @@ Started: 2026-10-07
 
 - 2026-10-08, wave 3 (003-22), 0.1.31: node:test closures and environments report first-hop packages and builtins in 001-105's form, so a node:test file keys by the installed packages its closure imports (`tsx`, a bare `--loader`, `--require` or `--import` package is the project's `runner`); `module` is reported for a load no specifier names (a computed `import()` or `require()`, `require.resolve`, `import.meta.resolve`, an unparsable source), which sends that file to the whole fingerprint; a `--loader` given as a path reports `module` for the project. The graph now reads `NODE_OPTIONS` as well as `argv`, so a `NODE_OPTIONS` preload is in the static environment. A preload whose closure imports `node:module` gets the loader note (`reviews/wave-2.7.md` S1). Adapter version 5. Full suite green on Node 22; on Node 24 only `graph-cost.test.ts:97` failed under load and passes alone.
 
+- 2026-10-08, wave 3 (003-18 with 002-24), no bundle change: `test/e2e/node-test.test.ts` runs a node:test workspace beside a Vitest project through both shipped plugins, its config written by each plugin's `squeal init`: a 12-check baseline, a break that runs only the affected node:test file and delivers `PASS -> FAIL` through the post-tool hook, the fix's `FAIL -> PASS`, a second worktree inheriting with zero runs, `squeal stop`. The e2e copies the worktree's tracked plugin files instead of `git archive HEAD` (002-24), so it runs what Squeal keys it by. Full suite green on Node 24 and 22 (200 files, 1,662 tests each).
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
