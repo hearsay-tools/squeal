@@ -1,6 +1,6 @@
 # 004 Slow suites by policy
 
-Stage and amendments: `status.md`. Research: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra), both measured on this shared Linux host at load 5 to 36, never at calm load. Specs 001 (D2 to D12), 002 and 003 hold unless a section here says otherwise.
+Stage: approved 2026-10-08. Amendments: `status.md`. Research: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra), both measured on this shared Linux host at load 5 to 36, never at calm load. Specs 001 (D2 to D12), 002 and 003 hold unless a section here says otherwise.
 
 ## Problem
 
@@ -14,7 +14,7 @@ Each goal is testable, on a repository shaped like this one (a Vitest e2e direct
 2. Slow files run after the fast tier has nothing pending at the current revision and the consumer is idle, or on `squeal run --slow` or `run --all`; at most one slow tier runs per user on the host at a time, at low priority, and a fast revision preempts the slow tier between files.
 3. A slow file re-runs when its keyed inputs change, declared artifact inputs included; a slow file whose keyed inputs changed during its run is discarded and queued again, never stored as current (001 D5).
 4. A slow failure reaches the agent with its revision and what it ran against: through the idle waiter in an interactive Claude Code session, otherwise with the next prompt or tool call; Stop never waits for a slow tier.
-5. A slow result is not inherited from another worktree unless the project opts in for that glob.
+5. A slow result is inherited from another worktree only when its key holds the artifact it tests (declared inputs, D5); otherwise it is never inherited.
 6. Status and headers state the slow tier honestly: current against which revision's build, running since when, pending, or not run at this revision.
 7. Under host pressure a slow file waits, up to a bound, then runs with a note; it is never skipped silently.
 8. Squeal never builds anything: the slow tier runs against what is on disk and says so.
@@ -31,7 +31,7 @@ Each goal is testable, on a repository shaped like this one (a Vitest e2e direct
 
 ### D1. Marking
 
-`squeal.config.json` gains `slow`: a list of test-file globs (`["test/e2e/**/*.test.ts"]`), matched against every runner's test files, and a `nodeTest` entry gains `slow: true`, which marks every file its `include` lists. A file matched by `slow` is a slow file in every worktree; the 001 D11 loader rules apply (a glob matching no test file is one note). Measured duration stays an ordering input inside a tier (001 D5) and adds one note per project naming fast-tier files whose last run exceeded 30 s, so a human can decide to mark them.
+`squeal.config.json` gains a `slow` object whose `include` lists test-file globs (`"slow": { "include": ["test/e2e/**/*.test.ts"] }`), matched against every runner's test files, and a `nodeTest` entry gains `slow: true`, which marks every file its `include` lists. A file matched by `slow.include` is a slow file in every worktree; the 001 D11 loader rules apply (a glob matching no test file is one note). Measured duration stays an ordering input inside a tier (001 D5) and adds one note per project naming fast-tier files whose last run exceeded 30 s, so a human can decide to mark them.
 
 ### D2. The slow tier
 
@@ -59,11 +59,11 @@ Squeal never builds (goal 8). When the artifact is a declared input and the sour
 
 ### D6. Inheritance
 
-A slow result is never inherited from another worktree unless `slow.inherit` lists a glob that matches the file (default `[]`). Slow suites read inputs outside any key: installed plugins, `HEAD`, spawned binaries, ports, network (`research/slow-suite-runtime.md` 5 reproduced a changed CLI with unchanged worktree bytes), and every v1 closure is `complete: false`, so completeness cannot be the opt-in signal. A worktree reuses its own slow results under their keys as for any file.
+A slow result is inherited from another worktree only when its key holds the artifact it tests: its declared `inputs` (D5) match at least one existing file that is neither a test file nor under a directory a slow glob covers, such as `plugins/**` here or `packages/cezar/dist/**` in cezarion. Otherwise it is never inherited, and D5's note says why. Slow suites read inputs outside any closure: installed plugins, `HEAD`, spawned binaries, ports, network (`research/slow-suite-runtime.md` 5 reproduced a changed CLI with unchanged worktree bytes), and every v1 closure is `complete: false`, so completeness cannot be the signal; a declared artifact puts the build's bytes in the key, which is what makes another worktree's result sound for it. A worktree reuses its own slow results under their keys as for any file. Decided by the human 2026-10-08.
 
 ### D7. Policy
 
-New keys, all optional, 001 D11 loader rules: `slow` (globs, default `[]`), `nodeTest[].slow` (default `false`), `slow.maxWorkers` (2), `slow.maxLoadPerCpu` (1.0), `slow.maxDeferMs` (600000), `slow.inherit` (globs, `[]`), `stop.requireSlowSuite` (`false`): when true, a main agent's Stop blocks, as `stop.requireFullSuite` does, while a slow file is not current at this revision, naming the slow files and that `squeal run --slow` runs them. Since `slow` is both a list and the prefix of the other keys, the loader accepts `slow` as a list and the others as `slowSuite.maxWorkers` and so on if the spec review prefers; the shape is decided at approval.
+New keys, all optional, 001 D11 loader rules, grouped as the existing `stop`, `runner`, `daemon` and `store` keys are: `slow.include` (globs, default `[]`), `slow.maxWorkers` (2), `slow.maxLoadPerCpu` (1.0), `slow.maxDeferMs` (600000), `nodeTest[].slow` (default `false`), and `stop.requireSlowSuite` (`false`): when true, a main agent's Stop blocks, as `stop.requireFullSuite` does, while a slow file is not current at this revision, naming the slow files and that `squeal run --slow` runs them. No key controls inheritance (D6).
 
 ### D8. What the agent and the human are told
 
@@ -80,7 +80,7 @@ Each slow run gets the daemon's fresh temp directory (001 D10) and its own proce
 ## Testing
 
 - Scheduler tests (001 style, fake runners): a slow file is never in a fast tier; the slow tier waits for nothing pending and an idle or absent consumer; a fast revision preempts between slow files; the slot interleaves two worktrees file by file; the guard defers and then runs with a note; a keyed input changed during a slow run discards and re-queues.
-- Key tests: declared artifact inputs re-key a slow file; the no-artifact note; `slow.inherit` gates inheritance; a slow node:test project observes a spawned process's loads through `NODE_OPTIONS`.
+- Key tests: declared artifact inputs re-key a slow file; the no-artifact note; a slow file inherits only with a declared artifact, and never without one; a slow node:test project observes a spawned process's loads through `NODE_OPTIONS`.
 - Status and delivery tests: the slow-tier line in each state; the slow failure line; the primer change; `stop.requireSlowSuite`.
 - End to end, both plugins: this repository's shape (Vitest e2e over a built plugin, declared slow and keyed by `plugins/**`) and cezarion's shape (a node:test e2e project, `slow: true`, keyed by `dist`): an edit reports its fast tests first; the slow tier runs on idle and on `run --slow`; a bundle change re-runs the slow files; a second worktree does not inherit them.
 - Proof: dogfooding on this repository with `test/e2e` declared slow, and on a cezar worktree (as 003-19), recorded in `lessons.md`, with calm-load timings if the host allows.
@@ -92,7 +92,7 @@ Owner is the coordinator unless noted.
 1. Defaults for `slow.maxWorkers`, `slow.maxLoadPerCpu` and `slow.maxDeferMs`: the research has no calm-load data; set from dogfooding.
 2. The idle trigger in a worktree with several consumers: idle when every registered consumer is idle, or when any is? Proposed: every in-turn consumer blocks the slow tier; a consumer idle for 10 minutes without a waiter counts as absent (001 D10's expiry).
 3. macOS: `ionice` does not exist; `nice` and the slot are portable. Not run.
-4. Should the policy keys be `slow` plus `slowSuite.*` (D7)? Human, at approval.
+4. Decided 2026-10-08: one `slow` object (`include` and the tuning keys), as the existing grouped keys are; no inheritance key (D6, decided by the human).
 5. Whether a slow Vitest project should be a separate Vitest `project` rather than a glob; the glob covers both repositories measured, so it is v1.
 
 ## References
