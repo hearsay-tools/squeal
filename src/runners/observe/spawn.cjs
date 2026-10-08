@@ -5,7 +5,8 @@
 // the recorder cannot extend as Node reads it, passes through untouched, so
 // Node's own validation runs (review wave 12d, B6). A thread's test file also
 // rides in its environment data, which a `SHARE_ENV` Worker gets though it
-// shares its parent's env (B4).
+// shares its parent's env (B4). A child whose env carries another Squeal's
+// settings, a test starting its own Squeal, is left to that recorder.
 "use strict";
 const childProcess = require("node:child_process");
 const path = require("node:path");
@@ -55,6 +56,16 @@ function optionsAt(name, args) {
  * `record(kind, p)`, `scoped(p)`, `self` the recorder's path, `variable` the
  * settings' env name, `settings`.
  */
+/** Whether `value`, a child's settings, names a recorder output other than `out`. */
+function foreign(value, out) {
+  try {
+    const parsed = JSON.parse(value);
+    return typeof parsed?.out === "string" && parsed.out !== out;
+  } catch {
+    return false;
+  }
+}
+
 function wrapChildren(api) {
   const { variable, self, settings } = api;
   /**
@@ -64,6 +75,8 @@ function wrapChildren(api) {
   const injected = (env, inherited = true) => {
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
+    // Another Squeal's settings (a test starting its own Squeal): that subtree is its.
+    if (foreign(out[variable], settings.out)) return out;
     const options = typeof out.NODE_OPTIONS === "string" ? out.NODE_OPTIONS : "";
     if (!options.includes(self)) {
       out.NODE_OPTIONS = `--require ${JSON.stringify(self)}${options === "" ? "" : ` ${options}`}`;
