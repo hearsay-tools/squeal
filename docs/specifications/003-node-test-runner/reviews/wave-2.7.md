@@ -58,6 +58,8 @@ $ PATH=/home/agent/.nvm/versions/node/v22.23.3/bin:$PATH \
 
 The full suite printed two `repair: gitdir incorrect` messages from temporary scheduler fixtures. Node 22 printed `UNDICI-EHPA` experimental warnings. Both commands exited 0. The full suite was run once on Node 24; Node 22 full-suite green is **unverified**. Its complete node:test runner directory, integration gate and independent probes were verified. No full-suite retry was run.
 
+After the report was committed, Squeal delivered a separate baseline result at revision 2: `1849 current, 0 pending, 0 stale, 0 unknown`; no full-suite checkpoint at revision 2, last completed at revision 1; one known failure, `test/watcher/reconcile-pass.test.ts:72`, “re-stats 10,000 tracked paths within the budget”, `expected 526 to be less than 500`. That background result is not green. The required manual Node 24 full-suite command above exited 0. The timing assertion is outside the reviewed range and is not a finding against the preload slice; it is left unchanged. Its diagnostic identifies the failure sufficiently, so no status or why command accessed the forbidden repository store.
+
 Independent probes ran through the installed tsx loader, once with each executable:
 
 ```text
