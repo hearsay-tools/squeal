@@ -125,6 +125,8 @@ Started: 2026-10-02
 
 - 2026-10-08, wave 12 (001-132), for the spec 002/003 coordinator: three files it owns changed by pass-through only, each in its own commit naming the agreement: `src/core/daemon/composite-runner.ts` (passes `RunReport.observed`), `src/core/daemon/daemon.ts` (hands `observe.runtimeInputs` to `createVitestAdapter`; ignored paths are filtered in the scheduler's `observedGrowth`, `reviews/wave-12d.md` N1), `src/harness/build.ts` (copies `src/runners/observe/*.cjs` into each plugin's `dist/observe`). Spec 003 decision 3 (not observed past a spawn) no longer holds for the shared recorder's reach; its text is that coordinator's to amend, and `node:test` adopting `src/runners/observe/recorder.cjs` is its row to plan. Earlier: 001-126 changed `src/cli/codex/status.ts` by one argument.
 
+- 2026-10-08, after `reviews/wave-12d.md` (001-133 FAIL, B1 a false pass that other worktrees inherit): `observe.runtimeInputs` defaults to `false` (human) until 001-134 and 001-135 land and 001-136 passes; then back to `true`.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.

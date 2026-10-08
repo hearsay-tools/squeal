@@ -134,7 +134,8 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
   it("observe.runtimeInputs false keys as before, and switching it back restores those keys", async () => {
     const repo = createRepo("observed");
     const store = openRepoStore(repo.commonDir);
-    const state: { next: Policy } = { next: DEFAULT_POLICY };
+    const on: Policy = { ...DEFAULT_POLICY, observe: { runtimeInputs: true } };
+    const state: { next: Policy } = { next: on };
     const off: Policy = { ...DEFAULT_POLICY, observe: { runtimeInputs: false } };
     const h = await openHarness(repo.main, store, repo.commonDir, {
       observe: true,
@@ -150,7 +151,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
       "data/input.txt",
     );
 
-    state.next = DEFAULT_POLICY;
+    state.next = on;
     h.write("squeal.config.json", "{}\n");
     await h.batch("squeal.config.json");
     await h.scheduler.idle();
