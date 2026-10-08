@@ -30,11 +30,19 @@ Done when: `run --slow` against a daemon without the method answers clearly and 
 
 Use /worker.
 
-## 004-18 a separate lane for slow files (after 004-12)
+## 004-18 a separate lane for slow files (after 004-12 and 001-140)
 
 Outcome: an edit's fast tests never wait behind a slow file in flight (goal 1, D2's execution paragraph).
 
-Brief written when 004-12 lands; scope: the slow file runs in its own runner (a second Vitest instance, closed when the slow pass drains; node:test's per-file spawn as is) at `nice` 10 and `ionice -c 3` where permitted, with `slow.maxWorkers`, concurrently with fast tiers, and its result recorded through the same stability check.
+Read: spec 004 D2 (the execution paragraph), D3, D4; `docs/specifications/001-core-loop/tasks/001-140/notes.md`, section "For 004-18" (lanes, `#inFlight`, `#fly`, the gate in `#pump`, `afterEachRun`); `reviews/wave-1.md` "Inputs for the next wave" 3 and 4; 001 D12 on the child mark.
+
+Shape: slice. Test first. Seam: `laneOf` in `src/core/scheduler/tiers.ts` gives a slow file its own lane (`"slow:" + the runner's lane`); `#pump` in `scheduler.ts` asks `#slow.next()` when the slow lane is free instead of only with nothing in flight. D2's start rule is unchanged (no fast file pending, the runner part applied, a trigger); what changes is that a fast tier starts beside a slow file in flight. The run reaches a runner instance of its own: a second Vitest instance created on the slow lane's first run and closed when the slow pass drains, node:test's per-file spawn as is; `RunOptions` tells the adapter the lane (additive). Slow processes run with `nice` 10 and `ionice -c 3` where Linux permits, and `slow.maxWorkers` caps the slow instance; report what a thread pool cannot get. The sweep: `src/core/daemon/escaped.ts` marks per lane (`SQUEAL_DAEMON_CHILD=<daemon>:<lane>`) and stops a lane's leftovers when that lane's run settles; the exit sweep is unchanged. Send that file's diff to the 001 coordinator (87218933) through the coordinator before you finish.
+
+Owns: `src/core/scheduler/**`, `src/core/daemon/escaped.ts`, `src/core/daemon/composite-runner.ts`, the slow-instance wiring in `src/core/daemon/daemon.ts` and `src/runners/vitest/**` and `src/runners/node-test/run/**`, `src/core/types/runner.ts` (additive), their tests. Leave alone: `src/harness/**` and status texts (004-15), `src/core/store/**`.
+
+Done when: a scheduler test where an edit's fast file is reported while a slow file is running (a fake runner holding the slow run); a daemon-level test with a real Vitest fixture showing the same with two instances; a fast tier's settling never stops a running slow lane's children; lint, typecheck, full suite on Node 24 and 22. Report every type change.
+
+Use /worker.
 
 ## 004-12 finish (the first worker was cancelled by a parent restart)
 
