@@ -17,6 +17,11 @@ export interface Policy {
     readonly requireFullSuite: boolean;
     /** Spec 001 D9: Stop waits "up to `stop.waitMs` for pending checks of the current revision". Default `0`. */
     readonly waitMs: number;
+    /**
+     * Spec 004 D7: a main agent's Stop blocks, as `requireFullSuite` does,
+     * while a slow file is not current at this revision. Default `false`.
+     */
+    readonly requireSlowSuite: boolean;
   };
   readonly baseline: {
     /** Spec 001 D5: "the baseline is a lookup [...] followed by a run of the misses, or lookup only, per policy." */
@@ -63,6 +68,8 @@ export interface Policy {
    * (001 D11). Default `[]`.
    */
   readonly nodeTest: readonly NodeTestProject[];
+  /** Spec 004 D1, D7: the slow suites and how the slow tier runs them. */
+  readonly slow: SlowPolicy;
   readonly daemon: {
     /** Spec 001 D10: idle exit "with no registered consumers (default 60 minutes)". */
     readonly idleExitMinutes: number;
@@ -83,6 +90,24 @@ export interface Policy {
 export type PolicyInputs = readonly string[] | Readonly<Record<string, readonly string[]>>;
 
 /**
+ * Spec 004 D7, one object as the 2026-10-08 amendment decides: which test
+ * files are slow and how hard the slow tier may load the host.
+ */
+export interface SlowPolicy {
+  /**
+   * Spec 004 D1: worktree-relative test-file globs, matched against every
+   * runner's test files; a match is a slow file. Default `[]`.
+   */
+  readonly include: readonly string[];
+  /** Workers of one slow run (D2). Default `2`. */
+  readonly maxWorkers: number;
+  /** The load guard's threshold, one-minute load average per CPU (D3). Default `1.0`. */
+  readonly maxLoadPerCpu: number;
+  /** How long the load guard defers a slow file before it runs anyway (D3). Default `600000`. */
+  readonly maxDeferMs: number;
+}
+
+/**
  * One node:test project (spec 003 D1). Its identity is `(runner "node-test",
  * name)`.
  */
@@ -101,6 +126,8 @@ export interface NodeTestProject {
   readonly include: readonly string[];
   /** Globs relative to `cwd` removed from `include`. */
   readonly exclude?: readonly string[];
+  /** Spec 004 D1: every file `include` lists is a slow file. Absent means `false`. */
+  readonly slow?: boolean;
 }
 
 /** True when `A` and `B` are the same type. */
@@ -119,16 +146,22 @@ type DeepPartial<T> = {
 /** Contents of `squeal.config.json`. Spec 001 D11: "all keys optional". */
 export type PolicyFile = DeepPartial<Policy>;
 
-/** Spec 001 D11 defaults. */
+/** Spec 001 D11 defaults, with spec 004 D7's `slow` and `stop.requireSlowSuite`. */
 export const DEFAULT_POLICY: Policy = {
   interrupt: { onRegression: true },
-  stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+  },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
+  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000 },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };

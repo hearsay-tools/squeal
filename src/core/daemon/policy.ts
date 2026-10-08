@@ -10,6 +10,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
+import { slowInclude } from "./policy-slow.js";
 
 /** Spec 001 D11: "`squeal.config.json` at the repository root, committed, all keys optional". */
 export const POLICY_FILE = "squeal.config.json";
@@ -66,7 +67,12 @@ const oneOf =
 /** Every key of `Policy`, mirroring `DEFAULT_POLICY`. */
 const SHAPE: Shape = {
   interrupt: { onRegression: boolean },
-  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+  stop: {
+    blockOnKnownFailures: boolean,
+    requireFullSuite: boolean,
+    waitMs: atLeastZero,
+    requireSlowSuite: boolean,
+  },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
   observe: { runtimeInputs: boolean },
@@ -77,6 +83,12 @@ const SHAPE: Shape = {
     timeoutMs: orNull(positiveInteger),
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  slow: {
+    include: slowInclude,
+    maxWorkers: positiveInteger,
+    maxLoadPerCpu: aboveZero,
+    maxDeferMs: atLeastZero,
+  },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
 };
