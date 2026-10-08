@@ -52,9 +52,11 @@ export interface Tier {
  * when nothing is left to run.
  *
  * While no queued file is recent, the tier is the backlog's: up to
- * `runner.backlogTierSize` files and `backlogBudget` of last known file time,
+ * `runner.backlogTierSize` files and `backlogBudget` of last-known file time,
  * cancelled by the next edit (D5 step 5 as amended, task 001-124; lessons,
- * defect 25: 559 tiers of 4 took 4.6 h where one `npm test` took 514 s).
+ * defect 25: 559 tiers of 4 took 4.6 h where one `npm test` took 514 s). The
+ * budget bounds the selection, not the run: unknown durations count 0 and
+ * the first file is always taken.
  */
 export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | null {
   const { store, keys, policy } = context;
