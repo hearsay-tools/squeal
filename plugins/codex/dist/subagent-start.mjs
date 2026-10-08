@@ -2587,12 +2587,14 @@ function installSentences(header) {
 var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
-var STATUS_POINTER = "`squeal status` lists every known failure.";
+var SQUEAL_COMMAND = "squeal";
+var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-function whyLine(check) {
-  const name = checkName(check);
-  const quoted = /["$`\\]/.test(name) ? `'${name.replaceAll("'", "'\\''")}'` : `"${name}"`;
-  return `Full output: squeal why ${quoted}`;
+function shellWord(text) {
+  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
+}
+function whyLine(check, command) {
+  return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
 function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
@@ -2652,7 +2654,7 @@ ${overflow(blocks.slice(i))}`, room)}${end}`;
   }
   return `${out}${end}`;
 }
-function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
+function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND) {
   const { header, knownFailures } = registration2;
   const head = [
     `SQUEAL \xB7 registered at revision ${header.revision}`,
@@ -2674,8 +2676,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
   return assemble(
     head,
     blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`,
-    first === void 0 ? null : whyLine(first.check),
+    (left) => `Not shown: ${left.length} more known failures. ${statusPointer(command)}`,
+    first === void 0 ? null : whyLine(first.check, command),
     max
   );
 }
@@ -2917,17 +2919,21 @@ function isRegistered(context) {
 }
 
 // src/harness/shared/primer.ts
-var PRIMER = [
-  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-  "Squeal does not cover typecheck, build or other test suites."
-].join(" ");
-var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
-function withPrimer(registration2) {
-  return `${formatRegistration(registration2, REGISTRATION_MAX)}
+function primer(command = SQUEAL_COMMAND) {
+  return [
+    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
+function withPrimer(registration2, command = SQUEAL_COMMAND) {
+  const tail = primer(command);
+  const max = MESSAGE_CAP_CHARS - tail.length - 2;
+  return `${formatRegistration(registration2, max, command)}
 
-${PRIMER}`;
+${tail}`;
 }
 
 // src/core/daemon/policy-node-test.ts
@@ -3081,7 +3087,7 @@ async function startSession(input, location2, deps) {
     ensured = true;
     if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     const main = input.agent_id === void 0;
-    if (main && input.source === "compact" && isRegistered(context)) return PRIMER;
+    if (main && input.source === "compact" && isRegistered(context)) return primer(deps.command);
     if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
@@ -3090,7 +3096,7 @@ async function startSession(input, location2, deps) {
     }
     const atStart = input.source !== "compact";
     const registration2 = await context.delivery.register(context.consumer, { atStart });
-    return withPrimer(registration2);
+    return withPrimer(registration2, deps.command);
   });
   if (!ensured) await ensure(location2, deps);
   return text;
@@ -3098,22 +3104,24 @@ async function startSession(input, location2, deps) {
 
 // src/harness/codex/output.ts
 var CONTEXT_CAP_CHARS = 8e3;
-var CUT_LINE = "SQUEAL \xB7 cut to fit a Codex hook; `squeal status` has the rest.";
-function capContext(text) {
+var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
+function capContext(text, command = SQUEAL_COMMAND) {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const tail = text.endsWith(`
+  const end = `
 
-${PRIMER}`) ? `
-
-${PRIMER}` : "";
-  const room = CONTEXT_CAP_CHARS - tail.length - CUT_LINE.length - 1;
+${primer(command)}`;
+  const tail = text.endsWith(end) ? end : "";
+  const cut = cutLine(command);
+  const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
-  const end = head.lastIndexOf("\n");
-  return `${end > 0 ? head.slice(0, end) : head}
-${CUT_LINE}${tail}`;
+  const line = head.lastIndexOf("\n");
+  return `${line > 0 ? head.slice(0, line) : head}
+${cut}${tail}`;
 }
-function additionalContext(event, text) {
-  return { hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text) } };
+function additionalContext(event, text, command) {
+  return {
+    hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text, command) }
+  };
 }
 
 // src/harness/codex/handlers.ts
@@ -3124,12 +3132,20 @@ var subagentStart = async (input, location2, deps) => {
     location2,
     deps
   );
-  return text === null ? null : additionalContext("SubagentStart", text);
+  return text === null ? null : additionalContext("SubagentStart", text, deps.command);
 };
 
 // src/harness/codex/main.ts
 import { readFileSync as readFileSync3 } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+// src/harness/codex/command.ts
+import { join as join9 } from "node:path";
+function codexCommand(env, bundleCli) {
+  const root = env.PLUGIN_ROOT;
+  const cli = root === void 0 || root === "" ? bundleCli : join9(root, "dist/cli/squeal.mjs");
+  return `node ${shellWord(cli)}`;
+}
 
 // src/harness/codex/input.ts
 function isUnservedThread(input) {
@@ -3187,10 +3203,11 @@ async function runMain(name, handler) {
     stdin = readFileSync3(0, "utf8");
   } catch {
   }
+  const cli = fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url));
   const result = await runCodexHandler(name, handler, stdin, {
     env: process.env,
-    // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs.
-    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url))
+    cli,
+    command: codexCommand(process.env, cli)
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);

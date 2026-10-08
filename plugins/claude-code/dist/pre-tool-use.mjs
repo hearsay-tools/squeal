@@ -2822,13 +2822,15 @@ function installSentences(header) {
 var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
-var STATUS_POINTER = "`squeal status` lists every known failure.";
+var SQUEAL_COMMAND = "squeal";
+var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
 var upper2 = (outcome) => outcome.toUpperCase();
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-function whyLine(check) {
-  const name = checkName(check);
-  const quoted = /["$`\\]/.test(name) ? `'${name.replaceAll("'", "'\\''")}'` : `"${name}"`;
-  return `Full output: squeal why ${quoted}`;
+function shellWord(text) {
+  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
+}
+function whyLine(check, command) {
+  return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
 function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
@@ -2954,7 +2956,7 @@ ${overflow(blocks.slice(i))}`, room)}${end}`;
   }
   return `${out}${end}`;
 }
-function formatDelta(delta) {
+function formatDelta(delta, command = SQUEAL_COMMAND) {
   const { header, entries } = delta;
   const changed = entries.filter((e) => e.kind !== "fail-retired");
   const retired = entries.filter((e) => e.kind === "fail-retired");
@@ -2972,9 +2974,9 @@ function formatDelta(delta) {
   const overflow = (left) => {
     const outcomes = left.flatMap((b) => b.outcomes);
     const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper2(o)}`);
-    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
+    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
   };
-  const tail = failed === void 0 ? null : whyLine(failed.check);
+  const tail = failed === void 0 ? null : whyLine(failed.check, command);
   return assemble(`${title}
 ${headerLine(header)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
 }
@@ -2996,7 +2998,7 @@ async function denyOnRegression(context, call) {
   }
   const delta = await context.delivery.peek(context.consumer, { kinds: DENIED_KINDS });
   if (delta === null) return null;
-  return `${formatDelta(delta)}
+  return `${formatDelta(delta, call.command)}
 
 ${denialSentence(call.toolName)}`;
 }
