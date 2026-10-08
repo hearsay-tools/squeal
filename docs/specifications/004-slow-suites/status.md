@@ -1,6 +1,6 @@
 # 004 Slow suites by policy: status
 
-Stage: research
+Stage: draft (spec written 2026-10-08 from the two findings; awaiting the human's review)
 Started: 2026-10-08
 
 ## Decisions so far
@@ -16,7 +16,7 @@ Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suit
 
 ## Open questions
 
-The findings' open questions, until `spec.md` is written.
+See `spec.md`, section Open questions.
 
 ## Links
 
