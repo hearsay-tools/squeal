@@ -69,3 +69,11 @@ Range: 001-122's four commits as landed (`17d7e19` to `10e0bcc` as cherry-picked
 ## 001-128 research: Squeal observes runtime inputs itself
 
 Use /researcher. Topic: `research/README.md` "observed-runtime-inputs". Output `research/observed-runtime-inputs.md`, probes under `research/probes/observed-runtime-inputs/` (throwaway). Use a fresh clone of `cezar` for the cezar part; never a live worktree or its store, never stop a daemon you did not start. Read spec 003's `node:test` observed closure first. Done when every question has a tagged answer or "not determined, because", and the recommendation names the mechanism, its blind spots, its cost on `cezar`, and the row's done-when.
+
+## After 001-124 to 001-127
+
+001-124, 001-125, 001-126 and `reviews/wave-12.md` S1 landed as 0.1.33 (`9c23b22`); 001-127 found defect 28 was real failures kept current by a runtime read outside the closure, which 001-128 addresses. Reviews on gpt-6.1-sol for the two scheduler and daemon changes.
+
+## 001-129 review of 001-124 and 001-125
+
+Use /reviewer. Range: 001-124 (`9a6872f` to `61facb7` as cherry-picked) and 001-125 (`3cf205a` to `79b0d43`), build `9c23b22`. Output `reviews/wave-12b.md`. Outcome: (1) can a backlog tier store a result that is not current, lose a completed file's result on cancel, starve edit work, or exceed `runner.timeoutMs`; (2) can the step-down leave a worktree with no daemon, two daemons, or a newer daemon replaced by an older one. Probe: an edit at the first and last file of a backlog tier; a cancel that Vitest does not honour within 1 s; `backlogTierSize` 1 and 10,000; files with no known duration; a step-down while a tier runs, with a hook in the window, under both plugins; a 0.1.31 daemon (released bundle) and a pre-release version string.
