@@ -44,6 +44,18 @@ describe("the squeal skill", () => {
     expect(`${body}${references.map(read).join("")}`).not.toMatch(/which edit it is about/);
   });
 
+  /*
+   * Spec 003 lessons, defect 1: "Squeal covers only the Vitest tests" sent
+   * agents to run node:test themselves. The skill is static, so it names
+   * node:test as covered where squeal.config.json lists `nodeTest` projects.
+   */
+  it("names node:test as covered where nodeTest projects are listed, and never Vitest alone", () => {
+    expect(description()).toContain("node:test tests where squeal.config.json lists nodeTest");
+    expect(body).toContain("its node:test tests too where `squeal.config.json` lists `nodeTest`");
+    expect(body).toContain("instead of running Vitest, or node:test where");
+    expect(body).not.toMatch(/only the Vitest tests|covers only Vitest/);
+  });
+
   it("names the squeal why line a FAIL report ends with", () => {
     expect(body).toContain('`Full output: squeal why "<name>"`');
   });
