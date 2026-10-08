@@ -35,3 +35,15 @@ Use /worker.
 Outcome: an edit's fast tests never wait behind a slow file in flight (goal 1, D2's execution paragraph).
 
 Brief written when 004-12 lands; scope: the slow file runs in its own runner (a second Vitest instance, closed when the slow pass drains; node:test's per-file spawn as is) at `nice` 10 and `ionice -c 3` where permitted, with `slow.maxWorkers`, concurrently with fast tiers, and its result recorded through the same stability check.
+
+## 004-12 finish (the first worker was cancelled by a parent restart)
+
+Outcome: 004-12 done as briefed above, from the cancelled worker's commits.
+
+Shape: finish. Your worktree starts at `f1b8b68`: three 004-12 commits (inheritance predicate, `RunQueue`'s slow class, the slow tier with triggers, slot, guard and notes). Its last uncommitted edit, autosaved as `8e76d44` on branch `coord/004-12-partial`, had just deleted `this.#wait?.abort()` in `SlowTier.preempt()` (`src/core/scheduler/slow-tier.ts:93`); read it with `git show 8e76d44`, decide what `preempt` must do (a new batch with fast work aborts the guard wait and puts the slow file back), and finish it. Then close the done-when above, item by item: a scheduler test per goal (check what `test/scheduler/slow-tier.test.ts` already proves), the missing `test/integration/slow-tier.test.ts` with a real Vitest fixture, lint, typecheck, full suite on Node 24 and 22 (re-run a failing file alone before calling it yours; load is high). Report every type change.
+
+Contract unchanged: `Scheduler.requestSlowSuite(): Promise<SlowSuiteRequest>`, `SlowSuiteRequest = { readonly revision: RevisionNumber; readonly queued: number }`. 004-13 lands the `run-slow` handler separately with a structural cast; leave `src/core/daemon/**` and `src/cli/**` alone.
+
+Owns and leave alone: as 004-12 above. No CPU burners; never delete or kill anything you did not start; remove your own scratch when done.
+
+Use /worker.
