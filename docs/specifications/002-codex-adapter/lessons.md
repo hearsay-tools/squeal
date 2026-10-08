@@ -190,3 +190,127 @@ Every run is far inside the 2 s timeout. Whether Stop stays under 80 ms p95 at c
 - The TUI starts Codex's managed app-server daemon inside `CODEX_HOME`, and it downloaded and ran Codex 0.161.0 there, not the installed 0.160.1. TUI threads therefore run a Codex version the hash port was not checked against. The plugin hashes are Codex's own and survive that; `--print-launcher-config` hashes might not.
 - An `apply_patch` context mismatch cost each of the four scripted agents (exec1 and as2, main and subagent) one failed call; nothing to do with Squeal, but such calls count in any per-call measurement.
 - Spec open question 5 (a long-running command that yields to `write_stdin`) was not exercised: every command here finished within its yield time.
+
+## Dogfooding with a Cezar Codex worker
+
+Task 002-19, 2026-10-08. One real Cezar worker on Codex, `--backend codex --model gpt-6.1-sol`, did row 003-27 in this repository with the Squeal Codex plugin 0.1.24 installed into the real `~/.codex` and trusted (`status.md`, 2026-10-08). Cezar run `c7896f0e-662d-4172-adaf-81b907da8afe`, Codex thread `01a1188e-2475-7030-aa81-c1396f0402c1`, Squeal worktree id `b2baa0c8131a6dc2`, one turn from 00:48:51 to 00:59:03 local time (UTC+2; every time below is local), Codex CLI 0.160.1, load average 66 to 85. Extraction scripts and trimmed logs: `research/probes/dogfood/` (its README lists the sources and the rules followed). All sources were read only; `~/.codex/auth.json` and `config.toml` were not opened.
+
+The worktree was removed before this report, and with it its store rows: `revisions`, `runs`, `results`, `transitions`, `consumers` and `known_states` hold nothing for `b2baa0c8131a6dc2`; only its `meta` rows survive (`logs/store.txt`). The Codex rollout records no hook runs and Cezar's run log records no `hook/started` or `hook/completed`. So what the model received comes from the rollout, which is complete for that; when a result was recorded comes only from the agent's own `squeal status` and `squeal why` output; hook durations are not recorded anywhere, and only upper bounds are given.
+
+### Verdict
+
+| Goal | Verdict | Evidence |
+| --- | --- | --- |
+| 1. `PASS -> FAIL` within one tool call, same turn, through PostToolUse | held for first-seen failures | Four reports, each at a PostToolUse; the one with a known record time came at the first tool call after it. No `PASS -> FAIL` happened in the session, so the reports were first-seen failures and one recovery. |
+| 2. `FAIL -> PASS` the same way; silence otherwise; one report per cell | held | The one recovery arrived at PostToolUse. 35 code-mode cells ran 66 tool calls; no report repeated and none came for an unchanged state. One recovery that should have existed never did: Squeal never re-ran that test (defect 5, not the adapter). |
+| 3. `apply_patch` deny after an undelivered regression | not shown | No `PASS -> FAIL` in the session. The agent's only `apply_patch` ran with nothing pending; it wrote its new test file and every note through the shell, which is never denied. |
+| 4. Stop speaks only with news; silent Stop costs nothing | held, silent case only | One Stop, silent; the turn ended 0.2 s after the final message with no `<hook_prompt>` in the rollout. |
+| 5. Subagents | not shown | No subagent; Cezar's developer message forbids spawning one. |
+| 6. SessionEnd at stdin EOF | held | Cezar closed the session at 00:59:03.038; the store recorded the consumer `(thread, main)` leaving at 00:59:03.169. The daemon stopped at 01:59:03.380, "idle for 60 min with no registered consumers". |
+| 7. 2 s budget, silence without a daemon, 80 ms p95 at calm load | not shown | No hook timing exists for the session. Upper bounds of 147 to 885 ms for PostToolUse and 1,562 ms for SessionStart keep every observed hook under its 2 s timeout. The bundle test in the worker's own run, at load 75.7, gave Codex p95 of 155 to 562 ms. The daemon never died. |
+| 8. Install with Codex's commands, trust, `squeal status` when hooks never ran | held for install and trust | The hooks ran in a Cezar app-server thread with no bypass flag. The status line for unrun hooks was not exercised. The agent's own `squeal` did not resolve (defect 4). |
+
+Open question 5 (a command that yields to `write_stdin` delivers its PostToolUse late) is still not measured. Two commands yielded, `squeal status --wait 60000` for 60.3 s and the full Vitest run for 248 s, polled by 27 `write_stdin` calls. But no result can be shown to have landed while either one was in flight, and the rollout does not say which call's hook spoke.
+
+No blocker for 002. Defect 4 belongs to the adapter. Defect 5 is a repository config gap that Squeal cannot see from the inside. Defect 6 is a 001 test.
+
+### What Squeal said
+
+Every Squeal text the model received is below. There was no deny, no Stop block, no "Not validated" line and no UserPromptSubmit context. The task prompt at 00:48:53 and the parent's reply, which arrived as a user message at 00:56:19, carried nothing from Squeal. The bound is the time from the preceding tool item's completion to the message, from `logs/gaps.txt`.
+
+| # | At | Hook, after | Bound | Text (first line) |
+| --- | --- | --- | --- | --- |
+| S1 | 00:48:52.880 | SessionStart, before the task prompt | 1,562 ms after `session_meta` | `SQUEAL · registered at revision 0` |
+| S2 | 00:51:27.621 | PostToolUse, `cezarion worker progress` | 885 ms | `SQUEAL · Squeal's baseline run found 1 failing check at revision 1` |
+| S3 | 00:53:16.253 | PostToolUse, `git commit` | 169 ms | `SQUEAL · 2 checks changed at revision 3` |
+| S4 | 00:53:29.627 | PostToolUse, `cezarion worker progress` | 329 ms | `SQUEAL · Squeal's baseline run found 1 failing check at revision 3` |
+| S5 | 00:58:15.336 | PostToolUse, a `python3` notes write | 147 ms | `SQUEAL · Squeal's baseline run found 1 failing check at revision 3` |
+
+S1, the header and primer. The store's `daemon-bootstrapped` is 00:48:52.723, so this SessionStart spawned the daemon. The note "no dependencies are installed in this worktree" was written at 00:48:53.801, after the header, and reached the agent only through `squeal status` later.
+
+```text
+SQUEAL · registered at revision 0
+Revision 0: 0 current, 0 pending, 0 stale, 0 unknown. The daemon has not listed this worktree's test files yet; these counts are not complete. Full-suite checkpoint: none completed at any revision.
+Known failures: 0
+
+Squeal runs this repository's Vitest tests in the background after each edit, [...] wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. [...]
+```
+
+S2: a load-induced timeout from the baseline.
+
+```text
+FAIL  test/cli/codex.test.ts > squeal init --harness codex > touches nothing under a scratch HOME/.codex or CODEX_HOME, run as the CLI
+      first observed: FAIL, seen by Squeal's baseline run at revision 0
+      Test timed out in 5000ms.
+      load average 81.79 when it ran
+```
+
+S3: the agent's new heap test, failing at revision 2, and S2's test recovering. The agent had already fixed the heap test at revision 3 (patch at 00:52:26) and watched it pass in its own run at 00:52:47.
+
+```text
+SQUEAL · 2 checks changed at revision 3
+Revision 3 (changed test/runners/node-test/graph-memory.test.ts, src/runners/node-test/graph/graph.ts, src/runners/node-test/graph/resolver.ts): 155 current, 27 pending, 0 stale, 0 unknown. [...]
+
+FAIL  test/runners/node-test/graph-memory.test.ts > releases build caches after cold builds, re-resolves, edits and listing changes
+      first observed: FAIL, seen by Squeal's run at revision 2
+      expected 15814984 to be less than 8388608
+[...]
+PASS  test/cli/codex.test.ts > squeal init --harness codex > touches nothing under a scratch HOME/.codex or CODEX_HOME, run as the CLI
+      FAIL -> PASS
+```
+
+S4: bundle drift, expected because the worker's brief forbade `npm run build`.
+
+```text
+FAIL  test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them
+      first observed: FAIL, seen by Squeal's baseline run at revision 3
+      cli/squeal.mjs differs from the build: expected false to be true // Object.is equality
+      touches files changed here since this session started: src/runners/node-test/graph/graph.ts, src/runners/node-test/graph/resolver.ts
+```
+
+S5: the known Claude Code transitions race (002-20, relayed to 001). `squeal why` puts the failing result at 00:58:09.241 and the first-seen transition at 00:58:09.260. The agent made no tool call between 00:57:52 and 00:58:14.5, and the report came at the first call after that, 6.1 s after it was recorded.
+
+```text
+FAIL  test/e2e/transitions.test.ts > transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between
+      first observed: FAIL, seen by Squeal's baseline run at revision 3
+      expected false to be true // Object.is equality
+      at test/e2e/transitions.test.ts:39:70
+```
+
+### What the agent did
+
+- **It read the skill on its own.** It read the installed `skills/squeal/SKILL.md` at 00:49:15 and 00:49:25 and `references/commands.md` at 00:50:24. Its message at 00:49:53: "I'll also add a heap regression check and use Squeal's feedback during development."
+- **It tried to wait for Squeal, then ran the test itself.** At 00:51:09 one shell command wrote the new heap test with a heredoc and then ran `node plugins/codex/dist/cli/squeal.mjs status --wait 60000`. It used the checkout's bundle because `command -v squeal` had printed nothing at 00:50:24 (defect 4). Its progress message to the parent at 00:51:26: "Heap regression added; waiting for its red result." At 00:51:47, with the wait still running, it started `npx vitest run test/runners/node-test/graph-memory.test.ts` and got its red at 00:52:00. The wait returned at 00:52:10 without the new test:
+
+  ```text
+  Returned on timeout after 60.1 s: 0 checks and 168 test files without checks pending at revision 2
+  Known failures: 1
+    FAIL  test/cli/codex.test.ts > [...] observed at revision 0, current
+  ```
+
+  Squeal's red for that test reached the agent at 00:53:16 (S3), 2 min 7 s after the file was written and after the fix. Squeal's first baseline over the 183 test files was still running at load 80 on a fresh worktree, so the agent's TDD loop outran it. Whether the daemon queued the new test file behind the baseline is not recoverable from what survived.
+- **S2:** it called the failure unrelated and kept it for the report. At 00:51:43: "Squeal also reported an unrelated baseline timeout in the Codex init test at load 82. I'll include it in the verification report." At 00:54:18: "The earlier Codex init timeout has recovered."
+- **S3:** it read the revision correctly. Handoff, 00:53:30: "memory red result at prior revision arrived, latest green pending". The green never came (defect 5). Both later `squeal status --json` calls, at 00:55:16 and 00:57:51, listed the test as a current failure observed at revision 2. In its final report to the parent the agent said Squeal "retains the memory test red observation from revision 2; standalone graph and full gates passed it."
+- **S4 changed what it did and when.** Fourteen seconds after S4, at 00:53:43, it asked the parent to accept the drift ("Squeal reports expected plugin bundle drift [...] Brief forbids build and owns no bundles. Please confirm"). Its own full run, started at 00:53:26, showed the same failure only by 00:55:44. The parent's yes came at 00:56:08, before the suite ended at 00:57:34. So Squeal moved a coordination question about 2 minutes earlier, and the gate ended with the answer already in hand.
+- **S5:** it asked Squeal before reporting. `squeal why 'transitions on PostToolBatch, claude-code'` matched two checks and exited 1; it retried with the full name, read a history that showed passes in other worktrees and earlier failures in one, and told the parent the test "passed in the required standalone full gate".
+- **It ran Vitest itself three times:** the red run above, `npx vitest run test/runners/node-test/graph*.test.ts` 9 s after the fix (00:52:35), and the full suite (00:53:26 to 00:57:34; 3 failed, 1,557 passed). Its brief required the full suite and pasted output, which the primer allows ("when the repository's own gate requires it"). Squeal did not change which tests it ran. It did not wait for Squeal's green after the fix, and its reasoning is encrypted, so why is not on record. When it ran the full suite, Squeal's baseline had not completed: 129 test files were still without checks at 00:57:51, nine minutes in.
+
+### False, late, repeated or missing
+
+- **False:** the heap test stayed a current failure at revision 3 after the fix made it pass (defect 5). It is the one false statement in the session. The agent caught it only because it had run the test itself.
+- **Late:** the first result for the agent's new test took 2 min 7 s at load 80 against a cold baseline. The `--wait 60000` timed out, and the agent ran the test itself. The adapter delivered at the first tool call after each result where the time is known (S5). The lateness was upstream of it.
+- **Repeated:** nothing. The headers of S3 to S5 each name revision 3's changed files again, which is the header's job.
+- **Missing:** the heap test's `FAIL -> PASS` (defect 5). The daemon note about missing dependencies came 0.9 s after the header that could have carried it, and was never pushed. That is harmless here, since the brief ran `npm ci` first.
+
+### Defects
+
+Numbered after the proof's defects 1 to 3.
+
+4. **Under Codex the agent's `squeal` does not resolve, while the primer and the skill tell it to run `squeal status --wait 60000`.** Codex adapter, D1 and the primer. In the worker's shell `command -v squeal` printed nothing. The worker found `node plugins/codex/dist/cli/squeal.mjs` only because this repository is Squeal's own, and that file was its branch's bundle, stale against the branch's source (S4). D1 says the agent's `squeal` "comes from the npm install", but `package.json` is `"private": true` and the npm name `squeal` belongs to an unrelated package ("Create your SQL more easily.", 0.4.1). `npm i -g squeal` would install that one. In any other repository a Codex agent cannot run the one command the primer names. A fix within 002: the Codex SessionStart and SubagentStart text names the installed CLI by its absolute path, `node <plugin root>/dist/cli/squeal.mjs`, since the hook knows its root. The skill copy would say the same.
+5. **A test that loads the source in a child process keeps a stale failure as current.** Repository config, seen with 003-27's new test. `test/runners/node-test/graph-memory.test.ts` imports `src/runners/node-test/graph/index.ts` only inside `execFileSync(process.execPath, [..., "-e", <module text>])`. The closure (static imports plus declared inputs) does not contain the graph sources, and `squeal.config.json` declares no inputs for the file. Its key at revision 3 therefore equals revision 2's, and Squeal served revision 2's failure as `validity: current` at revision 3 and never re-ran it. The same config lists `plugins/claude-code/**` for `test/e2e/*.test.ts`, which also drive `plugins/codex` (`test/e2e/plugins.ts`), and declares nothing for `test/harness/codex/plugin.test.ts`. Those two are from reading the config, not seen failing. Fix: declare the inputs, e.g. `"test/runners/node-test/graph-memory.test.ts": ["src/runners/node-test/**"]`, and add `plugins/codex/**` to the e2e and Codex plugin entries. 001 may want a rule that a test file which spawns `process.execPath` gets a note.
+6. **`test/harness/latency.test.ts` (Claude Code hooks) times out at its 180 s limit under load instead of reporting.** 001 test. In the worker's full suite at load 66 to 85 it was one of the three failures: "Test timed out in 180000ms". The Codex twin finished and printed its table at load 75.7. A gate that must report timing failures "as such" should not have one that dies of its own timeout.
+
+### Notes for the next row
+
+- To check goal 7 in a real Cezar session, hook durations must be recorded somewhere. Codex's app-server sends `hook/completed` to its client, and Cezar does not log it. A store row would not help, because it goes with the worktree.
+- 65 of this GPT agent's 66 tool calls were shell commands, its new test file and every note included; its one `apply_patch` was the source fix. The deny of goal 3 covers a small share of such an agent's edits, by design (D3: shell writes are never denied).
