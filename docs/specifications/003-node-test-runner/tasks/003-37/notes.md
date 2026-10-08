@@ -17,7 +17,7 @@ The `node --test` parent process records too (`graph-<i>-<pid>` of its own): onl
 
 ## Slow projects
 
-`childEnv` always prepends `--require "<recorder>"` to a slow project's `NODE_OPTIONS`. The spawned process inherits `SQUEAL_NODE_TEST_GRAPH` and writes `graph-<i>-<its pid>.ndjson`, which `graphs()` already collected. A test that spawns with its own `env` not carrying those two variables still goes unobserved; the bare-file note names such a file when nothing else of the project was observed.
+`childEnv` always prepends `--require "<recorder>"` to a slow project's `NODE_OPTIONS`. The spawned process inherits `SQUEAL_NODE_TEST_GRAPH` and writes `graph-<i>-<its pid>.ndjson`, which `graphs()` already collected. A test that spawns with its own `env` not carrying those two variables still goes unobserved; the bare-file note names such a file when its run loaded nothing else.
 
 ## The bare-file note (lessons.md defect 6)
 
