@@ -50,7 +50,7 @@ The edit re-keys nothing and runs nothing, and the old-mock worktree shares the 
 | on 3 | 508 s | 5,724 s | 2 -> 3 | `github.test.tsx` |
 
 - `web` `packages/web/src/routes/github/github.test.tsx` fails in all six runs, so not the recorder's.
-- Failing only with the recorder, each once, all in `on 1`: `application-update/service`, `artifacts/cli`, `autosave-timeout`, `ci-wait/process`, `discovery/cli`, `git-worktree-lock`, `server-install/platforms/ubuntu-vps`, `server/repo-branches-api`, `server/worktrees-api` (timeouts at 5 s and 15 s, a lock-wait race, a missing log under a dying watcher). `on 1` overlapped this worker's own `mock.ts` runs and Squeal's daemon re-running this repository's suite, hence its 11,319 s. Shown to be load: none fails in `on 2` or `on 3`, the nine pass three times out of three run alone with the recorder (`ab.ts ... <the nine>`: 14.2, 14.3, 14.4 s on; 14.1, 14.1, 15.6 s off; load 2 to 5), and `off 2` failed six other files without it.
+- Failing only with the recorder, each once, all in `on 1`: `application-update/service`, `artifacts/cli`, `autosave-timeout`, `ci-wait/process`, `discovery/cli`, `git-worktree-lock`, `server-install/platforms/ubuntu-vps`, `server/repo-branches-api`, `server/worktrees-api` (timeouts at 5 s and 15 s, a lock-wait race, a missing log under a dying watcher). `on 1` overlapped this worker's own `mock.ts` runs and Squeal's daemon re-running this repository's suite, hence its 11,319 s. Not shown to be load, and only partly load (review wave 12d, S1; 001-137 below): under one fixed competing load, seven of the nine fail as often without the recorder, while `artifacts/cli` and `discovery/cli` fail only with it. What this round did show: none fails in `on 2` or `on 3`, the nine pass three times out of three run alone with the recorder (`ab.ts ... <the nine>`: 14.2, 14.3, 14.4 s on; 14.1, 14.1, 15.6 s off; load 2 to 5), and `off 2` failed six other files without it.
 - Cost per file, the median of each file's three durations on over its median off: p25 0.87, p50 0.97, p75 1.20, p90 1.50; the difference p50 -47 ms, p90 +722 ms. By project: `server` (398 files) p50 0.95, -95 ms, p90 +386 ms; `web` (233 files, jsdom, no spawns) p50 1.20, +150 ms, p90 +886 ms; `contract` 0.98; `api-client` 1.08. Load dominates `server`; `web` pays a fixed cost per file, the preload and resolve hook in each worker.
 - Growth (`on 2`, `on 3` identical): 150 of 640 files observe paths beyond their snapshot, 1,719 distinct paths, 5,266 file-path pairs, per file p50 4, p90 54, max 787; 76 run a project script; `mock-cursor-print.mjs` is observed by 26 files. Before the closure filter, so a path also in a file's Vite graph counts (the research's 153 files and 1,092 paths were after it).
 
@@ -67,3 +67,66 @@ The edit re-keys nothing and runs nothing, and the old-mock worktree shares the 
 - Keys: `src/core/keys/observed.ts` (`ObservedSets` over `meta` `observed.<project>`, `Listings`, listing paths `dir/` and `./`); `assembleClosure`'s third argument; `WorktreeKeys` in `src/core/scheduler/keying.ts` (hash source for listings, `addObserved`, `rekeyListings`, the policy toggle in `setPolicy`).
 - Scheduler: `src/core/scheduler/observed.ts` (`prepareObserved`, under the lock: ignored paths dropped, paths tracked, stability against the stat cache), `recordTier`'s `observed` argument in `tiers.ts`, listings in `Ledger.tierChanges` (`batch.ts`) and their re-key first in `rekeyContent` (`revision.ts`).
 - node:test: `src/runners/node-test/` is untouched. Its runner keeps its own `nodeTest.observed.<project>` store; adopting the shared recorder and `RunReport.observed` is a spec 003 row.
+
+## 2026-10-08: 001-137, the nine `on 1` files under one fixed competing load
+
+Question (review wave 12d, S1): do the nine files that failed only in `on 1` fail from load alone, or does the recorder's added work push deadline-bound tests over their limits in a crowded run? Answer: both. Seven are load and fail as often without the recorder. Two, `artifacts/cli` and `discovery/cli`, fail under contention only with it. Drivers and raw summary: `tasks/001-137/` (`nine.ts`, `rounds.sh`, `arm.sh`, `analyze.mjs`, `child.sh`, `cpu.sh`, `results.txt`).
+
+### Setup
+
+- A fresh clone of `/home/agent/projects/cezar` at `1c97556a`, `npm ci`, Vitest 4.1.10, Node 24.21.0, Linux, 24 cores. Every cezar command ran under `env -u` for each `CEZ_*` variable, cwd in the clone through a subshell.
+- `nine.ts` runs the nine files in one Vitest instance with the recorder delivered as the adapter delivers it (`VitestObserver.start()` into `createVitest`'s `env`, then `configure`). `maxWorkers` is fixed at 23, Vitest's run-mode default on this host, so each of the nine gets its own fork. Deadlines are cezar's own. It records each file's start, end and state, each failing test's time and error, and every 500 ms the 1-minute load, the runnable count (`procs_running`), the Vitest workers (the driver's children) and everything below them.
+- Competing load: 24 single-threaded busy loops held through every round, plus the host's ambient load from other sessions, which I could not control. `rounds.sh` alternates the order inside each pair (on off, then off on). One warmup pair, not counted.
+- Pairs 1 to 13 ran; pair 14 was stopped with the burners. Nine rounds were SIGKILLed from outside, the round's whole process group, in both modes (see Incidents). Counted: 10 rounds each way, 8 of them complete pairs.
+
+### Load and processes through the runs
+
+| Mode | Rounds | Run, s (median) | Runnable mean (median) | Load1 mean (median) | Vitest workers | Children below them, max |
+| --- | --- | --- | --- | --- | --- | --- |
+| on | 10 | 62 to 139 (88) | 50 to 87 (61) | 66 to 151 (93) | 9 | 18 to 27 |
+| off | 10 | 50 to 171 (99) | 50 to 82 (67) | 64 to 141 (91) | 9 | 15 to 26 |
+
+The two modes ran under comparable load. Per-round rows, every failure with its time, the runnable count then and how many of the nine were running: `tasks/001-137/results.txt`.
+
+### Outcomes per file (rounds failed of 10)
+
+| File | on | off | Median duration on, off |
+| --- | --- | --- | --- |
+| `artifacts/cli` | 5 | 0 | 17.1 s, 9.3 s |
+| `discovery/cli` | 5 | 0 | 26.2 s, 16.3 s |
+| `server-install/platforms/ubuntu-vps` | 6 | 3 | 8.4 s, 6.2 s |
+| `git-worktree-lock` | 4 | 2 | 24.2 s, 18.0 s |
+| `application-update/service` | 2 | 1 | 10.5 s, 7.8 s |
+| `ci-wait/process` | 1 | 1 | 17.8 s, 17.0 s |
+| `autosave-timeout` | 2 | 4 | 20.9 s, 20.4 s |
+| `server/worktrees-api` | 7 | 7 | 62.5 s, 78.8 s |
+| `server/repo-branches-api` | 10 | 10 | 23.8 s, 18.8 s |
+
+- Totals: failing files 42 on, 28 off; failing tests 63 on, 66 off. Complete pairs: on worse in 6, off worse in 2, sign test p 0.29. Both reversals (pairs 12 and 13) had the heavier off round (load1 134 and 87, against 96 and 66 on).
+- The two CLI files together: 10 of 20 on, 0 of 20 off, Fisher two-sided p 0.0004. Each failure is the one test that runs `node --import tsx src/index.ts <command> --help` under a 15 s deadline: `Test timed out in 15000ms`. Off rounds never failed it, including the arm's two heaviest (load1 141 and 134). Verified by experiment.
+- The other seven pooled: 30 of 70 on, 28 of 70 off, Fisher p 0.86. They fail without the recorder under the same load at a similar rate, so for them "load" holds. `ubuntu-vps` (6 vs 3) and `git-worktree-lock` (4 vs 2) lean toward the recorder, but ten rounds cannot tell. `repo-branches-api` fails nearly always on this host, yet it passed once (a no-burner round with the recorder on), so it is contention-sensitive, not broken. Verified by experiment.
+
+### Not the recorder's CPU in bulk
+
+- Whole tree, no burners, ambient load 60 to 130 (`cpu.sh`, three pairs, user plus sys of every waited descendant): on 65.3, 71.2, 70.9 CPU-s; off 68.8, 66.7, 68.6. The recorder adds about 2 CPU-s, 3%. In the same runs `artifacts/cli` took 6.4, 10.6, 12.2 s on and 4.9, 6.8, 5.5 s off. Verified by experiment.
+- The CLI child alone, outside Vitest, recorder through `NODE_OPTIONS` as a worker's child inherits it (`child.sh`, six pairs, no burners): 1.5 CPU-s and about 1.0 to 1.4 s wall either way, 260 paths recorded. Only the first, cold run was slower (4.8 s, on). Verified by experiment.
+- So under contention the recorder slows these two tests by more than its CPU share, and the child on its own does not show it. Where the time goes inside the worker is not determined. Candidates, read in `src/runners/observe/recorder.cjs` but not measured: the flush before every `process.send`, which is a synchronous `appendFileSync` whenever paths are pending, in a fork worker that talks to Vitest over IPC; one `realpathSync` per new path; and the `registerHooks` resolve hook in the worker and every node child.
+
+### The 001-132 `CEZ_*` exposure
+
+- The 001-132 worker's handoff holds six lines `mock: implemented the change (dry run)` between 15:25:07Z and 16:14:07Z, one per A/B round, plus one at 15:20:19Z from `mock.ts`. So `scripts/mock-claude.mjs` ran with the worker's `CEZ_*` in every round, on and off alike. Read in that handoff, `.ai/cezar/runs/8dfd4b17-c590-46ea-82f5-7a65d7ef5044.handoff.md`.
+- The mock writes the handoff file, the todos file and `notes.md` in its cwd. None of the nine imports or spawns it (grep), and over 26 rounds here none left a `notes.md` in the clone, which the mock writes whatever `CEZ_*` holds. An effect through the inherited environment would be deterministic and show in every round; the nine failed in one. Verified by experiment and read in source.
+- Verdict: not plausibly the cause of the `on 1` failures. It was symmetric across modes. The one indirect path, `notes.md` appends waking the 001-132 worktree's own Squeal daemon, adds to the uncontrolled load `on 1` already names. Not determined, because that worktree is gone. Inferred.
+
+### Incidents
+
+- Nine rounds were SIGKILLed from outside, the whole process group of the round, in both modes. Decoy `sleep` processes with the same cwds, in their own sessions, lived through 30 minutes of it. Nothing in the nine files' code paths, in Squeal's sources or in 001-138's teardown kills a foreign group by inspection. Cause not determined. Each round now runs under `setsid`, so a kill ends only that round, which `rounds.sh` logs.
+- The 24 busy loops held the shared host near load 140 and blocked another coordinator. They were stopped on the coordinator's instruction. `arm.sh` now refuses more than 8 and wraps each in `timeout`, so a rerun cannot reproduce this load exactly.
+- This session's shell was briefly in the clone once. No Squeal daemon or store appeared there (checked).
+
+### For done-when 3 and D4
+
+- Done-when 3 is causally settled for seven of the nine (load) and failed for two: the recorder makes the CLI-spawning tests miss their 15 s deadline under contention, while the same load does not fail them without it.
+- The p50/p90 cost figures above stay measurements under different loads. They are not causal overhead estimates, and they hide this tail.
+
+Open: where the time goes in those two workers (a profile of `artifacts/cli.test.ts` alone, on and off, under at most 8 burners); whether `ubuntu-vps` and `git-worktree-lock` also lean on the recorder; who killed the rounds.
