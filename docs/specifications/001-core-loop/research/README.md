@@ -82,3 +82,12 @@ Added 2026-10-07 from `lessons.md` defect 20. Today the environment hash (D3) in
 4. Prior art, docs or source only: how Nx, Turborepo and Bazel hash external dependencies per project or target.
 
 Recommendation: sound or not, the cost, what D3 would say, and a board row's done-when if it is worth building.
+
+## Topic: harness-process-liveness
+
+Added 2026-10-08 from `lessons.md` defect 24. A daemon must learn that a session's harness has exited even when no SessionEnd ran.
+
+1. From inside a hook process, which ancestor is the long-lived harness (Claude Code interactive, `claude -p`, a subagent's hooks, Codex `exec` and interactive)? Walk `ppid` by experiment, with Squeal's `sh -c` fast path (001-93) in between, at Claude Code 2.1.292 and the installed Codex. Record the chain for each case.
+2. How the daemon can tell later that exactly that process is gone: `kill(pid, 0)` plus a start time (`/proc/<pid>/stat` field 22 on Linux, `ps -o lstart` or `sysctl kern.proc` on macOS, docs only there), and what happens across a PID reuse. Cost of each check.
+3. Does a hook ever run with a harness that is not its ancestor (Cezar, a launcher, `nohup`, a container)? What does Cezar's session look like from a hook (the agent process, or Cezar itself)?
+4. Recommendation: the rule, its cost per hook call, and what to do when it cannot name a process (fall back to the 12 h expiry).

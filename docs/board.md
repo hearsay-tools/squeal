@@ -217,6 +217,14 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-119 re-review of 001-118 | done, PASS with S1 (`reviews/wave-11g.md`) (brief in `specifications/001-core-loop/tasks/wave-11.md`) | `/reviewer` on gpt-6.1-sol, last round on the 001-111 slice. | `reviews/wave-11g.md` committed. |
 | 001-120 a link into another repository is never observed | done (0.1.26) (brief in `specifications/001-core-loop/tasks/wave-11.md`) | `reviews/wave-11g.md` S1: the nested-repository check looks at the link's path, not its target, so a link into another repository's subdirectory is watched. | The review's fixture is a failing-then-passing test. |
 
+### Wave 12: daemon lifetime (from `specifications/001-core-loop/lessons.md` defect 24)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 001-121 research: which process is the harness, seen from a hook | running (brief in `specifications/001-core-loop/tasks/wave-12.md`) | `/researcher`: the hook's ancestor chain in Claude Code and Codex, a PID-reuse-safe identity, cost per hook. | `research/harness-process-liveness.md` with a rule. |
+| 001-122 a daemon exits when its last session is gone | planned, after 001-121 | Human's rule: no idle period after the last consumer leaves (3 s grace for `/clear`, `/resume`); a running tier finishes and stores, then the daemon exits; a session whose harness process died is dropped at the next heartbeat. Fix the e2e fixture that leaked a daemon. | Real-daemon tests for SessionEnd, a running tier, SIGKILL of the harness, PID reuse; e2e leaves no daemon. |
+| 001-123 review of 001-122 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-12.md` committed. |
+
 ## Feature 002: Codex adapter
 
 Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2026-10-08 (0.1.29). Sections referenced as D1 to D8. Briefs under `specifications/002-codex-adapter/tasks/wave-N.md`.
