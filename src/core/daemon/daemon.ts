@@ -11,7 +11,7 @@ import type {
   RunnerAdapter,
   WorktreeId,
 } from "../types/index.js";
-import { bootstrappedMetaKey, DEFAULT_POLICY } from "../types/index.js";
+import { bootstrappedMetaKey, DEFAULT_POLICY, SLOW_LANE_PREFIX } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { type DaemonTimings, type Presence, startTimers, stepDownNote } from "./lifecycle.js";
@@ -254,6 +254,7 @@ class Daemon {
         nodeTest,
         runnerModule,
         { createCompositeRunner },
+        { withSlowInstance },
         { awaitsInstall },
       ] = await Promise.all([
         import("../daemon-loop/index.js"),
@@ -262,6 +263,7 @@ class Daemon {
         import("./node-test-runners.js"),
         import("./runner.js"),
         import("./composite-runner.js"),
+        import("./slow-instance.js"),
         import("../scheduler/index.js"),
       ]);
       const { storePaths } = await import("../store/index.js");
@@ -272,18 +274,21 @@ class Daemon {
       // built when detected, or when nothing else is configured, so a project
       // with neither keeps the "project without Vitest" failure note (001 D11).
       const configured = this.#policy.nodeTest;
+      // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
+      const vitestInstance = (lane: string, maxWorkers?: number) => () =>
+        vitest.createVitestAdapter({
+          root,
+          note: (text) => this.#note(text),
+          observe: () => this.#policy.observe.runtimeInputs,
+          childEnv: this.#children.envFor(lane),
+          ...(maxWorkers === undefined ? {} : { maxWorkers }),
+        });
       const vitestRunner =
         configured.length === 0 || runnerModule.vitestDetected(root)
           ? runnerModule.createRecoveringRunner({
               name: "vitest",
               adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-              create: () =>
-                vitest.createVitestAdapter({
-                  root,
-                  note: (text) => this.#note(text),
-                  observe: () => this.#policy.observe.runtimeInputs,
-                  childEnv: this.#children.env,
-                }),
+              create: vitestInstance("vitest"),
               onFailure: (text) =>
                 this.#note(
                   `${text}; every check of this worktree is unknown until the config loads`,
@@ -292,6 +297,15 @@ class Daemon {
               around,
             })
           : null;
+      // Spec 004 D2: the slow tier's own Vitest instance, made per slow pass with `slow.maxWorkers`.
+      const slowVitest = () =>
+        runnerModule.createRecoveringRunner({
+          name: "vitest",
+          adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+          create: vitestInstance(`${SLOW_LANE_PREFIX}vitest`, this.#policy.slow.maxWorkers),
+          onFailure: (text) => this.#note(`the slow tier's ${text}`),
+          around,
+        });
       const nodeTestRunners = nodeTest.createNodeTestRunners(configured, {
         root,
         store,
@@ -302,7 +316,7 @@ class Daemon {
       });
       const runner = afterEachRun(
         createCompositeRunner([
-          ...(vitestRunner === null ? [] : [vitestRunner]),
+          ...(vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)]),
           ...nodeTestRunners,
         ]),
         this.#children,

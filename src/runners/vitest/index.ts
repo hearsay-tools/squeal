@@ -25,6 +25,12 @@ export interface VitestAdapterOptions {
    * daemon's marker for the processes tests leave behind (D12, task 001-142).
    */
   readonly childEnv?: Readonly<Record<string, string>>;
+  /**
+   * Vitest's `maxWorkers` for this instance, over the config's: the slow
+   * tier's instance takes policy `slow.maxWorkers` (spec 004 D2). Absent:
+   * the config's own.
+   */
+  readonly maxWorkers?: number;
 }
 
 /**
@@ -40,6 +46,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     options.note,
     options.observe,
     options.childEnv,
+    options.maxWorkers,
   );
   await adapter.open();
   return adapter;
