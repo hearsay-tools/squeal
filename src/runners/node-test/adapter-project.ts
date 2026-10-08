@@ -14,6 +14,7 @@ import { listTestFiles } from "./adapter-files.js";
 import { Observed } from "./adapter-observed.js";
 import { enumerate } from "./enumerate.js";
 import { createNodeTestGraph } from "./graph/index.js";
+import { asyncLoaders, tokenizeNodeOptions } from "./run/node-options.js";
 import { runNodeTest } from "./run/run.js";
 
 /** One project as `createNodeTestAdapter` resolved it. */
@@ -62,6 +63,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   };
   const notes = () => {
     for (const text of graph.notes()) once(text.replace(/^node-test: /, ""));
+    for (const text of loaderThreadNotes(project)) once(text);
     // B1: what the preloads load by a computed specifier is known only after a run.
     for (const reason of graph.preloads().incomplete) once(`preload closure incomplete: ${reason}`);
     const incomplete = graph.incompleteClosures();
@@ -143,6 +145,24 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     },
     close: async () => {},
   };
+}
+
+/**
+ * One note per async loader of the project's argv or `NODE_OPTIONS` (review
+ * wave 2.6, S1): the recorder skips Node's loader thread, so what the loader
+ * loads is in no key unless declared. `module.register` shows in no flag; a
+ * preload importing `node:module` has the graph's note.
+ */
+function loaderThreadNotes(project: NodeTestProject): string[] {
+  const nodeOptions = project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "";
+  const loaders = [
+    ...asyncLoaders(project.argv),
+    ...asyncLoaders(tokenizeNodeOptions(nodeOptions) ?? []),
+  ];
+  return [...new Set(loaders)].map(
+    (loader) =>
+      `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`,
+  );
 }
 
 /** A run of a project that cannot run: nothing completed (001 D12). */
