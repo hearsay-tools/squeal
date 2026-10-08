@@ -7406,9 +7406,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname22 = sp.dirname(file);
+        const dirname23 = sp.dirname(file);
         const basename12 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname22);
+        const parent2 = this.fsw._getWatchedDir(dirname23);
         let prevStats = stats;
         if (parent2.has(basename12))
           return;
@@ -7435,7 +7435,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname22, basename12);
+              this.fsw._remove(dirname23, basename12);
             }
           } else if (parent2.has(basename12)) {
             const at2 = newStats.atimeMs;
@@ -10927,7 +10927,7 @@ function probeNode(project, cwd) {
     );
   });
 }
-function projectEnvironment2(root, project, probe, preloads, adapterVersion) {
+function projectEnvironment2(root, project, probe, preloads, adapterVersion, packages) {
   const execPath = probe.ok ? toRelative(root, probe.execPath) ?? probe.execPath : null;
   const cwd = slashes2(relative6(root, projectCwd(root, project)));
   const config = {
@@ -10946,7 +10946,8 @@ function projectEnvironment2(root, project, probe, preloads, adapterVersion) {
     runnerVersion: probe.ok ? probe.version : NODE_UNAVAILABLE,
     adapterVersion,
     resolvedConfig: JSON.stringify(config),
-    files: [...preloads]
+    files: [...preloads],
+    ...packages === void 0 ? {} : { packages }
   };
 }
 function slashes2(path) {
@@ -17143,6 +17144,13 @@ var init_closures = __esm({
         eachRank(bits, (r) => out.push(this.relative[r] ?? ""));
         return out;
       }
+      /** Calls `fn` with each path of a closure, in rank order. */
+      each(bits, fn) {
+        eachRank(bits, (r) => {
+          const path = this.paths[r];
+          if (path !== void 0) fn(path);
+        });
+      }
       incomplete(bits) {
         const out = /* @__PURE__ */ new Set();
         for (const [r, why2] of this.reasons) {
@@ -17249,6 +17257,46 @@ var init_glob2 = __esm({
       ".cjs": [".cts", ".cjs"]
     };
     escapeRegExp2 = (text2) => text2.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+});
+
+// src/runners/node-test/graph/packages.ts
+function builtinName(specifier) {
+  const name = specifier.startsWith("node:") ? specifier.slice("node:".length) : specifier;
+  return name.split("/")[0] ?? name;
+}
+function packageName2(specifier) {
+  if (specifier === "" || /^[./\\\0#]/.test(specifier) || specifier.includes(":")) return null;
+  return /^(?:@[^/]+\/)?[^/]+/.exec(specifier)?.[0] ?? null;
+}
+function packageImport(from, specifier) {
+  const name = packageName2(specifier);
+  if (name === null) return null;
+  return specifier === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
+}
+var UNNAMED2, PackageSet;
+var init_packages3 = __esm({
+  "src/runners/node-test/graph/packages.ts"() {
+    "use strict";
+    init_fs();
+    UNNAMED2 = "module";
+    PackageSet = class {
+      imports = /* @__PURE__ */ new Map();
+      builtins = /* @__PURE__ */ new Set();
+      add(imports, builtins = []) {
+        for (const entry2 of imports) {
+          this.imports.set(`${entry2.from}\0${entry2.name}\0${entry2.manifest === true}`, entry2);
+        }
+        for (const name of builtins) this.builtins.add(name);
+      }
+      packages(runner) {
+        return {
+          imports: [...this.imports.values()],
+          builtins: [...this.builtins].sort(compare),
+          ...runner === void 0 ? {} : { runner }
+        };
+      }
+    };
   }
 });
 
@@ -17375,6 +17423,7 @@ var init_code_ranges = __esm({
 function parseModule(source, name) {
   const specifiers = [];
   const incomplete = [];
+  let unnamed = false;
   try {
     const [imports] = parse(source, name);
     for (const record of imports) {
@@ -17385,6 +17434,7 @@ function parseModule(source, name) {
           incomplete.push(
             `import() with a computed specifier at ${name}:${position(source, record.importStart)}`
           );
+          unnamed = true;
           continue;
         }
         specifiers.push(
@@ -17396,6 +17446,7 @@ function parseModule(source, name) {
     }
   } catch (error) {
     incomplete.push(`${name} does not parse as a module: ${error.message}`);
+    unnamed = true;
   }
   const literal2 = /* @__PURE__ */ new Set();
   for (const match2 of source.matchAll(REQUIRE2)) {
@@ -17410,9 +17461,15 @@ function parseModule(source, name) {
       incomplete.push(
         `require() with a computed specifier at ${name}:${position(source, match2.index)}`
       );
+      unnamed = true;
     }
   }
-  return { specifiers, incomplete };
+  for (const match2 of source.matchAll(RESOLVE)) {
+    if (unnamed) break;
+    code ??= codeAt(source);
+    unnamed = code(match2.index);
+  }
+  return { specifiers, incomplete, unnamed };
 }
 function position(source, offset2) {
   let line = 1;
@@ -17423,7 +17480,7 @@ function position(source, offset2) {
   }
   return `${line}:${offset2 - start + 1}`;
 }
-var parserReady, PARSED_EXTENSION, REQUIRE2, REQUIRE_CALL;
+var parserReady, PARSED_EXTENSION, REQUIRE2, REQUIRE_CALL, RESOLVE;
 var init_parse = __esm({
   "src/runners/node-test/graph/parse.ts"() {
     "use strict";
@@ -17433,12 +17490,13 @@ var init_parse = __esm({
     PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
     REQUIRE2 = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
     REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
+    RESOLVE = /(?<![\w$.])require\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bimport\s*\.\s*meta\s*\.\s*resolve\b/g;
   }
 });
 
 // src/runners/node-test/graph/modules.ts
 import { readFileSync as readFileSync13 } from "node:fs";
-import { relative as relative7, sep as sep8 } from "node:path";
+import { dirname as dirname19, relative as relative7, sep as sep8 } from "node:path";
 function sameEdges(a, b) {
   return sameSet(a.deps, b.deps) && sameSet(a.reads, b.reads) && sameSet(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n") && a.pairs.flat().join("\n") === b.pairs.flat().join("\n");
 }
@@ -17447,8 +17505,9 @@ var init_modules = __esm({
   "src/runners/node-test/graph/modules.ts"() {
     "use strict";
     init_glob2();
+    init_packages3();
     init_parse();
-    NO_PARSE = { specifiers: [], incomplete: [] };
+    NO_PARSE = { specifiers: [], incomplete: [], unnamed: false };
     ModuleTable = class {
       constructor(root, resolver, tsx) {
         this.root = root;
@@ -17513,6 +17572,9 @@ var init_modules = __esm({
         const candidates = /* @__PURE__ */ new Set();
         const incomplete = [...parsed.incomplete];
         const pairs = [];
+        const packages = [];
+        const builtins = new Set(parsed.unnamed ? [UNNAMED2] : []);
+        const from = this.relativeDir(file);
         const format = this.tsx ? this.resolver.moduleFormat(file) : null;
         if (format?.manifest != null && parsed.specifiers.length > 0) reads.add(format.manifest);
         for (const { specifier, kind: written, dynamic } of parsed.specifiers) {
@@ -17528,12 +17590,23 @@ var init_modules = __esm({
           }
           const kind = written === "import" && !dynamic && format?.format === "commonjs" ? "require" : written;
           const resolution = this.resolver.resolve(specifier, file, kind);
+          if (resolution.builtin) builtins.add(builtinName(specifier));
+          else if (from !== null && (resolution.path === null || !this.inWorktree(resolution.path))) {
+            const entry2 = packageImport(from, specifier);
+            if (entry2 !== null) packages.push(entry2);
+          }
           for (const read3 of resolution.reads) reads.add(read3);
           for (const candidate of resolution.candidates) candidates.add(candidate);
           if (resolution.pair !== null) pairs.push(resolution.pair);
           if (resolution.path !== null && this.inWorktree(resolution.path)) deps.add(resolution.path);
         }
-        return { deps, reads, candidates, incomplete, pairs };
+        return { deps, reads, candidates, incomplete, pairs, packages, builtins: [...builtins] };
+      }
+      /** A module's directory relative to the root, `""` for the root, `null` outside it. */
+      relativeDir(file) {
+        const dir = dirname19(file);
+        if (dir === this.root) return "";
+        return dir.startsWith(this.root + sep8) ? dir.slice(this.root.length + 1).split(sep8).join("/") : null;
       }
       /** The specifiers `file` was parsed to, for a preload's hooks check. */
       specifiers(file) {
@@ -17548,6 +17621,43 @@ var init_modules = __esm({
   }
 });
 
+// src/runners/node-test/graph/preload-notes.ts
+function preloadNotes({ table, roots, outside, rules, rel }) {
+  const chain = rules === "tsx" ? "tsx's" : "Node's own";
+  const notes2 = outside.map(
+    (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv or NODE_OPTIONS; resolving with ${chain} rules`
+  );
+  for (const root of roots) {
+    const hooks = importerOfModule(table, root);
+    if (hooks === null) continue;
+    const through = hooks === root ? "" : ` through ${JSON.stringify(rel(hooks))}`;
+    notes2.push(
+      `node-test: preload ${JSON.stringify(rel(root))} imports node:module${through} and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with ${chain} rules`
+    );
+  }
+  return notes2;
+}
+function importerOfModule(table, root) {
+  const seen = /* @__PURE__ */ new Set([root]);
+  const stack = [root];
+  for (let file = stack.pop(); file !== void 0; file = stack.pop()) {
+    const hooks = table.specifiers(file).some((s) => s.specifier === "node:module" || s.specifier === "module");
+    if (hooks) return file;
+    for (const dep of table.node(file)?.deps ?? []) {
+      if (!seen.has(dep)) {
+        seen.add(dep);
+        stack.push(dep);
+      }
+    }
+  }
+  return null;
+}
+var init_preload_notes = __esm({
+  "src/runners/node-test/graph/preload-notes.ts"() {
+    "use strict";
+  }
+});
+
 // src/runners/node-test/graph/graph.ts
 import { basename as basename10, join as join40, relative as relative8, sep as sep9 } from "node:path";
 var MANIFEST2, Graph;
@@ -17556,6 +17666,8 @@ var init_graph2 = __esm({
     "use strict";
     init_closures();
     init_modules();
+    init_packages3();
+    init_preload_notes();
     MANIFEST2 = /^(?:package\.json|tsconfig.*\.json)$/;
     Graph = class {
       constructor(root, cwd, chain, resolver) {
@@ -17631,6 +17743,36 @@ var init_graph2 = __esm({
       preloads() {
         const index = this.current();
         return this.present(index, index.preload, this.preloadIncomplete);
+      }
+      /** Task 003-22: what the project modules of a test file's static closure import in one hop. */
+      packages(testFile) {
+        const index = this.current();
+        const bits = index.test(this.abs(testFile));
+        if (bits === void 0) {
+          throw new Error(`node-test graph: ${testFile} is not a test file of this project`);
+        }
+        return this.collect(index, bits).packages();
+      }
+      /**
+       * Task 003-22: what the preloads' closure imports in one hop, and the
+       * loader chain's packages, looked up from `cwd`, as the runner's: tsx, a
+       * bare `--loader`, a bare preload under `node_modules`. A loader given as
+       * a path is in no closure, so what it imports is unknown: `module`.
+       */
+      environmentPackages() {
+        const index = this.current();
+        const set = this.collect(index, index.preload);
+        const cwd = this.rel(this.cwd);
+        const from = cwd.startsWith("..") ? null : cwd;
+        const tsx = this.chain.rules === "tsx" ? ["tsx"] : [];
+        const runner = [];
+        for (const specifier of [...this.outsidePreloads, ...this.chain.unrecognized, ...tsx]) {
+          const entry2 = from === null ? null : packageImport(from, specifier);
+          if (entry2 === null) set.add([], [UNNAMED2]);
+          else runner.push(entry2);
+        }
+        set.add(runner);
+        return set.packages(runner);
       }
       /**
        * D4: `direct` is every changed test file and every test file that imports
@@ -17719,25 +17861,23 @@ var init_graph2 = __esm({
           this.preloadExtra.push(...resolution.reads, ...resolution.candidates);
         }
       }
-      /**
-       * Notes for preloads: a bare one outside the worktree's modules is an
-       * unrecognized loader; a worktree one importing `node:module` may register
-       * hooks that change resolution.
-       */
+      /** Notes for the preloads, by {@link preloadNotes}. */
       preloadNotes() {
-        const rules = this.chain.rules === "tsx" ? "tsx's" : "Node's own";
-        const notes2 = this.outsidePreloads.map(
-          (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${rules} rules`
-        );
-        for (const root of this.preloadRoots) {
-          const hooks = this.table.specifiers(root).some((s) => s.specifier === "node:module" || s.specifier === "module");
-          if (hooks) {
-            notes2.push(
-              `node-test: preload ${JSON.stringify(this.rel(root))} imports node:module and may register module hooks; resolving with ${rules} rules`
-            );
-          }
-        }
-        return notes2;
+        return preloadNotes({
+          table: this.table,
+          roots: this.preloadRoots,
+          outside: this.outsidePreloads,
+          rules: this.chain.rules,
+          rel: (path) => this.rel(path)
+        });
+      }
+      collect(index, bits) {
+        const set = new PackageSet();
+        index.each(bits, (path) => {
+          const node = this.table.node(path);
+          if (node !== void 0) set.add(node.packages, node.builtins);
+        });
+        return set;
       }
       present(index, bits, extra) {
         const incomplete = [...extra, ...index.incomplete(bits)];
@@ -17843,7 +17983,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname22 = (path) => {
+    var dirname23 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -18268,12 +18408,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname22(strWhat));
+          this.purge(dirname23(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname22(strItem));
+            set.add(dirname23(strItem));
           }
           this.purge(set);
         }
@@ -19751,7 +19891,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname22 = (maybePath) => {
+    var dirname23 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -19780,7 +19920,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname22(maybePath);
+        const result = dirname23(maybePath);
         cache.set(maybePath, result);
         return result;
       };
@@ -19877,7 +20017,7 @@ var require_path = __commonJS({
     module.exports.createCachedDirname = createCachedDirname;
     module.exports.createCachedJoin = createCachedJoin;
     module.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module.exports.dirname = dirname22;
+    module.exports.dirname = dirname23;
     module.exports.getType = getType;
     module.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module.exports.isFileURL = isFileURL;
@@ -22250,8 +22390,8 @@ var require_PackageMapPlugin = __commonJS({
           if (req.startsWith("node:")) return callback2();
           const packageMatch = PACKAGE_NAME_REGEXP.exec(req);
           if (!packageMatch) return callback2();
-          const [packageName2] = packageMatch;
-          const innerRequest = `.${req.slice(packageName2.length)}`;
+          const [packageName3] = packageMatch;
+          const innerRequest = `.${req.slice(packageName3.length)}`;
           this._getPackageMap(resolver, resolveContext, (err, packageMap) => {
             if (err) return callback2(err);
             const { packages } = (
@@ -22303,11 +22443,11 @@ var require_PackageMapPlugin = __commonJS({
               /** @type {import("./util/packageMap").PackageMapEntry} */
               packages.get(issuerId)
             );
-            const targetId = issuer.dependencies.get(packageName2);
+            const targetId = issuer.dependencies.get(packageName3);
             if (targetId === void 0) {
               if (resolveContext.log) {
                 resolveContext.log(
-                  `"${packageName2}" is not a dependency of package "${issuerId}" in the package map`
+                  `"${packageName3}" is not a dependency of package "${issuerId}" in the package map`
                 );
               }
               return callback2(null, null);
@@ -22326,7 +22466,7 @@ var require_PackageMapPlugin = __commonJS({
             resolver.doResolve(
               target,
               obj,
-              `resolved "${packageName2}" to package "${targetId}" by the package map`,
+              `resolved "${packageName3}" to package "${targetId}" by the package map`,
               resolveContext,
               (resolveErr, result) => {
                 if (resolveErr) return callback2(resolveErr);
@@ -22441,12 +22581,12 @@ var require_PnpPlugin = __commonJS({
           const issuer = `${request.path}/`;
           const packageMatch = /^(@[^/]+\/)?[^/]+/.exec(req);
           if (!packageMatch) return callback2();
-          const [packageName2] = packageMatch;
-          const innerRequest = `.${req.slice(packageName2.length)}`;
+          const [packageName3] = packageMatch;
+          const innerRequest = `.${req.slice(packageName3.length)}`;
           let resolution;
           let apiResolution;
           try {
-            resolution = this.pnpApi.resolveToUnqualified(packageName2, issuer, {
+            resolution = this.pnpApi.resolveToUnqualified(packageName3, issuer, {
               considerBuiltins: false
             });
             if (resolution === null) {
@@ -22491,7 +22631,7 @@ var require_PnpPlugin = __commonJS({
               error
             );
           }
-          if (resolution === packageName2) return callback2();
+          if (resolution === packageName3) return callback2();
           if (apiResolution && resolveContext.fileDependencies) {
             resolveContext.fileDependencies.add(apiResolution);
           }
@@ -26836,7 +26976,7 @@ var require_lib2 = __commonJS({
 });
 
 // src/runners/node-test/graph/tsconfig.ts
-import { dirname as dirname19, isAbsolute as isAbsolute8, join as join41, resolve as resolve10 } from "node:path";
+import { dirname as dirname20, isAbsolute as isAbsolute8, join as join41, resolve as resolve10 } from "node:path";
 function readTsconfigPaths(file, read3) {
   const files = [];
   const load = (config, seen) => {
@@ -26848,7 +26988,7 @@ function readTsconfigPaths(file, read3) {
     let baseUrl = null;
     for (const base of bases2) {
       if (typeof base !== "string") continue;
-      const target = locate(base, dirname19(config), read3);
+      const target = locate(base, dirname20(config), read3);
       if (target === null || seen.has(target)) continue;
       const inherited = load(target, /* @__PURE__ */ new Set([...seen, target]));
       pathsFile = inherited.pathsFile ?? pathsFile;
@@ -26857,7 +26997,7 @@ function readTsconfigPaths(file, read3) {
     const options = json3?.compilerOptions;
     if (isObject(options)) {
       if (isObject(options.paths)) pathsFile = config;
-      if (typeof options.baseUrl === "string") baseUrl = resolve10(dirname19(config), options.baseUrl);
+      if (typeof options.baseUrl === "string") baseUrl = resolve10(dirname20(config), options.baseUrl);
     }
     return { pathsFile, baseUrl };
   };
@@ -26869,11 +27009,11 @@ function locate(specifier, dir, read3) {
     const path = resolve10(dir, specifier);
     return [path, `${path}.json`].find(exists2) ?? null;
   }
-  for (let at2 = dir; ; at2 = dirname19(at2)) {
+  for (let at2 = dir; ; at2 = dirname20(at2)) {
     const base = join41(at2, "node_modules", specifier);
     const found = [base, `${base}.json`, join41(base, "tsconfig.json")].find(exists2);
     if (found !== void 0) return found;
-    if (dirname19(at2) === at2) return null;
+    if (dirname20(at2) === at2) return null;
   }
 }
 function parseJsonc(text2) {
@@ -26914,7 +27054,7 @@ var init_tsconfig = __esm({
 // src/runners/node-test/graph/resolver.ts
 import * as fs from "node:fs";
 import { isBuiltin as isBuiltin2 } from "node:module";
-import { dirname as dirname20, extname as extname4, join as join42, sep as sep10 } from "node:path";
+import { dirname as dirname21, extname as extname4, join as join42, sep as sep10 } from "node:path";
 function createResolver(chain, root) {
   let fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = /* @__PURE__ */ new Map();
@@ -26970,7 +27110,7 @@ function createResolver(chain, root) {
     if (found === void 0) {
       const manifest = join42(dir, "package.json");
       const text2 = readText(manifest);
-      const parent2 = dirname20(dir);
+      const parent2 = dirname21(dir);
       if (text2 !== null) {
         const type = parseJsonc(text2)?.type;
         found = {
@@ -26988,7 +27128,7 @@ function createResolver(chain, root) {
     let found = tsconfigs.get(dir);
     if (found === void 0) {
       const here = join42(dir, "tsconfig.json");
-      const parent2 = dirname20(dir);
+      const parent2 = dirname21(dir);
       found = exists2(here) ? here : dir === root || parent2 === dir ? null : tsconfigFor(parent2);
       tsconfigs.set(dir, found);
     }
@@ -27027,7 +27167,7 @@ function createResolver(chain, root) {
   return {
     resolve(specifier, importer, kind) {
       if (isBuiltin2(specifier)) return BUILTIN;
-      const from = dirname20(importer);
+      const from = dirname21(importer);
       const key = `${from}\0${kind}\0${specifier}`;
       let resolution = resolutions.get(key);
       if (resolution === void 0) {
@@ -27039,7 +27179,7 @@ function createResolver(chain, root) {
     moduleFormat(file) {
       if (COMMONJS.test(file)) return { format: "commonjs", manifest: null };
       if (MODULE.test(file)) return { format: "module", manifest: null };
-      return scopeOf(dirname20(file));
+      return scopeOf(dirname21(file));
     },
     release() {
       fileSystem.purge();
@@ -27121,13 +27261,15 @@ async function createNodeTestGraph(options) {
   graph.build(options.testFiles);
   const loaderNotes = () => [
     ...chain.unrecognized.map(
-      (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`
+      (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv or NODE_OPTIONS; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`
     ),
     ...graph.preloadNotes()
   ];
   return {
     closure: (testFile) => graph.closure(testFile),
     preloads: () => graph.preloads(),
+    packages: (testFile) => graph.packages(testFile),
+    environmentPackages: () => graph.environmentPackages(),
     affected: (changed) => graph.affected(changed),
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
@@ -27663,8 +27805,9 @@ async function openProject(context) {
   const { project, root, cwd, options, note } = context;
   const ref2 = (path) => ({ project: project.name, path });
   let files = listTestFiles2(root, project);
+  const argv = [...nodeOptionsOf(project), ...project.argv];
   const [graph, firstProbe] = await Promise.all([
-    createNodeTestGraph({ root, cwd, argv: project.argv, testFiles: files }),
+    createNodeTestGraph({ root, cwd, argv, testFiles: files }),
     probeNode(project, cwd)
   ]);
   let probe = firstProbe;
@@ -27726,14 +27869,26 @@ async function openProject(context) {
       const closure = graph.closure(testFile.path);
       const extra = observed.of(testFile.path);
       const paths = extra === void 0 ? closure.paths : [.../* @__PURE__ */ new Set([...closure.paths, ...extra])];
-      return { testFile, paths: [...paths].sort(compare) };
+      return {
+        testFile,
+        paths: [...paths].sort(compare),
+        packages: graph.packages(testFile.path)
+      };
     },
     enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
     testFiles: async () => files.map(ref2),
     async environment() {
       const preloads = [.../* @__PURE__ */ new Set([...graph.preloads().paths, ...observed.preloads()])];
+      const packages = graph.environmentPackages();
       return [
-        projectEnvironment2(root, project, probe, preloads.sort(compare), context.adapterVersion)
+        projectEnvironment2(
+          root,
+          project,
+          probe,
+          preloads.sort(compare),
+          context.adapterVersion,
+          packages
+        )
       ];
     },
     async run(testFiles, runOptions) {
@@ -27755,12 +27910,11 @@ async function openProject(context) {
     }
   };
 }
+function nodeOptionsOf(project) {
+  return tokenizeNodeOptions(project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") ?? [];
+}
 function loaderThreadNotes(project) {
-  const nodeOptions = project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "";
-  const loaders = [
-    ...asyncLoaders(project.argv),
-    ...asyncLoaders(tokenizeNodeOptions(nodeOptions) ?? [])
-  ];
+  const loaders = [...asyncLoaders(project.argv), ...asyncLoaders(nodeOptionsOf(project))];
   return [...new Set(loaders)].map(
     (loader) => `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`
   );
@@ -27880,7 +28034,7 @@ var init_adapter2 = __esm({
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
-    NODE_TEST_ADAPTER_VERSION = "4";
+    NODE_TEST_ADAPTER_VERSION = "5";
   }
 });
 
@@ -28252,7 +28406,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.30";
+  if (true) return "0.1.31";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -30982,7 +31136,7 @@ function readSettings(path) {
 
 // src/cli/remove.ts
 import { existsSync as existsSync16, lstatSync as lstatSync5, readdirSync as readdirSync9, rmSync as rmSync7 } from "node:fs";
-import { basename as basename11, dirname as dirname21, join as join47 } from "node:path";
+import { basename as basename11, dirname as dirname22, join as join47 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
@@ -31293,12 +31447,12 @@ function tempDirs(commonDir, worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key = basename11(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname21(scratch.tempDir);
+      const tmp = dirname22(scratch.tempDir);
       dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
       if (existsSync16(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback = `${userTmpDir(uid)}-${key}-`;
-    dirs.push(...entries(dirname21(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
+    dirs.push(...entries(dirname22(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
 }
