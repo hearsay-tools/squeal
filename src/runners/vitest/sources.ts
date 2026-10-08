@@ -94,8 +94,7 @@ export class SourceStamps {
    */
   async stale(vitest: Vitest, loadedSince: EpochMs = 0): Promise<AbsolutePath[]> {
     this.attach(vitest);
-    const cached = transformedFiles(vitest);
-    const files = [...cached].filter(
+    const files = [...transformedFiles(vitest)].filter(
       (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince,
     );
     const moved = await mapConcurrent(files, async (file) => {
