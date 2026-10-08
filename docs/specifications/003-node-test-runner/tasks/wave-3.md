@@ -73,3 +73,17 @@ Use /worker.
 ## 003-34 re-review of 003-33
 
 Outcome: `reviews/wave-3.5.md`: are `reviews/wave-3.md` B1 and B2 closed. Second round on this slice; a remaining blocker goes to the human. Range filled in at dispatch. Rules as for 003-32. Use /reviewer.
+
+## 003-35 Squeal's own recorders are never a project preload
+
+Outcome: a node:test project validated under a Squeal daemon (whose Vitest workers carry 001-132's recorder) is keyed exactly as in a plain shell.
+
+Read: the board row; `status.md` (the 2026-10-08 lines on 001-132 and `SQUEAL_OBSERVE`); `src/runners/node-test/graph/loader-chain.ts` (how `NODE_OPTIONS` is read since 003-22), `src/runners/node-test/run/run.ts` (`childEnv`), `src/runners/vitest/observe.ts` and `src/runners/vitest/environment.ts` for how 001 injects its recorder.
+
+Shape: repair. Test first: with `NODE_OPTIONS='--require "<plugin>/dist/observe/recorder.cjs"'` and `SQUEAL_OBSERVE=1` in the test process's environment, `test/runners/node-test/adapter-loader.test.ts` and `adapter-degraded.test.ts` fail today (7 of 10). Seam: one predicate for "a Squeal recorder" (a `--require` or `--import` whose path ends in `/observe/recorder.cjs` or `/node-test/recorder.cjs` under a Squeal plugin `dist` or this repository's `src`), applied where the graph reads an inherited `NODE_OPTIONS` and where `childEnv` builds the child's: drop those tokens from what is treated as a project preload, and do not pass an inherited `SQUEAL_OBSERVE` to the project's processes. A project's own `--require` in its `env.NODE_OPTIONS` still counts. Raise `NODE_TEST_ADAPTER_VERSION` if keys change.
+
+Owns: `src/runners/node-test/**`, `test/runners/node-test/**`, `test/integration/node-test*.test.ts`. Leave alone: `src/runners/vitest/**` and `src/core/**` (001's).
+
+Done when: the whole `test/runners/node-test`, `test/integration/node-test*` and `test/e2e/node-test.test.ts` pass with and without the recorder and `SQUEAL_OBSERVE` in the environment, on Node 22 and 24; a project's own `--require` preload in its `env` still appears in `preloads()`; lint, typecheck, full suite green. Tests that start daemons stop them (`test/global-teardown.ts`, 001-138). Do not run `npm run build`.
+
+Use /worker.
