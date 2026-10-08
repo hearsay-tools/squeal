@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { dirname } from "node:path";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
@@ -33,6 +34,23 @@ describe("vitest adapter: observed runtime inputs", SLOW, () => {
       for (const path of RUNTIME_READS) expect(other?.paths ?? []).not.toContain(path);
     },
   );
+
+  it("records a worktree that lies inside the temp directory", async () => {
+    // A daemon's TMPDIR is its own directory; a test or session may put the worktree below it.
+    const fx = await openFixture("observed");
+    const saved = process.env.TMPDIR;
+    onTestFinished(() => {
+      if (saved === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = saved;
+    });
+    process.env.TMPDIR = dirname(fx.root);
+    const inside = await openFixture("observed", {}, observing);
+    const report = await inside.adapter.run(
+      [ref("test/runtime.test.ts", "forks")],
+      inside.runOptions(),
+    );
+    expect(report.observed?.[0]?.paths).toContain("data/input.txt");
+  });
 
   it("observes nothing while observation is off, and changes no environment", async () => {
     const off = await openFixture("observed");

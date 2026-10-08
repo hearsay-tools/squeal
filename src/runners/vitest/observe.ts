@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { AbsolutePath, ObservedInputs, TestFileRef } from "../../core/types/index.js";
 import {
@@ -61,7 +61,10 @@ export class VitestObserver {
     if (recorder === null) return {};
     const out = mkdtempSync(join(tmpdir(), "squeal-observe-"));
     this.#out = out;
-    const settings = { out, root: this.paths.root, skip: [tmpdir()] };
+    // The temp directory is skipped when it lies inside the worktree, never when the worktree lies in it.
+    const temp = tmpdir();
+    const contains = `${this.paths.root}${sep}`.startsWith(`${temp}${sep}`);
+    const settings = { out, root: this.paths.root, skip: contains ? [] : [temp] };
     this.#injected = observeEnv(recorder, settings, process.env.NODE_OPTIONS);
     return { env: this.#injected };
   }
