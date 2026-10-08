@@ -29,3 +29,29 @@ Owns: `test/e2e/**`, `test/fixtures/e2e/**`. Leave alone: everything under `src/
 Done when: every e2e file passes for both plugins on Node 22 and 24 at calm load (the committed bundles of the branch are what run; the coordinator rebuilds at integration, so run against bundles you build into a temp directory if needed and say how); a version raise followed by an e2e run before its commit leaves no e2e failure; lint, typecheck, full suite green.
 
 Use /worker.
+
+## 003-32 review of wave 3
+
+Outcome: `reviews/wave-3.md` in this spec folder.
+
+Range: `edb5d35` (003-22) and `7112b39`, `c9641f9` (003-18, 002-24) on main, with the 0.1.31 bundles.
+
+Questions: (1) Can a node:test file's per-package key be too narrow: a package reached through a preload, a loader, a workspace symlink, a `require.resolve` with a literal, a type-only import that tsx keeps, a JSON import, a package imported only by an observed path, `NODE_OPTIONS` from the project's `env` against the daemon's? Compare with 001-105's rules for Vitest. (2) Is `module` reported for every load the graph cannot name, and does that send the file to the whole fingerprint in the core? (3) Does the node:test e2e prove what its comments claim (only the affected file ran, inheritance with zero runs), on both plugins, and does copying the worktree's tracked plugin files keep the marketplace-install property? (4) Anything the cezarion dogfooding (003-19) should watch.
+
+Rules as for 003-25. Use /reviewer.
+
+## 003-19 dogfooding on cezarion
+
+Outcome: a section in a new `lessons.md` in this spec folder, with evidence, of Squeal validating cezarion's node:test suites while a real agent works there.
+
+Decided by the human: the `nodeTest` config lives only in a worktree of cezar, uncommitted; nothing reaches cezar's main checkout. Create a linked worktree with `git -C /home/agent/projects/cezar worktree add --detach /tmp/squeal-dogfood-cezarion-<yours> HEAD`, never edit or commit in `/home/agent/projects/cezar`, and remove the worktree with `git -C /home/agent/projects/cezar worktree remove` when done. In it: `npm ci` and cezar's build (a copy without `dist` fails 17 unit tests, `reviews/wave-2.md`), then `node /home/agent/projects/squeal/plugins/codex/dist/cli/squeal.mjs init` to seed `squeal.config.json` (expect `packages/cezar:test:unit` and `test:package`), and record the config it wrote.
+
+The agent: `codex exec -C <the worktree>` with the installed Squeal Codex plugin (0.1.31 or later in the real `~/.codex`, trusted; the human approved it for dogfooding). Give it two or three small real tasks in cezarion that touch modules its node:test unit suites cover, including one that breaks a test and then fixes it, and one in a package the e2e suite covers. Never read `~/.codex/auth.json`; never pass `--dangerously-bypass-hook-trust`.
+
+Record: start-to-ready time and daemon RSS; baseline duration and counts per project; for each edit, which node:test files ran (only affected ones?) and what reached the agent, when; whether the agent ran tests itself and why; closures marked incomplete and why (computed imports, child processes: open question 3); any false, late or missing report; Node version. Stop every daemon you started. The cezar repository's shared Squeal store (`/home/agent/projects/cezar/.git/squeal/`) will hold results from this worktree: say so, and do not delete them.
+
+Owns: `docs/specifications/003-node-test-runner/lessons.md` and throwaway scripts under `research/probes/dogfood/` with a README. No product code: name defects, do not fix them.
+
+Done when: `lessons.md` has a verdict against spec 003 goals 1 to 8, the measurements, excerpts, and numbered defects; the cezar worktree is removed and cezar's main checkout untouched.
+
+Use /worker.
