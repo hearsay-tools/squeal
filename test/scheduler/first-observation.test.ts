@@ -19,6 +19,8 @@ import {
  */
 const APPEAR = "test/appear.test.ts";
 const POOLS = ["forks", "threads"] as const;
+/** Observed inputs on, whatever the policy default (task 001-134). */
+const OBSERVING = { observe: true, policy: { observe: { runtimeInputs: true } } } as const;
 const at = (path: string, project: string): TestFileRef => ({ project, path });
 
 /** Reads `read` before it exists; the driver creates `data/appeared.txt` while the run sleeps. */
@@ -108,7 +110,7 @@ describe(
       async ({ read, link, watched }) => {
         const repo = createRepo("observed");
         const store = openRepoStore(repo.commonDir);
-        const h = await openHarness(repo.main, store, repo.commonDir, { observe: true });
+        const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
         await h.scheduler.start();
         await h.scheduler.idle();
         // An edit's tier, which a watch batch during it does not cancel, as a backlog tier's is.
@@ -149,7 +151,7 @@ describe(
         const root = addWorktree(repo.main, repo.dir, "second");
         plant(root, read, link);
         writeFileSync(join(root, "data/appeared.txt"), "appeared\n");
-        const second = await openHarness(root, store, repo.commonDir, { observe: true });
+        const second = await openHarness(root, store, repo.commonDir, OBSERVING);
         await second.scheduler.start();
         await second.scheduler.idle();
         for (const [i, pool] of POOLS.entries()) {
@@ -165,7 +167,7 @@ describe(
       const repo = createRepo("observed");
       writeFileSync(join(repo.main, "test/new-path.test.ts"), NEW_PATH_TEST);
       const store = openRepoStore(repo.commonDir);
-      const h = await openHarness(repo.main, store, repo.commonDir, { observe: true });
+      const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
       await h.scheduler.start();
       await h.scheduler.idle();
       for (const pool of POOLS) {

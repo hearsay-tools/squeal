@@ -13,6 +13,8 @@ import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./he
 const RECURSIVE = "test/tree.test.ts";
 const SHALLOW = "test/shallow.test.ts";
 const POOLS = ["forks", "threads"] as const;
+/** Observed inputs on, whatever the policy default (task 001-134). */
+const OBSERVING = { observe: true, policy: { observe: { runtimeInputs: true } } } as const;
 const at = (path: string, project: string): TestFileRef => ({ project, path });
 
 const RECURSIVE_TEST = `import { readdirSync } from "node:fs";
@@ -81,7 +83,7 @@ describe("scheduler: a recursive listing (task 001-134, review wave 12d B5)", SL
     writeFileSync(join(repo.main, RECURSIVE), RECURSIVE_TEST);
     writeFileSync(join(repo.main, SHALLOW), SHALLOW_TEST);
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { observe: true });
+    const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
     h.write("tree/sub/a.txt", "a\n");
     h.write("tree/sub/c.txt", "c\n");
     reportRecursive(h.runner);
