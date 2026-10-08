@@ -1,0 +1,1 @@
+{ "name": "ori-v4", "private": true, "type": "module", "devDependencies": { "vitest": "4.1.11" } }
