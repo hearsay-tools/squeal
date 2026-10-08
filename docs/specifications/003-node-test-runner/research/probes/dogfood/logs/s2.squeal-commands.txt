@@ -1,0 +1,19 @@
+== 2026-10-08T09:03:36.922Z exit=0 60.26s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" status --wait 60000
+Returned on timeout after 60.3 s: 1136 checks and the runner part of revision 4 pending at revision 4
+
+Revision: 4
+Known failures: 0
+Affected checks: 14647 passed, 1102 running, 34 queued, 2 skipped; the runner part of revision 4 is pending, so test files it adds are not counted yet
+Full-suite checkpoint: none completed at revision 4; last completed at revision 0
+
+Worktree: /tmp/squeal-dogfood-cezarion-56f54ae1 (HEAD 13351da, dirty at revision 4)
+Daemon: running, last heartbeat 1 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-08T07:56:21.275Z: node-test project "root:test:unit": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:77:40; import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:9:17), .github/scripts/failure-workflow.test.cjs (require() with a computed specifier at .github/scripts/failure-workflow.test.cjs:14:73)
+  2026-10-08T07:56:21.277Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+  2026-10-08T07:56:21.279Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+

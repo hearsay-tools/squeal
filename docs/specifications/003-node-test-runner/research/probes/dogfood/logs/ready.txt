@@ -1,3 +1,5 @@
+t0 2026-10-08T07:56:19.041Z (squeal start spawned), load average 23.30, 27.75, 26.72
 +1.93s squeal start exit 0: Squeal daemon spawned for /tmp/squeal-dogfood-cezarion-56f54ae1
 +15.44s first test_file_keys row, RSS 882.4 MiB
 +16.25s ready (daemon-bootstrapped written), pid 818133, RSS 879.7 MiB
++900.01s worktree 4ce39392decee992, daemon pid 818133, RSS now 663.3 MiB, peak 883.7 MiB

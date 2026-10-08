@@ -1,0 +1,5 @@
+checkpoint baseline r0 07:56:34.444 08:48:01.953 3087.5s completed 685 files
+runs 173 [ null ]
+daemon RSS after baseline: VmRSS:	  918420 kB
+daemon 818133 RSS at 09:17:01: VmRSS:	 1016836 kB
+RSS before stop: VmRSS:	 1016836 kB

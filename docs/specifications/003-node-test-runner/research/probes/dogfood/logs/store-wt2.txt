@@ -1,0 +1,114 @@
+## meta (this worktree, nodeTest keys)
+nodeTest.observed.test:unit = {"packages/cezar/test/unit/resolve-browser-launch.test.ts":[".ai/scripts/resolve-browser-launch.mjs"]}
+nodeTest.observed.test:package = {"packages/cezar/test/e2e/inline-contract.test.ts":["packages/cezar/dist/agent-config/catalog.js","packages/cezar/dist/agent-config/files.js","packages/cezar/dist/agent-config/model-settings/claude.js","packages/cezar/dist/agent-config/model-settings/codex.js","packages/cezar/dist/agent-config/model-settings/opencode.js","packages/cezar/dist/agent-config/model-settings/pi.js","packages/cezar/dist/
+nodeTest.observed.root:test:unit = {".github/scripts/ci-sweep-workflow.test.cjs":[".github/scripts/ci-sweep-api.cjs",".github/scripts/ci-sweep-collect.cjs",".github/scripts/ci-sweep-patterns.cjs",".github/scripts/ci-sweep-report.cjs",".github/scripts/failure-diagnostics.cjs",".github/scripts/failure-issue-writer.cjs",".github/scripts/report-workflow-failure.cjs",".github/scripts/sweep-ci-failures.cjs"],".github/scripts/ci-test-sequ
+awaiting-install.35edde0f88e9b723 = false
+refined.35edde0f88e9b723 = 0
+daemon-bootstrapped:35edde0f88e9b723 = 1791450757439
+nodeTest.observedPreloads.root:test:unit = [".github/scripts/automated-review.cjs",".github/scripts/fetch-ci-results.cjs",".github/scripts/recover-review.cjs",".github/scripts/release-bump-pr.cjs",".github/scripts/release-changelog.cjs",".github/scripts/release-ci.cjs",".github/scripts/release-finalization.cjs"]
+notes.35edde0f88e9b723 = [{"at":1791450757724,"revision":null,"text":"node-test project \"root:test:unit\": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-t
+
+## revisions
+
+## runs
+r0 09:13:09.394 +33.6s -> 09:13:13.215 +37.4s (3.8s) completed checkpoint test:unit: 1 [resolve-browser-launch.test.ts]; test:package: 1 [inline-contract.test.ts]; root:test:unit: 2 [apply-issue-intake.test.cjs automated-code-review.workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/cde26da0-1620-4624-b7fa-bafac940052b
+r0 09:13:13.740 +37.9s -> 09:13:19.002 +43.2s (5.3s) completed checkpoint root:test:unit: 4 [automated-review.test.cjs change-surface.test.cjs ci-dispatch.workflow.test.cjs ci-sweep-api.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/cf543f43-c1c5-4ddd-8d81-27d0ff73ede6
+r0 09:13:19.399 +43.6s -> 09:13:19.750 +43.9s (0.4s) completed checkpoint root:test:unit: 4 [ci-sweep-collect.test.cjs ci-sweep-patterns.test.cjs ci-sweep-report.test.cjs ci-sweep-workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/6686ec6c-cdd0-418c-80b9-77ddd1b3ad09
+r0 09:13:20.146 +44.3s -> 09:13:21.429 +45.6s (1.3s) completed checkpoint root:test:unit: 4 [ci-test-sequencer.test.cjs ci.workflow.test.cjs cockpit-test-sequencer.test.cjs e2e-fetch.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/a45f8513-5e9e-493e-a68e-e88f4aceac1d
+r0 09:13:21.797 +46.0s -> 09:13:23.141 +47.3s (1.3s) completed checkpoint root:test:unit: 4 [e2e-runner.test.cjs failure-diagnostics.test.cjs failure-issue-writer.test.cjs failure-workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/d0d6043b-cd91-4b0e-bc5a-e820069fe8cf
+r0 09:13:23.512 +47.7s -> 09:13:23.844 +48.0s (0.3s) completed checkpoint root:test:unit: 4 [fetch-ci-results.test.cjs issue-intake.workflow.test.cjs issue-template.test.cjs pr-readiness.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/880c0391-e14c-4b45-8be6-e2265145efc5
+r0 09:13:24.233 +48.4s -> 09:13:26.034 +50.2s (1.8s) completed checkpoint root:test:unit: 4 [pr-snapshot.test.cjs recover-review.test.cjs release-bump-pr.test.cjs release-ci.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/606778cc-b742-49d5-9eff-ee1afb7b3b51
+r0 09:13:26.420 +50.6s -> 09:14:04.333 +88.5s (37.9s) completed checkpoint root:test:unit: 4 [release-finalization.test.cjs release.workflow.test.cjs report-workflow-failure.test.cjs require-e2e-passed.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/0dff91dc-75a7-46ce-8cde-052b914d378c
+r0 09:14:04.730 +88.9s -> 09:14:05.500 +89.7s (0.8s) completed checkpoint root:test:unit: 4 [sweep-ci-failures.test.cjs upstream-ledger.test.cjs upstream-scan.workflow.test.cjs vitest-actions-report.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/592fd4c9-008d-4f39-8e65-a38ba6cbc002
+r0 09:14:05.867 +90.1s -> 09:14:11.734 +95.9s (5.9s) completed checkpoint root:test:unit: 2 [e2e-lanes.test.mjs test-changed.test.mjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/be20ffe8-5b4c-4be3-8e74-fc21b0f09bf8
+
+## transitions
+
+## node:test closures (test_files rows of projects with ':' in the name)
+[root:test:unit] .github/scripts/apply-issue-intake.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/automated-code-review.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/automated-review.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/change-surface.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/ci-dispatch.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/ci-sweep-api.test.cjs complete=0 method=static imports plus declared inputs closure=6
+[root:test:unit] .github/scripts/ci-sweep-collect.test.cjs complete=0 method=static imports plus declared inputs closure=8
+[root:test:unit] .github/scripts/ci-sweep-patterns.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/ci-sweep-report.test.cjs complete=0 method=static imports plus declared inputs closure=8
+[root:test:unit] .github/scripts/ci-sweep-workflow.test.cjs complete=0 method=static imports plus declared inputs closure=11
+[root:test:unit] .github/scripts/ci-test-sequencer.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/ci.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/cockpit-test-sequencer.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/e2e-fetch.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/e2e-runner.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/failure-diagnostics.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/failure-issue-writer.test.cjs complete=0 method=static imports plus declared inputs closure=6
+[root:test:unit] .github/scripts/failure-workflow.test.cjs complete=0 method=static imports plus declared inputs closure=7
+[root:test:unit] .github/scripts/fetch-ci-results.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/issue-intake.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/issue-template.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/pr-readiness.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/pr-snapshot.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/recover-review.test.cjs complete=0 method=static imports plus declared inputs closure=6
+[root:test:unit] .github/scripts/release-bump-pr.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/release-ci.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/release-finalization.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/release.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/report-workflow-failure.test.cjs complete=0 method=static imports plus declared inputs closure=7
+[root:test:unit] .github/scripts/require-e2e-passed.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/sweep-ci-failures.test.cjs complete=0 method=static imports plus declared inputs closure=11
+[root:test:unit] .github/scripts/upstream-ledger.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/upstream-scan.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/vitest-actions-report.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] scripts/e2e-lanes.test.mjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] scripts/test-changed.test.mjs complete=0 method=static imports plus declared inputs closure=1
+[test:package] packages/cezar/test/e2e/alias-bin-exports.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/application-update.test.ts complete=0 method=static imports plus declared inputs closure=17
+[test:package] packages/cezar/test/e2e/cockpit-ownership.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/delegation.test.ts complete=0 method=static imports plus declared inputs closure=38
+[test:package] packages/cezar/test/e2e/inline-contract.test.ts complete=0 method=static imports plus declared inputs closure=126
+[test:package] packages/cezar/test/e2e/package-cli.test.ts complete=0 method=static imports plus declared inputs closure=37
+[test:package] packages/cezar/test/e2e/release-snapshot.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/release.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/serve-port.test.ts complete=0 method=static imports plus declared inputs closure=59
+[test:package] packages/cezar/test/e2e/stop-child.test.ts complete=0 method=static imports plus declared inputs closure=4
+[test:package] packages/cezar/test/e2e/task-cli.test.ts complete=0 method=static imports plus declared inputs closure=35
+[test:package] packages/cezar/test/e2e/tick-writer.test.ts complete=0 method=static imports plus declared inputs closure=5
+[test:unit] packages/cezar/test/unit/codex-reasoning-summary.test.ts complete=0 method=static imports plus declared inputs closure=52
+[test:unit] packages/cezar/test/unit/cursor-hang-stdin.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:unit] packages/cezar/test/unit/planner.test.ts complete=0 method=static imports plus declared inputs closure=88
+[test:unit] packages/cezar/test/unit/resolve-browser-launch.test.ts complete=0 method=static imports plus declared inputs closure=3
+[test:unit] packages/cezar/test/unit/skill-dirs.test.ts complete=0 method=static imports plus declared inputs closure=43
+[test:unit] packages/cezar/test/unit/skills-remote.test.ts complete=0 method=static imports plus declared inputs closure=43
+[test:unit] packages/cezar/test/unit/test-env-launcher.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:unit] packages/cezar/test/unit/todo-task-text.test.ts complete=0 method=static imports plus declared inputs closure=5
+[test:unit] packages/cezar/test/unit/web-typecheck.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:unit] packages/cezar/test/unit/workflow-types.test.ts complete=0 method=static imports plus declared inputs closure=6
+
+## counts of results per project at this worktree
+root:test:unit pass 568
+test:package pass 5
+test:unit pass 11
+
+## known_states by project, outcome, validity, origin
+api-client pass current inherited 47
+contract pass current inherited 140
+root:test:unit pass current own 568
+server pass current inherited 8886
+server skip current inherited 2
+test:package pass current inherited 77
+test:package pass current own 5
+test:unit pass current inherited 74
+test:unit pass current own 11
+web pass current inherited 5973
+
+## consumers

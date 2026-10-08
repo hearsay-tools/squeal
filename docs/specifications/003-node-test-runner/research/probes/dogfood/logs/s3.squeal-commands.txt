@@ -1,0 +1,19 @@
+== 2026-10-08T09:08:43.618Z exit=0 1.07s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" status --wait 60000
+Returned on quiet: nothing pending at revision 6 after 1.1 s
+
+Revision: 6
+Known failures: 0
+Affected checks: 15783 passed, 0 running, 0 queued, 2 skipped
+Full-suite checkpoint: none completed at revision 6; last completed at revision 0
+
+Worktree: /tmp/squeal-dogfood-cezarion-56f54ae1 (HEAD 13351da, dirty at revision 6)
+Daemon: running, last heartbeat 2 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-08T07:56:21.275Z: node-test project "root:test:unit": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:77:40; import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:9:17), .github/scripts/failure-workflow.test.cjs (require() with a computed specifier at .github/scripts/failure-workflow.test.cjs:14:73)
+  2026-10-08T07:56:21.277Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+  2026-10-08T07:56:21.279Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+

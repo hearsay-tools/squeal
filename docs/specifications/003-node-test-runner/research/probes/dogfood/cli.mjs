@@ -8,8 +8,8 @@ for (const line of readFileSync(file, "utf8").trim().split("\n")) {
   const o = JSON.parse(line);
   const it = o.payload?.item;
   if (o.type !== "event_msg" || o.payload.type !== "item_completed" || it?.type !== "CommandExecution") continue;
-  const cmd = it.command.at(-1);
-  if (!/squeal(\.mjs)? |command -v squeal/.test(cmd)) continue;
+  const cmd = Array.isArray(it.command) ? it.command.at(-1) : String(it.command);
+  if (!/squeal(\.mjs)?"? |command -v squeal|node --test/.test(cmd)) continue;
   const secs = it.duration ? (it.duration.secs + it.duration.nanos / 1e9).toFixed(2) : "?";
   const shown = cmd.includes("<<'EOF'") ? `[heredoc writing a file] ... ${cmd.slice(cmd.lastIndexOf("EOF\n") + 4)}` : cmd;
   console.log(`== ${o.timestamp} exit=${it.exit_code} ${secs}s\n$ ${shown}`);

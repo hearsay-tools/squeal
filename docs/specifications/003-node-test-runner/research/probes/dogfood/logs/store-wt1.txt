@@ -1,0 +1,632 @@
+## meta (this worktree, nodeTest keys)
+awaiting-install.4ce39392decee992 = false
+daemon-bootstrapped:4ce39392decee992 = 1791446180888
+nodeTest.observed.test:unit = {"packages/cezar/test/unit/resolve-browser-launch.test.ts":[".ai/scripts/resolve-browser-launch.mjs"]}
+nodeTest.observed.test:package = {"packages/cezar/test/e2e/inline-contract.test.ts":["packages/cezar/dist/agent-config/catalog.js","packages/cezar/dist/agent-config/files.js","packages/cezar/dist/agent-config/model-settings/claude.js","packages/cezar/dist/agent-config/model-settings/codex.js","packages/cezar/dist/agent-config/model-settings/opencode.js","packages/cezar/dist/agent-config/model-settings/pi.js","packages/cezar/dist/
+nodeTest.observed.root:test:unit = {".github/scripts/ci-sweep-workflow.test.cjs":[".github/scripts/ci-sweep-api.cjs",".github/scripts/ci-sweep-collect.cjs",".github/scripts/ci-sweep-patterns.cjs",".github/scripts/ci-sweep-report.cjs",".github/scripts/failure-diagnostics.cjs",".github/scripts/failure-issue-writer.cjs",".github/scripts/report-workflow-failure.cjs",".github/scripts/sweep-ci-failures.cjs"],".github/scripts/ci-test-sequ
+revision-registered:4ce39392decee992 = {}
+revision-registered-left:4ce39392decee992 = {"01a11ab3-1a0b-7350-8a31-d28e90fc1f5f\nmain":{"since":0,"gaps":[],"scanned":1791446180888,"leftAt":2,"leftTime":1791449458659},"01a11abf-783c-7081-abd2-b6b632f14062\nmain":{"since":2,"gaps":[],"scanned":1791446180888,"leftAt":4,"leftTime":1791450226949},"01a11ac4-c8f5-7431-8632-75360a8fb11c\nmain":{"since":4,"gaps":[],"scanned":1791446180888,"leftAt":6,"leftTime":1791450534222}}
+liveness-told:4ce39392decee992 = {}
+revision-told:4ce39392decee992 = {}
+turn:4ce39392decee992 = {}
+nodeTest.observedPreloads.root:test:unit = [".github/scripts/automated-review.cjs",".github/scripts/fetch-ci-results.cjs",".github/scripts/recover-review.cjs",".github/scripts/release-bump-pr.cjs",".github/scripts/release-changelog.cjs",".github/scripts/release-ci.cjs",".github/scripts/release-finalization.cjs"]
+notes.4ce39392decee992 = [{"at":1791446181275,"revision":null,"text":"node-test project \"root:test:unit\": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-t
+refined.4ce39392decee992 = 14
+
+## revisions
+r1 08:48:41.174 +3142.1s watch dirty=1 [{"path":"packages/cezar/src/todos.ts","oldHash":"28d02a4e60314e59e8c94267f9826a3d205e0b7e","newHash":"4003e0033672c03c3818a60d4ca179367641d32c"}]
+r2 08:49:05.169 +3166.1s watch dirty=1 [{"path":"packages/cezar/src/todos.ts","oldHash":"4003e0033672c03c3818a60d4ca179367641d32c","newHash":"0026e31c32bac576f0fed92edd57d44442120966"},{"path":"packages/cezar/test/fixtures/todo-task-text.json","oldHash":"a68a86c83a53af0a2281ee3a0fe44c29e3753566","newHash":"4bb6d386c231bad2de76bdd922c12b8
+r3 09:02:20.249 +3961.2s watch dirty=1 [{"path":"packages/cezar/test/e2e/stop-child.test.ts","oldHash":"9ca0a99db404ce7f21f450f9c89e7e906cbb3c7e","newHash":"b465a0b1b6623e1fece1f1938eae94ce886f55ff"}]
+r4 09:02:35.600 +3976.6s watch dirty=1 [{"path":"packages/cezar/test/e2e/stop-child.ts","oldHash":"2a88a42fe61939a47947aa3e53a16f0313408567","newHash":"3171d4ad7a686849738e4e428685b3ceefb7055a"}]
+r5 09:08:00.335 +4301.3s watch dirty=1 [{"path":"packages/cezar/scripts/mock-cursor-hang-stdin.mjs","oldHash":"10e74073c9de78322e2db801eca2badd7f3a1281","newHash":"780ac1a1b7173aa1ba3084e80b90eaa21650dbbc"}]
+r6 09:08:27.312 +4328.3s watch dirty=1 [{"path":"packages/cezar/scripts/mock-cursor-hang-stdin.mjs","oldHash":"780ac1a1b7173aa1ba3084e80b90eaa21650dbbc","newHash":"5a8906b1bf8e69fc762b1828e67e1fa40977eb58"}]
+r7 09:09:58.905 +4419.9s watch dirty=1 [{"path":"packages/cezar/test/fixtures/todo-task-text.json","oldHash":"4bb6d386c231bad2de76bdd922c12b8a2078eacf","newHash":"2417c128ebd557b27b0b4b0000da744d31c39be0"}]
+r8 09:10:39.050 +4460.0s watch dirty=1 [{"path":"packages/cezar/test/fixtures/todo-task-text.json","oldHash":"2417c128ebd557b27b0b4b0000da744d31c39be0","newHash":"4bb6d386c231bad2de76bdd922c12b8a2078eacf"}]
+r9 09:10:47.064 +4468.0s watch dirty=1 [{"path":".github/scripts/release-bump-pr.cjs","oldHash":"6a24eed1a0062778a390b3c068b8669b58ea9e10","newHash":"c8fbf77bb805d58bfd1fc3c590c2862cce85b578"}]
+r10 09:12:03.647 +4544.6s watch dirty=1 [{"path":".github/scripts/release-bump-pr.cjs","oldHash":"c8fbf77bb805d58bfd1fc3c590c2862cce85b578","newHash":"6a24eed1a0062778a390b3c068b8669b58ea9e10"}]
+r11 09:15:50.461 +4771.4s watch dirty=1 [{"path":"packages/cezar/test/unit/skill-dirs.test.ts","oldHash":"dc00631f12e08bc97b8b52dc6370648cf3ec6b9e","newHash":"b68c2c80bf252a8a15b4ba78aa27d6d73406b44f"}]
+r12 09:16:07.824 +4788.8s watch dirty=1 [{"path":"packages/cezar/test/unit/skill-dirs.test.ts","oldHash":"b68c2c80bf252a8a15b4ba78aa27d6d73406b44f","newHash":"dc00631f12e08bc97b8b52dc6370648cf3ec6b9e"}]
+r13 09:16:14.693 +4795.7s watch dirty=1 [{"path":".ai/scripts/resolve-browser-launch.mjs","oldHash":"bd50e1815be6e8cdbe7fe2abc6cda72e3ec33a8c","newHash":"b916bc91c16a80b1a9a958dffe2c5efb1d950824"}]
+r14 09:16:52.136 +4833.1s watch dirty=1 [{"path":".ai/scripts/resolve-browser-launch.mjs","oldHash":"b916bc91c16a80b1a9a958dffe2c5efb1d950824","newHash":"bd50e1815be6e8cdbe7fe2abc6cda72e3ec33a8c"}]
+
+## runs
+r0 07:56:34.565 +15.5s -> 07:56:35.782 +16.7s (1.2s) completed checkpoint test:unit: 4 [codex-reasoning-summary.test.ts cursor-hang-stdin.test.ts planner.test.ts resolve-browser-launch.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/fa450a0c-c2b3-44d8-a515-4e46ba3d13ed
+r0 07:56:35.795 +16.8s -> 07:57:20.105 +61.1s (44.3s) completed checkpoint test:unit: 4 [skill-dirs.test.ts skills-remote.test.ts test-env-launcher.test.ts todo-task-text.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/3a3d3a95-4c42-43b5-a0e8-2f9406b60f6c
+r0 07:57:20.117 +61.1s -> 07:58:29.680 +130.6s (69.6s) completed checkpoint test:unit: 2 [web-typecheck.test.ts workflow-types.test.ts]; test:package: 2 [alias-bin-exports.test.ts application-update.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7519d3d5-0cd0-4685-9ef6-836e5e571721
+r0 07:58:29.710 +130.7s -> 07:58:59.890 +160.8s (30.2s) completed checkpoint test:package: 4 [cockpit-ownership.test.ts delegation.test.ts inline-contract.test.ts package-cli.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9391ff37-cee3-4da7-84d9-bd79e8d17039
+r0 07:58:59.902 +160.9s -> 07:59:12.341 +173.3s (12.4s) completed checkpoint test:package: 4 [release-snapshot.test.ts release.test.ts serve-port.test.ts stop-child.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/3c7c8433-3de7-49ba-9193-7440fff8a8ca
+r0 07:59:12.355 +173.3s -> 07:59:45.486 +206.4s (33.1s) completed checkpoint test:package: 2 [task-cli.test.ts tick-writer.test.ts]; root:test:unit: 2 [apply-issue-intake.test.cjs automated-code-review.workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/6a94b691-bdd3-4bb6-9447-76a9e4547ffb
+r0 07:59:45.521 +206.5s -> 07:59:52.830 +213.8s (7.3s) completed checkpoint root:test:unit: 4 [automated-review.test.cjs change-surface.test.cjs ci-dispatch.workflow.test.cjs ci-sweep-api.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/865b59dd-59d4-4145-9f7e-0377429c3efe
+r0 07:59:52.872 +213.8s -> 07:59:53.271 +214.2s (0.4s) completed checkpoint root:test:unit: 4 [ci-sweep-collect.test.cjs ci-sweep-patterns.test.cjs ci-sweep-report.test.cjs ci-sweep-workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/9141b787-ab7b-4918-be3a-d69aa882a64d
+r0 07:59:53.322 +214.3s -> 07:59:55.506 +216.5s (2.2s) completed checkpoint root:test:unit: 4 [ci-test-sequencer.test.cjs ci.workflow.test.cjs cockpit-test-sequencer.test.cjs e2e-fetch.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/cb6ed17d-5595-4aa2-b24b-6d519d366b39
+r0 07:59:55.543 +216.5s -> 07:59:57.343 +218.3s (1.8s) completed checkpoint root:test:unit: 4 [e2e-runner.test.cjs failure-diagnostics.test.cjs failure-issue-writer.test.cjs failure-workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/f1741236-e26f-44a6-a02d-5f6472c9e606
+r0 07:59:57.448 +218.4s -> 07:59:58.079 +219.0s (0.6s) completed checkpoint root:test:unit: 4 [fetch-ci-results.test.cjs issue-intake.workflow.test.cjs issue-template.test.cjs pr-readiness.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/585d5702-5d53-40eb-9bf8-c93e456a3993
+r0 07:59:58.124 +219.1s -> 08:00:01.560 +222.5s (3.4s) completed checkpoint root:test:unit: 4 [pr-snapshot.test.cjs recover-review.test.cjs release-bump-pr.test.cjs release-ci.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/074ef29e-b055-40b6-8b46-4c4e8a240cd1
+r0 08:00:01.640 +222.6s -> 08:01:03.940 +284.9s (62.3s) completed checkpoint root:test:unit: 4 [release-finalization.test.cjs release.workflow.test.cjs report-workflow-failure.test.cjs require-e2e-passed.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/07a3787f-b833-490e-948d-5ccff1e9e9e7
+r0 08:01:03.985 +284.9s -> 08:01:04.725 +285.7s (0.7s) completed checkpoint root:test:unit: 4 [sweep-ci-failures.test.cjs upstream-ledger.test.cjs upstream-scan.workflow.test.cjs vitest-actions-report.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/e2dd0e47-01cb-4271-859a-1b53026dcca3
+r0 08:01:04.753 +285.7s -> 08:01:11.335 +292.3s (6.6s) completed checkpoint root:test:unit: 2 [e2e-lanes.test.mjs test-changed.test.mjs]; api-client: 2 [tool-display.test.ts project-scope.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/6522a120-123d-4d3d-807a-cbd5fff48bc9
+r0 08:01:11.368 +292.3s -> 08:01:11.742 +292.7s (0.4s) completed checkpoint contract: 4 [attention.test.ts automation-schedule.test.ts preview.test.ts run-summary.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/df093601-ab1c-4282-bca1-cb4819744e3a
+r0 08:01:11.773 +292.7s -> 08:01:12.041 +293.0s (0.3s) completed checkpoint contract: 2 [sidebar-limits.test.ts zoned-time.test.ts]; server: 2 [account-identity.test.ts catalog.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9245dcf4-1ede-48a9-a184-df1d773357ed
+r0 08:01:12.134 +293.1s -> 08:01:12.637 +293.6s (0.5s) completed checkpoint server: 4 [files.test.ts shared.test.ts models.test.ts seed.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/87ad2969-541f-400b-b42a-cd1b795fe44a
+r0 08:01:12.719 +293.7s -> 08:01:12.984 +293.9s (0.3s) completed checkpoint server: 4 [validate.test.ts bin-recovery.test.ts discovery.test.ts helper.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2fc81dd9-c70b-4a86-bccd-e25bce8bccfa
+r0 08:01:13.015 +294.0s -> 08:01:16.196 +297.2s (3.2s) completed checkpoint server: 4 [hoisted-recovery.test.ts lock.test.ts npm-process.test.ts service.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/55aabc6f-7891-4e74-bb00-32fdb3434870
+r0 08:01:16.227 +297.2s -> 08:01:18.925 +299.9s (2.7s) completed checkpoint server: 4 [windows.test.ts cli.test.ts contract.test.ts lifecycle.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c75775dc-906b-4a76-b1e1-e8c21f289fcf
+r0 08:01:18.972 +299.9s -> 08:01:21.124 +302.1s (2.2s) completed checkpoint server: 4 [store-windows.test.ts store.test.ts coordinator.test.ts github-poller.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/5909e941-82f6-460a-aa04-9d5b77a28f30
+r0 08:01:21.161 +302.1s -> - (?s) null checkpoint server: 4 [schedule-runner.test.ts scheduler.test.ts store.test.ts task-template.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/8fe5a42b-3ef7-4da0-80f0-63229e9af094
+r0 08:01:48.807 +329.8s -> 08:01:58.185 +339.1s (9.4s) completed checkpoint server: 4 [types.test.ts autosave-conflict-guard.test.ts autosave-holders.test.ts autosave-timeout.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/bf68b07f-f54f-4aad-94d8-35fb0c427d5d
+r0 08:01:58.245 +339.2s -> 08:02:01.253 +342.2s (3.0s) completed checkpoint server: 4 [autosave-windows.test.ts contract.test.ts controller.test.ts mcp.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7fa8e4d9-ec65-4a0b-b9f0-b97fea327126
+r0 08:02:01.340 +342.3s -> 08:02:14.880 +355.8s (13.5s) completed checkpoint server: 4 [preview-stop.test.ts process.test.ts scheduling.test.ts supervisor.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/90043baf-474e-43f9-b977-da67bb4ccd19
+r0 08:02:14.914 +355.9s -> 08:02:15.333 +356.3s (0.4s) completed checkpoint server: 4 [config.test.ts agent-env.test.ts agent-model-policy.test.ts agent-profiles.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9c737317-b4ce-4aa8-b299-5ee8e73461eb
+r0 08:02:15.369 +356.3s -> 08:02:41.524 +382.5s (26.2s) completed checkpoint server: 4 [ask.test.ts backend-detect.test.ts ci-tools.test.ts claude-cli-runner.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/764e8280-ef51-4a74-93c6-f43f6c3fc82a
+r0 08:02:41.566 +382.5s -> 08:02:48.127 +389.1s (6.6s) completed checkpoint server: 4 [claude-model-catalog.test.ts claude-ui-mapper.test.ts codex-app-server-runner.test.ts codex-app-server-transport.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/4fb660b8-bf62-4184-a36e-36ec633367fc
+r0 08:02:48.164 +389.1s -> 08:02:51.368 +392.3s (3.2s) completed checkpoint server: 4 [codex-model-catalog.test.ts codex-permissions.test.ts codex-provider-failure.test.ts codex-startup.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a365b4b1-f695-4ff6-9cdd-92c6f9b3fc66
+r0 08:02:51.413 +392.4s -> 08:03:00.971 +401.9s (9.6s) completed checkpoint server: 4 [codex-steering.test.ts codex-ui-mapper.test.ts conversation-batch-ack.test.ts conversation-delivery.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d49ecd1f-d8ad-44a0-afc5-95593259a137
+r0 08:03:01.038 +402.0s -> 08:03:15.000 +416.0s (14.0s) completed checkpoint server: 4 [conversation-questions.test.ts conversation-resume.test.ts cursor-acp-runner.test.ts cursor-config-options.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/cb10ba26-c1a3-4cac-9d9d-cd2e6dbb4697
+r0 08:03:15.050 +416.0s -> 08:03:15.412 +416.4s (0.4s) completed checkpoint server: 4 [cursor-integration.test.ts cursor-model-catalog.test.ts cursor-provider-error.test.ts cursor-ui-mapper.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/45eb6019-dc41-4644-b0af-52a104b4dda3
+r0 08:03:15.459 +416.4s -> 08:10:38.840 +859.8s (443.4s) completed checkpoint server: 4 [dry-run-backends.test.ts effort.test.ts harness-autosave.test.ts harness-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/ab8609ac-4250-4910-b246-8aebf0097624
+r0 08:10:38.966 +859.9s -> 08:10:39.363 +860.3s (0.4s) completed checkpoint server: 4 [input-submissions.test.ts managed-session.test.ts model-discovery-guard.test.ts model-identity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/aa03c076-7d8b-4d32-a452-67845e09aee1
+r0 08:10:39.439 +860.4s -> 08:10:59.605 +880.6s (20.2s) completed checkpoint server: 4 [model-presets.test.ts omp-model-catalog.test.ts omp-runner.test.ts omp-ui-mapper.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0d7f3912-66ee-4122-b134-1803c0ce4c76
+r0 08:10:59.687 +880.6s -> 08:11:06.919 +887.9s (7.2s) completed checkpoint server: 4 [opencode-model-catalog.test.ts opencode-server-runner.test.ts opencode-steering.test.ts opencode-ui-mapper.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2eaf75b5-a210-499c-800e-0fabfaa0e94a
+r0 08:11:06.998 +888.0s -> 08:11:54.201 +935.2s (47.2s) completed checkpoint server: 4 [owned-input-delivery.test.ts owned-input-failure.test.ts pi-model-catalog.test.ts pi-retry-degraded-service.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/de433a3e-f1d9-4165-a812-faa03f278f10
+r0 08:11:54.315 +935.3s -> 08:12:11.276 +952.2s (17.0s) completed checkpoint server: 4 [pi-runner.test.ts pi-steering.test.ts pi-ui-mapper.test.ts process-usage.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/46cb5832-0b34-4410-976d-1bd7b127d818
+r0 08:12:11.431 +952.4s -> 08:12:26.249 +967.2s (14.8s) completed checkpoint server: 4 [provider-auth.test.ts provider-availability.test.ts runner-model-catalog.test.ts runner-shutdown-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/4787f346-839a-4a79-a24d-05eef9696254
+r0 08:12:26.426 +967.4s -> 08:13:04.292 +1005.3s (37.9s) completed checkpoint server: 4 [runner-stderr.test.ts secret-redaction.test.ts shell-env.test.ts skill-resume-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7c3c418a-a7a3-4b23-9b13-435b0fe32208
+r0 08:13:04.407 +1005.4s -> 08:13:19.225 +1020.2s (14.8s) completed checkpoint server: 4 [tool-display.test.ts ui-events.test.ts ui-parity.test.ts unread-input.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/1da7465b-06a5-4f8d-a07b-41aebfc62864
+r0 08:13:19.316 +1020.3s -> 08:14:27.334 +1088.3s (68.0s) completed checkpoint server: 4 [usage-limit.test.ts usage.test.ts v1-text-coalescer.test.ts workflow-ask-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d09cd251-213f-4a33-bb64-2cad7a876a40
+r0 08:14:27.445 +1088.4s -> 08:16:47.515 +1228.5s (140.1s) completed checkpoint server: 4 [workflow-autonomous-parity.test.ts workflow-final-message-parity.test.ts workflow-no-progress-parity.test.ts workflow-timeout-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/3918d7e1-9986-4390-88e5-257e04a2d855
+r0 08:16:47.732 +1228.7s -> 08:16:59.227 +1240.2s (11.5s) completed checkpoint server: 4 [capacity.test.ts cli.test.ts context.test.ts conversation-service.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a728ee87-234a-4235-bde8-c3b1b18f5b17
+r0 08:16:59.312 +1240.3s -> 08:17:18.740 +1259.7s (19.4s) completed checkpoint server: 4 [conversations.test.ts credentials.test.ts destruction-results.test.ts discovery.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b2045fbd-c105-44d5-9df9-f1dfce9774f0
+r0 08:17:18.831 +1259.8s -> 08:17:21.547 +1262.5s (2.7s) completed checkpoint server: 4 [execution-identity.test.ts input.test.ts policy.test.ts process-liveness.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/67e03abe-8a6e-4c52-9de8-0bc10786ca67
+r0 08:17:21.663 +1262.6s -> 08:18:44.777 +1345.7s (83.1s) completed checkpoint server: 4 [process-scope.testkit.test.ts provision-workflows.test.ts provision.test.ts question-contract.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/60c079d5-bab6-4392-ac6c-8f13909b9ab7
+r0 08:18:44.977 +1345.9s -> 08:18:54.562 +1355.5s (9.6s) completed checkpoint server: 4 [questions.test.ts results.test.ts routes.test.ts scratch-cleanup.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2879525a-2f2f-4898-b29b-164dc77a9b83
+r0 08:18:54.741 +1355.7s -> 08:19:39.266 +1400.2s (44.5s) completed checkpoint server: 4 [service.test.ts service.testkit.test.ts wait.test.ts workspace.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9942f968-42e7-46ce-bd5d-486b7bdc9de5
+r0 08:19:39.385 +1400.3s -> 08:19:43.242 +1404.2s (3.9s) completed checkpoint server: 4 [cli.test.ts git-diff-base.test.ts git-refs.test.ts git-worktree-lock.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/8d1bb9f2-ad5f-4bb0-b41a-b899139ba731
+r0 08:19:43.364 +1404.3s -> 08:19:57.725 +1418.7s (14.4s) completed checkpoint server: 4 [git-worktree-race.test.ts git-worktree-release.test.ts git-worktree.test.ts handoff.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0053ee1c-3836-4132-99a5-b4fd639f3ff0
+r0 08:19:57.827 +1418.8s -> 08:20:04.634 +1425.6s (6.8s) completed checkpoint server: 4 [headless-repo-handle.test.ts install-as-command.test.ts pack-check.test.ts paths.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7c8e17c1-7183-4a9e-bb8c-a7082d2a006d
+r0 08:20:04.762 +1425.7s -> 08:20:15.478 +1436.4s (10.7s) completed checkpoint server: 4 [cdp.test.ts chromium.test.ts dev-server.test.ts host-teardown.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/76fda764-d48b-4bd3-8eec-b7d7af92a9a4
+r0 08:20:15.618 +1436.6s -> 08:20:15.931 +1436.9s (0.3s) completed checkpoint server: 4 [host.test.ts registration.test.ts session.test.ts url.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a69efb5d-baf4-4fc0-861c-7560c810ad6d
+r0 08:20:16.041 +1437.0s -> 08:20:19.972 +1440.9s (3.9s) completed checkpoint server: 4 [manifests.test.ts snapshot.test.ts stable.test.ts run-store-unavailable-cli.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/4638c654-ddd6-467f-9a33-53a116f4593c
+r0 08:20:20.195 +1441.2s -> 08:20:21.684 +1442.6s (1.5s) completed checkpoint server: 4 [agent-tmpdir.test.ts arm-repo-handle.test.ts auto-name.test.ts ci-wait-store.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/1fd153fb-d14d-45f9-97ba-b95ba4b65efd
+r0 08:20:21.811 +1442.8s -> 08:20:29.189 +1450.1s (7.4s) completed checkpoint server: 4 [client-request.test.ts delegation-state.test.ts event-history.test.ts history-compressor.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7f126730-d680-45ef-8d4c-64b74d8f2722
+r0 08:20:29.302 +1450.3s -> 08:20:31.452 +1452.4s (2.1s) completed checkpoint server: 4 [history-file.test.ts history-readers.test.ts human-ask-summary.test.ts raw-record.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7d7d3d92-547f-4445-983b-d7ffa540a6cc
+r0 08:20:31.578 +1452.5s -> 08:20:34.384 +1455.3s (2.8s) completed checkpoint server: 4 [repo-handle-recovery.test.ts retention-enforce.test.ts retention-rematerialize.test.ts retention.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/dc785d15-fbcc-4b17-ae9a-b05c3379ad20
+r0 08:20:34.497 +1455.5s -> 08:20:40.326 +1461.3s (5.8s) completed checkpoint server: 4 [review-gate.test.ts run-claims.test.ts run-database.test.ts run-index.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/161c474c-e383-4cf8-b77d-0479b973507c
+r0 08:20:40.433 +1461.4s -> 08:20:45.229 +1466.2s (4.8s) completed checkpoint server: 4 [run-row.test.ts run-store-benchmark-fixture.test.ts store-claims.test.ts store-database.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/bdfdaaf5-b9f4-4775-b32e-ac0a415b825d
+r0 08:20:45.347 +1466.3s -> 08:21:04.375 +1485.3s (19.0s) completed checkpoint server: 4 [store-history-compression.test.ts store-import.test.ts store-live-set.test.ts store-order.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/6ba32a96-7048-494b-a429-5b63fe1aca78
+r0 08:21:04.492 +1485.5s -> 08:21:23.858 +1504.8s (19.4s) completed checkpoint server: 4 [store-transcript-facts.test.ts store.test.ts task-markers.test.ts task-refs.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0539150a-8e7b-4738-a1e1-adef9e45a83b
+r0 08:21:23.996 +1505.0s -> 08:21:25.583 +1506.5s (1.6s) completed checkpoint server: 4 [transcript-facts.test.ts ui-event-sink.test.ts webhook.test.ts engine.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/fcf9a68f-9dcd-4ce4-acdc-429714550c82
+r0 08:21:25.703 +1506.7s -> 08:21:27.140 +1508.1s (1.4s) completed checkpoint server: 4 [macosx-ngrok.test.ts ubuntu-vps.test.ts state.test.ts steps.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/810b2c9f-b3de-49d7-81cb-c0ddeffb5f74
+r0 08:21:27.303 +1508.3s -> 08:21:29.294 +1510.3s (2.0s) completed checkpoint server: 4 [strategies.test.ts types.test.ts ui.test.ts agent-config-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b5163349-f9e2-4251-bfb6-aec94d66fea5
+r0 08:21:29.442 +1510.4s -> 08:21:37.068 +1518.0s (7.6s) completed checkpoint server: 4 [agent-profiles-api.test.ts api-types.test.ts application-update.test.ts artifacts-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c97f18ea-3b44-47d0-95bc-540207112332
+r0 08:21:37.241 +1518.2s -> 08:21:43.945 +1524.9s (6.7s) completed checkpoint server: 4 [attachments-api.test.ts auto-resume-api.test.ts automations-api.test.ts automations-gate.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c14ac732-22b1-40a9-b42d-f6ede00a9e86
+r0 08:21:44.150 +1525.1s -> 08:21:46.134 +1527.1s (2.0s) completed checkpoint server: 4 [bc-route-inventory.test.ts capabilities.test.ts checkout.test.ts cockpit-ownership.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b93372e0-ca75-4e94-a397-9464ce7c973f
+r0 08:21:46.311 +1527.3s -> 08:21:48.696 +1529.7s (2.4s) completed checkpoint server: 4 [cold-repo-handles.test.ts config-api.test.ts continue-run.test.ts contract-parity.automations.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/285573f6-b24f-4b2e-a717-762dd37b84bb
+r0 08:21:48.854 +1529.8s -> 08:21:49.248 +1530.2s (0.4s) completed checkpoint server: 4 [contract-parity.delegation.test.ts contract-parity.github.test.ts contract-parity.runs.test.ts contract-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/53687d8d-7448-4550-b305-8277f59bd79d
+r0 08:21:49.441 +1530.4s -> 08:21:53.567 +1534.5s (4.1s) completed checkpoint server: 4 [contract-parity.workflows.test.ts contract-parity.workspace.test.ts cursor-workspace-contract.test.ts delegation-cleanup.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/e17383ef-5b80-46ab-b109-1b745ccb918b
+r0 08:21:53.758 +1534.7s -> 08:22:02.862 +1543.8s (9.1s) completed checkpoint server: 4 [finishability.test.ts draft-pr-autosave.test.ts github-coalescing.test.ts github-filters.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/ce025488-3687-485c-a7ba-d331e1f56941
+r0 08:22:03.056 +1544.0s -> 08:22:05.987 +1546.9s (2.9s) completed checkpoint server: 4 [github-pr-diff.test.ts github.test.ts index.test.ts fs-browse.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/ca6725bd-3d73-4437-9b45-5a240680fe84
+r0 08:22:06.206 +1547.2s -> 08:22:18.021 +1559.0s (11.8s) completed checkpoint server: 4 [git-changes.test.ts git.test.ts github-checks-api.test.ts github-comments-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b4adc130-c585-49e0-a58f-a8535b4fc32c
+r0 08:22:18.269 +1559.2s -> 08:22:20.613 +1561.6s (2.3s) completed checkpoint server: 4 [github-item-api.test.ts github-merge-api.test.ts github-pr-changes-api.test.ts github-ref-status-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/69aabc44-d596-4794-ad25-59bf484b1f94
+r0 08:22:20.778 +1561.7s -> 08:22:28.661 +1569.6s (7.9s) completed checkpoint server: 4 [github-search-api.test.ts group-pick.test.ts health-forge.test.ts health-topic.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a1c204ef-3bae-4949-90c5-94e465f34bd3
+r0 08:22:28.821 +1569.8s -> 08:22:32.524 +1573.5s (3.7s) completed checkpoint server: 4 [host-guard.test.ts inbox-gate.test.ts model-contract.test.ts models-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/33113f2b-deb7-4b2b-99d7-a5843cc0a1b1
+r0 08:22:32.804 +1573.8s -> 08:22:36.602 +1577.6s (3.8s) completed checkpoint server: 4 [nonblocking-discovery.test.ts open-in-app.test.ts open-in-cli-resume.test.ts open-in-file.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/f6b3f3b1-3d36-4e44-b750-6614bdfd63f8
+r0 08:22:36.773 +1577.7s -> 08:22:41.525 +1582.5s (4.8s) completed checkpoint server: 4 [open-in-project.test.ts open-in-terminal.test.ts origin-guard.test.ts patch-run.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/1c8c0343-da34-4e8d-80c7-a359113518be
+r0 08:22:41.759 +1582.7s -> 08:22:45.147 +1586.1s (3.4s) completed checkpoint server: 4 [preview-boot-sweep.test.ts preview-socket.test.ts project-context-repo-handle.test.ts project-context.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2f5ea74c-d4c1-498a-b724-8ae59c27e293
+r0 08:22:45.304 +1586.3s -> 08:22:52.890 +1593.8s (7.6s) completed checkpoint server: 4 [projects-api.test.ts provider-action-gate.test.ts provider-action-gating.test.ts provider-auth-runtime.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0557fd7f-58eb-4b90-ac75-27c8c994e9a0
+r0 08:22:53.138 +1594.1s -> 08:22:57.287 +1598.2s (4.1s) completed checkpoint server: 4 [providers-api.test.ts query-repeat-parity.test.ts queued-messages.test.ts read-run.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/81d2c3ab-b491-4dd0-8637-6d43d8eadb7a
+r0 08:22:57.470 +1598.4s -> 08:23:03.881 +1604.8s (6.4s) completed checkpoint server: 4 [ref-status-invalidation.test.ts repo-branches-api.test.ts repo-branches-witness.test.ts repo-branches.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d478e1c0-4f89-41b2-b221-f6755150910c
+r0 08:23:04.139 +1605.1s -> 08:23:14.722 +1615.7s (10.6s) completed checkpoint server: 4 [repo-pull.test.ts request-validation.test.ts resume-command.test.ts route-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d90862c3-457e-42bc-a97c-071d8f3fb97d
+r0 08:23:14.928 +1615.9s -> 08:23:20.876 +1621.8s (5.9s) completed checkpoint server: 4 [run-ownership-controls.test.ts run-relationships.test.ts run-store-unavailable.test.ts run-summaries-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0b90da8d-d4eb-43df-9828-dd9870012102
+r0 08:23:21.063 +1622.0s -> 08:23:25.332 +1626.3s (4.3s) completed checkpoint server: 4 [runs-index-api.test.ts skills-update-api.test.ts sse-headers.test.ts start-run-idempotent.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2c33bdfc-b493-4565-92bb-43d496101a41
+r0 08:23:25.506 +1626.5s -> 08:23:28.529 +1629.5s (3.0s) completed checkpoint server: 4 [start-run-todo.test.ts start-run.test.ts static-ui.test.ts task-webhook-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/4714d649-c4b5-4c65-b155-58964b9858ce
+r0 08:23:28.800 +1629.8s -> 08:23:32.072 +1633.0s (3.3s) completed checkpoint server: 4 [todos-start.test.ts tool-display-mirror.test.ts typed-bodies.test.ts typed-client.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0786c48d-a3db-423f-a713-20fe3786c083
+r0 08:23:32.265 +1633.2s -> 08:23:34.875 +1635.8s (2.6s) completed checkpoint server: 4 [ui-state-api.test.ts ui-state.test.ts upgrade-router.test.ts usage-scope.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9f6b495d-5aa6-4e70-ace6-30e3bb27d9a6
+r0 08:23:35.051 +1636.0s -> 08:23:47.019 +1648.0s (12.0s) completed checkpoint server: 4 [versioned-surface.test.ts workspace-api.test.ts workspace-events.test.ts worktrees-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/365faba9-8b1e-4530-acb0-de0813339d9b
+r0 08:23:47.236 +1648.2s -> 08:23:48.315 +1649.3s (1.1s) completed checkpoint server: 4 [ws.test.ts wsl.test.ts skills-banner.test.ts skills-remote.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9fe47dcd-0827-44bc-a8b0-f7393ecfd9b4
+r0 08:23:48.703 +1649.7s -> 08:24:00.787 +1661.7s (12.1s) completed checkpoint server: 4 [skills-update.test.ts skills.test.ts cli.test.ts discovery.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/80b30de9-3c0f-43cd-81f6-9a4ce09627e8
+r0 08:24:01.102 +1662.1s -> 08:24:15.229 +1676.2s (14.1s) completed checkpoint server: 4 [http.test.ts watch.test.ts todos.test.ts ui-state.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/8f1cee90-8243-429b-b352-2c9297de5161
+r0 08:24:15.432 +1676.4s -> 08:24:42.030 +1703.0s (26.6s) completed checkpoint server: 4 [agent-profile-wiring.test.ts agent-tmpdir.test.ts allowed-tools.test.ts auto-resume.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/8d54dea7-9074-4fc9-af3b-511264e897dc
+r0 08:24:42.418 +1703.4s -> 08:25:14.877 +1735.8s (32.5s) completed checkpoint server: 4 [autonomous-nudge-guards.test.ts autosave-gate.test.ts check-stop-kill.test.ts ci-wait-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9ef3fb66-8461-418e-96c5-21465b4bf01c
+r0 08:25:15.135 +1736.1s -> 08:26:07.711 +1788.7s (52.6s) completed checkpoint server: 4 [ci-wait-refusal.test.ts ci-wait-registration.test.ts ci-wait.test.ts codex-startup-cancel.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/232518e9-148c-4273-a2df-4ef8a5dc5699
+r0 08:26:07.988 +1788.9s -> 08:26:10.446 +1791.4s (2.5s) completed checkpoint server: 4 [continuation-tools.test.ts continue-unarchive.test.ts conversation-batch.test.ts conversation-resume-wait.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/335f4cf0-2f98-40d9-a591-e40f230811b0
+r0 08:26:10.695 +1791.7s -> 08:26:37.672 +1818.6s (27.0s) completed checkpoint server: 4 [cursor-bootstrap-continue.test.ts dead-owner-claims.test.ts delegation-integration.test.ts delegation-reconcile.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0fbcb074-6c6a-42c9-87c7-36bb312618b2
+r0 08:26:37.891 +1818.8s -> 08:27:07.061 +1848.0s (29.2s) completed checkpoint server: 4 [delegation-transcript-reads.test.ts delegation-wire-gate.test.ts fixture-cleanup.test.ts immediate-delivery.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/20114f3c-cd7b-41ab-95dc-baade5e09794
+r0 08:27:07.263 +1848.2s -> 08:32:52.946 +2193.9s (345.7s) completed checkpoint server: 4 [maintenance-claims.test.ts model-identity-wiring.test.ts monitoring-channel-order.test.ts monitoring-turn.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/657bddaa-ab39-42ae-9fcf-6034a1e9293b
+r0 08:32:53.235 +2194.2s -> 08:33:28.297 +2229.3s (35.1s) completed checkpoint server: 4 [pasted-attachments.test.ts pi-teardown.test.ts prelaunch-cancel.test.ts pump-repo-cache.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7daa863a-59ef-4cef-900a-31fe3de5221f
+r0 08:33:28.513 +2229.5s -> 08:33:31.165 +2232.1s (2.7s) completed checkpoint server: 4 [recover-autonomous.test.ts recover-followups.test.ts recover-session-failure.test.ts recovery-order.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c32cb5ed-6572-4ab6-93b9-7f1c6d10290a
+r0 08:33:31.369 +2232.3s -> 08:33:34.643 +2235.6s (3.3s) completed checkpoint server: 4 [retention-wiring.test.ts run-active-pin.test.ts run-isolation.test.ts run-lease.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b3e4022e-5d37-42d2-98d0-b168effe7aa9
+r0 08:33:34.835 +2235.8s -> 08:36:38.455 +2419.4s (183.6s) completed checkpoint server: 4 [run-preview.test.ts run-settlement.test.ts run.test.ts scoped-recovery.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/07b5d295-4bb3-4d07-bbe3-80eda8259003
+r0 08:36:38.745 +2419.7s -> 08:37:13.483 +2454.4s (34.7s) completed checkpoint server: 4 [skill-resume-continuation.test.ts skill-system-prompt.test.ts stopped-composer.test.ts system-prompt.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/494847d4-71df-45e9-90e2-53d132ebc364
+r0 08:37:13.698 +2454.7s -> 08:38:00.637 +2501.6s (46.9s) completed checkpoint server: 4 [timeout-schema.test.ts types.test.ts unread-liveness.test.ts worker-destroy.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/5a2d721b-1adc-43a4-802a-3c0c70441d98
+r0 08:38:00.833 +2501.8s -> 08:41:26.264 +2707.2s (205.4s) completed checkpoint server: 4 [worker-inbox-liveness.test.ts worker-location-evidence.test.ts worker-parent-attention.test.ts worker-questions.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/24638839-59ee-469b-be1b-2e006ee211a8
+r0 08:41:26.590 +2707.5s -> 08:42:47.128 +2788.1s (80.5s) completed checkpoint server: 4 [worker-reboot-parity.test.ts worker-restart-parity.test.ts worker-wait-capacity.test.ts worker-wait-continuation.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/58bc08cb-cce8-42fb-a0f9-903538e78c38
+r0 08:42:47.384 +2788.3s -> 08:44:01.066 +2862.0s (73.7s) completed checkpoint server: 4 [worker-wait-conversations.test.ts worker-wait-durability.test.ts worker-wait.test.ts workspace-semaphore.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/21839b66-5a05-42d7-b2f5-284ec666b282
+r0 08:44:01.372 +2862.3s -> 08:44:02.788 +2863.7s (1.4s) completed checkpoint server: 4 [agent-accounts.test.ts agent-profiles.test.ts config.test.ts home-safety.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/f7891a0a-8632-40f3-b0c3-a2612b5f27c9
+r0 08:44:03.037 +2864.0s -> 08:44:03.775 +2864.7s (0.7s) completed checkpoint server: 4 [migrations.test.ts projects-cli.test.ts projects.test.ts semaphore.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/fdbcb6c3-5795-4eb5-9f2b-0f787f3cc5ed
+r0 08:44:03.982 +2864.9s -> 08:44:13.470 +2874.4s (9.5s) completed checkpoint web: 4 [client.test.ts contract-pipeline.test.ts events.test.ts global-events.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/81f11338-c969-4d0e-abc5-ee641477a80a
+r0 08:44:13.713 +2874.7s -> 08:44:19.588 +2880.5s (5.9s) completed checkpoint web: 4 [preview-socket.test.ts project-scope-context.test.tsx project-ui-state.test.tsx queries.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/328fdc03-9a15-4825-aed7-1dda836ff847
+r0 08:44:19.799 +2880.8s -> 08:44:24.653 +2885.6s (4.9s) completed checkpoint web: 4 [run-events.test.ts run-history.test.tsx ws.test.ts add-project-dialog.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/c5bddff4-8948-46e0-a1b0-fc40da36511e
+r0 08:44:24.869 +2885.8s -> 08:44:29.628 +2890.6s (4.8s) completed checkpoint web: 4 [app-error-boundary.test.tsx app-shell-container.test.tsx app-shell.test.tsx application-update-handoff.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/bfcf5a71-22f1-4386-b2e3-e1ea762d015a
+r0 08:44:29.858 +2890.8s -> 08:44:33.110 +2894.1s (3.3s) completed checkpoint web: 4 [centered-state.test.tsx clone-project-dialog.test.tsx code-editor.test.tsx command-palette.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/5f881017-2961-4788-8355-ac8a67d28d7d
+r0 08:44:33.333 +2894.3s -> 08:44:35.913 +2896.9s (2.6s) completed checkpoint web: 4 [composer-attachments.test.ts composer-text.test.ts composer.test.tsx dictation.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/051a3265-cef3-4ba5-bd55-f598f535a0b4
+r0 08:44:36.123 +2897.1s -> 08:44:37.093 +2898.1s (1.0s) completed checkpoint web: 4 [design-icons.test.tsx diff-stat.test.tsx diff-fallback.test.tsx diff-scroll.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/df49bcfd-579c-4a95-9fc2-365aa707ac99
+r0 08:44:37.321 +2898.3s -> 08:44:38.904 +2899.9s (1.6s) completed checkpoint web: 4 [diff-virtualize.test.tsx diff.test.tsx parse-patch.test.ts word-diff.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/230d1641-6646-4c99-ab65-6322acc12539
+r0 08:44:39.127 +2900.1s -> 08:44:41.231 +2902.2s (2.1s) completed checkpoint web: 4 [directional-usage.test.tsx engine-pills.test.ts ghost-code-backdrop.test.tsx github-item-detail.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/843409d5-88fc-468d-b24d-711f39a9b45a
+r0 08:44:41.438 +2902.4s -> 08:44:44.599 +2905.6s (3.2s) completed checkpoint web: 4 [last-location-controller.test.tsx list-view.test.tsx mobile-projects.test.tsx mobile-sidebar-tasks.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/5fc460de-816f-457b-ae07-304351dfd8ec
+r0 08:44:44.829 +2905.8s -> 08:44:46.830 +2907.8s (2.0s) completed checkpoint web: 4 [mobile-tab-bar-shell.test.tsx mobile-tab-bar.test.tsx nav-items.test.ts nav-selection.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/5a967f2b-c717-438f-bddf-9c1f2b5f8772
+r0 08:44:47.074 +2908.0s -> 08:44:49.704 +2910.7s (2.6s) completed checkpoint web: 4 [picker-pill.test.tsx pill.test.tsx project-groups.test.tsx project-rail.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/5deb32d8-02ed-41cd-a050-cc2f1430f1d2
+r0 08:44:49.958 +2910.9s -> 08:44:51.873 +2912.8s (1.9s) completed checkpoint web: 4 [project-switch.integration.test.tsx provider-banner-container.test.tsx provider-banner.test.tsx reference-chip.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/e0139bd5-429f-4117-9e5c-c9f86dc5085f
+r0 08:44:52.101 +2913.1s -> 08:44:53.935 +2914.9s (1.8s) completed checkpoint web: 4 [reference-conflict-action.test.tsx reference-status.test.tsx run-notifications.test.tsx sidebar-archive.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/f061c3b6-7b9c-4fa2-ab04-8cd668bda9d9
+r0 08:44:54.174 +2915.1s -> 08:44:57.602 +2918.6s (3.4s) completed checkpoint web: 4 [sidebar-limits.test.tsx sidebar-project-header.test.tsx status-dot.test.tsx task-quick-list.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/97447dba-d7f6-4a2d-9ef0-b8918c8084f9
+r0 08:44:57.861 +2918.8s -> 08:44:59.858 +2920.8s (2.0s) completed checkpoint web: 4 [theme-provider.test.tsx theme-toggle.test.tsx tools-menu.test.tsx button.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/6789f6b4-e928-4d22-a566-df5aed4c4b97
+r0 08:45:00.113 +2921.1s -> 08:45:01.533 +2922.5s (1.4s) completed checkpoint web: 4 [searchable-popover.test.tsx toaster.test.tsx use-application-update.test.tsx use-swipe-to-archive.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/94ae2730-cce4-46b8-9195-c43217f82570
+r0 08:45:01.768 +2922.7s -> 08:45:02.816 +2923.8s (1.0s) completed checkpoint web: 4 [zoomable-image.test.tsx design-guardian.test.ts appearance.test.ts attention.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/dde5c811-19d4-4be7-b73d-aded0c8009f0
+r0 08:45:03.053 +2924.0s -> 08:45:04.001 +2925.0s (0.9s) completed checkpoint web: 4 [automation-format.test.ts bookmarklet.test.ts cez-idle.test.ts ellipsis-hidden.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2fdab0e0-9f3d-4cc9-bc55-ba245bcb239a
+r0 08:45:04.235 +2925.2s -> 08:45:05.005 +2926.0s (0.8s) completed checkpoint web: 4 [format.test.ts git-actions.test.ts github-list-width.test.ts github-nav-contract.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9ff43f94-e40b-413d-95d3-05f075b81660
+r0 08:45:05.248 +2926.2s -> 08:45:05.726 +2926.7s (0.5s) completed checkpoint web: 4 [github-task.test.ts global-tasks.test.ts group-summary.test.ts highlighter.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2083514a-4827-475f-a128-0793ed284a09
+r0 08:45:05.982 +2926.9s -> 08:45:06.914 +2927.9s (0.9s) completed checkpoint web: 4 [is-newer-version.test.ts keyboard-inset.test.ts last-location.test.ts live-refetch.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7582bab0-2c31-422d-90fd-e8fc18d47c02
+r0 08:45:07.163 +2928.1s -> 08:45:08.216 +2929.2s (1.1s) completed checkpoint web: 4 [notifications.test.ts project-rail-expanded.test.ts project-router.test.tsx project-signal.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7a7a6c6b-9397-4a29-af00-a2a2db30548a
+r0 08:45:08.455 +2929.4s -> 08:45:09.970 +2930.9s (1.5s) completed checkpoint web: 4 [project-switch.client.test.ts project-switch.test.ts project-tags.test.ts prompt-templates.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/afa6ca48-6418-47af-b379-33cb62a1c3b9
+r0 08:45:10.231 +2931.2s -> 08:45:10.624 +2931.6s (0.4s) completed checkpoint web: 4 [provider-auth-alert.test.ts provider-status.test.ts read-state.test.ts request-wait-attention.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2a583157-1d47-4cf4-b3c8-4d0f2dcbef5c
+r0 08:45:10.856 +2931.8s -> 08:45:11.559 +2932.5s (0.7s) completed checkpoint web: 4 [sidebar-collapse.test.ts sidebar-width.test.ts skills.test.ts task-columns.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/77343214-ad60-406f-8c6f-f2d71c78cca6
+r0 08:45:11.803 +2932.8s -> 08:45:12.565 +2933.5s (0.8s) completed checkpoint web: 4 [task-groups.test.ts tasks-table.test.ts theme.test.ts token-metrics.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a4ce6366-5b43-4562-bf53-55c9f87525e2
+r0 08:45:12.863 +2933.8s -> 08:45:13.883 +2934.8s (1.0s) completed checkpoint web: 4 [unified-diff.test.ts use-command-shortcut.test.tsx use-document-title.test.ts use-now.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/92027d01-a4ac-4f15-a6f1-26602f3f0e9c
+r0 08:45:14.128 +2935.1s -> 08:45:15.348 +2936.3s (1.2s) completed checkpoint web: 4 [use-sidebar-sections.test.tsx use-submit-shortcut.test.ts use-task-table-columns.test.tsx utils.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/612aa16a-cfc3-4208-a90b-16839fcb2783
+r0 08:45:15.621 +2936.6s -> 08:45:24.455 +2945.4s (8.8s) completed checkpoint web: 4 [webhook.test.ts workflow-builder.test.ts routes.test.tsx automations-list.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/4434eb8f-96f7-4b65-9a56-f71e1e8d7107
+r0 08:45:24.752 +2945.7s -> 08:45:27.380 +2948.3s (2.6s) completed checkpoint web: 4 [automations-route.test.tsx editor-draft.test.ts editor.test.tsx log.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/e0308144-f6f6-4f03-b7ec-0b3a23c91dfe
+r0 08:45:27.657 +2948.6s -> 08:45:30.605 +2951.6s (2.9s) completed checkpoint web: 4 [next-runs-preview.test.tsx compare-variants.test.tsx cross-project-task-navigation.test.tsx github-filter.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d047f49d-a5df-4f91-a5b8-3e6447dcf345
+r0 08:45:30.857 +2951.8s -> 08:46:04.528 +2985.5s (33.7s) completed checkpoint web: 4 [github-route-wiring.test.tsx github-sidebar-filters.test.tsx github-sidebar-model.test.ts github.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/333d5c93-f5c2-45df-a041-bef92d705425
+r0 08:46:04.832 +2985.8s -> 08:46:11.187 +2992.1s (6.4s) completed checkpoint web: 4 [hand-to-agent-draft.test.ts issue-linked-tasks.test.tsx use-hand-to-agent-state.test.tsx global-tasks.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/0ccf0476-780b-44e0-a71e-7fae1bcbc745
+r0 08:46:11.466 +2992.4s -> 08:46:14.549 +2995.5s (3.1s) completed checkpoint web: 4 [inbox.test.tsx new-task-autostart.test.ts new-task-draft.test.ts new-task-form.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/5ec6884d-73c1-4381-a033-63a6bb59f4f2
+r0 08:46:14.823 +2995.8s -> 08:46:27.751 +3008.7s (12.9s) completed checkpoint web: 4 [new-task-params.test.ts new-task-plan.test.ts new-task-project.test.tsx new-task.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/f0853de9-cf78-4ef7-9d6c-5ada287a13fd
+r0 08:46:28.029 +3009.0s -> 08:46:30.445 +3011.4s (2.4s) completed checkpoint web: 4 [plan-review.test.tsx git-sections.test.ts git-sidebar.test.tsx repo-git.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/59e3d411-8ba3-438f-a3aa-76bf833e972c
+r0 08:46:30.756 +3011.7s -> 08:46:34.108 +3015.1s (3.4s) completed checkpoint web: 4 [worktrees-panel.test.tsx accounts-defaults.test.tsx accounts-section.test.tsx agent-config-section.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/f5cb9aa7-0f1a-4256-bab8-813e279b3fd4
+r0 08:46:34.380 +3015.3s -> 08:46:37.415 +3018.4s (3.0s) completed checkpoint web: 4 [agent-descriptors.test.ts agents-section.test.tsx bookmarklets-section.test.tsx notifications-section.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/d806744a-07f3-4612-b2ab-f8254538c7e4
+r0 08:46:37.684 +3018.6s -> 08:46:40.896 +3021.9s (3.2s) completed checkpoint web: 4 [project-general.test.tsx project-location.test.tsx projects-section.test.tsx prompt-templates-section.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/828997e6-fd80-47be-ad59-5e3beab0cbc9
+r0 08:46:41.186 +3022.1s -> 08:46:44.640 +3025.6s (3.5s) completed checkpoint web: 4 [provider-settings.test.tsx resources-section.test.tsx settings.test.tsx sidebar-section.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/b3aea551-f57d-4a6f-8452-467dd975f5b1
+r0 08:46:44.914 +3025.9s -> 08:46:47.528 +3028.5s (2.6s) completed checkpoint web: 4 [skills-section.test.tsx worktrees-section.test.tsx skills.test.tsx commit-list.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/e6deaeb1-0b91-431e-9ec0-34da5c60f884
+r0 08:46:47.827 +3028.8s -> 08:46:50.195 +3031.2s (2.4s) completed checkpoint web: 4 [file-tree.test.ts task-changes.test.tsx task-files.test.tsx worktree-files.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9ad9d71c-0467-4072-bed8-34b37494b2a4
+r0 08:46:50.521 +3031.5s -> 08:46:56.458 +3037.4s (5.9s) completed checkpoint web: 4 [task-github-item.test.tsx active-provider.test.ts agents-dock.test.tsx ask-answer.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d8615031-5c2a-4af3-8c0d-569127af4282
+r0 08:46:56.754 +3037.7s -> 08:47:00.627 +3041.6s (3.9s) completed checkpoint web: 4 [ask-card.test.tsx conversation-presentation.test.ts file-links.test.ts follow-up-engine.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/97c07981-0a3a-4e39-a163-b7992c26e54e
+r0 08:47:00.926 +3041.9s -> 08:47:03.269 +3044.2s (2.3s) completed checkpoint web: 4 [handoff-action.test.tsx markdown.test.tsx plan-dock.test.tsx input-map.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/71089df5-63f0-4a72-8683-beaa5146b306
+r0 08:47:03.590 +3044.5s -> 08:47:06.065 +3047.0s (2.5s) completed checkpoint web: 4 [page-dialog.test.tsx preview-input.test.tsx preview-layout-css.test.ts preview-pane.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/446404b5-d011-4603-b6c5-121086d8baa8
+r0 08:47:06.353 +3047.3s -> 08:47:08.171 +3049.1s (1.8s) completed checkpoint web: 4 [preview-stage.test.tsx preview-states.test.tsx preview-toolbar.test.tsx preview-url.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b7bdcaf9-557a-4381-ad3e-2d20e08c0c87
+r0 08:47:08.467 +3049.4s -> 08:47:10.643 +3051.6s (2.2s) completed checkpoint web: 4 [server-card.test.tsx task-preview-layout.test.tsx review-panel.test.tsx run-actions.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b7bd9956-2f23-4ce7-8fef-98d2a5e2f642
+r0 08:47:10.966 +3051.9s -> 08:47:17.346 +3058.3s (6.4s) completed checkpoint web: 4 [run-activity-dock.test.tsx run-header-mobile.test.tsx run-header.test.tsx run-reconcile.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/809f9600-4eff-48bb-9cc0-19fda59ea61a
+r0 08:47:17.663 +3058.6s -> 08:47:19.455 +3060.4s (1.8s) completed checkpoint web: 4 [run-relationships.test.tsx session-transcript.test.tsx step-rail.test.tsx subagent-dock.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/df1c7dd2-3720-4865-a655-41756537b229
+r0 08:47:19.756 +3060.7s -> 08:47:27.629 +3068.6s (7.9s) completed checkpoint web: 4 [subagent-replay.test.tsx subagent-sheet.test.tsx task-thread.test.tsx thread-groups.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c87cb5a8-5343-4b10-b978-7bdb279c6144
+r0 08:47:27.965 +3068.9s -> 08:47:30.285 +3071.2s (2.3s) completed checkpoint web: 4 [thread-items.test.tsx thread-open-cards.test.tsx thread-scroll.test.ts thread-scroller-virtualizer.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/a5b101de-612c-4dc9-95de-d17c3e02c120
+r0 08:47:30.605 +3071.6s -> 08:47:38.825 +3079.8s (8.2s) completed checkpoint web: 4 [thread-scroller.test.tsx thread-state.test.ts thread-time.test.tsx tasks-overview.test.tsx]
+   log /home/agent/projects/cezar/.git/squeal/runs/7f25b410-ea9b-46bb-be56-28a1586378e8
+r0 08:47:39.167 +3080.1s -> 08:47:41.861 +3082.8s (2.7s) completed checkpoint web: 4 [workflows.test.tsx workspace-tools.test.tsx agent-browser-failure.test.ts agent-browser-interact.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/19a36847-435f-418c-a2fb-24bf3d13873c
+r0 08:47:42.185 +3083.1s -> 08:47:49.605 +3090.6s (7.4s) completed checkpoint web: 4 [agent-browser-launch.test.ts agent-browser-wait-value.test.ts e2e-wait-discipline.test.ts fixture-serve-env.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d1ef0eba-3162-4f38-ae25-bf251f30c31c
+r0 08:47:49.945 +3090.9s -> 08:47:56.684 +3097.6s (6.7s) completed checkpoint web: 4 [fixture-server-diagnostics.test.ts fixture-server-start.test.ts fixture-server-stop.test.ts poll.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c52e5b5c-eb0f-4ef4-ab43-d29110638b64
+r0 08:47:57.018 +3098.0s -> 08:47:57.872 +3098.8s (0.9s) completed checkpoint web: 4 [project-rail-ready.test.ts session-layout.test.ts transcript-measurements.test.ts visual-ready.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/fb9be4f6-ba15-411d-8c87-26862b7782aa
+r0 08:47:58.182 +3099.1s -> 08:48:01.022 +3102.0s (2.8s) completed checkpoint web: 1 [vite-config.test.ts]; server: 3 [schedule-runner.test.ts scheduler.test.ts store.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/52422b8c-7f56-48c6-8ed3-4c15376d9efc
+r0 08:48:01.348 +3102.3s -> 08:48:01.952 +3102.9s (0.6s) completed checkpoint server: 1 [task-template.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c085086a-a8d4-4da1-b1c4-34a9f8444db9
+r1 08:48:42.560 +3143.5s -> 08:48:44.781 +3145.7s (2.2s) completed server: 3 [handoff.test.ts todos.test.ts skill-system-prompt.test.ts]; test:unit: 1 [todo-task-text.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d0f20a56-9532-49fd-8cac-5798a601b9a6
+r1 08:48:45.144 +3146.1s -> 08:48:45.995 +3147.0s (0.9s) completed server: 4 [resume-command.test.ts pump-repo-cache.test.ts preview-boot-sweep.test.ts recover-session-failure.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7706a5a1-afa7-46cc-b454-e022a2cd0ca3
+r1 08:48:46.331 +3147.3s -> 08:48:47.431 +3148.4s (1.1s) completed server: 4 [recover-followups.test.ts bc-route-inventory.test.ts cursor-bootstrap-continue.test.ts cockpit-ownership.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7b5ed854-f867-4216-9de4-698cece49802
+r1 08:48:47.757 +3148.7s -> 08:48:48.855 +3149.8s (1.1s) completed server: 4 [dead-owner-claims.test.ts sse-headers.test.ts stopped-composer.test.ts dry-run-backends.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c961f50f-5bfd-4079-bcc5-efa135b290bc
+r1 08:48:49.170 +3150.1s -> 08:48:50.280 +3151.2s (1.1s) completed server: 4 [run-summaries-api.test.ts run-settlement.test.ts service.testkit.test.ts recover-autonomous.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/76ff3d7a-2c07-40cc-84b6-b51cff48761d
+r1 08:48:50.608 +3151.6s -> 08:48:51.671 +3152.6s (1.1s) completed server: 4 [ws.test.ts maintenance-claims.test.ts run-store-unavailable.test.ts github-pr-changes-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7c9bce47-b0f8-41cd-b257-b5d53dc4f6d0
+r1 08:48:52.067 +3153.0s -> 08:48:53.534 +3154.5s (1.5s) completed server: 4 [continue-unarchive.test.ts pi-teardown.test.ts query-repeat-parity.test.ts versioned-surface.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a5f96920-26d3-4c06-94c0-7bd089d04335
+r1 08:48:53.930 +3154.9s -> 08:48:55.090 +3156.0s (1.2s) completed server: 4 [project-context-repo-handle.test.ts agent-profile-wiring.test.ts open-in-project.test.ts ref-status-invalidation.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/100c3ef1-e07c-45f4-b518-ddb5e8b76edc
+r1 08:48:55.448 +3156.4s -> 08:48:56.782 +3157.7s (1.3s) completed server: 4 [github-merge-api.test.ts codex-provider-failure.test.ts patch-run.test.ts autosave-gate.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/73eefb53-db14-4ed1-a98c-f2ee63494cdb
+r1 08:48:57.095 +3158.1s -> 08:48:58.426 +3159.4s (1.3s) completed server: 4 [github-comments-api.test.ts conversation-batch.test.ts group-pick.test.ts read-run.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/35414ab9-f626-40c6-a917-371dc66d80d1
+r1 08:48:58.769 +3159.7s -> 08:48:59.902 +3160.9s (1.1s) completed server: 4 [github-checks-api.test.ts usage-scope.test.ts github-ref-status-api.test.ts auto-resume-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/4a96459f-b176-453e-9b5f-963e555c90ba
+r1 08:49:00.256 +3161.2s -> 08:49:01.692 +3162.7s (1.4s) completed server: 4 [ui-state.test.ts preview-socket.test.ts nonblocking-discovery.test.ts typed-client.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b4b66278-1fd4-428e-b1cb-09eb028d229b
+r1 08:49:02.160 +3163.1s -> 08:49:04.392 +3165.4s (2.2s) completed server: 4 [skills-update-api.test.ts start-run-todo.test.ts scoped-recovery.test.ts inbox-gate.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c92da417-065d-46da-8a9b-597cd0bcb5a5
+r1 08:49:04.759 +3165.7s -> 08:49:06.481 +3167.4s (1.7s) completed server: 4 [codex-startup-cancel.test.ts start-run-idempotent.test.ts agent-config-api.test.ts checkout.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/ce3ebf96-eb21-446b-909f-a6bbfc0dd836
+r2 08:49:07.639 +3168.6s -> 08:49:09.687 +3170.6s (2.0s) completed test:unit: 1 [todo-task-text.test.ts]; server: 3 [handoff.test.ts todos.test.ts skill-system-prompt.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+r2 08:49:10.035 +3171.0s -> 08:49:10.841 +3171.8s (0.8s) completed server: 4 [pump-repo-cache.test.ts resume-command.test.ts dead-owner-claims.test.ts service.testkit.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/8c25d953-81fb-4464-b15c-a435095fa113
+r2 08:49:11.177 +3172.1s -> 08:49:12.007 +3173.0s (0.8s) completed server: 4 [preview-boot-sweep.test.ts bc-route-inventory.test.ts cursor-bootstrap-continue.test.ts github-pr-changes-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/cc3e04d7-aee0-4e22-9e67-04b0f6da54dc
+r2 08:49:12.327 +3173.3s -> 08:49:13.393 +3174.4s (1.1s) completed server: 4 [sse-headers.test.ts recover-session-failure.test.ts cockpit-ownership.test.ts run-summaries-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/9ae68386-5797-411c-952b-9961306d506a
+r2 08:49:13.711 +3174.7s -> 08:49:14.670 +3175.6s (1.0s) completed server: 4 [project-context-repo-handle.test.ts recover-followups.test.ts agent-profile-wiring.test.ts run-store-unavailable.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/1246f64d-ac9f-4121-bbb6-63015647015a
+r2 08:49:15.006 +3176.0s -> 08:49:16.065 +3177.0s (1.1s) completed server: 4 [github-merge-api.test.ts continue-unarchive.test.ts dry-run-backends.test.ts ui-state.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/79946791-d4a0-4a37-81f0-97ff43241755
+r2 08:49:16.418 +3177.4s -> 08:49:17.496 +3178.5s (1.1s) completed server: 4 [open-in-project.test.ts maintenance-claims.test.ts typed-client.test.ts ws.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/5a71ebb7-3cfe-48d4-895d-c25696d4918d
+r2 08:49:17.839 +3178.8s -> 08:49:18.932 +3179.9s (1.1s) completed server: 4 [usage-scope.test.ts run-settlement.test.ts github-ref-status-api.test.ts patch-run.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/6ad6b1df-6f9e-4942-8c7a-8346f2362714
+r2 08:49:19.296 +3180.3s -> 08:49:20.403 +3181.4s (1.1s) completed server: 4 [auto-resume-api.test.ts group-pick.test.ts github-comments-api.test.ts stopped-composer.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a70b37b9-49c3-4ce4-bf3c-cdcc0e7cd4a5
+r2 08:49:20.766 +3181.7s -> 08:49:21.966 +3182.9s (1.2s) completed server: 4 [ref-status-invalidation.test.ts recover-autonomous.test.ts github-checks-api.test.ts read-run.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/73180cc9-78f9-4452-a791-07d6d4ba8e21
+r2 08:49:22.296 +3183.3s -> 08:49:23.649 +3184.6s (1.4s) completed server: 4 [inbox-gate.test.ts start-run-todo.test.ts query-repeat-parity.test.ts nonblocking-discovery.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/476f2eb0-7756-498a-ab93-fe4b50394b87
+r2 08:49:23.982 +3184.9s -> 08:49:25.263 +3186.2s (1.3s) completed server: 4 [autosave-gate.test.ts skills-update-api.test.ts versioned-surface.test.ts codex-provider-failure.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/5a8fa2d9-6f87-4355-a293-192de6ad98e9
+r2 08:49:25.608 +3186.6s -> 08:49:27.097 +3188.1s (1.5s) completed server: 4 [conversation-batch.test.ts preview-socket.test.ts pi-teardown.test.ts codex-startup-cancel.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b22276ce-3ec4-459b-a9c4-b34f39526dfe
+r2 08:49:27.549 +3188.5s -> 08:49:28.937 +3189.9s (1.4s) completed server: 4 [start-run-idempotent.test.ts agent-config-api.test.ts checkout.test.ts provision.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/05ea0c5a-c0bf-4b42-8ca4-a2f9933927ca
+r2 08:49:29.253 +3190.2s -> 08:49:31.641 +3192.6s (2.4s) completed server: 4 [run-lease.test.ts scoped-recovery.test.ts github-search-api.test.ts application-update.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/4a8c3f6c-130b-45d6-a7b9-189d4328db24
+r2 08:49:31.979 +3192.9s -> 08:49:33.912 +3194.9s (1.9s) completed server: 4 [conversation-resume-wait.test.ts fs-browse.test.ts start-run.test.ts delegation-reconcile.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7cc1a213-6193-45ba-9593-bb75eb84411d
+r2 08:49:34.293 +3195.3s -> 08:49:35.841 +3196.8s (1.5s) completed server: 4 [continue-run.test.ts artifacts-api.test.ts github-item-api.test.ts config-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/161f7520-9b2c-475c-9e7c-953499acb53d
+r2 08:49:36.179 +3197.1s -> 08:49:38.781 +3199.7s (2.6s) completed server: 4 [open-in-file.test.ts continuation-tools.test.ts ui-state-api.test.ts recovery-order.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/e7f82894-c757-40e0-8495-6d7e6ee75697
+r2 08:49:39.103 +3200.1s -> 08:49:41.962 +3202.9s (2.9s) completed server: 4 [route-parity.test.ts agent-tmpdir.test.ts input.test.ts run-preview.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/6eb902f7-21ce-4840-a697-c6220a499b2a
+r2 08:49:42.308 +3203.3s -> 08:49:45.797 +3206.8s (3.5s) completed server: 4 [queued-messages.test.ts workspace-events.test.ts task-webhook-api.test.ts skill-resume-continuation.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/adbbc311-f7d0-4a52-aada-33d90b7cce20
+r2 08:49:46.190 +3207.1s -> 08:49:49.842 +3210.8s (3.7s) completed server: 4 [host-guard.test.ts context.test.ts retention-wiring.test.ts todos-start.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2f64f49d-0445-4b44-a5eb-7ddfd0af3b73
+r2 08:49:50.216 +3211.2s -> 08:49:53.632 +3214.6s (3.4s) completed server: 4 [codex-permissions.test.ts run-isolation.test.ts discovery.test.ts project-context.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/1f85d3c5-c251-40da-b70e-221432704840
+r2 08:49:53.957 +3214.9s -> 08:49:57.817 +3218.8s (3.9s) completed server: 4 [worker-inbox-liveness.test.ts open-in-cli-resume.test.ts models-api.test.ts automations-gate.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/cdff4a5f-bb8a-4d01-a795-f18933d0fa20
+r2 08:49:58.183 +3219.1s -> 08:50:02.677 +3223.6s (4.5s) completed server: 4 [request-validation.test.ts cli.test.ts owned-input-failure.test.ts health-forge.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0c5b974d-1b39-42f3-a0b0-64c5784c8077
+r2 08:50:03.023 +3224.0s -> 08:50:07.361 +3228.3s (4.3s) completed server: 4 [delegation-cleanup.test.ts providers-api.test.ts unread-liveness.test.ts repo-branches-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d68c9878-1c67-48b1-b580-b4ad706ef7cd
+r2 08:50:07.698 +3228.7s -> 08:50:12.406 +3233.4s (4.7s) completed server: 4 [runs-index-api.test.ts delegation-transcript-reads.test.ts worker-wait-continuation.test.ts attachments-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/6175732d-d568-4cd9-8c65-b28d19e3e610
+r2 08:50:12.934 +3233.9s -> 08:50:18.013 +3239.0s (5.1s) completed server: 4 [origin-guard.test.ts fixture-cleanup.test.ts prelaunch-cancel.test.ts workspace-api.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/ee6276c5-5ace-4bbd-9601-fe9ffd64302e
+r2 08:50:18.353 +3239.3s -> 08:50:24.239 +3245.2s (5.9s) completed server: 4 [store-history-compression.test.ts run-ownership-controls.test.ts run-relationships.test.ts conversation-questions.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/ca486ef4-243e-44dd-b8a5-85c6d063d440
+r2 08:50:24.590 +3245.5s -> 08:50:31.577 +3252.5s (7.0s) completed server: 4 [autonomous-nudge-guards.test.ts automations-api.test.ts provider-action-gating.test.ts conversation-batch-ack.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/34dc7404-a9e3-4587-bb39-585929154ab9
+r2 08:50:31.924 +3252.9s -> 08:50:37.990 +3258.9s (6.1s) completed server: 4 [projects-api.test.ts agent-profiles-api.test.ts ci-wait-refusal.test.ts results.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/b6619370-ae9f-4fb1-a743-8ae812ea92b3
+r2 08:50:38.363 +3259.3s -> 08:50:45.893 +3266.9s (7.5s) completed server: 4 [check-stop-kill.test.ts health-topic.test.ts conversation-service.test.ts finishability.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/5392c163-e742-4c28-b582-8f8e2e2f6ecd
+r2 08:50:46.236 +3267.2s -> 08:50:55.703 +3276.7s (9.5s) completed server: 4 [scratch-cleanup.test.ts cursor-acp-runner.test.ts conversation-delivery.test.ts routes.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/52d525be-9079-4d32-a4cb-fbf33b42f6b3
+r2 08:50:56.036 +3277.0s -> 08:51:05.236 +3286.2s (9.2s) completed server: 4 [repo-pull.test.ts cli.test.ts git-changes.test.ts cli.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/24816d5b-5b2c-4ebd-9257-ed2e08f11683
+r2 08:51:05.610 +3286.6s -> 08:51:18.984 +3299.9s (13.4s) completed server: 4 [worktrees-api.test.ts workspace-semaphore.test.ts conversation-resume.test.ts watch.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/e81d0e47-04ae-403f-9ee5-74f4ea3bdff8
+r2 08:51:19.342 +3300.3s -> 08:51:35.370 +3316.3s (16.0s) completed server: 4 [runner-shutdown-parity.test.ts unread-input.test.ts pi-runner.test.ts ci-wait-registration.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/66bd4396-51c7-4e56-98bb-2e408dc1a095
+r2 08:51:35.720 +3316.7s -> 08:52:01.820 +3342.8s (26.1s) completed server: 4 [ci-tools.test.ts destruction-results.test.ts harness-autosave.test.ts claude-cli-runner.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/c573c21d-7481-4223-9a94-ba8da4aa1dfb
+r2 08:52:02.170 +3343.1s -> 08:52:30.102 +3371.1s (27.9s) completed server: 4 [auto-resume.test.ts delegation-integration.test.ts worker-location-evidence.test.ts service.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/d4dc74b5-2276-4c55-8ebc-41da8560b2e9
+r2 08:52:30.435 +3371.4s -> 08:53:06.068 +3407.0s (35.6s) completed server: 4 [immediate-delivery.test.ts model-identity-wiring.test.ts ci-wait-parity.test.ts system-prompt.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/0a4337c5-d08c-4378-96c9-da330c7eb74e
+r2 08:53:06.392 +3407.4s -> 08:53:42.166 +3443.1s (35.8s) completed server: 4 [worker-reboot-parity.test.ts pasted-attachments.test.ts worker-wait-conversations.test.ts skill-resume-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/2c46500d-26a0-4443-82f5-e3751f4f0e5a
+r2 08:53:42.507 +3443.5s -> 08:54:29.545 +3490.5s (47.0s) completed server: 4 [worker-restart-parity.test.ts workflow-timeout-parity.test.ts workspace.test.ts worker-destroy.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/bff79280-a850-4281-8dac-ce2b9a2b601c
+r2 08:54:29.921 +3490.9s -> 08:55:35.248 +3556.2s (65.3s) completed server: 4 [owned-input-delivery.test.ts ci-wait.test.ts worker-wait.test.ts workflow-ask-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/638d4ebd-5188-4b45-92f9-5e69fcfcbd79
+r2 08:55:35.648 +3556.6s -> 08:57:01.450 +3642.4s (85.8s) completed server: 4 [worker-wait-durability.test.ts worker-wait-capacity.test.ts provision-workflows.test.ts workflow-final-message-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/a0fe3d1c-65c8-42eb-8e5b-733811470768
+r2 08:57:02.368 +3643.3s -> 08:59:44.650 +3805.6s (162.3s) completed server: 4 [workflow-autonomous-parity.test.ts worker-questions.test.ts workflow-no-progress-parity.test.ts monitoring-channel-order.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/86abe0a9-873a-48fe-b607-bcd212550325
+r2 08:59:45.097 +3806.1s -> 09:06:50.223 +4231.2s (425.1s) completed server: 4 [run.test.ts worker-parent-attention.test.ts monitoring-turn.test.ts harness-parity.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/12848c7c-d265-4acd-bd17-20a2f560a7b4
+r4 09:06:52.058 +4233.0s -> 09:07:28.569 +4269.5s (36.5s) completed test:package: 3 [stop-child.test.ts task-cli.test.ts application-update.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/77d95628-243e-4ed3-a67b-d195bfc2cf10
+r9 09:10:47.976 +4468.9s -> 09:10:48.337 +4469.3s (0.4s) completed root:test:unit: 4 [release-bump-pr.test.cjs recover-review.test.cjs issue-template.test.cjs ci-sweep-api.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/26eb121a-124e-4111-bb57-191b40e14bef
+r9 09:10:48.694 +4469.7s -> 09:10:48.956 +4469.9s (0.3s) completed root:test:unit: 4 [sweep-ci-failures.test.cjs issue-intake.workflow.test.cjs ci-sweep-patterns.test.cjs apply-issue-intake.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/bdee42ba-9b00-42b4-a5a5-81a1c0517571
+r9 09:10:49.294 +4470.3s -> 09:10:49.593 +4470.6s (0.3s) completed root:test:unit: 4 [automated-review.test.cjs failure-diagnostics.test.cjs ci-sweep-report.test.cjs failure-issue-writer.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/8516a2d8-f6b8-43dc-9bd1-63c2be61cf50
+r9 09:10:50.056 +4471.0s -> 09:10:50.443 +4471.4s (0.4s) completed root:test:unit: 4 [upstream-scan.workflow.test.cjs fetch-ci-results.test.cjs ci-sweep-collect.test.cjs report-workflow-failure.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/00a2c8ea-457f-44d4-94c4-4a3052b93146
+r9 09:10:50.793 +4471.8s -> 09:10:51.215 +4472.2s (0.4s) completed root:test:unit: 4 [ci-sweep-workflow.test.cjs e2e-fetch.test.cjs failure-workflow.test.cjs upstream-ledger.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/280581b7-b851-4fd4-9cac-228ec0c0d1c6
+r9 09:10:51.564 +4472.5s -> 09:10:52.041 +4473.0s (0.5s) completed root:test:unit: 4 [release.workflow.test.cjs change-surface.test.cjs pr-readiness.test.cjs ci-test-sequencer.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/60926c09-cbc9-453d-b808-9bc7ae73c8cd
+r9 09:10:52.427 +4473.4s -> 09:10:53.348 +4474.3s (0.9s) completed root:test:unit: 4 [require-e2e-passed.test.cjs vitest-actions-report.test.cjs cockpit-test-sequencer.test.cjs release-ci.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/7200e31d-be12-40ea-a14c-bf8c6df46256
+r9 09:10:53.698 +4474.7s -> 09:10:56.470 +4477.4s (2.8s) completed root:test:unit: 4 [e2e-runner.test.cjs ci.workflow.test.cjs automated-code-review.workflow.test.cjs pr-snapshot.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/8b20d437-75d1-4d41-9c87-15f1e1a1fcc4
+r9 09:10:56.825 +4477.8s -> 09:11:35.136 +4516.1s (38.3s) completed root:test:unit: 4 [e2e-lanes.test.mjs test-changed.test.mjs ci-dispatch.workflow.test.cjs release-finalization.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/8995c769-9697-4342-8de9-c5b93fa41b7a
+r10 09:12:04.641 +4545.6s -> 09:12:04.984 +4545.9s (0.3s) completed root:test:unit: 4 [release-bump-pr.test.cjs recover-review.test.cjs issue-intake.workflow.test.cjs apply-issue-intake.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/44d243ba-5299-4e0e-bfbd-bafed85e5197
+r10 09:12:05.340 +4546.3s -> 09:12:05.637 +4546.6s (0.3s) completed root:test:unit: 4 [ci-sweep-patterns.test.cjs issue-template.test.cjs failure-diagnostics.test.cjs failure-issue-writer.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/adb556e1-10b4-46c2-94c6-1aa6173df777
+r10 09:12:05.965 +4546.9s -> 09:12:06.260 +4547.2s (0.3s) completed root:test:unit: 4 [fetch-ci-results.test.cjs report-workflow-failure.test.cjs ci-sweep-api.test.cjs sweep-ci-failures.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/0eff0955-7f3b-4f37-a521-9a06ce8f3519
+r10 09:12:06.587 +4547.5s -> 09:12:06.897 +4547.9s (0.3s) completed root:test:unit: 4 [ci-sweep-report.test.cjs e2e-fetch.test.cjs automated-review.test.cjs failure-workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/793afbe3-8a26-4f37-a02a-25e6a858892b
+r10 09:12:07.238 +4548.2s -> 09:12:07.585 +4548.5s (0.3s) completed root:test:unit: 4 [ci-sweep-collect.test.cjs ci-sweep-workflow.test.cjs pr-readiness.test.cjs upstream-scan.workflow.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/7a8af833-4908-4285-a614-4cce3b90f192
+r10 09:12:07.911 +4548.9s -> 09:12:08.361 +4549.3s (0.5s) completed root:test:unit: 4 [release.workflow.test.cjs upstream-ledger.test.cjs change-surface.test.cjs ci-test-sequencer.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/4fa185a4-b7a3-4242-a9f0-fd3a471b1f6b
+r10 09:12:08.697 +4549.7s -> 09:12:09.457 +4550.4s (0.8s) completed root:test:unit: 4 [cockpit-test-sequencer.test.cjs require-e2e-passed.test.cjs vitest-actions-report.test.cjs release-ci.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/11959365-e09a-414f-a778-16c4532ee174
+r10 09:12:09.781 +4550.7s -> 09:12:11.808 +4552.8s (2.0s) completed root:test:unit: 4 [ci.workflow.test.cjs e2e-runner.test.cjs automated-code-review.workflow.test.cjs pr-snapshot.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/695766cc-bb4b-4058-bab9-1cad78fd13b3
+r10 09:12:12.144 +4553.1s -> - (?s) null root:test:unit: 4 [ci-dispatch.workflow.test.cjs e2e-lanes.test.mjs test-changed.test.mjs release-finalization.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/cd4bfbf7-9b99-4d6b-aaaa-e0fd6ab645e0
+r10 09:13:09.872 +4610.8s -> 09:13:48.056 +4649.0s (38.2s) completed root:test:unit: 4 [ci-dispatch.workflow.test.cjs e2e-lanes.test.mjs test-changed.test.mjs release-finalization.test.cjs]
+   log /home/agent/projects/cezar/.git/squeal/runs/cfec8adf-765e-4755-bbe8-fef74dfbcde9
+r11 09:15:51.261 +4772.2s -> 09:15:51.590 +4772.5s (0.3s) completed test:unit: 1 [skill-dirs.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/7bfd415a-8021-4efb-ae73-d77529b45ed3
+r13 09:16:15.440 +4796.4s -> 09:16:15.893 +4796.9s (0.5s) completed test:unit: 1 [resolve-browser-launch.test.ts]
+   log /home/agent/projects/cezar/.git/squeal/runs/71efc4b3-0c0f-47a9-abc7-05d0de29b361
+
+## transitions
+r1 08:48:44.938 +3145.9s pass-to-fail pass -> fail [test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: a blank suggested prompt falls back to the summary
+r1 08:48:44.938 +3145.9s pass-to-fail pass -> fail [test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: the suggested prompt is trimmed
+r2 08:49:09.752 +3170.7s fail-to-pass fail -> pass [test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: a blank suggested prompt falls back to the summary
+r2 08:49:09.752 +3170.7s fail-to-pass fail -> pass [test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: the suggested prompt is trimmed
+r11 09:15:51.663 +4772.6s pass-to-fail pass -> fail [test:unit] packages/cezar/test/unit/skill-dirs.test.ts > the project skill dirs the hint promises are the ones discovery actually scans
+r11 09:15:51.663 +4772.6s pass-to-fail pass -> fail [test:unit] packages/cezar/test/unit/skill-dirs.test.ts > 
+r12 09:16:08.620 +4789.6s fail-to-pass fail -> pass [test:unit] packages/cezar/test/unit/skill-dirs.test.ts > the project skill dirs the hint promises are the ones discovery actually scans
+r12 09:16:08.620 +4789.6s fail-to-pass fail -> pass [test:unit] packages/cezar/test/unit/skill-dirs.test.ts > 
+
+## node:test closures (test_files rows of projects with ':' in the name)
+[root:test:unit] .github/scripts/apply-issue-intake.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/automated-code-review.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/automated-review.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/change-surface.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/ci-dispatch.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/ci-sweep-api.test.cjs complete=0 method=static imports plus declared inputs closure=6
+[root:test:unit] .github/scripts/ci-sweep-collect.test.cjs complete=0 method=static imports plus declared inputs closure=8
+[root:test:unit] .github/scripts/ci-sweep-patterns.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/ci-sweep-report.test.cjs complete=0 method=static imports plus declared inputs closure=8
+[root:test:unit] .github/scripts/ci-sweep-workflow.test.cjs complete=0 method=static imports plus declared inputs closure=11
+[root:test:unit] .github/scripts/ci-test-sequencer.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/ci.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/cockpit-test-sequencer.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/e2e-fetch.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/e2e-runner.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/failure-diagnostics.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/failure-issue-writer.test.cjs complete=0 method=static imports plus declared inputs closure=6
+[root:test:unit] .github/scripts/failure-workflow.test.cjs complete=0 method=static imports plus declared inputs closure=7
+[root:test:unit] .github/scripts/fetch-ci-results.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/issue-intake.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/issue-template.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/pr-readiness.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/pr-snapshot.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/recover-review.test.cjs complete=0 method=static imports plus declared inputs closure=6
+[root:test:unit] .github/scripts/release-bump-pr.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/release-ci.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/release-finalization.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/release.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=2
+[root:test:unit] .github/scripts/report-workflow-failure.test.cjs complete=0 method=static imports plus declared inputs closure=7
+[root:test:unit] .github/scripts/require-e2e-passed.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] .github/scripts/sweep-ci-failures.test.cjs complete=0 method=static imports plus declared inputs closure=11
+[root:test:unit] .github/scripts/upstream-ledger.test.cjs complete=0 method=static imports plus declared inputs closure=4
+[root:test:unit] .github/scripts/upstream-scan.workflow.test.cjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] .github/scripts/vitest-actions-report.test.cjs complete=0 method=static imports plus declared inputs closure=1
+[root:test:unit] scripts/e2e-lanes.test.mjs complete=0 method=static imports plus declared inputs closure=3
+[root:test:unit] scripts/test-changed.test.mjs complete=0 method=static imports plus declared inputs closure=1
+[test:package] packages/cezar/test/e2e/alias-bin-exports.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/application-update.test.ts complete=0 method=static imports plus declared inputs closure=17
+[test:package] packages/cezar/test/e2e/cockpit-ownership.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/delegation.test.ts complete=0 method=static imports plus declared inputs closure=38
+[test:package] packages/cezar/test/e2e/inline-contract.test.ts complete=0 method=static imports plus declared inputs closure=126
+[test:package] packages/cezar/test/e2e/package-cli.test.ts complete=0 method=static imports plus declared inputs closure=37
+[test:package] packages/cezar/test/e2e/release-snapshot.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/release.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:package] packages/cezar/test/e2e/serve-port.test.ts complete=0 method=static imports plus declared inputs closure=59
+[test:package] packages/cezar/test/e2e/stop-child.test.ts complete=0 method=static imports plus declared inputs closure=4
+[test:package] packages/cezar/test/e2e/task-cli.test.ts complete=0 method=static imports plus declared inputs closure=35
+[test:package] packages/cezar/test/e2e/tick-writer.test.ts complete=0 method=static imports plus declared inputs closure=5
+[test:unit] packages/cezar/test/unit/codex-reasoning-summary.test.ts complete=0 method=static imports plus declared inputs closure=52
+[test:unit] packages/cezar/test/unit/cursor-hang-stdin.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:unit] packages/cezar/test/unit/planner.test.ts complete=0 method=static imports plus declared inputs closure=88
+[test:unit] packages/cezar/test/unit/resolve-browser-launch.test.ts complete=0 method=static imports plus declared inputs closure=3
+[test:unit] packages/cezar/test/unit/skill-dirs.test.ts complete=0 method=static imports plus declared inputs closure=43
+[test:unit] packages/cezar/test/unit/skills-remote.test.ts complete=0 method=static imports plus declared inputs closure=43
+[test:unit] packages/cezar/test/unit/test-env-launcher.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:unit] packages/cezar/test/unit/todo-task-text.test.ts complete=0 method=static imports plus declared inputs closure=5
+[test:unit] packages/cezar/test/unit/web-typecheck.test.ts complete=0 method=static imports plus declared inputs closure=2
+[test:unit] packages/cezar/test/unit/workflow-types.test.ts complete=0 method=static imports plus declared inputs closure=6
+
+## counts of results per project at this worktree
+api-client pass 47
+contract pass 140
+root:test:unit pass 1704
+server pass 13806
+server skip 2
+test:package pass 116
+test:unit fail 4
+test:unit pass 114
+web pass 5973
+
+## known_states by project, outcome, validity, origin
+api-client pass current own 47
+contract pass current own 140
+root:test:unit pass current own 568
+server pass current own 8886
+server skip current own 2
+test:package pass current own 82
+test:unit pass current inherited 11
+test:unit pass current own 76
+web pass current own 5973
+
+## consumers

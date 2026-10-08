@@ -1,0 +1,81 @@
+== 2026-10-08T08:50:12.124Z exit=0 60.22s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" status --wait 60000
+Returned on timeout after 60.2 s: 3536 checks pending at revision 2
+
+Revision: 2
+Known failures: 0
+Affected checks: 12247 passed, 62 running, 3474 queued, 2 skipped
+Full-suite checkpoint: none completed at revision 2; last completed at revision 0
+
+Worktree: /tmp/squeal-dogfood-cezarion-56f54ae1 (HEAD 13351da, dirty at revision 2)
+Daemon: running, last heartbeat 2 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-08T07:56:21.275Z: node-test project "root:test:unit": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:77:40; import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:9:17), .github/scripts/failure-workflow.test.cjs (require() with a computed specifier at .github/scripts/failure-workflow.test.cjs:14:73)
+  2026-10-08T07:56:21.277Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+  2026-10-08T07:56:21.279Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+
+== 2026-10-08T08:50:19.371Z exit=0 0.00s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" why "[test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: blank args add no Arguments line"
+Check: [test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: blank args add no Arguments line
+Worktree: /tmp/squeal-dogfood-cezarion-56f54ae1
+Revision: 2
+
+Known state: PASS, current, observed at revision 2, commit 13351da
+  Location: packages/cezar/test/unit/todo-task-text.test.ts:28:3
+
+History: no transitions in this worktree
+
+Results (1, newest first):
+  PASS  2026-10-08T08:49:09.686Z  /tmp/squeal-dogfood-cezarion-56f54ae1 (this worktree), revision 2, commit 13351da, dirty
+        run c9fa5740-75a2-41e9-b924-a37d4043ba2a, 0 ms, key 8317394cbf7b
+        log: /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+
+Last run log: /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+
+== 2026-10-08T08:50:19.858Z exit=0 0.00s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" why "[test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: args with surrounding spaces are trimmed"
+Check: [test:unit] packages/cezar/test/unit/todo-task-text.test.ts > todoTaskText: args with surrounding spaces are trimmed
+Worktree: /tmp/squeal-dogfood-cezarion-56f54ae1
+Revision: 2
+
+Known state: PASS, current, observed at revision 2, commit 13351da
+  Location: packages/cezar/test/unit/todo-task-text.test.ts:28:3
+
+History: no transitions in this worktree
+
+Results (1, newest first):
+  PASS  2026-10-08T08:49:09.686Z  /tmp/squeal-dogfood-cezarion-56f54ae1 (this worktree), revision 2, commit 13351da, dirty
+        run c9fa5740-75a2-41e9-b924-a37d4043ba2a, 0 ms, key 8317394cbf7b
+        log: /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+
+Last run log: /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+
+== 2026-10-08T08:50:36.989Z exit=0 0.00s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" why "[test:unit] packages/cezar/test/unit/todo-task-text.test.ts"
+Check: [test:unit] packages/cezar/test/unit/todo-task-text.test.ts (file-level)
+Worktree: /tmp/squeal-dogfood-cezarion-56f54ae1
+Revision: 2
+
+Known state: PASS, current, observed at revision 2, commit 13351da
+
+History: no transitions in this worktree
+
+Results (3, newest first):
+  PASS  2026-10-08T08:49:09.686Z  /tmp/squeal-dogfood-cezarion-56f54ae1 (this worktree), revision 2, commit 13351da, dirty
+        run c9fa5740-75a2-41e9-b924-a37d4043ba2a, 256 ms, key 8317394cbf7b
+        log: /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+  PASS  2026-10-08T08:48:44.781Z  /tmp/squeal-dogfood-cezarion-56f54ae1 (this worktree), revision 1, commit 13351da, dirty
+        run d0f20a56-9532-49fd-8cac-5798a601b9a6, 260 ms, key e7002afd6491
+        log: /home/agent/projects/cezar/.git/squeal/runs/d0f20a56-9532-49fd-8cac-5798a601b9a6
+  PASS  2026-10-08T07:57:20.105Z  /tmp/squeal-dogfood-cezarion-56f54ae1 (this worktree), revision 0, commit 13351da, dirty
+        run 3a3d3a95-4c42-43b5-a0e8-2f9406b60f6c, 339 ms, key e4c41e19b383
+        log: /home/agent/projects/cezar/.git/squeal/runs/3a3d3a95-4c42-43b5-a0e8-2f9406b60f6c
+
+Last run log: /home/agent/projects/cezar/.git/squeal/runs/c9fa5740-75a2-41e9-b924-a37d4043ba2a
+
+== 2026-10-08T08:50:58.586Z exit=-1 51.87s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.mjs" status --wait 60000
+
