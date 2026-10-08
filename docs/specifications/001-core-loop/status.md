@@ -109,6 +109,8 @@ Started: 2026-10-02
 
 - 2026-10-08, wave 11 (001-120, `reviews/wave-11g.md` S1; the enclosing-repository rule decided by the worker): D2 clarified, no wording change. "Another repository" is decided at the link's resolved target, not at the link's path: a link is not observed when its target, or a directory above the target that does not also hold the root, has a `.git` entry, so a link into a foreign repository's root, a subdirectory of it, a subdirectory of its linked worktree, or a repository nested in this worktree is neither walked nor watched. A repository enclosing both the root and the target is not another one, so a plain directory beside a worktree that lives inside a checkout stays observed.
 
+- 2026-10-08, wave 12 (001-122, `lessons.md` defect 24; the rule decided by the human, the harness identity from `research/harness-process-liveness.md`, the walk without `CLAUDE_PID` and the departure stamp decided by the worker): D9 and D10 amended. Each registration records the hook's harness process; a heartbeat drops consumers whose process is gone; a daemon that had a consumer exits 3 s after the last one leaves, after a running tier stores; the idle period stays for a daemon that never had one; the 12 h expiry stays as the backstop. Types, additive: `HarnessProcess`, `DaemonExitReason` `sessions-gone`, `DaemonTimings.presenceMs` and `departureGraceMs`, `TimerContext.presence`, `DeliveryOptions`, `ContextOptions` and `HookDeps` `harnessProcess`. No schema change: the process lives in `meta` (`harness-process:<worktree>`), the last departure in `departed:<worktree>`.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
