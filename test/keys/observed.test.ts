@@ -79,6 +79,21 @@ describe("listings", () => {
     expect(listings.hashOf("a")).toBe(a);
   });
 
+  it("below a directory are its own and each nested directory's that holds a file (review wave 12d B5)", () => {
+    const listings = new Listings(() => [
+      "tree/a.txt",
+      "tree/sub/b.txt",
+      "tree/sub/deep/c.txt",
+      "treetop/x.txt",
+      "y.txt",
+    ]);
+    expect(listings.below("tree")).toEqual(["tree/", "tree/sub/", "tree/sub/deep/"]);
+    expect(listings.below("tree/sub/deep")).toEqual(["tree/sub/deep/"]);
+    expect(listings.below("")).toEqual(["./", "tree/", "tree/sub/", "tree/sub/deep/", "treetop/"]);
+    // A directory with no tracked file below it is still its own listing, hashed as none.
+    expect(listings.below("missing")).toEqual(["missing/"]);
+  });
+
   it("are closure paths that survive normalization, the root as ./", () => {
     expect(listingPath("")).toBe("./");
     expect(listingPath("data/listed")).toBe("data/listed/");

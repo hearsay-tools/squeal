@@ -315,6 +315,11 @@ export class WorktreeKeys {
     return this.#observed.of(testFile);
   }
 
+  /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
+  listingsBelow(directory: RelativePath): RelativePath[] {
+    return this.#listings.below(directory);
+  }
+
   /** True while policy `observe.runtimeInputs` holds. */
   get observing(): boolean {
     return this.#policy.observe.runtimeInputs;
