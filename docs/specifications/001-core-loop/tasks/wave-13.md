@@ -99,3 +99,22 @@ Questions to settle first, with a failing test: what serializes the runner part 
 Own: `src/core/scheduler/`, `src/core/types/scheduler.ts` (additive), tests under `test/scheduler/`, D5 in `spec.md`. A test that runs a slow file under a real daemon must set `slow.maxLoadPerCpu` high, or the load guard defers it for up to 10 min. Do not run `npm run build`.
 
 Done when: a scheduler test holds an older revision's Vitest tier running (a slow file) while a newer revision changes only an unrelated file of another runner (or another project), and the newer file starts and its result is stored before the older tier ends; the runner part of the newer revision is never pending behind it; existing scheduler and spec 004 tests pass.
+
+## 001-149 review of wave 13
+
+Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13.md`. Range: from `75c2fbf` (the wave 13 briefs) to the 001-140 landing, against spec 001 (D2, D4, D5, D6, D8, D10, D11, D12 as amended) and spec 004's rules where 001-140 meets them. Rows: 001-141 (0.1.44, short prune transactions; `open` takes no write lock), 001-142 (0.1.43, the daemon stops what tests leave running), 001-144 (0.1.41, a recorder leaves another Squeal's children alone), 001-145 (handover test waits for the successor at the lock), 001-146 (0.1.47, no stale transforms after a sub-second revert-and-restore), 001-147 (0.1.46, flush before a message only where a stop can follow), 001-140 (0.1.49, lanes). The 002/003/004 coordinator's 0.1.45 and 0.1.48 are in the range but not under review; read them only where they meet these rows.
+
+Questions, with probes, not only reading:
+- **Correctness first (vision principle 2):** can any of these rows let a stale result present as current? 001-146: other ways for Vite's bytes and the key's bytes to differ (a file changed during a closure walk, a rename, a file read through a symlink, a node:test file). 001-140: two lanes in flight across a revision, a superseded tier, a crash in one lane, `Tier.changes` and `Tier.run` per tier, the runner part applied while a tier runs.
+- **Never killing the wrong process (001-142):** pid reuse, the daemon's own children, a pipeline sharing its group (fixed in `bd410dd`), two overlapping runs (001-140's `afterEachRun`), `squeal stop` under load.
+- **Store (001-141):** does the batched prune ever delete a result that became live between batches, and does `auto_vacuum` still reach a new store.
+- **Recorder (001-144, 001-147):** can a path a Vitest fork or thread read before its last message be lost; does a nested Squeal's subtree stay with that Squeal only.
+- **Tests:** do 001-145's and 001-146's test changes still test what their names say, or do they now pass by waiting out the behaviour?
+
+Known noise: Squeal sessions started before 0.1.41 report false observe-test FAILs (the nested-recorder bug); timing tests under `test/harness`, `test/e2e/worktrees.test.ts` and `test/watcher` fail under load 60+ and pass alone. Never touch this repository's store or daemons you did not start; stop every daemon you start; `--maxWorkers=4` at most.
+
+## 001-150 the Vitest adapter's runner part never queues behind its own run
+
+Use /worker. After 001-149's review.
+
+001-140's remaining slice (c), in `tasks/001-140/notes.md`: `VitestAdapter.#serial` (`src/runners/vitest/adapter.ts`) puts `invalidate` without a recreate, `affected`, `closure` and enumeration behind any `run()` in flight, so while a Vitest tier runs every revision's runner part waits, a node:test-only one included (003 lessons defect 2, cezar r4). Brief to be written after the review, with 001-140's findings on `config.related` and on what `run()` and a recreate must exclude, and 001-146's `sources.ts`.
