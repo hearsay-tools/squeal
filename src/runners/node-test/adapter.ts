@@ -22,8 +22,12 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * wave 2.6, B1), so a pass stored while its loads went unobserved runs once more.
  * "5": closures and the environment report their installed packages (task
  * 003-22), and the graph reads `NODE_OPTIONS`' preloads, so keys change shape.
+ * "6": a package is taken from the installed path a specifier resolves to, and
+ * template imports, `createRequire` and `process.getBuiltinModule` report
+ * `module` (task 003-33, review wave 3, B1 and B2), so a pass stored under a
+ * key that missed a package runs once more.
  */
-export const NODE_TEST_ADAPTER_VERSION = "5";
+export const NODE_TEST_ADAPTER_VERSION = "6";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;

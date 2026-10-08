@@ -48,3 +48,41 @@ describe("parseModule's computed require()", () => {
     ]);
   });
 });
+
+// Review wave-3 B2 (task 003-33): `createRequire` and a computed `process.getBuiltinModule` load
+// what no specifier names, as Vitest's scan has it; a literal one names its builtin.
+describe("parseModule's builtin loads", () => {
+  const parsed = (source: string) => parseModule(source, "m.mjs");
+
+  it("marks createRequire however module was reached", () => {
+    for (const source of [
+      "const r = process.getBuiltinModule('module').createRequire(import.meta.url);",
+      "const { createRequire } = globalThis.mod;\ncreateRequire(import.meta.url)('x');",
+    ]) {
+      expect(parsed(source).unnamed, source).toBe(true);
+    }
+  });
+
+  it("names the builtin of a literal getBuiltinModule and marks a computed one", () => {
+    expect(
+      parsed("process.getBuiltinModule('fs'); process.getBuiltinModule(\"node:child_process\");"),
+    ).toEqual({
+      specifiers: [
+        { specifier: "node:fs", kind: "require" },
+        { specifier: "node:child_process", kind: "require" },
+      ],
+      incomplete: [],
+      unnamed: false,
+    });
+    expect(parsed("const name = 'module';\nprocess.getBuiltinModule(name);").unnamed).toBe(true);
+  });
+
+  it("ignores both in comments and strings", () => {
+    const source = [
+      "// createRequire and getBuiltinModule(name) are not used here",
+      `const a = "process.getBuiltinModule(x)";`,
+      "",
+    ].join("\n");
+    expect(parsed(source)).toEqual({ specifiers: [], incomplete: [], unnamed: false });
+  });
+});

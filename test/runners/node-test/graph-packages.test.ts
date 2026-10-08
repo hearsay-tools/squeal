@@ -19,7 +19,7 @@ const pkg = (name: string, extra: Record<string, unknown> = {}) =>
 
 const FILES: Readonly<Record<string, string>> = {
   "package.json": `${JSON.stringify({ name: "app", private: true, type: "module" })}\n`,
-  "tsconfig.json": `${JSON.stringify({ compilerOptions: { paths: { "@app/*": ["./lib/*"] } } })}\n`,
+  "tsconfig.json": `${JSON.stringify({ compilerOptions: { paths: { "@app/*": ["./lib/*"], vendored: ["./vendor/node_modules/ext/index.js"] } } })}\n`,
   "node_modules/ext/package.json": pkg("ext"),
   "node_modules/ext/index.js": "export const ext = 1;\n",
   "node_modules/ext/sub.js": "export const sub = 1;\n",
@@ -30,6 +30,11 @@ const FILES: Readonly<Record<string, string>> = {
   "node_modules/setup-pkg/package.json": pkg("setup-pkg"),
   "node_modules/setup-pkg/index.js": "export const setup = 1;\n",
   "node_modules/types-only/package.json": pkg("types-only"),
+  "node_modules/@s/p/node_modules/q/package.json": pkg("q"),
+  "node_modules/@s/p/node_modules/q/index.js": "export const q = 1;\n",
+  "node_modules/.bin/tool.js": "export const tool = 1;\n",
+  "vendor/node_modules/ext/package.json": pkg("ext"),
+  "vendor/node_modules/ext/index.js": "export const ext = 1;\n",
   "packages/ws/package.json": pkg("ws"),
   "packages/ws/index.js": "export const ws = 1;\n",
   "lib/helper.ts": `import { deep } from "deep";\nexport const helper = deep;\n`,
@@ -46,6 +51,13 @@ const FILES: Readonly<Record<string, string>> = {
     `import { ws } from "ws";`,
     `import { alias } from "@app/alias.ts";`,
     `import { missing } from "not-installed";`,
+    "",
+  ].join("\n"),
+  "test/installed.test.ts": [
+    `import { ext } from "vendored";`,
+    `import { q } from "../node_modules/@s/p/node_modules/q/index.js";`,
+    `import { tool } from "../node_modules/.bin/tool.js";`,
+    `import manifest from "../node_modules/ext/package.json" with { type: "json" };`,
     "",
   ].join("\n"),
   "test/computed.test.ts": "const name = 'ext';\nawait import(name);\n",
@@ -69,6 +81,7 @@ function repo(): string {
 const TESTS = [
   "test/computed.test.ts",
   "test/forms.test.ts",
+  "test/installed.test.ts",
   "test/plain.test.ts",
   "test/relative.test.ts",
   "test/required.test.ts",
@@ -92,23 +105,39 @@ async function open(argv: readonly string[] = ["--import", "tsx"]) {
 }
 
 describe("node-test graph: first-hop packages (003-22)", () => {
-  it("reports each bare specifier's package from its importer's directory, builtins by name", async () => {
+  // Task 003-33: a resolved package is looked up from the directory holding its `node_modules`.
+  it("reports each resolved package from its install, an unresolved one from its importer, builtins by name", async () => {
     const graph = await open();
     expect(sorted(graph.packages("test/forms.test.ts"))).toEqual({
       imports: [
-        { from: "test", name: "@s/p" },
-        { from: "test", name: "ext" },
-        { from: "test", manifest: true, name: "ext" },
+        { from: "", name: "@s/p" },
+        { from: "", name: "ext" },
+        { from: "", manifest: true, name: "ext" },
         { from: "test", name: "not-installed" },
       ],
       builtins: ["fs", "path"],
     });
   });
 
-  it("reports the packages of every project module in the closure, from that module's directory", async () => {
+  // Review wave-3 B1: the package comes from the resolved path, whatever specifier reached it. A
+  // tsconfig alias to `vendor/node_modules/ext` is looked up from `vendor`, not as `vendored`; a
+  // file under `node_modules` in no package (`.bin`) reports `module`.
+  it("reports the package of each installed file a specifier resolves to", async () => {
+    const graph = await open();
+    expect(sorted(graph.packages("test/installed.test.ts"))).toEqual({
+      imports: [
+        { from: "", manifest: true, name: "ext" },
+        { from: "node_modules/@s/p", name: "q" },
+        { from: "vendor", name: "ext" },
+      ],
+      builtins: ["module"],
+    });
+  });
+
+  it("reports the packages of every project module in the closure", async () => {
     const graph = await open();
     expect(sorted(graph.packages("test/plain.test.ts"))).toEqual({
-      imports: [{ from: "lib", name: "deep" }],
+      imports: [{ from: "", name: "deep" }],
       builtins: ["test"],
     });
   });
@@ -142,7 +171,6 @@ describe("node-test graph: first-hop packages (003-22)", () => {
         { from: "", name: "@s/p" },
         { from: "", name: "setup-pkg" },
         { from: "", name: "tsx" },
-        { from: "scripts", name: "setup-pkg" },
       ],
       builtins: ["assert"],
       runner,
@@ -165,7 +193,7 @@ describe("node-test graph: first-hop packages (003-22)", () => {
     writeFileSync(join(root, "lib/helper.ts"), `import "ext";\nexport const helper = 1;\n`);
     graph.invalidate([{ path: "lib/helper.ts", kind: "change" }]);
     expect(sorted(graph.packages("test/plain.test.ts"))).toEqual({
-      imports: [{ from: "lib", name: "ext" }],
+      imports: [{ from: "", name: "ext" }],
       builtins: ["test"],
     });
   });
