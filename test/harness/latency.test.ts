@@ -16,7 +16,10 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * with nothing to deliver (review wave 10, S5): a silent Stop ends the turn,
  * its most expensive path. Other test files spawn processes at the
  * same time, so a hook passes when one of up to 3 rounds meets the budget;
- * the table reports the best round. Above load average 8 nothing is asserted.
+ * the table reports the best round. Above load average 4, and in CI, nothing
+ * is asserted, so the test only reports: one round of `LOADED_RUNS` per hook,
+ * and no hook starts after `REPORT_BY_MS`, so the table comes well inside the
+ * timeout (002 lessons, defect 6: at load 66 to 85 it died of its 180 s).
  *
  * Task 001-96 (review wave 10c S1): SessionStart that spawns the daemon waits
  * for its heartbeat only, as in 0.1.11 (131 to 184 ms on the review's
@@ -33,6 +36,12 @@ const SPAWN_BUDGET_MS = 200;
 const MAX_LOAD = 4;
 const FILES = 50;
 const CHECKS_PER_FILE = 10;
+const LOADED_RUNS = 5;
+/** Half the test's 180 s timeout. */
+const REPORT_BY_MS = 90_000;
+
+/** Whether the budget is asserted: a quiet machine, outside CI. */
+const calm = () => (loadavg()[0] ?? 0) <= MAX_LOAD && process.env.CI === undefined;
 
 function p95(samples: readonly number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
@@ -149,6 +158,9 @@ describe("bundled hook latency", () => {
       XDG_RUNTIME_DIR: dir,
     });
 
+    const asserted = calm();
+    const [runs, maxRounds] = asserted ? [RUNS, ROUNDS] : [LOADED_RUNS, 1];
+    const started = performance.now();
     const rows: {
       hook: string;
       rounds: number;
@@ -162,10 +174,11 @@ describe("bundled hook latency", () => {
       const budget = c.budget ?? BUDGET_MS;
       let best: number[] | null = null;
       let rounds = 0;
-      while (rounds < ROUNDS && (best === null || p95(best) >= budget)) {
+      const late = performance.now() - started > REPORT_BY_MS;
+      while (!late && rounds < maxRounds && (best === null || p95(best) >= budget)) {
         rounds++;
         const samples: number[] = [];
-        for (let run = 0; run < RUNS; run++) {
+        for (let run = 0; run < runs; run++) {
           c.before?.(r, run);
           const out = await runBundle(c.hook, recorded(c.input, r.root, c.overrides), {
             XDG_RUNTIME_DIR: dir,
@@ -181,21 +194,25 @@ describe("bundled hook latency", () => {
       rows.push({
         hook: c.name ?? c.hook,
         rounds,
-        p50: Math.round(sorted[Math.floor(RUNS / 2)] ?? 0),
+        p50: Math.round(sorted[Math.floor(sorted.length / 2)] ?? Number.NaN),
         p95: Math.round(p95(sorted)),
-        max: Math.round(sorted.at(-1) ?? 0),
+        max: Math.round(sorted.at(-1) ?? Number.NaN),
         budget,
       });
     }
 
     const load = loadavg()[0] ?? 0;
     console.log(
-      `hook latency ms, best of up to ${ROUNDS} rounds of ${RUNS} cold runs, load ${load.toFixed(2)}`,
+      `hook latency ms, best of up to ${maxRounds} rounds of ${runs} cold runs, load ${load.toFixed(2)}` +
+        (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
     );
     console.table(rows);
     // Shared CI runners report a low load average and still take 128 ms for a cold Node start
     // (Node 22 job, 2026-10-06). The budget is a dogfooding measurement; in CI it is reported only.
-    if (load > MAX_LOAD || process.env.CI !== undefined) return;
-    for (const row of rows) expect(row.p95, row.hook).toBeLessThan(row.budget);
+    if (!asserted || !calm()) return;
+    for (const row of rows) {
+      expect(row.rounds, `${row.hook}: not measured in time`).toBeGreaterThan(0);
+      expect(row.p95, row.hook).toBeLessThan(row.budget);
+    }
   }, 180_000);
 });
