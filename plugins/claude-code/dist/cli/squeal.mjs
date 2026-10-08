@@ -17984,12 +17984,22 @@ function packageImport(from, specifier) {
   if (name === null) return null;
   return specifier === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
 }
-var UNNAMED2, PackageSet;
+function installedPackage(path) {
+  const at2 = path.lastIndexOf(NODE_MODULES2);
+  if (at2 === -1 || at2 > 0 && path[at2 - 1] !== "/") return null;
+  const rest = path.slice(at2 + NODE_MODULES2.length);
+  const name = packageName2(rest);
+  if (name === null || name.startsWith("@") && !name.includes("/")) return null;
+  const from = path.slice(0, Math.max(0, at2 - 1));
+  return rest === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
+}
+var UNNAMED2, NODE_MODULES2, PackageSet;
 var init_packages3 = __esm({
   "src/runners/node-test/graph/packages.ts"() {
     "use strict";
     init_fs();
     UNNAMED2 = "module";
+    NODE_MODULES2 = "node_modules/";
     PackageSet = class {
       imports = /* @__PURE__ */ new Map();
       builtins = /* @__PURE__ */ new Set();
@@ -18174,6 +18184,17 @@ function parseModule(source, name) {
       unnamed = true;
     }
   }
+  for (const match2 of source.matchAll(GET_BUILTIN)) {
+    code ??= codeAt(source);
+    if (!code(match2.index)) continue;
+    const name2 = match2[2];
+    if (name2 === void 0) unnamed = true;
+    else
+      specifiers.push({
+        specifier: name2.startsWith("node:") ? name2 : `node:${name2}`,
+        kind: "require"
+      });
+  }
   for (const match2 of source.matchAll(RESOLVE)) {
     if (unnamed) break;
     code ??= codeAt(source);
@@ -18190,7 +18211,7 @@ function position(source, offset2) {
   }
   return `${line}:${offset2 - start + 1}`;
 }
-var parserReady, PARSED_EXTENSION, REQUIRE2, REQUIRE_CALL, RESOLVE;
+var parserReady, PARSED_EXTENSION, REQUIRE2, REQUIRE_CALL, RESOLVE, GET_BUILTIN;
 var init_parse = __esm({
   "src/runners/node-test/graph/parse.ts"() {
     "use strict";
@@ -18200,7 +18221,8 @@ var init_parse = __esm({
     PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
     REQUIRE2 = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
     REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
-    RESOLVE = /(?<![\w$.])require\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bimport\s*\.\s*meta\s*\.\s*resolve\b/g;
+    RESOLVE = /(?<![\w$.])require\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bimport\s*\.\s*meta\s*\.\s*resolve\b|\bcreateRequire\b/g;
+    GET_BUILTIN = /\bgetBuiltinModule\s*\(\s*(?:(["'])([^"'\n]+)\1\s*\))?/g;
   }
 });
 
@@ -18294,23 +18316,44 @@ var init_modules = __esm({
               incomplete.push(
                 `import(\`${specifier}\`) in ${relative7(this.root, file)} has no static glob`
               );
+              builtins.add(UNNAMED2);
             }
-            for (const match2 of matches ?? []) if (this.inWorktree(match2)) deps.add(match2);
+            for (const match2 of matches ?? []) {
+              if (this.inWorktree(match2)) deps.add(match2);
+              else this.installed(match2, packages, builtins);
+            }
             continue;
           }
           const kind = written === "import" && !dynamic && format?.format === "commonjs" ? "require" : written;
           const resolution = this.resolver.resolve(specifier, file, kind);
+          const target = resolution.path;
           if (resolution.builtin) builtins.add(builtinName(specifier));
-          else if (from !== null && (resolution.path === null || !this.inWorktree(resolution.path))) {
-            const entry2 = packageImport(from, specifier);
+          else if (target !== null && this.inWorktree(target)) deps.add(target);
+          else if (target === null || !this.installed(target, packages, builtins)) {
+            const entry2 = from === null ? null : packageImport(from, specifier);
             if (entry2 !== null) packages.push(entry2);
           }
           for (const read3 of resolution.reads) reads.add(read3);
           for (const candidate of resolution.candidates) candidates.add(candidate);
           if (resolution.pair !== null) pairs.push(resolution.pair);
-          if (resolution.path !== null && this.inWorktree(resolution.path)) deps.add(resolution.path);
         }
         return { deps, reads, candidates, incomplete, pairs, packages, builtins: [...builtins] };
+      }
+      /**
+       * Review wave-3 B1: records the package an installed `path` belongs to,
+       * whatever specifier reached it (a `#` alias, a relative path, a tsconfig
+       * alias), or `module` for a file under `node_modules` in no package. False
+       * for a path outside the worktree, which no install of it holds: the
+       * written bare specifier stands in for it.
+       */
+      installed(path, packages, builtins) {
+        if (!path.startsWith(this.root + sep9)) return false;
+        const entry2 = installedPackage(
+          path.slice(this.root.length + 1).split(sep9).join("/")
+        );
+        if (entry2 === null) builtins.add(UNNAMED2);
+        else packages.push(entry2);
+        return true;
       }
       /** A module's directory relative to the root, `""` for the root, `null` outside it. */
       relativeDir(file) {
@@ -27872,7 +27915,7 @@ function createResolver(chain, root) {
     return resolver;
   };
   function inWorktree(path) {
-    return path.startsWith(root + sep11) && !path.includes(NODE_MODULES2) && !path.endsWith(NODE_MODULES_DIR);
+    return path.startsWith(root + sep11) && !path.includes(NODE_MODULES3) && !path.endsWith(NODE_MODULES_DIR);
   }
   return {
     resolve(specifier, importer, kind) {
@@ -27924,7 +27967,7 @@ function createResolver(chain, root) {
     const reads = new Set((paths?.files ?? []).filter(inWorktree));
     for (const dependency of context.fileDependencies) {
       if (!dependency.endsWith(".json") || dependency === target) continue;
-      const read3 = dependency.includes(NODE_MODULES2) ? real2(dependency) : dependency;
+      const read3 = dependency.includes(NODE_MODULES3) ? real2(dependency) : dependency;
       if (read3 !== null && read3 !== path && inWorktree(read3)) reads.add(read3);
     }
     const candidates = path === null ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory3(p)) : [];
@@ -27939,7 +27982,7 @@ function createResolver(chain, root) {
     return exists2(twin) ? [twin, path] : null;
   }
 }
-var import_enhanced_resolve, TSX_EXTENSIONS, TSX_ALIAS, NODE_REQUIRE_EXTENSIONS, NODE_MODULES2, NODE_MODULES_DIR, COMMONJS, MODULE, BUILTIN;
+var import_enhanced_resolve, TSX_EXTENSIONS, TSX_ALIAS, NODE_REQUIRE_EXTENSIONS, NODE_MODULES3, NODE_MODULES_DIR, COMMONJS, MODULE, BUILTIN;
 var init_resolver = __esm({
   "src/runners/node-test/graph/resolver.ts"() {
     "use strict";
@@ -27952,7 +27995,7 @@ var init_resolver = __esm({
       ".cjs": [".cts", ".cjs"]
     };
     NODE_REQUIRE_EXTENSIONS = [".js", ".json", ".node", ".ts", ".cts", ".mts"];
-    NODE_MODULES2 = `${sep11}node_modules${sep11}`;
+    NODE_MODULES3 = `${sep11}node_modules${sep11}`;
     NODE_MODULES_DIR = `${sep11}node_modules`;
     COMMONJS = /\.c[jt]s$/;
     MODULE = /\.m[jt]s$/;
@@ -28744,7 +28787,7 @@ var init_adapter2 = __esm({
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
-    NODE_TEST_ADAPTER_VERSION = "5";
+    NODE_TEST_ADAPTER_VERSION = "6";
   }
 });
 
@@ -29118,7 +29161,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.39";
+  if (true) return "0.1.40";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
