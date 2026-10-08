@@ -10358,7 +10358,8 @@ function addLine(recorded2, line) {
 }
 function addAll(into, values) {
   if (!Array.isArray(values)) return;
-  for (const value of values) if (typeof value === "string") into.add(value);
+  for (const value of values)
+    if (typeof value === "string" && !value.includes("\0")) into.add(value);
 }
 var init_read = __esm({
   "src/runners/observe/read.ts"() {
@@ -10388,7 +10389,7 @@ var RECORDER_VERSION, OBSERVE_VARIABLE, CANDIDATES;
 var init_runtime = __esm({
   "src/runners/observe/runtime.ts"() {
     "use strict";
-    RECORDER_VERSION = "1";
+    RECORDER_VERSION = "2";
     OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
     CANDIDATES = ["../observe/", "./observe/", "./"];
   }
@@ -29042,7 +29043,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.36";
+  if (true) return "0.1.37";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
