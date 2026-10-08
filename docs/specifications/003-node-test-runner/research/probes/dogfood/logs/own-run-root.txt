@@ -1,0 +1,9 @@
+ℹ tests 532
+ℹ suites 0
+ℹ pass 532
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 54963.761014
+real	0m55.056s

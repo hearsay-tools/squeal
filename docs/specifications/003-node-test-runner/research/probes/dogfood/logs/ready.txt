@@ -1,0 +1,3 @@
++1.93s squeal start exit 0: Squeal daemon spawned for /tmp/squeal-dogfood-cezarion-56f54ae1
++15.44s first test_file_keys row, RSS 882.4 MiB
++16.25s ready (daemon-bootstrapped written), pid 818133, RSS 879.7 MiB

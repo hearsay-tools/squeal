@@ -1,0 +1,13 @@
+> @wjarka/cezarion@0.15.1 test:package
+> node --import ../../scripts/test-git-env.mjs --import tsx --test test/e2e/*.test.ts
+ℹ tests 70
+ℹ suites 0
+ℹ pass 70
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50618.753465
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:50.84
+	Maximum resident set size (kbytes): 363288
+exit 0
