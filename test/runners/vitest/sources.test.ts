@@ -64,6 +64,27 @@ describe("vitest adapter: a module whose bytes moved after Vite read them (001-1
     expect(outcomes(await fx.adapter.run([mod], fx.runOptions()))).toEqual(["pass"]);
   });
 
+  // Review wave-13 B2: a project with its own config file has its own Vite
+  // server, which plugins passed to `createVitest` never reach.
+  it.each([
+    { disk: OLD, transient: NEW, expected: "fail" },
+    { disk: NEW, transient: OLD, expected: "pass" },
+  ])("runs the bytes on disk in a project with its own config file ($expected)", async (c) => {
+    const fx = await openFixture("basic", {
+      "vitest.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { projects: ["./vitest.unit.config.ts"] } });\n`,
+      "vitest.unit.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { name: "unit", include: ["test/mod.test.ts"] } });\n`,
+      "src/mod.ts": c.disk,
+      "test/mod.test.ts": readsTest("../src/mod.ts", "new"),
+    });
+    const mod = ref("test/mod.test.ts", "unit");
+    expect(outcomes(await fx.adapter.run([mod], fx.runOptions()))).toEqual([c.expected]);
+    await fx.adapter.invalidate([{ path: "src/mod.ts", kind: "change" }]);
+    fx.write("src/mod.ts", c.transient);
+    await fx.adapter.closure(mod);
+    fx.write("src/mod.ts", c.disk);
+    expect(outcomes(await fx.adapter.run([mod], fx.runOptions()))).toEqual([c.expected]);
+  });
+
   it("does not complete a file whose run loaded bytes no longer on disk", async () => {
     const fx = await openFixture("basic", {
       "src/mod.ts": NEW,

@@ -105,18 +105,16 @@ export class VitestAdapter implements RunnerAdapter {
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
     const sources = new SourceStamps(this.paths);
-    const vitest = await this.#node.createVitest(
-      "test",
-      {
-        root: this.paths.root,
-        watch: false,
-        reporters: [createSquealReporter(current)],
-        update: "none",
-        includeTaskLocation: true,
-        ...(Object.keys(env).length === 0 ? {} : { env }),
-      },
-      { plugins: [sources.plugin()] },
-    );
+    const vitest = await this.#node.createVitest("test", {
+      root: this.paths.root,
+      watch: false,
+      reporters: [createSquealReporter(current)],
+      update: "none",
+      includeTaskLocation: true,
+      ...(Object.keys(env).length === 0 ? {} : { env }),
+    });
+    // Review wave-13 B2: every project server's, not only the root's, before any load.
+    sources.attach(vitest);
     this.#sources = sources;
     try {
       await vitest.standalone();
