@@ -4,7 +4,10 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
-/** The `observed` fixture: runtime.test.ts reads, spawns, starts a Worker and lists (task 001-132). */
+/**
+ * The `observed` fixture: runtime.test.ts reads, spawns, starts a Worker and lists (task 001-132),
+ * and lists recursively (001-139).
+ */
 const observing = (root: string) => createVitestAdapter({ root, observe: () => true });
 
 const RUNTIME_READS = [
@@ -18,7 +21,7 @@ const RUNTIME_READS = [
 
 describe("vitest adapter: observed runtime inputs", SLOW, () => {
   it.each(["forks", "threads"])(
-    "under %s, sees the data file, an env {} child and grandchild, a Worker and a listing",
+    "under %s, sees the data file, an env {} child and grandchild, a Worker and the listings",
     async (pool) => {
       const fx = await openFixture("observed", {}, observing);
       const runtime = ref("test/runtime.test.ts", pool);
@@ -30,7 +33,8 @@ describe("vitest adapter: observed runtime inputs", SLOW, () => {
       const seen = report.observed?.find((o) => o.testFile.path === runtime.path);
       expect(seen?.testFile).toEqual(runtime);
       for (const path of RUNTIME_READS) expect(seen?.paths).toContain(path);
-      expect(seen?.directories).toEqual(["data/listed"]);
+      expect(seen?.directories).toEqual(["data/listed", "data/tree"]);
+      expect(seen?.recursive).toEqual(["data/tree"]);
       const other = report.observed?.find((o) => o.testFile.path === plain.path);
       for (const path of RUNTIME_READS) expect(other?.paths ?? []).not.toContain(path);
     },

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { promises, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Worker } from "node:worker_threads";
 import { expect, test } from "vitest";
@@ -30,4 +30,9 @@ test("starts a Worker", async () => {
 
 test("lists a directory", () => {
   expect(readdirSync(join(root, "data/listed")).length).toBeGreaterThan(0);
+});
+
+test("lists a directory recursively", async () => {
+  const names = await promises.readdir(join(root, "data/tree"), { recursive: true });
+  expect(names.sort()).toEqual(["sub", "sub/a.txt"]);
 });
