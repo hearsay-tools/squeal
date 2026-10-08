@@ -28,7 +28,7 @@ Ruled out by reading Vite 8.3.2 and Vitest 5.0.3: Vite's own guard (`timestamp >
 
 ## Not settled here
 
-- `test/scheduler/runs.test.ts` "runs a file again when a batch during its crashed run gave it a new key" wrote the fix in `beforeRun`, before `adapter.run`, and relied on the cached crashing transform surviving that unreported edit. It is outside Owns. Commit `030361d` has the crashing test write its own fix before `SIGKILL`, with the same assertions. The coordinator is asked to agree; default: keep it. Other `beforeRun` edits in `test/scheduler/` still pass. The run now executes the edited bytes, and the stability check discards it as before.
+- `test/scheduler/runs.test.ts` "runs a file again when a batch during its crashed run gave it a new key" wrote the fix in `beforeRun`, before `adapter.run`, and relied on the cached crashing transform surviving that unreported edit. It is outside Owns. Commit `030361d` has the crashing test write its own fix before `SIGKILL`, with the same assertions. The coordinator agreed to keep it. Other `beforeRun` edits in `test/scheduler/` still pass. The run now executes the edited bytes, and the stability check discards it as before.
 
 - An `unknown` file is not queued again until its key moves (`Ledger.markUnknown`). The brief allows that. A re-run, like `discard`, would be better, but it is `src/core/scheduler/` (spec 004's).
 - A closure fetched while such a window was open may name the reverted bytes' imports. The next `invalidate` drops the transform, but the scheduler keeps that closure until the file's key moves. Closing this needs `invalidate` to report the files it dropped (an additive `InvalidateResult` field) and the scheduler to re-fetch their importers' closures: scheduler work too.
