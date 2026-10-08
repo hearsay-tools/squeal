@@ -38,6 +38,8 @@ Started: 2026-10-07
 
 - 2026-10-08, re-review 003-25 (`reviews/wave-2.5.md`, FAIL at 7e15b70, gpt-6.1-sol): S1 and the S2 bound hold; B1 remains for one shape, proven on the shipped plugin: Node runs every `--require` preload before any `--import`, so the recorder (an `--import`) never sees what a `--require` preload loads by a computed specifier; editing that file re-runs nothing and another worktree inherits. The incomplete-closure note names the gap but leaves the pass current. Second failing review on the slice: taken to the human (process).
 
+- 2026-10-08, decided by the human after the second failing review: repair `reviews/wave-2.5.md` B1 (row 003-28: the recorder becomes a first `--require`, so it is installed before every project preload) and buy a third review of the slice (003-29, gpt-6.1-sol), an exception to the two-round default.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
