@@ -140,7 +140,7 @@ Use /worker.
 
 Outcome: `reviews/wave-2.7.md`: are `reviews/wave-2.6.md` B1 and S1 closed, and what preload or loader form, if any, still lets a file load outside every key or makes a run crash that runs without Squeal. Decided by the human 2026-10-08.
 
-Range: the 003-30 commits on main (filled in at dispatch).
+Range: `bfccdff^..2cafe6f` on main: the 003-30 commits, the Codex command flag and the 0.1.30 bundles.
 
 Rules as for 003-25 and 003-29. A remaining blocker goes to the human.
 
