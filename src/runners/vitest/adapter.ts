@@ -20,6 +20,7 @@ import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { projectEnvironment } from "./environment.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
+import { VitestObserver } from "./observe.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
 import {
@@ -64,19 +65,24 @@ export class VitestAdapter implements RunnerAdapter {
   #queue: Promise<unknown> = Promise.resolve();
   #closed = false;
   readonly #note: (text: string) => void;
+  readonly #observer: VitestObserver;
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
    * come from Squeal's Vitest, so loading this module loads no Vitest.
    * `note` records a fact the adapter worked around as a status note (D7).
+   * `observe` is policy `observe.runtimeInputs`, read before each call
+   * (task 001-132); absent, nothing is observed.
    */
   constructor(
     readonly paths: WorktreePaths,
     vitest: VitestNode,
     note: (text: string) => void = () => {},
+    observe: () => boolean = () => false,
   ) {
     this.#node = vitest;
     this.#note = note;
+    this.#observer = new VitestObserver(paths, observe, note);
   }
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
@@ -94,9 +100,11 @@ export class VitestAdapter implements RunnerAdapter {
       reporters: [createSquealReporter(current)],
       update: "none",
       includeTaskLocation: true,
+      ...this.#observer.start(),
     });
     try {
       await vitest.standalone();
+      this.#observer.configure(vitest);
       this.#tempDirs = instanceTempDirs(vitest);
       this.#lockfiles = await this.#installedLockfiles(vitest);
     } catch (error) {
@@ -125,7 +133,9 @@ export class VitestAdapter implements RunnerAdapter {
       if (this.#closed) throw new Error("vitest adapter: closed");
       // A failed recreate or a hung run leaves no instance; the next call retries.
       this.#vitest ??= await this.#start();
-      return fn(this.#vitest);
+      // Policy `observe.runtimeInputs` moved: the workers' env is set at creation.
+      if (this.#observer.stale()) await this.#recreate(this.#vitest);
+      return fn(this.#vitest as Vitest);
     });
     // The caller gets the error from `next`; the queue only needs to settle.
     this.#queue = next.catch(() => {});
@@ -217,7 +227,7 @@ export class VitestAdapter implements RunnerAdapter {
       const context = {
         paths: this.paths,
         runnerVersion: this.#node.version,
-        adapterVersion: this.adapterVersion,
+        adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
@@ -257,7 +267,9 @@ export class VitestAdapter implements RunnerAdapter {
           this.#vitest = null;
           execution = await closeBroken(vitest, collector, broken);
         }
-        const report = buildReport(collector, execution, Math.round(performance.now() - started));
+        const built = buildReport(collector, execution, Math.round(performance.now() - started));
+        const observed = this.#observer.take(built.completedFiles);
+        const report = observed === undefined ? built : { ...built, observed };
         // One persisted note for status, besides the crash's delivered line (D5).
         if (broken !== null && report.failure !== null) this.#note(report.failure);
         writeRunLog(options, collector, report);
@@ -277,6 +289,7 @@ export class VitestAdapter implements RunnerAdapter {
       const vitest = this.#vitest;
       this.#vitest = null;
       await vitest?.close();
+      this.#observer.stop();
     });
     this.#queue = closing.catch(() => {});
     return closing;

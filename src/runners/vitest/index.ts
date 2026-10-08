@@ -15,6 +15,11 @@ export interface VitestAdapterOptions {
    * when absent.
    */
   readonly note?: (text: string) => void;
+  /**
+   * Policy `observe.runtimeInputs`, read before each call: the workers carry
+   * the runtime-input recorder (D4, task 001-132). Absent: nothing observed.
+   */
+  readonly observe?: () => boolean;
 }
 
 /**
@@ -24,7 +29,12 @@ export interface VitestAdapterOptions {
  */
 export async function createVitestAdapter(options: VitestAdapterOptions): Promise<RunnerAdapter> {
   const root = realpathSync(options.root);
-  const adapter = new VitestAdapter(new WorktreePaths(root), await loadVitest(root), options.note);
+  const adapter = new VitestAdapter(
+    new WorktreePaths(root),
+    await loadVitest(root),
+    options.note,
+    options.observe,
+  );
   await adapter.open();
   return adapter;
 }
