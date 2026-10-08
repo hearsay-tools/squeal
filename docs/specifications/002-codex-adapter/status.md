@@ -40,6 +40,8 @@ Started: 2026-10-07
 
 - 2026-10-08, 002-19 (`lessons.md` "Dogfooding with a Cezar Codex worker"): a real Cezar Codex worker (gpt-6.1-sol, row 003-27) ran with the plugin installed and trusted in the real `~/.codex`. Goals 1, 2, 4, 6 and 8 held, 3, 5 and 7 were not exercised (no regression, Cezar forbids subagents, no hook timing is recorded in a Cezar session), none broke. The agent read the skill on its own but still ran Vitest three times, since Squeal's first result for its new test took 2 min 7 s on a cold baseline at load 80 and its brief required the full suite. Defects: 4, `squeal` is not on a Codex agent's PATH while the primer tells it to run `squeal status --wait` (D1 amended; row 002-22); 5, tests that load sources or plugins in a child process kept stale results in this repository (its `squeal.config.json` declares those inputs now); 6, the Claude Code latency test dies at its own timeout under load (row 002-22).
 
+- 2026-10-08, 002-22 (0.1.29): under Codex the primer, a FAIL report's `why` line, the status pointer and the `requireFullSuite` Stop reason name `node "<PLUGIN_ROOT>/dist/cli/squeal.mjs"` (the running bundle's sibling when `PLUGIN_ROOT` is absent), through an optional `HookDeps.command` that defaults to `squeal`, so every Claude Code text is unchanged; the Codex copy of the skill gains one line saying the same. Both latency tests run one round of 5 cold runs per hook above load 4 or in CI and report, asserting only below the threshold. `hooks.json` unchanged, so no re-trust.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
