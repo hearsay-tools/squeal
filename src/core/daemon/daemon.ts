@@ -19,6 +19,7 @@ import { writeNote } from "./notes.js";
 import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
+import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
 import { squealVersion } from "./version.js";
@@ -362,6 +363,7 @@ class Daemon {
       },
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
+        requestSlowSuite: () => this.#requestSlowSuite(),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -393,6 +395,14 @@ class Daemon {
     // A runner that never started gets another chance before the checkpoint is planned.
     this.#vitest?.retry();
     return this.#loop.scheduler.requestFullSuite({ force });
+  }
+
+  async #requestSlowSuite(): Promise<SlowSuiteRequested> {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") {
+      throw new Error("the daemon is not running a scheduler");
+    }
+    return requestSlowSuite(this.#loop.scheduler);
   }
 
   #note(text: string): void {

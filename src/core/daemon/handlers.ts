@@ -7,13 +7,15 @@ import {
   type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
   type RunAllResponse,
+  type RunSlowResponse,
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
+import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
 
-/** `run-all` requests remembered for `run-all-status`; older ones are dropped. */
+/** `run-all` and `run-slow` requests remembered for their status requests; older ones are dropped. */
 const MAX_REQUESTS = 32;
 
 export interface HandlerContext {
@@ -27,6 +29,11 @@ export interface HandlerContext {
    * by a handler: the scheduler may be busy with a batch or a runner call.
    */
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
+  /**
+   * Hands a `run --slow` to the scheduler (spec 004 D2), like
+   * `requestFullSuite`. Absent: this daemon has no slow tier.
+   */
+  readonly requestSlowSuite?: () => Promise<SlowSuiteRequested>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
@@ -43,6 +50,11 @@ interface RunAllState {
   error: string | null;
 }
 
+interface RunSlowState {
+  requested: RunSlowResponse["requested"];
+  error: string | null;
+}
+
 /**
  * Socket request handlers. Every answer comes from memory, so each one fits
  * the hooks' 100 ms socket budget while a tier runs (spec 001 D9). Review
@@ -50,12 +62,21 @@ interface RunAllState {
  */
 export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
+  const slowRequests = new Map<string, RunSlowState>();
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
     type: "run-all",
     requestId,
     checkpoint: state.checkpoint,
+    error: state.error,
+  });
+  const runSlow = (requestId: string, state: RunSlowState): RunSlowResponse => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "run-slow",
+    requestId,
+    requested: state.requested,
     error: state.error,
   });
 
@@ -81,11 +102,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         context.onActivity();
         const requestId = randomUUID();
         const state: RunAllState = { checkpoint: null, error: null };
-        requests.set(requestId, state);
-        for (const old of requests.keys()) {
-          if (requests.size <= MAX_REQUESTS) break;
-          requests.delete(old);
-        }
+        remember(requests, requestId, state);
         context.requestFullSuite(request.force === true).then(
           (checkpoint) => {
             state.checkpoint = checkpoint;
@@ -100,6 +117,29 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const state = requests.get(request.requestId);
         if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
         return runAll(request.requestId, state);
+      }
+      case "run-slow": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        const requestId = randomUUID();
+        const state: RunSlowState = { requested: null, error: null };
+        remember(slowRequests, requestId, state);
+        const request =
+          context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
+        request.then(
+          (requested) => {
+            state.requested = requested;
+          },
+          (error: unknown) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          },
+        );
+        return runSlow(requestId, state);
+      }
+      case "run-slow-status": {
+        const state = slowRequests.get(request.requestId);
+        if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
+        return runSlow(request.requestId, state);
       }
       case "stop":
         context.onStop();
@@ -117,4 +157,12 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
       }
     }
   };
+}
+
+function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {
+  requests.set(requestId, state);
+  for (const old of requests.keys()) {
+    if (requests.size <= MAX_REQUESTS) break;
+    requests.delete(old);
+  }
 }

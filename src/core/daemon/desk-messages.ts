@@ -1,4 +1,5 @@
 import type { CheckpointRecord, DaemonPhase, EpochMs, WorktreeId } from "../types/index.js";
+import type { SlowSuiteRequested } from "./run-slow.js";
 
 /** What the front desk worker needs to answer on its own. */
 export interface DeskIdentity {
@@ -19,6 +20,12 @@ export type ToDesk =
       readonly checkpoint: CheckpointRecord | null;
       readonly error: string | null;
     }
+  | {
+      readonly type: "run-slow-result";
+      readonly id: string;
+      readonly requested: SlowSuiteRequested | null;
+      readonly error: string | null;
+    }
   | { readonly type: "close" };
 
 /** Front desk to main thread. */
@@ -27,6 +34,7 @@ export type FromDesk =
   | { readonly type: "failed"; readonly error: string }
   | { readonly type: "activity" }
   | { readonly type: "run-all"; readonly id: string; readonly force: boolean }
+  | { readonly type: "run-slow"; readonly id: string }
   | { readonly type: "stop" }
   | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };

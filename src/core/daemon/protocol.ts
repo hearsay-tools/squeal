@@ -20,6 +20,7 @@ export function parseRequest(line: string): DaemonRequest | string {
   switch (request.type) {
     case "ping":
     case "nudge":
+    case "run-slow":
     case "stop":
       return { type: request.type };
     case "run-all":
@@ -33,6 +34,9 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "run-all-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-all-status", requestId: request.requestId };
+    case "run-slow-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "run-slow-status", requestId: request.requestId };
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
