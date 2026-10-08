@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { harnessGone, recordHarness } from "../../src/core/delivery/harness-process.js";
 import {
   dropGoneHarnesses,
+  expireConsumers,
   harnessOf,
+  lastDeparture,
   pidNamespace,
   readProcStat,
 } from "../../src/core/delivery/index.js";
@@ -160,5 +162,21 @@ describe("dropGoneHarnesses", () => {
 
     expect(dropped).toEqual([]);
     expect(store.consumers.get(resumed)).not.toBeNull();
+  });
+});
+
+describe("the 12 h expiry (reviews wave 12, S1)", () => {
+  it("removes the harness record and stamps the departure, as an unregister does", () => {
+    const store = open(fakeCommonDir());
+    const consumer: Consumer = { worktreeId: WT, sessionId: "expired", agentId: "main" };
+    store.consumers.register(consumer, 1);
+    store.transaction(() =>
+      recordHarness(store, consumer, { pid: 4242, startTime: 1, pidNamespace: "ns" }),
+    );
+    const now = 13 * 60 * 60 * 1000;
+    expect(expireConsumers(store, now)).toEqual([consumer]);
+    expect(store.consumers.get(consumer)).toBeNull();
+    expect(harnessOf(store, consumer)).toBeNull();
+    expect(lastDeparture(store, WT)).toBe(now);
   });
 });

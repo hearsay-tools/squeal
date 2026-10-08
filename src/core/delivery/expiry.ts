@@ -51,7 +51,17 @@ export function expireConsumers(
   now: EpochMs = Date.now(),
   options: ExpiryOptions = {},
 ): readonly Consumer[] {
-  const expired = [...store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS))];
+  // Reviews wave 12, S1: the 12 h backstop cleans up and stamps the departure as every unregister does.
+  const expired = [
+    ...store.transaction(() => {
+      const gone = store.consumers.expire(now - CONSUMER_EXPIRY_MS);
+      for (const consumer of gone) {
+        forget(store, consumer);
+        store.meta.set(departedMetaKey(consumer.worktreeId), String(now));
+      }
+      return gone;
+    }),
+  ];
   const { locksDir } = options;
   if (locksDir === undefined) return expired;
   for (const consumer of expired) removeWaiterLock(locksDir, consumer);
