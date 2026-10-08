@@ -85,3 +85,17 @@ Change: keep the flush before `process.send` and at exit; flush before `postMess
 Own: `src/runners/observe/`, `test/runners/observe/`, D4 in `spec.md` if the rule's wording changes. Do not run `npm run build`.
 
 Done when: a test with a main-thread loop of many `postMessage` calls shows no per-message write (count the appends); the existing recorder tests pass under both pools; 001-143's probe (`tasks/001-143/rounds.sh`, the two cezar files, no burners) shows the recorder within noise of no recorder, with the command and numbers in the report.
+
+## 001-140 a revision's work never waits behind an older revision's unrelated tier
+
+Use /worker. Shape: slice. After spec 004 wave 1 (on main from 0.1.45, `7314670`).
+
+Outcome: when a newer revision's affected files (any runner) are disjoint from a tier still running for an older revision, the newer revision's runner part (affected sets, closures) completes and its files start without waiting for that tier, within the daemon's concurrency limits.
+
+Read: 003 `lessons.md` defect 2 (at r4 the edit touched only `test:package` node:test files; their run started 4 min 17 s later, behind a 425 s tier of r2's Vitest re-runs, and until then even the runner part stayed pending); spec 001 D5 (scheduling, tiers, superseding) with 003 D7 (node:test beside Vitest); spec 004 (the slow tier, `slow-tier.ts`, the slow class in `queue.ts`, `tiers.ts`, `ledger.ts`, `scheduler.ts`) so the change keeps its rules; `src/core/scheduler/`.
+
+Questions to settle first, with a failing test: what serializes the runner part behind a running tier (one scheduler loop, the mutex, the ledger), and what serializes tiers across runners (one tier at a time daemon-wide, or per runner)? Decide, and record in D5: may a second tier run concurrently with one in flight when their files and runners are disjoint, and with what cap on total workers; or does the old tier yield (cancel or supersede) to newer work. Prefer the smaller change that removes the wait for the runner part and for disjoint files; ask before changing a rule spec 004 set.
+
+Own: `src/core/scheduler/`, `src/core/types/scheduler.ts` (additive), tests under `test/scheduler/`, D5 in `spec.md`. A test that runs a slow file under a real daemon must set `slow.maxLoadPerCpu` high, or the load guard defers it for up to 10 min. Do not run `npm run build`.
+
+Done when: a scheduler test holds an older revision's Vitest tier running (a slow file) while a newer revision changes only an unrelated file of another runner (or another project), and the newer file starts and its result is stored before the older tier ends; the runner part of the newer revision is never pending behind it; existing scheduler and spec 004 tests pass.
