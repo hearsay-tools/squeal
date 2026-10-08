@@ -6,6 +6,7 @@ export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js"
 export { describeFailure, SUMMARY_MAX_CHARS } from "./fingerprint.js";
 export {
   fullSuiteText,
+  isFastPending,
   isPending,
   readHeader,
   runnerPartText,
