@@ -397,7 +397,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 004-15 slow-tier line, failure line, primer, `stop.requireSlowSuite` | planned | D8, D9. | Status and delivery tests for each state; Claude Code and Codex texts. |
+| 004-15 slow-tier line, failure line, primer, `stop.requireSlowSuite` | running (brief `tasks/wave-2.md`) | D8, D9. | Status and delivery tests for each state; Claude Code and Codex texts. |
 | 004-16 e2e for both repository shapes | planned | Testing. | Both plugins, Node 22 and 24. |
 | 004-17 dogfooding | planned | This repository with `test/e2e` declared slow, and a cezar worktree as 003-19 was. | `lessons.md`. |
 
