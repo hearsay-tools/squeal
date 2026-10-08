@@ -1,24 +1,22 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { baselineFindings, toKnownFailure } from "../state/index.js";
 import {
-  type AbsolutePath,
-  CONSUMER_EXPIRY_MS,
   type Consumer,
-  type ConsumerRecord,
   type Delta,
   type DeltaEntry,
   type EpochMs,
   type HarnessDelivery,
+  type HarnessProcess,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
   type StatusBuilder,
   type Store,
   type TurnState,
-  WAITERLESS_EXPIRY_MS,
 } from "../types/index.js";
-import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { annotate, withDependencies } from "./attribution.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
+import { drop } from "./expiry.js";
+import { recordHarness } from "./harness-process.js";
 import {
   readLiveHeader,
   tellLiveness,
@@ -27,7 +25,7 @@ import {
   toldRevision,
   worktreeLiveness,
 } from "./liveness.js";
-import { park, scannedDaemon, tellRegistered } from "./registered.js";
+import { scannedDaemon, tellRegistered } from "./registered.js";
 import {
   currentKeys,
   endTurn,
@@ -45,6 +43,11 @@ export interface DeliveryOptions {
   readonly now?: () => EpochMs;
   /** How often `waitForDelta` re-reads the store. Default `DEFAULT_POLL_INTERVAL_MS`. */
   readonly pollIntervalMs?: number;
+  /**
+   * The harness process registering, asked once per registration and
+   * recorded with it (lessons, defect 24); `null` records none. Default: none.
+   */
+  readonly harnessProcess?: () => HarnessProcess | null;
 }
 
 /** A store read costs well under a millisecond; four reads a second keep an idle wake-up prompt. */
@@ -214,6 +217,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         }
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
+        recordHarness(store, consumer, options.harnessProcess?.() ?? null);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
@@ -223,11 +227,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       }),
 
     unregister: async (consumer) => {
-      store.transaction(() => {
-        park(store, consumer, now());
-        store.consumers.unregister(consumer);
-        forget(store, consumer);
-      });
+      store.transaction(() => drop(store, consumer, now()));
     },
 
     onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
@@ -266,67 +266,4 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
     status: async (worktreeId) => options.status.build(worktreeId),
   };
-}
-
-export interface ExpiryOptions {
-  /**
-   * The store's `locks/` directory. With it, expiry removes the free lock
-   * files of the consumers it expires and also expires waiterless consumers
-   * (`WAITERLESS_EXPIRY_MS`). Without it, only the 12 hour rule applies.
-   */
-  readonly locksDir?: AbsolutePath;
-}
-
-/**
- * Spec 001 D10: "A consumer that has not been delivered to or heard from for
- * 12 hours is expired". The daemon calls this periodically; returns the
- * consumers removed with their views.
- *
- * Lessons, defects 8 and 10 (task 001-47): Claude Code runs no SessionEnd
- * after an interactive exit that followed a typed prompt, but it kills the
- * idle waiter, whose lock file stays behind. So a consumer whose waiter lock
- * file exists, is held by no waiter, and that has not been delivered to or
- * heard from for 10 minutes is expired too, and its lock file removed. The
- * lock is only probed, never kept, so a waiter arming meanwhile is not
- * refused; the staleness is checked again in the transaction that removes
- * the consumer, so a hook that touched it in between keeps it.
- */
-export function expireConsumers(
-  store: Store,
-  now: EpochMs = Date.now(),
-  options: ExpiryOptions = {},
-): readonly Consumer[] {
-  const expired = [...store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS))];
-  const { locksDir } = options;
-  if (locksDir === undefined) return expired;
-  for (const consumer of expired) removeWaiterLock(locksDir, consumer);
-
-  const cutoff = now - WAITERLESS_EXPIRY_MS;
-  for (const { consumer } of store.consumers.idleSince(cutoff)) {
-    if (waiterLockState(locksDir, consumer) !== "free") continue;
-    const gone = store.transaction(() => {
-      const record = store.consumers.get(consumer);
-      if (record === null || !idle(record, cutoff)) return false;
-      park(store, consumer, now);
-      store.consumers.unregister(consumer);
-      forget(store, consumer);
-      return true;
-    });
-    if (!gone) continue;
-    removeWaiterLock(locksDir, consumer);
-    expired.push(consumer);
-  }
-  return expired;
-}
-
-/** Drops what an unregistered consumer was told and its turn state, beside its view. */
-function forget(store: Store, consumer: Consumer): void {
-  tellLiveness(store, consumer, null);
-  tellRevision(store, consumer, null);
-  writeTurn(store, consumer, null);
-}
-
-/** `ConsumerRepo.idleSince` for one record. */
-function idle(record: ConsumerRecord, cutoff: EpochMs): boolean {
-  return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
 }

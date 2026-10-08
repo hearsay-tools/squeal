@@ -6,10 +6,9 @@ export {
   createDelivery,
   DEFAULT_POLL_INTERVAL_MS,
   type DeliveryOptions,
-  type ExpiryOptions,
-  expireConsumers,
 } from "./delivery.js";
 export { type DeltaPlan, type PlanInput, planDelta } from "./delta.js";
+export { dropGoneHarnesses, type ExpiryOptions, expireConsumers } from "./expiry.js";
 export {
   formatDelta,
   formatRegistration,
@@ -18,6 +17,7 @@ export {
   SQUEAL_COMMAND,
   shellWord,
 } from "./format.js";
+export { harnessOf, type ProcStat, pidNamespace, readProcStat } from "./harness-process.js";
 export {
   daemonLiveness,
   livenessMetaKey,

@@ -145,6 +145,8 @@ export type DaemonExitReason =
   | "bad-policy"
   | "start-failed"
   | "idle"
+  /** Every session that used it is gone: the last unregistered, or its harness process died (defect 24). */
+  | "sessions-gone"
   | "root-removed"
   | "worktree-removed"
   | "stop-requested"

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { expireConsumers } from "../delivery/index.js";
+import { dropGoneHarnesses, expireConsumers } from "../delivery/index.js";
 import { storePaths } from "../store/index.js";
 import type {
   AbsolutePath,
@@ -27,6 +27,22 @@ export interface DaemonTimings {
   /** Store pruning (D8), first after `firstPruneMs`. */
   readonly pruneMs: number;
   readonly firstPruneMs: number;
+  /** How often the daemon counts its worktree's consumers. Default 250 ms. */
+  readonly presenceMs: number;
+  /**
+   * How long a daemon that had a consumer runs with none before it exits, so
+   * `/clear` and `/resume` keep it (lessons, defect 24). Default 3 s.
+   */
+  readonly departureGraceMs: number;
+}
+
+/**
+ * When the daemon last counted a consumer of its worktree; `null` while it
+ * never had one. Kept by the daemon, so a policy reload that restarts the
+ * timers does not forget it.
+ */
+export interface Presence {
+  lastPresentAt: EpochMs | null;
 }
 
 export interface TimerContext {
@@ -41,6 +57,7 @@ export interface TimerContext {
   readonly linkedDir: AbsolutePath | null;
   readonly timings: Partial<DaemonTimings>;
   readonly heartbeatMs: number;
+  readonly presence: Presence;
   /** Last nudge, request or registered consumer. */
   readonly lastActive: () => EpochMs;
   readonly active: (at: EpochMs) => void;
@@ -57,6 +74,13 @@ export interface TimerContext {
  * `<common-dir>/worktrees/<name>` disappears, [...] or after a configurable
  * idle period with no registered consumers (default 60 minutes). A consumer
  * that has not been delivered to or heard from for 12 hours is expired".
+ *
+ * Lessons, defect 24, the human's rule: the idle period is for a daemon that
+ * never had a consumer (`squeal start`). One that had a consumer exits once
+ * none was counted for `departureGraceMs`, measured from the last count that
+ * saw one, so the exit comes at most the grace after the last consumer left.
+ * The shutdown lets a tier in flight finish and store its results (D5). Each
+ * heartbeat first drops the consumers whose recorded harness process is gone.
  */
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
@@ -64,6 +88,9 @@ export function startTimers(context: TimerContext): () => void {
   const checkMs = timings.checkMs ?? Math.min(5_000, Math.max(50, idleMs / 10));
   const expireMs = timings.expireMs ?? 60_000;
   const pruneMs = timings.pruneMs ?? 60 * 60_000;
+  const presenceMs = timings.presenceMs ?? 250;
+  const graceMs = timings.departureGraceMs ?? 3_000;
+  const { presence } = context;
   const { locksDir } = storePaths(context.commonDir);
   let lastExpire = Number.NEGATIVE_INFINITY;
   const attempt = (what: string, fn: () => void) => {
@@ -92,14 +119,36 @@ export function startTimers(context: TimerContext): () => void {
       attempt("consumer expiry", () => expireConsumers(store, at, { locksDir }));
     }
     attempt("idle check", () => {
-      if (store.consumers.list(worktreeId).length > 0) context.active(at);
-      else if (at - context.lastActive() >= idleMs) {
+      if (presence.lastPresentAt !== null || !countPresence(at)) return;
+      if (at - context.lastActive() >= idleMs) {
         context.shutdown(
           "idle",
           `daemon stopped: idle for ${duration(idleMs)} with no registered consumers`,
         );
       }
     });
+  };
+  /** Counts the worktree's consumers; true when there is none. */
+  const countPresence = (at: EpochMs): boolean => {
+    if (store.consumers.list(worktreeId).length === 0) return true;
+    presence.lastPresentAt = at;
+    context.active(at);
+    return false;
+  };
+  const departure = () =>
+    attempt("departure check", () => {
+      const at = now();
+      if (!countPresence(at) || presence.lastPresentAt === null) return;
+      if (at - presence.lastPresentAt >= graceMs) {
+        context.shutdown(
+          "sessions-gone",
+          `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`,
+        );
+      }
+    });
+  const heartbeat = () => {
+    attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
+    attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
   };
   const prune = () =>
     attempt("prune", () => {
@@ -111,11 +160,9 @@ export function startTimers(context: TimerContext): () => void {
     });
 
   const timers = [
-    setInterval(
-      () => attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now())),
-      context.heartbeatMs,
-    ),
+    setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
+    setInterval(departure, presenceMs),
     setInterval(prune, pruneMs),
   ];
   const first = setTimeout(prune, timings.firstPruneMs ?? 60_000);

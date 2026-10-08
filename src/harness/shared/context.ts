@@ -9,6 +9,7 @@ import {
   type Consumer,
   type EpochMs,
   type HarnessDelivery,
+  type HarnessProcess,
   MAIN_AGENT,
   type Store,
 } from "../../core/types/index.js";
@@ -60,6 +61,8 @@ export interface ContextOptions {
   readonly pollIntervalMs?: number;
   /** How long a store statement waits for a lock. Default `STATUS_BUSY_TIMEOUT_MS`. */
   readonly busyTimeoutMs?: number;
+  /** The harness process a registration records (`DeliveryOptions.harnessProcess`). Default: none. */
+  readonly harnessProcess?: () => HarnessProcess | null;
 }
 
 /**
@@ -88,6 +91,7 @@ export function openContext(
       status: createStatusBuilder(store, { now }),
       now,
       ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
+      ...(options.harnessProcess === undefined ? {} : { harnessProcess: options.harnessProcess }),
     });
     return { ...location, store, delivery, consumer, close: () => store.close() };
   } catch (error) {

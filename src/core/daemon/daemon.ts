@@ -13,7 +13,7 @@ import type {
 } from "../types/index.js";
 import { bootstrappedMetaKey, DEFAULT_POLICY } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
-import { type DaemonTimings, startTimers } from "./lifecycle.js";
+import { type DaemonTimings, type Presence, startTimers } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
@@ -103,6 +103,7 @@ class Daemon {
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
+  readonly #presence: Presence = { lastPresentAt: null };
   #exit: Promise<DaemonExit> | null = null;
   #resolveExit: (exit: DaemonExit) => void = () => {};
   readonly #exited = new Promise<DaemonExit>((resolve) => {
@@ -164,6 +165,7 @@ class Daemon {
       linkedDir: linkedWorktreeDir(this.opened.root),
       timings: this.options.timings ?? {},
       heartbeatMs: this.#heartbeatMs(),
+      presence: this.#presence,
       lastActive: () => this.#lastActive,
       active: (at) => {
         this.#lastActive = at;
