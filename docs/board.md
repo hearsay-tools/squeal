@@ -373,12 +373,13 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-10 slow policy keys | done, integrating | D1, D7: the `slow` object (`include`, `maxWorkers`, `maxLoadPerCpu`, `maxDeferMs`), `nodeTest[].slow`, `stop.requireSlowSuite` in the policy type, loader and the skill's policy reference; a resolved `isSlow(testFile)` the scheduler will call; the fast-tier-over-30-s note's data. | Loader tests accept and reject per 001 D11; `isSlow` matches globs and `nodeTest` projects; `squeal init` writes the defaults. |
 | 004-11 the slow slot and the load guard | done, integrating | D2's per-user slot (`/tmp/squeal-<uid>/slow.lock`, held per file, released between) and D3's guard (load per CPU, 15 s recheck, bounded deferral, the note), as a new `src/core/slow/` module with no scheduler wiring yet. | Two processes interleave file by file through the slot; a crashed holder's lock is reclaimed; the guard defers, then runs with a note at the bound. |
 
-### Wave 1: the slow tier (after wave 0, and after the 001 coordinator frees the scheduler)
+### Wave 1: the slow tier (brief in `specifications/004-slow-suites/tasks/wave-1.md`; the scheduler is spec 004's by agreement with the 001 coordinator)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 004-12 slow tier class and triggers | planned | D2, D4, D9: slow files never in a fast tier; eligible only when nothing fast is pending and the consumer is idle or absent, or on `squeal run --slow` / `run --all`; preempted between files by fast work; separate execution (a second Vitest instance; node:test per file) at low priority; finish-and-revalidate; Stop records slow files pending. | Goals 1, 2 and 3 as scheduler tests with fake runners and one integration test. |
-| 004-13 artifact keys and inheritance | planned | D5, D6: declared artifact inputs in slow keys, the no-artifact note, inheritance only with a declared artifact, the slow node:test recorder in `NODE_OPTIONS`. | Goal 5 and the D5 note as tests; a slow node:test file observes a spawned CLI's loads. |
+| 004-12 the slow tier in the scheduler | planned, next | D2 to D6, D9: a slow queue class; triggers (idle or absent consumers, `requestSlowSuite`, `run --all`); the slot and the guard; finish-and-revalidate; inheritance only with a declared artifact; the no-artifact note; Stop records slow files pending. | Goals 1 to 3 and 5 as scheduler tests; one integration test with a real Vitest fixture. |
+| 004-13 `squeal run --slow`; slow node:test processes observed | planned, next | D2's explicit trigger through a `run-slow` daemon request; a test that a slow node:test file's spawned CLI is observed (001-132). | The request reaches the scheduler; the spawn test passes or names the gap. |
+| 004-18 a separate lane for slow files | planned, after 004-12 | D2's execution: a second runner at low priority, concurrent with fast tiers. | An edit's fast file is reported while a slow file is running. |
 | 004-14 review of wave 1 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
 ### Wave 2: telling the agent; Wave 3: proof
