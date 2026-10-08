@@ -60,5 +60,8 @@ function addLine(recorded: Map<AbsolutePath, RecordedFile>, line: string): void 
 
 function addAll(into: Set<string>, values: unknown): void {
   if (!Array.isArray(values)) return;
-  for (const value of values) if (typeof value === "string") into.add(value);
+  // A virtual module id such as Vite's `\0vite/dynamic-import-helper.js`, joined to a root, is
+  // not a file: any fs call on it throws, and it once made every runner call fail.
+  for (const value of values)
+    if (typeof value === "string" && !value.includes("\0")) into.add(value);
 }
