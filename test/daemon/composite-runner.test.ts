@@ -203,6 +203,22 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     );
   });
 
+  it("puts each file in its runner's lane (001 D5 as amended, task 001-140)", async () => {
+    const vitest = fake("vitest", { "": ["src/a.test.ts"] });
+    const unit = fake("node-test", { "test:unit": ["test/unit/c.test.ts"] });
+    const pkg = fake("node-test", { "test:package": ["test/e2e/d.test.ts"] });
+    const composite = createCompositeRunner([vitest, unit, pkg]);
+    const D = ref("test:package", "test/e2e/d.test.ts");
+    // Before a listing no project has an owner yet: one lane of its own.
+    expect(composite.lane?.(A)).toBe("vitest+node-test+node-test");
+    await composite.testFiles();
+    expect([A, C, D].map((file) => composite.lane?.(file))).toEqual([
+      "vitest",
+      "node-test",
+      "node-test",
+    ]);
+  });
+
   it("dispatches a run spanning both adapters by project and merges the reports", async () => {
     const { vitest, node, composite } = pair();
     await composite.testFiles();
