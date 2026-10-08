@@ -1,8 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { afterEach } from "vitest";
+import { afterEach, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
@@ -20,6 +19,7 @@ import {
   stopProcess,
   waitFor,
 } from "./helpers.js";
+import { testBuildDir } from "./strays.js";
 
 /*
  * Daemons of other versions and the hooks that step them down (lessons,
@@ -42,8 +42,7 @@ export function stepDownKit(suite: DaemonSuite) {
 
   /** Under `node_modules/.cache`, so a CLI there resolves `vitest` and `chokidar`. */
   function cacheDir(): string {
-    const dir = join(repoRoot, "node_modules/.cache/squeal-test", randomUUID());
-    mkdirSync(dir, { recursive: true });
+    const dir = testBuildDir(expect.getState().testPath);
     suite.cleanup(() => rmSync(dir, { recursive: true, force: true }));
     return dir;
   }
