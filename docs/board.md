@@ -241,6 +241,14 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-137 evidence: does the recorder cause cezar's contention failures | running | `reviews/wave-12d.md` S1: alternating on/off runs of the nine files under a fixed competing load. | Dated section in `tasks/001-132/notes.md`. |
 | 001-138 test daemons never outlive the suite | done (test-only; a leak fails the run naming its file; e2e `worktrees` PostToolBatch output is a pre-existing load flake, also on 0a5fc74) (brief in `specifications/001-core-loop/tasks/wave-12.md`) | Defect 29: daemons that `test/daemon/` tests start from the built copy under `node_modules/.cache/squeal-test/` survive the run and block worktree removal. Every such test stops what it started in teardown, and a global teardown fails the run and kills any daemon still running from that cache. | A deliberately leaked test daemon fails the suite and is gone after it. |
 
+### Wave 13: core defects from 003-19 dogfooding (`specifications/003-node-test-runner/lessons.md` defects 2, 5, 8; briefs to write)
+
+| Row | Status | Scope | Outcome |
+|---|---|---|---|
+| 001-140 a revision's work never waits behind an older revision's unrelated tier | planned, after spec 004 wave 1 (the scheduler is spec 004's until then) | 003 lessons defect 2: r4's node:test files, and even its runner part, waited 4 min 17 s behind r2's 425 s Vitest tier. | A test proves a newer revision's affected files start without waiting for an unrelated older tier. |
+| 001-141 a second daemon on the shared store never costs the first a tier | planned | 003 lessons defect 5: a second daemon starting made the first's scheduler hit `database is locked`; the tier's run row never closed and its files re-ran. | A test starts a second daemon on one store mid-tier: the first loses no tier, and its run rows close. |
+| 001-142 test children that escape a run never outlive the daemon | planned | 003 lessons defect 8 (001 D12 kills process groups only at a deadline): two cezar `fake-dev-server.mjs` survived 57 min in the daemon's process group and `squeal stop`. | A test leaves an escaped child in a tier; the daemon kills it when the tier ends and on stop. |
+
 ## Feature 002: Codex adapter
 
 Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2026-10-08 (0.1.29). Sections referenced as D1 to D8. Briefs under `specifications/002-codex-adapter/tasks/wave-N.md`.
