@@ -6,7 +6,7 @@ import { createHandlers } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
 import { isNewerVersion, squealVersion } from "../../src/core/daemon/version.js";
 import type { DaemonRecord, DaemonRequest } from "../../src/core/types/index.js";
-import { stepDownIfOlder } from "../../src/harness/shared/ensure.js";
+import { SOCKET_TIMEOUT_MS, stepDownIfOlder } from "../../src/harness/shared/ensure.js";
 
 /*
  * Lessons, defect 26: a hook newer than the daemon asks it to step down;
@@ -119,6 +119,18 @@ describe("stepDownIfOlder (hook side)", () => {
     expect(d.asked).toHaveLength(1);
     const gone = record(join(dir, "gone.sock"), "0.1.0");
     expect(await stepDownIfOlder(gone, Date.now(), "0.1.31")).toBe(false);
+  });
+});
+
+describe("the hook's budget", () => {
+  it("gives up on a daemon that accepts and never answers within the socket timeout", async () => {
+    const socketPath = join(dir, "hung.sock");
+    const server = createServer(() => {});
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    const at = performance.now();
+    expect(await stepDownIfOlder(record(socketPath, "0.1.0"), Date.now(), "0.1.31")).toBe(false);
+    expect(performance.now() - at).toBeLessThan(SOCKET_TIMEOUT_MS + 400);
   });
 });
 
