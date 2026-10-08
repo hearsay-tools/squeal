@@ -136,6 +136,8 @@ Started: 2026-10-02
 
 - 2026-10-08, after 001-139 (human): `observe.runtimeInputs` defaults to `true` again; `reviews/wave-12d.md` B1 to B6 are repaired (`reviews/wave-12e.md` passed all but B5, which 001-139 closed through the real recorder).
 
+- 2026-10-08, 001-143 (research, no decision): the recorder's time in cezar's `--help` CLI child is about 238 synchronous appends, one before each esbuild `postMessage` in the child's main thread (tsx's cache is cold under cezar's per-worker `TMPDIR`), each blocking on the I/O-saturated disk. With the recorder, 8 of 18 runs failed the `--help` tests, against 0 of 18 off and 0 of 18 when the flush before a `MessagePort` message happens only in a worker thread. That change is the recommendation; a later row decides. Evidence: `tasks/001-132/notes.md` (2026-10-08, 001-143), `tasks/001-143/`.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.

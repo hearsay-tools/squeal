@@ -1,4 +1,7 @@
-// Task 001-143 evidence, not product code. Summarizes a V8 .cpuprofile: its
+// Task 001-143 evidence, not product code. Each sample is charged the gap before it
+// (`timeDeltas[i]`): the profiler's signal waits out a disk write, so a sample
+// landing in a write after a long gap measures that write. SQUEAL143_TIME's
+// direct timing of the appends agrees. Summarizes a V8 .cpuprofile: its
 // span, and the self time per function (name, file:line) over the top N, so
 // time blocked in a call (Atomics.wait, a sync syscall) shows as its frame.
 // Usage: node prof.mjs <file.cpuprofile> [top]
