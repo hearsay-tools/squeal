@@ -33,6 +33,7 @@ import {
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
+import { invalidateStale, mayHaveRun, SourceStamps, withoutFiles } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
 
 /**
@@ -54,6 +55,8 @@ export class VitestAdapter implements RunnerAdapter {
   #vitest: Vitest | null = null;
   /** Where the current instance copies transformed modules (`instanceTempDirs`). */
   #tempDirs: AbsolutePath[] = [];
+  /** What the current instance read of each project file (task 001-146). */
+  #sources: SourceStamps;
   /** Installed lockfiles the current instance started with. */
   #lockfiles = new Set<AbsolutePath>();
   /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -85,6 +88,7 @@ export class VitestAdapter implements RunnerAdapter {
     childEnv: Readonly<Record<string, string>> = {},
   ) {
     this.#node = vitest;
+    this.#sources = new SourceStamps(paths);
     this.#childEnv = childEnv;
     this.#note = note;
     this.#observer = new VitestObserver(paths, observe);
@@ -100,14 +104,20 @@ export class VitestAdapter implements RunnerAdapter {
     const generation = ++this.#generation;
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
-    const vitest = await this.#node.createVitest("test", {
-      root: this.paths.root,
-      watch: false,
-      reporters: [createSquealReporter(current)],
-      update: "none",
-      includeTaskLocation: true,
-      ...(Object.keys(env).length === 0 ? {} : { env }),
-    });
+    const sources = new SourceStamps(this.paths);
+    const vitest = await this.#node.createVitest(
+      "test",
+      {
+        root: this.paths.root,
+        watch: false,
+        reporters: [createSquealReporter(current)],
+        update: "none",
+        includeTaskLocation: true,
+        ...(Object.keys(env).length === 0 ? {} : { env }),
+      },
+      { plugins: [sources.plugin()] },
+    );
+    this.#sources = sources;
     try {
       await vitest.standalone();
       this.#observer.configure(vitest);
@@ -172,6 +182,8 @@ export class VitestAdapter implements RunnerAdapter {
       }
       for (const p of abs) vitest.invalidateFile(p.abs);
       await invalidateStructural(vitest, abs, this.#note);
+      // Task 001-146: a file read between a revert and its restore is named by no revision.
+      await invalidateStale(vitest, this.#sources);
       return { recreatedProjects: [] };
     });
   }
@@ -260,10 +272,14 @@ export class VitestAdapter implements RunnerAdapter {
         return empty;
       }
       const exitCode = process.exitCode;
+      await invalidateStale(vitest, this.#sources);
+      const loadedSince = Date.now();
       const started = performance.now();
       this.#collector = collector;
       try {
         let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
+        // Task 001-146: bytes the run read that moved since; the files that may have run them.
+        const moved = await invalidateStale(vitest, this.#sources, loadedSince);
         if (execution.hung) {
           // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
           this.#vitest = null;
@@ -276,7 +292,12 @@ export class VitestAdapter implements RunnerAdapter {
         }
         const built = buildReport(collector, execution, Math.round(performance.now() - started));
         const observed = this.#observer.take(built.completedFiles);
-        const report = observed === undefined ? built : { ...built, observed };
+        const report = withoutFiles(
+          observed === undefined ? built : { ...built, observed },
+          mayHaveRun(vitest, moved, testFiles, this.paths),
+          moved,
+          this.paths,
+        );
         // One persisted note for status, besides the crash's delivered line (D5).
         if (broken !== null && report.failure !== null) this.#note(report.failure);
         writeRunLog(options, collector, report);
