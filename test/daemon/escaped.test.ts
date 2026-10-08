@@ -1,9 +1,18 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { daemonSuite, ping, readNotes, SLOW, spawnCli, waitFor } from "./helpers.js";
+import {
+  daemonSuite,
+  type FixtureRepo,
+  ping,
+  readNotes,
+  SLOW,
+  spawnCli,
+  waitFor,
+  waitReady,
+} from "./helpers.js";
 import { resultOf } from "./scratch-helpers.js";
 import { isAlive } from "./strays.js";
 
@@ -11,7 +20,8 @@ import { isAlive } from "./strays.js";
  * Spec 001 D12 as amended for lessons 003, defect 8 (task 001-142): what a
  * test leaves running is stopped when its tier ends, and what the daemon's
  * own process tree holds when it exits. The daemon is spawned as hooks spawn
- * it (`squeal start`, detached), so it leads its process group.
+ * it (detached, `ensureDaemon`), so it leads its process group; not through
+ * `squeal start`, whose wait for the answer a loaded host outlasts.
  */
 
 /** A test that leaves a detached sleeper and an orphan in the daemon's group, and waits for a child of its own. */
@@ -82,9 +92,16 @@ describe.runIf(process.platform === "linux")(
       return dir;
     }
 
-    async function start(repo: ReturnType<typeof suite.fixture>): Promise<void> {
-      const started = spawnCli(suite.cli, ["start"], { cwd: repo.root, env: repo.env });
-      expect(await started.exited).toEqual({ code: 0, signal: null });
+    /** Spawned detached, as `ensureDaemon` spawns it; the suite stops it by its root. */
+    async function start(repo: FixtureRepo): Promise<void> {
+      const child = spawn(process.execPath, [suite.cli, "daemon", repo.root], {
+        cwd: "/",
+        env: repo.env,
+        detached: true,
+        stdio: "ignore",
+      });
+      child.unref();
+      await waitReady(repo);
     }
 
     /** The pids the fixture wrote, stopped after the test whatever it found. */
