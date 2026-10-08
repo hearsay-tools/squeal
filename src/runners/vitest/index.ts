@@ -20,6 +20,11 @@ export interface VitestAdapterOptions {
    * the runtime-input recorder (D4, task 001-132). Absent: nothing observed.
    */
   readonly observe?: () => boolean;
+  /**
+   * Added to every worker's env and left out of the environment hash: the
+   * daemon's marker for the processes tests leave behind (D12, task 001-142).
+   */
+  readonly childEnv?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -34,6 +39,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     await loadVitest(root),
     options.note,
     options.observe,
+    options.childEnv,
   );
   await adapter.open();
   return adapter;
