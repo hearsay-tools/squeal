@@ -8,6 +8,15 @@ import type { StorePaths } from "./paths.js";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EVICTION_BATCH = 32;
 
+/**
+ * Task 001-141 (003 lessons, defect 5): rows deleted per write transaction
+ * and pages freed per `incremental_vacuum`. One `DELETE` of a removed
+ * worktree's 80,000 results held cezar's store for 15 s, past a daemon's 5 s
+ * busy timeout; a step this size holds it for well under a hook's 1 s.
+ */
+const DELETE_BATCH = 256;
+const VACUUM_PAGES = 512;
+
 /*
  * Spec 001 D8: "keep every result whose key is current in any live worktree
  * plus the newest result per check on the main worktree; drop other keys
@@ -28,13 +37,24 @@ const EVICTION_BATCH = 32;
 const LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
   WHERE k.key IS NOT NULL`;
 
-/** Row ids of the newest result per check produced by the main worktree. */
-const MAIN_NEWEST = `
-  SELECT id FROM (
-    SELECT rowid AS id,
-      row_number() OVER (PARTITION BY check_id ORDER BY recorded_at DESC, rowid DESC) AS n
-    FROM results WHERE worktree_id IN (SELECT id FROM worktrees WHERE is_main = 1)
-  ) WHERE n = 1`;
+/** The main worktree, whose newest result per check is kept. */
+const MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
+
+/**
+ * Results under no live key that are not the newest of their check on the
+ * main worktree (by `recorded_at`, then `rowid`). Tested row by row, so a
+ * batch re-checks only its own rows, under the write lock.
+ */
+const UNPROTECTED = `key NOT IN (${LIVE_KEYS})
+  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
+    SELECT 1 FROM results n
+    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
+      AND (n.recorded_at > results.recorded_at
+           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
+
+/** What no rule keeps: unprotected, and older than the cutoff (the one parameter) or orphaned. */
+const PRUNABLE = `${UNPROTECTED}
+  AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`;
 
 /** The newest completed checkpoint of each live worktree; status reports it (D7). */
 const LAST_COMPLETED_CHECKPOINTS = `
@@ -60,17 +80,7 @@ export function prune(
     worktreesRemoved++;
   }
 
-  let resultsRemoved = conn.transaction(() => {
-    const removed = conn.run(
-      `DELETE FROM results
-       WHERE key NOT IN (${LIVE_KEYS})
-         AND rowid NOT IN (${MAIN_NEWEST})
-         AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`,
-      cutoff,
-    );
-    dropOrphanFailureTexts(conn);
-    return removed;
-  });
+  let resultsRemoved = dropPrunable(conn, cutoff);
 
   if (options.maxSizeMb !== null) {
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
@@ -108,7 +118,7 @@ export function prune(
     ),
   );
 
-  conn.db.exec("PRAGMA incremental_vacuum");
+  vacuum(conn);
   return {
     resultsRemoved,
     runsRemoved: droppedRuns.length,
@@ -120,16 +130,52 @@ export function prune(
 }
 
 /**
+ * Deletes what no rule keeps in batches of `DELETE_BATCH`: the row ids come
+ * from one read, which takes no lock in WAL, and each batch re-tests its rows
+ * under the write lock, so a key that became live meanwhile keeps its result.
+ */
+function dropPrunable(conn: Connection, cutoff: number): number {
+  const ids = conn
+    .read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff))
+    .map((row) => num(row, "id"));
+  let removed = 0;
+  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
+    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
+    removed += conn.transaction(() =>
+      conn.run(
+        `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
+        batch,
+        cutoff,
+      ),
+    );
+  }
+  conn.transaction(() => dropOrphanFailureTexts(conn));
+  return removed;
+}
+
+/**
+ * Frees the pages deletes left, `VACUUM_PAGES` per write transaction; a bare
+ * `incremental_vacuum` frees them all in one. Stops when a step frees
+ * nothing, as on a store created without `auto_vacuum`.
+ */
+function vacuum(conn: Connection): void {
+  let free = pragmaNumber(conn, "freelist_count");
+  while (free > 0) {
+    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    const left = pragmaNumber(conn, "freelist_count");
+    if (left >= free) return;
+    free = left;
+  }
+}
+
+/**
  * The size-cap backstop. Evicts least recently used results first: those
  * no rule keeps, then the newest main-worktree results that no live worktree
  * uses. Results under a live key are never evicted, because known states
  * rest on them. Returns how many results it removed.
  */
 function evictToCap(conn: Connection, capBytes: number): number {
-  const tiers = [
-    `key NOT IN (${LIVE_KEYS}) AND rowid NOT IN (${MAIN_NEWEST})`,
-    `key NOT IN (${LIVE_KEYS})`,
-  ];
+  const tiers = [UNPROTECTED, `key NOT IN (${LIVE_KEYS})`];
   let removed = 0;
   for (const tier of tiers) {
     while (usedBytes(conn) > capBytes) {

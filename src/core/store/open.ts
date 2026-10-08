@@ -80,8 +80,9 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
         return { corrupt: problem };
       }
     }
-    // Takes effect only before the first table exists, so only on a new file.
-    db.exec("PRAGMA auto_vacuum = INCREMENTAL");
+    // Takes effect only before the first table exists, so only on a new file;
+    // on any other it still writes the header, under the write lock (task 001-141).
+    if (pragmaNumber(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
     const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
     if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
     db.exec("PRAGMA synchronous = NORMAL");
@@ -98,6 +99,10 @@ function busyTimeout(options: OpenStoreOptions): number {
   const ms = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(ms) || ms < 0) throw new RangeError(`busyTimeoutMs must be >= 0: ${ms}`);
   return ms;
+}
+
+function pragmaNumber(db: DatabaseSync, name: string): number {
+  return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
 }
 
 function integrityProblem(db: DatabaseSync): string | null {
