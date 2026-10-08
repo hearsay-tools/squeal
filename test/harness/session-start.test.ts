@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
-import { PRIMER } from "../../src/harness/shared/primer.js";
+import { PRIMER, primer } from "../../src/harness/shared/primer.js";
 import { check } from "../state/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
@@ -108,6 +108,30 @@ describe("the SessionStart primer", () => {
     expect(next).toBeGreaterThan(-1);
     expect(next).toBeLessThan(PRIMER.indexOf("squeal status --wait"));
     expect(PRIMER.length).toBeLessThan(1_000);
+  });
+
+  /*
+   * Spec 003 lessons, defect 1: told Squeal covers only Vitest, agents ran
+   * node:test themselves. With `nodeTest` projects the primer names both.
+   */
+  it("names node:test only where the policy configures it", () => {
+    expect(PRIMER).not.toMatch(/node:test/);
+    const both = primer("squeal", true);
+    expect(both).toContain("runs this repository's Vitest and node:test tests");
+    expect(both).toMatch(/do not run Vitest or node:test to learn whether/);
+    expect(both).toMatch(/typecheck, build or other test suites/);
+    expect(both.length).toBeLessThan(1_000);
+  });
+
+  it("names node:test after a registration where squeal.config.json lists nodeTest projects", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    const config = {
+      nodeTest: [{ name: "unit", argv: [], env: {}, include: ["test/*.test.mjs"] }],
+    };
+    writeFileSync(join(r.root, "squeal.config.json"), `${JSON.stringify(config)}\n`);
+    const text = context(await runHook("session-start", recorded("session-start", r.root), deps()));
+    expect(text.endsWith(`\n\n${primer("squeal", true)}`)).toBe(true);
   });
 });
 
