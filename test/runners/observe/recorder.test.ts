@@ -1,51 +1,5 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { observeEnv, observeRecorder, takeRecorded } from "../../../src/runners/observe/index.js";
-
-const recorder = observeRecorder(
-  new URL("../../../src/runners/observe/runtime.ts", import.meta.url),
-);
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
-
-/** A worktree holding `files`, and a run of `main` under the recorder attributed to `test.ts`. */
-function observe(files: Record<string, string>, main = "main.mjs") {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "squeal-recorder-")));
-  roots.push(root);
-  for (const [path, content] of Object.entries(files)) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    writeFileSync(join(root, path), content);
-  }
-  const out = join(root, ".observe");
-  mkdirSync(out);
-  if (recorder === null) throw new Error("recorder.cjs not found");
-  const env = observeEnv(recorder, { out, root, skip: [] }, undefined);
-  const settings = JSON.parse(env.SQUEAL_OBSERVE ?? "{}");
-  const stdout = execFileSync(process.execPath, [join(root, main)], {
-    cwd: root,
-    encoding: "utf8",
-    env: {
-      PATH: process.env.PATH ?? "",
-      NODE_OPTIONS: env.NODE_OPTIONS ?? "",
-      SQUEAL_OBSERVE: JSON.stringify({ ...settings, file: join(root, "test.ts") }),
-    },
-  });
-  const recorded = takeRecorded(out).get(join(root, "test.ts"));
-  const rel = (set: Set<string> | undefined) =>
-    [...(set ?? [])].map((p) => p.slice(root.length + 1)).sort();
-  return {
-    stdout,
-    paths: rel(recorded?.paths),
-    listed: rel(recorded?.listed),
-    written: rel(recorded?.written),
-  };
-}
+import { describe, expect, it } from "vitest";
+import { observe } from "./helpers.js";
 
 describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
   it("keeps what twenty Workers read though each is terminated at its message", () => {
