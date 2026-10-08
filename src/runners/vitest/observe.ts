@@ -24,13 +24,13 @@ import type { WorktreePaths } from "./paths.js";
  */
 export class VitestObserver {
   #out: AbsolutePath | null = null;
+  /** The env the current instance's workers got from the recorder. */
+  #injected: Record<string, string> = {};
   #recorder: AbsolutePath | null | undefined;
-  #missingNoted = false;
 
   constructor(
     private readonly paths: WorktreePaths,
     private readonly enabled: () => boolean,
-    private readonly note: (text: string) => void,
   ) {}
 
   /** The current instance records. */
@@ -48,6 +48,11 @@ export class VitestObserver {
     return this.active ? `${base}+observe.${RECORDER_VERSION}` : base;
   }
 
+  /** What the recorder added to the current instance's env: left out of the environment hash. */
+  get injected(): Readonly<Record<string, string>> {
+    return this.#injected;
+  }
+
   /** The `env` option of the next instance, or `{}` when it does not observe. */
   start(): { env?: Record<string, string> } {
     this.stop();
@@ -57,7 +62,8 @@ export class VitestObserver {
     const out = mkdtempSync(join(tmpdir(), "squeal-observe-"));
     this.#out = out;
     const settings = { out, root: this.paths.root, skip: [tmpdir()] };
-    return { env: observeEnv(recorder, settings, process.env.NODE_OPTIONS) };
+    this.#injected = observeEnv(recorder, settings, process.env.NODE_OPTIONS);
+    return { env: this.#injected };
   }
 
   /** After `standalone()`: a project's own `env.NODE_OPTIONS` gets the recorder first. */
@@ -82,16 +88,16 @@ export class VitestObserver {
   stop(): void {
     if (this.#out !== null) rmSync(this.#out, { recursive: true, force: true });
     this.#out = null;
+    this.#injected = {};
   }
 
+  /**
+   * The recorder file. A build that did not copy it (`tsc` alone, which
+   * emits no `.cjs`) observes nothing and keys as with the policy off; the
+   * plugin bundles carry it in `dist/observe/` (`src/harness/build.ts`).
+   */
   #find(): AbsolutePath | null {
     if (this.#recorder === undefined) this.#recorder = observeRecorder();
-    if (this.#recorder === null && !this.#missingNoted) {
-      this.#missingNoted = true;
-      this.note(
-        "the runtime-input recorder is missing from this install; runtime reads are not observed",
-      );
-    }
     return this.#recorder;
   }
 
