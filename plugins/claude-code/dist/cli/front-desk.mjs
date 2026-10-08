@@ -36,6 +36,9 @@ function parseRequest(line) {
         return '"force" must be true or false';
       }
       return { type: "run-all", force: request.force === true };
+    case "step-down":
+      if (typeof request.version !== "string") return '"version" must be a string';
+      return { type: "step-down", version: request.version };
     case "run-all-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-all-status", requestId: request.requestId };
@@ -45,6 +48,21 @@ function parseRequest(line) {
 }
 function errorResponse(error) {
   return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
+}
+
+// src/core/daemon/version.ts
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
 }
 
 // src/core/daemon/handlers.ts
@@ -104,6 +122,17 @@ function createHandlers(context) {
       case "stop":
         context.onStop();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
+      case "step-down": {
+        const steppingDown = isNewerVersion(request.version, context.squealVersion);
+        if (steppingDown) context.onStepDown(request.version);
+        return {
+          schemaVersion: PAYLOAD_SCHEMA_VERSION,
+          ok: true,
+          type: "step-down",
+          squealVersion: context.squealVersion,
+          steppingDown
+        };
+      }
     }
   };
 }
@@ -220,7 +249,8 @@ function bind(identity) {
       post({ type: "run-all", id, force });
     }),
     onActivity: () => post({ type: "activity" }),
-    onStop: () => post({ type: "stop" })
+    onStop: () => post({ type: "stop" }),
+    onStepDown: (version) => post({ type: "step-down", version })
   });
   createDaemonServer(identity.socketPath, handle).then(
     (bound) => {

@@ -239,9 +239,10 @@ function readRefined(store, worktreeId) {
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
 }
-function fullSuiteText({ revision, fullSuite }) {
+function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
-  return fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const none = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
+  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -2638,14 +2639,14 @@ function changedText(paths) {
   const more = paths.length - CHANGED_PATHS_SHOWN;
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
-function headerLine(header) {
+function headerLine(header, command) {
   const { revision, counts, testFilesWithoutChecks: files } = header;
   const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
   const awaiting = awaitingInstallSentence(header);
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
@@ -2768,8 +2769,14 @@ function formatDelta(delta, command = SQUEAL_COMMAND) {
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
   };
   const tail = failed === void 0 ? null : whyLine(failed.check, command);
-  return assemble(`${title}
-${headerLine(header)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
+  return assemble(
+    `${title}
+${headerLine(header, command)}`,
+    blocks,
+    overflow,
+    tail,
+    MESSAGE_CAP_CHARS
+  );
 }
 function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
@@ -2778,7 +2785,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   const { header, knownFailures } = registration2;
   const head = [
     `SQUEAL \xB7 registered at revision ${header.revision}`,
-    headerLine(header),
+    headerLine(header, command),
     `Known failures: ${knownFailures.length}`
   ].join("\n");
   const blocks = knownFailures.map(
@@ -2801,10 +2808,6 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     max
   );
 }
-
-// src/core/daemon/ensure.ts
-import { spawn } from "node:child_process";
-import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
 
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
@@ -2851,6 +2854,10 @@ function requestDaemon(socketPath, request, timeoutMs) {
 function failure(code, message) {
   return Object.assign(new Error(message), { code });
 }
+
+// src/core/daemon/ensure.ts
+import { spawn } from "node:child_process";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
 
 // src/core/daemon/paths.ts
 import { dirname as dirname2, isAbsolute as isAbsolute2, join as join6 } from "node:path";
@@ -2956,9 +2963,54 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
+// src/core/daemon/version.ts
+import { readFileSync as readFileSync4 } from "node:fs";
+import { dirname as dirname3, join as join7 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.33";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname3(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join7(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname3(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync4(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
+}
+
 // src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
-function ensure(location2, deps, record) {
+async function ensure(location2, deps, record) {
+  if (record !== void 0) await stepDownIfOlder(record, (deps.now ?? Date.now)());
   return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
     socketTimeoutMs: SOCKET_TIMEOUT_MS,
     ...deps.cli === void 0 ? {} : { cli: deps.cli },
@@ -2967,8 +3019,26 @@ function ensure(location2, deps, record) {
 }
 async function ensureIfStale(context, deps) {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-  if (daemonLiveness(record, (deps.now ?? Date.now)()).state === "alive") return "fresh";
-  return ensure(context, deps, record);
+  const now = (deps.now ?? Date.now)();
+  if (daemonLiveness(record, now).state !== "alive") return ensure(context, deps, record);
+  await stepDownIfOlder(record, now);
+  return "fresh";
+}
+async function stepDownIfOlder(record, now, version = squealVersion()) {
+  if (record === null || !isNewerVersion(version, record.squealVersion)) return false;
+  if (daemonLiveness(record, now).state !== "alive") return false;
+  try {
+    const answer = await requestDaemon(
+      record.socketPath,
+      { type: "step-down", version },
+      SOCKET_TIMEOUT_MS
+    );
+    if (answer.ok) return true;
+    if (!answer.error.startsWith("unknown request type")) return false;
+    return (await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS)).ok;
+  } catch {
+    return false;
+  }
 }
 
 // src/harness/shared/context.ts
@@ -3140,8 +3210,8 @@ var postToolBatch = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync4 } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync as readFileSync5 } from "node:fs";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/claude-code/input.ts
 function parseHookInput(text) {
@@ -3209,13 +3279,13 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync4(0, "utf8");
+    stdin = readFileSync5(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {
     env: process.env,
     // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs (review wave 3, B1).
-    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url)),
+    cli: fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url)),
     ...waiterTimeout(process.env.SQUEAL_WAITER_TIMEOUT_MS)
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);

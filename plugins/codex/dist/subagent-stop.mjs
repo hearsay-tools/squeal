@@ -2758,6 +2758,7 @@ var SHAPE = {
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
+    backlogTierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),

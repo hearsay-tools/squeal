@@ -1521,7 +1521,7 @@ var init_policy = __esm({
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
       env: { allowlist: [] },
-      runner: { tierSize: 4, timeoutMs: 6e5 },
+      runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
       nodeTest: [],
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null }
@@ -1645,9 +1645,10 @@ function isPending(header) {
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
 }
-function fullSuiteText({ revision, fullSuite }) {
+function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
-  return fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const none = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
+  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -3612,6 +3613,7 @@ var init_policy2 = __esm({
       env: { allowlist: strings2 },
       runner: {
         tierSize: positiveInteger,
+        backlogTierSize: positiveInteger,
         timeoutMs: orNull(positiveInteger)
       },
       nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
@@ -4461,6 +4463,25 @@ var init_install = __esm({
   }
 });
 
+// src/core/scheduler/backlog.ts
+function cancelsBacklog(ledger, revision, tier) {
+  if (ledger.queue.hasRecent()) return true;
+  const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
+  return revision.changes.some(
+    (change2) => change2.oldHash === null || change2.newHash === null || inputs2.has(change2.path)
+  );
+}
+function backlogBudget(timeoutMs) {
+  return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+}
+var BACKLOG_TIER_BUDGET_MS;
+var init_backlog = __esm({
+  "src/core/scheduler/backlog.ts"() {
+    "use strict";
+    BACKLOG_TIER_BUDGET_MS = 3e5;
+  }
+});
+
 // src/core/scheduler/queue.ts
 function priorityOf(file, changed, direct = NO_DIRECT_IMPORTERS) {
   if (file.failing) return Priority.failing;
@@ -4518,6 +4539,11 @@ var init_queue = __esm({
       }
       isRecent(ref2) {
         return this.#entries.get(testFileId(ref2))?.recent ?? false;
+      }
+      /** Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5 as amended). */
+      hasRecent() {
+        for (const entry2 of this.#entries.values()) if (entry2.recent) return true;
+        return false;
       }
       /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */
       tierSelected(tookBacklog) {
@@ -6083,9 +6109,13 @@ import { join as join27 } from "node:path";
 function selectTier(context, ledger) {
   const { store, keys, policy } = context;
   const picked = [];
+  const backlog = !ledger.queue.hasRecent();
+  const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+  const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
+  let known2 = 0;
   let tookBacklog = false;
   for (const ref2 of ledger.ordered()) {
-    if (picked.length >= policy.runner.tierSize) break;
+    if (picked.length >= size) break;
     const file = ledger.file(ref2);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {
@@ -6101,6 +6131,8 @@ function selectTier(context, ledger) {
         continue;
       }
     }
+    known2 += file.durationMs ?? 0;
+    if (picked.length > 0 && known2 > budget) break;
     tookBacklog ||= !ledger.queue.isRecent(ref2);
     ledger.queue.remove(ref2);
     const checkpointId2 = ledger.checkpoints.idFor(ref2);
@@ -6122,7 +6154,8 @@ function selectTier(context, ledger) {
     snapshot: snapshotInputs(
       keys.cache,
       picked.flatMap((p) => p.inputs)
-    )
+    ),
+    cancel: backlog ? new AbortController() : null
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = /* @__PURE__ */ new Set();
@@ -6145,7 +6178,12 @@ async function executeTier(context, tier) {
   try {
     return await context.runner.run(
       tier.files.map((f) => f.file.ref),
-      { runId: tier.runId, logDir: tier.logDir, timeoutMs: context.policy.runner.timeoutMs }
+      {
+        runId: tier.runId,
+        logDir: tier.logDir,
+        timeoutMs: context.policy.runner.timeoutMs,
+        ...tier.cancel === null ? {} : { signal: tier.cancel.signal }
+      }
     );
   } catch (error) {
     return {
@@ -6167,6 +6205,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   const duringRun = ledger.tierChanges ?? /* @__PURE__ */ new Set();
   ledger.tierChanges = null;
   const completed = new Set(report2.completedFiles.map(testFileId));
+  const cancelled = tier.cancel?.signal.aborted === true && report2.end === "completed";
   const provenance = {
     worktreeId,
     revision: tier.revision.number,
@@ -6181,7 +6220,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
     for (const { file, key, inputs: inputs2, checkpointId, forced } of tier.files) {
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
-      if (installMoved) {
+      if (installMoved || cancelled && !completed.has(file.id)) {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
         }
@@ -6254,6 +6293,7 @@ var init_tiers = __esm({
   "src/core/scheduler/tiers.ts"() {
     "use strict";
     init_keys();
+    init_backlog();
     init_context();
     init_files();
     init_queue();
@@ -6274,6 +6314,7 @@ var init_scheduler2 = __esm({
     init_notes();
     init_revision();
     init_state2();
+    init_backlog();
     init_batch();
     init_bootstrap();
     init_context();
@@ -6304,6 +6345,8 @@ var init_scheduler2 = __esm({
       #context = null;
       #ledger = null;
       #pumping = null;
+      /** The tier whose run is in flight; a backlog tier carries its `cancel`. */
+      #running = null;
       #closed = false;
       /** The pump stopped on an error; idle until the next batch or request. */
       #stalled = false;
@@ -6392,6 +6435,10 @@ var init_scheduler2 = __esm({
             if (missing !== null) return this.#reinstall(ledger);
           }
           if (applied === null) return;
+          const running = this.#running;
+          if (running?.cancel && cancelsBacklog(ledger, applied.revision, running)) {
+            running.cancel.abort();
+          }
           this.#runnerWork.queueRefine(applied.revision, applied.content);
         });
         if (this.#reinstalled) this.#tellReinstall();
@@ -6476,8 +6523,9 @@ var init_scheduler2 = __esm({
       /**
        * Runs tiers one after another until the queue is empty. Selection and
        * recording hold the lock; the run and the stability re-stat do not, so
-       * batches are reconciled while a tier is in flight. Spec 001 D5: "A tier in
-       * flight is never cancelled by a new revision."
+       * batches are reconciled while a tier is in flight. Spec 001 D5 as amended
+       * (task 001-124): an edit's tier in flight is never cancelled by a new
+       * revision; a backlog tier is, and its unfinished files are queued again.
        *
        * Before each tier the runner work queued meanwhile is applied, in arrival
        * order, while no tier holds the runner. A tier is never selected while
@@ -6519,7 +6567,10 @@ var init_scheduler2 = __esm({
               if (tier === null) break;
               const { context, ledger } = this.#started();
               const selected = tier;
-              const report2 = await executeTier(context, selected);
+              this.#running = selected;
+              const report2 = await executeTier(context, selected).finally(() => {
+                this.#running = null;
+              });
               const changed = await unstableInputs(context, selected);
               const installMoved = this.#reinstalled || await this.#install.stamp() !== install.stamp;
               const moved = await this.#lock.run(
@@ -10218,7 +10269,8 @@ var init_packages2 = __esm({
 // src/runners/vitest/run.ts
 import { mkdirSync as mkdirSync7, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join36 } from "node:path";
-async function execute(vitest, specs, timeoutMs, collector) {
+async function execute(vitest, specs, timeoutMs, collector, signal) {
+  if (signal?.aborted) return { end: "completed", failure: CANCELLED, hung: false };
   const run = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
     (error) => ({
@@ -10227,21 +10279,43 @@ async function execute(vitest, specs, timeoutMs, collector) {
       hung: false
     })
   );
-  if (timeoutMs === null) return run;
-  const first = await settleWithin(run, timeoutMs);
-  if (first) return first;
+  if (timeoutMs === null && signal === void 0) return run;
+  const first = await settleOrStop(run, timeoutMs, signal);
+  if (first !== "timeout" && first !== "abort") return first;
   collector.cancelRequested = true;
-  const failure2 = `run exceeded timeoutMs (${timeoutMs} ms)`;
-  cancel(vitest, collector);
-  if (await settleWithin(run, GRACE_BEFORE_FORCE_MS))
-    return { end: "timed-out", failure: failure2, hung: false };
-  cancel(vitest, collector);
-  if (await settleWithin(run, GRACE_AFTER_FORCE_MS))
-    return { end: "timed-out", failure: failure2, hung: false };
-  return { end: "timed-out", failure: `${failure2}; workers did not stop`, hung: true };
+  const timedOut = first === "timeout";
+  const reason2 = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
+  const failure2 = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : CANCELLED;
+  const stopped = (execution) => timedOut ? { end: "timed-out", failure: failure2, hung: false } : { ...execution, failure: execution.failure ?? failure2 };
+  cancel(vitest, collector, reason2);
+  const graceful = await settleWithin(run, GRACE_BEFORE_FORCE_MS);
+  if (graceful) return stopped(graceful);
+  cancel(vitest, collector, reason2);
+  const forced = await settleWithin(run, GRACE_AFTER_FORCE_MS);
+  if (forced) return stopped(forced);
+  return {
+    end: timedOut ? "timed-out" : "completed",
+    failure: `${failure2}; workers did not stop`,
+    hung: true
+  };
 }
-function cancel(vitest, collector) {
-  vitest.cancelCurrentRun(CANCEL_REASON).catch((error) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
+async function settleOrStop(run, timeoutMs, signal) {
+  let timer;
+  let onAbort;
+  const stop = new Promise((resolve11) => {
+    if (timeoutMs !== null) timer = setTimeout(() => resolve11("timeout"), timeoutMs);
+    onAbort = () => resolve11("abort");
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([run, stop]);
+  } finally {
+    clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener("abort", onAbort);
+  }
+}
+function cancel(vitest, collector, reason2) {
+  vitest.cancelCurrentRun(reason2).catch((error) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
 }
 function abandon2(vitest, collector) {
   vitest.close().catch(
@@ -10322,7 +10396,7 @@ function writeRunLog(options, collector, report2) {
 function describeError(error) {
   return error instanceof Error ? error.stack ?? error.message : String(error);
 }
-var GRACE_BEFORE_FORCE_MS, GRACE_AFTER_FORCE_MS, CANCEL_REASON;
+var GRACE_BEFORE_FORCE_MS, GRACE_AFTER_FORCE_MS, TIMEOUT_REASON, CANCEL_REASON, CANCELLED;
 var init_run = __esm({
   "src/runners/vitest/run.ts"() {
     "use strict";
@@ -10330,7 +10404,9 @@ var init_run = __esm({
     init_results2();
     GRACE_BEFORE_FORCE_MS = 1e3;
     GRACE_AFTER_FORCE_MS = 5e3;
-    CANCEL_REASON = "squeal-timeout";
+    TIMEOUT_REASON = "squeal-timeout";
+    CANCEL_REASON = "squeal-cancel";
+    CANCELLED = "run cancelled: an edit arrived during a backlog tier";
   }
 });
 
@@ -10735,7 +10811,7 @@ var init_adapter = __esm({
           const started = performance.now();
           this.#collector = collector;
           try {
-            let execution = await execute(vitest, specs, options.timeoutMs, collector);
+            let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
             if (execution.hung) {
               this.#vitest = null;
               abandon2(vitest, collector);
@@ -19751,7 +19827,7 @@ var require_path = __commonJS({
   "node_modules/enhanced-resolve/lib/util/path.js"(exports, module) {
     "use strict";
     var path = __require("path");
-    var { fileURLToPath: fileURLToPath7 } = __require("url");
+    var { fileURLToPath: fileURLToPath8 } = __require("url");
     var CHAR_HASH = "#".charCodeAt(0);
     var CHAR_SLASH = "/".charCodeAt(0);
     var CHAR_BACKSLASH = "\\".charCodeAt(0);
@@ -19864,7 +19940,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join48 = (rootPath, request) => {
+    var join49 = (rootPath, request) => {
       if (!request) return normalize3(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -19909,7 +19985,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join48(rootPath, request);
+        cacheEntry = join49(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -20009,8 +20085,8 @@ var require_path = __commonJS({
       return (c0 === CHAR_LOWER_F || c0 === CHAR_F) && FILE_URL_REGEXP.test(maybePath);
     };
     var toPath = (maybeURL) => {
-      if (maybeURL instanceof URL) return fileURLToPath7(maybeURL);
-      return isFileURL(maybeURL) ? fileURLToPath7(maybeURL) : maybeURL;
+      if (maybeURL instanceof URL) return fileURLToPath8(maybeURL);
+      return isFileURL(maybeURL) ? fileURLToPath8(maybeURL) : maybeURL;
     };
     module.exports.PathType = PathType;
     module.exports.createCachedBasename = createCachedBasename;
@@ -20025,7 +20101,7 @@ var require_path = __commonJS({
     module.exports.isRelativeRequest = isRelativeRequest;
     module.exports.isSubPath = isSubPath;
     module.exports.isWindowsPath = isWindowsPath;
-    module.exports.join = join48;
+    module.exports.join = join49;
     module.exports.normalize = normalize3;
     module.exports.toPath = toPath;
   }
@@ -20611,7 +20687,7 @@ var require_DirectoryExistsPlugin = __commonJS({
 var require_identifier = __commonJS({
   "node_modules/enhanced-resolve/lib/util/identifier.js"(exports, module) {
     "use strict";
-    var { fileURLToPath: fileURLToPath7 } = __require("url");
+    var { fileURLToPath: fileURLToPath8 } = __require("url");
     var { isFileURL } = require_path();
     var PATH_QUERY_FRAGMENT_REGEXP = /^(#?(?:\0.|[^?#\0])*)(\?(?:\0.|[^#\0])*)?(#.*)?$/;
     var ZERO_ESCAPE_REGEXP = /\0(.)/g;
@@ -20627,7 +20703,7 @@ var require_identifier = __commonJS({
         return null;
       }
       if (isFileURL(identifier)) {
-        identifier = fileURLToPath7(identifier);
+        identifier = fileURLToPath8(identifier);
       }
       const firstEscape = identifier.indexOf("\0");
       if (firstEscape !== -1) {
@@ -22074,7 +22150,7 @@ var require_fileURLToPath = __commonJS({
       }
       return decodeURIComponent(pathname);
     }
-    function fileURLToPath7(path, options) {
+    function fileURLToPath8(path, options) {
       const url = typeof path === "string" ? new URL(path) : path;
       if (url.protocol !== "file:") {
         throw new TypeError("The URL must be of scheme file");
@@ -22082,7 +22158,7 @@ var require_fileURLToPath = __commonJS({
       const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
       return windows ? getPathFromURLWin32(url) : getPathFromURLPosix(url);
     }
-    module.exports = fileURLToPath7;
+    module.exports = fileURLToPath8;
   }
 });
 
@@ -22146,7 +22222,7 @@ var require_pathToFileURL = __commonJS({
 var require_packageMap = __commonJS({
   "node_modules/enhanced-resolve/lib/util/packageMap.js"(exports, module) {
     "use strict";
-    var fileURLToPath7 = require_fileURLToPath();
+    var fileURLToPath8 = require_fileURLToPath();
     var { isInside, normalize: normalize3 } = require_path();
     var pathToFileURL4 = require_pathToFileURL();
     function createError(message2, code) {
@@ -22173,7 +22249,7 @@ var require_packageMap = __commonJS({
           "ERR_INVALID_PACKAGE_MAP"
         );
       }
-      return normalize3(fileURLToPath7(parsed));
+      return normalize3(fileURLToPath8(parsed));
     }
     function parsePackageMap(data2, configFilePath) {
       if (!data2 || typeof data2 !== "object" || Array.isArray(data2)) {
@@ -26040,7 +26116,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join48, toPath } = require_path();
+    var { PathType, getType, join: join49, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -26095,7 +26171,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join48(cwd(), file);
+      return join49(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -28406,7 +28482,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.32";
+  if (true) return "0.1.33";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -28429,6 +28505,19 @@ function readVersion(path) {
     return null;
   }
 }
+function isNewerVersion(version2, than) {
+  const a = versionParts(version2);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i2 = 0; i2 < 3; i2++) {
+    if (a[i2] !== b[i2]) return (a[i2] ?? 0) > (b[i2] ?? 0);
+  }
+  return false;
+}
+function versionParts(version2) {
+  const match2 = /^(\d+)\.(\d+)\.(\d+)$/.exec(version2);
+  return match2 === null ? null : match2.slice(1).map(Number);
+}
 
 // src/core/status/index.ts
 init_state2();
@@ -28436,7 +28525,7 @@ init_state2();
 // src/core/status/format-status.ts
 init_state2();
 init_text();
-function formatStatus(result, now) {
+function formatStatus(result, now, command = "squeal") {
   if (!result.available) return formatUnavailable(result);
   const lines = [
     `Revision: ${result.revision}`,
@@ -28451,11 +28540,11 @@ function formatStatus(result, now) {
       ].join(", ")}`
     ]),
     `Affected checks: ${affected(result)}`,
-    `Full-suite checkpoint: ${fullSuiteText(result)}`,
+    `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     "",
     worktreeLine(result),
     daemonLine(result, now),
-    `Inherited: ${plural(result.inherited.count, "current result")}`,
+    inheritedLine(result),
     ...result.inherited.sources.map(
       (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`
     ),
@@ -28468,6 +28557,9 @@ function formatStatus(result, now) {
   ];
   return `${lines.join("\n")}
 `;
+}
+function inheritedLine(s) {
+  return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}`;
 }
 function notes(s) {
   const daemon = s.daemonNotes.map((n) => {
@@ -29587,6 +29679,9 @@ function parseRequest(line) {
         return '"force" must be true or false';
       }
       return { type: "run-all", force: request.force === true };
+    case "step-down":
+      if (typeof request.version !== "string") return '"version" must be a string';
+      return { type: "step-down", version: request.version };
     case "run-all-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-all-status", requestId: request.requestId };
@@ -29655,6 +29750,17 @@ function createHandlers(context) {
       case "stop":
         context.onStop();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
+      case "step-down": {
+        const steppingDown = isNewerVersion(request.version, context.squealVersion);
+        if (steppingDown) context.onStepDown(request.version);
+        return {
+          schemaVersion: PAYLOAD_SCHEMA_VERSION,
+          ok: true,
+          type: "step-down",
+          squealVersion: context.squealVersion,
+          steppingDown
+        };
+      }
     }
   };
 }
@@ -29813,6 +29919,9 @@ async function inWorker(worker, identity, events) {
         case "stop":
           events.onStop();
           return;
+        case "step-down":
+          events.onStepDown(message2.version);
+          return;
         case "closed":
           closed?.();
           return;
@@ -29859,7 +29968,8 @@ async function inThread(identity, events) {
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       onActivity: events.onActivity,
-      onStop: events.onStop
+      onStop: events.onStop,
+      onStepDown: events.onStepDown
     })
   );
   return {
@@ -30183,7 +30293,16 @@ function writeTurn(store, consumer, state) {
 
 // src/core/delivery/expiry.ts
 function expireConsumers(store, now = Date.now(), options = {}) {
-  const expired = [...store.transaction(() => store.consumers.expire(now - CONSUMER_EXPIRY_MS))];
+  const expired = [
+    ...store.transaction(() => {
+      const gone = store.consumers.expire(now - CONSUMER_EXPIRY_MS);
+      for (const consumer of gone) {
+        forget(store, consumer);
+        store.meta.set(departedMetaKey(consumer.worktreeId), String(now));
+      }
+      return gone;
+    })
+  ];
   const { locksDir } = options;
   if (locksDir === void 0) return expired;
   for (const consumer of expired) removeWaiterLock(locksDir, consumer);
@@ -30257,6 +30376,12 @@ init_text();
 // src/core/delivery/collapse.ts
 init_state2();
 init_text();
+
+// src/core/delivery/format.ts
+var SQUEAL_COMMAND = "squeal";
+function shellWord(text2) {
+  return /["$`\\]/.test(text2) ? `'${text2.replaceAll("'", "'\\''")}'` : `"${text2}"`;
+}
 
 // src/core/daemon/lifecycle.ts
 init_store2();
@@ -30350,6 +30475,9 @@ function startTimers(context) {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
   };
+}
+function stepDownNote(own, hook) {
+  return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); the next hook starts a current one`;
 }
 function duration(ms) {
   return ms < 6e4 ? `${Number((ms / 1e3).toFixed(1))} s` : `${Number((ms / 6e4).toFixed(1))} min`;
@@ -30959,6 +31087,9 @@ var Daemon = class {
         // After the answer is written.
         onStop: () => setImmediate(
           () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop")
+        ),
+        onStepDown: (version2) => setImmediate(
+          () => void this.#shutdown("superseded", 0, stepDownNote(this.#version, version2))
         ),
         onFailure: (error) => void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`)
       }
@@ -31617,6 +31748,25 @@ function safeList2(dir) {
 init_fs();
 import { setTimeout as sleep2 } from "node:timers/promises";
 init_store2();
+
+// src/cli/status-command.ts
+import { fileURLToPath as fileURLToPath7 } from "node:url";
+
+// src/harness/codex/command.ts
+import { join as join48 } from "node:path";
+function codexCommand(env, bundleCli) {
+  const root = env.PLUGIN_ROOT;
+  const cli = root === void 0 || root === "" ? bundleCli : join48(root, "dist/cli/squeal.mjs");
+  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+
+// src/cli/status-command.ts
+function statusCommand(env, cli = fileURLToPath7(import.meta.url)) {
+  const session = env.CODEX_SESSION_ID;
+  return session === void 0 || session === "" ? SQUEAL_COMMAND : codexCommand(env, cli);
+}
+
+// src/cli/run.ts
 var USAGE2 = "usage: squeal run --all [--force] [--wait]\n";
 var RECORD_WAIT_MS = 1e4;
 var POLL_MS = 100;
@@ -31662,7 +31812,7 @@ ${USAGE2}`
 
 `);
   const now = io.now ?? Date.now;
-  io.stdout(formatStatus(readStatus(root, { now }), now()));
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return end === "completed" ? 0 : 1;
 }
 async function recorded(socketPath, first, timeoutMs, io) {
@@ -31744,7 +31894,7 @@ async function startCommand(args, io) {
 
 `);
   const now = io.now ?? Date.now;
-  io.stdout(formatStatus(readStatus(root, { now }), now()));
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return 0;
 }
 
@@ -31823,7 +31973,7 @@ async function statusWaitCommand(timeoutMs, json3, io) {
     io.stderr(line);
   } else {
     io.stdout(`${line}
-${formatStatus(result, now())}`);
+${formatStatus(result, now(), statusCommand(io.env ?? process.env))}`);
   }
   return 0;
 }
@@ -31966,8 +32116,10 @@ function status(args, io) {
   const now = io.now ?? Date.now;
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now });
-  const codex = parsed.json ? null : codexStatusLine(cwd, io.env ?? process.env);
-  io.stdout(parsed.json ? json2(result) : `${formatStatus(result, now())}${codex ?? ""}`);
+  const env = io.env ?? process.env;
+  const codex = parsed.json ? null : codexStatusLine(cwd, env);
+  const human = () => `${formatStatus(result, now(), statusCommand(env))}${codex ?? ""}`;
+  io.stdout(parsed.json ? json2(result) : human());
   return result.available ? 0 : 1;
 }
 function why(args, io) {

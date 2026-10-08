@@ -85,7 +85,7 @@ var DEFAULT_POLICY = {
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 6e5 },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null }
@@ -308,6 +308,7 @@ var SHAPE = {
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
+    backlogTierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
@@ -509,9 +510,10 @@ function readRefined(store, worktreeId) {
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
 }
-function fullSuiteText({ revision, fullSuite }) {
+function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
-  return fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const none = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
+  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -2894,14 +2896,14 @@ function changedText(paths) {
   const more = paths.length - CHANGED_PATHS_SHOWN;
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
-function headerLine(header) {
+function headerLine(header, command) {
   const { revision, counts, testFilesWithoutChecks: files } = header;
   const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
   const awaiting = awaitingInstallSentence(header);
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
@@ -3020,8 +3022,14 @@ function formatDelta(delta, command = SQUEAL_COMMAND) {
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
   };
   const tail = failed === void 0 ? null : whyLine(failed.check, command);
-  return assemble(`${title}
-${headerLine(header)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
+  return assemble(
+    `${title}
+${headerLine(header, command)}`,
+    blocks,
+    overflow,
+    tail,
+    MESSAGE_CAP_CHARS
+  );
 }
 function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
