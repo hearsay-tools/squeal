@@ -212,3 +212,42 @@ describe("classify (D5 validity)", () => {
     expect(classify(file({ key: "k2", resultKey: "k0", unknownKey: "k1" }))).toBe("stale");
   });
 });
+
+describe("RunQueue's slow class (spec 004 D2)", () => {
+  const isSlow = (r: TestFileRef) => r.path.startsWith("test/e2e/");
+
+  it("keeps slow files out of the fast order and holds them in their own", () => {
+    const queue = new RunQueue();
+    queue.setSlow(isSlow);
+    queue.add(ref("test/e2e/b.test.ts"), Priority.direct, false, true);
+    queue.add(ref("test/unit.test.ts"), Priority.neverRun);
+    queue.add(ref("test/e2e/a.test.ts"), Priority.failing);
+    expect(queue.ordered().map((r) => r.path)).toEqual(["test/unit.test.ts"]);
+    // Recent first, as in the fast class; then priority.
+    expect(queue.orderedSlow().map((r) => r.path)).toEqual([
+      "test/e2e/b.test.ts",
+      "test/e2e/a.test.ts",
+    ]);
+    expect(queue.size).toBe(3);
+    expect(queue.fastSize).toBe(1);
+    expect(queue.slowSize).toBe(2);
+  });
+
+  it("does not count a recent slow file as an edit's fast work", () => {
+    const queue = new RunQueue();
+    queue.setSlow(isSlow);
+    queue.add(ref("test/e2e/a.test.ts"), Priority.direct, false, true);
+    expect(queue.hasRecent()).toBe(false);
+    queue.add(ref("test/unit.test.ts"), Priority.direct, false, true);
+    expect(queue.hasRecent()).toBe(true);
+  });
+
+  it("reads the predicate at query time, so a policy reload moves files between classes", () => {
+    const queue = new RunQueue();
+    queue.add(ref("test/e2e/a.test.ts"), Priority.direct);
+    expect(queue.fastSize).toBe(1);
+    queue.setSlow(isSlow);
+    expect(queue.fastSize).toBe(0);
+    expect(queue.orderedSlow()).toHaveLength(1);
+  });
+});
