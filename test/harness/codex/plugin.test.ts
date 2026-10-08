@@ -97,7 +97,9 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     expect(runtime).toEqual([
       "node-test/recorder.cjs",
       "node-test/reporter.mjs",
+      "observe/fs.cjs",
       "observe/recorder.cjs",
+      "observe/spawn.cjs",
     ]);
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
     const bundles = files.filter((f) => !verbatim(f));
