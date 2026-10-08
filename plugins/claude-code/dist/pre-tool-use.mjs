@@ -557,9 +557,6 @@ function transitionKind(from, to) {
   }
 }
 
-// src/core/delivery/delivery.ts
-import { setTimeout as sleep } from "node:timers/promises";
-
 // src/core/delivery/slots.ts
 var slot = (consumer) => `${consumer.sessionId}
 ${consumer.agentId}`;
@@ -588,6 +585,17 @@ function writeSlot(store, key, consumer, value) {
   if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
   store.meta.set(key, JSON.stringify(next));
 }
+
+// src/core/delivery/consumer-version.ts
+function versionMetaKey(worktreeId) {
+  return `consumer-version:${worktreeId}`;
+}
+function recordVersion(store, consumer, version) {
+  writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
+}
+
+// src/core/delivery/delivery.ts
+import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
@@ -2617,6 +2625,7 @@ function forget(store, consumer) {
   tellRevision(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
+  recordVersion(store, consumer, null);
 }
 
 // src/core/delivery/delivery.ts
@@ -2728,6 +2737,7 @@ function createDelivery(store, options) {
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+      recordVersion(store, consumer, options.squealVersion ?? null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
@@ -3054,6 +3064,37 @@ async function denyOnRegression(context, call) {
 ${denialSentence(call.toolName)}`;
 }
 
+// src/core/daemon/version.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+import { dirname as dirname2, join as join7 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.34";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname2(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join7(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname2(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync5(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+
 // src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
@@ -3078,7 +3119,8 @@ function openContext(input, location2, options = {}) {
       status: createStatusBuilder(store, { now }),
       now,
       ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs },
-      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess }
+      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess },
+      ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion }
     });
     return { ...location2, store, delivery, consumer, close: () => store.close() };
   } catch (error) {
@@ -3127,6 +3169,7 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     ...deps.now === void 0 ? {} : { now: deps.now },
     ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs },
     harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
+    squealVersion: deps.squealVersion ?? squealVersion(),
     ...overrides
   };
   const context = openContext(input, location2, options);
@@ -3168,8 +3211,8 @@ var preToolUse = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/claude-code/input.ts
 function parseHookInput(text) {
@@ -3237,13 +3280,13 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync5(0, "utf8");
+    stdin = readFileSync6(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {
     env: process.env,
     // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs (review wave 3, B1).
-    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url)),
+    cli: fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url)),
     ...waiterTimeout(process.env.SQUEAL_WAITER_TIMEOUT_MS)
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);

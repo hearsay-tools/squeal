@@ -358,9 +358,6 @@ function transitionKind(from, to) {
   }
 }
 
-// src/core/delivery/delivery.ts
-import { setTimeout as sleep } from "node:timers/promises";
-
 // src/core/delivery/slots.ts
 var slot = (consumer) => `${consumer.sessionId}
 ${consumer.agentId}`;
@@ -389,6 +386,24 @@ function writeSlot(store, key, consumer, value) {
   if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
   store.meta.set(key, JSON.stringify(next));
 }
+
+// src/core/delivery/consumer-version.ts
+function versionMetaKey(worktreeId) {
+  return `consumer-version:${worktreeId}`;
+}
+function recordVersion(store, consumer, version) {
+  writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
+}
+function otherSessionVersions(store, consumer) {
+  const recorded = readAll(store, versionMetaKey(consumer.worktreeId));
+  return store.consumers.list(consumer.worktreeId).filter((r) => r.consumer.sessionId !== consumer.sessionId).map((r) => {
+    const version = recorded[slot(r.consumer)];
+    return typeof version === "string" ? version : null;
+  });
+}
+
+// src/core/delivery/delivery.ts
+import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
@@ -2432,6 +2447,7 @@ function forget(store, consumer) {
   tellRevision(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
+  recordVersion(store, consumer, null);
 }
 
 // src/core/delivery/delivery.ts
@@ -2543,6 +2559,7 @@ function createDelivery(store, options) {
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+      recordVersion(store, consumer, options.squealVersion ?? null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
@@ -3001,13 +3018,13 @@ function recordedDaemon(root, busyTimeoutMs = 100) {
   }
 }
 async function ensureDaemon(root, options = {}) {
-  const probe = await probeDaemon(
-    root,
-    options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS,
-    options
-  );
-  if (probe.state === "alive") return "alive";
-  if (probe.state === "unresponsive") return "unavailable";
+  if (options.awaitLockMs === void 0) {
+    const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
+    const probe = await probeDaemon(root, timeoutMs, options);
+    if (probe.state === "alive") return "alive";
+    if (probe.state === "unresponsive") return "unavailable";
+  }
+  const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
   if (cli === null || !existsSync4(cli)) return "unavailable";
   try {
@@ -3015,7 +3032,7 @@ async function ensureDaemon(root, options = {}) {
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
     mkdirSync2(cwd, { recursive: true });
-    const child = spawn(process.execPath, [cli, "daemon", root], {
+    const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
       cwd,
       detached: true,
       stdio: "ignore"
@@ -3041,7 +3058,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.33";
+  if (true) return "0.1.34";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3082,16 +3099,38 @@ function versionParts(version) {
 var SOCKET_TIMEOUT_MS = 100;
 var SPAWN_SETTLE_MS = 750;
 var SETTLE_POLL_MS = 25;
-async function ensure(location2, deps, record) {
-  if (record !== void 0) await stepDownIfOlder(record, (deps.now ?? Date.now)());
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+async function ensure(location2, deps, context) {
+  const record = context === void 0 ? void 0 : context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  if (context !== void 0 && await stepDown(context, deps, record ?? null)) {
+    return successor(location2, deps);
+  }
   return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
     socketTimeoutMs: SOCKET_TIMEOUT_MS,
     ...deps.cli === void 0 ? {} : { cli: deps.cli },
     ...record === void 0 ? {} : { record }
   });
 }
-async function stepDownIfOlder(record, now, version = squealVersion()) {
+function stepDown(context, deps, record) {
+  return stepDownIfOlder(
+    record,
+    (deps.now ?? Date.now)(),
+    deps.squealVersion ?? squealVersion(),
+    otherSessionVersions(context.store, context.consumer)
+  );
+}
+function successor(location2, deps) {
+  return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
+    socketTimeoutMs: SOCKET_TIMEOUT_MS,
+    awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
+    ...deps.cli === void 0 ? {} : { cli: deps.cli }
+  });
+}
+async function stepDownIfOlder(record, now, version = squealVersion(), others = []) {
   if (record === null || !isNewerVersion(version, record.squealVersion)) return false;
+  if (!others.every((other) => other === version || isNewerVersion(other ?? "", version))) {
+    return false;
+  }
   if (daemonLiveness(record, now).state !== "alive") return false;
   try {
     const answer = await requestDaemon(
@@ -3099,7 +3138,7 @@ async function stepDownIfOlder(record, now, version = squealVersion()) {
       { type: "step-down", version },
       SOCKET_TIMEOUT_MS
     );
-    if (answer.ok) return true;
+    if (answer.ok) return answer.type === "step-down" && answer.steppingDown;
     if (!answer.error.startsWith("unknown request type")) return false;
     return (await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS)).ok;
   } catch {
@@ -3147,7 +3186,8 @@ function openContext(input, location2, options = {}) {
       status: createStatusBuilder(store, { now }),
       now,
       ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs },
-      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess }
+      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess },
+      ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion }
     });
     return { ...location2, store, delivery, consumer, close: () => store.close() };
   } catch (error) {
@@ -3196,6 +3236,7 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     ...deps.now === void 0 ? {} : { now: deps.now },
     ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs },
     harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
+    squealVersion: deps.squealVersion ?? squealVersion(),
     ...overrides
   };
   const context = openContext(input, location2, options);
@@ -3346,7 +3387,7 @@ function submitPrompt(input, location2, deps, options) {
     if (!options.register) return null;
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
     if (daemonLiveness(record, now).state !== "alive") {
-      if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
+      if (await ensure(location2, deps, context) === "spawned") await settle(context, deps);
     }
     const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
     return withPrimer(registration2, deps.command);
