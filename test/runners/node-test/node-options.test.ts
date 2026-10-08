@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   asyncLoaders,
   holdsRequire,
+  preloadSpecifiers,
   tokenizeNodeOptions,
 } from "../../../src/runners/node-test/run/node-options.js";
 
@@ -78,5 +79,24 @@ describe("asyncLoaders", () => {
 
   it("is empty without one", () => {
     expect(asyncLoaders(["--require", "./a.cjs", "--import", "tsx"])).toEqual([]);
+  });
+});
+
+describe("preloadSpecifiers", () => {
+  it("names each --import, --require and -r value in order, loaders left out", () => {
+    expect(
+      preloadSpecifiers([
+        "--require",
+        "./a.cjs",
+        "--loader",
+        "./l.mjs",
+        "--import=tsx",
+        "-r",
+        "pkg",
+        "--require=./b.cjs",
+        "--no-deprecation",
+        "--import",
+      ]),
+    ).toEqual(["./a.cjs", "tsx", "pkg", "./b.cjs"]);
   });
 });
