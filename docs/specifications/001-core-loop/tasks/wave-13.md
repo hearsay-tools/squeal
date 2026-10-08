@@ -71,3 +71,17 @@ Questions to settle with a failing test first: does the watcher coalesce a rever
 Own: `src/core/watcher/`, `src/runners/vitest/`, `src/core/keys/` if keys are involved, tests under `test/watcher/`, `test/runners/vitest/`, `test/integration/`; D2, D4 or D5 if a rule changes. Not `src/core/scheduler/` (spec 004's until its wave 1 lands): if the fix needs it, stop and ask.
 
 Done when: a test performs a sub-second revert-and-restore of an imported module under a real daemon and the stored result matches a fresh run; it fails without the fix; the cause is named with evidence.
+
+## 001-147 the recorder flushes before a message only where a stop can follow it
+
+Use /worker. Shape: fix.
+
+Outcome: a process that posts many messages from its main thread (tsx's esbuild calls in a cold-cache child) pays no disk write per message; nothing a Vitest worker or thread records is lost.
+
+Read: 001-143's findings (`tasks/001-132/notes.md`, its dated section; `tasks/001-143/results.txt`): the recorder's `appendFileSync` before every `MessagePort.prototype.postMessage` cost a median 5.9 s per cezar `--help` child; flushing before `postMessage` only inside a worker thread brought 0 of 18 timeouts against 8 of 18 (p 0.003). The flush exists because Vitest stops a fork after its `process.send` and a thread at its `postMessage` (`src/runners/observe/recorder.cjs` header).
+
+Change: keep the flush before `process.send` and at exit; flush before `postMessage` only when `!isMainThread`. Measure whether a worker thread that posts many messages still pays one write each, and if it does, bound it (for example, flush only when something is pending and at most once per event-loop turn) without losing the at-message guarantee the "twenty Workers terminated at their message" test proves.
+
+Own: `src/runners/observe/`, `test/runners/observe/`, D4 in `spec.md` if the rule's wording changes. Do not run `npm run build`.
+
+Done when: a test with a main-thread loop of many `postMessage` calls shows no per-message write (count the appends); the existing recorder tests pass under both pools; 001-143's probe (`tasks/001-143/rounds.sh`, the two cezar files, no burners) shows the recorder within noise of no recorder, with the command and numbers in the report.
