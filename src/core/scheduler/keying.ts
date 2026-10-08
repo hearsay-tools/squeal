@@ -89,8 +89,15 @@ export class WorktreeKeys {
   readonly #observed: ObservedSets;
   /** Entry names of listed directories, from the tracked files. */
   readonly #listings = new Listings(() => this.#listedFiles());
-  /** Paths `track` first hashed since `beginRun`: no hash from before the run holds them (task 001-134). */
-  #firstHashed = new Set<RelativePath>();
+  /**
+   * Paths `track` first hashed while runs were in flight, each with the
+   * number of the last run begun by then: no hash from before a later run
+   * holds them (task 001-134). Tiers of two lanes overlap (task 001-140), so
+   * the set is cleared only when a run begins with none in flight.
+   */
+  readonly #firstHashed = new Map<RelativePath, number>();
+  #runsBegun = 0;
+  #runsInFlight = 0;
   #policy: Policy;
   #isDeclared: (path: RelativePath) => boolean;
 
@@ -384,18 +391,26 @@ export class WorktreeKeys {
     if (this.#extra.size > before) this.options.onExtraFiles(this.extraFiles());
   }
 
-  /** A tier starts: paths hashed from here on hold no value from before its run. */
-  beginRun(): void {
-    this.#firstHashed = new Set();
+  /** A tier starts: paths hashed from here on hold no value from before its run. Returns the run's number. */
+  beginRun(): number {
+    if (this.#runsInFlight === 0) this.#firstHashed.clear();
+    this.#runsInFlight += 1;
+    this.#runsBegun += 1;
+    return this.#runsBegun;
+  }
+
+  /** A tier `beginRun` started was recorded or put back. */
+  endRun(): void {
+    this.#runsInFlight = Math.max(0, this.#runsInFlight - 1);
   }
 
   /**
-   * True when `track` first hashed `path` after the run began: the stat cache
-   * held neither its hash nor its absence when the run started, so what the
-   * run read cannot be compared with anything (D5 as amended, task 001-134).
+   * True when `track` first hashed `path` after run `run` began: the stat
+   * cache held neither its hash nor its absence when the run started, so what
+   * the run read cannot be compared with anything (D5 as amended, task 001-134).
    */
-  firstHashedDuringRun(path: RelativePath): boolean {
-    return this.#firstHashed.has(path);
+  firstHashedDuringRun(path: RelativePath, run: number): boolean {
+    return (this.#firstHashed.get(path) ?? 0) >= run;
   }
 
   /** Gitignored paths watched anyway (D2), sorted. */
@@ -438,7 +453,9 @@ export class WorktreeKeys {
     if (paths.length === 0) return;
     const { root, objectFormat, hasher, store, worktreeId } = this.options;
     await seedStatCache(this.cache, root, paths, { objectFormat, hasher });
-    for (const path of paths) this.#firstHashed.add(path);
+    for (const path of paths) {
+      if (!this.#firstHashed.has(path)) this.#firstHashed.set(path, this.#runsBegun);
+    }
     store.transaction(() => this.cache.flush(store.fileHashes, worktreeId));
   }
 

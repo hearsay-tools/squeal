@@ -54,8 +54,9 @@ export interface RunnerPart {
  *   files, every file of a recreated project, every blocked file, and the
  *   files an earlier refinement found changed while it ran (`carried`).
  *
- * Refinements run one at a time and in revision order, and no tier runs
- * between them, so each sees the runner as every earlier one left it.
+ * Refinements run one at a time and in revision order, so each sees the
+ * runner as every earlier one left it. They run beside the tiers in flight
+ * (task 001-140), whose stability check covers what changes meanwhile.
  */
 export async function fetchRunnerPart(
   context: SchedulerContext,
@@ -149,12 +150,12 @@ export async function fetchRunnerPart(
  * is a state, never a skip"). Untracked closure paths are hashed before
  * keying (review B2).
  *
- * Freshness, as the stability check does for tiers (`Ledger.tierChanges`): a
+ * Freshness, as the stability check does for tiers (`Tier.changes`): a
  * closure that names a path a revision changed while the runner phase ran
  * may describe the files before that change. It is applied, since it is the
  * newest the runner gave, and its test file is returned so the next
- * refinement, which that revision queued, resolves it again. No tier runs in
- * between: tiers wait for every queued refinement.
+ * refinement, which that revision queued, resolves it again. No tier is
+ * selected in between: selection waits for every queued refinement.
  */
 export async function applyRunnerPart(
   context: SchedulerContext,

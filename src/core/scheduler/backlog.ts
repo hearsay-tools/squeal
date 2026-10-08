@@ -1,6 +1,7 @@
 import type { Revision } from "../types/index.js";
+import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
-import type { Tier } from "./tiers.js";
+import { laneOf, type Tier } from "./tiers.js";
 
 /**
  * Last-known file time a backlog tier selects at most, and at most half of
@@ -13,14 +14,20 @@ import type { Tier } from "./tiers.js";
 export const BACKLOG_TIER_BUDGET_MS = 300_000;
 
 /**
- * Whether `revision` cancels the backlog tier in flight (D5 step 5 as
- * amended, task 001-124): its content re-key queued an edit's work, it adds
- * or deletes a path, whose importers only the runner part finds after the
- * tier, or it changes an input of the tier, whose results the stability
- * check would discard. An edit no test file reaches lets the tier finish.
+ * Whether `revision` cancels a backlog tier in flight (D5 step 5 as
+ * amended, task 001-124): its content re-key queued an edit's work in the
+ * tier's lane (task 001-140), it adds or deletes a path, whose importers only
+ * the runner part finds, or it changes an input of the tier, whose results
+ * the stability check would discard. An edit no test file reaches lets the
+ * tier finish.
  */
-export function cancelsBacklog(ledger: Ledger, revision: Revision, tier: Tier): boolean {
-  if (ledger.queue.hasRecent()) return true;
+export function cancelsBacklog(
+  context: SchedulerContext,
+  ledger: Ledger,
+  revision: Revision,
+  tier: Tier,
+): boolean {
+  if (ledger.queue.hasRecent((ref) => laneOf(context, ref) === tier.lane)) return true;
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
   return revision.changes.some(
     (change) => change.oldHash === null || change.newHash === null || inputs.has(change.path),

@@ -35,6 +35,12 @@ export interface TierFile {
 export interface Tier {
   readonly runId: string;
   readonly logDir: string;
+  /** The lane of every file of the tier (`laneOf`, task 001-140). */
+  readonly lane: string;
+  /** `WorktreeKeys.beginRun`'s number for the run (task 001-134). */
+  readonly run: number;
+  /** Paths changed by revisions since the tier was selected; in `Ledger.tierChanges` while in flight. */
+  readonly changes: Set<RelativePath>;
   readonly revision: RevisionState;
   /** `RunRecord.checkpointId`: the open checkpoint when it requested any file of the tier. */
   readonly checkpointId: string | null;
@@ -43,6 +49,15 @@ export interface Tier {
   readonly snapshot: StatCache;
   /** A backlog tier, which an edit cancels (`Scheduler.handleBatch`); `null` for an edit's tier. */
   readonly cancel: AbortController | null;
+}
+
+/**
+ * The lane of `ref` (`RunnerAdapter.lane`): one tier at a time per lane, so
+ * tiers of different lanes run at once (D5 as amended, task 001-140). A
+ * runner that names none has one lane.
+ */
+export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
+  return context.runner.lane?.(ref) ?? "";
 }
 
 /**
@@ -61,17 +76,29 @@ export interface Tier {
  * defect 25: 559 tiers of 4 took 4.6 h where one `npm test` took 514 s). The
  * budget bounds the selection, not the run: unknown durations count 0 and
  * the first file is always taken.
+ *
+ * A tier holds the files of one lane, the lane of the first file it takes;
+ * files of a lane in `busy`, which has a tier in flight, stay queued and
+ * are not looked up (task 001-140). Whether the tier is the backlog's is
+ * decided on the free lanes' files.
  */
-export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | null {
+export function selectTier(
+  context: SchedulerContext,
+  ledger: Ledger,
+  busy: ReadonlySet<string> = new Set(),
+): Tier | null {
   const { keys, policy } = context;
   const picked: TierFile[] = [];
-  const backlog = !ledger.queue.hasRecent();
+  const backlog = !ledger.queue.hasRecent((ref) => !busy.has(laneOf(context, ref)));
   const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known = 0;
   let tookBacklog = false;
+  let lane: string | null = null;
   for (const ref of ledger.ordered()) {
     if (picked.length >= size) break;
+    const at = laneOf(context, ref);
+    if (busy.has(at) || (lane !== null && at !== lane)) continue;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {
@@ -90,6 +117,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
     known += file.durationMs ?? 0;
     if (picked.length > 0 && known > budget) break;
     tookBacklog ||= !ledger.queue.isRecent(ref);
+    lane = at;
     ledger.queue.remove(ref);
     const checkpointId = ledger.checkpoints.idFor(ref);
     picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId, forced });
@@ -116,9 +144,14 @@ export function startTier(
   const { store, keys } = context;
   const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
   const runId = randomUUID();
+  const first = picked[0];
+  if (first === undefined) throw new Error("squeal scheduler: a tier of no files");
   const tier: Tier = {
     runId,
     logDir: join(context.runsDir, runId),
+    lane: laneOf(context, first.file.ref),
+    run: keys.beginRun(),
+    changes: new Set(),
     revision: ledger.revision,
     checkpointId,
     files: picked,
@@ -129,8 +162,7 @@ export function startTier(
     cancel: cancellable ? new AbortController() : null,
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
-  ledger.tierChanges = new Set();
-  keys.beginRun();
+  ledger.tierChanges.add(tier.changes);
   store.transaction(() => {
     store.runs.start({
       id: runId,
@@ -171,10 +203,15 @@ export async function executeTier(context: SchedulerContext, tier: Tier): Promis
   }
 }
 
+/** The tier is no longer in flight: recorded, or put back after an error. Once per tier. */
+export function endTier(context: SchedulerContext, ledger: Ledger, tier: Tier): void {
+  if (ledger.tierChanges.delete(tier.changes)) context.keys.endRun();
+}
+
 /**
  * The tier's inputs whose content now differs from the snapshot. Outside the
  * lock: it only reads. A listing is no file; the revisions during the run
- * cover it (`Ledger.tierChanges`).
+ * cover it (`Tier.changes`).
  */
 export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Set<RelativePath>> {
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
@@ -220,8 +257,8 @@ export function recordTier(
   observed: TierObservations = NOTHING_OBSERVED,
 ): RelativePath[] {
   const { store, worktreeId } = context;
-  const duringRun = ledger.tierChanges ?? new Set<RelativePath>();
-  ledger.tierChanges = null;
+  const duringRun = tier.changes;
+  endTier(context, ledger, tier);
   const completed = new Set(report.completedFiles.map(testFileId));
   const cancelled = tier.cancel?.signal.aborted === true && report.end === "completed";
 

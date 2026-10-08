@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { cpSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { afterEach } from "vitest";
+import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createDelivery, readHeader } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -17,6 +18,7 @@ import {
   DEFAULT_POLICY,
   type HarnessDelivery,
   MAIN_AGENT,
+  type NodeTestProject,
   type Policy,
   type RunnerAdapter,
   type RunOptions,
@@ -26,6 +28,7 @@ import {
   type Store,
   type TestFileRef,
 } from "../../src/core/types/index.js";
+import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -101,7 +104,8 @@ export type FailingCall = "invalidate" | "affected" | "closure" | "testFiles" | 
 /**
  * A real adapter that records every run. Calls are serialized like the Vitest
  * adapter's, and `beforeRun` runs inside that queue: while it is pending, a
- * tier is in flight and every later runner call waits behind it.
+ * tier is in flight and every later runner call waits behind it. With
+ * `HarnessOptions.runnerPartBesideRun`, `beforeRun` waits before the queue.
  */
 export interface RecordingRunner extends RunnerAdapter {
   readonly runs: RecordedRun[];
@@ -111,7 +115,11 @@ export interface RecordingRunner extends RunnerAdapter {
   failure: string;
 }
 
-function recording(inner: RunnerAdapter, environmentRoot?: string): RecordingRunner {
+function recording(
+  inner: RunnerAdapter,
+  environmentRoot?: string,
+  besideRun = false,
+): RecordingRunner {
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(call: () => Promise<T>): Promise<T> => {
     const next = queue.then(call);
@@ -138,13 +146,15 @@ function recording(inner: RunnerAdapter, environmentRoot?: string): RecordingRun
         if (environmentRoot === undefined) return environments;
         return environments.map((environment) => ({ ...environment, root: environmentRoot }));
       }),
-    run: (files, options) =>
-      serial(async () => {
-        await runner.beforeRun?.(files);
+    run: async (files, options) => {
+      if (besideRun) await runner.beforeRun?.(files);
+      return serial(async () => {
+        if (!besideRun) await runner.beforeRun?.(files);
         const report = await inner.run(files, options);
         runner.runs.push({ files, options, report });
         return report;
-      }),
+      });
+    },
     close: () => inner.close(),
   };
   return runner;
@@ -154,6 +164,7 @@ export interface Harness {
   readonly root: string;
   readonly store: Store;
   readonly worktreeId: string;
+  /** The Vitest adapter; with `HarnessOptions.nodeTest` one part of the scheduler's composite. */
   readonly runner: RecordingRunner;
   readonly sink: RecordingSink;
   readonly scheduler: Scheduler;
@@ -194,6 +205,13 @@ export interface HarnessOptions {
   readonly observe?: boolean;
   /** `SchedulerOptions.slow` (spec 004): give tests with slow files their own slot directory. */
   readonly slow?: SchedulerOptions["slow"];
+  /** node:test projects beside Vitest, behind the daemon's composite (spec 003 D7). */
+  readonly nodeTest?: readonly NodeTestProject[];
+  /**
+   * `beforeRun` holds a run without holding the Vitest adapter's other
+   * calls: what the remaining slice of task 001-140 asks of the adapter.
+   */
+  readonly runnerPartBesideRun?: boolean;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -217,8 +235,13 @@ export async function openHarness(
   const observe =
     options.observe === true ? () => current?.observe.runtimeInputs ?? false : undefined;
   const adapter = await createVitestAdapter({ root, note, ...(observe ? { observe } : {}) });
-  const runner = recording(adapter, options.environmentRoot);
+  const runner = recording(adapter, options.environmentRoot, options.runnerPartBesideRun);
   for (const call of options.failing ?? []) runner.failing.add(call);
+  const nodeTest = await Promise.all(
+    (options.nodeTest ?? []).map((project) => createNodeTestAdapter(project, { root, note })),
+  );
+  const schedulerRunner =
+    nodeTest.length === 0 ? runner : createCompositeRunner([runner, ...nodeTest]);
   const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
   const errors: Error[] = [];
@@ -241,7 +264,7 @@ export async function openHarness(
     root,
     worktreeId,
     store,
-    runner,
+    runner: schedulerRunner,
     sink,
     policy,
     squealVersion: "0.0.0-test",
@@ -263,7 +286,7 @@ export async function openHarness(
   });
   cleanups.push(async () => {
     await scheduler.close();
-    await runner.close();
+    await schedulerRunner.close();
     if (errors.length > 0 && options.allowErrors !== true) throw errors[0];
   });
   const hasher = createFsHasher(root, "sha1");

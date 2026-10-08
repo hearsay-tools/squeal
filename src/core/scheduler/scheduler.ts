@@ -36,13 +36,21 @@ import { RunnerWork } from "./runner-work.js";
 import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import {
   abandonFullSuite,
+  endTier,
   executeTier,
+  laneOf,
   queueFullSuite,
   recordTier,
   selectTier,
   type Tier,
   unstableInputs,
 } from "./tiers.js";
+
+/** A tier in flight: its lane is busy until `done`, which never rejects. */
+interface InFlight {
+  readonly tier: Tier;
+  readonly done: Promise<void>;
+}
 
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
 export function createScheduler(options: SchedulerOptions): Scheduler {
@@ -63,8 +71,15 @@ class TierScheduler implements Scheduler {
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
-  /** The tier whose run is in flight; a backlog tier carries its `cancel`. */
-  #running: Tier | null = null;
+  /** The runner work being applied beside the tiers in flight (task 001-140). */
+  #draining: Promise<void> | null = null;
+  /** The tiers in flight by lane, at most one per lane; a backlog tier carries its `cancel`. */
+  readonly #inFlight = new Map<string, InFlight>();
+  /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
+  #woken = false;
+  #wake: (() => void) | null = null;
+  /** The pump was asked for while it ran: once stopped on an error, it starts again. */
+  #asked = false;
   #closed = false;
   /** The pump stopped on an error; idle until the next batch or request. */
   #stalled = false;
@@ -143,13 +158,14 @@ class TierScheduler implements Scheduler {
   /**
    * Stores the revision a batch creates and returns: the revision row, stat
    * cache, content re-key, `queued` phases and known states, in one
-   * transaction. The runner part is queued and applied by the pump after the
-   * tier in flight, in batch order (`RunnerWork`).
+   * transaction. The runner part is queued and applied by the pump beside
+   * the tiers in flight, in batch order (`RunnerWork`, task 001-140).
    *
    * Spec 001 D2: "Creating a revision never waits on the runner: the store
    * work [...] completes within the debounce window even while a tier is
-   * running, and the runner-dependent refinement is queued behind the tier
-   * separately and applied without holding the revision path." Lessons,
+   * running, and the runner-dependent refinement is queued separately,
+   * applied in revision order beside the tiers in flight [...], and never
+   * holds the revision path." Lessons,
    * defect 1: awaiting `runner.invalidate` here, which the runner serializes
    * behind the running tier, let a revision lag the workspace by a whole
    * tier.
@@ -175,9 +191,10 @@ class TierScheduler implements Scheduler {
       if (applied === null) return;
       this.#slow.preempt();
       // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
-      const running = this.#running;
-      if (running?.cancel && cancelsBacklog(ledger, applied.revision, running)) {
-        running.cancel.abort();
+      for (const { tier } of this.#inFlight.values()) {
+        if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
+          tier.cancel.abort();
+        }
       }
       this.#runnerWork.queueRefine(applied.revision, applied.content);
     });
@@ -220,8 +237,7 @@ class TierScheduler implements Scheduler {
   /**
    * Queues the checkpoint at once, unless it needs the runner: while a
    * runner failure is outstanding the runner is retried first, and while a
-   * revision waits for its runner part the checkpoint follows it. Both wait
-   * for the tier in flight.
+   * revision waits for its runner part the checkpoint follows it.
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
     const force = request.force === true;
@@ -280,6 +296,7 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return;
     this.#closed = true;
     this.#slow.close();
+    this.#notify();
     await this.#pumping;
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
@@ -291,30 +308,52 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Runs tiers one after another until the queue is empty. Selection and
-   * recording hold the lock; the run and the stability re-stat do not, so
-   * batches are reconciled while a tier is in flight. Spec 001 D5 as amended
-   * (task 001-124): an edit's tier in flight is never cancelled by a new
-   * revision; a backlog tier is, and its unfinished files are queued again.
+   * Runs tiers until the queue is empty, one at a time per lane (spec 001 D5
+   * as amended, task 001-140): a tier holds the files of one lane, and a
+   * lane with a tier in flight waits while the others run theirs. Selection
+   * and recording hold the lock; the runs and the stability re-stat do not,
+   * so batches are reconciled while tiers are in flight. An edit's tier in
+   * flight is never cancelled by a new revision; a backlog tier is, and its
+   * unfinished files are queued again (task 001-124).
    *
-   * Before each tier the runner work queued meanwhile is applied, in arrival
-   * order, while no tier holds the runner. A tier is never selected while
-   * runner work is pending: its keys would come from a revision the runner
-   * has not invalidated yet.
+   * The runner work queued meanwhile is applied in arrival order beside the
+   * tiers in flight, not after them (`#drain`). A tier is never selected
+   * while runner work is pending: its keys would come from a revision the
+   * runner has not invalidated yet. A runner that serializes its calls
+   * behind its own run (Vitest's adapter) still holds the runner work for
+   * as long as its tier runs.
+   *
+   * A slow file (spec 004 D2) is selected only when no tier is in flight, so
+   * the slow tier's rules stand as they were with one tier at a time.
    *
    * An error of a tier stops the pump with a note; the tier's files go back
-   * to the queue, and the next batch or request starts the pump again.
+   * to the queue, the tiers still in flight are recorded, and the next batch
+   * or request starts the pump again.
    */
   #pump(): void {
-    if (this.#pumping || this.#closed || !this.#ledger) return;
+    if (this.#closed || !this.#ledger) return;
+    if (this.#pumping) {
+      this.#asked = true;
+      this.#notify();
+      return;
+    }
     this.#stalled = false;
+    this.#asked = false;
     this.#pumping = (async () => {
-      let tier: Tier | null = null;
-      let slow: SlowRun | null = null;
       try {
-        while (!this.#closed) {
-          await this.#runnerWork.drain();
-          if (this.#closed || this.#awaitingInstall || this.#reinstalled) break;
+        while (!this.#closed && !this.#stalled) {
+          this.#woken = false;
+          this.#drain();
+          if (this.#draining) {
+            await this.#nextEvent();
+            continue;
+          }
+          if (this.#awaitingInstall || this.#reinstalled) break;
+          // The check before a tier, never during one: only when a free lane has a file to take.
+          if (this.#inFlight.size > 0 && !this.#freeLaneQueued()) {
+            await this.#nextEvent();
+            continue;
+          }
           const install = await this.#install.check();
           if (install.missing === null && this.#install.takeChange(install)) {
             // Task 001-109 (review wave-11b S2, agreed with the coordinator).
@@ -332,50 +371,115 @@ class TierScheduler implements Scheduler {
               return null;
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
-            return selectTier(context, ledger);
+            return selectTier(context, ledger, new Set(this.#inFlight.keys()));
           });
           if (next === "runner-work") continue;
-          tier = next;
-          if (tier === null) {
+          if (next !== null) {
+            this.#fly(next, install.stamp, null);
+            continue;
+          }
+          if (this.#reinstalled) break;
+          if (this.#inFlight.size === 0) {
             // Spec 004 D2: no fast file pending; a slow file may run, one per tier.
             const after = await this.#slow.next();
             if (after === "again") continue;
-            if (after === null) break;
-            slow = after;
-            tier = after.tier;
+            if (after !== null) {
+              this.#fly(after.tier, install.stamp, after);
+              continue;
+            }
+            if (!this.#woken) break;
           }
-          const { context, ledger } = this.#started();
-          const selected: Tier = tier;
-          this.#running = selected;
-          const report = await executeTier(context, selected).finally(() => {
-            this.#running = null;
-          });
-          const changed = await unstableInputs(context, selected);
-          const installMoved = this.#reinstalled || (await this.#install.stamp()) !== install.stamp;
-          const moved = await this.#lock.run(async () => {
-            // Task 001-132: what the run read beyond its closures, hashed under the lock.
-            const observed = installMoved ? undefined : await prepareObserved(context, report);
-            return recordTier(context, ledger, selected, report, changed, installMoved, observed);
-          });
-          tier = null;
-          slow?.slot.release();
-          slow = null;
-          // The watcher may not have reported these yet; reconciling twice is harmless.
-          if (moved.length > 0) await this.#reconcilePaths(moved);
+          await this.#nextEvent();
         }
       } catch (error) {
-        this.#stalled = true;
-        this.#note(`scheduler stopped running tiers: ${String(error)}`);
-        this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
-        if (tier !== null) await this.#requeue(tier);
+        this.#stall(error);
       } finally {
-        slow?.slot.release();
+        await Promise.all([...this.#inFlight.values()].map((flight) => flight.done));
+        await this.#draining;
         this.#pumping = null;
         if (this.#reinstalled) this.#tellReinstall();
-        if (!this.#closed && !this.#stalled && this.#hasWork()) this.#pump();
+        const again = !this.#stalled || this.#asked;
+        if (!this.#closed && again && this.#hasWork()) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
+  }
+
+  /**
+   * Runs `tier` in its lane and records it under the lock; `slow` is the
+   * slow run it belongs to, whose slot it releases. Never rejects: an error
+   * stops the pump and puts the tier's files back.
+   */
+  #fly(tier: Tier, installStamp: string, slow: SlowRun | null): void {
+    const { context, ledger } = this.#started();
+    const done = (async () => {
+      let recorded = false;
+      try {
+        const report = await executeTier(context, tier);
+        const changed = await unstableInputs(context, tier);
+        const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
+        const moved = await this.#lock.run(async () => {
+          // Task 001-132: what the run read beyond its closures, hashed under the lock.
+          const observed = installMoved
+            ? undefined
+            : await prepareObserved(context, report, tier.run);
+          return recordTier(context, ledger, tier, report, changed, installMoved, observed);
+        });
+        recorded = true;
+        slow?.slot.release();
+        // The watcher may not have reported these yet; reconciling twice is harmless.
+        if (moved.length > 0) await this.#reconcilePaths(moved);
+      } catch (error) {
+        this.#stall(error);
+        if (!recorded) await this.#requeue(tier);
+      } finally {
+        slow?.slot.release();
+        this.#inFlight.delete(tier.lane);
+        this.#notify();
+      }
+    })();
+    this.#inFlight.set(tier.lane, { tier, done });
+  }
+
+  /** A fast file whose lane has no tier in flight is queued. */
+  #freeLaneQueued(): boolean {
+    const { context, ledger } = this.#started();
+    return ledger.queue.hasFast((ref) => !this.#inFlight.has(laneOf(context, ref)));
+  }
+
+  /** Applies the queued runner work beside the tiers in flight, unless it is already being applied. */
+  #drain(): void {
+    if (this.#draining || this.#runnerWork.size === 0) return;
+    this.#draining = this.#runnerWork
+      .drain()
+      .catch((error: unknown) => this.#backgroundError("could not apply runner work", error))
+      .finally(() => {
+        this.#draining = null;
+        this.#notify();
+      });
+  }
+
+  /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
+  #nextEvent(): Promise<void> {
+    if (this.#woken) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.#wake = resolve;
+    });
+  }
+
+  #notify(): void {
+    this.#woken = true;
+    const wake = this.#wake;
+    this.#wake = null;
+    wake?.();
+  }
+
+  /** A tier's error: the pump stops with a note until the next batch or request. */
+  #stall(error: unknown): void {
+    this.#stalled = true;
+    this.#note(`scheduler stopped running tiers: ${String(error)}`);
+    this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
+    this.#notify();
   }
 
   /**
@@ -397,7 +501,8 @@ class TierScheduler implements Scheduler {
   /** Puts the files of a tier that never got recorded back into the queue. */
   async #requeue(tier: Tier): Promise<void> {
     await this.#lock.run(() => {
-      const { ledger } = this.#started();
+      const { context, ledger } = this.#started();
+      endTier(context, ledger, tier);
       for (const { file } of tier.files) {
         ledger.setRunning(file, null);
         if (ledger.files.get(file.id) === file) {
