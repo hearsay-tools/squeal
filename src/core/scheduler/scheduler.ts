@@ -250,8 +250,6 @@ class TierScheduler implements Scheduler {
   async close(): Promise<void> {
     if (this.#closed) return;
     this.#closed = true;
-    // A backlog tier stores the files it completed and stops; an edit's tier finishes.
-    this.#running?.cancel?.abort();
     await this.#pumping;
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
