@@ -1,5 +1,5 @@
 import { SQUEAL_COMMAND } from "../../core/delivery/index.js";
-import { primer } from "../shared/primer.js";
+import { primerVariants } from "../shared/primer.js";
 
 /*
  * Codex hook output shapes (spec 002 D3): `hookSpecificOutput.additionalContext`
@@ -20,13 +20,13 @@ const cutLine = (command: string) =>
 
 /**
  * `text` within `CONTEXT_CAP_CHARS`. A longer one is cut at a line boundary
- * and says so; a trailing primer, either variant, is kept whole, since the shared formats cap
+ * and says so; a trailing primer, any variant, is kept whole, since the shared formats cap
  * at 10,000 characters with the primer last. `command` is how the texts name
  * the CLI (`codexCommand`).
  */
 export function capContext(text: string, command: string = SQUEAL_COMMAND): string {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const ends = [false, true].map((nodeTest) => `\n\n${primer(command, nodeTest)}`);
+  const ends = primerVariants(command).map((primer) => `\n\n${primer}`);
   const tail = ends.find((end) => text.endsWith(end)) ?? "";
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
