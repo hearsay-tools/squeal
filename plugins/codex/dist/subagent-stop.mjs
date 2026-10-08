@@ -2704,7 +2704,7 @@ import { join as join6 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
   const cli = root === void 0 || root === "" ? bundleCli : join6(root, "dist/cli/squeal.mjs");
-  return `node ${shellWord(cli)}`;
+  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
 // src/harness/codex/input.ts
