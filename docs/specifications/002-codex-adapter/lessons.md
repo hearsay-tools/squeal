@@ -191,6 +191,10 @@ Every run is far inside the 2 s timeout. Whether Stop stays under 80 ms p95 at c
 - An `apply_patch` context mismatch cost each of the four scripted agents (exec1 and as2, main and subagent) one failed call; nothing to do with Squeal, but such calls count in any per-call measurement.
 - Spec open question 5 (a long-running command that yields to `write_stdin`) was not exercised: every command here finished within its yield time.
 
+## After 002-22: the CLI command in a real session
+
+2026-10-08. 003-31 ran as a Cezar Codex worker (gpt-6.1-sol) with the installed plugin 0.1.30. Its SessionStart primer named `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.30/dist/cli/squeal.mjs" status --wait 60000` (rollout `rollout-2026-10-08T09-15-36-01a11a5e-...`), so defect 4's text is right in a real session. The agent, a reviewer, ran no `squeal` command, so a real run of it is not shown there; `test/harness/codex/command.test.ts` runs both the primer's command and a FAIL report's `why` line from `bash -c` with no `squeal` on PATH, on Node 22 and 24.
+
 ## Dogfooding with a Cezar Codex worker
 
 Task 002-19, 2026-10-08. One real Cezar worker on Codex, `--backend codex --model gpt-6.1-sol`, did row 003-27 in this repository with the Squeal Codex plugin 0.1.24 installed into the real `~/.codex` and trusted (`status.md`, 2026-10-08). Cezar run `c7896f0e-662d-4172-adaf-81b907da8afe`, Codex thread `01a1188e-2475-7030-aa81-c1396f0402c1`, Squeal worktree id `b2baa0c8131a6dc2`, one turn from 00:48:51 to 00:59:03 local time (UTC+2; every time below is local), Codex CLI 0.160.1, load average 66 to 85. Extraction scripts and trimmed logs: `research/probes/dogfood/` (its README lists the sources and the rules followed). All sources were read only; `~/.codex/auth.json` and `config.toml` were not opened.

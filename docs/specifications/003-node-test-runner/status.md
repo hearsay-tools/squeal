@@ -50,6 +50,8 @@ Started: 2026-10-07
 
 - 2026-10-08, wave 2.7 (003-30), 0.1.30: D5 amended. `NODE_OPTIONS` is tokenized as Node does (`ParseNodeOptionsEnvVar`, identical at 22.23.3 and 24.21.0), so `"--require" x` and `"--require=x"` get the recorder first (B1). With an async loader, Node 22 runs `--require` preloads again in its internal loader thread, where the recorder's synchronous hook reached `Hooks.resolveSync` and crashed the process; the recorder now skips internal threads (user worker threads are still recorded), and each project with a `--loader` gets one note that what the loader loads enters no key (S1). Adapter version 4. Coordinator fix in the same landing: the Codex CLI command passes `--disable-warning=ExperimentalWarning`, as `bin/squeal` does, since Node 22 printed the `node:sqlite` warning on every agent run. Full suite green on Node 24 and Node 22 (196 files, 1,642 tests each).
 
+- 2026-10-08, fourth review 003-31 (`reviews/wave-2.7.md`, PASS at dc55714, gpt-6.1-sol): `reviews/wave-2.6.md` B1 and S1 closed on Node 22 and 24 (14-case matrices, shipped runtime, user worker threads still recorded). The preload slice is closed. S1, should-fix: a loader installed by `module.register()` from a preload, in `argv` or `NODE_OPTIONS`, gets no note that what it loads enters no key; the gap is inside D3's accepted custom-loader boundary, the note is missing. Folded into the next 003 row.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
