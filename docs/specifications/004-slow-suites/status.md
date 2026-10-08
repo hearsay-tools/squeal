@@ -10,9 +10,13 @@ Started: 2026-10-08
 - Both runners stay: a slow suite is a Vitest project or a node:test project marked slow by policy, not a new runner.
 - Lessons already in hand: e2e suites read state outside the worktree's files (`git archive HEAD`, installed plugins, spawned processes), so their keys miss inputs (002 `lessons.md` defect 5, board row 002-24); they compete for CPU with the agent and with each other, and timing tests fail under load (this repository's load reached 127 on 2026-10-08); a run interrupted by an install must store nothing (001-107, 001-113).
 
-## Open questions (research phase)
+## Research
 
-See `research/README.md`.
+Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
+
+## Open questions
+
+The findings' open questions, until `spec.md` is written.
 
 ## Links
 
