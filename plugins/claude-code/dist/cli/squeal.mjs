@@ -463,6 +463,22 @@ var init_observed = __esm({
         const sorted = [...names.keys()].sort(compare);
         return createHash3("sha1").update(sorted.join("\0")).digest("hex");
       }
+      /**
+       * The listing paths of `directory` and of every directory below it that
+       * holds a tracked file, sorted: what a recursive listing of `directory`
+       * returned names from (review wave 12d, B5; task 001-134). An add or delete
+       * anywhere below moves one of them, since each holds immediate names only.
+       */
+      below(directory) {
+        const prefix = directory === "" ? "" : `${directory}/`;
+        const out = [listingPath(directory)];
+        for (const [listed, names] of this.#index()) {
+          if (listed !== directory && listed.startsWith(prefix) && names.size > 0) {
+            out.push(listingPath(listed));
+          }
+        }
+        return out.sort(compare);
+      }
       /** Applies the adds and deletes among `changes`; returns the listing paths they may move. */
       apply(changes) {
         const moved = /* @__PURE__ */ new Set();
@@ -5363,6 +5379,8 @@ var init_keying = __esm({
       #observed;
       /** Entry names of listed directories, from the tracked files. */
       #listings = new Listings(() => this.#listedFiles());
+      /** Paths `track` first hashed since `beginRun`: no hash from before the run holds them (task 001-134). */
+      #firstHashed = /* @__PURE__ */ new Set();
       #policy;
       #isDeclared;
       /**
@@ -5552,6 +5570,10 @@ var init_keying = __esm({
       observedOf(testFile) {
         return this.#observed.of(testFile);
       }
+      /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
+      listingsBelow(directory) {
+        return this.#listings.below(directory);
+      }
       /** True while policy `observe.runtimeInputs` holds. */
       get observing() {
         return this.#policy.observe.runtimeInputs;
@@ -5604,6 +5626,18 @@ var init_keying = __esm({
         for (const path of ignored) this.#extra.add(path);
         if (this.#extra.size > before) this.options.onExtraFiles(this.extraFiles());
       }
+      /** A tier starts: paths hashed from here on hold no value from before its run. */
+      beginRun() {
+        this.#firstHashed = /* @__PURE__ */ new Set();
+      }
+      /**
+       * True when `track` first hashed `path` after the run began: the stat cache
+       * held neither its hash nor its absence when the run started, so what the
+       * run read cannot be compared with anything (D5 as amended, task 001-134).
+       */
+      firstHashedDuringRun(path) {
+        return this.#firstHashed.has(path);
+      }
       /** Gitignored paths watched anyway (D2), sorted. */
       extraFiles() {
         return [...this.#extra].sort();
@@ -5640,6 +5674,7 @@ var init_keying = __esm({
         if (paths.length === 0) return;
         const { root, objectFormat, hasher, store, worktreeId } = this.options;
         await seedStatCache(this.cache, root, paths, { objectFormat, hasher });
+        for (const path of paths) this.#firstHashed.add(path);
         store.transaction(() => this.cache.flush(store.fileHashes, worktreeId));
       }
       /** The files a listing names: present, and seen by git (not extra). */
@@ -5924,6 +5959,24 @@ var init_ledger = __esm({
         }
       }
       /**
+       * Files whose run read a path first seen during it (`ObservedGrowth.firstSeen`,
+       * task 001-134), once `settle` moved them to the key with that path: they
+       * re-run under it. Counted with `discard`'s, since their own growth, not an
+       * edit, moved the key; at `MAX_DISCARDS` in a row the file is `unknown`
+       * until its key changes, so a run that reads a new path every time cannot
+       * re-run forever. A file `settle` gave a result at the new key (another
+       * worktree stored it) is current and not counted.
+       */
+      rerunFirstSeen(files) {
+        const exhausted = [];
+        for (const file of files) {
+          if (file.key === null || file.resultKey === file.key) continue;
+          file.discards += 1;
+          if (file.discards >= MAX_DISCARDS) exhausted.push({ file, key: file.key });
+        }
+        this.markUnknown(exhausted, `${MAX_DISCARDS} runs in a row read paths no earlier run had read`);
+      }
+      /**
        * Writes what this round of work owes the store and the sink, in one
        * transaction. `refined` is the revision whose runner part this commit
        * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
@@ -6040,9 +6093,11 @@ async function observedGrowth(context, report2) {
   const candidates = /* @__PURE__ */ new Set();
   const seen = report2.observed.map((observed) => {
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
-    const fresh = [...observed.paths, ...observed.directories.map(listingPath)].filter(
-      (path) => !closure.has(path)
-    );
+    const listed = new Set(observed.directories.map(listingPath));
+    for (const root of observed.recursive ?? []) {
+      for (const path of keys.listingsBelow(root)) listed.add(path);
+    }
+    const fresh = [...observed.paths, ...listed].filter((path) => !closure.has(path));
     for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
     return { observed, closure, fresh };
   });
@@ -6051,15 +6106,22 @@ async function observedGrowth(context, report2) {
     [...candidates].filter((p) => p !== "")
   );
   const tracked = [];
+  const grown = [];
   for (const { observed, closure, fresh } of seen) {
     const add = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
     const known2 = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
     const growth = [.../* @__PURE__ */ new Set([...known2, ...add])];
     if (growth.length === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
-    out.set(testFileId(observed.testFile), { add, growth });
+    grown.push({ testFile: observed.testFile, add, growth });
   }
   await keys.track(tracked);
+  for (const { testFile, add, growth } of grown) {
+    const firstSeen = growth.filter(
+      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path)
+    );
+    out.set(testFileId(testFile), { add, growth, firstSeen });
+  }
   return out;
 }
 async function prepareObserved(context, report2) {
@@ -6436,6 +6498,7 @@ function selectTier(context, ledger) {
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = /* @__PURE__ */ new Set();
+  keys.beginRun();
   store.transaction(() => {
     store.runs.start({
       id: runId,
@@ -6495,6 +6558,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   const unknown = [];
   const rekeyed = [];
   const grown = [];
+  const firstSeen = [];
   const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
@@ -6523,6 +6587,10 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         ledger.discard(file, key);
         continue;
       }
+      if (growth !== void 0 && growth.firstSeen.length > 0) {
+        if (file.key === key) firstSeen.push(file);
+        continue;
+      }
       if (storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
@@ -6542,6 +6610,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
       ledger.settle([ref2], NOTHING_CHANGED, { checkpointId });
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
+    ledger.rerunFirstSeen(firstSeen);
     storeClosures(
       context,
       grown.map((g2) => g2.ref)
@@ -29043,7 +29112,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.37";
+  if (true) return "0.1.38";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
