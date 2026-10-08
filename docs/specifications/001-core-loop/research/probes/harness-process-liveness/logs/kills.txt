@@ -1,0 +1,28 @@
+# Throwaway: console output of the kill probes, 2026-10-08 (copied from the runs).
+
+## Claude Code 2.1.293 interactive (tmux), after a turn and /clear
+start(field22)=59672306           # /proc/928903/stat before the kill
+kill -9 928903
+hook lines before=51 after=51     # no SessionEnd ran
+kill -0 928903 -> No such process
+
+## Claude Code 2.1.293 -p, `sleep 40` in flight, signal to CLAUDE_PID (exec-form events seen)
+SIGTERM pid=1099683 alive=no events: SessionStart,UserPromptSubmit,PostToolBatch,PreToolUse,PostToolBatch
+SIGKILL pid=1104023 alive=no events: SessionStart,UserPromptSubmit,PostToolBatch,PreToolUse,PostToolBatch,Stop
+# after SIGKILL the Bash tool's `sleep 40` and its bash were left running (orphaned); killed by hand.
+
+## Codex 0.160.1 TUI (tmux): SIGKILL of the native codex
+native alive=no wrapper alive=no lines 10 -> 10   # npm wrapper mirrored the exit; no SessionEnd ran
+
+## Codex 0.160.1 app-server via bin/as2.mjs: two threads, then SIGKILL of the npm wrapper only
+thread 1 01a11b43-ffb6-71a2-881b-04e3382f19b2 done
+thread 2 01a11b44-183d-7721-9a3e-1f28f914394f done
+wrapper 1149407 native [ 1149440 ]
+after wrapper SIGKILL: native 1149440 alive false ppid ?
+after stdin EOF: native 1149440 alive false
+# SessionEnd ran for both threads, from hooks whose chain was native codex < systemd --user (see cx-as.chains.txt)
+
+## Zombie: kill -0 succeeds, /proc/<pid>/stat field 3 is Z
+zombie pid=1159092
+state=Z start=59721806
+kill -0 says alive

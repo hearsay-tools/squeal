@@ -1,0 +1,51 @@
+SessionStart     exec-form     agent=- walk=1041us hook=952244 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionStart     string-form   agent=- walk=570us hook=952255 < 952254:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionStart     sh-fast-path  agent=- walk=643us hook=952249 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit string-form   agent=- walk=520us hook=969038 < 969037:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit sh-fast-path  agent=- walk=610us hook=969036 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit exec-form     agent=- walk=474us hook=969034 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       sh-fast-path  agent=- walk=464us hook=975752 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       exec-form     agent=- walk=567us hook=975750 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       string-form   agent=- walk=642us hook=975759 < 975755:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    exec-form     agent=- walk=591us hook=977005 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    string-form   agent=- walk=624us hook=977010 < 977008:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=- walk=491us hook=977007 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       string-form   agent=- walk=559us hook=978932 < 978931:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       exec-form     agent=- walk=455us hook=978928 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       sh-fast-path  agent=- walk=502us hook=978929 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    exec-form     agent=- walk=634us hook=979089 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStart    exec-form     agent=a5643007 walk=644us hook=979084 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStart    sh-fast-path  agent=a5643007 walk=574us hook=979085 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    string-form   agent=- walk=689us hook=979095 < 979093:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=- walk=661us hook=979092 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStart    string-form   agent=a5643007 walk=734us hook=979091 < 979088:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+Stop             string-form   agent=- walk=617us hook=980433 < 980432:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+Stop             exec-form     agent=- walk=504us hook=980429 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+Stop             sh-fast-path  agent=- walk=583us hook=980431 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     exec-form     agent=a4190da4 walk=578us hook=982060 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     sh-fast-path  agent=a4190da4 walk=573us hook=982062 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     string-form   agent=a4190da4 walk=654us hook=982065 < 982063:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       exec-form     agent=a5643007 walk=587us hook=984478 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       string-form   agent=a5643007 walk=710us hook=984481 < 984480:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PreToolUse       sh-fast-path  agent=a5643007 walk=503us hook=984483 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    exec-form     agent=a5643007 walk=432us hook=984764 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=a5643007 walk=491us hook=984772 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+PostToolBatch    string-form   agent=a5643007 walk=1704us hook=984781 < 984779:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     exec-form     agent=a5643007 walk=432us hook=986393 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     sh-fast-path  agent=a5643007 walk=562us hook=986395 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     string-form   agent=a5643007 walk=1884us hook=986398 < 986397:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit exec-form     agent=- walk=735us hook=986636 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit string-form   agent=- walk=888us hook=986643 < 986642:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit sh-fast-path  agent=- walk=569us hook=986640 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+Stop             sh-fast-path  agent=- walk=609us hook=991423 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+Stop             exec-form     agent=- walk=600us hook=991422 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+Stop             string-form   agent=- walk=576us hook=991429 < 991425:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     exec-form     agent=a3f1baa6 walk=479us hook=994247 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     sh-fast-path  agent=a3f1baa6 walk=583us hook=994251 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SubagentStop     string-form   agent=a3f1baa6 walk=548us hook=994250 < 994249:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionEnd       sh-fast-path  agent=- walk=518us hook=1042252 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionEnd       exec-form     agent=- walk=613us hook=1042249 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionEnd       string-form   agent=- walk=825us hook=1042260 < 1042259:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionStart     sh-fast-path  agent=- walk=513us hook=1042387 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionStart     exec-form     agent=- walk=429us hook=1042392 < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd
+SessionStart     string-form   agent=- walk=637us hook=1042389 < 1042388:sh[dash] < 928903:claude[claude.exe] < 928798:tmux: server[tmux] < 1269002:systemd

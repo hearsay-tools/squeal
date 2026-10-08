@@ -1,0 +1,12 @@
+kill(pid, 0), live                                   1.24 us/call
+kill(pid, 0), dead (ESRCH)                           5.54 us/call
+/proc/<pid>/stat read + field 22, live               16.52 us/call
+/proc/<pid>/stat read, dead (ENOENT)                 9.72 us/call
+hook rule: ppid, skip shells, read start             31.93 us/call
+rule from this process: {"pid":711651,"start":"59643144","comm":"claude"}
+identity, live original: true  kill0: true
+identity, pid reused (same pid, other start): false  kill0 alone would say: true
+identity after SIGKILL: false  kill0: false
+spawn ps -o lstart= -p <pid> (Linux procps)          18268.93 us/call
+ps lstart sample: Thu Oct  8 13:27:39 2026
+(separate run) readlink /proc/self/ns/pid 3.37 us/call pid:[4026531836]
