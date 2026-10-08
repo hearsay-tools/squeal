@@ -10,6 +10,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../types/index.js";
+import { SLOW_LANE_PREFIX } from "../types/index.js";
 import { backlogBudget } from "./backlog.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify, type FileState } from "./files.js";
@@ -18,6 +19,7 @@ import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
 import { storeClosures } from "./revision.js";
+import { slowView } from "./slow.js";
 import { changedSince, snapshotInputs } from "./stability.js";
 
 /** One test file of a tier and the key it runs under. */
@@ -54,10 +56,13 @@ export interface Tier {
 /**
  * The lane of `ref` (`RunnerAdapter.lane`): one tier at a time per lane, so
  * tiers of different lanes run at once (D5 as amended, task 001-140). A
- * runner that names none has one lane.
+ * runner that names none has one lane. A slow file's lane is its runner's
+ * behind `SLOW_LANE_PREFIX`, a runner instance of its own, so fast tiers run
+ * beside it (spec 004 D2, task 004-18).
  */
 export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
-  return context.runner.lane?.(ref) ?? "";
+  const lane = context.runner.lane?.(ref) ?? "";
+  return slowView(context.policy).isSlow(ref) ? SLOW_LANE_PREFIX + lane : lane;
 }
 
 /**
@@ -189,6 +194,7 @@ export async function executeTier(context: SchedulerContext, tier: Tier): Promis
         logDir: tier.logDir,
         timeoutMs: context.policy.runner.timeoutMs,
         ...(tier.cancel === null ? {} : { signal: tier.cancel.signal }),
+        lane: tier.lane,
       },
     );
   } catch (error) {

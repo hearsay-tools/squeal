@@ -323,8 +323,10 @@ class TierScheduler implements Scheduler {
    * behind its own run (Vitest's adapter) still holds the runner work for
    * as long as its tier runs.
    *
-   * A slow file (spec 004 D2) is selected only when no tier is in flight, so
-   * the slow tier's rules stand as they were with one tier at a time.
+   * A slow file (spec 004 D2) is selected only when no tier is in flight,
+   * so the slow tier's start rules stand as they were with one tier at a
+   * time; it runs in a lane of its own (`laneOf`, task 004-18), so an edit's
+   * fast tier starts beside it.
    *
    * An error of a tier stops the pump with a note; the tier's files go back
    * to the queue, the tiers still in flight are recorded, and the next batch
@@ -380,7 +382,7 @@ class TierScheduler implements Scheduler {
           }
           if (this.#reinstalled) break;
           if (this.#inFlight.size === 0) {
-            // Spec 004 D2: no fast file pending; a slow file may run, one per tier.
+            // Spec 004 D2: no fast file pending or running; a slow file may run, one per tier.
             const after = await this.#slow.next();
             if (after === "again") continue;
             if (after !== null) {
@@ -429,6 +431,7 @@ class TierScheduler implements Scheduler {
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
         if (moved.length > 0) await this.#reconcilePaths(moved);
+        if (slow !== null) await this.#releaseIfDrained(tier.lane);
       } catch (error) {
         this.#stall(error);
         if (!recorded) await this.#requeue(tier);
@@ -439,6 +442,21 @@ class TierScheduler implements Scheduler {
       }
     })();
     this.#inFlight.set(tier.lane, { tier, done });
+  }
+
+  /**
+   * The slow pass of `lane` drained: no file of it is queued, so its runner
+   * instance closes (spec 004 D2). While still in flight, so the lane's next
+   * tier waits for the close.
+   */
+  async #releaseIfDrained(lane: string): Promise<void> {
+    const { context, ledger } = this.#started();
+    const release = context.runner.releaseLane?.bind(context.runner);
+    if (release === undefined || this.#closed) return;
+    if (ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane)) return;
+    await release(lane).catch((error: unknown) =>
+      this.#backgroundError(`could not close the runner of lane ${lane}`, error),
+    );
   }
 
   /** A fast file whose lane has no tier in flight is queued. */
