@@ -77,3 +77,24 @@ Use /researcher. Topic: `research/README.md` "observed-runtime-inputs". Output `
 ## 001-129 review of 001-124 and 001-125
 
 Use /reviewer. Range: 001-124 (`9a6872f` to `61facb7` as cherry-picked) and 001-125 (`3cf205a` to `79b0d43`), build `9c23b22`. Output `reviews/wave-12b.md`. Outcome: (1) can a backlog tier store a result that is not current, lose a completed file's result on cancel, starve edit work, or exceed `runner.timeoutMs`; (2) can the step-down leave a worktree with no daemon, two daemons, or a newer daemon replaced by an older one. Probe: an edit at the first and last file of a backlog tier; a cancel that Vitest does not honour within 1 s; `backlogTierSize` 1 and 10,000; files with no known duration; a step-down while a tier runs, with a hook in the window, under both plugins; a 0.1.31 daemon (released bundle) and a pre-release version string.
+
+## 001-130 a step-down never ends in an older daemon
+
+Use /worker. Shape: repair. First repair round on the 001-125 slice; 001-131 re-reviews it. From `reviews/wave-12b.md` B1 (proven with released bundles: a 0.1.33 hook stepped down a 0.1.32 daemon, then a released 0.1.31 hook took the next boundary and started a 0.1.31 daemon) and S1 (wording).
+
+Outcome: asking an older daemon to step down can only end with a daemon at least as new as the one that stepped down, under any mix of plugin versions on one worktree.
+
+Read: `reviews/wave-12b.md` B1, S1; spec D10 (ensure, step-down, lock, 001-122's departure exit); `src/harness/shared/ensure.ts` (`stepDownIfOlder`), `src/core/daemon/` (start, lock, handlers).
+
+Decided by the coordinator:
+- **Do not step down while an older client is present.** Each registration records the hook's Squeal version with the consumer (additive, beside the harness record). A hook asks for a step-down only when the daemon is strictly older and every registered consumer's recorded version is at least the hook's own; a consumer with no recorded version (any release before this row) counts as older. So a mixed worktree keeps its current daemon until the older sessions leave (001-122 then exits it within 3 s), and the next newer hook starts a newer one.
+- **The requesting hook arranges its successor.** After a step-down is accepted, the hook spawns its own bundle's daemon with a lock wait (a new `squeal daemon --await-lock <ms>` mode, bounded, about 2 minutes): it waits for the old daemon to release the lock instead of exiting at once, then starts as usual; if the lock is taken by anything else when freed (another hook's spawn), it exits as today.
+- **S1:** reword the backlog budget comments and D5: the budget limits the files' last-known run time; unknown durations count 0; the first file is always taken; cancellation has a grace before force. No hard wall-clock cap in this row.
+
+Own: `src/harness/shared/ensure.ts` and registration (`context.ts`/`hook.ts` as 001-122 left them), `src/core/delivery/` (the consumer version record), `src/core/daemon/` start and lock path and `src/cli/daemon.ts` (the flag), `src/core/scheduler/backlog.ts` and `tiers.ts` (S1 comments only), `src/core/types/` (additive), tests under `test/daemon/`, `test/harness/`, `test/delivery/`, D5 and D10 in `spec.md`, one `status.md` line. Ask before `src/harness/codex/`. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the review's B1 sequence with released bundles (a 0.1.32 daemon, a current Codex hook, then a released 0.1.31 Claude Code hook) ends with the 0.1.32 daemon still serving (no step-down, since the 0.1.31 consumer is registered), or with a current daemon, never 0.1.31; with only current consumers, a step-down ends with the requesting bundle's daemon serving within the lock wait, without a further tool boundary; a successor whose lock wait times out exits with a note; equal and newer daemons stay untouched.
+
+## 001-131 re-review of 001-130
+
+Use /reviewer. Range: 001-130's commits as landed. Output `reviews/wave-12c.md`. Last round on the 001-125 slice: blockers go to the human. Re-run the B1 sequence with released bundles in both orders and plugins; probe a consumer that never records a version, two newer hooks racing to spawn successors, the lock wait timing out, and a step-down while a tier runs.
