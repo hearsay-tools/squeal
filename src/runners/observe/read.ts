@@ -8,6 +8,8 @@ export interface RecordedFile {
   readonly paths: Set<AbsolutePath>;
   /** Listed. */
   readonly listed: Set<AbsolutePath>;
+  /** Listed with `recursive: true`, each in `listed` too (task 001-139). */
+  readonly recursive: Set<AbsolutePath>;
   /** Written, created or removed. */
   readonly written: Set<AbsolutePath>;
 }
@@ -41,7 +43,7 @@ export function takeRecorded(dir: AbsolutePath): Map<AbsolutePath, RecordedFile>
 
 function addLine(recorded: Map<AbsolutePath, RecordedFile>, line: string): void {
   if (line.trim() === "") return;
-  let value: { t?: unknown; f?: unknown; l?: unknown; w?: unknown };
+  let value: { t?: unknown; f?: unknown; l?: unknown; r?: unknown; w?: unknown };
   try {
     value = JSON.parse(line);
   } catch {
@@ -50,11 +52,12 @@ function addLine(recorded: Map<AbsolutePath, RecordedFile>, line: string): void 
   if (typeof value.t !== "string") return;
   let entry = recorded.get(value.t);
   if (entry === undefined) {
-    entry = { paths: new Set(), listed: new Set(), written: new Set() };
+    entry = { paths: new Set(), listed: new Set(), recursive: new Set(), written: new Set() };
     recorded.set(value.t, entry);
   }
   addAll(entry.paths, value.f);
   addAll(entry.listed, value.l);
+  addAll(entry.recursive, value.r);
   addAll(entry.written, value.w);
 }
 
