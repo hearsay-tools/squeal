@@ -52,6 +52,8 @@ Started: 2026-10-07
 
 - 2026-10-08, fourth review 003-31 (`reviews/wave-2.7.md`, PASS at dc55714, gpt-6.1-sol): `reviews/wave-2.6.md` B1 and S1 closed on Node 22 and 24 (14-case matrices, shipped runtime, user worker threads still recorded). The preload slice is closed. S1, should-fix: a loader installed by `module.register()` from a preload, in `argv` or `NODE_OPTIONS`, gets no note that what it loads enters no key; the gap is inside D3's accepted custom-loader boundary, the note is missing. Folded into the next 003 row.
 
+- 2026-10-08, decided by the human: the cezarion dogfooding (003-19) puts its `nodeTest` config in a Cezar task worktree of cezar only, uncommitted; nothing reaches cezar's main checkout.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.

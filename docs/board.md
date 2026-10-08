@@ -312,7 +312,7 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 003-18 e2e, and e2e results follow the worktree (with 002-24) | running (brief in `tasks/wave-3.md`) | Testing: the shipped plugin against the reference-shaped fixture in `test/e2e`, transitions and lifecycle. | Green in CI on Node 22 and 24. |
-| 003-19 dogfooding on cezarion | planned | Testing, proof: a cezarion worktree with `test:unit` and `test:package` configured and a Cezar worker on Claude Code, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
+| 003-19 dogfooding on cezarion | planned, after 003-22 and 003-18; config in a Cezar task worktree of cezar only, uncommitted (human, 2026-10-08) | Testing, proof: a cezarion worktree with `test:unit` and `test:package` configured and a Cezar worker on Claude Code, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
 
 ## Feature 004: slow suites by policy
 
