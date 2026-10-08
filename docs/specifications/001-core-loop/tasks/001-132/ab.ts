@@ -1,17 +1,17 @@
 // Task 001-132 evidence driver, not product code. One full-suite run of a
 // repository through Squeal's own Vitest adapter, with the recorder (`on`) or
 // without (`off`), delivered exactly as the daemon delivers it.
-// Usage: npx tsx ab.ts <root> <on|off> <out.json>
+// Usage: npx tsx ab.ts <root> <on|off> <out.json> [test path ...]
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
 import { createVitestAdapter } from "../../../../../src/runners/vitest/index.js";
 
-const [root, mode, out] = process.argv.slice(2);
+const [root, mode, out, ...only] = process.argv.slice(2);
 if (!root || (mode !== "on" && mode !== "off") || !out) throw new Error("usage: <root> <on|off> <out>");
 const adapter = await createVitestAdapter({ root, observe: () => mode === "on" });
-const files = await adapter.testFiles();
+const files = (await adapter.testFiles()).filter((f) => only.length === 0 || only.includes(f.path));
 const logDir = join(tmpdir(), `ab-${randomUUID()}`);
 mkdirSync(logDir, { recursive: true });
 const loadBefore = loadavg()[0];
