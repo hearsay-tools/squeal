@@ -273,7 +273,12 @@ class Daemon {
           ? runnerModule.createRecoveringRunner({
               name: "vitest",
               adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-              create: () => vitest.createVitestAdapter({ root, note: (text) => this.#note(text) }),
+              create: () =>
+                vitest.createVitestAdapter({
+                  root,
+                  note: (text) => this.#note(text),
+                  observe: () => this.#policy.observe.runtimeInputs,
+                }),
               onFailure: (text) =>
                 this.#note(
                   `${text}; every check of this worktree is unknown until the config loads`,
