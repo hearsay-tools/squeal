@@ -296,6 +296,7 @@ class Daemon {
         root,
         store,
         tempDir: this.opened.scratch.tempDir,
+        childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
         note: (text) => this.#note(text),
       });

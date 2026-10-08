@@ -122,6 +122,8 @@ export interface NodeTestRunnersOptions {
   readonly store: Store;
   /** Spec 001 D10: the daemon's temp directory, the children's `TMPDIR`. */
   readonly tempDir: AbsolutePath;
+  /** Spec 001 D12: the mark the daemon's sweep finds a test's leftovers by (task 003-38). */
+  readonly childEnv?: Readonly<Record<string, string>>;
   /** Policy `runner.tierSize`, read per run. */
   readonly tierSize: () => number;
   readonly note: (text: string) => void;
@@ -149,6 +151,7 @@ export function createNodeTestRunners(
           note: options.note,
           concurrency: options.tierSize,
           tempDir: options.tempDir,
+          ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
         }),
       onFailure: (text) =>
         options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
