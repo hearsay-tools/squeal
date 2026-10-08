@@ -314,13 +314,23 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 | 003-18 e2e, and e2e results follow the worktree (with 002-24) | running (brief in `tasks/wave-3.md`) | Testing: the shipped plugin against the reference-shaped fixture in `test/e2e`, transitions and lifecycle. | Green in CI on Node 22 and 24. |
 | 003-19 dogfooding on cezarion | planned | Testing, proof: a cezarion worktree with `test:unit` and `test:package` configured and a Cezar worker on Claude Code, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
 
+## Feature 004: slow suites by policy
+
+Spec: `specifications/004-slow-suites/spec.md` (not yet written; stage research, see `status.md`). The human's e2e blocker (ADR 0004); research started 2026-10-08 while 003 finishes.
+
+### Research (parallel, from `specifications/004-slow-suites/research/README.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 004-01 research: slow-suite-policy | running (Opus) | Prior art, how a project marks slow suites, harness triggers, affected selection for e2e files, what the agent is told. | `research/slow-suite-policy.md` with every question tagged or "not determined, because". |
+| 004-02 research: slow-suite-runtime | running (Astra) | Resource use and a load guard, interruption by a revision, isolation between worktrees, inheritance of slow results. | `research/slow-suite-runtime.md` with every question tagged or "not determined, because". |
+
 ## Later
 
 - Load-sensitive tests seen failing under load only (001's): `test/watcher/reconcile-pass.test.ts:72` (re-stat of 10,000 paths, 526 to 541 ms against 500), `test/daemon/lifecycle.test.ts:79` (idle exit before readiness observed), `test/harness/stop.test.ts:176` (1,977 ms against 1,875). Each passes alone at calm load.
 
 - 001 follow-up, filed 2026-10-08 by the 002/003 coordinator (the 001 coordinator's session had ended): tests under `test/daemon/` and `test/scheduler/` that start a daemon from the sources through tsx in a child process declare no `inputs`, so their keys do not change when the daemon code they run changes and a pass can stay current after a `src` edit (002 `lessons.md` defect 5, same shape). Declaring `src/**/*.ts` for them is correct and costs a re-run on every `src` edit: a cost trade-off for the 001 coordinator.
 
-- 004 slow suites by policy: a check class (e2e, integration) that runs at checkpoints rather than on every revision, with its own timeout, a load guard and inherited results across worktrees; after 003. Dogfood first on this repository's `test/e2e` under Vitest. The human's e2e blocker, 2026-10-07.
 - 005 `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share.
 - 006 pytest runner adapter.
 - 007 inherited-pass re-verification policy, if dogfooding shows stale escapes.
