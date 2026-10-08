@@ -15,9 +15,11 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * Bumped when the adapter changes what a result, closure or environment means,
  * so the environment hash re-keys every check (001 D3). "2": the environment
  * holds what the preloads loaded at run time (review wave 2, B1), so a pass
- * stored before that was recorded runs once more and records it.
+ * stored before that was recorded runs once more and records it. "3": the
+ * recorder is installed before `--require` preloads too (review wave 2.5,
+ * B1), so a pass stored while they went unobserved runs once more.
  */
-export const NODE_TEST_ADAPTER_VERSION = "2";
+export const NODE_TEST_ADAPTER_VERSION = "3";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;

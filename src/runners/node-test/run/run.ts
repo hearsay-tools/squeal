@@ -1,6 +1,5 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { pathToFileURL } from "node:url";
 import { toAbsolute } from "../../../core/fs/index.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type {
@@ -55,20 +54,22 @@ interface FileRun {
 /**
  * Runs a tier of node:test files under the project's own Node (spec 003 D5,
  * amended 2026-10-07: one process per file). Each file runs as
- * `<node> --enable-source-maps --import <recorder> <argv...> --test
+ * `<node> --enable-source-maps --require <recorder> <argv...> --test
  * --test-reporter=<reporter> --test-reporter-destination=<logDir>/events-<i>.ndjson
  * <file>` from the project's `cwd`, in its own process group, up to
  * `concurrency` at once. On the deadline every running group gets SIGTERM,
  * then SIGKILL, and files not yet started stay unrun. A file is completed
  * when its process exited with a whole stream (`report.ts`); only completed
- * files report results.
+ * files report results. The recorder is the first `--require` because Node
+ * runs every `--require` preload, then every `--import`, whatever their order
+ * in argv (task 003-28); `childEnv` puts it first in `NODE_OPTIONS` too.
  */
 export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTestRun> {
   const started = performance.now();
   const runtime = options.runtime ?? nodeTestRuntime();
   const paths = new WorktreePaths(options.root);
   const cwd = options.project.cwd ? toAbsolute(options.root, options.project.cwd) : options.root;
-  const env = childEnv(options);
+  const env = childEnv(options, runtime);
   mkdirSync(options.logDir, { recursive: true });
 
   const runs: FileRun[] = options.files.map((testFile, index) => {
@@ -76,8 +77,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     const arg = relative(cwd, absolute).split(sep).join("/");
     const args = [
       "--enable-source-maps",
-      "--import",
-      pathToFileURL(runtime.recorder).href,
+      "--require",
+      runtime.recorder,
       ...options.project.argv,
       "--test",
       `--test-reporter=${runtime.reporter}`,
@@ -155,11 +156,23 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
 /**
  * The daemon's environment with the project's merged over it (D1), minus
  * `NODE_TEST_CONTEXT`: inherited from a `node --test` around Squeal, it would
- * make the project's runner act as a child and write no report.
+ * make the project's runner act as a child and write no report. Node runs a
+ * `--require` in `NODE_OPTIONS` before those of argv, so when `NODE_OPTIONS`
+ * holds one the recorder goes first there as well; Node loads it once.
  */
-function childEnv(options: NodeTestRunOptions): NodeJS.ProcessEnv {
+function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
   const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
-  return { ...base, ...options.project.env };
+  const env = { ...base, ...options.project.env };
+  const nodeOptions = env.NODE_OPTIONS;
+  if (nodeOptions !== undefined && /(^|\s)(--require|-r)(\s|=)/.test(nodeOptions)) {
+    env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
+  }
+  return env;
+}
+
+/** A value as `NODE_OPTIONS` reads it: double quotes, `\\` and `"` escaped. */
+function quoteNodeOption(value: string): string {
+  return `"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 
 /**

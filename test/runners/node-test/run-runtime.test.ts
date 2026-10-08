@@ -13,7 +13,7 @@ describe("nodeTestRuntime", () => {
   it("finds runtime/ beside the TypeScript sources", () => {
     expect(nodeTestRuntime()).toEqual({
       reporter: join(SOURCE, "runtime/reporter.mjs"),
-      recorder: join(SOURCE, "runtime/recorder.mjs"),
+      recorder: join(SOURCE, "runtime/recorder.cjs"),
     });
   });
 
@@ -21,11 +21,11 @@ describe("nodeTestRuntime", () => {
     const dist = join(scratch, "plugin/dist");
     mkdirSync(join(dist, "cli"), { recursive: true });
     mkdirSync(join(dist, "node-test"), { recursive: true });
-    for (const name of ["reporter.mjs", "recorder.mjs"])
+    for (const name of ["reporter.mjs", "recorder.cjs"])
       writeFileSync(join(dist, "node-test", name), "");
     expect(nodeTestRuntime(pathToFileURL(join(dist, "cli/squeal.mjs")))).toEqual({
       reporter: join(dist, "node-test/reporter.mjs"),
-      recorder: join(dist, "node-test/recorder.mjs"),
+      recorder: join(dist, "node-test/recorder.cjs"),
     });
   });
 
@@ -34,13 +34,13 @@ describe("nodeTestRuntime", () => {
     expect(() => nodeTestRuntime(module)).toThrow(/runtime files not found .*elsewhere\/node-test/);
   });
 
-  it.each(["reporter.mjs", "recorder.mjs"])(
+  it.each(["reporter.mjs", "recorder.cjs"])(
     "keeps %s dependency-free: it runs inside the project's Node",
     (name) => {
       const source = readFileSync(join(SOURCE, "runtime", name), "utf8");
-      const imports = [...source.matchAll(/\bfrom\s+"([^"]+)"|\bimport\(\s*"([^"]+)"/g)].map(
-        (m) => m[1] ?? m[2],
-      );
+      const imports = [
+        ...source.matchAll(/\bfrom\s+"([^"]+)"|\b(?:import|require)\(\s*"([^"]+)"/g),
+      ].map((m) => m[1] ?? m[2]);
       for (const specifier of imports) expect(specifier).toMatch(/^node:/);
     },
   );
