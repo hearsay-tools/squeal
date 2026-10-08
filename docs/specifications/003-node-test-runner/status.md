@@ -44,6 +44,8 @@ Started: 2026-10-07
 
 - 2026-10-08, wave 2.6 (003-28), 0.1.28: D5 amended. The recorder is `runtime/recorder.cjs` loaded as the first `--require`, so it is installed before every project preload (Node runs all `--require` before any `--import`); a `--require` in the child's `NODE_OPTIONS` runs even earlier, so the recorder is prepended there when one is present, and that preload is keyed from its first run on. Adapter version 3: passes stored without these observations run once more. The recorder reaches the per-file child `node --test` spawns. Accepted from the worker: an edit of one project's preload helper also re-runs another project once, because the scheduler re-reads every environment when one project is recreated (`refinement.ts`), an extra run, not a missed one.
 
+- 2026-10-08, third review 003-29 (`reviews/wave-2.6.md`, FAIL at dd4be01, gpt-6.1-sol): plain, nested and package `--require` preloads and ordinary `NODE_OPTIONS` requires are now observed (proven on the shipped plugin). B1: a quoted option name in `NODE_OPTIONS` (`"--require" ./setup.cjs`, `"--require=./setup.cjs"`), which Node accepts, bypasses the regex in `run.ts` `childEnv`, so that preload's computed load stays unkeyed and its pass is inherited. S1, a regression from 003-28: on Node 22.23.3 the first-`--require` recorder makes any async `--loader`, even an identity one, crash the test process (`ERR_METHOD_NOT_IMPLEMENTED: resolveSync`); the run is reported `crashed`, so nothing false is stored; Node 24 is unaffected. Taken to the human.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
