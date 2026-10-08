@@ -1,0 +1,6 @@
+shell-5974 run=1 sid/pgid/tty=[3070540 3070609 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 failed | 35 skipped (38) enoent=3
+shell-5974 run=2 sid/pgid/tty=[3070540 3070609 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 failed | 35 skipped (38) enoent=3
+shell-5974 run=3 sid/pgid/tty=[3070540 3070609 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 failed | 35 skipped (38) enoent=3
+setsid-5974 run=1 sid/pgid/tty=[3094297 3094297 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 failed | 35 skipped (38) enoent=3
+setsid-5974 run=2 sid/pgid/tty=[3094297 3094297 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 failed | 35 skipped (38) enoent=3
+setsid-5974 run=3 sid/pgid/tty=[3094297 3094297 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 failed | 35 skipped (38) enoent=3

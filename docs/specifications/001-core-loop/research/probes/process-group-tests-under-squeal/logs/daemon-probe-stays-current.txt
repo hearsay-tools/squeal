@@ -1,0 +1,32 @@
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq
+--- A. bootstrap at 5974ec91 done
+{"n":1,"rev":0}
+{"full_name":"cursor S22 treats an outside signal as failure","outcome":"pass","validity":"current","pending_phase":null}
+{"full_name":"cursor S23 end escalates when the child cannot process EOF or SIGTERM","outcome":"pass","validity":"current","pending_phase":n
+{"full_name":"cursor S24 stops the live child when its output transport fails","outcome":"pass","validity":"current","pending_phase":null}
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"fail","validity":"current","pending_phase":null}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"fail","validity":"current","pending_phase":
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"fail","validity":"current","pending_phase":null}
+--- B. mock replaced at 12:47:08; waiting 60 s
+{"number":1,"changes":"[{\"path\":\"packages/cezar/scripts/mock-cursor-print.mjs\",\"oldHash\":\"fece365ce16b6f68f17975fb6b08ee2b692fa23a\",\"newHash\":\"33d445493b753249cb68df32043dd08971f42113\"}]"}
+{"n":1,"rev":0}
+{"full_name":"cursor S22 treats an outside signal as failure","outcome":"pass","validity":"current","pending_phase":null}
+{"full_name":"cursor S23 end escalates when the child cannot process EOF or SIGTERM","outcome":"pass","validity":"current","pending_phase":n
+{"full_name":"cursor S24 stops the live child when its output transport fails","outcome":"pass","validity":"current","pending_phase":null}
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"fail","validity":"current","pending_phase":null}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"fail","validity":"current","pending_phase":
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"fail","validity":"current","pending_phase":null}
+Revision: 1
+Known failures: 3
+Affected checks: 36 passed, 0 running, 0 queued
+      Tests  3 passed | 35 skipped (38)
+--- C. same tree, plain npx vitest run above; Squeal still says:
+Known failures: 3
+  FAIL  [server] packages/cezar/src/core/runner-shutdown-parity.test.ts > runner shutdown parity (hearsay-tools/cezarion#843) > cursor S26 the session leader leads its own process group
+        ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-aqh94F/cez-shutdown-cursor-8X55kD/leftover-group.pid'
+        at packages/cezar/src/core/runner-shutdown-parity.test.ts:56:96, observed at revision 0, current
+  FAIL  [server] packages/cezar/src/core/runner-shutdown-parity.test.ts > runner shutdown parity (hearsay-tools/cezarion#843) > cursor S27 stop ends the leader's process group but not a setsid child
+        ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-aqh94F/cez-shutdown-cursor-QqNRZT/leftover-group.pid'
+        at packages/cezar/src/core/runner-shutdown-parity.test.ts:56:96, observed at revision 0, current
+  FAIL  [server] packages/cezar/src/core/runner-shutdown-parity.test.ts > runner shutdown parity (hearsay-tools/cezarion#843) > cursor S28 end escalation reaches the whole process group
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq

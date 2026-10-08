@@ -1,0 +1,116 @@
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq
+
+Revision: 0
+daemon pid=2434939 2434939 2434939 ? cwd=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq TMPDIR=TMPDIR=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4
+--- status: 1. bootstrap at 5974ec91 (mock has no leftover branch)
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision
+Worktree: /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq (HEAD d28bff0, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 2 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+--- process ids: bootstrap run, mock at 5974ec91
+1876642 1269002 1876642 1876642 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.
+2083779 1269002 2083779 2083779 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/squeal/squeal/0.1.14/dist/cli/squeal
+2116890 1269002 2116890 2116890 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.
+2117625 1269002 2117625 2117625 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/squeal/squeal/0.1.14/dist/cli/squeal
+2117833 1269002 2117833 2117833 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/squeal/squeal/0.1.14/dist/cli/squeal
+2118660 1269002 2118660 2118660 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/squeal/squeal/0.1.14/dist/cli/squeal
+2120809 1269002 2120809 2120809 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/squeal/squeal/0.1.14/dist/cli/squeal
+2160381 3178788 3178788 3178788 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/ceza
+2160408 3178788 3178788 3178788 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/ceza
+2331232 1269002 2331232 2331232 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/squeal/squeal/0.1.14/dist/cli/squeal
+2408627 2118660 2118660 2118660 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2419654 1269002 2419654 2419654 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.
+2431160 2117833 2117833 2117833 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2431169 2117833 2117833 2117833 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2433423 2117625 2117625 2117625 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2434939 1269002 2434939 2434939 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/projects/squeal/.ai/cezar/worktrees/795cd820-34ba-4e78-aed
+2436649 2434939 2434939 2434939 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2436899 2433423 2117625 2117625 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2438288 2116890 2116890 2116890 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2438296 2116890 2116890 2116890 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/sque
+2438377 2438278 2438377 2438377 ?        node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/435f4dcc-8f6c-4076-86f6-3226
+2438404 1269002 2438404 2438404 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/squeal-e2e-mgidDn/plugin/dist/cli/squeal.mjs daemon /tmp/squeal-e
+2438493 1269002 2438493 2438493 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/squeal-e2e-3hczlf/plugin/dist/cli/squeal.mjs daemon /tmp/squeal-e
+3178788 1269002 3178788 3178788 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.codex/plugins/cache/squeal/squeal/0.1.24/dist/cli/squeal.
+3974271 1269002 3974271 3974271 ?        /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.codex/plugins/cache/squeal/squeal/0.1.31/dist/cli/squeal.
+--- status: 2. mock-cursor-print.mjs replaced by its 6b660859 version, nothing else
+Revision: 1
+Known failures: 0
+Affected checks: 39 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at revision 1; last completed at revision 0
+Worktree: /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq (HEAD d28bff0, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+forced run 1: Known failures: 0
+forced run 1: Affected checks: 39 passed, 0 running, 0 queued
+forced run 2: Known failures: 0
+forced run 2: Affected checks: 39 passed, 0 running, 0 queued
+forced run 3: Known failures: 0
+forced run 3: Affected checks: 39 passed, 0 running, 0 queued
+forced run 4: Known failures: 0
+forced run 4: Affected checks: 39 passed, 0 running, 0 queued
+forced run 5: Known failures: 0
+forced run 5: Affected checks: 39 passed, 0 running, 0 queued
+forced run 6: Known failures: 0
+forced run 6: Affected checks: 39 passed, 0 running, 0 queued
+forced run 7: Known failures: 0
+forced run 7: Affected checks: 39 passed, 0 running, 0 queued
+forced run 8: Known failures: 0
+forced run 8: Affected checks: 39 passed, 0 running, 0 queued
+forced run 9: Known failures: 0
+forced run 9: Affected checks: 39 passed, 0 running, 0 queued
+forced run 10: Known failures: 0
+forced run 10: Affected checks: 39 passed, 0 running, 0 queued
+--- status: 3. after 10 forced runs with the fixed mock
+Revision: 1
+Known failures: 0
+Affected checks: 39 passed, 0 running, 0 queued
+Full-suite checkpoint: completed at revision 1
+Worktree: /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq (HEAD d28bff0, dirty at revision 1)
+Daemon: running, last heartbeat 3 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+--- status: 4. inputs declared, mock back at 5974ec91
+Revision: 2
+Known failures: 3
+  FAIL  [server] packages/cezar/src/core/runner-shutdown-parity.test.ts > runner shutdown parity (hearsay-tools/cezarion#843) > cursor S26 the session leader leads its own process group
+        ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-zzBw5K/cez-shutdown-cursor-xkldAx/leftover-group.pid'
+        at packages/cezar/src/core/runner-shutdown-parity.test.ts:56:96, observed at revision 2, current
+  FAIL  [server] packages/cezar/src/core/runner-shutdown-parity.test.ts > runner shutdown parity (hearsay-tools/cezarion#843) > cursor S27 stop ends the leader's process group but not a setsid child
+        ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-zzBw5K/cez-shutdown-cursor-qX1i2V/leftover-group.pid'
+        at packages/cezar/src/core/runner-shutdown-parity.test.ts:56:96, observed at revision 2, current
+  FAIL  [server] packages/cezar/src/core/runner-shutdown-parity.test.ts > runner shutdown parity (hearsay-tools/cezarion#843) > cursor S28 end escalation reaches the whole process group
+        ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-zzBw5K/cez-shutdown-cursor-tlDlxo/leftover-group.pid'
+        at packages/cezar/src/core/runner-shutdown-parity.test.ts:56:96, observed at revision 2, current
+Affected checks: 36 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at revision 2; last completed at revision 1
+Worktree: /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq (HEAD d28bff0, dirty at revision 2)
+Daemon: running, last heartbeat 4 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-08T12:40:31.706Z, revision 2: squeal.config.json changed; policy reloaded
+--- status: 5. inputs declared, mock at 6b660859 again
+Revision: 3
+Known failures: 0
+Affected checks: 39 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at revision 3; last completed at revision 1
+Worktree: /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq (HEAD d28bff0, dirty at revision 3)
+Daemon: running, last heartbeat 3 s ago
+Inherited: 0 current results
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-08T12:40:31.706Z, revision 2: squeal.config.json changed; policy reloaded
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4/cezar-sq

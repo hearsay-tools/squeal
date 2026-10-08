@@ -1,0 +1,24 @@
+shell-6b66 run=1 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=2 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=3 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=4 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=5 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=6 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=7 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=8 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=9 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+shell-6b66 run=10 sid/pgid/tty=[2230465 2230517 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=1 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=2 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=3 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=4 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=5 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=6 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=7 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=8 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=9 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-6b66 run=10 sid/pgid/tty=[2281042 2281042 ?] tmpdir=/home/agent/projects/squeal/.ai/cezar/tmp/795cd820-34ba-4e78-aedc-f68caa2193e4  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-notmpdir-6b66 run=1 sid/pgid/tty=[2409967 2409967 ?] tmpdir=unset  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-notmpdir-6b66 run=2 sid/pgid/tty=[2409967 2409967 ?] tmpdir=unset  Tests 3 passed | 35 skipped (38) enoent=0
+setsid-notmpdir-6b66 run=3 sid/pgid/tty=[2409967 2409967 ?] tmpdir=unset  Tests 3 passed | 35 skipped (38) enoent=0
+68.47 54.81 29.94 16/2822 2429282
