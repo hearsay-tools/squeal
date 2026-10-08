@@ -1,0 +1,6 @@
+{
+  "name": "spawn-cli",
+  "private": true,
+  "type": "module",
+  "bin": { "spawn-cli": "bin/cli.mjs" }
+}
