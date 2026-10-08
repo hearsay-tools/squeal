@@ -142,14 +142,22 @@ export class SlowTier {
       return null;
     }
     if (this.host.fastPending()) return null;
-    const idle = consumersIdle(context.store, context.worktreeId, context.now());
-    const runAll = ledger.checkpoints.active?.record.kind === "run-all";
-    const ref = queued.find(
-      (r) => idle || this.#requested || (runAll && ledger.checkpoints.idFor(r) !== null),
-    );
+    const triggered = this.#trigger(context, ledger);
+    const ref = queued.find(triggered);
     if (ref !== undefined) return ref;
     this.#arm();
     return null;
+  }
+
+  /**
+   * Under the lock: whether a trigger lets a slow file run now. Idle or absent
+   * consumers, an open `run --slow` request, or the file's open `run --all`
+   * checkpoint.
+   */
+  #trigger(context: SchedulerContext, ledger: Ledger): (ref: TestFileRef) => boolean {
+    const idle = consumersIdle(context.store, context.worktreeId, context.now());
+    const runAll = ledger.checkpoints.active?.record.kind === "run-all";
+    return (ref) => idle || this.#requested || (runAll && ledger.checkpoints.idFor(ref) !== null);
   }
 
   /** The load guard (D3) with the pass's remaining budget; the load it runs under at the bound. */
@@ -180,12 +188,15 @@ export class SlowTier {
 
   /**
    * Under the lock, after the slot and the guard: the one-file tier, unless
-   * fast work arrived meanwhile, the file left the queue or class, or the
-   * store now holds a result that may stand for it (`Ledger.lookup`).
+   * fast work arrived meanwhile, the file left the queue or class, its
+   * trigger is gone (a consumer entered a turn during the wait; the file
+   * stays queued and the pass keeps its budget), or the store now holds a
+   * result that may stand for it (`Ledger.lookup`).
    */
   #select(ref: TestFileRef, ranUnderLoad: number | null): Tier | null {
     const { context, ledger } = this.host.started();
     if (this.host.fastPending() || !ledger.queue.has(ref) || !ledger.queue.isSlow(ref)) return null;
+    if (!this.#trigger(context, ledger)(ref)) return null;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     const checkpointId = ledger.checkpoints.idFor(ref);
