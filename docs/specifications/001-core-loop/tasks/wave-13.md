@@ -118,3 +118,15 @@ Known noise: Squeal sessions started before 0.1.41 report false observe-test FAI
 Use /worker. After 001-149's review.
 
 001-140's remaining slice (c), in `tasks/001-140/notes.md`: `VitestAdapter.#serial` (`src/runners/vitest/adapter.ts`) puts `invalidate` without a recreate, `affected`, `closure` and enumeration behind any `run()` in flight, so while a Vitest tier runs every revision's runner part waits, a node:test-only one included (003 lessons defect 2, cezar r4). Brief to be written after the review, with 001-140's findings on `config.related` and on what `run()` and a recreate must exclude, and 001-146's `sources.ts`.
+
+## 001-151 every Vitest project's server is stamped, so no transient transform is stored as current
+
+Use /worker. Shape: repair. From `reviews/wave-13.md` B2 (001-149; the report lands on `cez/96885322` and then main, read it when it is there). Agreed with the 002/003/004 coordinator: limited to `src/runners/vitest/sources.ts` and the plugin wiring lines in `src/runners/vitest/adapter.ts`; 004-18 is changing `adapter.ts` for a second (slow) Vitest instance, and whichever lands second rebases.
+
+The defect (proven by the reviewer with the real adapter and scheduler, `observe.runtimeInputs: true`): 001-146's `SourceStamps` Vite plugin goes in through `createVitest`'s root overrides, so a project that has its own config file (for example `vitest.unit.config.ts` in a `projects` list) has a Vite server without it. A transform taken during `closure()` while the file briefly held other (passing) bytes, then restored to failing bytes, was stored as file and test current PASS; a fresh adapter reports FAIL. Root config, inline projects, a rename replacement and a symlink target were checked and are fine.
+
+Outcome: every Vite server a Vitest instance creates for a project, whatever its config source, records the bytes it read and is checked before each run and in `invalidate()`, as 001-146 intended; the plugin attaches per instance, so a second Vitest instance (004-18's slow lane) is covered too.
+
+Own: `src/runners/vitest/sources.ts`, the plugin wiring in `src/runners/vitest/adapter.ts`, tests under `test/runners/vitest/` and `test/integration/`, D4 if its paragraph on the bytes Vite read changes. Do not run `npm run build`.
+
+Done when: the reviewer's probe, as a test with a project configured through its own config file, fails without the fix and passes with it; 001-146's tests and the root, inline-project, rename and symlink controls still pass; the report says how the plugin reaches each project's server and that it attaches per Vitest instance.
