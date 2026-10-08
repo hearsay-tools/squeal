@@ -477,6 +477,8 @@ class TierScheduler implements Scheduler {
   /** A tier's error: the pump stops with a note until the next batch or request. */
   #stall(error: unknown): void {
     this.#stalled = true;
+    // Only a batch or request after the error starts the pump again.
+    this.#asked = false;
     this.#note(`scheduler stopped running tiers: ${String(error)}`);
     this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
     this.#notify();
