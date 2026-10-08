@@ -2,7 +2,7 @@
 
 ## What the recorder sees (Node 24.21.0, measured)
 
-One line per resolved edge, now `{"parent","url","specifier"}`:
+One line per resolved edge, now `{"parent","url","specifier"}`, and since 003-39 `"preload":true` on every edge resolved before the thread's entry point:
 
 | Load | `parent` | `specifier` |
 | --- | --- | --- |
