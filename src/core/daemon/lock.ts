@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { setTimeout as sleep } from "node:timers/promises";
 import { isBusy } from "../store/index.js";
 import type { AbsolutePath } from "../types/index.js";
 
@@ -21,14 +22,85 @@ export interface DaemonLock {
  * up at once.
  */
 export function acquireDaemonLock(path: AbsolutePath): DaemonLock | null {
+  const db = lockDatabase(path);
+  let lock: DaemonLock | null;
+  try {
+    lock = tryLock(db);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  if (lock === null) db.close();
+  return lock;
+}
+
+/** How a lock wait went when it did not take the lock. */
+export type LockWaitEnd = "gave-up" | "timed-out";
+
+export interface LockWait {
+  readonly timeoutMs: number;
+  /** True when waiting on is pointless (another daemon took over); asked every `checkMs`. */
+  readonly giveUp: () => boolean;
+  /** Default 10 ms. */
+  readonly pollMs?: number;
+  /** Default 250 ms. */
+  readonly checkMs?: number;
+}
+
+/**
+ * Task 001-130: the successor a step-down spawns retries the lock every
+ * `pollMs` on one connection until it holds it, `giveUp` says so, or
+ * `timeoutMs` passed. SQLite has no blocking lock, so a daemon spawned in
+ * the moment between the holder's release and the next retry can still win.
+ */
+export async function awaitDaemonLock(
+  path: AbsolutePath,
+  wait: LockWait,
+): Promise<DaemonLock | LockWaitEnd> {
+  const db = lockDatabase(path);
+  const deadline = performance.now() + wait.timeoutMs;
+  let checkAt = 0;
+  try {
+    for (;;) {
+      const lock = tryLock(db);
+      if (lock !== null) return lock;
+      const at = performance.now();
+      if (at >= checkAt) {
+        if (wait.giveUp()) break;
+        checkAt = at + (wait.checkMs ?? 250);
+      }
+      if (at >= deadline) {
+        db.close();
+        return "timed-out";
+      }
+      await sleep(Math.min(wait.pollMs ?? 10, deadline - at));
+    }
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  db.close();
+  return "gave-up";
+}
+
+function lockDatabase(path: AbsolutePath): DatabaseSync {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
   } catch (error) {
     db.close();
+    throw error;
+  }
+  return db;
+}
+
+/** `BEGIN EXCLUSIVE` on `db`: the lock, or `null` when another process holds it. */
+function tryLock(db: DatabaseSync): DaemonLock | null {
+  try {
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
     if (isBusy(error)) return null;
     throw error;
   }

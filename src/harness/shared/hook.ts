@@ -1,4 +1,5 @@
 import type { EnsureDaemonOptions } from "../../core/daemon/ensure.js";
+import { squealVersion } from "../../core/daemon/version.js";
 import type {
   AbsolutePath,
   EnsureDaemonResult,
@@ -43,6 +44,11 @@ export interface HookDeps {
    * Default: `findHarnessProcess` from this hook's parent.
    */
   readonly harnessProcess?: () => HarnessProcess | null;
+  /**
+   * This hook's Squeal version: recorded with each registration and compared
+   * with the daemon's (task 001-130, defect 26). Default `squealVersion()`.
+   */
+  readonly squealVersion?: string;
 }
 
 /** Every synchronous hook in hooks.json has `timeout: 2`; Claude Code kills it after this. */
@@ -60,6 +66,7 @@ export async function withContext<T>(
     ...(deps.now === undefined ? {} : { now: deps.now }),
     ...(deps.pollIntervalMs === undefined ? {} : { pollIntervalMs: deps.pollIntervalMs }),
     harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
+    squealVersion: deps.squealVersion ?? squealVersion(),
     ...overrides,
   };
   const context = openContext(input, location, options);

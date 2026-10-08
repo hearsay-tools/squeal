@@ -10,7 +10,8 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
-import { acquireDaemonLock, type DaemonLock } from "./lock.js";
+import { recordedDaemon } from "./ensure.js";
+import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
 import {
   type DaemonScratch,
@@ -47,6 +48,7 @@ export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
 export async function openDaemon(
   rootArgument: string,
   now: () => EpochMs,
+  awaitLockMs?: number,
 ): Promise<OpenedDaemon | DaemonExit> {
   let root: AbsolutePath;
   let commonDir: AbsolutePath;
@@ -66,13 +68,20 @@ export async function openDaemon(
 
   // Before the store: a loser never runs `integrity_check` (review S8). The
   // lock file needs only the store directory.
-  let lock: DaemonLock | null;
+  let lock: DaemonLock | null | LockWaitEnd;
   try {
-    lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
+    const path = lockFileFor(commonDir, worktreeId);
+    lock = acquireDaemonLock(path);
+    if (lock === null && awaitLockMs !== undefined) {
+      lock = await awaitDaemonLock(path, { timeoutMs: awaitLockMs, giveUp: takenOver(root) });
+    }
   } catch (error) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
   }
-  if (lock === null) return exit("lost-lock", 0, `another daemon serves ${root}`);
+  if (lock === null || lock === "gave-up") {
+    return exit("lost-lock", 0, `another daemon serves ${root}`);
+  }
+  if (lock === "timed-out") return lockWaitTimedOut(commonDir, worktreeId, now, awaitLockMs ?? 0);
 
   let store: Store;
   try {
@@ -109,6 +118,46 @@ export async function openDaemon(
     writeNote(store, worktreeId, { at: now(), revision: null, text: refusal }, () => {});
   }
   return { root, commonDir, worktreeId, store, lock, scratch, leftovers };
+}
+
+/**
+ * Task 001-130, the successor's lock wait (`squeal daemon --await-lock`):
+ * waiting on is pointless once a daemon other than the one first seen in
+ * the store records itself (another hook's spawn won the lock), or the root
+ * is gone.
+ */
+function takenOver(root: AbsolutePath): () => boolean {
+  let first: EpochMs | null | undefined;
+  return () => {
+    if (!existsSync(root)) return true;
+    const startedAt = recordedDaemon(root)?.startedAt ?? null;
+    if (first === undefined) first = startedAt;
+    return startedAt !== null && startedAt !== first;
+  };
+}
+
+/**
+ * The successor gives up: the daemon it waited for still holds the lock. A
+ * note says so, written without the lock, beside the serving daemon's; the
+ * next hook boundary starts a daemon once the lock is free.
+ */
+function lockWaitTimedOut(
+  commonDir: AbsolutePath,
+  worktreeId: WorktreeId,
+  now: () => EpochMs,
+  waitedMs: number,
+): DaemonExit {
+  const text = `a successor daemon gave up: the lock was still held after ${waitedMs} ms; the next hook boundary starts one`;
+  try {
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS });
+    if (!isStoreOpenFailure(store)) {
+      writeNote(store, worktreeId, { at: now(), revision: null, text }, () => {});
+      store.close();
+    }
+  } catch {
+    // The exit message still says it.
+  }
+  return exit("lock-wait-timed-out", 0, text);
 }
 
 /**

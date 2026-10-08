@@ -179,8 +179,10 @@ export type DaemonExitReason =
   | "signal"
   /** The install went under the running daemon (a reinstall); the next hook starts a fresh one (task 001-113). */
   | "reinstalled"
-  /** A hook newer than this daemon asked it to step down; the next hook starts a current one (defect 26). */
-  | "superseded";
+  /** A hook newer than this daemon asked it to step down; the hook spawned its successor (defect 26, task 001-130). */
+  | "superseded"
+  /** A successor (`squeal daemon --await-lock`) found the lock still held when its wait ended (task 001-130). */
+  | "lock-wait-timed-out";
 
 export interface DaemonExit {
   readonly reason: DaemonExitReason;

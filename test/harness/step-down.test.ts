@@ -102,6 +102,27 @@ describe("stepDownIfOlder (hook side)", () => {
     expect(d.asked).toEqual([]);
   });
 
+  it("asks nothing while another session registered with an older version, or with none", async () => {
+    const d = await daemonAt(current);
+    const older = record(d.socketPath, "0.1.24");
+    for (const others of [["0.1.30"], [null], ["0.1.31", null], ["0.0.0-unknown"]]) {
+      expect(await stepDownIfOlder(older, Date.now(), "0.1.31", others)).toBe(false);
+    }
+    expect(d.asked).toEqual([]);
+    expect(await stepDownIfOlder(older, Date.now(), "0.1.31", ["0.1.31", "0.2.0"])).toBe(true);
+    expect(d.asked).toHaveLength(1);
+  });
+
+  it("is false when the daemon answers that it keeps running", async () => {
+    const d = await daemonAt(() => ({
+      ok: true,
+      type: "step-down",
+      squealVersion: "0.1.40",
+      steppingDown: false,
+    }));
+    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(false);
+  });
+
   it("sends stop to a daemon from before the request", async () => {
     // What a 0.1.32 daemon answers: protocol.ts before this row.
     const d = await daemonAt((request) =>
