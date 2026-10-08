@@ -27,6 +27,9 @@ export function parseRequest(line: string): DaemonRequest | string {
         return '"force" must be true or false';
       }
       return { type: "run-all", force: request.force === true };
+    case "step-down":
+      if (typeof request.version !== "string") return '"version" must be a string';
+      return { type: "step-down", version: request.version };
     case "run-all-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-all-status", requestId: request.requestId };

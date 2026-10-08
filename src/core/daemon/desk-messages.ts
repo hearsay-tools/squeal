@@ -28,4 +28,5 @@ export type FromDesk =
   | { readonly type: "activity" }
   | { readonly type: "run-all"; readonly id: string; readonly force: boolean }
   | { readonly type: "stop" }
+  | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };

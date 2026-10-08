@@ -18,6 +18,7 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
   readonly onStop: () => void;
+  readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
   readonly onFailure: (error: Error) => void;
 }
@@ -116,6 +117,9 @@ async function inWorker(
         case "stop":
           events.onStop();
           return;
+        case "step-down":
+          events.onStepDown(message.version);
+          return;
         case "closed":
           closed?.();
           return;
@@ -163,6 +167,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestFullSuite: events.requestFullSuite,
       onActivity: events.onActivity,
       onStop: events.onStop,
+      onStepDown: events.onStepDown,
     }),
   );
   return {

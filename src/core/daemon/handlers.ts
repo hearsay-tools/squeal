@@ -11,6 +11,7 @@ import {
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
 import type { DaemonHandler } from "./server.js";
+import { isNewerVersion } from "./version.js";
 
 /** `run-all` requests remembered for `run-all-status`; older ones are dropped. */
 const MAX_REQUESTS = 32;
@@ -30,6 +31,11 @@ export interface HandlerContext {
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
   readonly onStop: () => void;
+  /**
+   * A hook at `version`, newer than this daemon, asked it to step down
+   * (defect 26). Called after the answer is built, like `onStop`.
+   */
+  readonly onStepDown: (version: string) => void;
 }
 
 interface RunAllState {
@@ -98,6 +104,17 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
       case "stop":
         context.onStop();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
+      case "step-down": {
+        const steppingDown = isNewerVersion(request.version, context.squealVersion);
+        if (steppingDown) context.onStepDown(request.version);
+        return {
+          schemaVersion: PAYLOAD_SCHEMA_VERSION,
+          ok: true,
+          type: "step-down",
+          squealVersion: context.squealVersion,
+          steppingDown,
+        };
+      }
     }
   };
 }

@@ -52,12 +52,27 @@ export interface StopRequest {
   readonly type: "stop";
 }
 
+/**
+ * A hook whose Squeal version is newer than the daemon's (lessons, defect
+ * 26). A daemon older than `version` answers, lets a tier in flight finish
+ * and exits with reason `superseded`, so the next hook starts a current
+ * one; an equal or newer daemon answers and keeps running. A daemon from
+ * before this request answers "unknown request type", and the hook sends
+ * `stop` instead.
+ */
+export interface StepDownRequest {
+  readonly type: "step-down";
+  /** The hook's Squeal version. */
+  readonly version: string;
+}
+
 export type DaemonRequest =
   | PingRequest
   | NudgeRequest
   | RunAllRequest
   | RunAllStatusRequest
-  | StopRequest;
+  | StopRequest
+  | StepDownRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -99,6 +114,16 @@ export interface StopResponse {
   readonly type: "stop";
 }
 
+export interface StepDownResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "step-down";
+  /** The daemon's own version. */
+  readonly squealVersion: string;
+  /** True when the daemon is older than the request's version and exits. */
+  readonly steppingDown: boolean;
+}
+
 /** A request the daemon could not parse or does not know, or a `run-all-status` for an unknown id. */
 export interface DaemonErrorResponse {
   readonly schemaVersion: PayloadSchemaVersion;
@@ -111,6 +136,7 @@ export type DaemonResponse =
   | NudgeResponse
   | RunAllResponse
   | StopResponse
+  | StepDownResponse
   | DaemonErrorResponse;
 
 /**
@@ -152,7 +178,9 @@ export type DaemonExitReason =
   | "stop-requested"
   | "signal"
   /** The install went under the running daemon (a reinstall); the next hook starts a fresh one (task 001-113). */
-  | "reinstalled";
+  | "reinstalled"
+  /** A hook newer than this daemon asked it to step down; the next hook starts a current one (defect 26). */
+  | "superseded";
 
 export interface DaemonExit {
   readonly reason: DaemonExitReason;
