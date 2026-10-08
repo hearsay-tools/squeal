@@ -25,7 +25,10 @@
 // `{"t":file,"f":[...],"l":[...],"w":[...]}` to `<out>/<pid>-<thread>.ndjson`:
 // `f` read, stat'ed, loaded or executed, `l` listed, `w` written. Not only at
 // exit: Vitest stops a fork with SIGTERM and a thread with `terminate()`, and
-// neither runs an exit hook.
+// neither runs an exit hook. Also at once before a process or thread sends a
+// message (`process.send`, `MessagePort.postMessage`): a parent that stops it
+// on that message, as Vitest does after a file's results, stops it before the
+// next turn.
 //
 // Not in Node's internal threads: a synchronous resolve hook in an async
 // loader's hooks thread kills the process on Node 22 (003-30).
@@ -308,4 +311,20 @@ function install(settings) {
   }
 
   process.on("exit", flush);
+  const flushBefore = (target, name) => {
+    const original = target?.[name];
+    if (typeof original !== "function") return;
+    const wrapped = function (...args) {
+      try {
+        flush();
+      } catch {
+        // never the test's failure
+      }
+      return original.apply(this, args);
+    };
+    Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(original));
+    target[name] = wrapped;
+  };
+  flushBefore(workerThreads.MessagePort?.prototype, "postMessage");
+  flushBefore(process, "send");
 }
