@@ -1268,15 +1268,15 @@ var init_key_index = __esm({
        * once each test file whose project hash or segment moved, so no key
        * passes through a mix of old and new inputs (task 001-105).
        */
-      setInstalled(environments, dependenciesOf) {
+      setInstalled(environments2, dependenciesOf) {
         const moved = /* @__PURE__ */ new Set();
-        for (const [project, envHash] of environments) {
+        for (const [project, envHash] of environments2) {
           if (this.environments.get(project) !== envHash) moved.add(project);
           this.environments.set(project, envHash);
         }
         const changed = this.reverse.testFiles().filter((ref2) => {
           const keyed = this.keyed.get(testFileId(ref2));
-          if (!keyed || !environments.has(ref2.project)) return false;
+          if (!keyed || !environments2.has(ref2.project)) return false;
           const dependencies = dependenciesOf(ref2);
           if (dependencies === keyed.dependencies) return moved.has(ref2.project);
           keyed.dependencies = dependencies;
@@ -4556,13 +4556,13 @@ async function retryRunner(context, ledger) {
   settleFailures(ledger, failures, true, NOTHING_CHANGED);
 }
 async function readEnvironments(context, failures) {
-  const environments = await tryRunner(
+  const environments2 = await tryRunner(
     context,
     "environment",
     () => context.runner.environment(),
     (reason2) => failed(failures, null, reason2)
   );
-  return environments === null ? [] : context.keys.setEnvironments(environments);
+  return environments2 === null ? [] : context.keys.setEnvironments(environments2);
 }
 async function listTestFiles(context, ledger) {
   const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
@@ -5924,12 +5924,12 @@ var init_lockfiles = __esm({
        * dependencies enter its keys (D3, task 001-105). A lockfile several
        * projects share is read once.
        */
-      async set(environments) {
+      async set(environments2) {
         this.#projects.clear();
         this.#moved.clear();
         const read3 = /* @__PURE__ */ new Map();
         const keys = /* @__PURE__ */ new Map();
-        for (const environment of environments) {
+        for (const environment of environments2) {
           const root = environment.root === void 0 || environment.root === "" ? this.root : join27(this.root, environment.root);
           const lockfile = await this.#find(root);
           this.#projects.set(environment.project, { root, lockfile });
@@ -6101,22 +6101,22 @@ var init_keying = __esm({
        * runner files and each project's installed lockfile are hashed first; the
        * lockfile is looked up from the project's root (review N8).
        */
-      async setEnvironments(environments) {
+      async setEnvironments(environments2) {
         const { squealVersion: squealVersion2, env } = this.options;
         const policy = this.#policy;
         this.#environments.clear();
         this.#environmentFiles.clear();
-        for (const environment of environments) {
+        for (const environment of environments2) {
           this.#environments.set(environment.project, environment);
           for (const path of environment.files) this.#environmentFiles.add(path);
         }
-        this.#dependencies = await this.#lockfiles.set(environments);
+        this.#dependencies = await this.#lockfiles.set(environments2);
         const lockPaths = this.#lockfiles.paths();
         await this.track([...this.#environmentFiles, ...lockPaths]);
         await this.#watchIgnored(lockPaths);
         const hashOf2 = (path) => this.cache.hashOf(path);
         const hashes = /* @__PURE__ */ new Map();
-        for (const environment of environments) {
+        for (const environment of environments2) {
           const core = coreEnvironmentInputs({
             squealVersion: squealVersion2,
             installedDependencies: this.#dependencies.get(environment.project)?.environment ?? "none",
@@ -6960,7 +6960,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried) {
     (reason2) => failed(failures, null, reason2)
   );
   const recreated = new Set(invalidated?.recreatedProjects ?? []);
-  const environments = recreated.size > 0 || content.environment || retrying ? await tryRunner(
+  const environments2 = recreated.size > 0 || content.environment || retrying ? await tryRunner(
     context,
     "environment",
     () => runner.environment(),
@@ -7006,7 +7006,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried) {
     revision,
     retrying,
     failures,
-    environments,
+    environments: environments2,
     listed,
     direct: new Set((affected2?.direct ?? []).map(testFileId)),
     reresolved: [...reresolve.values()],
@@ -12163,16 +12163,18 @@ ${reason2}`,
     ...observed ? { observed: observed.filter((o) => kept(o.testFile)) } : {}
   };
 }
-function transformedFiles(vitest) {
-  const files = /* @__PURE__ */ new Set();
-  for (const project of vitest.projects) {
-    for (const environment of Object.values(project.vite.environments)) {
-      for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
-        if ([...modules].some((m) => cachedTransform(m) !== null)) files.add(file);
-      }
-    }
+function environments(vitest) {
+  return new Set(vitest.projects.flatMap((p) => Object.values(p.vite.environments)));
+}
+function cachedFiles2(environment) {
+  const files = [];
+  for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
+    if ([...modules].some((m) => cachedTransform(m) !== null)) files.push(file);
   }
   return files;
+}
+function transformedFiles(vitest) {
+  return new Set([...environments(vitest)].flatMap(cachedFiles2));
 }
 async function statOrNull3(file) {
   try {
@@ -12199,36 +12201,57 @@ var init_sources = __esm({
       paths;
       now;
       #stamps = /* @__PURE__ */ new Map();
+      /** The plugin containers whose `load` stamps. */
+      #attached = /* @__PURE__ */ new WeakSet();
+      /** Files cached by a container before it was attached: what it read is not known. */
+      #unknown = /* @__PURE__ */ new Set();
       /**
-       * A `pre` plugin whose `load` stamps the file and returns `null`, so Vite
-       * still loads it. The stat comes before this read and this read before
-       * Vite's, so a write after the stat moves the stat, and the check sees it.
+       * Review wave-13 B2: a plugin passed to `createVitest` reaches the root
+       * server and the inline projects sharing it, not a project with its own
+       * config file, which gets a Vite server of its own. So the stamp goes into
+       * the plugin container of every environment of every project server: its
+       * `load` stamps the file, then loads it as before. The stat comes before
+       * this read and this read before Vite's, so a write after the stat moves
+       * the stat, and the check sees it. Idempotent; `stale` attaches first, so
+       * a project server added later is stamped from its next load, and what it
+       * cached before is stale.
        */
-      plugin() {
-        return {
-          name: "squeal:source-stamps",
-          enforce: "pre",
-          load: async (id2) => {
-            const file = id2;
-            if (id2.includes("?") || id2.startsWith("\0") || !this.paths.isProjectFile(file)) return null;
-            const loadedAt = this.now();
-            const read3 = await this.#read(file);
-            if (read3 === null) this.#stamps.delete(file);
-            else this.#stamps.set(file, { ...read3, hashedAt: loadedAt, loadedAt });
-            return null;
-          }
-        };
+      attach(vitest) {
+        for (const environment of environments(vitest)) {
+          const container = environment.pluginContainer;
+          if (this.#attached.has(container)) continue;
+          this.#attached.add(container);
+          for (const file of cachedFiles2(environment)) this.#unknown.add(file);
+          const load = container.load.bind(container);
+          container.load = async (id2) => {
+            await this.#stamp(id2);
+            return load(id2);
+          };
+        }
+      }
+      async #stamp(id2) {
+        const file = id2;
+        if (id2.includes("?") || id2.startsWith("\0") || !this.paths.isProjectFile(file)) return;
+        const loadedAt = this.now();
+        const read3 = await this.#read(file);
+        this.#unknown.delete(file);
+        if (read3 === null) this.#stamps.delete(file);
+        else this.#stamps.set(file, { ...read3, hashedAt: loadedAt, loadedAt });
       }
       /**
        * The cached files, among those Vite read at or after `loadedSince`, whose
        * bytes on disk differ from the ones read, or which are gone. A file whose
-       * bytes are unchanged takes its new stat, so a touch is hashed once.
+       * bytes are unchanged takes its new stat, so a touch is hashed once. A
+       * file cached before its server was attached is stale until Vite reads it
+       * again.
        */
       async stale(vitest, loadedSince = 0) {
+        this.attach(vitest);
         const files = [...transformedFiles(vitest)].filter(
-          (file) => (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince
+          (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince
         );
         const moved = await mapConcurrent(files, async (file) => {
+          if (this.#unknown.has(file)) return true;
           const stamp = this.#stamps.get(file);
           if (!stamp) return false;
           const stat7 = await statOrNull3(file);
@@ -12333,18 +12356,15 @@ var init_adapter = __esm({
         const current2 = () => generation === this.#generation ? this.#collector : null;
         const env = { ...this.#childEnv, ...this.#observer.start().env };
         const sources = new SourceStamps(this.paths);
-        const vitest = await this.#node.createVitest(
-          "test",
-          {
-            root: this.paths.root,
-            watch: false,
-            reporters: [createSquealReporter(current2)],
-            update: "none",
-            includeTaskLocation: true,
-            ...Object.keys(env).length === 0 ? {} : { env }
-          },
-          { plugins: [sources.plugin()] }
-        );
+        const vitest = await this.#node.createVitest("test", {
+          root: this.paths.root,
+          watch: false,
+          reporters: [createSquealReporter(current2)],
+          update: "none",
+          includeTaskLocation: true,
+          ...Object.keys(env).length === 0 ? {} : { env }
+        });
+        sources.attach(vitest);
         this.#sources = sources;
         try {
           await vitest.standalone();
@@ -30328,7 +30348,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.49";
+  if (true) return "0.1.50";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
