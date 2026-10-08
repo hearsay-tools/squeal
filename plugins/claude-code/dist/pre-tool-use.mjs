@@ -558,9 +558,6 @@ function transitionKind(from, to) {
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
 
-// src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync } from "node:sqlite";
-
 // src/core/delivery/slots.ts
 var slot = (consumer) => `${consumer.sessionId}
 ${consumer.agentId}`;
@@ -837,6 +834,43 @@ function planDelta(input) {
   }
   const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
+}
+
+// src/core/waiter-lock/waiter-lock.ts
+import { DatabaseSync } from "node:sqlite";
+
+// src/core/delivery/harness-process.ts
+import { readFileSync as readFileSync3, readlinkSync } from "node:fs";
+function readProcStat(pid) {
+  let text;
+  try {
+    text = readFileSync3(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const open = text.indexOf("(");
+  const close = text.lastIndexOf(")");
+  const rest = text.slice(close + 2).split(" ");
+  const ppid = Number(rest[1]);
+  const startTime = Number(rest[19]);
+  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+    throw new Error(`unreadable /proc/${pid}/stat`);
+  }
+  return { comm: text.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
+}
+function pidNamespace() {
+  try {
+    return readlinkSync("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
+function harnessMetaKey(worktreeId) {
+  return `harness-process:${worktreeId}`;
+}
+function recordHarness(store, consumer, harness) {
+  writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
 }
 
 // src/core/store/connection.ts
@@ -2271,7 +2305,7 @@ function moveAside(database, at2) {
 }
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync3 } from "node:fs";
+import { readFileSync as readFileSync4 } from "node:fs";
 import { join as join6 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
@@ -2297,7 +2331,7 @@ function packed(commonDir, ref) {
 }
 function read2(path) {
   try {
-    return readFileSync3(path, "utf8").trim();
+    return readFileSync4(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -2566,6 +2600,23 @@ function trimmed(state, states, keys) {
   };
 }
 
+// src/core/delivery/expiry.ts
+function drop(store, consumer, at2) {
+  park(store, consumer, at2);
+  store.consumers.unregister(consumer);
+  forget(store, consumer);
+  store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
+}
+function departedMetaKey(worktreeId) {
+  return `departed:${worktreeId}`;
+}
+function forget(store, consumer) {
+  tellLiveness(store, consumer, null);
+  tellRevision(store, consumer, null);
+  writeTurn(store, consumer, null);
+  recordHarness(store, consumer, null);
+}
+
 // src/core/delivery/delivery.ts
 var DEFAULT_POLL_INTERVAL_MS = 250;
 var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
@@ -2674,6 +2725,7 @@ function createDelivery(store, options) {
       }
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
+      recordHarness(store, consumer, options.harnessProcess?.() ?? null);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
@@ -2682,11 +2734,7 @@ function createDelivery(store, options) {
       };
     }),
     unregister: async (consumer) => {
-      store.transaction(() => {
-        park(store, consumer, now());
-        store.consumers.unregister(consumer);
-        forget(store, consumer);
-      });
+      store.transaction(() => drop(store, consumer, now()));
     },
     onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
     peek: async (consumer, { kinds }) => {
@@ -2719,11 +2767,6 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-}
-function forget(store, consumer) {
-  tellLiveness(store, consumer, null);
-  tellRevision(store, consumer, null);
-  writeTurn(store, consumer, null);
 }
 
 // src/core/delivery/collapse.ts
@@ -3026,7 +3069,8 @@ function openContext(input, location2, options = {}) {
     const delivery = createDelivery(store, {
       status: createStatusBuilder(store, { now }),
       now,
-      ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs }
+      ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs },
+      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess }
     });
     return { ...location2, store, delivery, consumer, close: () => store.close() };
   } catch (error) {
@@ -3035,11 +3079,46 @@ function openContext(input, location2, options = {}) {
   }
 }
 
+// src/harness/shared/harness-process.ts
+var SKIPPED = /* @__PURE__ */ new Set([
+  "sh",
+  "dash",
+  "bash",
+  "zsh",
+  "ksh",
+  "mksh",
+  "fish",
+  "env",
+  "nohup",
+  "timeout"
+]);
+var MAX_HOPS = 4;
+function findHarnessProcess(lookup = {}) {
+  const read3 = lookup.read ?? readProcStat;
+  const namespace = (lookup.namespace ?? pidNamespace)();
+  if (namespace === null) return null;
+  let pid = lookup.ppid ?? process.ppid;
+  try {
+    for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
+      const stat = read3(pid);
+      if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
+      if (!SKIPPED.has(stat.comm)) {
+        return { pid, startTime: stat.startTime, pidNamespace: namespace };
+      }
+      pid = stat.ppid;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 // src/harness/shared/hook.ts
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
     ...deps.pollIntervalMs === void 0 ? {} : { pollIntervalMs: deps.pollIntervalMs },
+    harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
     ...overrides
   };
   const context = openContext(input, location2, options);
@@ -3081,7 +3160,7 @@ var preToolUse = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync4 } from "node:fs";
+import { readFileSync as readFileSync5 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // src/harness/claude-code/input.ts
@@ -3150,7 +3229,7 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync4(0, "utf8");
+    stdin = readFileSync5(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {
