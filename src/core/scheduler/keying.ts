@@ -89,6 +89,8 @@ export class WorktreeKeys {
   readonly #observed: ObservedSets;
   /** Entry names of listed directories, from the tracked files. */
   readonly #listings = new Listings(() => this.#listedFiles());
+  /** Paths `track` first hashed since `beginRun`: no hash from before the run holds them (task 001-134). */
+  #firstHashed = new Set<RelativePath>();
   #policy: Policy;
   #isDeclared: (path: RelativePath) => boolean;
 
@@ -372,6 +374,20 @@ export class WorktreeKeys {
     if (this.#extra.size > before) this.options.onExtraFiles(this.extraFiles());
   }
 
+  /** A tier starts: paths hashed from here on hold no value from before its run. */
+  beginRun(): void {
+    this.#firstHashed = new Set();
+  }
+
+  /**
+   * True when `track` first hashed `path` after the run began: the stat cache
+   * held neither its hash nor its absence when the run started, so what the
+   * run read cannot be compared with anything (D5 as amended, task 001-134).
+   */
+  firstHashedDuringRun(path: RelativePath): boolean {
+    return this.#firstHashed.has(path);
+  }
+
   /** Gitignored paths watched anyway (D2), sorted. */
   extraFiles(): RelativePath[] {
     return [...this.#extra].sort();
@@ -412,6 +428,7 @@ export class WorktreeKeys {
     if (paths.length === 0) return;
     const { root, objectFormat, hasher, store, worktreeId } = this.options;
     await seedStatCache(this.cache, root, paths, { objectFormat, hasher });
+    for (const path of paths) this.#firstHashed.add(path);
     store.transaction(() => this.cache.flush(store.fileHashes, worktreeId));
   }
 
