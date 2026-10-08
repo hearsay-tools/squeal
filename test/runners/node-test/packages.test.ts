@@ -104,18 +104,16 @@ const imports = (packages: RunnerPackages | undefined) => names(packages?.import
 describe("node-test adapter: per-package dependency keys (003-22)", () => {
   it("reports the first-hop packages of each closure and of the environment", async () => {
     const fx = await open();
-    expect(imports((await fx.adapter.closure(ref("test/ext.test.ts"))).packages)).toEqual([
-      "test>ext",
-    ]);
+    expect(imports((await fx.adapter.closure(ref("test/ext.test.ts"))).packages)).toEqual([">ext"]);
     expect(imports((await fx.adapter.closure(ref("test/helper.test.ts"))).packages)).toEqual([
-      "lib>helper-pkg",
+      ">helper-pkg",
     ]);
     const plain = (await fx.adapter.closure(ref("test/plain.test.ts"))).packages;
     expect(plain).toEqual({ imports: [], builtins: ["assert", "test"] });
     const spawn = (await fx.adapter.closure(ref("test/spawn.test.ts"))).packages;
     expect(spawn?.builtins).toContain("child_process");
     const [environment] = await fx.adapter.environment();
-    expect(imports(environment?.packages)).toEqual([">tsx", "scripts>setup-pkg"]);
+    expect(imports(environment?.packages)).toEqual([">setup-pkg", ">tsx"]);
     expect(names(environment?.packages?.runner)).toEqual([">tsx"]);
   });
 

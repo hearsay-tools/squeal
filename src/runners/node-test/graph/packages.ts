@@ -32,6 +32,27 @@ export function packageImport(from: RelativePath, specifier: string): PackageImp
   return specifier === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
 }
 
+const NODE_MODULES = "node_modules/";
+
+/**
+ * The package an installed file belongs to, from its worktree-relative path
+ * (task 003-33, review wave-3 B1), as Vitest's `installedEntry` has it: the
+ * name after the last `node_modules/`, scoped or not, looked up from the
+ * directory holding that `node_modules`; its own `package.json` marked.
+ * `null` for a file under `node_modules` in no package (`.bin`, `.cache`),
+ * which the caller reports as {@link UNNAMED}.
+ */
+export function installedPackage(path: RelativePath): PackageImport | null {
+  const at = path.lastIndexOf(NODE_MODULES);
+  if (at === -1 || (at > 0 && path[at - 1] !== "/")) return null;
+  const rest = path.slice(at + NODE_MODULES.length);
+  const name = packageName(rest);
+  // `node_modules/@scope` itself, as a glob can match it, is no package.
+  if (name === null || (name.startsWith("@") && !name.includes("/"))) return null;
+  const from = path.slice(0, Math.max(0, at - 1));
+  return rest === `${name}/package.json` ? { from, name, manifest: true } : { from, name };
+}
+
 /** First-hop packages and builtins gathered over modules, duplicates dropped. */
 export class PackageSet {
   private readonly imports = new Map<string, PackageImport>();

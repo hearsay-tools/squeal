@@ -4,7 +4,10 @@ import { codeAt } from "./code-ranges.js";
 /** The lexer compiles its WebAssembly once; await before {@link parseModule}. */
 export const parserReady: Promise<void> = init();
 
-/** One specifier of a module: an import, a `require`, or a template-literal `import()` glob. */
+/**
+ * One specifier of a module: an import, a `require`, a template-literal
+ * `import()` glob, or a builtin `process.getBuiltinModule` loads, as `node:<name>`.
+ */
 export interface ParsedSpecifier {
   readonly specifier: string;
   readonly kind: "import" | "require" | "glob";
@@ -22,7 +25,8 @@ export interface ParsedModule {
   /**
    * The module loads something no specifier names (task 003-22, spec 001 D3
    * case 2): a computed `import()` or `require()`, `require.resolve` but of
-   * one relative literal, `import.meta.resolve`, or a source the lexer
+   * one relative literal, `import.meta.resolve`, `createRequire`, a computed
+   * `process.getBuiltinModule` (task 003-33), or a source the lexer
    * rejects. It can reach any installed package.
    */
   readonly unnamed: boolean;
@@ -37,11 +41,14 @@ const REQUIRE = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
 const REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
 /**
  * A resolution by hand: `require.resolve` but of one relative string literal,
- * which names a file as Vitest's scan has it (review wave-11d S3), and
- * `import.meta.resolve`.
+ * which names a file as Vitest's scan has it (review wave-11d S3),
+ * `import.meta.resolve`, and `createRequire` however `module` was reached,
+ * as Vitest's scan has it (review wave-3 B2: through `process.getBuiltinModule`).
  */
 const RESOLVE =
-  /(?<![\w$.])require\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bimport\s*\.\s*meta\s*\.\s*resolve\b/g;
+  /(?<![\w$.])require\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bimport\s*\.\s*meta\s*\.\s*resolve\b|\bcreateRequire\b/g;
+/** `process.getBuiltinModule(...)`, with its argument when that is one string literal. */
+const GET_BUILTIN = /\bgetBuiltinModule\s*\(\s*(?:(["'])([^"'\n]+)\1\s*\))?/g;
 
 /**
  * Specifiers of one module (spec 003 D3): es-module-lexer for `import`,
@@ -97,6 +104,18 @@ export function parseModule(source: string, name: string): ParsedModule {
       );
       unnamed = true;
     }
+  }
+  // Review wave-3 B2: a builtin loaded by name, which no import names; a computed one may be `module`.
+  for (const match of source.matchAll(GET_BUILTIN)) {
+    code ??= codeAt(source);
+    if (!code(match.index)) continue;
+    const name = match[2];
+    if (name === undefined) unnamed = true;
+    else
+      specifiers.push({
+        specifier: name.startsWith("node:") ? name : `node:${name}`,
+        kind: "require",
+      });
   }
   for (const match of source.matchAll(RESOLVE)) {
     if (unnamed) break;
