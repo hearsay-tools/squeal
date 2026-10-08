@@ -68,7 +68,7 @@ const ran = (h: Harness, path: string, from: number) =>
     .flatMap((run) => run.files)
     .filter((f) => f.path === path).length;
 
-describe("scheduler: a recursive listing (tasks 001-134, 001-139; review wave 12e B5)", SLOW, () => {
+describe("scheduler: a recursive listing (review wave 12e B5)", SLOW, () => {
   it("re-keys on an add or delete in an existing subdirectory; a shallow listing does not", async () => {
     const repo = createRepo("observed");
     for (const [path, call] of Object.entries(FORMS)) {
