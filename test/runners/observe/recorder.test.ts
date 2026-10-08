@@ -56,6 +56,26 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
     expect(seen.listed).toEqual(["listed"]);
   });
 
+  it("leaves a child with another Squeal's settings to that recorder", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { execFileSync } from "node:child_process";',
+        'import { mkdirSync, readdirSync, readFileSync } from "node:fs";',
+        'const out = new URL("./inner", import.meta.url).pathname;',
+        "mkdirSync(out);",
+        'const root = new URL(".", import.meta.url).pathname.slice(0, -1);',
+        'const inner = JSON.stringify({ out, root, file: root + "/inner.ts" });',
+        'execFileSync(process.execPath, ["child.mjs"], { env: { ...process.env, SQUEAL_OBSERVE: inner } });',
+        'const lines = readdirSync(out).map((f) => readFileSync(out + "/" + f, "utf8")).join("");',
+        'process.stdout.write(String(lines.includes("data.txt")));',
+      ].join("\n"),
+      "child.mjs": 'import { readFileSync } from "node:fs";\nreadFileSync("data.txt");\n',
+      "data.txt": "d",
+    });
+    expect(seen.stdout).toBe("true");
+    expect(seen.paths).not.toContain("data.txt");
+  });
+
   it("records a listing with recursive: true as recursive in every form, and only those (task 001-139)", () => {
     const forms = ["sync", "callback", "promise", "module", "dirsync", "dircallback", "dirpromise"];
     const shallow = ["types", "encoding", "bare", "off"];
