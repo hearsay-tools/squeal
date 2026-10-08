@@ -233,6 +233,12 @@ export interface ObservedInputs {
   readonly paths: readonly RelativePath[];
   /** Directories whose entry names the file read (`readdir`, `opendir`). */
   readonly directories: readonly RelativePath[];
+  /**
+   * Directories listed with `recursive: true`, each among `directories` too.
+   * The core keys each with the listing of every directory below it that
+   * holds a tracked file (review wave 12d, B5; task 001-134). Absent: none.
+   */
+  readonly recursive?: readonly RelativePath[];
 }
 
 /** Everything one `run` call produced. Only test files passed to `run` appear here. */

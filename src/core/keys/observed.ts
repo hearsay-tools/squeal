@@ -126,6 +126,23 @@ export class Listings {
     return createHash("sha1").update(sorted.join("\0")).digest("hex");
   }
 
+  /**
+   * The listing paths of `directory` and of every directory below it that
+   * holds a tracked file, sorted: what a recursive listing of `directory`
+   * returned names from (review wave 12d, B5; task 001-134). An add or delete
+   * anywhere below moves one of them, since each holds immediate names only.
+   */
+  below(directory: RelativePath): RelativePath[] {
+    const prefix = directory === "" ? "" : `${directory}/`;
+    const out = [listingPath(directory)];
+    for (const [listed, names] of this.#index()) {
+      if (listed !== directory && listed.startsWith(prefix) && names.size > 0) {
+        out.push(listingPath(listed));
+      }
+    }
+    return out.sort(compare);
+  }
+
   /** Applies the adds and deletes among `changes`; returns the listing paths they may move. */
   apply(changes: readonly FileChange[]): RelativePath[] {
     const moved = new Set<RelativePath>();

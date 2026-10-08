@@ -25,7 +25,8 @@ export interface ObservedGrowth {
  * Prepares a tier's observations for `recordTier`, outside the lock: per
  * completed file (by `testFileId`), the paths the runner observed beyond the
  * file's closure, with what other worktrees stored meanwhile (D3, D5 as
- * amended; research observed-runtime-inputs F3, F4). A path git ignores is
+ * amended; research observed-runtime-inputs F3, F4), a recursive listing as
+ * the listing of each directory below it. A path git ignores is
  * dropped: the watcher does not track it, so it cannot key (a blind spot,
  * named in status). Every file path is hashed into the stat cache, so the
  * keys `recordTier` computes have no untracked path; a path hashed only now,
@@ -43,9 +44,12 @@ export async function observedGrowth(
   const candidates = new Set<RelativePath>();
   const seen = report.observed.map((observed) => {
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
-    const fresh = [...observed.paths, ...observed.directories.map(listingPath)].filter(
-      (path) => !closure.has(path),
-    );
+    const listed = new Set(observed.directories.map(listingPath));
+    // A recursive listing returned names from every directory below it (B5, task 001-134).
+    for (const root of observed.recursive ?? []) {
+      for (const path of keys.listingsBelow(root)) listed.add(path);
+    }
+    const fresh = [...observed.paths, ...listed].filter((path) => !closure.has(path));
     for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
     return { observed, closure, fresh };
   });
