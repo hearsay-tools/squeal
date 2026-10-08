@@ -44,7 +44,7 @@ const FLAGS = {
 /**
  * Wraps `fs` and `fs.promises` for `api`: `scoped(p)` the absolute path of a
  * recordable `p`, or `null`; `record(kind, abs)` with kind `f` read, `l`
- * listed, `w` written.
+ * listed, `r` listed with `recursive: true` (also `l`), `w` written.
  */
 function wrapFs(api) {
   const { lstatSync } = fs;
@@ -80,6 +80,21 @@ function wrapFs(api) {
       (original) =>
         function (...args) {
           record(kind, args[index]);
+          return original.apply(this, args);
+        },
+    );
+  /** A listing, and a recursive one when its options say so (task 001-139). */
+  const list = (target, name) =>
+    replace(
+      target,
+      name,
+      (original) =>
+        function (...args) {
+          record("l", args[0]);
+          const options = args[1];
+          if (options !== null && typeof options === "object" && options.recursive === true) {
+            record("r", args[0]);
+          }
           return original.apply(this, args);
         },
     );
@@ -184,8 +199,7 @@ function wrapFs(api) {
     }
     for (const name of ["access", "accessSync", "realpath", "realpathSync"])
       wrap(target, name, "f");
-    for (const name of ["readdir", "readdirSync", "opendir", "opendirSync"])
-      wrap(target, name, "l");
+    for (const name of ["readdir", "readdirSync", "opendir", "opendirSync"]) list(target, name);
     for (const name of ["writeFile", "writeFileSync", "appendFile", "appendFileSync"]) {
       wrap(target, name, "w");
     }

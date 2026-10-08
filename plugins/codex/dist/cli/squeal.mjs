@@ -1693,8 +1693,7 @@ var init_policy = __esm({
       stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
-      // Off until reviews/wave-12d.md B1 to B6 are repaired (human, 2026-10-08).
-      observe: { runtimeInputs: false },
+      observe: { runtimeInputs: true },
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
       nodeTest: [],
@@ -10370,8 +10369,14 @@ function observedInputs(recorded2, completed, paths) {
     };
     const read3 = relative11(entry2.paths, (abs) => !isDirectory3(abs));
     const listed = relative11(entry2.listed, () => true);
+    const recursive = relative11(entry2.recursive, () => true);
     if (read3.length > 0 || listed.length > 0) {
-      out.push({ testFile, paths: read3, directories: listed });
+      out.push({
+        testFile,
+        paths: read3,
+        directories: listed,
+        ...recursive.length > 0 ? { recursive } : {}
+      });
     }
   }
   return out;
@@ -10418,11 +10423,12 @@ function addLine(recorded2, line) {
   if (typeof value.t !== "string") return;
   let entry2 = recorded2.get(value.t);
   if (entry2 === void 0) {
-    entry2 = { paths: /* @__PURE__ */ new Set(), listed: /* @__PURE__ */ new Set(), written: /* @__PURE__ */ new Set() };
+    entry2 = { paths: /* @__PURE__ */ new Set(), listed: /* @__PURE__ */ new Set(), recursive: /* @__PURE__ */ new Set(), written: /* @__PURE__ */ new Set() };
     recorded2.set(value.t, entry2);
   }
   addAll(entry2.paths, value.f);
   addAll(entry2.listed, value.l);
+  addAll(entry2.recursive, value.r);
   addAll(entry2.written, value.w);
 }
 function addAll(into, values) {
@@ -10458,7 +10464,7 @@ var RECORDER_VERSION, OBSERVE_VARIABLE, CANDIDATES;
 var init_runtime = __esm({
   "src/runners/observe/runtime.ts"() {
     "use strict";
-    RECORDER_VERSION = "2";
+    RECORDER_VERSION = "3";
     OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
     CANDIDATES = ["../observe/", "./observe/", "./"];
   }
@@ -29112,7 +29118,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.38";
+  if (true) return "0.1.39";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
