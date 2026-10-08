@@ -1,6 +1,6 @@
 # 002 Codex adapter: status
 
-Stage: approved (2026-10-07, by the human; waves on `docs/board.md`, briefs under `tasks/`)
+Stage: shipped (2026-10-08, 0.1.29: goals 1 to 8 hold across the scratch-home proof (`lessons.md`, 002-16: all six proof items under `codex exec` and app-server) and the dogfooding run with a real Cezar Codex worker (002-19: goals 1, 2, 4, 6, 8 held, 3, 5, 7 not exercised there, none broken), with every defect fixed or filed and no blocker. Open, not blocking: open question 6 (a policy-gated `codex queue` wake, the human's), sandboxed shells (bubblewrap does not run on this host), goal 7 has no recorded hook timing in Cezar sessions, row 002-24 (this repository's e2e results follow `HEAD`)) 
 Started: 2026-10-07
 
 ## Decisions so far

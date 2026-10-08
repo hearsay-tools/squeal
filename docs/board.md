@@ -219,7 +219,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
 ## Feature 002: Codex adapter
 
-Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07. Sections referenced as D1 to D8. Briefs under `specifications/002-codex-adapter/tasks/wave-N.md`.
+Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2026-10-08 (0.1.29). Sections referenced as D1 to D8. Briefs under `specifications/002-codex-adapter/tasks/wave-N.md`.
 
 ### Research (done)
 
