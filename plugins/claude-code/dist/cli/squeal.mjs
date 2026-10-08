@@ -21974,7 +21974,7 @@ var require_pathToFileURL = __commonJS({
       }
       return filepath;
     }
-    function pathToFileURL5(filepath, options) {
+    function pathToFileURL4(filepath, options) {
       const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
       if (windows && filepath.startsWith("\\\\")) {
         const hostnameEndIndex = filepath.indexOf("\\", 2);
@@ -21998,7 +21998,7 @@ var require_pathToFileURL = __commonJS({
       url.pathname = encodePathChars(filepath, windows);
       return url;
     }
-    module.exports = pathToFileURL5;
+    module.exports = pathToFileURL4;
   }
 });
 
@@ -22008,7 +22008,7 @@ var require_packageMap = __commonJS({
     "use strict";
     var fileURLToPath7 = require_fileURLToPath();
     var { isInside, normalize: normalize3 } = require_path();
-    var pathToFileURL5 = require_pathToFileURL();
+    var pathToFileURL4 = require_pathToFileURL();
     function createError(message2, code) {
       const error = (
         /** @type {Error & { code: string }} */
@@ -22049,7 +22049,7 @@ var require_packageMap = __commonJS({
           "ERR_INVALID_PACKAGE_MAP"
         );
       }
-      const base = pathToFileURL5(configFilePath);
+      const base = pathToFileURL4(configFilePath);
       const packages = /* @__PURE__ */ new Map();
       const idsByPath = /* @__PURE__ */ new Map();
       for (const id of Object.keys(rawPackages)) {
@@ -27160,7 +27160,7 @@ function nodeTestRuntime(module = new URL(import.meta.url)) {
   for (const candidate of CANDIDATES) {
     const dir = new URL(candidate, module);
     const reporter = fileURLToPath4(new URL("reporter.mjs", dir));
-    const recorder = fileURLToPath4(new URL("recorder.mjs", dir));
+    const recorder = fileURLToPath4(new URL("recorder.cjs", dir));
     if (existsSync13(reporter) && existsSync13(recorder)) return { reporter, recorder };
     tried.push(fileURLToPath4(dir));
   }
@@ -27455,21 +27455,20 @@ var init_report = __esm({
 // src/runners/node-test/run/run.ts
 import { mkdirSync as mkdirSync8, readdirSync as readdirSync7, readFileSync as readFileSync14, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join43, relative as relative9, sep as sep11 } from "node:path";
-import { pathToFileURL as pathToFileURL4 } from "node:url";
 async function runNodeTest(options) {
   const started = performance.now();
   const runtime = options.runtime ?? nodeTestRuntime();
   const paths = new WorktreePaths(options.root);
   const cwd = options.project.cwd ? toAbsolute(options.root, options.project.cwd) : options.root;
-  const env = childEnv(options);
+  const env = childEnv(options, runtime);
   mkdirSync8(options.logDir, { recursive: true });
   const runs = options.files.map((testFile, index) => {
     const absolute = toAbsolute(options.root, testFile.path);
     const arg = relative9(cwd, absolute).split(sep11).join("/");
     const args = [
       "--enable-source-maps",
-      "--import",
-      pathToFileURL4(runtime.recorder).href,
+      "--require",
+      runtime.recorder,
       ...options.project.argv,
       "--test",
       `--test-reporter=${runtime.reporter}`,
@@ -27538,9 +27537,17 @@ async function runNodeTest(options) {
   writeRunLog2(options.logDir, { node, cwd, runs, report: report2 });
   return { report: report2, observed };
 }
-function childEnv(options) {
+function childEnv(options, runtime) {
   const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
-  return { ...base, ...options.project.env };
+  const env = { ...base, ...options.project.env };
+  const nodeOptions = env.NODE_OPTIONS;
+  if (nodeOptions !== void 0 && /(^|\s)(--require|-r)(\s|=)/.test(nodeOptions)) {
+    env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
+  }
+  return env;
+}
+function quoteNodeOption(value) {
+  return `"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 function ending(runs, completed, expired, timeoutMs, node) {
   const unfinished = runs.length - completed;
@@ -27809,7 +27816,7 @@ var init_adapter2 = __esm({
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
-    NODE_TEST_ADAPTER_VERSION = "2";
+    NODE_TEST_ADAPTER_VERSION = "3";
   }
 });
 
@@ -28181,7 +28188,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.27";
+  if (true) return "0.1.28";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
