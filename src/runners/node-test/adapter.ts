@@ -17,9 +17,11 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * holds what the preloads loaded at run time (review wave 2, B1), so a pass
  * stored before that was recorded runs once more and records it. "3": the
  * recorder is installed before `--require` preloads too (review wave 2.5,
- * B1), so a pass stored while they went unobserved runs once more.
+ * B1), so a pass stored while they went unobserved runs once more. "4": a
+ * quoted `--require` in `NODE_OPTIONS` gets the recorder first too (review
+ * wave 2.6, B1), so a pass stored while its loads went unobserved runs once more.
  */
-export const NODE_TEST_ADAPTER_VERSION = "3";
+export const NODE_TEST_ADAPTER_VERSION = "4";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
