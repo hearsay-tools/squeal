@@ -6,7 +6,13 @@
       ".claude-plugin/**",
       "package.json"
     ],
-    "test/e2e/*.test.ts": ["plugins/claude-code/**", "plugins/codex/**", "test/fixtures/e2e/**"],
+    "test/e2e/*.test.ts": [
+      "plugins/claude-code/**",
+      "plugins/codex/**",
+      "test/fixtures/e2e/**",
+      "test/fixtures/codex-hooks/**",
+      "test/harness/recorded/**"
+    ],
     "test/policy/repository-inputs.test.ts": ["squeal.config.json", "**/.gitignore"],
     "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"],
     "test/harness/codex/**/*.test.ts": [

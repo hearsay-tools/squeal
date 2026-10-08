@@ -323,7 +323,7 @@ Spec: `specifications/004-slow-suites/spec.md` (not yet written; stage research,
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 004-01 research: slow-suite-policy | running (Opus) | Prior art, how a project marks slow suites, harness triggers, affected selection for e2e files, what the agent is told. | `research/slow-suite-policy.md` with every question tagged or "not determined, because". |
+| 004-01 research: slow-suite-policy | done (`b02211a`, `research/slow-suite-policy.md`) | Prior art, how a project marks slow suites, harness triggers, affected selection for e2e files, what the agent is told. | `research/slow-suite-policy.md` with every question tagged or "not determined, because". |
 | 004-02 research: slow-suite-runtime | running (Astra) | Resource use and a load guard, interruption by a revision, isolation between worktrees, inheritance of slow results. | `research/slow-suite-runtime.md` with every question tagged or "not determined, because". |
 
 ## Later
