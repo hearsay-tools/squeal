@@ -68,6 +68,11 @@ export interface NodeTestAdapterOptions {
   readonly concurrency?: () => number;
   /** Spec 001 D10: the daemon's temp directory, every child's `TMPDIR`, `TMP` and `TEMP`. */
   readonly tempDir?: AbsolutePath;
+  /**
+   * Spec 001 D12: the mark every child carries so the daemon finds what a
+   * test leaves running, as its Vitest workers do (task 003-38).
+   */
+  readonly childEnv?: Readonly<Record<string, string>>;
 }
 
 /**

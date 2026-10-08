@@ -43,6 +43,9 @@ const HIDDEN_TEST = [
   `  const { tmpdir } = await import("node:os");`,
   `  assert.equal(tmpdir(), process.env.EXPECTED_TMP);`,
   `});`,
+  `test("carries the daemon's child mark", () => {`,
+  `  assert.equal(process.env.SQUEAL_DAEMON_CHILD, "mark-003-38");`,
+  `});`,
 ].join("\n");
 
 beforeAll(() => {
@@ -104,6 +107,7 @@ const open = (more: Partial<NodeTestProject> = {}, extra = {}) => {
   const adapter = createNodeTestAdapter(project(more), {
     root,
     tempDir,
+    childEnv: { SQUEAL_DAEMON_CHILD: "mark-003-38" },
     note: (text) => notes.push(text),
     ...extra,
   });
@@ -185,6 +189,7 @@ describe("createNodeTestAdapter", () => {
       expect(report.results.map((r) => `${r.check.fullName}: ${r.outcome}`)).toEqual([
         "loads a module the graph cannot see: pass",
         "sees Squeal's temp directory: pass",
+        "carries the daemon's child mark: pass",
         "adds: pass",
         "sees the preload: pass",
       ]);
