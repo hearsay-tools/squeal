@@ -38,7 +38,7 @@ Use /worker.
 
 Outcome: `reviews/wave-1.5.md`, committed: are `reviews/wave-1.md` B1, B2 and S1 closed, and did the fixes break anything around them.
 
-Range: the 004-20 and 003-39 commits and the 0.1.48 bundles on main (`git log --oneline 8c473c4..<0.1.48 build commit>`; the 001 commits there are out of scope). Re-run the review's own B1, B2 and S1 probes on Node 22 and 24 first. Then: can the shared trigger predicate let a file run that `#candidate` would not have chosen, or hold one forever; does `slowPending` stay consistent with `counts.pending` and `testFilesWithoutChecks.pending` under a torn read; does the preload tag misplace a test's own load (an absolute `--require` path, a worker thread, `node -e`, a test that spawns `node` with `--require`).
+Range: the 004-20 and 003-39 commits and the 0.1.48 bundles on main (`git log --oneline 8c473c4..e9758a6` on main; the 001 commits there, 001-146 and 001-147, are out of scope). Re-run the review's own B1, B2 and S1 probes on Node 22 and 24 first. Then: can the shared trigger predicate let a file run that `#candidate` would not have chosen, or hold one forever; does `slowPending` stay consistent with `counts.pending` and `testFilesWithoutChecks.pending` under a torn read; does the preload tag misplace a test's own load (an absolute `--require` path, a worker thread, `node -e`, a test that spawns `node` with `--require`).
 
 Rules as for 004-14. This is the second and last review round on this slice: a remaining blocker goes to the human, not to a third round.
 
