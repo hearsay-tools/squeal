@@ -157,7 +157,7 @@ Done when: each of B2, B3, B4, B6's probes is a test that fails before and passe
 
 ## 001-136 re-review of 001-134 and 001-135
 
-Use /reviewer. Last round on the 001-132 slice: blockers go to the human. Output `reviews/wave-12e.md`. Re-run `reviews/wave-12d.md`'s six probes and S2; probe a file created then deleted within a run, a symlink retarget out of the worktree, `O_RDWR` numeric flags, a shared-env worker's own children, and every spawn overload's invalid forms.
+Use /reviewer. Last round on the 001-132 slice: blockers go to the human. Output `reviews/wave-12e.md`. Re-run `reviews/wave-12d.md`'s six probes and S2; probe a file created then deleted within a run, a symlink retarget out of the worktree, `O_RDWR` numeric flags, a shared-env worker's own children, and every spawn overload's invalid forms. Also (coordinator, 2026-10-08): a virtual module id with a null byte must never reach an fs call (fixed in `read.ts`; check every other path the observed set takes); and a nested recorder: under a daemon whose recorder is on, a test that itself sets `SQUEAL_OBSERVE` for a child has that variable overwritten by the outer recorder, so the child reports to the daemon. Squeal's own `test/runners/observe/` tests fail that way under a 0.1.35 daemon and pass directly. Decide whether the outer recorder must leave a caller-set `SQUEAL_OBSERVE` alone, and what it loses then.
 
 ## 001-137 evidence: does the recorder cause cezar's contention failures
 

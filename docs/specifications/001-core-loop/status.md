@@ -129,6 +129,8 @@ Started: 2026-10-02
 
 - 2026-10-08, wave 12d (001-135, `reviews/wave-12d.md` B2, B3, B4, B6; each rule decided in the brief as the review says, the environment-data channel, the parity with Node's own argument reading for Workers too, and the split of the recorder into `recorder.cjs`, `fs.cjs` and `spawn.cjs` decided by the worker): D4 amended. A read through a file or directory symlink records the link and its kept target; an open is a read when it can read and a write only when it truncates or creates, and a descriptor or `FileHandle` is a write when written through; a thread's test file also rides in its environment data, so a `SHARE_ENV` Worker and its Node children are attributed; sync spawns and Workers inject only into calls Node accepts with an object env, copied as Node reads it, and pass every other call through. `RECORDER_VERSION` 2, so observed passes from version 1 run once more. Each probe fails before and passes after, raw (`test/runners/observe/reach.test.ts`) and in both pools (`test/fixtures/vitest/observed/test/reach.test.ts`). No type changes. `test/harness/codex/plugin.test.ts` lists the two new `dist/observe/` files (its own commit); both plugin bundles need a rebuild.
 
+- 2026-10-08, after 001-132 (coordinator): a recorded path with a null byte (Vite's virtual `\0vite/dynamic-import-helper.js`) is dropped when observations are read; before, `statSync` threw and every check of this repository's worktree went unknown under a 0.1.35 daemon with the recorder on.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
