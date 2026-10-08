@@ -98,3 +98,27 @@ Done when: the review's B1 sequence with released bundles (a 0.1.32 daemon, a cu
 ## 001-131 re-review of 001-130
 
 Use /reviewer. Range: 001-130's four commits as landed (`ca19ee0` to `7f976a3` as cherry-picked), build `7f62b20`. Output `reviews/wave-12c.md`. Last round on the 001-125 slice: blockers go to the human. Re-run the B1 sequence with released bundles in both orders and plugins; probe a consumer that never records a version, two newer hooks racing to spawn successors, the lock wait timing out, and a step-down while a tier runs.
+
+## 001-132 Squeal observes the files a test reads at run time
+
+Use /worker. Shape: slice. Decided by the human (2026-10-08): build `research/observed-runtime-inputs.md`'s recommendation, on by default, with batched writes; a policy key turns it off per project. A gpt-6.1-sol review (001-133) follows.
+
+Outcome: a test whose result depends on a project file it reads, a script it spawns or a worker it starts re-runs when that file changes, with no `inputs` written by anyone; cezar's `runner-shutdown-parity.test.ts` re-runs when `scripts/mock-cursor-print.mjs` changes.
+
+Read: `research/observed-runtime-inputs.md` in full (mechanism, the exact D3/D4/D5 sentences, blind spots, the A/B contention result); spec D3, D4, D5, D11; spec 003 D5 and its decision 3 (a `node:test` test is not observed past a spawn: this row reverses that for the recorder's reach, so name it in D3 and leave spec 003's text to its coordinator); `src/runners/node-test/runtime/recorder.cjs` and the observed-path store spec 003 built.
+
+Decided:
+- **One recorder for both runners,** a new CommonJS `--require` module under `src/runners/observe/` (not an edit of spec 003's `recorder.cjs`; that runner adopts the shared one in a 003 row of its own coordinator's). It wraps `fs`, `ChildProcess.prototype.spawn` and the sync spawn calls, and `Worker`; it never changes a call's behaviour or result, and a recorder error is swallowed.
+- **Reach:** at each spawn it puts `--require <recorder>` and its own settings into the child's `NODE_OPTIONS`, including an `env: {}` child, so it reaches grandchildren. It records only paths inside the worktree that the watcher tracks (not ignored, not `node_modules`, not the snapshot, not the run's own temp dirs); everything else is dropped in the recorder.
+- **Batched writes:** paths are kept in memory per process and written once at exit (and on a periodic flush for long processes), never one write per call, to keep the cost off deadline-bound tests.
+- **Vitest wiring** through `createVitest`'s `env.NODE_OPTIONS`, as the research found reaches per-config projects; attribution by `__vitest_worker__.filepath`.
+- **Keys:** observed paths join the test file's closure through the shared, merge-only observed set spec 003 built (generalized beyond `node:test`); a listed directory is keyed by its entry names; a first run stores its result under the key that includes what it observed. D5's stability check covers observed paths.
+- **Policy key** `observe.runtimeInputs` (default `true`); `inputs` stays as the override for the blind spots. Status names the blind spots once.
+
+Own: `src/runners/observe/` (new), `src/runners/vitest/` (wiring, attribution, closure), `src/core/keys/` (observed paths in closures), the generalized observed-set code wherever spec 003 put it (additive; ask before changing its existing behaviour), `src/core/scheduler/` (stability check only), `src/core/types/policy.ts` and `src/core/daemon/policy.ts` (the key), tests under `test/runners/`, `test/keys/`, `test/scheduler/`, `test/fixtures/`, D3, D4, D5, D11 in `spec.md`, `plugins/claude-code/skills/squeal/references/policy.md`, one `status.md` line. Leave `src/runners/node-test/` to the 002/003 coordinator (003-33 and 003-19 are running there). Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when (the research's): (1) on a fixture under Vitest 5 forks and threads, a test that reads a data file, spawns a `node` script with `env: {}` that spawns a grandchild, and starts a Worker re-runs when any of those files changes, with no `inputs`, and a listed directory gaining a file re-runs its test; (2) on a `cezar` clone with no `inputs`, editing `scripts/mock-cursor-print.mjs` re-keys and runs `runner-shutdown-parity.test.ts` at the next tier, and a second worktree with the old mock does not inherit the new result; (3) three full `cezar` suites each way show no file failing only with the recorder, or each such failure is shown to be load; (4) `observe.runtimeInputs: false` restores today's keys; (5) status names the blind spots; cost per file on `cezar` reported.
+
+## 001-133 review of 001-132
+
+Use /reviewer. Range: 001-132's commits as landed. Output `reviews/wave-12d.md`. Outcome: can the recorder change a test's result, miss a read that changes a result inside its stated reach, or keep a result current that a changed observed file invalidates. Probe the research's blind spots stay stated, an `env: {}` grandchild, worker threads, a test that writes then reads its own file, a symlinked source path, two worktrees sharing observed sets, the stability check during a run, and the contention result on `cezar`.
