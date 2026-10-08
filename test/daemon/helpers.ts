@@ -12,13 +12,14 @@ import {
 } from "node:fs";
 import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import { notesMetaKey, type PingResponse, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { findProcesses, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 const fixture = resolve(repoRoot, "test/fixtures/scheduler/basic");
@@ -40,11 +41,11 @@ export interface BuiltCli {
 /**
  * Builds `src` into a private `dist` so tests spawn the real `squeal` binary.
  * Under `node_modules/`, so the build resolves `vitest` and `chokidar`, with
- * the package manifest beside it for `squeal --version`.
+ * the package manifest beside it for `squeal --version`; in this run's
+ * directory there, so the global teardown finds daemons it leaves (`strays.ts`).
  */
 export function buildCli(): BuiltCli {
-  const dir = join(repoRoot, "node_modules/.cache/squeal-test", randomUUID());
-  mkdirSync(dir, { recursive: true });
+  const dir = testBuildDir(expect.getState().testPath);
   execFileSync(
     process.execPath,
     [
@@ -273,6 +274,14 @@ export async function stopProcess(process: SpawnedProcess): Promise<void> {
   clearTimeout(timer);
 }
 
+/** Stops every daemon a test build runs for `root`, however it was started. */
+export async function stopStrays(root: string): Promise<void> {
+  const strays = findProcesses(`${TEST_CACHE}/`).filter(
+    ({ args }) => args.endsWith(` daemon ${root}`) || args.includes(` daemon ${root} `),
+  );
+  await killProcesses(strays, 60_000);
+}
+
 /** One daemon test file's CLI, fixtures and daemons. */
 export interface DaemonSuite {
   /** The built `squeal` binary, from `beforeAll`. */
@@ -289,6 +298,7 @@ export interface DaemonSuite {
 export function daemonSuite(): DaemonSuite {
   let built: BuiltCli | null = null;
   const processes: SpawnedProcess[] = [];
+  const roots: string[] = [];
   const cleanups: (() => void)[] = [];
   beforeAll(() => {
     built = buildCli();
@@ -296,6 +306,8 @@ export function daemonSuite(): DaemonSuite {
   afterAll(() => built?.cleanup());
   afterEach(async () => {
     for (const process of processes.splice(0)) await stopProcess(process);
+    // Daemons hooks started detached, such as a successor (lessons, defect 29).
+    for (const root of roots.splice(0)) await stopStrays(root);
     for (const cleanup of cleanups.splice(0).reverse()) cleanup();
   });
   const cli = (): string => {
@@ -308,6 +320,7 @@ export function daemonSuite(): DaemonSuite {
     },
     fixture(files) {
       const repo = createFixtureRepo(files === undefined ? {} : { files });
+      roots.push(repo.root);
       cleanups.push(repo.cleanup);
       return repo;
     },
