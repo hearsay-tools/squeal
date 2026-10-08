@@ -312,7 +312,9 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 003-18 e2e, and e2e results follow the worktree (with 002-24) | done (main, no bundle change) |
-| 003-32 review of wave 3 | running (gpt-6.1-sol; brief in `tasks/wave-3.md`) | `/reviewer`: can a node:test package key be too narrow (003-22), and does the node:test e2e prove what it claims (003-18). | `reviews/wave-3.md` committed. | Testing: the shipped plugin against the reference-shaped fixture in `test/e2e`, transitions and lifecycle. | Green in CI on Node 22 and 24. |
+| 003-32 review of wave 3 | done, FAIL with B1, B2 (`reviews/wave-3.md`) |
+| 003-33 package identity from the resolved path; opaque loads fall back | running (brief in `tasks/wave-3.md`) | `reviews/wave-3.md` B1 (an installed import reached through a `#` alias, a relative path into `node_modules`, JSON, or a preload keeps its package identity, taken from the resolved path) and B2 (an unexpandable template import, a glob into `node_modules`, and `createRequire` report `module`); adapter version 6. | The review's probes are tests on Node 22 and 24: each bump re-keys and re-runs the file that reaches the package, or the file keys by the whole fingerprint. |
+| 003-34 re-review of 003-33 | planned (gpt-6.1-sol) | `/reviewer`, second round on the package-key slice: are B1 and B2 closed. | `reviews/wave-3.5.md` committed. | `/reviewer`: can a node:test package key be too narrow (003-22), and does the node:test e2e prove what it claims (003-18). | `reviews/wave-3.md` committed. | Testing: the shipped plugin against the reference-shaped fixture in `test/e2e`, transitions and lifecycle. | Green in CI on Node 22 and 24. |
 | 003-19 dogfooding on cezarion | running (brief in `tasks/wave-3.md`; config in a linked worktree of cezar only, uncommitted, as the human chose) | Testing, proof: a cezarion worktree with `test:unit` and `test:package` configured and a Cezar worker on Claude Code, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
 
 ## Feature 004: slow suites by policy

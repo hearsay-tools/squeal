@@ -55,3 +55,21 @@ Owns: `docs/specifications/003-node-test-runner/lessons.md` and throwaway script
 Done when: `lessons.md` has a verdict against spec 003 goals 1 to 8, the measurements, excerpts, and numbered defects; the cezar worktree is removed and cezar's main checkout untouched.
 
 Use /worker.
+
+## 003-33 package identity from the resolved path; opaque loads fall back (wave 3.5)
+
+Outcome: no installed package a node:test file reaches can change without changing the file's key.
+
+Read: `reviews/wave-3.md` (B1, B2, their probes and one-worker repairs, "Inputs"); spec 001 D3 for per-package keys and Vitest's `src/runners/vitest/packages.ts` (`sourceLoads`, how a resolved path becomes a package); `src/runners/node-test/graph/modules.ts`, `parse.ts`, `packages.ts`.
+
+Shape: repair. Test first: each probe of the review fails on `210d06c` before the fix. B1: derive the package (name, scoped and nested, and the lookup directory) from the resolved installed path, through the shared module collector, so test closures and preloads agree; the written bare specifier is the fallback only for an unresolved import; `manifest: true` for a package manifest load; an installed target that cannot be assigned a package reports `module`. B2: an unexpandable template import reports `module`; an expanded glob that reaches installed files records their packages or `module`; `createRequire` joins the conservative source scan as in Vitest, including through `process.getBuiltinModule`; an opaque load in a preload sends the project environment to the fallback. Raise `NODE_TEST_ADAPTER_VERSION` to `"6"`.
+
+Owns: `src/runners/node-test/**`, `test/runners/node-test/**`, `test/integration/node-test*.test.ts`, fixtures under `test/fixtures/node-test/`. Leave alone: everything else.
+
+Done when: the review's probes (alias, relative JS and JSON into `node_modules`, argv and `NODE_OPTIONS` preloads, template import, glob into `node_modules`, `createRequire` and `process.getBuiltinModule`) are tests on Node 22 and 24 that assert a re-key and re-run on the bump or the whole-fingerprint fallback; 003-22's existing package tests unchanged; lint, typecheck, full suite green on Node 22 and 24. Do not run `npm run build`. Keep scratch in one `/tmp` directory of your own and remove it; no CPU burners.
+
+Use /worker.
+
+## 003-34 re-review of 003-33
+
+Outcome: `reviews/wave-3.5.md`: are `reviews/wave-3.md` B1 and B2 closed. Second round on this slice; a remaining blocker goes to the human. Range filled in at dispatch. Rules as for 003-32. Use /reviewer.
