@@ -21,7 +21,8 @@ import { recorded } from "../harness/helpers.js";
  * `PASS -> FAIL` reaches the agent through the Claude Code hooks; a path the
  * static graph cannot see (a computed `import()`) is observed by the first
  * run and keeps a worktree whose copy differs from inheriting a pass. So
- * does a file a preload loads by a computed `import()` (review wave 2, B1),
+ * does a file a preload loads by a computed `import()` (review wave 2, B1)
+ * or a `--require` preload by a computed `require` (review wave 2.5, B1),
  * and a project whose `cwd` is missing silences nothing but itself (S1).
  */
 
@@ -62,9 +63,11 @@ const PROJECTS = [
   nodeTest("a"),
   nodeTest("b"),
   nodeTest("c", ["--import", "./scripts/setup.mjs"]),
+  nodeTest("d", ["--require", "./scripts/setup.cjs"]),
   nodeTest("gone"),
 ];
 const HELPER = "packages/c/scripts/helper.mjs";
+const REQUIRED = "packages/d/scripts/helper.cjs";
 
 const nodeTestFile = (imports: string, body: string) =>
   `import assert from "node:assert/strict";\nimport { test } from "node:test";\n${imports}\n${body}\n`;
@@ -101,6 +104,12 @@ const FILES: Readonly<Record<string, string>> = {
   "packages/c/test/c.test.ts": nodeTestFile(
     "",
     `test("the preload's helper ran", () => assert.equal((globalThis as { helperValue?: number }).helperValue, 1));`,
+  ),
+  "packages/d/scripts/setup.cjs": `require("./helper" + ".cjs");\n`,
+  [REQUIRED]: "globalThis.requiredValue = 1;\n",
+  "packages/d/test/d.test.ts": nodeTestFile(
+    "",
+    `test("the required helper ran", () => assert.equal((globalThis as { requiredValue?: number }).requiredValue, 1));`,
   ),
 };
 const TEST_FILES = Object.keys(FILES).filter((p) => p.endsWith(".test.ts"));
@@ -204,22 +213,22 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
         expect.stringMatching(GONE_NOTE),
       );
 
-      // The baseline observed both computed imports: a worktree whose copies differ keys
-      // hidden.test.ts and project c with them, misses, runs both and fails, where a key
-      // from the static closures alone would have inherited main's passes.
+      // The baseline observed the three computed loads: a worktree whose copies differ keys
+      // hidden.test.ts and projects c and d with them, misses, runs the three and fails,
+      // where a key from the static closures alone would have inherited main's passes.
       const wt3 = addWorktree(main, "wt3");
       writeFileSync(join(wt3, "packages/a/src/hidden.ts"), "export const hidden = 2;\n");
       writeFileSync(join(wt3, HELPER), "globalThis.helperValue = 2;\n");
+      writeFileSync(join(wt3, REQUIRED), "globalThis.requiredValue = 2;\n");
       await startDaemon(wt3);
       const third = await settle(wt3, "the third baseline", (s) => s.counts.current === CHECKS);
-      expect(ranFiles(main, wt3).sort()).toEqual([
+      const missed = [
         "packages/a/test/hidden.test.ts",
         "packages/c/test/c.test.ts",
-      ]);
-      expect(third.knownFailures.map((f) => f.check.testPath).sort()).toEqual([
-        "packages/a/test/hidden.test.ts",
-        "packages/c/test/c.test.ts",
-      ]);
+        "packages/d/test/d.test.ts",
+      ];
+      expect(ranFiles(main, wt3).sort()).toEqual(missed);
+      expect(third.knownFailures.map((f) => f.check.testPath).sort()).toEqual(missed);
 
       // An edit of the observed-only path re-runs its test file, and only it, here.
       let from = runs(main, main).length;
@@ -231,13 +240,25 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
       await settle(main, "the edit of hidden.ts", () => true, at);
       expect(ranSince(main, main, from)).toEqual(["packages/a/test/hidden.test.ts"]);
 
-      // An edit of the preload's helper re-runs project c's file, and only it.
+      // An edit of the preload's helper re-runs project c's file. The scheduler reads every
+      // project's environment when one is recreated, so project d's, which now carries the
+      // helper its baseline observed, re-keys with it once: no other file runs.
       from = runs(main, main).length;
       at = status(main).revision;
       writeFileSync(join(main, HELPER), "// edited\nglobalThis.helperValue = 1;\n");
       await settle(main, "the edit of the helper", () => true, at);
-      expect(ranSince(main, main, from)).toEqual(["packages/c/test/c.test.ts"]);
-      git(main, ["add", "packages/a/src/hidden.ts", HELPER]);
+      expect(ranSince(main, main, from).sort()).toEqual([
+        "packages/c/test/c.test.ts",
+        "packages/d/test/d.test.ts",
+      ]);
+
+      // An edit of what the --require preload required re-runs project d's file, and only it.
+      from = runs(main, main).length;
+      at = status(main).revision;
+      writeFileSync(join(main, REQUIRED), "// edited\nglobalThis.requiredValue = 1;\n");
+      await settle(main, "the edit of the required helper", () => true, at);
+      expect(ranSince(main, main, from)).toEqual(["packages/d/test/d.test.ts"]);
+      git(main, ["add", "packages/a/src/hidden.ts", HELPER, REQUIRED]);
       git(main, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "hidden"]);
 
       // An edit runs only the node:test file whose closure holds it, and the hooks deliver it.
@@ -251,7 +272,7 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
       expect(delivered).toContain("one is 1");
 
       // A worktree of the commit inherits every result, node:test and Vitest alike,
-      // hidden.test.ts and c.test.ts included, since main ran them under the observed
+      // hidden.test.ts, c.test.ts and d.test.ts included, since main ran them under the observed
       // paths: zero runs.
       const wt2 = addWorktree(main, "wt2");
       await startDaemon(wt2);
