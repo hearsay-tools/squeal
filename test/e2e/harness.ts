@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { afterEach, beforeAll, type TestContext } from "vitest";
+import { afterAll, afterEach, beforeAll, type TestContext } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -19,7 +19,7 @@ import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { fixtureInstall, type Install, type InstallKind } from "./install.js";
 import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
 import { DEMO, MATH, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
-import { daemonPids, metric, type RunRow, readRuns, until } from "./support.js";
+import { daemonPids, metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
 
 export { type HookName, PLUGINS, type Plugin } from "./plugins.js";
 export { DEMO, MATH, SLOW, SLOW_MS, STRINGS } from "./sources.js";
@@ -91,6 +91,8 @@ export class E2E {
   readonly main: string;
   readonly #env: Readonly<Record<string, string>>;
   #edits = 0;
+  /** Linked worktrees `addWorktree` made, stopped at cleanup. */
+  readonly #worktrees: string[] = [];
 
   private constructor(
     readonly kind: Plugin,
@@ -172,6 +174,7 @@ export class E2E {
   addWorktree(name = "wt2"): string {
     const root = join(this.base, name);
     git(this.main, ["worktree", "add", "-q", "-b", name, root]);
+    this.#worktrees.push(root);
     this.#copyInstall(root, false);
     return realpathSync(root);
   }
@@ -276,10 +279,31 @@ export class E2E {
     return readRuns(join(this.main, ".git/squeal/store.sqlite"), worktreeIdFor(root));
   }
 
-  /** `squeal stop` in every worktree, then SIGKILL for any daemon of this plugin copy still alive. */
+  /**
+   * Ends every session still registered with the plugin's SessionEnd, as its
+   * harness would, so no daemon keeps a consumer; then `squeal stop` in every
+   * worktree, SIGKILL for any daemon of this plugin copy still alive, and the
+   * fixture removed whatever failed before (lessons, defect 24: a fixture
+   * daemon outlived its suite by 10 hours). Daemons a hook spawned meanwhile
+   * are killed after the removal, and one that escapes exits on its root.
+   */
   async cleanup(): Promise<void> {
-    const roots = [this.main, join(this.base, "wt2")].filter((r) => existsSync(r));
-    await Promise.all(roots.map((root) => this.cli(root, ["stop"]).catch(() => null)));
+    try {
+      const sessions = registeredSessions(join(this.main, ".git/squeal/store.sqlite"));
+      for (const session_id of sessions) {
+        await this.hook("session-end", this.main, { session_id }).catch(() => null);
+      }
+      const roots = [this.main, ...this.#worktrees].filter((r) => existsSync(r));
+      await Promise.all(roots.map((root) => this.cli(root, ["stop"]).catch(() => null)));
+      this.#killDaemons();
+    } finally {
+      rmSync(this.base, { recursive: true, force: true, maxRetries: 3 });
+      rmSync(this.runtime, { recursive: true, force: true, maxRetries: 3 });
+      this.#killDaemons();
+    }
+  }
+
+  #killDaemons(): void {
     for (const pid of daemonPids(this.plugin)) {
       try {
         process.kill(pid, "SIGKILL");
@@ -287,8 +311,6 @@ export class E2E {
         // Gone between the listing and the kill.
       }
     }
-    rmSync(this.base, { recursive: true, force: true });
-    rmSync(this.runtime, { recursive: true, force: true });
   }
 }
 
@@ -305,9 +327,18 @@ export function e2eSuite(
   beforeAll(async () => {
     install = await fixtureInstall(kind);
   }, 400_000);
+  const plugins: string[] = [];
   afterEach(async () => {
-    await Promise.all(fixtures.splice(0).map((f) => f.cleanup()));
+    const done = fixtures.splice(0);
+    plugins.push(...done.map((f) => f.plugin));
+    await Promise.all(done.map((f) => f.cleanup()));
   }, 120_000);
+  // Lessons, defect 24: the suite leaves no daemon of its fixtures running.
+  afterAll(async () => {
+    await until("no fixture daemon left", 10_000, async () =>
+      plugins.every((plugin) => daemonPids(plugin).length === 0) ? true : null,
+    );
+  }, 20_000);
   return (ctx, plugin, options = {}) => {
     const ready = install;
     if (!ready.ok) return ctx.skip(`end to end skipped: ${ready.reason}`);

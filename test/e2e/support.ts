@@ -82,3 +82,17 @@ export function readRuns(storePath: string, worktreeId: string): RunRow[] {
     db.close();
   }
 }
+
+/** Session ids with a registered consumer in any worktree of the store; none without a store. */
+export function registeredSessions(storePath: string): string[] {
+  if (!existsSync(storePath)) return [];
+  const db = new DatabaseSync(storePath, { readOnly: true });
+  try {
+    const rows = db.prepare("SELECT DISTINCT session_id FROM consumers").all() as {
+      session_id: string;
+    }[];
+    return rows.map((r) => r.session_id);
+  } finally {
+    db.close();
+  }
+}
