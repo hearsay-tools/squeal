@@ -17,9 +17,9 @@ afterEach(async () => {
   await killProcesses(sleepers.splice(0).map((pid) => ({ pid, args: "" })));
 });
 
-/** A detached process whose command line runs `script`, as a daemon a hook started would. */
+/** A detached process whose command line runs `script`, as a daemon a hook started would; gone within a minute regardless. */
 function sleeper(script: string, ...args: string[]): number {
-  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)", script, ...args], {
+  const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60_000)", script, ...args], {
     detached: true,
     stdio: "ignore",
   });
