@@ -69,6 +69,8 @@ Started: 2026-10-07
 
 - 2026-10-08, re-review 003-34 (`reviews/wave-3.5.md`, PASS at e202b50, gpt-6.1-sol): `reviews/wave-3.md` B1 and B2 closed, with no new finding. A corrected copy of the external handoff's probe re-keys every alias, relative, JSON, preload, template, glob and `createRequire` form on Node 22 and 24; the unmodified probe passes falsely on rebuilt bundles because it exports the bundle's `parse` rather than the lexer's, so every fixture falls back. On both shipped plugins at 0.1.40, a trusted install bump re-runs exactly the 12 files that reach the package and fails all 12, and the plain control does not re-run. The reviewer's own full suites were cut short by Codex connection resets; the 0.1.40 landing gate covers them.
 
+- 2026-10-08, 003-35 (0.1.42): one predicate names Squeal's own recorders (001's `observe/recorder.cjs`, 003's `node-test/recorder.cjs`, from a plugin `dist` or this repository's `src`); an inherited `NODE_OPTIONS` loses their tokens and an inherited `SQUEAL_OBSERVE` is dropped, where the graph reads preloads, where `childEnv` builds the child, and in the Node probe; a project's own `env` is taken as written. No adapter version raise: only a daemon inside Squeal's own validation inherits a recorder. Squeal's daemon in this repository reported the 13 false node:test failures and the node:test e2e and integration tests recovered.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.

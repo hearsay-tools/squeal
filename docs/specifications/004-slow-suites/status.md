@@ -14,6 +14,8 @@ Started: 2026-10-08
 
 - 2026-10-08, decided by the human at approval: a slow result is inherited only when its declared inputs name the artifact it tests (D6, goal 5; no `slow.inherit` key). Key shape by the coordinator, on the human's request for a recommendation: one `slow` object (`include`, `maxWorkers`, `maxLoadPerCpu`, `maxDeferMs`), as the existing `stop`, `runner`, `daemon` and `store` groups are (D1, D7).
 
+- 2026-10-08, wave 0 (004-10, 004-11), 0.1.42: the `slow` object, `nodeTest[].slow` and `stop.requireSlowSuite` in the policy and its loader, `slowFiles(policy, projects).isSlow`; the slot is an exclusive SQLite lock on `/tmp/squeal-<uid>/slow.lock` (freed when its holder dies, so no pid is read back), and the guard returns the load per CPU it ran under at the bound and treats a load exactly at the threshold as within it. The scheduler carries the guard's remaining budget per slow pass (004-12).
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
