@@ -55,6 +55,13 @@ describe("capContext", () => {
     );
   });
 
+  it("keeps the primer that names node:test whole too (003 lessons, defect 1)", () => {
+    const tail = `\n\n${primer("squeal", true)}`;
+    const capped = capContext(`${lines(600)}${tail}`);
+    expect(capped.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);
+    expect(capped.endsWith(tail)).toBe(true);
+  });
+
   it("cuts a text with no primer and no line breaks", () => {
     const capped = capContext("y".repeat(20_000));
     expect(capped.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);

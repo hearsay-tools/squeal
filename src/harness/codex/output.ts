@@ -20,14 +20,14 @@ const cutLine = (command: string) =>
 
 /**
  * `text` within `CONTEXT_CAP_CHARS`. A longer one is cut at a line boundary
- * and says so; a trailing primer is kept whole, since the shared formats cap
+ * and says so; a trailing primer, either variant, is kept whole, since the shared formats cap
  * at 10,000 characters with the primer last. `command` is how the texts name
  * the CLI (`codexCommand`).
  */
 export function capContext(text: string, command: string = SQUEAL_COMMAND): string {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const end = `\n\n${primer(command)}`;
-  const tail = text.endsWith(end) ? end : "";
+  const ends = [false, true].map((nodeTest) => `\n\n${primer(command, nodeTest)}`);
+  const tail = ends.find((end) => text.endsWith(end)) ?? "";
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
