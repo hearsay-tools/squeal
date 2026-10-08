@@ -17586,15 +17586,23 @@ var init_graph2 = __esm({
       observedPreloads = /* @__PURE__ */ new Set();
       /** Cold build, or a full re-resolve after a reset. */
       build(testFiles) {
-        this.testFiles = testFiles.map((f) => this.abs(f));
-        this.resolvePreloads();
-        this.table.reach([...this.preloadRoots, ...this.testFiles]);
-        this.index = null;
+        try {
+          this.testFiles = testFiles.map((f) => this.abs(f));
+          this.resolvePreloads();
+          this.table.reach([...this.preloadRoots, ...this.testFiles]);
+          this.index = null;
+        } finally {
+          this.resolver.release();
+        }
       }
       setTestFiles(testFiles) {
-        this.testFiles = testFiles.map((f) => this.abs(f));
-        this.table.reach(this.testFiles);
-        this.index = null;
+        try {
+          this.testFiles = testFiles.map((f) => this.abs(f));
+          this.table.reach(this.testFiles);
+          this.index = null;
+        } finally {
+          this.resolver.release();
+        }
       }
       invalidate(paths) {
         const structural = paths.some(
@@ -17606,7 +17614,11 @@ var init_graph2 = __esm({
           this.build(this.testFiles.map((f) => this.rel(f)));
           return;
         }
-        for (const { path } of paths) if (this.table.reparse(this.abs(path))) this.index = null;
+        try {
+          for (const { path } of paths) if (this.table.reparse(this.abs(path))) this.index = null;
+        } finally {
+          this.resolver.release();
+        }
       }
       closure(testFile) {
         const index = this.current();
@@ -27029,6 +27041,10 @@ function createResolver(chain, root) {
       if (MODULE.test(file)) return { format: "module", manifest: null };
       return scopeOf(dirname20(file));
     },
+    release() {
+      fileSystem.purge();
+      resolvers.clear();
+    },
     clear() {
       fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
       resolvers = /* @__PURE__ */ new Map();
@@ -28165,7 +28181,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.26";
+  if (true) return "0.1.27";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
