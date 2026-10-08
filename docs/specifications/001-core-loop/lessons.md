@@ -784,3 +784,11 @@ At 16:52 a `Write` of a markdown plan file was denied by `interrupt.onRegression
 ### Defects
 
 23. **Status reads can pair a new revision with the previous revision's states.** `buildSnapshot` (`src/core/status/snapshot.ts`, behind `squeal status --json`) reads the latest revision, then the known states and test-file keys, then `readHeader` reads the latest revision again, with no read transaction. The daemon writes a revision, its re-key and its pending state in one transaction; if it commits between the reads, status shows the new revision with nothing pending and the old result current. `squeal status --wait` (`src/cli/status-wait.ts`) and Stop's `waitForPending` (`src/harness/shared/stop.ts`) have the same race and can call "nothing pending" too early. Rare at calm load (0 of 750 snapshots over 5 edits); with a 30 ms window widened after the states read, 12 of 12 edits, for both plugins. Delivery already reads inside `store.transaction` and is consistent.
+
+## Daemons that outlive their sessions
+
+2026-10-08, from the host's process list: 13 daemons running, one of them for 10.5 hours in `/tmp/squeal-e2e-QMbAgO/wt2`, an e2e fixture whose consumer the test never unregistered (last seen 631 minutes earlier). D10 expires a silent consumer only after 12 hours, so a session that ends without SessionEnd (a killed `-p` run, a crash, a harness that kills its agent) keeps its daemon, and its Vitest workers, alive for up to 13 hours.
+
+### Defects
+
+24. **A daemon outlives the sessions that used it.** It exits only 60 minutes after the last consumer unregisters, and a consumer that never unregisters is expired after 12 hours. The human's rule (2026-10-08): when the last consumer is gone, finish the tier that is running, then exit, with a 3 s grace for `/clear` and `/resume`; a consumer whose harness process is gone counts as gone at once.
