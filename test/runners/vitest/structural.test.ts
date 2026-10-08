@@ -109,17 +109,23 @@ describe("vitest adapter: targeted invalidation on add and delete", SLOW, () => 
   });
 
   it("an unrelated add or delete leaves every other transform cached", async () => {
-    const fx = await openFixture();
+    // Logs each transform of `src/math.ts`. Task 001-146: an edit on disk the
+    // adapter was not told of no longer proves a transform stayed cached; the
+    // adapter re-reads a file whose bytes moved since Vite read them.
+    const fx = await openFixture("basic", { "vitest.config.ts": countingConfig("src/math.ts") });
+    const transforms = () => fx.read(TRANSFORMS).length;
     expect(paths(await fx.adapter.affected(["src/strings.ts"]))).toEqual(["test/strings.test.ts"]);
+    const before = transforms();
+    expect(before).toBeGreaterThan(0);
 
-    // Edited on disk but not invalidated: only a dropped cache would see the new import.
-    fx.write("src/math.ts", fx.read("src/math.ts").replace("\n", '\nimport "./strings.ts";\n'));
     fx.write("src/unrelated.ts", "export const unrelated = 1;\n");
     await fx.adapter.invalidate([{ path: "src/unrelated.ts", kind: "add" }]);
     fx.remove("src/unrelated.ts");
     await fx.adapter.invalidate([{ path: "src/unrelated.ts", kind: "delete" }]);
     expect(paths(await fx.adapter.affected(["src/strings.ts"]))).toEqual(["test/strings.test.ts"]);
+    expect(transforms()).toBe(before);
 
+    fx.write("src/math.ts", fx.read("src/math.ts").replace("\n", '\nimport "./strings.ts";\n'));
     await fx.adapter.invalidate([{ path: "src/math.ts", kind: "change" }]);
     expect(paths(await fx.adapter.affected(["src/strings.ts"]))).toEqual([
       "test/each.test.ts",
@@ -128,3 +134,32 @@ describe("vitest adapter: targeted invalidation on add and delete", SLOW, () => 
     ]);
   });
 });
+
+const TRANSFORMS = "transforms.log";
+
+/** The basic fixture's config, plus a plugin that appends a line to `TRANSFORMS` per transform of `path`. */
+const countingConfig = (path: string) =>
+  [
+    'import { appendFileSync } from "node:fs";',
+    'import { defineConfig } from "vitest/config";',
+    'import { include } from "./vitest.shared.ts";',
+    `const log = new URL(${JSON.stringify(`./${TRANSFORMS}`)}, import.meta.url);`,
+    'appendFileSync(log, "");',
+    "export default defineConfig({",
+    "  plugins: [",
+    "    {",
+    '      name: "count-transforms",',
+    "      transform(_code, id) {",
+    `        if (id.endsWith(${JSON.stringify(`/${path}`)})) appendFileSync(log, "x");`,
+    "      },",
+    "    },",
+    "  ],",
+    "  test: {",
+    "    include,",
+    '    setupFiles: ["test/setup.ts"],',
+    '    globalSetup: ["test/global-setup.ts"],',
+    "    testTimeout: 60_000,",
+    "  },",
+    "});",
+    "",
+  ].join("\n");
