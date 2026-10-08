@@ -208,11 +208,11 @@ describe("readStatus", () => {
               expected 401, received 500
               at src/auth.ts:12:5, observed at revision 2, current
       Affected checks: 3 passed, 1 running, 1 queued, 1 skipped, 1 stale, 1 unknown
-      Full-suite checkpoint: none completed at revision 2; last completed at revision 1
+      Full-suite checkpoint: none completed since revision 1 (the counts are for revision 2; \`squeal run --all\` requests one)
 
       Worktree: <b> (HEAD abc1234, dirty at revision 2)
       Daemon: running, last heartbeat 2 s ago
-      Inherited: 2 current results
+      Inherited from other worktrees: 2 current results
         2 from <main> at abc1234
       Test files without checks: 1 pending, 1 unknown
       Closure method: static imports plus declared inputs
@@ -272,7 +272,7 @@ describe("readStatus", () => {
       "Revision: 187",
       "Known failures: 0",
       "Affected checks: 47 passed, 3 running, 12 queued",
-      "Full-suite checkpoint: none completed at revision 187; last completed at revision 170",
+      "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 187; `squeal run --all` requests one)",
     ]);
   });
 
@@ -293,8 +293,10 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.fullSuite).toEqual({ atCurrentRevision: true, lastCompletedRevision: 3 });
-    expect(formatStatus(status, NOW).split("\n")[3]).toBe(
-      "Full-suite checkpoint: completed at revision 3",
+    const lines = formatStatus(status, NOW).split("\n");
+    expect(lines[3]).toBe("Full-suite checkpoint: completed at revision 3");
+    expect(lines).toContain(
+      "Inherited from other worktrees: none (every current result here was run in this worktree)",
     );
   });
 
@@ -307,7 +309,7 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(formatStatus(status, NOW).split("\n")[3]).toBe(
-      "Full-suite checkpoint: none completed at any revision",
+      "Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)",
     );
   });
 
@@ -609,7 +611,7 @@ describe("readStatus", () => {
       "Revision: 0",
       "Known failures: 0",
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
-      "Full-suite checkpoint: none completed at any revision",
+      "Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)",
     ]);
     expect(lines).toContain(
       `Worktree: ${repo.main} (HEAD no commit, dirty state not known: no daemon is validating)`,

@@ -77,7 +77,7 @@ describe("formatDelta", () => {
     expect(formatDelta(delta([regression, recovery]))).toBe(
       [
         "SQUEAL · 2 checks changed at revision 184",
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
+        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
         "",
         "FAIL  tests/auth/login.test.ts > login > expired token",
         "      PASS -> FAIL, seen by Squeal's run at revision 184",
@@ -250,15 +250,23 @@ describe("formatDelta", () => {
     );
   });
 
-  it("states the full-suite checkpoint as a request, not a coverage state (lessons, surprise 7)", () => {
-    const at = (fullSuite: StatusHeader["fullSuite"]) =>
-      formatDelta({ ...delta([regression]), header: { ...header, fullSuite } }).split("\n")[1];
+  it("states the full-suite checkpoint as a request, not a coverage state (lessons, surprise 7; defect 27)", () => {
+    const at = (fullSuite: StatusHeader["fullSuite"], command?: string) =>
+      formatDelta({ ...delta([regression]), header: { ...header, fullSuite } }, command).split(
+        "\n",
+      )[1];
     expect(at({ atCurrentRevision: true, lastCompletedRevision: 184 })).toContain(
       "Full-suite checkpoint: completed at revision 184.",
     );
-    expect(at({ atCurrentRevision: false, lastCompletedRevision: null })).toContain(
-      "Full-suite checkpoint: none completed at any revision.",
+    expect(at({ atCurrentRevision: false, lastCompletedRevision: 170 })).toContain(
+      "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
     );
+    expect(at({ atCurrentRevision: false, lastCompletedRevision: null })).toContain(
+      "Full-suite checkpoint: none completed at any revision (the counts are for revision 184; `squeal run --all` requests one).",
+    );
+    expect(
+      at({ atCurrentRevision: false, lastCompletedRevision: null }, "npx squeal"),
+    ).toContain("`npx squeal run --all` requests one");
   });
 
   it("states test files without checks by class, only when there are any", () => {
@@ -267,10 +275,10 @@ describe("formatDelta", () => {
         "\n",
       )[1];
     expect(line({ pending: 0, unknown: 0 })).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
     );
     expect(line({ pending: 2, unknown: 1 })).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Test files without checks: 2 pending, 1 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
+      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Test files without checks: 2 pending, 1 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
     );
   });
 
@@ -287,7 +295,7 @@ describe("formatDelta", () => {
     expect(line(fresh)).toBe(
       "Revision 0: 0 current, 0 pending, 0 stale, 0 unknown. " +
         "The daemon has not listed this worktree's test files yet; these counts are not complete. " +
-        "Full-suite checkpoint: none completed at any revision.",
+        "Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one).",
     );
     expect(line({ ...header, testFilesListed: true })).toBe(line(header));
   });
@@ -297,7 +305,7 @@ describe("formatDelta", () => {
       formatDelta({ ...delta([regression]), header: { ...header, changedPaths } }).split("\n")[1];
     const counts =
       ": 47 current, 3 pending, 0 stale, 12 unknown. " +
-      "Full-suite checkpoint: none completed at revision 184; last completed at revision 170.";
+      "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).";
     expect(line(["src/auth.ts"])).toBe(`Revision 184 (changed src/auth.ts)${counts}`);
     expect(line(["a.ts", "b.ts", "c.ts"])).toBe(`Revision 184 (changed a.ts, b.ts, c.ts)${counts}`);
     expect(line(["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"])).toBe(
@@ -319,7 +327,7 @@ describe("formatDelta", () => {
       formatDelta({ ...delta([regression]), header: { ...header, inheritedCount } }).split("\n")[1];
     expect(line(30)).toBe(
       "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Inherited: 30 of 47 current. " +
-        "Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
+        "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
     );
     expect(line(0)).toBe(formatDelta(delta([regression])).split("\n")[1]);
   });
@@ -379,7 +387,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
     });
     expect(text.split("\n")[1]).toBe(
       "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
-        "Full-suite checkpoint: none completed at revision 184; last completed at revision 170. " +
+        "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one). " +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
   });
@@ -395,7 +403,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
     expect(formatDelta({ ...delta([]), header: down, liveness: down.daemon })).toBe(
       "SQUEAL · no daemon is validating at revision 184\n" +
         "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
-        "Full-suite checkpoint: none completed at revision 184; last completed at revision 170. " +
+        "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one). " +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
     const alive = { state: "alive" as const, lastHeartbeatAt: since };
@@ -430,7 +438,7 @@ describe("formatRegistration", () => {
     expect(formatRegistration(registration([failure(1)]))).toBe(
       [
         "SQUEAL · registered at revision 184",
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed at revision 184; last completed at revision 170.",
+        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
         "Known failures: 1",
         "",
         "FAIL  tests/f1.test.ts > case 1",

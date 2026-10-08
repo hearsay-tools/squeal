@@ -97,13 +97,19 @@ export function runnerPartText(revision: RevisionNumber): string {
 /**
  * Spec 001 D7: "A checkpoint is one `run --all` or baseline request". Worded
  * as a request that did or did not complete, not as a caveat on the counts
- * (lessons, surprise 7). Delivered headers and status print the same words.
+ * (lessons, surprise 7); without one it says the counts are for the current
+ * revision, so it never reads as nothing being current (lessons, defect 27).
+ * "Completed", not "requested": a `run --all` may be running or abandoned.
+ * Delivered headers and status print the same words; `command` is how the
+ * text names the CLI.
  */
-export function fullSuiteText({ revision, fullSuite }: StatusHeader): string {
+export function fullSuiteText({ revision, fullSuite }: StatusHeader, command: string): string {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
-  return fullSuite.lastCompletedRevision === null
-    ? "none completed at any revision"
-    : `none completed at revision ${revision}; last completed at revision ${fullSuite.lastCompletedRevision}`;
+  const none =
+    fullSuite.lastCompletedRevision === null
+      ? "none completed at any revision"
+      : `none completed since revision ${fullSuite.lastCompletedRevision}`;
+  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 
 /**
