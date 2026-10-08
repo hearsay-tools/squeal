@@ -1,5 +1,5 @@
 import { listedDirectory, listingPath, testFileId } from "../keys/index.js";
-import type { RelativePath, RunReport } from "../types/index.js";
+import type { RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import { changedSince, snapshotInputs } from "./stability.js";
@@ -13,6 +13,12 @@ export interface ObservedGrowth {
    * observed since the closure was assembled. The stability check covers them.
    */
   readonly growth: readonly RelativePath[];
+  /**
+   * The file paths of `growth` the stat cache first hashed after the run
+   * began: no evidence from before the run holds them, so no key with them
+   * can certify this run's result (review wave 12d, B1; task 001-134).
+   */
+  readonly firstSeen: readonly RelativePath[];
 }
 
 /**
@@ -22,8 +28,9 @@ export interface ObservedGrowth {
  * amended; research observed-runtime-inputs F3, F4). A path git ignores is
  * dropped: the watcher does not track it, so it cannot key (a blind spot,
  * named in status). Every file path is hashed into the stat cache, so the
- * keys `recordTier` computes have no untracked path. Empty while policy
- * `observe.runtimeInputs` is off.
+ * keys `recordTier` computes have no untracked path; a path hashed only now,
+ * after its read, is `firstSeen`. Empty while policy `observe.runtimeInputs`
+ * is off.
  */
 export async function observedGrowth(
   context: SchedulerContext,
@@ -47,15 +54,22 @@ export async function observedGrowth(
     [...candidates].filter((p) => p !== ""),
   );
   const tracked: RelativePath[] = [];
+  const grown: { testFile: TestFileRef; add: RelativePath[]; growth: RelativePath[] }[] = [];
   for (const { observed, closure, fresh } of seen) {
     const add = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
     const known = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
     const growth = [...new Set([...known, ...add])];
     if (growth.length === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
-    out.set(testFileId(observed.testFile), { add, growth });
+    grown.push({ testFile: observed.testFile, add, growth });
   }
   await keys.track(tracked);
+  for (const { testFile, add, growth } of grown) {
+    const firstSeen = growth.filter(
+      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path),
+    );
+    out.set(testFileId(testFile), { add, growth, firstSeen });
+  }
   return out;
 }
 

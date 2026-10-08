@@ -115,6 +115,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = new Set();
+  keys.beginRun();
   store.transaction(() => {
     store.runs.start({
       id: runId,
@@ -189,6 +190,9 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<S
  *   stability check, and the results are stored under the key that includes
  *   them, never under the key it ran under, which lacks them (D5 as
  *   amended). When an edit moved its key during the run, nothing is stored.
+ *   When one of those paths was first seen during the run (`firstSeen`),
+ *   nothing from before the run proves it held still: nothing is stored, and
+ *   the file re-runs under the key with it (review wave 12d, B1; task 001-134).
  * - The report's notes become status notes (D7), after the transaction.
  */
 export function recordTier(
@@ -217,6 +221,7 @@ export function recordTier(
   const unknown: { file: FileState; key: CheckKey }[] = [];
   const rekeyed: TestFileRef[] = [];
   const grown: { ref: TestFileRef; checkpointId: string | null }[] = [];
+  const firstSeen: FileState[] = [];
   const unstable = (path: RelativePath) =>
     changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
@@ -246,6 +251,10 @@ export function recordTier(
         ledger.discard(file, key);
         continue;
       }
+      if (growth !== undefined && growth.firstSeen.length > 0) {
+        if (file.key === key) firstSeen.push(file);
+        continue;
+      }
       if (storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
@@ -266,6 +275,7 @@ export function recordTier(
       ledger.settle([ref], NOTHING_CHANGED, { checkpointId });
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
+    ledger.rerunFirstSeen(firstSeen);
     storeClosures(
       context,
       grown.map((g) => g.ref),

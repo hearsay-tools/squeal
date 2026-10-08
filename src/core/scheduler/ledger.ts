@@ -239,6 +239,25 @@ export class Ledger {
   }
 
   /**
+   * Files whose run read a path first seen during it (`ObservedGrowth.firstSeen`,
+   * task 001-134), once `settle` moved them to the key with that path: they
+   * re-run under it. Counted with `discard`'s, since their own growth, not an
+   * edit, moved the key; at `MAX_DISCARDS` in a row the file is `unknown`
+   * until its key changes, so a run that reads a new path every time cannot
+   * re-run forever. A file `settle` gave a result at the new key (another
+   * worktree stored it) is current and not counted.
+   */
+  rerunFirstSeen(files: readonly FileState[]): void {
+    const exhausted: { file: FileState; key: CheckKey }[] = [];
+    for (const file of files) {
+      if (file.key === null || file.resultKey === file.key) continue;
+      file.discards += 1;
+      if (file.discards >= MAX_DISCARDS) exhausted.push({ file, key: file.key });
+    }
+    this.markUnknown(exhausted, `${MAX_DISCARDS} runs in a row read paths no earlier run had read`);
+  }
+
+  /**
    * Writes what this round of work owes the store and the sink, in one
    * transaction. `refined` is the revision whose runner part this commit
    * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
