@@ -254,6 +254,7 @@ var DEFAULT_POLICY = {
   stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
+  observe: { runtimeInputs: true },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
@@ -3101,7 +3102,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.34";
+  if (true) return "0.1.35";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3393,6 +3394,7 @@ var SHAPE = {
   stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
   baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
+  observe: { runtimeInputs: boolean },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
