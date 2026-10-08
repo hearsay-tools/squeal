@@ -25,8 +25,9 @@
 //
 // Batched: each new path waits in memory, and one append per event-loop turn
 // that found any (and one at exit) writes them as a line
-// `{"t":file,"f":[...],"l":[...],"w":[...]}` to `<out>/<pid>-<thread>.ndjson`:
-// `f` read, stat'ed, loaded or executed, `l` listed, `w` written. Not only at
+// `{"t":file,"f":[...],"l":[...],"r":[...],"w":[...]}` to
+// `<out>/<pid>-<thread>.ndjson`: `f` read, stat'ed, loaded or executed, `l`
+// listed, `r` listed with `recursive: true` (each also in `l`), `w` written. Not only at
 // exit: Vitest stops a fork with SIGTERM and a thread with `terminate()`, and
 // neither runs an exit hook. Also at once before a process or thread sends a
 // message (`process.send`, `MessagePort.postMessage`): a parent that stops it
@@ -46,6 +47,7 @@ const { threadFile, wrapChildren } = require("./spawn.cjs");
 
 const VARIABLE = "SQUEAL_OBSERVE";
 const SELF = __filename;
+const KINDS = ["f", "l", "r", "w"];
 
 function readSettings() {
   try {
@@ -93,7 +95,7 @@ function install(settings) {
     `${process.pid}-${workerThreads.threadId}-${Date.now().toString(36)}.ndjson`,
   );
 
-  /** test file -> { f, l, w }: every path seen, and the ones not written out yet. */
+  /** test file -> { f, l, r, w }: every path seen, and the ones not written out yet. */
   const seen = new Map();
   const pending = new Map();
   let scheduled = false;
@@ -123,7 +125,7 @@ function install(settings) {
     let text = "";
     for (const [t, sets] of pending) {
       const line = { t };
-      for (const kind of ["f", "l", "w"]) if (sets[kind].length > 0) line[kind] = sets[kind];
+      for (const kind of KINDS) if (sets[kind].length > 0) line[kind] = sets[kind];
       text += `${JSON.stringify(line)}\n`;
     }
     pending.clear();
@@ -138,14 +140,14 @@ function install(settings) {
   const add = (file, kind, abs) => {
     let known = seen.get(file);
     if (known === undefined) {
-      known = { f: new Set(), l: new Set(), w: new Set() };
+      known = { f: new Set(), l: new Set(), r: new Set(), w: new Set() };
       seen.set(file, known);
     }
     if (known[kind].has(abs)) return false;
     known[kind].add(abs);
     let sets = pending.get(file);
     if (sets === undefined) {
-      sets = { f: [], l: [], w: [] };
+      sets = { f: [], l: [], r: [], w: [] };
       pending.set(file, sets);
     }
     sets[kind].push(abs);
