@@ -105,6 +105,12 @@ export class RunQueue {
     return this.#entries.get(testFileId(ref))?.recent ?? false;
   }
 
+  /** Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5 as amended). */
+  hasRecent(): boolean {
+    for (const entry of this.#entries.values()) if (entry.recent) return true;
+    return false;
+  }
+
   /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */
   tierSelected(tookBacklog: boolean): void {
     const waiting = [...this.#entries.values()].some((entry) => !entry.recent);

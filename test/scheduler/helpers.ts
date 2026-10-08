@@ -175,6 +175,8 @@ export interface Harness {
 
 export interface HarnessOptions {
   readonly tierSize?: number;
+  /** Policy `runner.backlogTierSize`; default `tierSize`, so backlog work keeps edit-sized tiers. */
+  readonly backlogTierSize?: number;
   /** Policy `runner.timeoutMs`; default `DEFAULT_POLICY`'s. */
   readonly timeoutMs?: number | null;
   readonly policy?: Partial<Policy>;
@@ -217,6 +219,7 @@ export async function openHarness(
     runner: {
       ...DEFAULT_POLICY.runner,
       tierSize: options.tierSize ?? 2,
+      backlogTierSize: options.backlogTierSize ?? options.tierSize ?? 2,
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     },
   };

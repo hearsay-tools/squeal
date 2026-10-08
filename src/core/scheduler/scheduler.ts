@@ -10,6 +10,7 @@ import type {
   Scheduler,
   SchedulerStatus,
 } from "../types/index.js";
+import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
@@ -58,6 +59,8 @@ class TierScheduler implements Scheduler {
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
+  /** The tier whose run is in flight; a backlog tier carries its `cancel`. */
+  #running: Tier | null = null;
   #closed = false;
   /** The pump stopped on an error; idle until the next batch or request. */
   #stalled = false;
@@ -156,6 +159,11 @@ class TierScheduler implements Scheduler {
         if (missing !== null) return this.#reinstall(ledger);
       }
       if (applied === null) return;
+      // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
+      const running = this.#running;
+      if (running?.cancel && cancelsBacklog(ledger, applied.revision, running)) {
+        running.cancel.abort();
+      }
       this.#runnerWork.queueRefine(applied.revision, applied.content);
     });
     if (this.#reinstalled) this.#tellReinstall();
@@ -242,6 +250,8 @@ class TierScheduler implements Scheduler {
   async close(): Promise<void> {
     if (this.#closed) return;
     this.#closed = true;
+    // A backlog tier stores the files it completed and stops; an edit's tier finishes.
+    this.#running?.cancel?.abort();
     await this.#pumping;
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
@@ -255,8 +265,9 @@ class TierScheduler implements Scheduler {
   /**
    * Runs tiers one after another until the queue is empty. Selection and
    * recording hold the lock; the run and the stability re-stat do not, so
-   * batches are reconciled while a tier is in flight. Spec 001 D5: "A tier in
-   * flight is never cancelled by a new revision."
+   * batches are reconciled while a tier is in flight. Spec 001 D5 as amended
+   * (task 001-124): an edit's tier in flight is never cancelled by a new
+   * revision; a backlog tier is, and its unfinished files are queued again.
    *
    * Before each tier the runner work queued meanwhile is applied, in arrival
    * order, while no tier holds the runner. A tier is never selected while
@@ -299,7 +310,10 @@ class TierScheduler implements Scheduler {
           if (tier === null) break;
           const { context, ledger } = this.#started();
           const selected: Tier = tier;
-          const report = await executeTier(context, selected);
+          this.#running = selected;
+          const report = await executeTier(context, selected).finally(() => {
+            this.#running = null;
+          });
           const changed = await unstableInputs(context, selected);
           const installMoved = this.#reinstalled || (await this.#install.stamp()) !== install.stamp;
           const moved = await this.#lock.run(() =>
