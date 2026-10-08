@@ -185,7 +185,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     ]);
   });
 
-  it("runs a slow lane's processes at nice 10", async () => {
+  it("runs a slow lane's processes at nice 10, and a fast run's stop leaves them running", async () => {
     const children = new EscapedChildren();
     let release = () => {};
     const held = new Promise<void>((resolve) => {
@@ -195,20 +195,26 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     let fast: ChildProcess | null = null;
     const runner = afterEachRun(
       fakeRunner(async (testFiles, runOptions) => {
-        if (runOptions.lane === "slow:vitest") worker = carrier(runOptions, false);
-        else fast = carrier(runOptions, false);
-        await held;
+        if (runOptions.lane === "slow:vitest") {
+          worker = carrier(runOptions, false);
+          await held;
+        } else {
+          // A fast tier that leaves a process behind and settles while the slow file runs.
+          fast = carrier(runOptions, true);
+          await expect.poll(() => getPriority(pidOf(worker)), { timeout: 10_000 }).toBe(10);
+          expect(getPriority(pidOf(fast))).toBe(getPriority());
+        }
         return completed(testFiles);
       }),
       children,
       () => {},
     );
     const slow = runner.run([LONG], options("slow", "slow:vitest"));
-    const other = runner.run([SHORT], options("fast"));
-    await expect.poll(() => worker !== null && fast !== null).toBe(true);
-    await expect.poll(() => getPriority(pidOf(worker)), { timeout: 10_000 }).toBe(10);
-    expect(getPriority(pidOf(fast))).toBe(getPriority());
+    await expect.poll(() => worker).not.toBeNull();
+    await runner.run([SHORT], options("fast"));
+    expect(isAlive(pidOf(fast))).toBe(false);
+    expect(isAlive(pidOf(worker))).toBe(true);
     release();
-    await Promise.all([slow, other]);
+    await slow;
   });
 });
