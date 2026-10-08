@@ -34,7 +34,7 @@ export const CODEX_PLUGIN: PluginBuild = {
  * stays its source plus this line, and each example still reads as a command.
  */
 export const CODEX_SKILL_NOTE =
-  'Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, `node "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.';
+  'Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.';
 
 const SKILL_TITLE = "# Squeal\n";
 

@@ -20,19 +20,23 @@ describe("codexCommand", () => {
   it("names the CLI under PLUGIN_ROOT, quoted for a shell", () => {
     const env = { PLUGIN_ROOT: "/home/u/.codex/plugins/cache/squeal/squeal/0.1.25" };
     expect(codexCommand(env, "/elsewhere/dist/cli/squeal.mjs")).toBe(
-      'node "/home/u/.codex/plugins/cache/squeal/squeal/0.1.25/dist/cli/squeal.mjs"',
+      'node --disable-warning=ExperimentalWarning "/home/u/.codex/plugins/cache/squeal/squeal/0.1.25/dist/cli/squeal.mjs"',
     );
   });
 
   it("names the running bundle's sibling CLI without PLUGIN_ROOT, as for launcher hooks", () => {
-    expect(codexCommand({}, "/p/dist/cli/squeal.mjs")).toBe('node "/p/dist/cli/squeal.mjs"');
+    expect(codexCommand({}, "/p/dist/cli/squeal.mjs")).toBe(
+      'node --disable-warning=ExperimentalWarning "/p/dist/cli/squeal.mjs"',
+    );
     expect(codexCommand({ PLUGIN_ROOT: "" }, "/p/dist/cli/squeal.mjs")).toBe(
-      'node "/p/dist/cli/squeal.mjs"',
+      'node --disable-warning=ExperimentalWarning "/p/dist/cli/squeal.mjs"',
     );
   });
 
   it("single-quotes a path the shell would expand inside double quotes", () => {
-    expect(codexCommand({ PLUGIN_ROOT: "/a $b" }, "/x")).toBe("node '/a $b/dist/cli/squeal.mjs'");
+    expect(codexCommand({ PLUGIN_ROOT: "/a $b" }, "/x")).toBe(
+      "node --disable-warning=ExperimentalWarning '/a $b/dist/cli/squeal.mjs'",
+    );
   });
 });
 
@@ -138,7 +142,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
         encoding: "utf8",
       });
     expect(shell("command -v squeal").status).not.toBe(0);
-    const command = `node "${root}/dist/cli/squeal.mjs"`;
+    const command = `node --disable-warning=ExperimentalWarning "${root}/dist/cli/squeal.mjs"`;
 
     const start = await context("session-start", "session-start");
     expect(start.endsWith(`\n\n${primer(command)}`)).toBe(true);
@@ -170,6 +174,10 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
     const out = await runBundle("session-start", input, env, dist);
     const text = (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
       .hookSpecificOutput.additionalContext;
-    expect(text.endsWith(`\n\n${primer(`node "${join(dist, "cli/squeal.mjs")}"`)}`)).toBe(true);
+    expect(
+      text.endsWith(
+        `\n\n${primer(`node --disable-warning=ExperimentalWarning "${join(dist, "cli/squeal.mjs")}"`)}`,
+      ),
+    ).toBe(true);
   });
 });
