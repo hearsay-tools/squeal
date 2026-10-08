@@ -135,7 +135,9 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     const source = readFileSync(join(REPO_ROOT, SKILL_SOURCE, "SKILL.md"), "utf8");
     const copy = readFileSync(join(expectedSkill(), "SKILL.md"), "utf8");
     expect(copy).toBe(source.replace("# Squeal\n", `# Squeal\n\n${CODEX_SKILL_NOTE}\n`));
-    expect(CODEX_SKILL_NOTE).toContain('`node "<plugin root>/dist/cli/squeal.mjs"`');
+    expect(CODEX_SKILL_NOTE).toContain(
+      '`node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`',
+    );
   });
 
   it("skips a manifest that does not exist yet", async () => {

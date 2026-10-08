@@ -113,6 +113,7 @@ describe("squeal init --harness codex", () => {
       spawnSync(
         process.execPath,
         [
+          "--disable-warning=ExperimentalWarning",
           "--import",
           TSX,
           join(REPO_ROOT, "src/cli/index.ts"),
