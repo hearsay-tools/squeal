@@ -146,7 +146,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     },
     async run(testFiles, runOptions): Promise<RunReport> {
       if (!probe.ok) return unavailable(`${context.label}: ${probe.error}`);
-      const env = childEnvOf(options);
+      const env = childEnvOf(options, runOptions.childEnv);
       const { report, observed: seen } = await runNodeTest({
         root,
         project,
@@ -165,13 +165,20 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   };
 }
 
-/** The inherited env with the daemon's temp directory and child mark; absent when neither is given. */
-function childEnvOf(options: NodeTestAdapterOptions): NodeJS.ProcessEnv | undefined {
+/**
+ * The inherited env with the daemon's temp directory and child mark, the
+ * run's lane mark over the adapter's (task 004-18); absent when none is given.
+ */
+function childEnvOf(
+  options: NodeTestAdapterOptions,
+  runEnv: Readonly<Record<string, string>> | undefined,
+): NodeJS.ProcessEnv | undefined {
   const { tempDir, childEnv } = options;
-  if (tempDir === undefined && childEnv === undefined) return undefined;
+  if (tempDir === undefined && childEnv === undefined && runEnv === undefined) return undefined;
   return {
     ...process.env,
     ...childEnv,
+    ...runEnv,
     ...(tempDir === undefined ? {} : { TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir }),
   };
 }
