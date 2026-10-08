@@ -1,0 +1,988 @@
+{
+  "summary": {
+    "source": "/var/log/sysstat/sa07",
+    "date": "2026-10-07",
+    "window": "08:00\u201318:00 UTC (10:00\u201320:00 Europe/Warsaw)",
+    "samples": 60,
+    "cpus": 24,
+    "thresholds": {
+      "4": {
+        "above": 32,
+        "fraction": 0.5333333333333333
+      },
+      "10": {
+        "above": 14,
+        "fraction": 0.23333333333333334
+      },
+      "25": {
+        "above": 8,
+        "fraction": 0.13333333333333333
+      }
+    },
+    "min": 0.41,
+    "max": 73.01,
+    "median": 4.7
+  },
+  "samples": [
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "08:00:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 42,
+        "plist-sz": 3633,
+        "ldavg-1": 73.01,
+        "ldavg-5": 71.98,
+        "ldavg-15": 54.72,
+        "blocked": 11
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "08:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 23,
+        "plist-sz": 4350,
+        "ldavg-1": 49.12,
+        "ldavg-5": 44.12,
+        "ldavg-15": 46.01,
+        "blocked": 24
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "08:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 35,
+        "plist-sz": 3651,
+        "ldavg-1": 25.83,
+        "ldavg-5": 26.41,
+        "ldavg-15": 35.78,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "08:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 13,
+        "plist-sz": 3918,
+        "ldavg-1": 26.08,
+        "ldavg-5": 36.02,
+        "ldavg-15": 37.73,
+        "blocked": 4
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "08:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 55,
+        "plist-sz": 3806,
+        "ldavg-1": 64.43,
+        "ldavg-5": 47.23,
+        "ldavg-15": 39.9,
+        "blocked": 13
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "08:50:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 5,
+        "plist-sz": 2226,
+        "ldavg-1": 7.57,
+        "ldavg-5": 17.44,
+        "ldavg-15": 27.49,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "09:00:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 43,
+        "plist-sz": 3897,
+        "ldavg-1": 22.3,
+        "ldavg-5": 26.09,
+        "ldavg-15": 28.0,
+        "blocked": 5
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "09:10:00",
+        "utc": 1,
+        "interval": 598
+      },
+      "queue": {
+        "runq-sz": 5,
+        "plist-sz": 2087,
+        "ldavg-1": 5.99,
+        "ldavg-5": 16.51,
+        "ldavg-15": 22.86,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "09:20:01",
+        "utc": 1,
+        "interval": 602
+      },
+      "queue": {
+        "runq-sz": 6,
+        "plist-sz": 1727,
+        "ldavg-1": 5.32,
+        "ldavg-5": 7.24,
+        "ldavg-15": 14.64,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "09:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 7,
+        "plist-sz": 1663,
+        "ldavg-1": 1.9,
+        "ldavg-5": 2.95,
+        "ldavg-15": 9.14,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "09:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1667,
+        "ldavg-1": 1.43,
+        "ldavg-5": 2.58,
+        "ldavg-15": 6.34,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "09:50:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1702,
+        "ldavg-1": 3.19,
+        "ldavg-5": 2.07,
+        "ldavg-15": 4.18,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "10:00:25",
+        "utc": 1,
+        "interval": 623
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1718,
+        "ldavg-1": 3.8,
+        "ldavg-5": 4.45,
+        "ldavg-15": 4.39,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "10:10:01",
+        "utc": 1,
+        "interval": 577
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1912,
+        "ldavg-1": 4.8,
+        "ldavg-5": 4.07,
+        "ldavg-15": 4.14,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "10:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1446,
+        "ldavg-1": 0.89,
+        "ldavg-5": 2.53,
+        "ldavg-15": 3.67,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "10:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1398,
+        "ldavg-1": 1.64,
+        "ldavg-5": 1.55,
+        "ldavg-15": 2.56,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "10:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1433,
+        "ldavg-1": 0.72,
+        "ldavg-5": 1.26,
+        "ldavg-15": 1.93,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "10:50:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1035,
+        "ldavg-1": 1.48,
+        "ldavg-5": 2.26,
+        "ldavg-15": 2.17,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "11:00:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1086,
+        "ldavg-1": 0.85,
+        "ldavg-5": 1.6,
+        "ldavg-15": 1.95,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "11:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 3,
+        "plist-sz": 944,
+        "ldavg-1": 1.13,
+        "ldavg-5": 1.02,
+        "ldavg-15": 1.44,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "11:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 2,
+        "plist-sz": 1111,
+        "ldavg-1": 2.54,
+        "ldavg-5": 1.42,
+        "ldavg-15": 1.39,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "11:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 4,
+        "plist-sz": 1480,
+        "ldavg-1": 5.76,
+        "ldavg-5": 5.8,
+        "ldavg-15": 3.65,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "11:40:01",
+        "utc": 1,
+        "interval": 599
+      },
+      "queue": {
+        "runq-sz": 7,
+        "plist-sz": 1431,
+        "ldavg-1": 9.82,
+        "ldavg-5": 7.47,
+        "ldavg-15": 5.42,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "11:50:01",
+        "utc": 1,
+        "interval": 601
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1509,
+        "ldavg-1": 8.78,
+        "ldavg-5": 12.19,
+        "ldavg-15": 9.69,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "12:00:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 4,
+        "plist-sz": 1417,
+        "ldavg-1": 4.7,
+        "ldavg-5": 11.39,
+        "ldavg-15": 11.13,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "12:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 7,
+        "plist-sz": 2446,
+        "ldavg-1": 10.99,
+        "ldavg-5": 15.2,
+        "ldavg-15": 13.7,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "12:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 2,
+        "plist-sz": 1355,
+        "ldavg-1": 3.93,
+        "ldavg-5": 13.45,
+        "ldavg-15": 14.76,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "12:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 12,
+        "plist-sz": 2247,
+        "ldavg-1": 16.33,
+        "ldavg-5": 11.96,
+        "ldavg-15": 12.88,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "12:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 8,
+        "plist-sz": 1833,
+        "ldavg-1": 3.89,
+        "ldavg-5": 7.1,
+        "ldavg-15": 10.03,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "12:50:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 4,
+        "plist-sz": 2095,
+        "ldavg-1": 9.15,
+        "ldavg-5": 9.33,
+        "ldavg-15": 9.91,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "13:00:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 5,
+        "plist-sz": 2251,
+        "ldavg-1": 10.38,
+        "ldavg-5": 15.92,
+        "ldavg-15": 14.13,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "13:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 45,
+        "plist-sz": 5013,
+        "ldavg-1": 39.85,
+        "ldavg-5": 30.94,
+        "ldavg-15": 22.79,
+        "blocked": 12
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "13:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 17,
+        "plist-sz": 3333,
+        "ldavg-1": 15.17,
+        "ldavg-5": 20.3,
+        "ldavg-15": 21.52,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "13:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1934,
+        "ldavg-1": 8.86,
+        "ldavg-5": 10.11,
+        "ldavg-15": 15.6,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "13:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 2,
+        "plist-sz": 1606,
+        "ldavg-1": 9.88,
+        "ldavg-5": 12.78,
+        "ldavg-15": 14.73,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "13:50:31",
+        "utc": 1,
+        "interval": 629
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1410,
+        "ldavg-1": 5.8,
+        "ldavg-5": 6.46,
+        "ldavg-15": 10.17,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "14:00:01",
+        "utc": 1,
+        "interval": 571
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1246,
+        "ldavg-1": 1.47,
+        "ldavg-5": 3.75,
+        "ldavg-15": 6.98,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "14:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 14,
+        "plist-sz": 1488,
+        "ldavg-1": 3.1,
+        "ldavg-5": 3.22,
+        "ldavg-15": 5.1,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "14:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1124,
+        "ldavg-1": 1.64,
+        "ldavg-5": 5.72,
+        "ldavg-15": 6.1,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "14:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1202,
+        "ldavg-1": 0.86,
+        "ldavg-5": 1.83,
+        "ldavg-15": 3.78,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "14:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 880,
+        "ldavg-1": 0.41,
+        "ldavg-5": 0.58,
+        "ldavg-15": 2.18,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "14:50:11",
+        "utc": 1,
+        "interval": 610
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 993,
+        "ldavg-1": 0.51,
+        "ldavg-5": 0.49,
+        "ldavg-15": 1.3,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "15:00:01",
+        "utc": 1,
+        "interval": 590
+      },
+      "queue": {
+        "runq-sz": 24,
+        "plist-sz": 1835,
+        "ldavg-1": 10.47,
+        "ldavg-5": 6.3,
+        "ldavg-15": 3.87,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "15:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 2,
+        "plist-sz": 1316,
+        "ldavg-1": 4.04,
+        "ldavg-5": 8.85,
+        "ldavg-15": 8.15,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "15:20:18",
+        "utc": 1,
+        "interval": 617
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 1328,
+        "ldavg-1": 4.71,
+        "ldavg-5": 8.59,
+        "ldavg-15": 9.52,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "15:30:01",
+        "utc": 1,
+        "interval": 582
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1223,
+        "ldavg-1": 2.53,
+        "ldavg-5": 2.94,
+        "ldavg-15": 5.99,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "15:40:01",
+        "utc": 1,
+        "interval": 601
+      },
+      "queue": {
+        "runq-sz": 3,
+        "plist-sz": 1371,
+        "ldavg-1": 7.47,
+        "ldavg-5": 3.81,
+        "ldavg-15": 4.74,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "15:50:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 6,
+        "plist-sz": 1439,
+        "ldavg-1": 8.45,
+        "ldavg-5": 5.61,
+        "ldavg-15": 5.08,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "16:00:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1324,
+        "ldavg-1": 4.31,
+        "ldavg-5": 7.18,
+        "ldavg-15": 6.16,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "16:10:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 2,
+        "plist-sz": 1098,
+        "ldavg-1": 0.63,
+        "ldavg-5": 1.62,
+        "ldavg-15": 3.64,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "16:20:11",
+        "utc": 1,
+        "interval": 609
+      },
+      "queue": {
+        "runq-sz": 34,
+        "plist-sz": 1552,
+        "ldavg-1": 29.82,
+        "ldavg-5": 17.67,
+        "ldavg-15": 9.39,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "16:30:01",
+        "utc": 1,
+        "interval": 591
+      },
+      "queue": {
+        "runq-sz": 95,
+        "plist-sz": 2507,
+        "ldavg-1": 54.75,
+        "ldavg-5": 40.62,
+        "ldavg-15": 23.87,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "16:40:00",
+        "utc": 1,
+        "interval": 599
+      },
+      "queue": {
+        "runq-sz": 5,
+        "plist-sz": 1397,
+        "ldavg-1": 6.74,
+        "ldavg-5": 32.72,
+        "ldavg-15": 31.8,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "16:50:10",
+        "utc": 1,
+        "interval": 610
+      },
+      "queue": {
+        "runq-sz": 2,
+        "plist-sz": 1208,
+        "ldavg-1": 2.16,
+        "ldavg-5": 12.7,
+        "ldavg-15": 22.53,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "17:00:11",
+        "utc": 1,
+        "interval": 601
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 1020,
+        "ldavg-1": 1.9,
+        "ldavg-5": 3.7,
+        "ldavg-15": 12.98,
+        "blocked": 0
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "17:10:01",
+        "utc": 1,
+        "interval": 590
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 884,
+        "ldavg-1": 0.9,
+        "ldavg-5": 1.53,
+        "ldavg-15": 7.46,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "17:20:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 999,
+        "ldavg-1": 2.58,
+        "ldavg-5": 2.31,
+        "ldavg-15": 4.94,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "17:30:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 0,
+        "plist-sz": 969,
+        "ldavg-1": 0.84,
+        "ldavg-5": 1.39,
+        "ldavg-15": 3.31,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "17:40:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 1,
+        "plist-sz": 911,
+        "ldavg-1": 1.57,
+        "ldavg-5": 5.69,
+        "ldavg-15": 5.84,
+        "blocked": 1
+      }
+    },
+    {
+      "timestamp": {
+        "date": "2026-10-07",
+        "time": "17:50:01",
+        "utc": 1,
+        "interval": 600
+      },
+      "queue": {
+        "runq-sz": 5,
+        "plist-sz": 910,
+        "ldavg-1": 1.16,
+        "ldavg-5": 4.09,
+        "ldavg-15": 5.18,
+        "blocked": 0
+      }
+    }
+  ]
+}

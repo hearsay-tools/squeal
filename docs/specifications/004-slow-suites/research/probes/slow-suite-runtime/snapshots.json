@@ -1,0 +1,6 @@
+{
+  "squeal_commit": "25580c8368d57dae987be84434b01e4f6da08cfa",
+  "cezar_commit": "13351da86ed4e44bb89ad54c284ab0115dc82c6b",
+  "cezar_source_check": "Compared copied packages/cezar/src, packages/cezar/test/e2e and scripts file bytes with git show at the named source commit. Only scripts/test-git-env.mjs differed (documented private temp root).",
+  "squeal_changes": "Literal temp roots in src/test/plugin bundles redirected; two containment fixture adjustments documented in verification.txt."
+}

@@ -1,0 +1,101 @@
+Worktree (research-only changes)
+$ npm ci
+added 56 packages, and audited 57 packages in 1s
+found 0 vulnerabilities
+
+$ npm run lint
+Checked 519 files in 226ms. No fixes applied.
+
+$ npm run typecheck
+> tsc --noEmit
+exit 0
+
+Private contained Squeal copy
+$ npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts
+exit 0
+
+$ nice -n 19 npx vitest run --maxWorkers=4 (private contained copy)
+Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/cli/codex-hash.test.ts > launcher hooks (thread/start config) > reproduces the recorded launcher hashes under the session-flags key source
+AssertionError: expected [ [ …(2) ], [ …(2) ] ] to deeply equal [ [ …(2) ], [ …(2) ] ]
+
+- Expected
++ Received
+
+@@ -1,9 +1,9 @@
+  [
+    [
+      "/<session-flags>/config.toml:session_start:0:0",
+-     "sha256:e8dfd3c86a75262fd6e8b13acdbda7b20e3381f90df76c40b92ce98ba84b4de3",
++     "sha256:119dd0231d04d74ed4540b0e79e7728092db4ef65fd787613998f77ee0392557",
+    ],
+    [
+      "/<session-flags>/config.toml:post_tool_use:0:0",
+      "sha256:a160a10f1b5862412cd723d8b1e645ff6319607577b1abca74cfe1c075baa537",
+    ],
+
+ ❯ test/cli/codex-hash.test.ts:131:87
+    129|       },
+    130|     };
+    131|     expect(hookHashes(file, LAUNCHER_KEY_SOURCE).map(({ key, hash }) =…
+       |                                                                                       ^
+    132|       recorded,
+    133|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/daemon/scratch.test.ts > squeal daemon: nothing held inside the root or the spawner's temp dir (spec 001 D10) > started from inside the root, it runs the root's tests with a temp dir outside every repository, holds nothing there, and exits when the worktree is removed
+AssertionError: expected '/tmp/sqr-y94js4gp/squeal-1001/tmp/40e…' to match /^\/tmp\/squeal-\d+\/tmp\/[0-9a-f]…/tmp\
+
+- Expected:
+/^\/tmp\/squeal-\d+\/tmp\/[0-9a-f]+$/
+
++ Received:
+"/tmp/sqr-y94js4gp/squeal-1001/tmp/40ee0f9d7fbc2520"
+
+ ❯ test/daemon/scratch.test.ts:94:23
+     92|       expect((await resultOf(repo, spawned, "test/tmp.test.ts")).outco…
+     93|       const tempDir = daemonScratch(repo.commonDir, repo.root).tempDir;
+     94|       expect(tempDir).toMatch(/^\/tmp\/squeal-\d+\/tmp\/[0-9a-f]+$/);
+       |                       ^
+     95|       expect(readdirSync(tempDir).some((name) => name.startsWith("x-")…
+     96|       expect(readdirSync(callerTmp)).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 194 passed | 1 skipped (197)
+      Tests  2 failed | 1640 passed | 10 skipped (1652)
+   Start at  09:49:14
+   Duration  277.34s (tests 96%, transform 3%, import 1%)
+
+
+The two full-run failures came from containment: a path regex needed the private prefix, and a hashed, never-executed literal command must retain its recorded bytes. Adjusted only those scratch fixtures.
+$ npx vitest run test/cli/codex-hash.test.ts test/daemon/scratch.test.ts --maxWorkers=1
+
+ RUN  v5.0.3 /tmp/sqr-y94js4gp/sq-b
+
+ ✓ test/daemon/scratch.test.ts (9 tests) 7407ms
+   ✓ squeal daemon: nothing held inside the root or the spawner's temp dir (spec 001 D10) (2)
+     ✓ started from inside the root, it runs the root's tests with a temp dir outside every repository, holds nothing there, and exits when the worktree is removed 5374ms
+     ✓ answers on its socket within a hook's budget, empties its temp directory when it starts and removes the leftover after, and removes it on squeal stop 1427ms
+ ✓ test/cli/codex-hash.test.ts (4 tests) 9ms
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Start at  09:55:52
+   Duration  8.54s (tests 90%, transform 8%, import 2%)
+
+
+Research checks
+Python AST: all probe scripts parsed
+JSON/NDJSON: all evidence files parsed
+Resource trials: 36 recorded, 4 excluded setup failures, 32 valid
+Valid trial failures: only cz-pair-a (documented concurrent port collision)
+Isolated per-file resource trials: 18, all passed
+Private scratch process scan: []
+Owned interruption scopes remaining: 0
+Private scratch removed: true

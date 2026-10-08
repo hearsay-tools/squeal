@@ -1,0 +1,12 @@
+{
+  "before_commit": {
+    "worktree_sha256": "ab65ef1c25170af99edb6e1654132bd16df929092866a9ea17a77d9d3e3706cf",
+    "archive_sha256": "269983b1c9cef122cb49d3c700d848c6747c5cae106c5fcd29ea20c2f69a2df6",
+    "archived_output": "v1"
+  },
+  "after_commit": {
+    "worktree_sha256": "ab65ef1c25170af99edb6e1654132bd16df929092866a9ea17a77d9d3e3706cf",
+    "archive_sha256": "598f9c134b5cde39c53e44367b0657ffd5cbe4a4e3259b6f92999235c96e246c",
+    "archived_output": "v2"
+  }
+}

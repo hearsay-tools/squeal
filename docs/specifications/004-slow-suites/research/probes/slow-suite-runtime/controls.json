@@ -1,0 +1,75 @@
+[
+  {
+    "command": [
+      "nice",
+      "-n",
+      "19",
+      "node",
+      "-e",
+      "console.log(require(\"os\").getPriority())"
+    ],
+    "exit": 0,
+    "stdout": "19\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "ionice",
+      "-c",
+      "3",
+      "sh",
+      "-c",
+      "ionice -p $$"
+    ],
+    "exit": 0,
+    "stdout": "idle\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "taskset",
+      "-c",
+      "0",
+      "node",
+      "-e",
+      "console.log(require(\"os\").availableParallelism())"
+    ],
+    "exit": 0,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "systemd-run",
+      "--user",
+      "--scope",
+      "-p",
+      "CPUQuota=50%",
+      "true"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "Running as unit: run-r72d2cdb20dab46f5834ea6529de253b5.scope; invocation ID: 97e73f6fe06b47de993aed45ded19727\n"
+  },
+  {
+    "command": "systemd-run --user --scope -p CPUQuota=50% sh -c <read own cgroup cpu.max>",
+    "exit": 0,
+    "stdout": "50000 100000",
+    "meaning": "quota 50ms per 100ms, a half CPU for the whole scope"
+  },
+  {
+    "command": [
+      "systemd-run",
+      "--user",
+      "--scope",
+      "-p",
+      "CPUQuota=200%",
+      "node",
+      "-e",
+      "console.log(require(\"os\").availableParallelism())"
+    ],
+    "exit": 0,
+    "stdout": "2",
+    "meaning": "Node sees two CPUs in the scope; runner default concurrency changes as well as CPU time being capped."
+  }
+]

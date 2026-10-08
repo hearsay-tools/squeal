@@ -1,0 +1,15 @@
+{
+  "note": "Excluded from runtime comparisons: original copied Cezar install and dist were stale. Rebuilt only in scratch after npm ci.",
+  "cezar_commit": "13351da86ed4e44bb89ad54c284ab0115dc82c6b",
+  "tests": 70,
+  "pass": 57,
+  "fail": 13,
+  "wall_s": 140.78,
+  "user_cpu_s": 220.64,
+  "system_cpu_s": 56.85,
+  "examples": [
+    "Cannot find package @open-mercato/cezar-contract in installed CLI",
+    "release tarball should contain dist/ci-wait/tools.js",
+    "no dist file names ./contract/index.js"
+  ]
+}

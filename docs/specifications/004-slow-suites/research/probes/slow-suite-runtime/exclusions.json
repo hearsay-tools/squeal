@@ -1,0 +1,6 @@
+{
+  "cz-serial": "Probe setup error: generated packages/cezar/README.md was not copied alongside fresh dist. 69/70 pass, not a valid complete package-suite timing.",
+  "cz-nice": "Same generated README omission at launch; repaired during run for subsequent trials. Discard this timing because inputs were mutable.",
+  "sq-quota-2cpu-missing-bus": "Probe environment omitted XDG_RUNTIME_DIR, so systemd could not connect to the user bus; no suite started. Retried with the non-secret user-bus location preserved.",
+  "cz-quota-2cpu-missing-bus": "Probe environment omitted XDG_RUNTIME_DIR, so systemd could not connect to the user bus; no suite started. Retried with the non-secret user-bus location preserved."
+}

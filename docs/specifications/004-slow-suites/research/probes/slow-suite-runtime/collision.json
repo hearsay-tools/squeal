@@ -1,0 +1,6 @@
+{
+  "first_copy_exit": 0,
+  "second_copy_exit": 1,
+  "first_copy_instrumentation": "hold the successfully bound ::1:4321 listener until second test exits",
+  "second_copy_failure": "\u2716 free default port starts on the requested bind host (659.519575ms)\n\u2139 tests 1\n\u2139 suites 0\n\u2139 pass 0\n\u2139 fail 1\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 1397.112431\n\n\u2716 failing tests:\n\ntest at test/e2e/serve-port.test.ts:1:7196\n\u2716 free default port starts on the requested bind host (659.519575ms)\n  AssertionError [ERR_ASSERTION]: Cockpit port 4321 on ::1 is already in use. Open the existing cockpit if it is serving there, stop the process using this port, or pass --port <free-port> to deliberately start another cockpit.\n  \n      at TestContext.<anonymous> (/tmp/sqr-y94js4gp/cz-b/packages/cezar/test/e2e/serve-port.test.ts:187:12)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: true,\n    operator: '==',\n    diff: 'simple'\n  }\n"
+}

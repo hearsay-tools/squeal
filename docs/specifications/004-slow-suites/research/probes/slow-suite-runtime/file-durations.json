@@ -1,0 +1,640 @@
+{
+  "sq-a-full": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 39.157,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 62.169,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 9.464,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 16.9,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 27.973,
+      "status": "passed"
+    }
+  ],
+  "sq-a-lifecycle.test": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 40.922,
+      "status": "passed"
+    }
+  ],
+  "sq-a-policy.test": [
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 64.261,
+      "status": "passed"
+    }
+  ],
+  "sq-a-shipped-plugin.test": [
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 5.795,
+      "status": "passed"
+    }
+  ],
+  "sq-a-torn-status.test": [
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    }
+  ],
+  "sq-a-transitions.test": [
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 16.353,
+      "status": "passed"
+    }
+  ],
+  "sq-a-worktrees.test": [
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 30.604,
+      "status": "passed"
+    }
+  ],
+  "sq-serial": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 43.931,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 65.643,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 5.291,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 12.905,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 39.267,
+      "status": "passed"
+    }
+  ],
+  "sq-nice": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 57.577,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 82.894,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 19.391,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 34.595,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 62.948,
+      "status": "passed"
+    }
+  ],
+  "sq-affinity": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 48.217,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 62.506,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 6.557,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 25.334,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 52.269,
+      "status": "passed"
+    }
+  ],
+  "cz-a-full": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.207
+    },
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.206
+    },
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.316
+    },
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 3.134
+    },
+    {
+      "file": "release.test.ts",
+      "duration_s": 9.238
+    },
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 11.162
+    },
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 11.619
+    },
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 18.935
+    },
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 25.387
+    },
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 29.425
+    },
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 29.729
+    },
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 52.452
+    }
+  ],
+  "cz-a-alias-bin-exports.test": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.164
+    }
+  ],
+  "cz-a-application-update.test": [
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 47.045
+    }
+  ],
+  "cz-a-cockpit-ownership.test": [
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 7.456
+    }
+  ],
+  "cz-a-delegation.test": [
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 17.16
+    }
+  ],
+  "cz-a-inline-contract.test": [
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 1.844
+    }
+  ],
+  "cz-a-package-cli.test": [
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 20.356
+    }
+  ],
+  "cz-a-release-snapshot.test": [
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 8.63
+    }
+  ],
+  "cz-a-release.test": [
+    {
+      "file": "release.test.ts",
+      "duration_s": 5.99
+    }
+  ],
+  "cz-a-serve-port.test": [
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 11.393
+    }
+  ],
+  "cz-a-stop-child.test": [
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.212
+    }
+  ],
+  "cz-a-task-cli.test": [
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 20.597
+    }
+  ],
+  "cz-a-tick-writer.test": [
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.147
+    }
+  ],
+  "sq-pair-a": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 41.756,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 61.462,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 7.357,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 16.391,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 28.977,
+      "status": "passed"
+    }
+  ],
+  "sq-pair-b": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 41.849,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 62.913,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 7.509,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 16.268,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 30.16,
+      "status": "passed"
+    }
+  ],
+  "cz-pair-a": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.249
+    },
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.257
+    },
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.359
+    },
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 2.517
+    },
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 3.45
+    },
+    {
+      "file": "release.test.ts",
+      "duration_s": 10.704
+    },
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 12.085
+    },
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 12.546
+    },
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 18.264
+    },
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 31.889
+    },
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 32.305
+    },
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 59.13
+    }
+  ],
+  "cz-pair-b": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.614
+    },
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.712
+    },
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.835
+    },
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 5.25
+    },
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 14.037
+    },
+    {
+      "file": "release.test.ts",
+      "duration_s": 14.383
+    },
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 15.297
+    },
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 22.599
+    },
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 30.745
+    },
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 36.825
+    },
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 37.857
+    },
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 63.797
+    }
+  ],
+  "sq-quota-2cpu": [
+    {
+      "file": "lifecycle.test.ts",
+      "reported_span_s": 33.506,
+      "status": "passed"
+    },
+    {
+      "file": "policy.test.ts",
+      "reported_span_s": 56.66,
+      "status": "passed"
+    },
+    {
+      "file": "shipped-plugin.test.ts",
+      "reported_span_s": 5.187,
+      "status": "passed"
+    },
+    {
+      "file": "torn-status.test.ts",
+      "reported_span_s": 0.0,
+      "status": "passed"
+    },
+    {
+      "file": "transitions.test.ts",
+      "reported_span_s": 11.02,
+      "status": "passed"
+    },
+    {
+      "file": "worktrees.test.ts",
+      "reported_span_s": 19.826,
+      "status": "passed"
+    }
+  ],
+  "cz-quota-2cpu": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.131
+    },
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 37.355
+    },
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 7.918
+    },
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 16.034
+    },
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 2.306
+    },
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 18.335
+    },
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 7.57
+    },
+    {
+      "file": "release.test.ts",
+      "duration_s": 5.136
+    },
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 11.52
+    },
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.224
+    },
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 19.226
+    },
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.129
+    }
+  ],
+  "cz-serial-fixed": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.133
+    },
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 37.697
+    },
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 6.674
+    },
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 13.95
+    },
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 1.623
+    },
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 17.702
+    },
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 8.208
+    },
+    {
+      "file": "release.test.ts",
+      "duration_s": 5.531
+    },
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 10.871
+    },
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.213
+    },
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 20.044
+    },
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.151
+    }
+  ],
+  "cz-nice-fixed": [
+    {
+      "file": "alias-bin-exports.test.ts",
+      "duration_s": 0.209
+    },
+    {
+      "file": "tick-writer.test.ts",
+      "duration_s": 0.213
+    },
+    {
+      "file": "stop-child.test.ts",
+      "duration_s": 0.309
+    },
+    {
+      "file": "inline-contract.test.ts",
+      "duration_s": 3.252
+    },
+    {
+      "file": "release.test.ts",
+      "duration_s": 8.157
+    },
+    {
+      "file": "release-snapshot.test.ts",
+      "duration_s": 9.396
+    },
+    {
+      "file": "cockpit-ownership.test.ts",
+      "duration_s": 9.437
+    },
+    {
+      "file": "serve-port.test.ts",
+      "duration_s": 14.298
+    },
+    {
+      "file": "delegation.test.ts",
+      "duration_s": 18.816
+    },
+    {
+      "file": "package-cli.test.ts",
+      "duration_s": 22.465
+    },
+    {
+      "file": "task-cli.test.ts",
+      "duration_s": 23.167
+    },
+    {
+      "file": "application-update.test.ts",
+      "duration_s": 44.247
+    }
+  ]
+}
