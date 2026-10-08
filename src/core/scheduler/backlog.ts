@@ -3,9 +3,12 @@ import type { Ledger } from "./ledger.js";
 import type { Tier } from "./tiers.js";
 
 /**
- * Last known file time a backlog tier holds at most, and at most half of
- * `runner.timeoutMs`: summed as if the files ran one after another, so the
- * tier ends within it whatever the runner's parallelism (task 001-124).
+ * Last-known file time a backlog tier selects at most, and at most half of
+ * `runner.timeoutMs`, summed as if the files ran one after another (task
+ * 001-124). It limits what is selected, not how long the tier runs: a file
+ * with no known duration counts 0, the first file is always taken, a file
+ * can run slower than it last did, and a tier cut short by the run deadline
+ * or a cancel gets a grace before it is forced (review wave 12b, S1).
  */
 export const BACKLOG_TIER_BUDGET_MS = 300_000;
 
