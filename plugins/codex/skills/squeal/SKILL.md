@@ -5,7 +5,7 @@ description: Use when about to run tests (vitest, npm test) or to check whether 
 
 # Squeal
 
-Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, `node "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.
+Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.
 
 Squeal runs this repository's Vitest tests in the background after every edit. It reports only changes, in messages that start with `SQUEAL ·`: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently.
 

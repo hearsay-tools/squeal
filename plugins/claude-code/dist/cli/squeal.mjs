@@ -27152,6 +27152,57 @@ var init_graph3 = __esm({
   }
 });
 
+// src/runners/node-test/run/node-options.ts
+function tokenizeNodeOptions(value) {
+  const tokens = [];
+  let quoted = false;
+  let fresh = true;
+  for (let i2 = 0; i2 < value.length; i2++) {
+    let c = value[i2];
+    if (c === "\\" && quoted) {
+      if (i2 + 1 === value.length) return null;
+      c = value[++i2];
+    } else if (c === " " && !quoted) {
+      fresh = true;
+      continue;
+    } else if (c === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (fresh) tokens.push(c);
+    else tokens[tokens.length - 1] += c;
+    fresh = false;
+  }
+  return quoted ? null : tokens;
+}
+function holdsRequire(value) {
+  const tokens = tokenizeNodeOptions(value);
+  if (tokens === null) return true;
+  return tokens.some(
+    (t) => t === "--require" || t === "-r" || t.startsWith("--require=") || t.startsWith("-r=")
+  );
+}
+function asyncLoaders(tokens) {
+  const loaders = [];
+  for (let i2 = 0; i2 < tokens.length; i2++) {
+    const token = tokens[i2];
+    const [name, value] = splitFlag(token);
+    if (name !== "--loader" && name !== "--experimental-loader") continue;
+    const loader = value ?? tokens[++i2];
+    if (loader !== void 0) loaders.push(loader);
+  }
+  return loaders;
+}
+function splitFlag(token) {
+  const equals = token.indexOf("=");
+  return equals === -1 ? [token, void 0] : [token.slice(0, equals), token.slice(equals + 1)];
+}
+var init_node_options = __esm({
+  "src/runners/node-test/run/node-options.ts"() {
+    "use strict";
+  }
+});
+
 // src/runners/node-test/runtime.ts
 import { existsSync as existsSync13 } from "node:fs";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
@@ -27541,7 +27592,7 @@ function childEnv(options, runtime) {
   const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
   const env = { ...base, ...options.project.env };
   const nodeOptions = env.NODE_OPTIONS;
-  if (nodeOptions !== void 0 && /(^|\s)(--require|-r)(\s|=)/.test(nodeOptions)) {
+  if (nodeOptions !== void 0 && holdsRequire(nodeOptions)) {
     env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
   }
   return env;
@@ -27598,6 +27649,7 @@ var init_run2 = __esm({
     init_worktree_paths();
     init_runtime();
     init_events();
+    init_node_options();
     init_observed();
     init_process();
     init_report();
@@ -27626,6 +27678,7 @@ async function openProject(context) {
   };
   const notes2 = () => {
     for (const text2 of graph.notes()) once(text2.replace(/^node-test: /, ""));
+    for (const text2 of loaderThreadNotes(project)) once(text2);
     for (const reason2 of graph.preloads().incomplete) once(`preload closure incomplete: ${reason2}`);
     const incomplete = graph.incompleteClosures();
     if (incomplete.length > 0) {
@@ -27702,6 +27755,16 @@ async function openProject(context) {
     }
   };
 }
+function loaderThreadNotes(project) {
+  const nodeOptions = project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "";
+  const loaders = [
+    ...asyncLoaders(project.argv),
+    ...asyncLoaders(tokenizeNodeOptions(nodeOptions) ?? [])
+  ];
+  return [...new Set(loaders)].map(
+    (loader) => `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`
+  );
+}
 function unavailable2(failure2) {
   return {
     end: "crashed",
@@ -27722,6 +27785,7 @@ var init_adapter_project = __esm({
     init_adapter_observed();
     init_enumerate();
     init_graph3();
+    init_node_options();
     init_run2();
     NAMED_INCOMPLETE = 3;
   }
@@ -27816,7 +27880,7 @@ var init_adapter2 = __esm({
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
-    NODE_TEST_ADAPTER_VERSION = "3";
+    NODE_TEST_ADAPTER_VERSION = "4";
   }
 });
 
@@ -28188,7 +28252,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.29";
+  if (true) return "0.1.30";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
