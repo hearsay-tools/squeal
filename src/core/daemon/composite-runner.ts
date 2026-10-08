@@ -12,7 +12,9 @@ import type {
  * Several runners behind one `RunnerAdapter`. Spec 003 D7: "`testFiles()`
  * and `environment()` concatenate, `affected()` and `invalidate()` fan out
  * and merge, `run()` dispatches by project, `close()` closes each.
- * `RunnerAdapter` is unchanged."
+ * `RunnerAdapter` is unchanged." `lane()` names a file's runner by its
+ * adapter's name, so a tier of one runner runs beside another runner's
+ * (001 D5 as amended, task 001-140); adapters of one name share a lane.
  *
  * Each project belongs to the adapter that lists it in `testFiles()` or
  * `environment()`; a project two adapters list is an error, since a check id
@@ -76,6 +78,8 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
         transitive: parts.flatMap((part) => part.transitive).sort(compareRefs),
       };
     },
+    // A project no adapter listed yet has the composite's lane: its run fails on its own.
+    lane: (testFile) => owners.get(testFile.project)?.name ?? adapters.map((a) => a.name).join("+"),
     closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
     enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
     async testFiles() {

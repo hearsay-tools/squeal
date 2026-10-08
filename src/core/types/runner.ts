@@ -318,5 +318,13 @@ export interface RunnerAdapter {
    */
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport>;
 
+  /**
+   * The lane that runs `testFile`: runner instances that run one tier at a
+   * time between them. Tiers of different lanes run at once (spec 001 D5 as
+   * amended, task 001-140); a tier holds files of one lane. Absent: one lane,
+   * so one tier at a time.
+   */
+  lane?(testFile: TestFileRef): string;
+
   close(): Promise<void>;
 }
