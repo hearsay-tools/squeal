@@ -55,3 +55,19 @@ Name the cause first: does the successor start late, start and exit, or never st
 Own: `test/daemon/`, `src/core/daemon/` step-down and successor paths, D10 if a rule changes.
 
 Done when: the cause is named with evidence, and the case passes ten runs in a row (`-t` on that case) at load 60 or more.
+
+## 001-146 a run never executes a module older than the bytes its key names
+
+Use /worker. Shape: fix, reproduce first.
+
+Outcome: whatever sequence of edits lands on disk, a stored result was produced by the bytes its key names, or it is not stored as current.
+
+Evidence (read only, never modify): `/home/agent/projects/squeal/.ai/cezar/tmp/4c670899-aa9d-41d9-a611-4c2996e1cf44/evidence-001-146/`: run `acd5f2eb`'s `report.json` and `vitest.log`, the branch reflog, and `squeal why` for one check. In the 002/003/004 coordinator's worktree under a 0.1.42 daemon, a rebase at 23:30:51 put the old `src/cli/run.ts` back and seven cherry-picks restored the new one within the same second. At 23:35:56 run `acd5f2eb` (revision 239, commit `b984524` dirty, 549 ms, key `a84a304f3638`) stored 7 FAILs of `test/cli/run-slow.test.ts` as current, all `squeal run: unknown argument "--slow"` (the old module). A plain `npx vitest run` on the same tree passes 7/7.
+
+Read: spec D2 (watcher, revisions), D4 (keys and closures), D5 (scheduling and the long-lived Vitest instance); `src/core/watcher/`, `src/runners/vitest/` (how changed files invalidate the instance's module graph), how a tier hashes the bytes it keys by versus the bytes Vitest loads.
+
+Questions to settle with a failing test first: does the watcher coalesce a revert-and-restore into no change for that file, or report it while the Vitest instance keeps the module it loaded during the brief revert? Is the key computed from bytes read at a different moment than Vitest's load? Then fix the cause; if a gap cannot be closed, the result must not be stored as current (unknown with a reason).
+
+Own: `src/core/watcher/`, `src/runners/vitest/`, `src/core/keys/` if keys are involved, tests under `test/watcher/`, `test/runners/vitest/`, `test/integration/`; D2, D4 or D5 if a rule changes. Not `src/core/scheduler/` (spec 004's until its wave 1 lands): if the fix needs it, stop and ask.
+
+Done when: a test performs a sub-second revert-and-restore of an imported module under a real daemon and the stored result matches a fresh run; it fails without the fix; the cause is named with evidence.
