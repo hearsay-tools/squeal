@@ -1,0 +1,56 @@
+{
+  "interrupt": {
+    "onRegression": true
+  },
+  "stop": {
+    "blockOnKnownFailures": false,
+    "requireFullSuite": false,
+    "waitMs": 0
+  },
+  "baseline": {
+    "onStart": "lookup-then-run-missing"
+  },
+  "inputs": [],
+  "env": {
+    "allowlist": []
+  },
+  "runner": {
+    "tierSize": 4,
+    "timeoutMs": 600000
+  },
+  "nodeTest": [
+    {
+      "name": "test:unit",
+      "cwd": "packages/cezar",
+      "argv": [
+        "--import",
+        "../../scripts/test-git-env.mjs",
+        "--import",
+        "tsx"
+      ],
+      "include": [
+        "test/unit/*.test.ts"
+      ]
+    },
+    {
+      "name": "test:package",
+      "cwd": "packages/cezar",
+      "argv": [
+        "--import",
+        "../../scripts/test-git-env.mjs",
+        "--import",
+        "tsx"
+      ],
+      "include": [
+        "test/e2e/*.test.ts"
+      ]
+    }
+  ],
+  "daemon": {
+    "idleExitMinutes": 60
+  },
+  "store": {
+    "retentionDays": 7,
+    "maxSizeMb": null
+  }
+}

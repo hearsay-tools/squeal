@@ -1,0 +1,18 @@
+squeal init: wrote squeal.config.json with every default policy key
+script "test:unit" in package.json is not `node [flags...] --test <globs...>` (a chain); add its nodeTest entry by hand from the template below
+seeded nodeTest project "test:unit" from packages/cezar/package.json
+seeded nodeTest project "test:package" from packages/cezar/package.json
+nodeTest entries to complete by hand:
+[
+  {
+    "name": "test:unit",
+    "argv": [],
+    "include": [
+      "<test-file glob>"
+    ]
+  }
+]
+Each user installs the Codex plugin once; Codex writes its own config:
+  codex plugin marketplace add hearsay-tools/squeal
+  codex plugin add squeal@squeal
+Then trust its hooks once: open the Codex TUI, run /hooks and trust the hooks of squeal@squeal. Codex skips untrusted hooks silently.
