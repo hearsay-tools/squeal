@@ -63,6 +63,8 @@ Started: 2026-10-07
 - 2026-10-08, 003-19 cezarion dogfooding (`lessons.md`): Squeal validated cezarion's three node:test suites beside its Vitest suite while a Codex agent did three tasks; only affected node:test files ran, no stale pass from Squeal's own keys. Nine defects: 1 and 7 (row 003-36), 3 and 6 (003-37), 4 (by design, the D3 bound; with 003-26), 9 (Codex `write_stdin`, 002 open question 5 measured), and 2, 5, 8 are core (001): node:test work waits behind any tier in flight (4 min 17 s), a second daemon's start made the first hit `database is locked`, leaked test children outlive the daemon.
 - 2026-10-08, an external defect handoff (`/home/agent/squeal-defect-handoff`, three model reviews of 003-22) reported SQ-1 to SQ-3: the same defects as `reviews/wave-3.md` B1 and B2. Its probe reproduces all four key collisions at edb5d35 and at main 0.1.39, and none on 003-33's branch. Its naive run on main reads as fixed only because its bundle extraction fails on a rebuilt bundle and every file falls back to the whole fingerprint.
 
+- 2026-10-08, from the 001 coordinator: 001-132 (observed runtime inputs) reversed this spec's open question 3 decision; processes a test spawns are now observed through the recorder in `NODE_OPTIONS`, for Vitest and node:test alike. Its recorder also sets `SQUEAL_OBSERVE`, which a nested daemon inherits, so row 003-35 ignores that variable and both recorders in an inherited `NODE_OPTIONS`.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
