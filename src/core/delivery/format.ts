@@ -308,7 +308,13 @@ export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): str
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
-  return assemble(`${title}\n${headerLine(header, command)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
+  return assemble(
+    `${title}\n${headerLine(header, command)}`,
+    blocks,
+    overflow,
+    tail,
+    MESSAGE_CAP_CHARS,
+  );
 }
 
 /** The title of a delta that carries only a change of daemon liveness. */

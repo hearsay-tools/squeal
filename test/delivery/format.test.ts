@@ -264,9 +264,9 @@ describe("formatDelta", () => {
     expect(at({ atCurrentRevision: false, lastCompletedRevision: null })).toContain(
       "Full-suite checkpoint: none completed at any revision (the counts are for revision 184; `squeal run --all` requests one).",
     );
-    expect(
-      at({ atCurrentRevision: false, lastCompletedRevision: null }, "npx squeal"),
-    ).toContain("`npx squeal run --all` requests one");
+    expect(at({ atCurrentRevision: false, lastCompletedRevision: null }, "npx squeal")).toContain(
+      "`npx squeal run --all` requests one",
+    );
   });
 
   it("states test files without checks by class, only when there are any", () => {
