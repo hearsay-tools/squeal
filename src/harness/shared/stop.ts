@@ -104,7 +104,7 @@ export function stopTurn(
         }
       }
       if (reasons.length > 0) {
-        const text = news ?? statusText(consumer, header, failures.length);
+        const text = news ?? statusText(consumer, header, failures.length, deps.command);
         return { block: `${reasons.join("\n")}\n\n${text}` };
       }
       if (input.agent_id !== undefined) await finishSubagent(context);

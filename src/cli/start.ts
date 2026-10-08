@@ -3,6 +3,7 @@ import { ensureDaemon, probeDaemon } from "../core/daemon/ensure.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
 import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
 
 /** A spawned daemon binds its socket in about 100 ms; a loaded machine gets more. */
 const SPAWN_WAIT_MS = 10_000;
@@ -37,6 +38,6 @@ export async function startCommand(args: readonly string[], io: CliIo): Promise<
   }
   io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
   const now = io.now ?? Date.now;
-  io.stdout(formatStatus(readStatus(root, { now }), now()));
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return 0;
 }
