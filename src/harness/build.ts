@@ -30,6 +30,12 @@ export const REPO_ROOT = resolve(import.meta.dirname, "../..");
  */
 export const NODE_TEST_RUNTIME = "src/runners/node-test/runtime";
 
+/**
+ * Task 001-132: the runtime-input recorder, a dependency-free `.cjs` the
+ * bundled CLI finds at `<plugin>/dist/observe/` (`observeRecorder`).
+ */
+export const OBSERVE_RUNTIME = "src/runners/observe";
+
 export interface PluginBuild {
   /** The plugin directory, absolute. */
   readonly pluginDir: string;
@@ -129,10 +135,24 @@ export function copyNodeTestRuntime(
   for (const file of files) copyFileSync(join(from, file), join(outdir, "node-test", file));
 }
 
-/** What `dist/` holds, built into `outdir`: the bundles and the node:test runtime. */
+/** Copies the `.cjs` files of `from`, by default `OBSERVE_RUNTIME`, into `<outdir>/observe/`. */
+export function copyObserveRuntime(
+  outdir: string,
+  from: string = join(REPO_ROOT, OBSERVE_RUNTIME),
+): void {
+  if (!existsSync(from)) return;
+  const files = readdirSync(from).filter((f) => f.endsWith(".cjs"));
+  if (files.length === 0) return;
+  rmSync(join(outdir, "observe"), { recursive: true, force: true });
+  mkdirSync(join(outdir, "observe"), { recursive: true });
+  for (const file of files) copyFileSync(join(from, file), join(outdir, "observe", file));
+}
+
+/** What `dist/` holds, built into `outdir`: the bundles, the node:test runtime and the recorder. */
 export async function buildDist(plugin: PluginBuild, outdir: string): Promise<void> {
   await build(bundleOptions(plugin, outdir));
   copyNodeTestRuntime(outdir);
+  copyObserveRuntime(outdir);
 }
 
 /** Builds `plugin` in place: versions, copied trees, then `dist/`. */
