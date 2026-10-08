@@ -43,6 +43,8 @@ describe("codexCommand", () => {
 /** Every text a Codex hook says, named by `deps.command`; none names a bare `squeal`. */
 describe("Codex hook texts name the command they are given", () => {
   const command = 'node "/opt/codex/plugins/squeal/dist/cli/squeal.mjs"';
+  /** Every header's checkpoint line without a checkpoint at the current revision (defect 27). */
+  const checkpoint = `\`${command} run --all\` requests one`;
   const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive", command };
   const IN_SESSION = sessionOf("exec", "session-start");
   const text = async (r: SquealRepo, name: CodexHookName, fixture: string, over: object = {}) => {
@@ -69,6 +71,7 @@ describe("Codex hook texts name the command they are given", () => {
     r.apply(r.fail());
     const start = await text(r, "session-start", "session-start");
     expect(start.endsWith(`\n\n${primer(command)}`)).toBe(true);
+    expect(start).toContain(checkpoint);
     expect(start).toContain(`Full output: ${command} why "src/math.test.ts > math > adds"`);
     const sub = await text(r, "subagent-start", "subagent-start");
     expect(sub.endsWith(`\n\n${primer(command)}`)).toBe(true);
@@ -84,11 +87,17 @@ describe("Codex hook texts name the command they are given", () => {
     await text(r, "session-start", "session-start");
     const why = (name: string) => `Full output: ${command} why "src/math.test.ts > math > ${name}"`;
     r.apply(r.fail(), r.pass(SUBTRACTS));
-    expect((await text(r, "post-tool-use", "post-tool-use")).split("\n").at(-1)).toBe(why("adds"));
+    const delivered = await text(r, "post-tool-use", "post-tool-use");
+    expect(delivered.split("\n").at(-1)).toBe(why("adds"));
+    expect(delivered).toContain(checkpoint);
     r.apply(r.fail(), r.fail(SUBTRACTS));
     const denied = await text(r, "pre-tool-use", "pre-tool-use-apply-patch");
     expect(denied).toContain(`\n${why("subtracts")}\n`);
-    expect(await text(r, "stop", "stop")).toContain(`\`${command} run --all\` starts one.`);
+    expect(denied).toContain(checkpoint);
+    const stop = await text(r, "stop", "stop");
+    expect(stop).toContain(`\`${command} run --all\` starts one.`);
+    expect(stop).toContain(`SQUEAL · status at revision`);
+    expect(stop).toContain(checkpoint);
   });
 });
 

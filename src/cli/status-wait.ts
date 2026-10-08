@@ -21,6 +21,7 @@ import type {
   ViewEntry,
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
 
 /** How often `status --wait` reads the store. */
 export const STATUS_WAIT_POLL_MS = 250;
@@ -189,7 +190,7 @@ export async function statusWaitCommand(
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);
   } else {
-    io.stdout(`${line}\n${formatStatus(result, now())}`);
+    io.stdout(`${line}\n${formatStatus(result, now(), statusCommand(io.env ?? process.env))}`);
   }
   return 0;
 }

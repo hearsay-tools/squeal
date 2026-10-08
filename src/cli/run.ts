@@ -5,6 +5,7 @@ import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, CheckpointRecord, RunAllResponse } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
 
 const USAGE = "usage: squeal run --all [--force] [--wait]\n";
 /** Without `--wait`, how long to wait for the scheduler to record the checkpoint. */
@@ -53,7 +54,7 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
   }
   io.stdout(`Checkpoint ${checkpoint.id} ${end}\n\n`);
   const now = io.now ?? Date.now;
-  io.stdout(formatStatus(readStatus(root, { now }), now()));
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return end === "completed" ? 0 : 1;
 }
 

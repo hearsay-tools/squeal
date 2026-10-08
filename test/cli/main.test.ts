@@ -6,7 +6,7 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/he
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);
 
-function run(argv: string[], cwd: string) {
+function run(argv: string[], cwd: string, env: CliIo["env"] = {}) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
@@ -19,7 +19,7 @@ function run(argv: string[], cwd: string) {
     cwd,
     now: () => NOW,
     // A Codex shell's CODEX_SESSION_ID would add a line to status (spec 002 D6).
-    env: {},
+    env,
   };
   const code = main(argv, io);
   return { code, stdout, stderr };
@@ -57,6 +57,20 @@ describe("squeal status", () => {
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
       "Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)",
     ]);
+  });
+
+  it("names the Codex command in a Codex shell, where squeal is not on the PATH (defect 27)", () => {
+    const repo = seededRepo();
+    const env = { CODEX_SESSION_ID: "thread-1", PLUGIN_ROOT: "/opt/codex/squeal" };
+
+    const { stdout } = run(["status"], repo.main, env);
+
+    const command =
+      'node --disable-warning=ExperimentalWarning "/opt/codex/squeal/dist/cli/squeal.mjs"';
+    expect(stdout).toContain(
+      `Full-suite checkpoint: none completed at any revision (the counts are for revision 3; \`${command} run --all\` requests one)`,
+    );
+    expect(stdout).not.toMatch(/`squeal /);
   });
 
   it("emits the versioned snapshot with --json", () => {

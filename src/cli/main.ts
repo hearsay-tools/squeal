@@ -7,6 +7,7 @@ import { init } from "./init.js";
 import { removeCommand } from "./remove.js";
 import { runCommand } from "./run.js";
 import { startCommand } from "./start.js";
+import { statusCommand } from "./status-command.js";
 import { statusWaitCommand } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
 
@@ -110,8 +111,10 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const now = io.now ?? Date.now;
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now });
-  const codex = parsed.json ? null : codexStatusLine(cwd, io.env ?? process.env);
-  io.stdout(parsed.json ? json(result) : `${formatStatus(result, now())}${codex ?? ""}`);
+  const env = io.env ?? process.env;
+  const codex = parsed.json ? null : codexStatusLine(cwd, env);
+  const human = () => `${formatStatus(result, now(), statusCommand(env))}${codex ?? ""}`;
+  io.stdout(parsed.json ? json(result) : human());
   return result.available ? 0 : 1;
 }
 

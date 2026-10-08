@@ -8,17 +8,15 @@ import type {
   StatusUnavailable,
 } from "../types/index.js";
 
-/** The CLI that prints status names itself. */
-const STATUS_COMMAND = "squeal";
-
 /**
  * Human rendering of `squeal status`. The first lines reproduce the vision
  * example ("The desired experience"): revision, known failures (each listed
  * under the count), affected check counts, and the full-suite checkpoint,
  * worded as a request as delivered headers word it (lessons, surprise 7).
- * Details follow after a blank line.
+ * Details follow after a blank line. `command` is how the text names the CLI
+ * (`SQUEAL_COMMAND`, or the Codex command under Codex).
  */
-export function formatStatus(result: StatusResult, now: EpochMs): string {
+export function formatStatus(result: StatusResult, now: EpochMs, command = "squeal"): string {
   if (!result.available) return formatUnavailable(result);
   const lines = [
     `Revision: ${result.revision}`,
@@ -35,7 +33,7 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
       ].join(", ")}`,
     ]),
     `Affected checks: ${affected(result)}`,
-    `Full-suite checkpoint: ${fullSuiteText(result, STATUS_COMMAND)}`,
+    `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     "",
     worktreeLine(result),
     daemonLine(result, now),

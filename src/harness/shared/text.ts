@@ -20,21 +20,28 @@ const LISTED_FAILURES = 10;
  * The header line exactly as deltas and registrations render it: the second
  * line of a registration with no failures.
  */
-function headerLine(consumer: Consumer, header: StatusHeader): string {
-  const text = formatRegistration({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    consumer,
-    header,
-    knownFailures: [],
-  });
+function headerLine(consumer: Consumer, header: StatusHeader, command: string): string {
+  const text = formatRegistration(
+    { schemaVersion: PAYLOAD_SCHEMA_VERSION, consumer, header, knownFailures: [] },
+    undefined,
+    command,
+  );
   return text.split("\n")[1] ?? "";
 }
 
-/** Stop with no delta: the status header and the known-failure count. */
-export function statusText(consumer: Consumer, header: StatusHeader, failures: number): string {
+/**
+ * Stop with no delta: the status header and the known-failure count.
+ * `command` is how the header names the CLI (spec 002 D1 as amended).
+ */
+export function statusText(
+  consumer: Consumer,
+  header: StatusHeader,
+  failures: number,
+  command: string = SQUEAL_COMMAND,
+): string {
   return [
     `SQUEAL · status at revision ${header.revision}`,
-    headerLine(consumer, header),
+    headerLine(consumer, header, command),
     knownFailuresLine(failures),
   ].join("\n");
 }
