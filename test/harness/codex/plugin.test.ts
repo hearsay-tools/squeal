@@ -91,10 +91,16 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     // dist/node-test/ holds the node:test reporter and recorder, copied verbatim
     // (spec 003 D5): dependency-free, loaded by the project's Node, not bundled.
     // The recorder is CommonJS, the first --require of a test process (003-28).
-    const runtime = files.filter((f) => f.startsWith("node-test/")).sort();
-    expect(runtime).toEqual(["node-test/recorder.cjs", "node-test/reporter.mjs"]);
+    // dist/observe/ holds the runtime-input recorder, copied verbatim the same way (001-132).
+    const verbatim = (f: string) => f.startsWith("node-test/") || f.startsWith("observe/");
+    const runtime = files.filter(verbatim).sort();
+    expect(runtime).toEqual([
+      "node-test/recorder.cjs",
+      "node-test/reporter.mjs",
+      "observe/recorder.cjs",
+    ]);
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
-    const bundles = files.filter((f) => !f.startsWith("node-test/"));
+    const bundles = files.filter((f) => !verbatim(f));
     expect(bundles).toHaveLength(CONTRACT.length + 2);
     for (const file of bundles) {
       const path = join(built.dir, file);
