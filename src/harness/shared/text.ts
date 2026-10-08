@@ -1,4 +1,4 @@
-import { formatRegistration } from "../../core/delivery/index.js";
+import { formatRegistration, SQUEAL_COMMAND } from "../../core/delivery/index.js";
 import { formatCheck } from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
 import {
@@ -92,12 +92,13 @@ export function knownFailuresReason(
   return sentences.join(" ");
 }
 
-export function fullSuiteReason(header: StatusHeader): string {
+/** `command` is how the reason names the CLI (spec 002 D1 as amended). */
+export function fullSuiteReason(header: StatusHeader, command: string = SQUEAL_COMMAND): string {
   const last = header.fullSuite.lastCompletedRevision;
   const before =
     last === null ? "none completed at any revision" : `the last one completed at revision ${last}`;
   return (
     `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ` +
-    `${header.revision}; ${before}. \`squeal run --all\` starts one.`
+    `${header.revision}; ${before}. \`${command} run --all\` starts one.`
   );
 }

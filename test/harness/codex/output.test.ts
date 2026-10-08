@@ -6,7 +6,7 @@ import {
   capContext,
   deny,
 } from "../../../src/harness/codex/output.js";
-import { PRIMER } from "../../../src/harness/shared/primer.js";
+import { PRIMER, primer } from "../../../src/harness/shared/primer.js";
 
 const lines = (n: number) =>
   Array.from({ length: n }, (_, i) => `FAIL  check number ${i}`).join("\n");
@@ -43,6 +43,16 @@ describe("capContext", () => {
     const kept = capped.split("\nSQUEAL · cut")[0] ?? "";
     expect(text.startsWith(kept)).toBe(true);
     expect(kept.split("\n").at(-1)).toMatch(/^FAIL {2}check number \d+$/);
+  });
+
+  it("keeps the primer of the command it is given whole and names that command (002 D1)", () => {
+    const command = 'node "/p/dist/cli/squeal.mjs"';
+    const capped = capContext(`${lines(600)}\n\n${primer(command)}`, command);
+    expect(capped.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);
+    expect(capped.endsWith(`\n\n${primer(command)}`)).toBe(true);
+    expect(capped).toContain(
+      `\nSQUEAL · cut to fit a Codex hook; \`${command} status\` has the rest.\n`,
+    );
   });
 
   it("cuts a text with no primer and no line breaks", () => {

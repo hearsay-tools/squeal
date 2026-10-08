@@ -25,7 +25,11 @@ const DENIED_KINDS: readonly DeltaKind[] = ["pass-to-fail"];
  */
 export async function denyOnRegression(
   context: HookContext,
-  call: { readonly edit: boolean; readonly toolName: string },
+  call: {
+    readonly edit: boolean;
+    readonly toolName: string;
+    readonly command?: string | undefined;
+  },
 ): Promise<string | null> {
   if (!call.edit || !readPolicy(context.root).interrupt.onRegression) {
     resumeTurn(context.store, context.consumer);
@@ -33,5 +37,5 @@ export async function denyOnRegression(
   }
   const delta = await context.delivery.peek(context.consumer, { kinds: DENIED_KINDS });
   if (delta === null) return null;
-  return `${formatDelta(delta)}\n\n${denialSentence(call.toolName)}`;
+  return `${formatDelta(delta, call.command)}\n\n${denialSentence(call.toolName)}`;
 }

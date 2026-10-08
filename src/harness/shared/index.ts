@@ -18,7 +18,7 @@ export { deliver, mayEdit } from "./deliver.js";
 export { denyOnRegression } from "./deny.js";
 export { ensure, ensureIfStale, SOCKET_TIMEOUT_MS, SPAWN_SETTLE_MS, settle } from "./ensure.js";
 export { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
-export { PRIMER, withPrimer } from "./primer.js";
+export { PRIMER, primer, withPrimer } from "./primer.js";
 export { submitPrompt } from "./prompt.js";
 export { endSession, startSession } from "./session.js";
 export {

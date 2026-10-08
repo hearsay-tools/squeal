@@ -1,10 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  buildPlugin,
   bundleOptions,
   copyNodeTestRuntime,
   hookEntries,
@@ -12,11 +11,14 @@ import {
   rootVersion,
 } from "../../../src/harness/build.js";
 import {
+  buildCodexPlugin,
   CODEX_MANIFEST,
   CODEX_PLUGIN,
   CODEX_PLUGIN_DIR,
   CODEX_PLUGIN_DIST,
   CODEX_SKILL,
+  CODEX_SKILL_NOTE,
+  noteCodexCommand,
   SKILL_SOURCE,
 } from "../../../src/harness/codex/build.js";
 import { CODEX_HOOKS } from "../../../src/harness/codex/index.js";
@@ -39,6 +41,14 @@ const CONTRACT = [
 
 /** As the Claude Code drift test: under a loaded full suite the comparison outran 5 s (S3). */
 const BUILD = { timeout: 60_000 };
+
+/** The skill as the Codex copy must hold it: its source with the Codex note (002 D1 as amended). */
+function expectedSkill(): string {
+  const dir = join(tempDir("squeal-codex-skill-"), "squeal");
+  cpSync(join(REPO_ROOT, SKILL_SOURCE), dir, { recursive: true });
+  noteCodexCommand(dir);
+  return dir;
+}
 
 let built: Awaited<ReturnType<typeof buildCodexBundles>>;
 beforeAll(async () => {
@@ -103,7 +113,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     }
   });
 
-  it("writes the root version, copies the skill and builds dist into a plugin directory", async () => {
+  it("writes the root version, copies the skill with its Codex note and builds dist into a plugin directory", async () => {
     const pluginDir = tempDir("squeal-codex-plugin-");
     mkdirSync(join(pluginDir, ".codex-plugin"));
     const manifest = { name: "squeal", version: "0.0.0", description: "kept" };
@@ -111,19 +121,26 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     mkdirSync(join(pluginDir, CODEX_SKILL), { recursive: true });
     writeFileSync(join(pluginDir, CODEX_SKILL, "stale.md"), "removed by the copy");
 
-    await buildPlugin({ ...CODEX_PLUGIN, pluginDir });
+    await buildCodexPlugin({ ...CODEX_PLUGIN, pluginDir });
 
     expect(JSON.parse(readFileSync(join(pluginDir, CODEX_MANIFEST), "utf8"))).toEqual({
       ...manifest,
       version: rootVersion(),
     });
-    expectSameFiles(join(pluginDir, CODEX_SKILL), join(REPO_ROOT, SKILL_SOURCE));
+    expectSameFiles(join(pluginDir, CODEX_SKILL), expectedSkill());
     expectSameFiles(join(pluginDir, "dist"), built.dir, ".mjs");
   }, 60_000);
 
+  it("adds one line to the skill copy, after its title, and changes nothing else", () => {
+    const source = readFileSync(join(REPO_ROOT, SKILL_SOURCE, "SKILL.md"), "utf8");
+    const copy = readFileSync(join(expectedSkill(), "SKILL.md"), "utf8");
+    expect(copy).toBe(source.replace("# Squeal\n", `# Squeal\n\n${CODEX_SKILL_NOTE}\n`));
+    expect(CODEX_SKILL_NOTE).toContain('`node "<plugin root>/dist/cli/squeal.mjs"`');
+  });
+
   it("skips a manifest that does not exist yet", async () => {
     const pluginDir = tempDir("squeal-codex-plugin-");
-    await buildPlugin({ ...CODEX_PLUGIN, pluginDir, copies: [] });
+    await buildCodexPlugin({ ...CODEX_PLUGIN, pluginDir, copies: [] });
     expect(existsSync(join(pluginDir, CODEX_MANIFEST))).toBe(false);
     expect(existsSync(join(pluginDir, "dist/session-start.mjs"))).toBe(true);
   }, 60_000);
@@ -169,8 +186,8 @@ describe.skipIf(!existsSync(join(CODEX_PLUGIN_DIR, CODEX_MANIFEST)))(
       expectSameFiles(CODEX_PLUGIN_DIST, built.dir, ".mjs");
     });
 
-    it("carries the skill exactly as its source in the Claude Code plugin", () => {
-      expectSameFiles(join(CODEX_PLUGIN_DIR, CODEX_SKILL), join(REPO_ROOT, SKILL_SOURCE));
+    it("carries the skill exactly as its source in the Claude Code plugin, with the Codex note", () => {
+      expectSameFiles(join(CODEX_PLUGIN_DIR, CODEX_SKILL), expectedSkill());
     });
 
     it("has the root version in its manifest", () => {
