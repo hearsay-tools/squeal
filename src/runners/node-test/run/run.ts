@@ -179,9 +179,7 @@ function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS
   const env = projectEnv(options.project, options.env ?? process.env);
   const nodeOptions = env.NODE_OPTIONS;
   const recorder = `--require ${quoteNodeOption(runtime.recorder)}`;
-  if (nodeOptions !== undefined && holdsRequire(nodeOptions)) {
-    env.NODE_OPTIONS = `${recorder} ${nodeOptions}`;
-  } else if (options.project.slow === true) {
+  if (options.project.slow === true || (nodeOptions !== undefined && holdsRequire(nodeOptions))) {
     env.NODE_OPTIONS = nodeOptions === undefined ? recorder : `${recorder} ${nodeOptions}`;
   }
   return env;
