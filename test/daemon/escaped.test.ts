@@ -1,6 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { daemonSuite, ping, readNotes, SLOW, spawnCli, waitFor } from "./helpers.js";
 import { resultOf } from "./scratch-helpers.js";
@@ -43,6 +44,23 @@ export default function setup() {
   child.unref();
   writeFileSync(${JSON.stringify(pidFile)}, JSON.stringify([child.pid]));
 }
+`;
+}
+
+/**
+ * Leads a shell pipeline's process group with `cat` in it, leaves a
+ * grandchild orphaned there, and prints what the tier's stop found.
+ */
+function pipelineLeader(escaped: string): string {
+  return `const { spawn } = require("node:child_process");
+import(${JSON.stringify(escaped)}).then(async ({ EscapedChildren }) => {
+  const children = new EscapedChildren();
+  const since = children.mark();
+  const leaves = "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 600000)'], { stdio: 'ignore' }).unref()";
+  const parent = spawn(process.execPath, ["-e", leaves], { stdio: "ignore" });
+  await new Promise((done) => parent.on("exit", done));
+  console.log(await children.afterTier(since));
+});
 `;
 }
 
@@ -118,6 +136,23 @@ describe.runIf(process.platform === "linux")(
           /^stopped 1 process the runners left running when the daemon exited: /,
         ),
       );
+    });
+
+    it("leaves the rest of a pipeline it leads alone, and stops its orphan there", () => {
+      const escaped = join(dirname(suite.cli), "../core/daemon/escaped.js");
+      // Job control gives the pipeline its own group, led by its first process.
+      const out = execFileSync("bash", ["-c", 'set -m; "$NODE" -e "$SCRIPT" | cat'], {
+        encoding: "utf8",
+        env: { ...process.env, NODE: process.execPath, SCRIPT: pipelineLeader(escaped) },
+      });
+      const pid = Number(/: (\d+) /.exec(out)?.[1]);
+      suite.cleanup(() => {
+        if (pid > 0 && isAlive(pid)) process.kill(pid, "SIGKILL");
+      });
+      expect(out).toBe(
+        `stopped 1 process a test left running after its tier: ${pid} ${process.execPath} -e setTimeout(() => {}, 600000)\n`,
+      );
+      expect(isAlive(pid)).toBe(false);
     });
   },
 );

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { readdirSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { RunnerAdapter } from "../types/index.js";
 
@@ -17,6 +17,8 @@ const GRACE_MS = 1_000;
 const TICKS_PER_SECOND = 100;
 /** Scans per stop: each after the first finds the orphans of what the one before stopped. */
 const ROUNDS = 3;
+/** `/proc/<pid>/stat` files read per event-loop turn. */
+const CHUNK = 64;
 /** The longest command line a note names. */
 const COMMAND_CHARS = 120;
 
@@ -36,6 +38,8 @@ interface ProcessEntry {
  * descends from the daemon, which only a child whose parent exited is. The
  * group counts only when the daemon leads it (`squeal daemon` spawned
  * detached); a daemon inside another process's group leaves the group alone.
+ * What shared the group when the daemon started, such as the rest of a
+ * shell pipeline, is never the daemon's, and neither is what it starts.
  * Linux only, through `/proc`; elsewhere nothing is found.
  */
 export class EscapedChildren {
@@ -45,12 +49,17 @@ export class EscapedChildren {
   readonly #self: number;
   /** When the daemon started, so the exit looks no further back. */
   readonly #born: number;
+  /** The group's other members at the start, by `key`; `null` when the daemon leads no group. */
+  readonly #strangers: Promise<ReadonlySet<string> | null>;
 
   constructor(token: string = randomUUID(), self: number = process.pid) {
     this.env = { [CHILD_VARIABLE]: token };
     this.#needle = `${CHILD_VARIABLE}=${token}\0`;
     this.#self = self;
     this.#born = this.mark();
+    this.#strangers = strangersOf(self);
+    // Read only through `#find`, which waits for it; a failed scan leaves the group alone.
+    this.#strangers.catch(() => {});
   }
 
   /** The clock `stop` compares start times with: now, a second early, in ticks since boot. */
@@ -107,7 +116,7 @@ export class EscapedChildren {
     const deadline = Date.now() + GRACE_MS;
     while (alive.length > 0 && Date.now() < deadline) {
       await sleep(25);
-      alive = await survivors(alive);
+      alive = survivors(alive);
     }
     return true;
   }
@@ -117,15 +126,18 @@ export class EscapedChildren {
     since: number,
     exiting: boolean,
   ): Promise<ProcessEntry[]> {
-    const own = entries.find((entry) => entry.pid === this.#self);
-    const leads = own !== undefined && own.pgrp === this.#self;
-    const descendants = descendantsOf(this.#self, entries);
+    const strangers = await this.#strangers.catch(() => null);
+    const descendants = descendantsOf([this.#self], entries);
+    const foreign = strangers === null ? new Set<number>() : lineOf(strangers, entries);
     const others = entries.filter(({ pid }) => pid !== this.#self);
     const carrying = await Promise.all(
       others.map(({ pid, start }) => (start >= since ? this.#carries(pid) : false)),
     );
     const orphaned = (entry: ProcessEntry) =>
-      leads && entry.pgrp === this.#self && (exiting || !descendants.has(entry.pid));
+      strangers !== null &&
+      entry.pgrp === this.#self &&
+      !foreign.has(entry.pid) &&
+      (exiting || !descendants.has(entry.pid));
     return others.filter((entry, i) => carrying[i] || orphaned(entry));
   }
 
@@ -174,10 +186,10 @@ async function terminate(found: readonly ProcessEntry[]): Promise<Stopped[]> {
   );
   for (const { pid } of named) signal(pid, "SIGTERM");
   const deadline = Date.now() + GRACE_MS;
-  let alive = await survivors(found);
+  let alive = survivors(found);
   while (alive.length > 0 && Date.now() < deadline) {
     await sleep(25);
-    alive = await survivors(alive);
+    alive = survivors(alive);
   }
   for (const { pid } of alive) signal(pid, "SIGKILL");
   return named;
@@ -195,17 +207,28 @@ function describe(stopped: readonly Stopped[], what: string): string | null {
   return `stopped ${count} ${what}: ${list}`;
 }
 
-/** Every process `/proc` lists, zombies left out. */
+/**
+ * Every process `/proc` lists, zombies left out. Read synchronously, a
+ * chunk per event-loop turn: on a host at load 80 with 650 processes that
+ * took 30 ms in all, against 160 ms through the thread pool.
+ */
 async function snapshot(): Promise<ProcessEntry[]> {
-  const names = (await readdir("/proc")).filter((name) => /^\d+$/.test(name));
-  const entries = await Promise.all(names.map((name) => statOf(Number(name))));
-  return entries.filter((entry): entry is ProcessEntry => entry !== null);
+  const names = readdirSync("/proc").filter((name) => /^\d+$/.test(name));
+  const entries: ProcessEntry[] = [];
+  for (let at = 0; at < names.length; at += CHUNK) {
+    if (at > 0) await new Promise((done) => setImmediate(done));
+    for (const name of names.slice(at, at + CHUNK)) {
+      const entry = statOf(Number(name));
+      if (entry !== null) entries.push(entry);
+    }
+  }
+  return entries;
 }
 
-async function statOf(pid: number): Promise<ProcessEntry | null> {
+function statOf(pid: number): ProcessEntry | null {
   let text: string;
   try {
-    text = await readFile(`/proc/${pid}/stat`, "latin1");
+    text = readFileSync(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -215,11 +238,31 @@ async function statOf(pid: number): Promise<ProcessEntry | null> {
   return { pid, ppid: Number(fields[1]), pgrp: Number(fields[2]), start: Number(fields[19]) };
 }
 
-function descendantsOf(root: number, entries: readonly ProcessEntry[]): Set<number> {
+/** A process's identity across pid reuse. */
+function key({ pid, start }: ProcessEntry): string {
+  return `${pid}:${start}`;
+}
+
+/** The other members of the group `self` leads, or `null` when it leads none. */
+async function strangersOf(self: number): Promise<ReadonlySet<string> | null> {
+  if (process.platform !== "linux" || statOf(self)?.pgrp !== self) return null;
+  const entries = await snapshot();
+  const ours = descendantsOf([self], entries);
+  const members = entries.filter(({ pid, pgrp }) => pgrp === self && pid !== self);
+  return new Set(members.filter(({ pid }) => !ours.has(pid)).map(key));
+}
+
+/** The strangers still running and every descendant of theirs. */
+function lineOf(strangers: ReadonlySet<string>, entries: readonly ProcessEntry[]): Set<number> {
+  const roots = entries.filter((entry) => strangers.has(key(entry))).map(({ pid }) => pid);
+  return new Set([...roots, ...descendantsOf(roots, entries)]);
+}
+
+function descendantsOf(roots: readonly number[], entries: readonly ProcessEntry[]): Set<number> {
   const children = new Map<number, number[]>();
   for (const { pid, ppid } of entries) children.set(ppid, [...(children.get(ppid) ?? []), pid]);
   const found = new Set<number>();
-  const queue = [...(children.get(root) ?? [])];
+  const queue = roots.flatMap((root) => children.get(root) ?? []);
   for (let pid = queue.pop(); pid !== undefined; pid = queue.pop()) {
     if (found.has(pid)) continue;
     found.add(pid);
@@ -229,9 +272,8 @@ function descendantsOf(root: number, entries: readonly ProcessEntry[]): Set<numb
 }
 
 /** The ones still running as the same process: same pid, same start time. */
-async function survivors(entries: readonly ProcessEntry[]): Promise<ProcessEntry[]> {
-  const now = await Promise.all(entries.map((entry) => statOf(entry.pid)));
-  return entries.filter((entry, i) => now[i]?.start === entry.start);
+function survivors(entries: readonly ProcessEntry[]): ProcessEntry[] {
+  return entries.filter((entry) => statOf(entry.pid)?.start === entry.start);
 }
 
 async function args(entry: ProcessEntry): Promise<string> {
