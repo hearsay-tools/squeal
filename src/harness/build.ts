@@ -25,7 +25,8 @@ export const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
 /**
  * Task 003-13: the node:test reporter and recorder, dependency-free `.mjs`
- * files the bundled CLI finds at `<plugin>/dist/node-test/`.
+ * and `.cjs` files (the recorder is CommonJS, task 003-28) the bundled CLI
+ * finds at `<plugin>/dist/node-test/`.
  */
 export const NODE_TEST_RUNTIME = "src/runners/node-test/runtime";
 
@@ -111,7 +112,7 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
 }
 
 /**
- * Copies the `.mjs` files of `from`, by default `NODE_TEST_RUNTIME`, into
+ * Copies the `.mjs` and `.cjs` files of `from`, by default `NODE_TEST_RUNTIME`, into
  * `<outdir>/node-test/`, when that source directory exists.
  */
 export function copyNodeTestRuntime(
@@ -119,7 +120,7 @@ export function copyNodeTestRuntime(
   from: string = join(REPO_ROOT, NODE_TEST_RUNTIME),
 ): void {
   if (!existsSync(from)) return;
-  const files = readdirSync(from).filter((f) => f.endsWith(".mjs"));
+  const files = readdirSync(from).filter((f) => f.endsWith(".mjs") || f.endsWith(".cjs"));
   if (files.length === 0) return;
   mkdirSync(join(outdir, "node-test"), { recursive: true });
   for (const file of files) copyFileSync(join(from, file), join(outdir, "node-test", file));

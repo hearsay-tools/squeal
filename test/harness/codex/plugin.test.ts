@@ -75,13 +75,14 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
   }, 60_000);
 
   it("gives every bundle a require for CommonJS dependencies, and each parses (003-12)", () => {
-    const files = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter((f) =>
-      f.endsWith(".mjs"),
+    const files = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter(
+      (f) => f.endsWith(".mjs") || f.endsWith(".cjs"),
     );
     // dist/node-test/ holds the node:test reporter and recorder, copied verbatim
     // (spec 003 D5): dependency-free, loaded by the project's Node, not bundled.
+    // The recorder is CommonJS, the first --require of a test process (003-28).
     const runtime = files.filter((f) => f.startsWith("node-test/")).sort();
-    expect(runtime).toEqual(["node-test/recorder.mjs", "node-test/reporter.mjs"]);
+    expect(runtime).toEqual(["node-test/recorder.cjs", "node-test/reporter.mjs"]);
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
     const bundles = files.filter((f) => !f.startsWith("node-test/"));
     expect(bundles).toHaveLength(CONTRACT.length + 2);
@@ -138,14 +139,14 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
 });
 
 describe("node:test runtime copy (task 003-13)", () => {
-  it("copies the runtime's .mjs files into dist/node-test", () => {
+  it("copies the runtime's .mjs and .cjs files into dist/node-test", () => {
     const from = tempDir("squeal-runtime-");
     writeFileSync(join(from, "reporter.mjs"), "export default 1;\n");
-    writeFileSync(join(from, "recorder.mjs"), "export {};\n");
+    writeFileSync(join(from, "recorder.cjs"), "module.exports = {};\n");
     writeFileSync(join(from, "notes.md"), "not shipped\n");
     const outdir = tempDir("squeal-dist-");
     copyNodeTestRuntime(outdir, from);
-    expect(readdirSync(join(outdir, "node-test")).sort()).toEqual(["recorder.mjs", "reporter.mjs"]);
+    expect(readdirSync(join(outdir, "node-test")).sort()).toEqual(["recorder.cjs", "reporter.mjs"]);
   });
 
   it("does nothing while the runtime directory does not exist", () => {
