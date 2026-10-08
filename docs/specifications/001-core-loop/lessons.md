@@ -803,3 +803,11 @@ At 16:52 a `Write` of a markdown plan file was denied by `interrupt.onRegression
 26. **A daemon older than its hooks keeps running.** Hooks at 0.1.31 talked to a 0.1.24 daemon for hours.
 27. **Status lines read as staleness.** The checkpoint and inherited lines say what was not requested or not reused, and read as "nothing is current".
 28. **Process-group tests may fail under Squeal only** (unverified): cezar's S26 to S28 check process groups, and Squeal's daemon is a detached session leader.
+
+## Test daemons outlive their test runs
+
+2026-10-08, while retiring workers 6c51ee50 and 61f49fbc: each worktree still held a daemon started an hour earlier from `node_modules/.cache/squeal-test/<uuid>/dist` (the built copy `test/daemon/helpers.ts` makes), plus a `node --test` run and its esbuild service in one case, after the worker's suite had ended. Cezar's destroy refused until they were killed. 001-122's afterAll check covers the e2e fixtures only; daemons the daemon tests spawn from that built copy are not checked.
+
+### Defects
+
+29. **Daemons started by `test/daemon/` tests can outlive the run.** They run from the built copy under `node_modules/.cache/squeal-test/`, and nothing fails the suite when one is left alive.
