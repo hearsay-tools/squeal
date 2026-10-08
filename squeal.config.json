@@ -6,8 +6,24 @@
       ".claude-plugin/**",
       "package.json"
     ],
-    "test/e2e/*.test.ts": ["plugins/claude-code/**"],
+    "test/e2e/*.test.ts": ["plugins/claude-code/**", "plugins/codex/**"],
     "test/policy/repository-inputs.test.ts": ["squeal.config.json", "**/.gitignore"],
-    "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"]
+    "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"],
+    "test/harness/codex/**/*.test.ts": [
+      "plugins/codex/**",
+      "src/**/*.ts",
+      "test/fixtures/codex-hooks/**"
+    ],
+    "test/plugins/codex/**/*.test.ts": ["plugins/codex/**"],
+    "test/runners/node-test/**/*.test.ts": [
+      "test/fixtures/node-test/**",
+      "src/runners/node-test/runtime/**"
+    ],
+    "test/runners/node-test/graph-memory.test.ts": ["src/runners/node-test/graph/**"],
+    "test/runners/node-test/graph-bundle.test.ts": [
+      "src/runners/node-test/graph/**",
+      "src/harness/build.ts"
+    ],
+    "test/integration/node-test.test.ts": ["src/**/*.ts", "test/fixtures/node-test/**"]
   }
 }
