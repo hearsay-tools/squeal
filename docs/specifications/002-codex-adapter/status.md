@@ -38,6 +38,8 @@ Started: 2026-10-07
 
 - 2026-10-08, 002-20 closed at 0.1.27: with 001-116's read transactions on main, the opt-in probe `SQUEAL_PROBE_TORN_STATUS=1 npx vitest run test/e2e/torn-status.test.ts` passes (it widens the window that failed 12 of 12 before), and `test/e2e/transitions.test.ts` passed 10 times with a second copy running beside each, 20 runs and 80 test executions, at load 4.6 to 7.5. Not repeated at the load 20 to 100 where the flake was first seen; the probe is the deterministic evidence.
 
+- 2026-10-08, 002-19 (`lessons.md` "Dogfooding with a Cezar Codex worker"): a real Cezar Codex worker (gpt-6.1-sol, row 003-27) ran with the plugin installed and trusted in the real `~/.codex`. Goals 1, 2, 4, 6 and 8 held, 3, 5 and 7 were not exercised (no regression, Cezar forbids subagents, no hook timing is recorded in a Cezar session), none broke. The agent read the skill on its own but still ran Vitest three times, since Squeal's first result for its new test took 2 min 7 s on a cold baseline at load 80 and its brief required the full suite. Defects: 4, `squeal` is not on a Codex agent's PATH while the primer tells it to run `squeal status --wait` (D1 amended; row 002-22); 5, tests that load sources or plugins in a child process kept stale results in this repository (its `squeal.config.json` declares those inputs now); 6, the Claude Code latency test dies at its own timeout under load (row 002-22).
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
