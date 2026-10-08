@@ -15,6 +15,8 @@ import type {
  * `RunnerAdapter` is unchanged." `lane()` names a file's runner by its
  * adapter's name, so a tier of one runner runs beside another runner's
  * (001 D5 as amended, task 001-140); adapters of one name share a lane.
+ * `releaseLane` goes to every adapter, and `run` passes its options,
+ * the lane among them, to each part (task 004-18).
  *
  * Each project belongs to the adapter that lists it in `testFiles()` or
  * `environment()`; a project two adapters list is an error, since a check id
@@ -106,6 +108,10 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
         parts.push({ adapter, report: await runPart(adapter, files, options) });
       }
       return merge(parts);
+    },
+    // Each adapter knows its own lanes (a slow instance, task 004-18); the others ignore it.
+    async releaseLane(lane) {
+      await Promise.all(adapters.map((adapter) => adapter.releaseLane?.(lane)));
     },
     async close() {
       const closed = await Promise.allSettled(adapters.map((adapter) => adapter.close()));

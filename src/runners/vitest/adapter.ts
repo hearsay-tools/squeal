@@ -70,6 +70,7 @@ export class VitestAdapter implements RunnerAdapter {
   readonly #note: (text: string) => void;
   readonly #observer: VitestObserver;
   readonly #childEnv: Readonly<Record<string, string>>;
+  readonly #maxWorkers: number | undefined;
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -78,7 +79,9 @@ export class VitestAdapter implements RunnerAdapter {
    * `observe` is policy `observe.runtimeInputs`, read before each call
    * (task 001-132); absent, nothing is observed. `childEnv` goes into every
    * worker's env beside the recorder's and, like it, stays out of the
-   * environment hash (D12, task 001-142).
+   * environment hash (D12, task 001-142). `maxWorkers` overrides the
+   * config's (spec 004 D2: the slow tier's instance); not keyed, since the
+   * slow instance's environment is never asked for.
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -86,10 +89,12 @@ export class VitestAdapter implements RunnerAdapter {
     note: (text: string) => void = () => {},
     observe: () => boolean = () => false,
     childEnv: Readonly<Record<string, string>> = {},
+    maxWorkers?: number,
   ) {
     this.#node = vitest;
     this.#sources = new SourceStamps(paths);
     this.#childEnv = childEnv;
+    this.#maxWorkers = maxWorkers;
     this.#note = note;
     this.#observer = new VitestObserver(paths, observe);
   }
@@ -112,6 +117,7 @@ export class VitestAdapter implements RunnerAdapter {
       update: "none",
       includeTaskLocation: true,
       ...(Object.keys(env).length === 0 ? {} : { env }),
+      ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
     });
     // Review wave-13 B2: every project server's, not only the root's, before any load.
     sources.attach(vitest);
