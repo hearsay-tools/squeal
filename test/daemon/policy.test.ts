@@ -49,13 +49,19 @@ describe("loadPolicy (spec 001 D11)", () => {
     expect(problems).toEqual([]);
     expect(policy).toEqual({
       interrupt: { onRegression: false },
-      stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 1500 },
+      stop: {
+        blockOnKnownFailures: false,
+        requireFullSuite: false,
+        waitMs: 1500,
+        requireSlowSuite: false,
+      },
       baseline: { onStart: "lookup-only" },
       inputs: ["fixtures/**/*.json"],
       observe: { runtimeInputs: false },
       env: { allowlist: ["TZ"] },
       runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null },
       nodeTest: [],
+      slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000 },
       daemon: { idleExitMinutes: 0.5 },
       store: { retentionDays: 3, maxSizeMb: 200 },
     });

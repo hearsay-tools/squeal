@@ -18,6 +18,7 @@ export function compiles(globs: readonly string[]): { readonly problem: string }
 /** Checks one key of an entry: `null`, what was expected, or a whole problem. */
 type Field = (value: unknown) => string | { readonly problem: string } | null;
 
+const boolean: Field = (v) => (typeof v === "boolean" ? null : "true or false");
 const nonEmptyString: Field = (v) =>
   typeof v === "string" && v.length > 0 ? null : "a non-empty string";
 const strings: Field = (v) =>
@@ -48,6 +49,7 @@ const FIELDS: Readonly<Record<keyof NodeTestProject, Field>> = {
   env: variables,
   include: globs,
   exclude: globs,
+  slow: boolean,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
 
