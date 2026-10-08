@@ -37,7 +37,15 @@ export const MESSAGE_CAP_CHARS = 10_000;
 /** Room kept for the overflow line while blocks are added. */
 const OVERFLOW_RESERVE = 200;
 const INDENT = "      ";
-const STATUS_POINTER = "`squeal status` lists every known failure.";
+
+/**
+ * The shell command that runs the Squeal CLI, as the texts name it: `squeal`,
+ * which the Claude Code plugin puts on PATH (`bin/squeal`). Spec 002 D1 as
+ * amended: under Codex the hook passes the installed CLI by its path.
+ */
+export const SQUEAL_COMMAND = "squeal";
+
+const statusPointer = (command: string) => `\`${command} status\` lists every known failure.`;
 
 /** What a block counts as when it is left out: an outcome, or a retired failure. */
 type Shown = KnownOutcome | "resolved";
@@ -45,15 +53,18 @@ type Shown = KnownOutcome | "resolved";
 const upper = (outcome: Shown) => outcome.toUpperCase();
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
+/** `text` as one shell word: double-quoted, or single-quoted when the shell would expand it inside double quotes. */
+export function shellWord(text: string): string {
+  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
+}
+
 /**
  * Task 001-88: a FAIL report ends with one line naming the command that prints
  * the full output of its first failure. A name the shell would expand inside
  * double quotes is single-quoted.
  */
-function whyLine(check: CheckId): string {
-  const name = checkName(check);
-  const quoted = /["$`\\]/.test(name) ? `'${name.replaceAll("'", "'\\''")}'` : `"${name}"`;
-  return `Full output: squeal why ${quoted}`;
+function whyLine(check: CheckId, command: string): string {
+  return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
 
 function at(location: SourceLocation): string {
@@ -264,8 +275,11 @@ function assemble(
   return `${out}${end}`;
 }
 
-/** Renders a delta: header, failures first, unknowns, recoveries, retired failures. */
-export function formatDelta(delta: Delta): string {
+/**
+ * Renders a delta: header, failures first, unknowns, recoveries, retired
+ * failures. `command` is how the text names the CLI (`SQUEAL_COMMAND`).
+ */
+export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): string {
   const { header, entries } = delta;
   const changed = entries.filter((e): e is TransitionEntry => e.kind !== "fail-retired");
   const retired = entries.filter((e): e is RetiredEntry => e.kind === "fail-retired");
@@ -291,9 +305,9 @@ export function formatDelta(delta: Delta): string {
       .map((o) => [o, outcomes.filter((x) => x === o).length] as const)
       .filter(([, n]) => n > 0)
       .map(([o, n]) => `${n} ${upper(o)}`);
-    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${STATUS_POINTER}`;
+    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
   };
-  const tail = failed === undefined ? null : whyLine(failed.check);
+  const tail = failed === undefined ? null : whyLine(failed.check, command);
   return assemble(`${title}\n${headerLine(header)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
 }
 
@@ -306,11 +320,13 @@ function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): 
 
 /**
  * Renders a registration: header and every known failure, which are never
- * delivered again. `max` below the cap leaves room for text the hook adds.
+ * delivered again. `max` below the cap leaves room for text the hook adds;
+ * `command` is how the text names the CLI (`SQUEAL_COMMAND`).
  */
 export function formatRegistration(
   registration: Registration,
   max: number = MESSAGE_CAP_CHARS,
+  command: string = SQUEAL_COMMAND,
 ): string {
   const { header, knownFailures } = registration;
   const head = [
@@ -333,8 +349,8 @@ export function formatRegistration(
   return assemble(
     head,
     blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`,
-    first === undefined ? null : whyLine(first.check),
+    (left) => `Not shown: ${left.length} more known failures. ${statusPointer(command)}`,
+    first === undefined ? null : whyLine(first.check, command),
     max,
   );
 }

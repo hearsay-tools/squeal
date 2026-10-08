@@ -26,7 +26,7 @@ function sessionSource(input: CodexHookInput): { source?: string } {
 /** SessionStart: ensure the daemon, register, inject the header and the primer. */
 export const sessionStart: CodexHandler = async (input, location, deps) => {
   const text = await startSession({ ...input, ...sessionSource(input) }, location, deps);
-  return text === null ? null : additionalContext("SessionStart", text);
+  return text === null ? null : additionalContext("SessionStart", text, deps.command);
 };
 
 /**
@@ -37,7 +37,7 @@ export const sessionStart: CodexHandler = async (input, location, deps) => {
  */
 export const userPromptSubmit: CodexHandler = async (input, location, deps) => {
   const text = await submitPrompt(input, location, deps, { register: true });
-  return text === null ? null : additionalContext("UserPromptSubmit", text);
+  return text === null ? null : additionalContext("UserPromptSubmit", text, deps.command);
 };
 
 /**
@@ -51,8 +51,9 @@ export const preToolUse: CodexHandler = (input, location, deps) =>
     const reason = await denyOnRegression(context, {
       edit: input.tool_name === "apply_patch",
       toolName: input.tool_name ?? "tool",
+      command: deps.command,
     });
-    return reason === null ? null : deny(reason);
+    return reason === null ? null : deny(reason, deps.command);
   });
 
 /**
@@ -63,7 +64,7 @@ export const preToolUse: CodexHandler = (input, location, deps) =>
 export const postToolUse: CodexHandler = (input, location, deps) =>
   withContext(input, location, deps, async (context) => {
     const text = await deliver(context, deps);
-    return text === null ? null : additionalContext("PostToolUse", text);
+    return text === null ? null : additionalContext("PostToolUse", text, deps.command);
   });
 
 /**
@@ -82,7 +83,7 @@ export const stop: CodexHandler = async (input, location, deps) => {
   }
   const outcome = await stopTurn({ ...input, stopHookActive: false }, location, deps);
   if (outcome === null) return null;
-  return block("block" in outcome ? outcome.block : outcome.news);
+  return block("block" in outcome ? outcome.block : outcome.news, deps.command);
 };
 
 /**
@@ -98,7 +99,7 @@ export const subagentStart: CodexHandler = async (input, location, deps) => {
     location,
     deps,
   );
-  return text === null ? null : additionalContext("SubagentStart", text);
+  return text === null ? null : additionalContext("SubagentStart", text, deps.command);
 };
 
 /** SubagentStop: unregister `(session_id, agent_id)`; the parent's view is untouched. */

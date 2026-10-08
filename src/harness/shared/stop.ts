@@ -88,7 +88,7 @@ export function stopTurn(
       if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
 
       const { store, consumer } = context;
-      const news = await newsText(context);
+      const news = await newsText(context, deps.command);
       const states = store.knownStates.list(consumer.worktreeId);
       const header = readLiveHeader(store, consumer.worktreeId, (deps.now ?? Date.now)(), states);
       const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
@@ -100,7 +100,7 @@ export function stopTurn(
           reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
         }
         if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
-          reasons.push(fullSuiteReason(header));
+          reasons.push(fullSuiteReason(header, deps.command));
         }
       }
       if (reasons.length > 0) {
@@ -147,18 +147,20 @@ async function finishSubagent(context: HookContext): Promise<void> {
  * no registration, its registration when that lists known failures. `null`
  * when there is nothing new.
  */
-async function newsText(context: HookContext): Promise<string | null> {
+async function newsText(context: HookContext, command?: string): Promise<string | null> {
   const { store, delivery, consumer } = context;
   if (!isRegistered(context)) {
     const registration = await delivery.register(consumer, { inTurn: true });
-    return registration.knownFailures.length > 0 ? formatRegistration(registration) : null;
+    return registration.knownFailures.length > 0
+      ? formatRegistration(registration, undefined, command)
+      : null;
   }
   const delta = await delivery.onToolBoundary(consumer);
   if (delta === null) return null;
   const failures = store.knownStates
     .list(consumer.worktreeId)
     .filter((s) => s.outcome === "fail").length;
-  return `${formatDelta(delta)}\n${knownFailuresLine(failures)}`;
+  return `${formatDelta(delta, command)}\n${knownFailuresLine(failures)}`;
 }
 
 /**

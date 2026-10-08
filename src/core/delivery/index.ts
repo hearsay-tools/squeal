@@ -15,6 +15,8 @@ export {
   formatRegistration,
   MESSAGE_CAP_CHARS,
   notValidatedLine,
+  SQUEAL_COMMAND,
+  shellWord,
 } from "./format.js";
 export {
   daemonLiveness,

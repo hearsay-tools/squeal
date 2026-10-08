@@ -36,7 +36,7 @@ export function submitPrompt(
     const now = (deps.now ?? Date.now)();
     if (isRegistered(context)) {
       const delta = await context.delivery.startTurn(context.consumer);
-      return delta === null ? null : formatDelta(delta);
+      return delta === null ? null : formatDelta(delta, deps.command);
     }
     if (!options.register) return null;
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
@@ -45,6 +45,6 @@ export function submitPrompt(
     }
     // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
     const registration = await context.delivery.register(context.consumer, { inTurn: true });
-    return withPrimer(registration);
+    return withPrimer(registration, deps.command);
   });
 }

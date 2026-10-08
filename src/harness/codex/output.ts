@@ -1,4 +1,5 @@
-import { PRIMER } from "../shared/primer.js";
+import { SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { primer } from "../shared/primer.js";
 
 /*
  * Codex hook output shapes (spec 002 D3): `hookSpecificOutput.additionalContext`
@@ -14,41 +15,47 @@ import { PRIMER } from "../shared/primer.js";
  */
 export const CONTEXT_CAP_CHARS = 8_000;
 
-const CUT_LINE = "SQUEAL · cut to fit a Codex hook; `squeal status` has the rest.";
+const cutLine = (command: string) =>
+  `SQUEAL · cut to fit a Codex hook; \`${command} status\` has the rest.`;
 
 /**
  * `text` within `CONTEXT_CAP_CHARS`. A longer one is cut at a line boundary
  * and says so; a trailing primer is kept whole, since the shared formats cap
- * at 10,000 characters with the primer last.
+ * at 10,000 characters with the primer last. `command` is how the texts name
+ * the CLI (`codexCommand`).
  */
-export function capContext(text: string): string {
+export function capContext(text: string, command: string = SQUEAL_COMMAND): string {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const tail = text.endsWith(`\n\n${PRIMER}`) ? `\n\n${PRIMER}` : "";
-  const room = CONTEXT_CAP_CHARS - tail.length - CUT_LINE.length - 1;
+  const end = `\n\n${primer(command)}`;
+  const tail = text.endsWith(end) ? end : "";
+  const cut = cutLine(command);
+  const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
-  const end = head.lastIndexOf("\n");
-  return `${end > 0 ? head.slice(0, end) : head}\n${CUT_LINE}${tail}`;
+  const line = head.lastIndexOf("\n");
+  return `${line > 0 ? head.slice(0, line) : head}\n${cut}${tail}`;
 }
 
 export type ContextEvent = "SessionStart" | "SubagentStart" | "UserPromptSubmit" | "PostToolUse";
 
 /** Context the model reads before its next step. */
-export function additionalContext(event: ContextEvent, text: string): object {
-  return { hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text) } };
+export function additionalContext(event: ContextEvent, text: string, command?: string): object {
+  return {
+    hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text, command) },
+  };
 }
 
 /** PreToolUse: the call does not run, and the model reads `reason` as its result. */
-export function deny(reason: string): object {
+export function deny(reason: string, command?: string): object {
   return {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
-      permissionDecisionReason: capContext(reason),
+      permissionDecisionReason: capContext(reason, command),
     },
   };
 }
 
 /** Stop: the same turn continues with `reason` as a prompt (research, codex-hooks 5). */
-export function block(reason: string): object {
-  return { decision: "block", reason: capContext(reason) };
+export function block(reason: string, command?: string): object {
+  return { decision: "block", reason: capContext(reason, command) };
 }

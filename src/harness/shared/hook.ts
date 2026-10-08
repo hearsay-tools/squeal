@@ -21,6 +21,12 @@ export interface HookDeps {
    * the hook bundles (review wave 3, B1). `SQUEAL_CLI` overrides it.
    */
   readonly cli?: AbsolutePath;
+  /**
+   * How every text a hook gives the model names the CLI, a command the
+   * agent's shell runs. Default `squeal`, on PATH under Claude Code; the Codex
+   * hooks pass the installed CLI by its path (spec 002 D1 as amended).
+   */
+  readonly command?: string;
   readonly now?: () => EpochMs;
   /** How long the idle waiter waits before it exits silently. Default `WAITER_TIMEOUT_MS`. */
   readonly waiterTimeoutMs?: number;

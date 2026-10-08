@@ -55,10 +55,10 @@ export async function deliver(
   const ensured = await ensureIfStale(context, deps);
   if (!isRegistered(context)) {
     const registration = await context.delivery.register(context.consumer, { inTurn: true });
-    return withPrimer(registration);
+    return withPrimer(registration, deps.command);
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
-  const text = delta === null ? null : formatDelta(delta);
+  const text = delta === null ? null : formatDelta(delta, deps.command);
   const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
   if (line === null) return text;
   return text === null ? `SQUEAL · ${line}` : `${text}\n${line}`;
