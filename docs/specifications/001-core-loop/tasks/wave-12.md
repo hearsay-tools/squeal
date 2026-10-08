@@ -168,3 +168,15 @@ Safety (from 001-134, 2026-10-08): a worker's shell carries Cezar's `CEZ_*` vari
 ## 001-136 dispatch note
 
 001-134 and 001-135 and the coordinator's null-byte fix landed: 001-135 as 0.1.37 (`bcb1678` to `6775821` as cherry-picked, plus `fix(observe): drop recorded paths with a null byte`), 001-134 as 0.1.38 (`d63b59b` to `e52a1a9` as cherry-picked), build `f53107a`. The recorder is off by default (`observe.runtimeInputs: false`, human, until this review passes): turn it on explicitly in every probe. Evidence: `tasks/001-134/notes.md` (46 of 640 cezar files re-run once on first observation), `tasks/001-135/notes.md`. cezar runs: `env -u` every `CEZ_*` variable, cwd in the clone through a subshell, never `cd` your session shell there.
+
+## 001-139 the recorder reports recursive listings
+
+Use /worker. Shape: repair. `reviews/wave-12e.md` B5, the only blocker left on the recorder slice (last round passed otherwise). Decided by the human (2026-10-08): fix it, then the recorder goes back on by default. No further review; the coordinator verifies the review's B5 probe.
+
+Outcome: a directory listed with `recursive: true` reaches the scheduler as a recursive listing, so a nested add or delete re-keys and re-runs the test, through the real recorder.
+
+The contract agreed between 001-134 and 001-135 (only 001-134's half landed): the recorder records a fourth kind `r` = a directory listed with `options.recursive === true`, by `readdir`, `readdirSync`, `promises.readdir`, `opendir`, `opendirSync` and `promises.opendir`, still also recorded as a listing `l`; `src/runners/observe/read.ts` `RecordedFile` gains `recursive: Set<AbsolutePath>` filled from `r`; `src/runners/observe/inputs.ts` fills `ObservedInputs.recursive` (already in `src/core/types/runner.ts`) like `directories`. Bump the recorder version.
+
+Own: `src/runners/observe/`, `test/runners/observe/`, `test/runners/vitest/observe.test.ts`, `test/scheduler/recursive-listing.test.ts` (replace the synthetic field with the real recorder), `test/fixtures/vitest/observed/`, one D4 sentence, one `status.md` line. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: `reviews/wave-12e.md`'s B5 probe (sync, callback and promise recursive readdir; a nested add and delete) is a test through the real recorder in both Vitest pools that fails before and passes after; `test/scheduler/recursive-listing.test.ts` no longer supplies `recursive` itself and still passes.
