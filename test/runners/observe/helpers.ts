@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
@@ -64,11 +73,16 @@ export function observe(
       ...(options.viaVitest ? { VITEST_FILE: test } : {}),
     },
   });
+  // one line per test file per append; every run here works for one test file
+  const appends = readdirSync(out)
+    .map((name) => readFileSync(join(out, name), "utf8").split("\n").filter(Boolean).length)
+    .reduce((sum, n) => sum + n, 0);
   const recorded = takeRecorded(out).get(test);
   const rel = (set: Set<string> | undefined) =>
     [...(set ?? [])].map((p) => p.slice(root.length + 1)).sort();
   return {
     stdout,
+    appends,
     paths: rel(recorded?.paths),
     listed: rel(recorded?.listed),
     recursive: rel(recorded?.recursive),
