@@ -69,6 +69,7 @@ const SHAPE: Shape = {
   stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
+  observe: { runtimeInputs: boolean },
   env: { allowlist: strings },
   runner: {
     tierSize: positiveInteger,

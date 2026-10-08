@@ -26,6 +26,14 @@ export {
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
 export { type ClosureUpdate, type KeyChange, KeyIndex } from "./key-index.js";
+export {
+  ancestorListings,
+  Listings,
+  listedDirectory,
+  listingPath,
+  ObservedSets,
+  observedMetaKey,
+} from "./observed.js";
 export { PackageScans } from "./package-scans.js";
 export { InstalledGraph, OPAQUE_BUILTINS } from "./packages.js";
 export { closuresToReresolve } from "./resolution.js";

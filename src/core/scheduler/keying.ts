@@ -12,6 +12,9 @@ import {
   inputGlobs,
   type KeyChange,
   KeyIndex,
+  Listings,
+  listedDirectory,
+  ObservedSets,
   sameInputs,
   testFileId,
   type UnmatchedInputs,
@@ -82,6 +85,10 @@ export class WorktreeKeys {
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
   #declared: DeclaredInputs = createDeclaredInputs([], []);
+  /** What runs observed beyond static closures, shared per project (D3, task 001-132). */
+  readonly #observed: ObservedSets;
+  /** Entry names of listed directories, from the tracked files. */
+  readonly #listings = new Listings(() => this.#listedFiles());
   #policy: Policy;
   #isDeclared: (path: RelativePath) => boolean;
 
@@ -94,7 +101,11 @@ export class WorktreeKeys {
       (text) => options.note?.(text),
       (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
     );
-    this.index = new KeyIndex((path) => this.cache.hashOf(path));
+    this.#observed = new ObservedSets(options.store);
+    this.index = new KeyIndex((path) => {
+      const directory = listedDirectory(path);
+      return directory === null ? this.cache.hashOf(path) : this.#listings.hashOf(directory);
+    });
   }
 
   /**
@@ -222,13 +233,25 @@ export class WorktreeKeys {
         ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
       );
     }
-    const environment = !sameList(previous.env.allowlist, policy.env.allowlist);
-    if (environment) {
+    // Task 001-132: observed paths join or leave every closure, and the
+    // runner's adapter version moves with the recorder.
+    const observe = previous.observe.runtimeInputs !== policy.observe.runtimeInputs;
+    if (observe) {
+      changes.push(
+        ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
+      );
+    }
+    const allowlist = !sameList(previous.env.allowlist, policy.env.allowlist);
+    if (allowlist || observe) {
+      const moved = [
+        ["env.allowlist", policy.env.allowlist],
+        ["observe", observe],
+      ];
       for (const project of this.#environments.keys()) {
-        changes.push(...this.#provisional(project, [["env.allowlist", policy.env.allowlist]]));
+        changes.push(...this.#provisional(project, moved));
       }
     }
-    return { changes, environment };
+    return { changes, environment: allowlist || observe };
   }
 
   /**
@@ -252,15 +275,57 @@ export class WorktreeKeys {
     return this.#lockfiles.moved();
   }
 
-  /** Sets a test file's closure: the runner's paths plus this worktree's declared inputs (D3). */
+  /**
+   * Sets a test file's closure: the runner's paths plus this worktree's
+   * declared inputs, and while policy `observe.runtimeInputs` holds, the
+   * paths its runs were observed to read (D3, task 001-132).
+   */
   setClosure(runner: RunnerClosure): KeyChange[] {
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
+    const observed = this.#policy.observe.runtimeInputs ? this.#observed.of(runner.testFile) : [];
     const update = this.index.setClosure(
-      assembleClosure(runner, this.#declared.for(runner.testFile.path)),
+      assembleClosure(runner, this.#declared.for(runner.testFile.path), observed),
       this.#dependencySegment(runner),
     );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
+  }
+
+  /**
+   * Adds what a run of `testFile` observed beyond its closure (`additions`,
+   * tracked by the caller) to the shared set, then keys the file with them
+   * (D5 as amended, task 001-132). Without the runner's closure the file is
+   * not keyed yet, and the set waits for its first `setClosure`.
+   */
+  addObserved(testFile: TestFileRef, additions: readonly RelativePath[]): KeyChange[] {
+    this.#observed.add(testFile, additions);
+    const runner = this.#runnerClosures.get(testFileId(testFile));
+    return runner === undefined ? [] : this.setClosure(runner);
+  }
+
+  /** Reads what other worktrees observed for `projects` since the last read. */
+  refreshObserved(projects: Iterable<ProjectName>): void {
+    this.#observed.refresh(projects);
+  }
+
+  /** The observed set of `testFile`, whether or not policy keys with it. */
+  observedOf(testFile: TestFileRef): readonly RelativePath[] {
+    return this.#observed.of(testFile);
+  }
+
+  /** True while policy `observe.runtimeInputs` holds. */
+  get observing(): boolean {
+    return this.#policy.observe.runtimeInputs;
+  }
+
+  /**
+   * Re-keys the test files that listed a directory an add or delete among
+   * `changes` changed the entries of (D3 as amended, task 001-132). Ignored
+   * files are no entries: what the watcher does not see cannot key.
+   */
+  rekeyListings(changes: readonly FileChange[]): KeyChange[] {
+    const moved = this.#listings.apply(changes.filter((c) => !this.#extra.has(c.path)));
+    return moved.length === 0 ? [] : this.index.rekey(moved);
   }
 
   /** Entries of policy `inputs` that select no test file among `testFiles` or no known file (review wave 4.5, S5). */
@@ -348,6 +413,13 @@ export class WorktreeKeys {
     const { root, objectFormat, hasher, store, worktreeId } = this.options;
     await seedStatCache(this.cache, root, paths, { objectFormat, hasher });
     store.transaction(() => this.cache.flush(store.fileHashes, worktreeId));
+  }
+
+  /** The files a listing names: present, and seen by git (not extra). */
+  *#listedFiles(): Iterable<RelativePath> {
+    for (const path of this.cache.paths()) {
+      if (!this.#extra.has(path) && this.cache.hashOf(path)) yield path;
+    }
   }
 
   #knownFiles(): RelativePath[] {

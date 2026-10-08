@@ -27,6 +27,7 @@ import { InstallStamps, refreshInstall } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
+import { prepareObserved } from "./observed.js";
 import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
 import { retryRunner } from "./revision.js";
@@ -314,9 +315,11 @@ class TierScheduler implements Scheduler {
           });
           const changed = await unstableInputs(context, selected);
           const installMoved = this.#reinstalled || (await this.#install.stamp()) !== install.stamp;
-          const moved = await this.#lock.run(() =>
-            recordTier(context, ledger, selected, report, changed, installMoved),
-          );
+          const moved = await this.#lock.run(async () => {
+            // Task 001-132: what the run read beyond its closures, hashed under the lock.
+            const observed = installMoved ? undefined : await prepareObserved(context, report);
+            return recordTier(context, ledger, selected, report, changed, installMoved, observed);
+          });
           tier = null;
           // The watcher may not have reported these yet; reconciling twice is harmless.
           if (moved.length > 0) await this.#reconcilePaths(moved);
