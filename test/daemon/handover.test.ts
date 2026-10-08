@@ -25,12 +25,13 @@ const {
   sockets,
   hookDeps,
   hook,
+  successorAtLock,
   exitWithin,
 } = stepDownKit(suite);
 /** Releases 0.1.31 (before the step-down request) and 0.1.32 (before this row). */
 const R31 = "8654424";
 const R32 = "dbeb862";
-const hasReleases = hasCommit(R31) && hasCommit(R32);
+const hasReleases = hasCommit(R31) && hasCommit(R32) && process.platform === "linux";
 
 /** Runs released Claude Code hook bundle `name` of `dist` for `sessionId`, as hooks.json does. */
 async function releasedHook(dist: string, name: string, repo: FixtureRepo, sessionId: string) {
@@ -68,6 +69,12 @@ describe.runIf(hasReleases)(
       sockets.push(repo.socketPath);
       await hook("session-start", repo, hookDeps(repo, ensured), "new");
       expect(ensured).toEqual(["spawned"]);
+      // D10's handover: the successor retries the lock while the old daemon
+      // stops. Its start (Node, its modules, git) can outlast an idle daemon's
+      // stop, about 0.7 s against 0.5 s at load 140, and an older hook's
+      // daemon that takes the lock then serves, D10's accepted limit (task
+      // 001-145). So the older boundary comes once the successor retries.
+      await waitFor(() => successorAtLock(repo), 30_000, "the successor at the lock");
       // The first boundary after the handover is an older plugin's.
       await releasedHook(releasedDist(R31), "post-tool-batch", repo, "old");
       expect(await exitWithin(old, 30_000, repo)).toEqual({ code: 0, signal: null });
