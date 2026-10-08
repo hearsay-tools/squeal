@@ -47,8 +47,10 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
 
   let files = listTestFiles(root, project);
+  // Node reads `NODE_OPTIONS` before argv: its preloads and loaders are the chain's too (003-22).
+  const argv = [...nodeOptionsOf(project), ...project.argv];
   const [graph, firstProbe] = await Promise.all([
-    createNodeTestGraph({ root, cwd, argv: project.argv, testFiles: files }),
+    createNodeTestGraph({ root, cwd, argv, testFiles: files }),
     probeNode(project, cwd),
   ]);
   let probe: NodeProbe = firstProbe;
@@ -116,14 +118,26 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
       const extra = observed.of(testFile.path);
       const paths =
         extra === undefined ? closure.paths : [...new Set([...closure.paths, ...extra])];
-      return { testFile, paths: [...paths].sort(compare) };
+      return {
+        testFile,
+        paths: [...paths].sort(compare),
+        packages: graph.packages(testFile.path),
+      };
     },
     enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
     testFiles: async () => files.map(ref),
     async environment() {
       const preloads = [...new Set([...graph.preloads().paths, ...observed.preloads()])];
+      const packages = graph.environmentPackages();
       return [
-        projectEnvironment(root, project, probe, preloads.sort(compare), context.adapterVersion),
+        projectEnvironment(
+          root,
+          project,
+          probe,
+          preloads.sort(compare),
+          context.adapterVersion,
+          packages,
+        ),
       ];
     },
     async run(testFiles, runOptions): Promise<RunReport> {
@@ -147,18 +161,20 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   };
 }
 
+/** The tokens of the `NODE_OPTIONS` the project's processes get; none when Node would reject it. */
+function nodeOptionsOf(project: NodeTestProject): string[] {
+  return tokenizeNodeOptions(project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") ?? [];
+}
+
 /**
  * One note per async loader of the project's argv or `NODE_OPTIONS` (review
  * wave 2.6, S1): the recorder skips Node's loader thread, so what the loader
  * loads is in no key unless declared. `module.register` shows in no flag; a
- * preload importing `node:module` has the graph's note.
+ * preload whose closure imports `node:module` has the graph's note (review
+ * wave 2.7, S1).
  */
 function loaderThreadNotes(project: NodeTestProject): string[] {
-  const nodeOptions = project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "";
-  const loaders = [
-    ...asyncLoaders(project.argv),
-    ...asyncLoaders(tokenizeNodeOptions(nodeOptions) ?? []),
-  ];
+  const loaders = [...asyncLoaders(project.argv), ...asyncLoaders(nodeOptionsOf(project))];
   return [...new Set(loaders)].map(
     (loader) =>
       `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`,

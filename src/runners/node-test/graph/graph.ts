@@ -1,8 +1,16 @@
 import { basename, join, relative, sep } from "node:path";
-import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
+import type {
+  AbsolutePath,
+  InvalidatedPath,
+  PackageImport,
+  RelativePath,
+  RunnerPackages,
+} from "../../../core/types/index.js";
 import { ClosureIndex } from "./closures.js";
 import type { LoaderChain } from "./loader-chain.js";
 import { ModuleTable } from "./modules.js";
+import { PackageSet, packageImport, UNNAMED } from "./packages.js";
+import { preloadNotes } from "./preload-notes.js";
 import type { Resolver } from "./resolver.js";
 
 /** The static closure of one test file, or of the project's preloads (spec 003 D3). */
@@ -116,6 +124,38 @@ export class Graph {
     return this.present(index, index.preload, this.preloadIncomplete);
   }
 
+  /** Task 003-22: what the project modules of a test file's static closure import in one hop. */
+  packages(testFile: RelativePath): RunnerPackages {
+    const index = this.current();
+    const bits = index.test(this.abs(testFile));
+    if (bits === undefined) {
+      throw new Error(`node-test graph: ${testFile} is not a test file of this project`);
+    }
+    return this.collect(index, bits).packages();
+  }
+
+  /**
+   * Task 003-22: what the preloads' closure imports in one hop, and the
+   * loader chain's packages, looked up from `cwd`, as the runner's: tsx, a
+   * bare `--loader`, a bare preload under `node_modules`. A loader given as
+   * a path is in no closure, so what it imports is unknown: `module`.
+   */
+  environmentPackages(): RunnerPackages {
+    const index = this.current();
+    const set = this.collect(index, index.preload);
+    const cwd = this.rel(this.cwd);
+    const from = cwd.startsWith("..") ? null : cwd;
+    const tsx = this.chain.rules === "tsx" ? ["tsx"] : [];
+    const runner: PackageImport[] = [];
+    for (const specifier of [...this.outsidePreloads, ...this.chain.unrecognized, ...tsx]) {
+      const entry = from === null ? null : packageImport(from, specifier);
+      if (entry === null) set.add([], [UNNAMED]);
+      else runner.push(entry);
+    }
+    set.add(runner);
+    return set.packages(runner);
+  }
+
   /**
    * D4: `direct` is every changed test file and every test file that imports
    * a changed path in one hop (or read it, or probed it as a candidate);
@@ -212,28 +252,24 @@ export class Graph {
     }
   }
 
-  /**
-   * Notes for preloads: a bare one outside the worktree's modules is an
-   * unrecognized loader; a worktree one importing `node:module` may register
-   * hooks that change resolution.
-   */
+  /** Notes for the preloads, by {@link preloadNotes}. */
   preloadNotes(): string[] {
-    const rules = this.chain.rules === "tsx" ? "tsx's" : "Node's own";
-    const notes = this.outsidePreloads.map(
-      (loader) =>
-        `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${rules} rules`,
-    );
-    for (const root of this.preloadRoots) {
-      const hooks = this.table
-        .specifiers(root)
-        .some((s) => s.specifier === "node:module" || s.specifier === "module");
-      if (hooks) {
-        notes.push(
-          `node-test: preload ${JSON.stringify(this.rel(root))} imports node:module and may register module hooks; resolving with ${rules} rules`,
-        );
-      }
-    }
-    return notes;
+    return preloadNotes({
+      table: this.table,
+      roots: this.preloadRoots,
+      outside: this.outsidePreloads,
+      rules: this.chain.rules,
+      rel: (path) => this.rel(path),
+    });
+  }
+
+  private collect(index: ClosureIndex, bits: Uint32Array): PackageSet {
+    const set = new PackageSet();
+    index.each(bits, (path) => {
+      const node = this.table.node(path);
+      if (node !== undefined) set.add(node.packages, node.builtins);
+    });
+    return set;
   }
 
   private present(index: ClosureIndex, bits: Uint32Array, extra: readonly string[]) {

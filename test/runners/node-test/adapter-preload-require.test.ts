@@ -79,9 +79,8 @@ const CASES: readonly Case[] = [
     argv: [],
     env: { NODE_OPTIONS: "--require ./scripts/setup.cjs" },
     files: { "scripts/setup.cjs": `require("./helper" + ".cjs");\n` },
-    // The graph reads no `NODE_OPTIONS`: the preload itself is observed with its helper.
-    before: [],
-    observed: [HELPER, "scripts/setup.cjs"],
+    // Task 003-22: the graph reads `NODE_OPTIONS`, so only the helper is observed.
+    before: ["package.json", "scripts/setup.cjs"],
   },
 ];
 

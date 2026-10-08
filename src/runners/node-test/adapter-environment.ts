@@ -6,6 +6,7 @@ import type {
   NodeTestProject,
   RelativePath,
   RunnerEnvironment,
+  RunnerPackages,
 } from "../../core/types/index.js";
 import { projectCwd } from "./adapter-files.js";
 
@@ -53,7 +54,9 @@ export const NODE_UNAVAILABLE = "unavailable";
  * Spec 003 D1: the runner-side environment inputs of one node:test project.
  * `resolvedConfig` is the canonical JSON of the project entry plus the
  * resolved executable (relative when it sits in the worktree); `files` is
- * the preloads' closure from the graph; `root` is the project's `cwd`.
+ * the preloads' closure from the graph; `root` is the project's `cwd`;
+ * `packages` the graph's environment packages (task 003-22), absent for a
+ * project whose graph did not build, which keys by the whole fingerprint.
  */
 export function projectEnvironment(
   root: AbsolutePath,
@@ -61,6 +64,7 @@ export function projectEnvironment(
   probe: NodeProbe,
   preloads: readonly RelativePath[],
   adapterVersion: string,
+  packages?: RunnerPackages,
 ): RunnerEnvironment {
   const execPath = probe.ok ? (toRelative(root, probe.execPath) ?? probe.execPath) : null;
   const cwd = slashes(relative(root, projectCwd(root, project)));
@@ -81,6 +85,7 @@ export function projectEnvironment(
     adapterVersion,
     resolvedConfig: JSON.stringify(config),
     files: [...preloads],
+    ...(packages === undefined ? {} : { packages }),
   };
 }
 

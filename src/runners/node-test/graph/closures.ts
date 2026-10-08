@@ -104,6 +104,14 @@ export class ClosureIndex {
     return out;
   }
 
+  /** Calls `fn` with each path of a closure, in rank order. */
+  each(bits: Uint32Array, fn: (path: AbsolutePath) => void): void {
+    eachRank(bits, (r) => {
+      const path = this.paths[r];
+      if (path !== undefined) fn(path);
+    });
+  }
+
   incomplete(bits: Uint32Array): string[] {
     const out = new Set<string>();
     for (const [r, why] of this.reasons) {
