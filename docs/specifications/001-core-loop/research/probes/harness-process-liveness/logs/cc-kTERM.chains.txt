@@ -1,0 +1,15 @@
+SessionStart     string-form   agent=- walk=836us hook=1099881 < 1099879:sh[dash] < 1099683:claude[claude.exe] < 1269002:systemd
+SessionStart     sh-fast-path  agent=- walk=609us hook=1099878 < 1099683:claude[claude.exe] < 1269002:systemd
+SessionStart     exec-form     agent=- walk=2892us hook=1099877 < 1099683:claude[claude.exe] < 1269002:systemd
+UserPromptSubmit sh-fast-path  agent=- walk=596us hook=1099957 < 1099683:claude[claude.exe] < 1269002:systemd
+UserPromptSubmit string-form   agent=- walk=930us hook=1099959 < 1099958:sh[dash] < 1099683:claude[claude.exe] < 1269002:systemd
+UserPromptSubmit exec-form     agent=- walk=2406us hook=1099956 < 1099683:claude[claude.exe] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=- walk=625us hook=1100820 < 1099683:claude[claude.exe] < 1269002:systemd
+PostToolBatch    string-form   agent=- walk=658us hook=1100827 < 1100826:sh[dash] < 1099683:claude[claude.exe] < 1269002:systemd
+PostToolBatch    exec-form     agent=- walk=625us hook=1100818 < 1099683:claude[claude.exe] < 1269002:systemd
+PreToolUse       exec-form     agent=- walk=441us hook=1101653 < 1099683:claude[claude.exe] < 1269002:systemd
+PreToolUse       sh-fast-path  agent=- walk=700us hook=1101654 < 1099683:claude[claude.exe] < 1269002:systemd
+PreToolUse       string-form   agent=- walk=3951us hook=1101658 < 1101657:sh[dash] < 1099683:claude[claude.exe] < 1269002:systemd
+PostToolBatch    string-form   agent=- walk=637us hook=1102232 < 1102228:sh[dash] < 1099683:claude[claude.exe] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=- walk=542us hook=1102221 < 1099683:claude[claude.exe] < 1269002:systemd
+PostToolBatch    exec-form     agent=- walk=3966us hook=1102220 < 1099683:claude[claude.exe] < 1269002:systemd

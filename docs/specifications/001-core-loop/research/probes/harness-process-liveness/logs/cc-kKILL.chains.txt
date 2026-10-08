@@ -1,0 +1,18 @@
+SessionStart     string-form   agent=- walk=674us hook=1104207 < 1104202:sh[dash] < 1104023:claude[claude.exe] < 1269002:systemd
+SessionStart     sh-fast-path  agent=- walk=1058us hook=1104208 < 1104023:claude[claude.exe] < 1269002:systemd
+SessionStart     exec-form     agent=- walk=697us hook=1104198 < 1104023:claude[claude.exe] < 1269002:systemd
+UserPromptSubmit string-form   agent=- walk=1146us hook=1104333 < 1104331:sh[dash] < 1104023:claude[claude.exe] < 1269002:systemd
+UserPromptSubmit sh-fast-path  agent=- walk=844us hook=1104330 < 1104023:claude[claude.exe] < 1269002:systemd
+UserPromptSubmit exec-form     agent=- walk=660us hook=1104329 < 1104023:claude[claude.exe] < 1269002:systemd
+PostToolBatch    exec-form     agent=- walk=449us hook=1105758 < 1104023:claude[claude.exe] < 1269002:systemd
+PostToolBatch    string-form   agent=- walk=739us hook=1105763 < 1105762:sh[dash] < 1104023:claude[claude.exe] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=- walk=604us hook=1105760 < 1104023:claude[claude.exe] < 1269002:systemd
+PreToolUse       sh-fast-path  agent=- walk=440us hook=1106822 < 1104023:claude[claude.exe] < 1269002:systemd
+PreToolUse       exec-form     agent=- walk=350us hook=1106821 < 1104023:claude[claude.exe] < 1269002:systemd
+PreToolUse       string-form   agent=- walk=548us hook=1106824 < 1106823:sh[dash] < 1104023:claude[claude.exe] < 1269002:systemd
+PostToolBatch    string-form   agent=- walk=447us hook=1107326 < 1107325:sh[dash] < 1104023:claude[claude.exe] < 1269002:systemd
+PostToolBatch    exec-form     agent=- walk=287us hook=1107322 < 1104023:claude[claude.exe] < 1269002:systemd
+PostToolBatch    sh-fast-path  agent=- walk=322us hook=1107323 < 1104023:claude[claude.exe] < 1269002:systemd
+Stop             exec-form     agent=- walk=378us hook=1108192 < 1104023:claude[claude.exe] < 1269002:systemd
+Stop             string-form   agent=- walk=592us hook=1108198 < 1108195:sh[dash] < 1104023:claude[claude.exe] < 1269002:systemd
+Stop             sh-fast-path  agent=- walk=382us hook=1108193 < 1104023:claude[claude.exe] < 1269002:systemd

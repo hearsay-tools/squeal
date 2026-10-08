@@ -1,0 +1,10 @@
+SessionStart     codex-sh-exec agent=- walk=606us hook=1132734 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+SessionStart     codex-string  agent=- walk=597us hook=1132733 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit codex-string  agent=- walk=688us hook=1132759 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+UserPromptSubmit codex-sh-exec agent=- walk=521us hook=1132760 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+PreToolUse       codex-string  agent=- walk=638us hook=1133531 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+PreToolUse       codex-sh-exec agent=- walk=784us hook=1133532 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+PostToolUse      codex-string  agent=- walk=655us hook=1133578 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+PostToolUse      codex-sh-exec agent=- walk=520us hook=1133580 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+Stop             codex-sh-exec agent=- walk=736us hook=1134288 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
+Stop             codex-string  agent=- walk=662us hook=1134287 < 1129859:codex[codex] < 1129820:MainThread[node] < 1129818:bash[bash] < 1129816:bash[bash] < 1129787:tmux: server[tmux] < 1269002:systemd
