@@ -13,7 +13,7 @@ import type {
 } from "../types/index.js";
 import { bootstrappedMetaKey, DEFAULT_POLICY } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
-import { type DaemonTimings, type Presence, startTimers } from "./lifecycle.js";
+import { type DaemonTimings, type Presence, startTimers, stepDownNote } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
@@ -351,6 +351,10 @@ class Daemon {
         onStop: () =>
           setImmediate(
             () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop"),
+          ),
+        onStepDown: (version) =>
+          setImmediate(
+            () => void this.#shutdown("superseded", 0, stepDownNote(this.#version, version)),
           ),
         onFailure: (error) =>
           void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`),

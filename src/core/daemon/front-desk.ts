@@ -39,6 +39,7 @@ function bind(identity: DeskIdentity): void {
       }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
+    onStepDown: (version) => post({ type: "step-down", version }),
   });
   createDaemonServer(identity.socketPath, handle).then(
     (bound) => {
