@@ -11,6 +11,7 @@ import type {
 } from "../../../core/types/index.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
 import { parseEvents } from "./events.js";
+import { holdsRequire } from "./node-options.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { type ProcessExit, startGroup } from "./process.js";
 import { type FileReport, readFileStream } from "./report.js";
@@ -158,13 +159,14 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
  * `NODE_TEST_CONTEXT`: inherited from a `node --test` around Squeal, it would
  * make the project's runner act as a child and write no report. Node runs a
  * `--require` in `NODE_OPTIONS` before those of argv, so when `NODE_OPTIONS`
- * holds one the recorder goes first there as well; Node loads it once.
+ * holds one, however quoted (`holdsRequire`, review wave 2.6 B1), the
+ * recorder goes first there as well; Node loads it once.
  */
 function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
   const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
   const env = { ...base, ...options.project.env };
   const nodeOptions = env.NODE_OPTIONS;
-  if (nodeOptions !== undefined && /(^|\s)(--require|-r)(\s|=)/.test(nodeOptions)) {
+  if (nodeOptions !== undefined && holdsRequire(nodeOptions)) {
     env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
   }
   return env;
