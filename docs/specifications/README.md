@@ -16,5 +16,5 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | # | Feature | Stage |
 |---|---------|-------|
 | 001 | Core validation loop (watcher, revisions, Vitest adapter, state, events, status) | shipped |
-| 002 | Codex adapter (second harness: hooks, delivery, install) | approved |
+| 002 | Codex adapter (second harness: hooks, delivery, install) | shipped |
 | 003 | node:test runner (second runner: closure, affected selection, results) | approved |
