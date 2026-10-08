@@ -72,7 +72,7 @@ Use /worker.
 
 ## 003-34 re-review of 003-33
 
-Outcome: `reviews/wave-3.5.md`: are `reviews/wave-3.md` B1 and B2 closed. Second round on this slice; a remaining blocker goes to the human. Range filled in at dispatch. Rules as for 003-32. Use /reviewer.
+Outcome: `reviews/wave-3.5.md`: are `reviews/wave-3.md` B1 and B2 closed. Second round on this slice; a remaining blocker goes to the human. Range: `ee9d137^..2ec5dec` on main (003-33 and the 0.1.40 bundles). Use the external handoff's probe too: `/home/agent/squeal-defect-handoff/reproduce.mjs` (read-only; it extracts the lexer from the bundle by internal names, so check it parses rather than falls back). Rules as for 003-32. Use /reviewer.
 
 ## 003-35 Squeal's own recorders are never a project preload
 
