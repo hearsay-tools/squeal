@@ -93,7 +93,12 @@ function keys(store: Store, repo: FakeRepo, pending: Record<string, "queued" | "
   );
 }
 
-function states(store: Store, repo: FakeRepo, list: readonly Partial<KnownState>[], paths: string[]) {
+function states(
+  store: Store,
+  repo: FakeRepo,
+  list: readonly Partial<KnownState>[],
+  paths: string[],
+) {
   store.knownStates.upsertMany(
     paths.map((path, i) => state(repo.mainId, check(path, "works"), list[i] ?? {})),
   );
