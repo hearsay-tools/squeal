@@ -24,13 +24,6 @@ interface Stamp {
   readonly loadedAt: EpochMs;
 }
 
-/** The part of a Vite plugin `SourceStamps` uses; typed here so no Vite types are imported. */
-export interface StampPlugin {
-  readonly name: string;
-  readonly enforce: "pre";
-  load(id: string): Promise<null>;
-}
-
 /**
  * Task 001-146: a cached transform holds the bytes on disk when Vite read
  * them, while a check key names the bytes the watcher hashed. A revert and
@@ -39,15 +32,18 @@ export interface StampPlugin {
  * between: every later run executed the reverted bytes under a key naming
  * the restored ones.
  *
- * One per Vitest instance. Its plugin stamps each project file Vite reads;
- * `stale` names the cached files whose bytes on disk are no longer the ones
- * read, comparing stats as the stat cache does (D3) and hashing only when
- * the stat moved or is racy. A file loaded some other way (Vitest's
- * `fsModuleCache`, a project whose server lacks the plugin) has no stamp
- * and is not checked.
+ * One per Vitest instance. `attach` stamps each project file a Vite server
+ * of the instance reads; `stale` names the cached files whose bytes on disk
+ * are no longer the ones read, comparing stats as the stat cache does (D3)
+ * and hashing only when the stat moved or is racy. A file loaded some other
+ * way (Vitest's `fsModuleCache`) has no stamp and is not checked.
  */
 export class SourceStamps {
   readonly #stamps = new Map<AbsolutePath, Stamp>();
+  /** The plugin containers whose `load` stamps. */
+  readonly #attached = new WeakSet<object>();
+  /** Files cached by a container before it was attached: what it read is not known. */
+  readonly #unknown = new Set<AbsolutePath>();
 
   constructor(
     private readonly paths: WorktreePaths,
@@ -55,36 +51,55 @@ export class SourceStamps {
   ) {}
 
   /**
-   * A `pre` plugin whose `load` stamps the file and returns `null`, so Vite
-   * still loads it. The stat comes before this read and this read before
-   * Vite's, so a write after the stat moves the stat, and the check sees it.
+   * Review wave-13 B2: a plugin passed to `createVitest` reaches the root
+   * server and the inline projects sharing it, not a project with its own
+   * config file, which gets a Vite server of its own. So the stamp goes into
+   * the plugin container of every environment of every project server: its
+   * `load` stamps the file, then loads it as before. The stat comes before
+   * this read and this read before Vite's, so a write after the stat moves
+   * the stat, and the check sees it. Idempotent; `stale` attaches first, so
+   * a project server added later is stamped from its next load, and what it
+   * cached before is stale.
    */
-  plugin(): StampPlugin {
-    return {
-      name: "squeal:source-stamps",
-      enforce: "pre",
-      load: async (id) => {
-        const file = id as AbsolutePath;
-        if (id.includes("?") || id.startsWith("\0") || !this.paths.isProjectFile(file)) return null;
-        const loadedAt = this.now();
-        const read = await this.#read(file);
-        if (read === null) this.#stamps.delete(file);
-        else this.#stamps.set(file, { ...read, hashedAt: loadedAt, loadedAt });
-        return null;
-      },
-    };
+  attach(vitest: Vitest): void {
+    for (const environment of environments(vitest)) {
+      const container = environment.pluginContainer;
+      if (this.#attached.has(container)) continue;
+      this.#attached.add(container);
+      for (const file of cachedFiles(environment)) this.#unknown.add(file);
+      const load = container.load.bind(container);
+      container.load = async (id) => {
+        await this.#stamp(id);
+        return load(id);
+      };
+    }
+  }
+
+  async #stamp(id: string): Promise<void> {
+    const file = id as AbsolutePath;
+    if (id.includes("?") || id.startsWith("\0") || !this.paths.isProjectFile(file)) return;
+    const loadedAt = this.now();
+    const read = await this.#read(file);
+    this.#unknown.delete(file);
+    if (read === null) this.#stamps.delete(file);
+    else this.#stamps.set(file, { ...read, hashedAt: loadedAt, loadedAt });
   }
 
   /**
    * The cached files, among those Vite read at or after `loadedSince`, whose
    * bytes on disk differ from the ones read, or which are gone. A file whose
-   * bytes are unchanged takes its new stat, so a touch is hashed once.
+   * bytes are unchanged takes its new stat, so a touch is hashed once. A
+   * file cached before its server was attached is stale until Vite reads it
+   * again.
    */
   async stale(vitest: Vitest, loadedSince: EpochMs = 0): Promise<AbsolutePath[]> {
-    const files = [...transformedFiles(vitest)].filter(
-      (file) => (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince,
+    this.attach(vitest);
+    const cached = transformedFiles(vitest);
+    const files = [...cached].filter(
+      (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince,
     );
     const moved = await mapConcurrent(files, async (file) => {
+      if (this.#unknown.has(file)) return true;
       const stamp = this.#stamps.get(file);
       if (!stamp) return false;
       const stat = await statOrNull(file);
@@ -202,17 +217,25 @@ export function withoutFiles(
   };
 }
 
-/** Every project file with a cached transform in some environment. */
-function transformedFiles(vitest: Vitest): Set<AbsolutePath> {
-  const files = new Set<AbsolutePath>();
-  for (const project of vitest.projects) {
-    for (const environment of Object.values(project.vite.environments)) {
-      for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
-        if ([...modules].some((m) => cachedTransform(m) !== null)) files.add(file as AbsolutePath);
-      }
-    }
+type Environment = Vitest["projects"][number]["vite"]["environments"][string];
+
+/** Every environment of every project server, once each. */
+function environments(vitest: Vitest): Set<Environment> {
+  return new Set(vitest.projects.flatMap((p) => Object.values(p.vite.environments)));
+}
+
+/** The files with a cached transform in `environment`. */
+function cachedFiles(environment: Environment): AbsolutePath[] {
+  const files: AbsolutePath[] = [];
+  for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
+    if ([...modules].some((m) => cachedTransform(m) !== null)) files.push(file as AbsolutePath);
   }
   return files;
+}
+
+/** Every project file with a cached transform in some environment. */
+function transformedFiles(vitest: Vitest): Set<AbsolutePath> {
+  return new Set([...environments(vitest)].flatMap(cachedFiles));
 }
 
 async function statOrNull(file: AbsolutePath): Promise<FileStat | null> {
