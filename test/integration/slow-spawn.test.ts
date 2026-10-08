@@ -52,7 +52,9 @@ function createRepo(): string {
     include: ["test/*.test.mjs"],
     slow: true,
   };
-  writeFileSync(join(root, "squeal.config.json"), `${JSON.stringify({ nodeTest: [project] })}\n`);
+  // The load guard (spec 004 D3) would defer the slow file on a loaded host past this test's waits.
+  const slow = { maxLoadPerCpu: 1000 };
+  writeFileSync(join(root, "squeal.config.json"), `${JSON.stringify({ nodeTest: [project], slow })}\n`);
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["add", "-A"]);
   git(root, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
