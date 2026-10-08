@@ -48,8 +48,12 @@ export interface ProcessEntry {
  * group alone. What shared the group when the daemon started, such as the
  * rest of a shell pipeline, is never the daemon's, and neither is what it
  * starts. The mark names the lane of the run (`envFor`), so a run's stop
- * reaches its own lane's processes only (task 004-18). Linux only, through
- * `/proc`; elsewhere nothing is found.
+ * reaches its own lane's processes only (task 004-18). A run told no lane
+ * gets `envFor("")`, the mark `<token>:`, read back as lane `""`; only `env`
+ * itself carries the bare mark, `<token>` alone, which reaches node:test
+ * through the daemon's `childEnv` (task 003-38) wherever a run's own mark
+ * does not replace it. Linux only, through `/proc`; elsewhere nothing is
+ * found.
  */
 export class EscapedChildren {
   /** The daemon's mark with no lane: what a runner that is told no lane gives its processes. */
@@ -105,10 +109,24 @@ export class EscapedChildren {
     return describe(stopped, "the runners left running when the daemon exited");
   }
 
-  /** The carriers of `lane`'s mark started since `since`, for `lowerWhile` (spec 004 D2). */
+  /**
+   * The carriers of `lane`'s mark started since `since`, for `lowerWhile`
+   * (spec 004 D2), among the daemon's descendants and its group's orphans
+   * only: an environ read per process started since, on a busy host, would
+   * cost hundreds of reads a second. A process that left both, detached and
+   * reparented outside the group, keeps its priority; the stop after the run
+   * still finds it.
+   */
   async carriers(lane: string, since: number): Promise<ProcessEntry[]> {
     if (process.platform !== "linux") return [];
-    const entries = (await snapshot()).filter((e) => e.pid !== this.#self && e.start >= since);
+    const all = await snapshot();
+    const strangers = await this.#strangers.catch(() => null);
+    const descendants = descendantsOf([this.#self], all);
+    const foreign = strangers === null ? new Set<number>() : lineOf(strangers, all);
+    const near = (entry: ProcessEntry) =>
+      descendants.has(entry.pid) ||
+      (strangers !== null && entry.pgrp === this.#self && !foreign.has(entry.pid));
+    const entries = all.filter((e) => e.pid !== this.#self && e.start >= since && near(e));
     const marks = await Promise.all(entries.map(({ pid }) => this.#markOf(pid)));
     return entries.filter((_, i) => marks[i] === lane);
   }
