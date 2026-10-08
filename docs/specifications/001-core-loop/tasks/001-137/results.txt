@@ -1,0 +1,190 @@
+# node analyze.mjs <out> b24 (24 burners, ten complete pairs plus the surviving halves of four killed pairs), 2026-10-08
+pair mode start(UTC) run_s failing tests runnable_mean/max load1_mean workers_max children_max burners
+1 on 19:21:40 62 4 4 70/95 76 9 20 24
+1 off 19:22:47 68 1 1 76/160 77 9 19 24
+2 off 19:28:31 131 4 11 62/110 100 9 22 24
+3 on 19:31:16 102 7 11 63/107 100 9 27 24
+3 off 19:33:04 62 1 1 52/95 78 9 24 24
+4 off 19:34:10 50 1 1 50/80 64 9 19 24
+4 on 19:35:05 92 3 6 60/115 72 9 18 24
+5 on 19:36:40 90 6 8 59/110 82 9 25 24
+5 off 19:38:14 81 2 5 57/120 79 9 23 24
+6 off 19:39:39 119 3 7 66/134 101 9 25 24
+6 on 19:41:44 110 4 7 63/123 103 9 25 24
+7 on 19:43:41 86 6 6 65/121 94 9 26 24
+7 off 19:45:15 92 2 4 82/187 94 9 17 24
+8 on 19:47:38 139 8 17 87/247 151 9 25 24
+9 on 19:50:08 65 1 1 60/107 92 9 21 24
+11 off 19:55:24 139 6 13 82/153 141 9 26 24
+12 off 19:57:50 171 4 13 69/166 134 9 15 24
+12 on 20:00:48 66 2 2 50/94 96 9 23 24
+13 on 20:01:58 62 1 1 53/98 66 9 20 24
+13 off 20:03:05 106 4 10 73/146 87 9 18 25
+
+file: failed on/n, off/n; median duration s on, off
+application-update/service.test.ts: 2/10, 1/10; 10.5, 7.8
+artifacts/cli.test.ts: 5/10, 0/10; 17.1, 9.3
+autosave-timeout.test.ts: 2/10, 4/10; 20.9, 20.4
+ci-wait/process.test.ts: 1/10, 1/10; 17.8, 17.0
+discovery/cli.test.ts: 5/10, 0/10; 26.2, 16.3
+git-worktree-lock.test.ts: 4/10, 2/10; 24.2, 18.0
+server-install/platforms/ubuntu-vps.test.ts: 6/10, 3/10; 8.4, 6.2
+server/repo-branches-api.test.ts: 10/10, 10/10; 23.8, 18.8
+server/worktrees-api.test.ts: 7/10, 7/10; 62.5, 78.8
+
+failing files on 42, off 28; failing tests on 63, off 66; pairs on worse 6, off worse 2, tie 0; diffs [3,6,2,4,1,4,-2,-3]
+sign test p (two-sided) 0.289 over 8 untied pairs
+median summed file time on 214 s, off 187 s; median first-module start on 8.1 s, off 7.9 s
+
+failures: pair mode t_s file | concurrent nine | runnable | test | error
+1 on 11.3 application-update/service.test.ts | 6 | 82 | application update preparation > re-reads a completed prepar | release is not a function
+1 on 22.2 autosave-timeout.test.ts | 6 | 75 | autosave shutdown (#495) > terminates descendants after the  | ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-kzoShg/ce
+1 on 24.8 server/repo-branches-api.test.ts | 6 | 67 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+1 on 39.7 server/worktrees-api.test.ts | 1 | 80 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+1 off 23.1 server/repo-branches-api.test.ts | 6 | 60 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+2 off 19.2 autosave-timeout.test.ts | 6 | 48 | autosave shutdown (#495) > terminates resistant add, reports | expected false to be true // Object.is equality
+2 off 20.0 server-install/platforms/ubuntu-vps.test.ts | 6 | 66 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+2 off 32.5 autosave-timeout.test.ts | 3 | 63 | autosave shutdown (#495) > terminates descendants after the  | ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-z9ffaB/ce
+2 off 48.0 server/worktrees-api.test.ts | 4 | 53 | the worktrees API > lists materialized worktrees with sizes, | Test timed out in 5000ms.
+2 off 50.1 server/repo-branches-api.test.ts | 4 | 48 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+2 off 58.3 server/worktrees-api.test.ts | 3 | 57 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+2 off 70.5 server/worktrees-api.test.ts | 2 | 101 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+2 off 76.0 server/worktrees-api.test.ts | 1 | 83 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+2 off 102.8 server/worktrees-api.test.ts | 1 | 71 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+2 off 121.1 server/worktrees-api.test.ts | 1 | 55 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+2 off 127.5 server/worktrees-api.test.ts | 1 | 50 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+3 on 19.6 application-update/service.test.ts | 6 | 51 | application update preparation > re-reads a completed prepar | release is not a function
+3 on 21.3 server-install/platforms/ubuntu-vps.test.ts | 6 | 69 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+3 on 30.0 artifacts/cli.test.ts | 4 | 64 | dispatches artifact help before ordinary CLI parsing | Test timed out in 15000ms.
+3 on 42.1 server/worktrees-api.test.ts | 4 | 80 | the worktrees API > lists materialized worktrees with sizes, | Test timed out in 5000ms.
+3 on 43.1 git-worktree-lock.test.ts | 4 | 62 | can launch the source helper when the caller runs outside th | Test timed out in 5000ms.
+3 on 45.2 server/repo-branches-api.test.ts | 4 | 75 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+3 on 52.2 server/worktrees-api.test.ts | 3 | 57 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+3 on 62.3 server/worktrees-api.test.ts | 3 | 77 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+3 on 65.6 discovery/cli.test.ts | 2 | 51 | dispatches discovery before global CLI parsing and needs no  | Test timed out in 15000ms.
+3 on 68.1 server/worktrees-api.test.ts | 1 | 70 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+3 on 85.5 server/worktrees-api.test.ts | 1 | 58 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+3 off 25.6 server/repo-branches-api.test.ts | 5 | 65 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+4 off 19.7 server/repo-branches-api.test.ts | 6 | 54 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+4 on 27.6 server/repo-branches-api.test.ts | 4 | 83 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+4 on 42.8 server/worktrees-api.test.ts | 3 | 47 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+4 on 46.6 discovery/cli.test.ts | 2 | 42 | dispatches discovery before global CLI parsing and needs no  | Test timed out in 15000ms.
+4 on 48.4 server/worktrees-api.test.ts | 1 | 47 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+4 on 66.5 server/worktrees-api.test.ts | 1 | 51 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+4 on 84.1 server/worktrees-api.test.ts | 1 | 63 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+5 on 15.6 server-install/platforms/ubuntu-vps.test.ts | 6 | 51 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+5 on 26.0 artifacts/cli.test.ts | 4 | 87 | dispatches artifact help before ordinary CLI parsing | Test timed out in 15000ms.
+5 on 34.5 git-worktree-lock.test.ts | 4 | 57 | can launch the source helper when the caller runs outside th | Test timed out in 5000ms.
+5 on 35.7 server/repo-branches-api.test.ts | 4 | 42 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+5 on 41.7 server/worktrees-api.test.ts | 3 | 56 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+5 on 52.4 server/worktrees-api.test.ts | 3 | 53 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+5 on 56.7 discovery/cli.test.ts | 2 | 50 | dispatches discovery before global CLI parsing and needs no  | Test timed out in 15000ms.
+5 on 58.5 server/worktrees-api.test.ts | 1 | 57 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+5 off 23.7 server/repo-branches-api.test.ts | 6 | 44 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+5 off 39.1 server/worktrees-api.test.ts | 1 | 28 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+5 off 54.3 server/worktrees-api.test.ts | 1 | 41 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+5 off 70.6 server/worktrees-api.test.ts | 1 | 59 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+5 off 77.1 server/worktrees-api.test.ts | 1 | 51 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+6 off 18.3 server-install/platforms/ubuntu-vps.test.ts | 6 | 52 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+6 off 47.2 server/repo-branches-api.test.ts | 3 | 67 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+6 off 53.0 server/worktrees-api.test.ts | 3 | 78 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+6 off 67.3 server/worktrees-api.test.ts | 1 | 68 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+6 off 82.2 server/worktrees-api.test.ts | 1 | 69 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+6 off 108.7 server/worktrees-api.test.ts | 1 | 66 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+6 off 115.7 server/worktrees-api.test.ts | 1 | 89 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+6 on 20.4 server-install/platforms/ubuntu-vps.test.ts | 6 | 68 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+6 on 32.9 artifacts/cli.test.ts | 4 | 53 | dispatches artifact help before ordinary CLI parsing | Test timed out in 15000ms.
+6 on 42.9 server/worktrees-api.test.ts | 4 | 42 | the worktrees API > lists materialized worktrees with sizes, | Test timed out in 5000ms.
+6 on 45.2 server/repo-branches-api.test.ts | 4 | 74 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+6 on 61.0 server/worktrees-api.test.ts | 2 | 45 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+6 on 66.3 server/worktrees-api.test.ts | 1 | 42 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+6 on 85.3 server/worktrees-api.test.ts | 1 | 62 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+7 on 18.8 server-install/platforms/ubuntu-vps.test.ts | 6 | 46 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+7 on 29.7 artifacts/cli.test.ts | 4 | 69 | dispatches artifact help before ordinary CLI parsing | Test timed out in 15000ms.
+7 on 39.1 git-worktree-lock.test.ts | 4 | 66 | can launch the source helper when the caller runs outside th | Test timed out in 5000ms.
+7 on 41.2 server/repo-branches-api.test.ts | 4 | 80 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+7 on 58.8 discovery/cli.test.ts | 2 | 110 | dispatches discovery before global CLI parsing and needs no  | Test timed out in 15000ms.
+7 on 59.8 server/worktrees-api.test.ts | 1 | 110 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+7 off 25.6 server/repo-branches-api.test.ts | 6 | 76 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+7 off 39.5 server/worktrees-api.test.ts | 1 | 66 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+7 off 64.4 server/worktrees-api.test.ts | 1 | 139 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+7 off 85.6 server/worktrees-api.test.ts | 1 | 70 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+8 on 38.5 autosave-timeout.test.ts | 6 | 105 | autosave shutdown (#495) > terminates resistant status, repo | expected 'still waiting' to be 'failed' // Object.is equality
+8 on 40.7 autosave-timeout.test.ts | 6 | 108 | autosave shutdown (#495) > terminates resistant add, reports | expected false to be true // Object.is equality
+8 on 45.1 server-install/platforms/ubuntu-vps.test.ts | 6 | 118 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+8 on 46.9 autosave-timeout.test.ts | 6 | 90 | autosave shutdown (#495) > terminates resistant commit, repo | expected 'still waiting' to be 'failed' // Object.is equality
+8 on 50.8 git-worktree-lock.test.ts | 5 | 77 | serializes concurrent creations through linked checkouts and | Test timed out in 15000ms.
+8 on 52.2 artifacts/cli.test.ts | 5 | 111 | dispatches artifact help before ordinary CLI parsing | Test timed out in 15000ms.
+8 on 56.4 ci-wait/process.test.ts | 3 | 121 | cleans descendant processes after the command leader exits n | The operation was aborted due to timeout
+8 on 57.7 autosave-timeout.test.ts | 2 | 94 | autosave shutdown (#495) > terminates descendants after the  | ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-2HQv5u/ce
+8 on 59.6 autosave-timeout.test.ts | 2 | 92 | autosave shutdown (#495) > waits for a detached descendant a | ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-2HQv5u/ce
+8 on 73.1 git-worktree-lock.test.ts | 1 | 90 | can launch the source helper when the caller runs outside th | Test timed out in 5000ms.
+8 on 85.8 server/worktrees-api.test.ts | 3 | 57 | the worktrees API > lists materialized worktrees with sizes, | Test timed out in 5000ms.
+8 on 88.1 server/repo-branches-api.test.ts | 3 | 114 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+8 on 93.4 server/worktrees-api.test.ts | 3 | 69 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+8 on 105.6 server/worktrees-api.test.ts | 3 | 45 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+8 on 108.7 discovery/cli.test.ts | 3 | 38 | dispatches discovery before global CLI parsing and needs no  | Test timed out in 15000ms.
+8 on 112.3 server/worktrees-api.test.ts | 1 | 60 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+8 on 129.4 server/worktrees-api.test.ts | 1 | 83 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+9 on 23.7 server/repo-branches-api.test.ts | 6 | 45 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+11 off 22.0 server-install/platforms/ubuntu-vps.test.ts | 5 | 151 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+11 off 25.5 ci-wait/process.test.ts | 5 | 105 | limits short queries to four and removes an aborted queued q | expected [ '1937896', '1937977', '1938053' ] to have a length of 4 but
+11 off 34.7 autosave-timeout.test.ts | 5 | 61 | autosave shutdown (#495) > terminates resistant commit, repo | expected 'still waiting' to be 'failed' // Object.is equality
+11 off 37.9 git-worktree-lock.test.ts | 5 | 83 | serializes concurrent creations through linked checkouts and | Test timed out in 15000ms.
+11 off 43.3 git-worktree-lock.test.ts | 3 | 80 | does not block an unrelated Git common directory | Test timed out in 5000ms.
+11 off 48.1 autosave-timeout.test.ts | 3 | 81 | autosave shutdown (#495) > terminates descendants after the  | ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-LLGqfx/ce
+11 off 62.1 server/worktrees-api.test.ts | 4 | 60 | the worktrees API > lists materialized worktrees with sizes, | Test timed out in 5000ms.
+11 off 65.6 server/repo-branches-api.test.ts | 3 | 73 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+11 off 71.5 server/worktrees-api.test.ts | 3 | 61 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+11 off 83.2 server/worktrees-api.test.ts | 2 | 94 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+11 off 88.9 server/worktrees-api.test.ts | 1 | 68 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+11 off 111.9 server/worktrees-api.test.ts | 1 | 76 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+11 off 129.8 server/worktrees-api.test.ts | 1 | 87 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+12 off 30.2 autosave-timeout.test.ts | 5 | 111 | autosave shutdown (#495) > terminates resistant commit, repo | expected false to be true // Object.is equality
+12 off 47.0 git-worktree-lock.test.ts | 1 | 64 | can launch the source helper when the caller runs outside th | Test timed out in 5000ms.
+12 off 66.7 server/worktrees-api.test.ts | 3 | 85 | the worktrees API > lists materialized worktrees with sizes, | Test timed out in 5000ms.
+12 off 78.3 server/worktrees-api.test.ts | 3 | 63 | the worktrees API > POST /reclaim reclaims down to the limit | Test timed out in 5000ms.
+12 off 85.4 server/repo-branches-api.test.ts | 3 | 93 | the repo branches API > a branch switch cannot land on a bra | Test timed out in 5000ms.
+12 off 95.7 server/worktrees-api.test.ts | 2 | 45 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+12 off 98.9 server/repo-branches-api.test.ts | 2 | 98 | the repo branches API > POST /repo/branches/delete bulk-dele | Test timed out in 5000ms.
+12 off 104.3 server/worktrees-api.test.ts | 2 | 135 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+12 off 116.9 server/worktrees-api.test.ts | 1 | 61 | the worktrees API > human deletion and worktree removal pres | Test timed out in 5000ms.
+12 off 122.1 server/worktrees-api.test.ts | 1 | 47 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+12 off 130.4 server/worktrees-api.test.ts | 1 | 55 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+12 off 137.0 server/worktrees-api.test.ts | 1 | 56 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+12 off 163.7 server/worktrees-api.test.ts | 1 | 33 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+12 on 15.2 server-install/platforms/ubuntu-vps.test.ts | 6 | 51 | ubuntu-vps HTTP/2 install wiring > can collect this suite wh | Test timed out in 5000ms.
+12 on 28.0 server/repo-branches-api.test.ts | 5 | 55 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+13 on 19.6 server/repo-branches-api.test.ts | 6 | 49 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+13 off 12.8 application-update/service.test.ts | 6 | 75 | application update preparation > re-reads a completed prepar | release is not a function
+13 off 16.9 autosave-timeout.test.ts | 4 | 66 | autosave shutdown (#495) > terminates resistant config, repo | expected 'still waiting' to be 'failed' // Object.is equality
+13 off 26.6 autosave-timeout.test.ts | 6 | 70 | autosave shutdown (#495) > terminates descendants after the  | ENOENT: no such file or directory, open '/tmp/cez-vitest-tmp-HErx8h/ce
+13 off 29.9 server/repo-branches-api.test.ts | 4 | 67 | the repo branches API > holds Continue off while a confirmed | expected { ok: false, error: 'not found' } to deeply equal { ok: false
+13 off 42.8 server/worktrees-api.test.ts | 2 | 59 | the worktrees API > lists a finished worker as reclaimable a | Test timed out in 5000ms.
+13 off 48.6 server/worktrees-api.test.ts | 1 | 75 | the worktrees API > the row reclaim keeps a dirty owned-work | Test timed out in 5000ms.
+13 off 67.8 server/worktrees-api.test.ts | 1 | 81 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+13 off 92.0 server/worktrees-api.test.ts | 1 | 60 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+13 off 97.5 server/worktrees-api.test.ts | 1 | 81 | the worktrees API > POST /worktrees/:runId/reclaim (issue 08 | Test timed out in 5000ms.
+13 off 108.1 server/worktrees-api.test.ts | 1 | 76 | the worktrees API > human deletion still cleans an ordinary  | Test timed out in 5000ms.
+
+# child.sh <clone> 6, no burners
+on wall 4.82 cpu 2.44 paths 260
+off wall 1.29 cpu 1.50 paths 0
+off wall 1.10 cpu 1.58 paths 0
+on wall 1.04 cpu 1.51 paths 260
+on wall 1.09 cpu 1.55 paths 260
+off wall 1.00 cpu 1.52 paths 0
+off wall 1.04 cpu 1.52 paths 0
+on wall 0.98 cpu 1.51 paths 260
+on wall 1.22 cpu 1.70 paths 260
+off wall 1.42 cpu 1.74 paths 0
+off wall 1.02 cpu 1.45 paths 0
+on wall 1.02 cpu 1.46 paths 260
+
+# cpu.sh <clone> <out> 3, no burners
+on wall 31.1 cpu 65.3
+off wall 58.0 cpu 68.8
+off wall 64.4 cpu 66.7
+on wall 51.2 cpu 71.2
+on wall 55.6 cpu 70.9
+off wall 57.1 cpu 68.6
