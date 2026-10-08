@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { relative, sep } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import { dirname, relative, sep } from "node:path";
+import type { AbsolutePath, PackageImport } from "../../../core/types/index.js";
 import { expandGlob } from "./glob.js";
+import { builtinName, packageImport, UNNAMED } from "./packages.js";
 import { PARSED_EXTENSION, type ParsedModule, type ParsedSpecifier, parseModule } from "./parse.js";
 import type { Resolver } from "./resolver.js";
 
@@ -16,9 +17,18 @@ export interface ModuleNode {
   readonly incomplete: readonly string[];
   /** `.js`/`.ts` pairs its imports met under tsx, `[js, ts]`. */
   readonly pairs: readonly (readonly [AbsolutePath, AbsolutePath])[];
+  /**
+   * Installed packages its bare specifiers name, looked up from its
+   * directory: a specifier that resolves under `node_modules`, or nowhere
+   * (keyed as absent), not one that resolves to a project file such as a
+   * workspace link or a tsconfig alias (task 003-22).
+   */
+  readonly packages: readonly PackageImport[];
+  /** Builtins it imports, by name; `module` too when it loads something no specifier names. */
+  readonly builtins: readonly string[];
 }
 
-const NO_PARSE: ParsedModule = { specifiers: [], incomplete: [] };
+const NO_PARSE: ParsedModule = { specifiers: [], incomplete: [], unnamed: false };
 
 /**
  * Parses and resolves the worktree's modules: a parse cache that survives a
@@ -93,6 +103,9 @@ export class ModuleTable {
     const candidates = new Set<AbsolutePath>();
     const incomplete = [...parsed.incomplete];
     const pairs: (readonly [AbsolutePath, AbsolutePath])[] = [];
+    const packages: PackageImport[] = [];
+    const builtins = new Set<string>(parsed.unnamed ? [UNNAMED] : []);
+    const from = this.relativeDir(file);
     const format = this.tsx ? this.resolver.moduleFormat(file) : null;
     if (format?.manifest != null && parsed.specifiers.length > 0) reads.add(format.manifest);
     for (const { specifier, kind: written, dynamic } of parsed.specifiers) {
@@ -110,12 +123,29 @@ export class ModuleTable {
       const kind =
         written === "import" && !dynamic && format?.format === "commonjs" ? "require" : written;
       const resolution = this.resolver.resolve(specifier, file, kind);
+      if (resolution.builtin) builtins.add(builtinName(specifier));
+      else if (from !== null && (resolution.path === null || !this.inWorktree(resolution.path))) {
+        const entry = packageImport(from, specifier);
+        if (entry !== null) packages.push(entry);
+      }
       for (const read of resolution.reads) reads.add(read);
       for (const candidate of resolution.candidates) candidates.add(candidate);
       if (resolution.pair !== null) pairs.push(resolution.pair);
       if (resolution.path !== null && this.inWorktree(resolution.path)) deps.add(resolution.path);
     }
-    return { deps, reads, candidates, incomplete, pairs };
+    return { deps, reads, candidates, incomplete, pairs, packages, builtins: [...builtins] };
+  }
+
+  /** A module's directory relative to the root, `""` for the root, `null` outside it. */
+  private relativeDir(file: AbsolutePath): string | null {
+    const dir = dirname(file);
+    if (dir === this.root) return "";
+    return dir.startsWith(this.root + sep)
+      ? dir
+          .slice(this.root.length + 1)
+          .split(sep)
+          .join("/")
+      : null;
   }
 
   /** The specifiers `file` was parsed to, for a preload's hooks check. */

@@ -20,8 +20,10 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * B1), so a pass stored while they went unobserved runs once more. "4": a
  * quoted `--require` in `NODE_OPTIONS` gets the recorder first too (review
  * wave 2.6, B1), so a pass stored while its loads went unobserved runs once more.
+ * "5": closures and the environment report their installed packages (task
+ * 003-22), and the graph reads `NODE_OPTIONS`' preloads, so keys change shape.
  */
-export const NODE_TEST_ADAPTER_VERSION = "4";
+export const NODE_TEST_ADAPTER_VERSION = "5";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;

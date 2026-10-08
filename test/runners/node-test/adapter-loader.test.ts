@@ -19,6 +19,8 @@ import { fakeCommonDir, open } from "../../store/helpers.js";
  * transforming one run as they do without Squeal, on the loader's every
  * spelling, and a `--require` preload's computed load is still observed.
  * What the loader thread loads is not observed: one note per project.
+ * Review wave 2.7, S1: a preload that registers hooks with `module.register`,
+ * from argv or `NODE_OPTIONS`, gets the same limit in its note.
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -52,6 +54,22 @@ const FILES: Readonly<Record<string, string>> = {
     `register("./identity.mjs", import.meta.url);`,
     "",
   ].join("\n"),
+  // Review wave 2.7, S1's probe: the hooks load their own helper by a computed specifier.
+  "loaders/computed.mjs": [
+    `const { value } = await import("./value" + ".mjs");`,
+    "export async function load(url, context, nextLoad) {",
+    "  const loaded = await nextLoad(url, context);",
+    `  if (!url.endsWith(".test.mjs")) return loaded;`,
+    `  return { ...loaded, source: String(loaded.source).replace("__VALUE__", String(value)) };`,
+    "}",
+    "",
+  ].join("\n"),
+  "loaders/value.mjs": "export const value = 1;\n",
+  "loaders/register-computed.mjs": [
+    `import { register } from "node:module";`,
+    `register("./computed.mjs", import.meta.url);`,
+    "",
+  ].join("\n"),
   "scripts/setup.cjs": `require("./helper" + ".cjs");\n`,
   "scripts/helper.cjs": "globalThis.helperValue = 1;\n",
   "test/identity.test.mjs": [
@@ -73,9 +91,14 @@ interface Case {
   readonly argv: readonly string[];
   readonly nodeOptions?: string;
   readonly test: "identity" | "transform";
-  /** The loader the note names; none for `module.register`, which no flag shows. */
-  readonly loader: string | null;
+  /** The loader-thread note, after the project's prefix. */
+  readonly note: string;
 }
+
+const loaderNote = (loader: string) =>
+  `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`;
+const registerNote = (preload: string) =>
+  `preload ${JSON.stringify(preload)} imports node:module and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with Node's own rules`;
 
 const SETUP = ["--require", "./scripts/setup.cjs"];
 const CASES: readonly Case[] = [
@@ -83,32 +106,45 @@ const CASES: readonly Case[] = [
     name: "an identity --loader",
     argv: [...SETUP, "--loader", "./loaders/identity.mjs"],
     test: "identity",
-    loader: "./loaders/identity.mjs",
+    note: loaderNote("./loaders/identity.mjs"),
   },
   {
     name: "an identity --experimental-loader=",
     argv: [...SETUP, "--experimental-loader=./loaders/identity.mjs"],
     test: "identity",
-    loader: "./loaders/identity.mjs",
+    note: loaderNote("./loaders/identity.mjs"),
   },
   {
     name: "a transforming --loader",
     argv: [...SETUP, "--loader", "./loaders/transform.mjs"],
     test: "transform",
-    loader: "./loaders/transform.mjs",
+    note: loaderNote("./loaders/transform.mjs"),
   },
   {
     name: "a transforming loader and the preload in NODE_OPTIONS",
     argv: [],
     nodeOptions: '--loader ./loaders/transform.mjs "--require" ./scripts/setup.cjs',
     test: "transform",
-    loader: "./loaders/transform.mjs",
+    note: loaderNote("./loaders/transform.mjs"),
   },
   {
     name: "module.register from an --import preload",
     argv: [...SETUP, "--import", "./loaders/register.mjs"],
     test: "identity",
-    loader: null,
+    note: registerNote("loaders/register.mjs"),
+  },
+  {
+    name: "module.register of hooks with a computed helper, from argv (wave 2.7, S1)",
+    argv: [...SETUP, "--import", "./loaders/register-computed.mjs"],
+    test: "transform",
+    note: registerNote("loaders/register-computed.mjs"),
+  },
+  {
+    name: "module.register of hooks with a computed helper, from NODE_OPTIONS (wave 2.7, S1)",
+    argv: [],
+    nodeOptions: '--import ./loaders/register-computed.mjs "--require" ./scripts/setup.cjs',
+    test: "transform",
+    note: registerNote("loaders/register-computed.mjs"),
   },
 ];
 
@@ -150,12 +186,8 @@ describe("the recorder beside an async loader (review wave 2.6, S1)", () => {
       "scripts/helper.cjs",
     );
 
-    const loaderNotes = notes.filter((n) => n.includes("loader thread"));
-    if (c.loader === null) expect(loaderNotes).toEqual([]);
-    else {
-      expect(loaderNotes).toEqual([
-        `node-test project "p": async loader ${JSON.stringify(c.loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`,
-      ]);
-    }
+    expect(notes.filter((n) => n.includes("loader thread"))).toEqual([
+      `node-test project "p": ${c.note}`,
+    ]);
   });
 });

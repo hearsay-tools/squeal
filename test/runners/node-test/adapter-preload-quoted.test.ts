@@ -19,6 +19,8 @@ import { fakeCommonDir, open } from "../../store/helpers.js";
  * the recorder is prepended there too. The helper such a preload loads by a
  * computed `require` is observed, keyed and makes the project's file
  * affected, and a worktree with another helper keys its environment apart.
+ * Task 003-22: the graph reads `NODE_OPTIONS` too, so the preload itself is
+ * in the static closure and only its helper is observed.
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -103,12 +105,11 @@ describe("a quoted --require in the project's NODE_OPTIONS (review wave 2.6, B1)
 
       expect(JSON.parse(store.meta.get(nodeTestObservedPreloadsMetaKey("p")) ?? "null")).toEqual([
         HELPER,
-        SETUP,
       ]);
       expect(await adapter.invalidate([{ path: HELPER, kind: "change" }])).toEqual({
         recreatedProjects: ["p"],
       });
-      expect((await adapter.environment())[0]?.files).toEqual([HELPER, SETUP]);
+      expect((await adapter.environment())[0]?.files).toEqual(["package.json", HELPER, SETUP]);
       expect(await adapter.affected([HELPER])).toEqual({ direct: [], transitive: [A] });
 
       // A second worktree over the same store, its helper different: its environment misses.

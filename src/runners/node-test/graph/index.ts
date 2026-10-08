@@ -1,5 +1,10 @@
 import { realpathSync } from "node:fs";
-import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
+import type {
+  AbsolutePath,
+  InvalidatedPath,
+  RelativePath,
+  RunnerPackages,
+} from "../../../core/types/index.js";
 import { type AffectedPaths, Graph, type StaticClosure, type TestFileClosure } from "./graph.js";
 import { readLoaderChain } from "./loader-chain.js";
 import { parserReady } from "./parse.js";
@@ -28,6 +33,15 @@ export interface NodeTestGraph {
   closure(testFile: RelativePath): TestFileClosure;
   /** The closure of every `--import` and `--require` preload, for the environment hash. */
   preloads(): StaticClosure;
+  /**
+   * Task 003-22: the installed packages and builtins the project modules of
+   * a test file's static closure import in one hop (001 D3, 001-105). An
+   * incomplete closure reports what it saw; a load no specifier names
+   * reports `module`, which keys the file by the whole fingerprint.
+   */
+  packages(testFile: RelativePath): RunnerPackages;
+  /** Task 003-22: the preloads' first-hop packages, and the loader chain's as `runner`. */
+  environmentPackages(): RunnerPackages;
   /** D4: test files affected by changed paths, split direct and transitive. */
   affected(changed: readonly RelativePath[]): AffectedPaths;
   /**
@@ -72,13 +86,15 @@ export async function createNodeTestGraph(options: NodeTestGraphOptions): Promis
   const loaderNotes = () => [
     ...chain.unrecognized.map(
       (loader) =>
-        `node-test: unrecognized loader ${JSON.stringify(loader)} in argv; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`,
+        `node-test: unrecognized loader ${JSON.stringify(loader)} in argv or NODE_OPTIONS; resolving with ${chain.rules === "tsx" ? "tsx's" : "Node's own"} rules`,
     ),
     ...graph.preloadNotes(),
   ];
   return {
     closure: (testFile) => graph.closure(testFile),
     preloads: () => graph.preloads(),
+    packages: (testFile) => graph.packages(testFile),
+    environmentPackages: () => graph.environmentPackages(),
     affected: (changed) => graph.affected(changed),
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),

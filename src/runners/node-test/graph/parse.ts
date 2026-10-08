@@ -19,6 +19,13 @@ export interface ParsedModule {
    * `import(p)`, or a source the lexer rejects, with its location (D3).
    */
   readonly incomplete: readonly string[];
+  /**
+   * The module loads something no specifier names (task 003-22, spec 001 D3
+   * case 2): a computed `import()` or `require()`, `require.resolve` but of
+   * one relative literal, `import.meta.resolve`, or a source the lexer
+   * rejects. It can reach any installed package.
+   */
+  readonly unnamed: boolean;
 }
 
 /** Modules the lexer reads; anything else (JSON, text) is a leaf. */
@@ -28,6 +35,13 @@ export const PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
 const REQUIRE = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
 /** Any call of `require`, literal or not; `x.require(` and `myrequire(` do not match. */
 const REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
+/**
+ * A resolution by hand: `require.resolve` but of one relative string literal,
+ * which names a file as Vitest's scan has it (review wave-11d S3), and
+ * `import.meta.resolve`.
+ */
+const RESOLVE =
+  /(?<![\w$.])require\s*\.\s*resolve\b(?!\s*\(\s*(["'])\.\.?\/[^"'\n]*\1\s*\))|\bimport\s*\.\s*meta\s*\.\s*resolve\b/g;
 
 /**
  * Specifiers of one module (spec 003 D3): es-module-lexer for `import`,
@@ -38,6 +52,7 @@ const REQUIRE_CALL = /(?<![\w$.])require\s*\(/g;
 export function parseModule(source: string, name: string): ParsedModule {
   const specifiers: ParsedSpecifier[] = [];
   const incomplete: string[] = [];
+  let unnamed = false;
   try {
     const [imports] = parse(source, name);
     for (const record of imports) {
@@ -48,6 +63,7 @@ export function parseModule(source: string, name: string): ParsedModule {
           incomplete.push(
             `import() with a computed specifier at ${name}:${position(source, record.importStart)}`,
           );
+          unnamed = true;
           continue;
         }
         specifiers.push(
@@ -61,6 +77,7 @@ export function parseModule(source: string, name: string): ParsedModule {
     }
   } catch (error) {
     incomplete.push(`${name} does not parse as a module: ${(error as Error).message}`);
+    unnamed = true;
   }
   const literal = new Set<number>();
   for (const match of source.matchAll(REQUIRE)) {
@@ -78,9 +95,15 @@ export function parseModule(source: string, name: string): ParsedModule {
       incomplete.push(
         `require() with a computed specifier at ${name}:${position(source, match.index)}`,
       );
+      unnamed = true;
     }
   }
-  return { specifiers, incomplete };
+  for (const match of source.matchAll(RESOLVE)) {
+    if (unnamed) break;
+    code ??= codeAt(source);
+    unnamed = code(match.index);
+  }
+  return { specifiers, incomplete, unnamed };
 }
 
 /** 1-based `line:column` of an offset. */
