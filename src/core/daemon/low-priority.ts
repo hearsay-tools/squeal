@@ -13,6 +13,7 @@ const EVERY_MS = 1_000;
 /**
  * Spec 004 D2: "It runs with `nice` 10 and, on Linux, `ionice -c 3` where
  * permitted". The run's processes are found by the mark of its lane
+ * among the daemon's descendants and its group's orphans
  * (`EscapedChildren.carriers`), a fork pool's workers and what a test
  * starts with their env, and each is lowered once, until `signal` aborts.
  * What a lowered process starts later inherits its priority. A thread
