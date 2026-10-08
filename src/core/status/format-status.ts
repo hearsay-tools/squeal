@@ -1,4 +1,4 @@
-import { formatCheck, fullSuiteText, runnerPartText } from "../state/index.js";
+import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   CommitSha,
@@ -34,6 +34,7 @@ export function formatStatus(result: StatusResult, now: EpochMs, command = "sque
     ]),
     `Affected checks: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    ...slowLine(result, command),
     "",
     worktreeLine(result),
     daemonLine(result, now),
@@ -51,6 +52,12 @@ export function formatStatus(result: StatusResult, now: EpochMs, command = "sque
     ...notes(result),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/** Spec 004 D8: the slow-tier line, as delivered headers print it, when slow files are declared. */
+function slowLine(s: StatusSnapshot, command: string): string[] {
+  const text = slowTierText(s, command);
+  return text === null ? [] : [text];
 }
 
 /**

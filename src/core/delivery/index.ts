@@ -19,6 +19,7 @@ export {
 export {
   formatDelta,
   formatRegistration,
+  headerLines,
   MESSAGE_CAP_CHARS,
   notValidatedLine,
   SQUEAL_COMMAND,

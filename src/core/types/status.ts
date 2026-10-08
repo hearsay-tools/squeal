@@ -61,6 +61,54 @@ export interface SlowPendingCounts {
 }
 
 /**
+ * Spec 004 D8: what the slow tier of a worktree waits for while slow files
+ * are pending, as its daemon published it (`src/core/slow/state.ts`): fast
+ * work going first, the agent to pause (an idle consumer, D2 trigger a), the
+ * per-user slot, or the load guard.
+ */
+export type SlowTierWait = "fast" | "idle" | "slot" | "load";
+
+/** Spec 004 D8: the slow tier's activity as its daemon last published it. */
+export type SlowTierActivity =
+  | {
+      readonly kind: "running";
+      readonly path: RelativePath;
+      readonly since: EpochMs;
+      /** The file's last known run time, before this run; `null` when it never ran. */
+      readonly lastDurationMs: number | null;
+    }
+  | { readonly kind: "waiting"; readonly for: SlowTierWait };
+
+/**
+ * Spec 004 D8: the slow-tier line of headers and status, for a policy that
+ * declares slow files (D1). Each slow test file counts in one of `current`
+ * (every check current), `pending` (`SlowPendingCounts.testFiles`) or
+ * `notRun` (neither: stale, unknown or never run at this revision).
+ */
+export interface SlowTierState {
+  /** Slow test files listed in this worktree. */
+  readonly testFiles: number;
+  readonly current: number;
+  readonly pending: number;
+  readonly notRun: number;
+  /**
+   * The oldest revision a current slow result was observed at: every current
+   * slow result stands for the artifact as it was then. `null` with none current.
+   */
+  readonly currentAt: RevisionNumber | null;
+  /** The declared artifact globs of the slow files (D5), sorted; empty when none is declared. */
+  readonly artifact: readonly string[];
+  /**
+   * A path other than the artifact changed in a revision after `currentAt`:
+   * the sources behind the artifact are newer than the build the results ran
+   * against (D5, D8). `false` with nothing current.
+   */
+  readonly sourcesChangedSince: boolean;
+  /** What the daemon last published; `null` when it published nothing. */
+  readonly activity: SlowTierActivity | null;
+}
+
+/**
  * Header carried by every delivered message and by status.
  *
  * Spec 001 D6: "Every delivered message carries a header: the worktree's
@@ -125,9 +173,15 @@ export interface StatusHeader {
   readonly runnerPartPending?: boolean;
   /**
    * The pending work of slow test files (spec 004 D9). Set by `readHeader`
-   * when its caller passes which files are slow; absent reads as none.
+   * when its caller passes which files are slow or the worktree's policy
+   * declares slow files; absent reads as none.
    */
   readonly slowPending?: SlowPendingCounts;
+  /**
+   * The slow-tier line's state (spec 004 D8). Set by `readHeader` when the
+   * worktree's policy declares slow files; absent otherwise.
+   */
+  readonly slowTier?: SlowTierState;
   /**
    * The paths changed since the revision this consumer was last told about,
    * a union over the revision records after it up to the current one; the

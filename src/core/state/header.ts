@@ -17,6 +17,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
+import { readSlowTier, worktreeSlowView } from "./slow.js";
 
 /**
  * Spec 001 D6: "Every delivered message carries a header [...]. Delivery and
@@ -38,8 +39,11 @@ import { testFileKeyOf, testFileOf } from "./derive.js";
  * was listed or run at the current revision: no checkpoint counts as a
  * listing or as a full suite at it (review wave 11, B1).
  *
- * Given `isSlow` (spec 004 D1, from the policy), the header counts the
- * pending work of slow test files apart as `slowPending` (D9).
+ * When the worktree's policy declares slow files (spec 004 D1, read from
+ * the root in its `worktrees` row), the header counts their pending work
+ * apart as `slowPending` (D9) and carries the slow-tier line's state as
+ * `slowTier` (D8), from the same states and keys. A caller that passes
+ * `isSlow` gets `slowPending` from it whatever the policy says.
  */
 export function readHeader(
   store: Store,
@@ -59,6 +63,8 @@ export function readHeader(
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting = missing !== null;
+  const view = worktreeSlowView(store, worktreeId);
+  const slow = isSlow ?? view?.isSlow;
   return {
     revision,
     counts,
@@ -71,7 +77,10 @@ export function readHeader(
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
-    ...(isSlow === undefined ? {} : { slowPending: countSlowPending(states, keys, isSlow) }),
+    ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
+    ...(view === null
+      ? {}
+      : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) }),
     ...(awaiting ? { awaitingInstall: true } : {}),
     ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
   };

@@ -13,4 +13,13 @@ export {
   toKnownFailure,
 } from "./header.js";
 export { createStateSink, type StateSinkOptions } from "./sink.js";
+export {
+  classifySlowFiles,
+  readSlowTier,
+  type SlowPolicyView,
+  slowFilesNotCurrent,
+  slowPolicyView,
+  worktreeSlowView,
+} from "./slow.js";
+export { clockText, durationText, slowTierText } from "./slow-text.js";
 export { type Observation, transitionKind } from "./transitions.js";
