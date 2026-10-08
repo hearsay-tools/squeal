@@ -40,6 +40,8 @@ Started: 2026-10-07
 
 - 2026-10-08, decided by the human after the second failing review: repair `reviews/wave-2.5.md` B1 (row 003-28: the recorder becomes a first `--require`, so it is installed before every project preload) and buy a third review of the slice (003-29, gpt-6.1-sol), an exception to the two-round default.
 
+- 2026-10-08, 003-27 (0.1.27, done by a Cezar Codex worker on gpt-6.1-sol with the Squeal Codex plugin live, the 002-19 dogfooding task): the graph releases its `CachedInputFileSystem` and enhanced-resolve instances after each build or re-resolve and keeps compact resolution summaries for plain edits. Retained heap after a build, measured after an explicit GC: 10,000 modules 142.35 to 23.38 MiB (resolver 124.29 to 5.28), 1,000 modules 15.56 to 4.21 MiB; cost ratios unchanged (cold 238 ms, re-resolve 208 ms, a plain edit 1.1 ms, at load 66 to 85).
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
