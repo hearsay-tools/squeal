@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createVitest } from "vitest/node";
+import type { AbsolutePath } from "../../../src/core/types/index.js";
+import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { SourceStamps } from "../../../src/runners/vitest/sources.js";
 import { openFixture, outcomes, readsTest, ref, SLOW } from "./helpers.js";
 
 /*
@@ -83,6 +87,24 @@ describe("vitest adapter: a module whose bytes moved after Vite read them (001-1
     await fx.adapter.closure(mod);
     fx.write("src/mod.ts", c.disk);
     expect(outcomes(await fx.adapter.run([mod], fx.runOptions()))).toEqual([c.expected]);
+  });
+
+  it("counts what a project server cached before it was attached as stale", async () => {
+    const fx = await openFixture("basic", { "src/mod.ts": NEW });
+    const root = fx.root as AbsolutePath;
+    const vitest = await createVitest("test", { root, watch: false, reporters: [] });
+    try {
+      const file = `${root}/src/mod.ts` as AbsolutePath;
+      await vitest.projects[0]?.vite.environments.ssr?.transformRequest(file);
+      const stamps = new SourceStamps(new WorktreePaths(root));
+      expect(await stamps.stale(vitest)).toEqual([file]);
+      vitest.invalidateFile(file);
+      // Attached now: the next load is stamped, and its bytes are those on disk.
+      await vitest.projects[0]?.vite.environments.ssr?.transformRequest(file);
+      expect(await stamps.stale(vitest)).toEqual([]);
+    } finally {
+      await vitest.close();
+    }
   });
 
   it("does not complete a file whose run loaded bytes no longer on disk", async () => {
