@@ -171,3 +171,75 @@ describe("a test that spawns the package's CLI (spec 004 D5)", () => {
     ]);
   });
 });
+
+// Review 004 wave 1.5, S2 and S3 (row 003-40): only the project's own startup marks preloads. What an
+// `eval` Worker, or a process the test spawns with a preload of its own, loads before its entry is
+// the test file's, and an unrelated file beside it is not affected. A file-backed Worker is the control.
+describe("a test-owned startup (004 re-review S2, S3)", () => {
+  const OWN = [
+    `const req = createRequire(process.cwd() + "/package.json");`,
+    `req("./lib/" + "own.cjs");`,
+  ].join("\n");
+  const owned = {
+    "an eval Worker's load": {
+      "test/a.test.mjs": [
+        `import { Worker } from "node:worker_threads";`,
+        TEST,
+        `test("a", async () => {`,
+        `  const worker = new Worker(${JSON.stringify(`const { createRequire } = require("node:module");\n${OWN}`)}, { eval: true });`,
+        `  await new Promise((done, fail) => worker.on("exit", done).on("error", fail));`,
+        `});`,
+        "",
+      ].join("\n"),
+    },
+    "a file-backed Worker's load": {
+      "lib/worker.cjs": `const { createRequire } = require("node:module");\n${OWN}\n`,
+      "test/a.test.mjs": [
+        `import { Worker } from "node:worker_threads";`,
+        TEST,
+        `test("a", async () => {`,
+        `  const worker = new Worker(process.cwd() + "/lib/worker.cjs");`,
+        `  await new Promise((done, fail) => worker.on("exit", done).on("error", fail));`,
+        `});`,
+        "",
+      ].join("\n"),
+    },
+    "a spawned child's own --require": {
+      "child-preload.cjs": `const { createRequire } = require("node:module");\n${OWN}\n`,
+      "bin/cli.cjs": "",
+      "test/a.test.mjs": [
+        `import { spawnSync } from "node:child_process";`,
+        TEST,
+        `test("a", () => {`,
+        `  const child = spawnSync(process.execPath, ["--require", "./child-preload.cjs", "./bin/cli.cjs"]);`,
+        `  if (child.status !== 0) throw new Error(String(child.stderr));`,
+        `});`,
+        "",
+      ].join("\n"),
+    },
+  };
+
+  for (const [name, files] of Object.entries(owned)) {
+    it(`keeps ${name} in that file's closure`, SLOW, async () => {
+      const root = repo(`owned-${name.replace(/\W+/g, "-")}`, {
+        "package.json": `${JSON.stringify({ name: "own", private: true, type: "module" })}\n`,
+        "lib/own.cjs": "module.exports = 1;\n",
+        "test/b.test.mjs": `${TEST}test("b", () => {});\n`,
+        ...files,
+      });
+      const adapter = await createNodeTestAdapter(project({ slow: true }), { root });
+      await ran(adapter, "test/a.test.mjs", "test/b.test.mjs");
+      const own = [...Object.keys(files).filter((f) => f !== "test/a.test.mjs"), "lib/own.cjs"];
+      const environment = (await adapter.environment())[0]?.files;
+      for (const file of own) expect(environment).not.toContain(file);
+      expect((await adapter.closure({ project: "p", path: "test/a.test.mjs" })).paths).toEqual(
+        expect.arrayContaining(own),
+      );
+      expect((await adapter.closure({ project: "p", path: "test/b.test.mjs" })).paths).toEqual([
+        "test/b.test.mjs",
+      ]);
+      await adapter.invalidate([{ path: "lib/own.cjs", kind: "change" }]);
+      expect(await affected(adapter, "lib/own.cjs")).toEqual(["test/a.test.mjs"]);
+    });
+  }
+});

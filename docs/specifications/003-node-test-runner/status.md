@@ -75,6 +75,8 @@ Started: 2026-10-07
 
 - 2026-10-09, 003-39 (wave 1.5 of 004, `../004-slow-suites/reviews/wave-1.md` S1): D5's observed closure is amended again. The recorder marks every edge resolved before its thread's entry point `preload`, so a helper a `--require` or `--import` preload loads through `createRequire(package.json)` is in the project environment, not in each test file's closure; the test's own `createRequire` load and a spawned CLI's loads stay file-owned. A `--require` given as an absolute path ends the marking early (its orphan loads join each file, as before); a main thread with no script (`-e`) marks nothing. Adapter version 8. Both preload probes are tests in `adapter-attribution.test.ts` on Node 22 and 24.
 
+- 2026-10-09, 003-40 (`../004-slow-suites/reviews/wave-1.5.md` S2, S3): D5's preload phase is the project's own startup only. A worker thread marks nothing, and the test file's process sets `SQUEAL_NODE_TEST_STARTED` to the run's graph prefix when its phase ends, so a process the test spawns marks nothing either: an `eval` Worker's `createRequire` load and a spawned child's own `--require` and its loads join that test file's closure and re-run only it. The `node --test` parent resolves no entry and leaves the variable unset; tied to the prefix, a nested run is not taken for a child. Both probes, beside an unrelated file, and a file-backed Worker control are tests in `adapter-attribution.test.ts` on Node 22 and 24. Adapter version 9.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.

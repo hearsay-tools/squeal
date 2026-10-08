@@ -23,7 +23,7 @@ interface Edge {
   readonly url: string;
   /** The specifier as the importer wrote it. */
   readonly specifier: string | null;
-  /** Resolved before its process's entry point, so a preload made it (the recorder's phase). */
+  /** Resolved before the test file's own entry point, so a project preload made it (the recorder's phase). */
   readonly preload: boolean;
 }
 
@@ -33,11 +33,13 @@ interface Edge {
  * module (an `--import` resolves from the cwd's directory URL, a `--require`
  * and an entry point from none) roots the preloads when its specifier is one
  * of `preloads`, the `--import` and `--require` values of the project's argv
- * and `NODE_OPTIONS`, or when the recorder saw it before its process's entry
- * point: a preload's `createRequire(<package.json>)` load (004 review S1).
- * Every other such root is the test file's, since one run runs one test file
- * (lessons.md defect 3): the test's own `createRequire(<package.json>)` load,
- * or a spawned process's entry point. `null` when the recorder saw nothing of the test file: a Node
+ * and `NODE_OPTIONS`, or when the recorder saw it before the test file's entry
+ * point in the test file's own main thread: a preload's
+ * `createRequire(<package.json>)` load (004 review S1). Every other such root
+ * is the test file's, since one run runs one test file (lessons.md defect 3):
+ * the test's own `createRequire(<package.json>)` load, a spawned process's
+ * entry point, or what a worker or a spawned process loads before its entry
+ * (004 re-review S2, S3). `null` when the recorder saw nothing of the test file: a Node
  * without `module.registerHooks`, or a process that never loaded it.
  */
 export function observedClosure(

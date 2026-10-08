@@ -31,9 +31,12 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * so a pass stored while those loads went unkeyed runs once more. "8": a load
  * with no loaded parent that a preload made before the process's entry point,
  * a preload's `createRequire`, joins the preloads rather than every test file
- * (row 003-39, 004 review S1), so observed keys change shape.
+ * (row 003-39, 004 review S1), so observed keys change shape. "9": only the
+ * test file's own process marks that phase, never a worker thread or a
+ * process the test spawns (row 003-40, 004 re-review S2, S3), so what they
+ * load before their entry joins the test file rather than the environment.
  */
-export const NODE_TEST_ADAPTER_VERSION = "8";
+export const NODE_TEST_ADAPTER_VERSION = "9";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
