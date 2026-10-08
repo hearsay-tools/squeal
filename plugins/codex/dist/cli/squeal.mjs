@@ -11942,6 +11942,154 @@ var init_stale = __esm({
   }
 });
 
+// src/runners/vitest/sources.ts
+import { createHash as createHash15 } from "node:crypto";
+import { lstat as lstat8, readFile as readFile5 } from "node:fs/promises";
+async function invalidateStale(vitest, stamps, loadedSince) {
+  const stale = await stamps.stale(vitest, loadedSince);
+  for (const file of stale) vitest.invalidateFile(file);
+  return stale;
+}
+function mayHaveRun(vitest, stale, testFiles, paths) {
+  const tainted = /* @__PURE__ */ new Set();
+  for (const file of stale) {
+    const reached = testFiles.filter((ref2) => reaches(vitest, file, ref2, paths));
+    for (const ref2 of reached.length > 0 ? reached : testFiles) tainted.add(refKey(ref2));
+  }
+  return testFiles.filter((ref2) => tainted.has(refKey(ref2)));
+}
+function reaches(vitest, file, ref2, paths) {
+  const target = paths.toAbsolute(ref2.path);
+  for (const project of vitest.projects.filter((p) => p.name === ref2.project)) {
+    for (const environment of Object.values(project.vite.environments)) {
+      const queue = [...environment.moduleGraph.getModulesByFile(file) ?? []];
+      const seen = /* @__PURE__ */ new Set();
+      for (let node = queue.pop(); node !== void 0; node = queue.pop()) {
+        if (seen.has(node)) continue;
+        seen.add(node);
+        if (node.file === target) return true;
+        queue.push(...node.importers);
+      }
+    }
+  }
+  return false;
+}
+function withoutFiles(report2, dropped, stale, paths) {
+  if (dropped.length === 0) return report2;
+  const gone = new Set(dropped.map(refKey));
+  const kept = (ref2) => !gone.has(refKey(ref2));
+  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
+  const reason2 = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
+  const { fileDurations, observed } = report2;
+  return {
+    ...report2,
+    completedFiles: report2.completedFiles.filter(kept),
+    results: report2.results.filter(
+      (r) => kept({ project: r.check.project, path: r.check.testPath })
+    ),
+    fileErrors: report2.fileErrors.filter((e) => kept(e.testFile)),
+    failure: report2.failure === null ? reason2 : `${report2.failure}
+${reason2}`,
+    ...fileDurations ? { fileDurations: fileDurations.filter((d) => kept(d.testFile)) } : {},
+    ...observed ? { observed: observed.filter((o) => kept(o.testFile)) } : {}
+  };
+}
+function transformedFiles(vitest) {
+  const files = /* @__PURE__ */ new Set();
+  for (const project of vitest.projects) {
+    for (const environment of Object.values(project.vite.environments)) {
+      for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
+        if ([...modules].some((m) => cachedTransform(m) !== null)) files.add(file);
+      }
+    }
+  }
+  return files;
+}
+async function statOrNull3(file) {
+  try {
+    const s = await lstat8(file);
+    return { mtimeMs: s.mtimeMs, ctimeMs: s.ctimeMs, size: s.size, inode: s.ino };
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SourceStamps;
+var init_sources = __esm({
+  "src/runners/vitest/sources.ts"() {
+    "use strict";
+    init_fs();
+    init_hash();
+    init_results2();
+    init_stale();
+    SourceStamps = class {
+      constructor(paths, now = Date.now) {
+        this.paths = paths;
+        this.now = now;
+      }
+      paths;
+      now;
+      #stamps = /* @__PURE__ */ new Map();
+      /**
+       * A `pre` plugin whose `load` stamps the file and returns `null`, so Vite
+       * still loads it. The stat comes before this read and this read before
+       * Vite's, so a write after the stat moves the stat, and the check sees it.
+       */
+      plugin() {
+        return {
+          name: "squeal:source-stamps",
+          enforce: "pre",
+          load: async (id2) => {
+            const file = id2;
+            if (id2.includes("?") || id2.startsWith("\0") || !this.paths.isProjectFile(file)) return null;
+            const loadedAt = this.now();
+            const read3 = await this.#read(file);
+            if (read3 === null) this.#stamps.delete(file);
+            else this.#stamps.set(file, { ...read3, hashedAt: loadedAt, loadedAt });
+            return null;
+          }
+        };
+      }
+      /**
+       * The cached files, among those Vite read at or after `loadedSince`, whose
+       * bytes on disk differ from the ones read, or which are gone. A file whose
+       * bytes are unchanged takes its new stat, so a touch is hashed once.
+       */
+      async stale(vitest, loadedSince = 0) {
+        const files = [...transformedFiles(vitest)].filter(
+          (file) => (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince
+        );
+        const moved = await mapConcurrent(files, async (file) => {
+          const stamp = this.#stamps.get(file);
+          if (!stamp) return false;
+          const stat7 = await statOrNull3(file);
+          if (stat7 && sameStat(stat7, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return false;
+          const hashedAt = this.now();
+          const read3 = await this.#read(file);
+          if (read3 === null || read3.hash !== stamp.hash) return true;
+          this.#stamps.set(file, { ...read3, hashedAt, loadedAt: stamp.loadedAt });
+          return false;
+        });
+        return files.filter((_, i2) => moved[i2]).sort();
+      }
+      /** The stat, then the bytes' hash; `null` when the file is gone. */
+      async #read(file) {
+        const stat7 = await statOrNull3(file);
+        if (stat7 === null) return null;
+        try {
+          return {
+            stat: stat7,
+            hash: createHash15("sha1").update(await readFile5(file)).digest("hex")
+          };
+        } catch (error) {
+          if (isMissing(error)) return null;
+          throw error;
+        }
+      }
+    };
+  }
+});
+
 // src/runners/vitest/adapter.ts
 async function testSpecifications(vitest) {
   return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
@@ -11963,6 +12111,7 @@ var init_adapter = __esm({
     init_reporter();
     init_results2();
     init_run();
+    init_sources();
     init_stale();
     VITEST_ADAPTER_VERSION = "2";
     VitestAdapter = class {
@@ -11979,6 +12128,7 @@ var init_adapter = __esm({
       }, observe = () => false, childEnv2 = {}) {
         this.paths = paths;
         this.#node = vitest;
+        this.#sources = new SourceStamps(paths);
         this.#childEnv = childEnv2;
         this.#note = note;
         this.#observer = new VitestObserver(paths, observe);
@@ -11989,6 +12139,8 @@ var init_adapter = __esm({
       #vitest = null;
       /** Where the current instance copies transformed modules (`instanceTempDirs`). */
       #tempDirs = [];
+      /** What the current instance read of each project file (task 001-146). */
+      #sources;
       /** Installed lockfiles the current instance started with. */
       #lockfiles = /* @__PURE__ */ new Set();
       /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -12011,14 +12163,20 @@ var init_adapter = __esm({
         const generation = ++this.#generation;
         const current2 = () => generation === this.#generation ? this.#collector : null;
         const env = { ...this.#childEnv, ...this.#observer.start().env };
-        const vitest = await this.#node.createVitest("test", {
-          root: this.paths.root,
-          watch: false,
-          reporters: [createSquealReporter(current2)],
-          update: "none",
-          includeTaskLocation: true,
-          ...Object.keys(env).length === 0 ? {} : { env }
-        });
+        const sources = new SourceStamps(this.paths);
+        const vitest = await this.#node.createVitest(
+          "test",
+          {
+            root: this.paths.root,
+            watch: false,
+            reporters: [createSquealReporter(current2)],
+            update: "none",
+            includeTaskLocation: true,
+            ...Object.keys(env).length === 0 ? {} : { env }
+          },
+          { plugins: [sources.plugin()] }
+        );
+        this.#sources = sources;
         try {
           await vitest.standalone();
           this.#observer.configure(vitest);
@@ -12073,6 +12231,7 @@ var init_adapter = __esm({
           }
           for (const p of abs) vitest.invalidateFile(p.abs);
           await invalidateStructural(vitest, abs, this.#note);
+          await invalidateStale(vitest, this.#sources);
           return { recreatedProjects: [] };
         });
       }
@@ -12147,10 +12306,13 @@ var init_adapter = __esm({
             return empty2;
           }
           const exitCode = process.exitCode;
+          await invalidateStale(vitest, this.#sources);
+          const loadedSince = Date.now();
           const started = performance.now();
           this.#collector = collector;
           try {
             let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
+            const moved = await invalidateStale(vitest, this.#sources, loadedSince);
             if (execution.hung) {
               this.#vitest = null;
               abandon2(vitest, collector);
@@ -12162,7 +12324,12 @@ var init_adapter = __esm({
             }
             const built = buildReport(collector, execution, Math.round(performance.now() - started));
             const observed = this.#observer.take(built.completedFiles);
-            const report2 = observed === void 0 ? built : { ...built, observed };
+            const report2 = withoutFiles(
+              observed === void 0 ? built : { ...built, observed },
+              mayHaveRun(vitest, moved, testFiles, this.paths),
+              moved,
+              this.paths
+            );
             if (broken !== null && report2.failure !== null) this.#note(report2.failure);
             writeRunLog(options, collector, report2);
             return report2;
@@ -18418,10 +18585,10 @@ var init_identity = __esm({
 });
 
 // src/runners/node-test/enumerate.ts
-import { readFile as readFile5 } from "node:fs/promises";
+import { readFile as readFile6 } from "node:fs/promises";
 import { stripTypeScriptTypes } from "node:module";
 async function enumerate(file, testFile) {
-  return enumerateSource(await readFile5(file, "utf8"), testFile);
+  return enumerateSource(await readFile6(file, "utf8"), testFile);
 }
 function enumerateSource(source, testFile) {
   const program = parseStripped(source);
@@ -20111,9 +20278,9 @@ var require_CachedInputFileSystem = __commonJS({
           this.fileSystem.lstatSync,
           this.fileSystem
         );
-        const lstat8 = this._lstatBackend.provide;
+        const lstat9 = this._lstatBackend.provide;
         this.lstat = /** @type {FileSystem["lstat"]} */
-        lstat8;
+        lstat9;
         const lstatSync6 = this._lstatBackend.provideSync;
         this.lstatSync = /** @type {SyncFileSystem["lstatSync"]} */
         lstatSync6;
@@ -20147,9 +20314,9 @@ var require_CachedInputFileSystem = __commonJS({
           this.fileSystem.readFileSync,
           this.fileSystem
         );
-        const readFile6 = this._readFileBackend.provide;
+        const readFile7 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
-        readFile6;
+        readFile7;
         const readFileSync20 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
         readFileSync20;
@@ -20734,8 +20901,8 @@ var require_graceful_fs = __commonJS({
       fs3.createReadStream = createReadStream;
       fs3.createWriteStream = createWriteStream;
       var fs$readFile = fs3.readFile;
-      fs3.readFile = readFile6;
-      function readFile6(path, options, cb) {
+      fs3.readFile = readFile7;
+      function readFile7(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -29988,7 +30155,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.46";
+  if (true) return "0.1.47";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
