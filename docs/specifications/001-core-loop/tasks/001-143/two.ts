@@ -6,7 +6,8 @@
 // name sets SQUEAL143_OFF=<name> (`+` joins several; `shm`, which the
 // recorder ignores, moves its output to tmpfs). `stamp.cjs` rides in
 // every variant and times each worker and child. Records every test's
-// duration and state, and the 1-minute load and runnable count every 500 ms.
+// duration and state, and the 1-minute load, runnable count and I/O pressure
+// every 500 ms.
 // Usage: npx tsx two.ts <root> <variant> <out.json> <maxWorkers> <test path ...>
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,11 +39,18 @@ if (variant !== "off") {
   if (variant !== "on") env.SQUEAL143_OFF = variant.replaceAll("+", ",");
 }
 
-const samples: { t: number; load1: number; runnable: number }[] = [];
+const samples: { t: number; load1: number; runnable: number; io?: number }[] = [];
 const sample = () => {
   const [l1] = readFileSync("/proc/loadavg", "utf8").split(" ");
   const runnable = Number(/procs_running (\d+)/.exec(readFileSync("/proc/stat", "utf8"))?.[1]);
-  samples.push({ t: at(), load1: Number(l1), runnable });
+  // I/O pressure (PSI): the share of the last 10 s some task waited on I/O, in percent.
+  let io: number | undefined;
+  try {
+    io = Number(/some avg10=([\d.]+)/.exec(readFileSync("/proc/pressure/io", "utf8"))?.[1]);
+  } catch {
+    // no PSI on this kernel
+  }
+  samples.push({ t: at(), load1: Number(l1), runnable, io });
 };
 sample();
 const sampler = setInterval(sample, 500);
@@ -86,13 +94,32 @@ const runEnd = at();
 clearInterval(sampler);
 await vitest.close();
 
-const stamps = readdirSync(stampDir).flatMap((f) => readFileSync(join(stampDir, f), "utf8").trim().split("\n").map((l) => JSON.parse(l)));
+// A process killed while writing leaves an empty or partial stamp: counted, not parsed.
+let badStamps = 0;
+const stamps = readdirSync(stampDir).flatMap((f) =>
+  readFileSync(join(stampDir, f), "utf8").trim().split("\n").flatMap((l) => {
+    try {
+      return [JSON.parse(l)];
+    } catch {
+      badStamps++;
+      return [];
+    }
+  }),
+);
 rmSync(stampDir, { recursive: true, force: true });
-const times = readdirSync(observeDir).filter((f) => f.endsWith(".time.json")).map((f) => JSON.parse(readFileSync(join(observeDir, f), "utf8")));
+const times = readdirSync(observeDir)
+  .filter((f) => f.endsWith(".time.json"))
+  .flatMap((f) => {
+    try {
+      return [JSON.parse(readFileSync(join(observeDir, f), "utf8"))];
+    } catch {
+      return [];
+    }
+  });
 const flushes = readdirSync(observeDir).filter((f) => f.endsWith(".ndjson")).map((f) => ({ file: f, lines: readFileSync(join(observeDir, f), "utf8").split("\n").length - 1 }));
 rmSync(observeDir, { recursive: true, force: true });
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(xs.length, 1);
-writeFileSync(out, JSON.stringify({ variant, startedAt: new Date(t0).toISOString(), runStart, runEnd, files, tests, stamps, times, flushes, samples }));
+writeFileSync(out, JSON.stringify({ variant, startedAt: new Date(t0).toISOString(), runStart, runEnd, files, tests, stamps, badStamps, times, flushes, samples }));
 const help = tests.filter((t) => t.name.includes("help") && t.name.includes("dispatch"));
 console.log(
   `${variant}: run ${((runEnd - runStart) / 1000).toFixed(1)} s, files ${JSON.stringify(Object.fromEntries(Object.entries(files).map(([p, f]) => [p.split("/").slice(-2).join("/"), `${f.state} ${((f.durationMs ?? 0) / 1000).toFixed(1)}`])))}, help tests ${JSON.stringify(help.map((t) => `${t.state} ${((t.durationMs ?? 0) / 1000).toFixed(1)}`))}, load1 ${mean(samples.map((s) => s.load1)).toFixed(0)}, runnable ${mean(samples.map((s) => s.runnable)).toFixed(0)}`,
