@@ -91,3 +91,12 @@ Added 2026-10-08 from `lessons.md` defect 24. A daemon must learn that a session
 2. How the daemon can tell later that exactly that process is gone: `kill(pid, 0)` plus a start time (`/proc/<pid>/stat` field 22 on Linux, `ps -o lstart` or `sysctl kern.proc` on macOS, docs only there), and what happens across a PID reuse. Cost of each check.
 3. Does a hook ever run with a harness that is not its ancestor (Cezar, a launcher, `nohup`, a container)? What does Cezar's session look like from a hook (the agent process, or Cezar itself)?
 4. Recommendation: the rule, its cost per hook call, and what to do when it cannot name a process (fall back to the 12 h expiry).
+
+## Topic: process-group-tests-under-squeal
+
+Added 2026-10-08 from `lessons.md` defect 28. In cezar worktree `c8580be4` (HEAD `1c97556a`), `packages/cezar/src/core/runner-shutdown-parity.test.ts` cursor S26, S27, S28 failed under Squeal with `ENOENT ... leftover-group.pid` and passed under the agent's `npm test`.
+
+1. Reproduce: run those three cases (a) with `npx vitest run` from a shell, (b) from a process that is itself a detached session leader (`setsid`), (c) under a real Squeal daemon (this checkout's `dist`), each ten times, at the same load. Record pass/fail per case.
+2. If (b) or (c) fails and (a) does not: which property differs (session id, process group, controlling terminal, `TMPDIR`, cwd during the run, Vitest pool and isolation), established by changing one at a time.
+3. Whether the test or Squeal is wrong: what the test assumes about its own process group, and whether Squeal should run Vitest so a test sees the same session and group as under a shell.
+4. Recommendation: no change, a Squeal change (which), or a note for cezar's test.

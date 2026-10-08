@@ -792,3 +792,14 @@ At 16:52 a `Write` of a markdown plan file was denied by `interrupt.onRegression
 ### Defects
 
 24. **A daemon outlives the sessions that used it.** It exits only 60 minutes after the last consumer unregisters, and a consumer that never unregisters is expired after 12 hours. The human's rule (2026-10-08): when the last consumer is gone, finish the tier that is running, then exit, with a 3 s grace for `/clear` and `/resume`; a consumer whose harness process is gone counts as gone at once.
+
+## A backlog runs thirty times slower than the suite
+
+2026-10-08, from Cezar task `c8580be4` (cezarion #590, Codex runner) and the `cezar` store. The task's worktree daemon ran 2,232 test files over 559 tiers of exactly 4 (`runner.tierSize`), 29.6 s each on average, 4.6 h of run time, because merges and environment changes re-queued the suite about 3.4 times. The agent's own `npm test` ran all 651 files in 514 s. While the backlog ran, the two competed for CPU, and the agent stopped its own run once to wait for Squeal's queue to clear. The daemon had started at 0.1.24 and was still 0.1.24 five hours later, while the Codex plugin had moved to 0.1.31; nothing replaces a daemon older than the hooks that call it. `squeal status` there read "Full-suite checkpoint: none completed at revision 176; last completed at revision 0" and "Inherited: 0 current results", which the human read as "nothing validated since revision 0". Three checks (cezar's `runner-shutdown-parity.test.ts` cursor S26 to S28, `ENOENT ... leftover-group.pid`) failed under Squeal and passed when the agent ran them directly.
+
+### Defects
+
+25. **Backlog work runs in edit-sized tiers.** Small tiers keep an edit's tests first, but a full re-queue runs at a fraction of the machine.
+26. **A daemon older than its hooks keeps running.** Hooks at 0.1.31 talked to a 0.1.24 daemon for hours.
+27. **Status lines read as staleness.** The checkpoint and inherited lines say what was not requested or not reused, and read as "nothing is current".
+28. **Process-group tests may fail under Squeal only** (unverified): cezar's S26 to S28 check process groups, and Squeal's daemon is a detached session leader.
