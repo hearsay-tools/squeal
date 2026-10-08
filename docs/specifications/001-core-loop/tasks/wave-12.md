@@ -97,4 +97,4 @@ Done when: the review's B1 sequence with released bundles (a 0.1.32 daemon, a cu
 
 ## 001-131 re-review of 001-130
 
-Use /reviewer. Range: 001-130's commits as landed. Output `reviews/wave-12c.md`. Last round on the 001-125 slice: blockers go to the human. Re-run the B1 sequence with released bundles in both orders and plugins; probe a consumer that never records a version, two newer hooks racing to spawn successors, the lock wait timing out, and a step-down while a tier runs.
+Use /reviewer. Range: 001-130's four commits as landed (`ca19ee0` to `7f976a3` as cherry-picked), build `7f62b20`. Output `reviews/wave-12c.md`. Last round on the 001-125 slice: blockers go to the human. Re-run the B1 sequence with released bundles in both orders and plugins; probe a consumer that never records a version, two newer hooks racing to spawn successors, the lock wait timing out, and a step-down while a tier runs.
