@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CANCELLED } from "../../../src/runners/vitest/run.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
 const MAX_LOAD_FOR_TIMING = 8;
@@ -149,6 +150,47 @@ describe("vitest adapter: run()", SLOW, () => {
     expect(report.completedFiles).toEqual([]);
     expect(report.results).toEqual([]);
     expect(elapsed).toBeLessThan(15_000);
+
+    const next = await fx.adapter.run([ref("test/strings.test.ts")], fx.runOptions());
+    expect(next.end).toBe("completed");
+    expect(next.results.map((r) => r.outcome)).toEqual(["pass", "pass"]);
+  });
+
+  it("stops on an aborted signal, keeps the files that completed and stays usable (task 001-124)", async () => {
+    const fx = await openFixture();
+    fx.write(
+      "test/wait.test.ts",
+      'import { it } from "vitest";\nit("waits", () => new Promise((r) => setTimeout(r, 60_000)));\n',
+    );
+    await fx.adapter.invalidate([{ path: "test/wait.test.ts", kind: "add" }]);
+    // Warm: the cancelled run below must not spend its time transforming.
+    await fx.adapter.run([ref("test/strings.test.ts")], fx.runOptions());
+
+    const controller = new AbortController();
+    const started = performance.now();
+    const running = fx.adapter.run(
+      [ref("test/strings.test.ts"), ref("test/wait.test.ts")],
+      fx.runOptions({ signal: controller.signal }),
+    );
+    setTimeout(() => controller.abort(), 2_000);
+    const report = await running;
+    const elapsed = performance.now() - started;
+    expect(report.end).toBe("completed");
+    expect(report.failure).toBe(CANCELLED);
+    expect(report.completedFiles).toEqual([ref("test/strings.test.ts")]);
+    expect(report.results.map((r) => r.check.testPath)).toEqual([
+      "test/strings.test.ts",
+      "test/strings.test.ts",
+    ]);
+    expect(elapsed).toBeLessThan(15_000);
+
+    const aborted = new AbortController();
+    aborted.abort();
+    const none = await fx.adapter.run(
+      [ref("test/strings.test.ts")],
+      fx.runOptions({ signal: aborted.signal }),
+    );
+    expect(none.completedFiles).toEqual([]);
 
     const next = await fx.adapter.run([ref("test/strings.test.ts")], fx.runOptions());
     expect(next.end).toBe("completed");

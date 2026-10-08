@@ -246,7 +246,7 @@ export class VitestAdapter implements RunnerAdapter {
       const started = performance.now();
       this.#collector = collector;
       try {
-        let execution = await execute(vitest, specs, options.timeoutMs, collector);
+        let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
         if (execution.hung) {
           // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
           this.#vitest = null;

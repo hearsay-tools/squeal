@@ -72,6 +72,7 @@ const SHAPE: Shape = {
   env: { allowlist: strings },
   runner: {
     tierSize: positiveInteger,
+    backlogTierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger),
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),

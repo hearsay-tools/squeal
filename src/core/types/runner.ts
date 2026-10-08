@@ -201,6 +201,13 @@ export interface RunOptions {
   readonly logDir: AbsolutePath;
   /** From policy `runner.timeoutMs`; `null` means no limit. */
   readonly timeoutMs: number | null;
+  /**
+   * Aborted when the scheduler cancels a backlog tier for an edit (D5 as
+   * amended, task 001-124). The run stops as on a timeout: files whose module
+   * ended before the cancel are completed, and the report's end is the run's
+   * own. An adapter that cannot cancel runs to the end.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /**
