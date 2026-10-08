@@ -11,7 +11,8 @@ import { stepDownKit } from "./step-down-helpers.js";
  * ends in a daemon older than the one that left, whatever mix of plugins
  * shares the worktree. A session of an older plugin keeps the daemon from
  * being asked; with none, the requesting hook's successor serves without
- * another boundary, before an older hook's spawn can take the lock.
+ * another boundary once it is retrying at the lock; an older hook's spawn
+ * before that can still win (D10, 001-145), so the case waits for it there.
  */
 
 const suite = daemonSuite();
