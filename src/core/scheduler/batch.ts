@@ -1,3 +1,4 @@
+import { ancestorListings } from "../keys/index.js";
 import { commitBatch, diffBatch, statCandidates } from "../revision/index.js";
 import type { CandidateBatch, Revision } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
@@ -48,6 +49,10 @@ export async function reconcileBatch(
     for (const change of revision.changes) {
       ledger.tierChanges?.add(change.path);
       ledger.refineChanges?.add(change.path);
+      // An add or delete moves the listings of its directories (task 001-132).
+      if (change.oldHash === null || change.newHash === null) {
+        for (const listing of ancestorListings(change.path)) ledger.tierChanges?.add(listing);
+      }
     }
     const content = rekeyContent(context, ledger, revision);
     ledger.commit();

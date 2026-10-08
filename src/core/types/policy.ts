@@ -28,6 +28,15 @@ export interface Policy {
    * globs so one runtime read does not re-key the whole suite." Default `[]`.
    */
   readonly inputs: PolicyInputs;
+  readonly observe: {
+    /**
+     * Spec 001 D11 as amended (task 001-132): the runner records the project
+     * paths each test file reads, spawns or loads at run time, and they join
+     * its closure (D3, D4). `false` keys by static imports and declared
+     * `inputs` alone, as before. Default `true`.
+     */
+    readonly runtimeInputs: boolean;
+  };
   readonly env: {
     /** Spec 001 D11: "environment variables included in the environment hash." Default `[]`. */
     readonly allowlist: readonly string[];
@@ -116,6 +125,7 @@ export const DEFAULT_POLICY: Policy = {
   stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
+  observe: { runtimeInputs: true },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],

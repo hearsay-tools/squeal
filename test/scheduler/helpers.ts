@@ -57,7 +57,7 @@ afterEach(async () => {
  * A git repository holding a copy of a fixture under `test/fixtures/scheduler`.
  * In `basic`, `src/gen/` is gitignored but present.
  */
-export function createRepo(fixture: "basic" | "barrel" | "barrel-only" = "basic"): {
+export function createRepo(fixture: "basic" | "barrel" | "barrel-only" | "observed" = "basic"): {
   main: string;
   commonDir: string;
   dir: string;
@@ -190,6 +190,8 @@ export interface HarnessOptions {
   readonly reloadPolicy?: SchedulerOptions["reloadPolicy"];
   /** `SchedulerOptions.onReinstall`. */
   readonly onReinstall?: SchedulerOptions["onReinstall"];
+  /** The adapter records runtime inputs while policy `observe.runtimeInputs` holds (task 001-132). */
+  readonly observe?: boolean;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -208,7 +210,12 @@ export async function openHarness(
       revision: scheduler?.status().revision ?? null,
       text,
     });
-  const runner = recording(await createVitestAdapter({ root, note }), options.environmentRoot);
+  // The policy as the last reload left it, which the observing adapter reads as the daemon's does.
+  let current: Policy | null = null;
+  const observe =
+    options.observe === true ? () => current?.observe.runtimeInputs ?? false : undefined;
+  const adapter = await createVitestAdapter({ root, note, ...(observe ? { observe } : {}) });
+  const runner = recording(adapter, options.environmentRoot);
   for (const call of options.failing ?? []) runner.failing.add(call);
   const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
@@ -223,6 +230,8 @@ export async function openHarness(
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     },
   };
+  current = policy;
+  const reload = options.reloadPolicy;
   scheduler = createScheduler({
     root,
     worktreeId,
@@ -235,7 +244,15 @@ export async function openHarness(
     head: () => readHead(root),
     onExtraFiles: (paths) => extraFiles.push([...paths]),
     onError: (error) => errors.push(error),
-    ...(options.reloadPolicy === undefined ? {} : { reloadPolicy: options.reloadPolicy }),
+    ...(reload === undefined
+      ? {}
+      : {
+          reloadPolicy: (changes) => {
+            const next = reload(changes);
+            if (next !== null) current = next;
+            return next;
+          },
+        }),
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
   });
   cleanups.push(async () => {

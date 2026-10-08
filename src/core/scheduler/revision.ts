@@ -38,7 +38,8 @@ export function rekeyContent(
 ): ContentRekey {
   const { keys } = context;
   const changes = revision.changes;
-  const touched: TestFileRef[] = [];
+  // First: a listing reads the tracked files as this revision left them (task 001-132).
+  const touched: TestFileRef[] = keys.rekeyListings(changes).map((c) => c.testFile);
   const policy = reloadPolicy(context, ledger, changes);
   touched.push(...policy.changes.map((c) => c.testFile));
   const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);

@@ -8,6 +8,7 @@ import type {
   RunnerClosure,
 } from "../types/index.js";
 import { createInputMatcher } from "./glob.js";
+import { listedDirectory } from "./observed.js";
 
 export const CLOSURE_METHOD: ClosureMethod = "static imports plus declared inputs";
 
@@ -153,15 +154,24 @@ export function isInputList(inputs: PolicyInputs): inputs is readonly string[] {
  * Spec 001 D3: "**Closure** of a test file: the test file, its transitive
  * static and dynamic project imports from Vitest's transform graph (D4), its
  * snapshot file(s), and any policy-declared `inputs` globs that match.
+ * As amended (task 001-132): "and the project paths the file's runs were
+ * observed to read, stat, list, load or execute (D4)", `observed`, a listed
+ * directory as its listing path.
  * `node_modules` is excluded from the closure and covered by the environment
  * hash. Every closure carries `complete: false` in v1".
  */
 export function assembleClosure(
   runner: RunnerClosure,
   declaredInputs: Iterable<RelativePath>,
+  observed: Iterable<RelativePath> = [],
 ): Closure {
   const paths = new Set<RelativePath>();
   const include = (path: string) => {
+    // a listed directory (task 001-132), as `listingPath` wrote it
+    if (listedDirectory(path) !== null) {
+      paths.add(path);
+      return;
+    }
     let normalized: RelativePath;
     try {
       normalized = normalizeRelativePath(path);
@@ -174,6 +184,7 @@ export function assembleClosure(
   include(runner.testFile.path);
   for (const path of runner.paths) include(path);
   for (const path of declaredInputs) include(path);
+  for (const path of observed) include(path);
   return {
     testFile: runner.testFile,
     paths: [...paths].sort(compare),

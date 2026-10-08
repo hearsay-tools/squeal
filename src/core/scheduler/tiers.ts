@@ -1,20 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import type { StatCache } from "../hash/index.js";
-import { testFileId } from "../keys/index.js";
+import { listedDirectory, testFileId } from "../keys/index.js";
 import type {
   CheckKey,
   CheckpointRecord,
   Provenance,
   RelativePath,
   RunReport,
+  TestFileRef,
 } from "../types/index.js";
 import { backlogBudget } from "./backlog.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger, RevisionState } from "./ledger.js";
+import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
+import { storeClosures } from "./revision.js";
 import { changedSince, snapshotInputs } from "./stability.js";
 
 /** One test file of a tier and the key it runs under. */
@@ -152,9 +155,14 @@ export async function executeTier(context: SchedulerContext, tier: Tier): Promis
   }
 }
 
-/** The tier's inputs whose content now differs from the snapshot. Outside the lock: it only reads. */
+/**
+ * The tier's inputs whose content now differs from the snapshot. Outside the
+ * lock: it only reads. A listing is no file; the revisions during the run
+ * cover it (`Ledger.tierChanges`).
+ */
 export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Set<RelativePath>> {
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
+  for (const path of inputs) if (listedDirectory(path) !== null) inputs.delete(path);
   return changedSince(tier.snapshot, inputs, context.hasher);
 }
 
@@ -176,6 +184,11 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<S
  * - Otherwise one `putMany` per file under the key it ran under. When that is
  *   still the file's key the results become current; else they wait in the
  *   store for a lookup, and the file is already queued for its new key.
+ * - A file whose run read paths its closure lacks (`observed`, task 001-132):
+ *   they join its closure and the shared observed set first, they join the
+ *   stability check, and the results are stored under the key that includes
+ *   them, never under the key it ran under, which lacks them (D5 as
+ *   amended). When an edit moved its key during the run, nothing is stored.
  * - The report's notes become status notes (D7), after the transaction.
  */
 export function recordTier(
@@ -185,6 +198,7 @@ export function recordTier(
   report: RunReport,
   changedOnDisk: ReadonlySet<RelativePath>,
   installMoved = false,
+  observed: TierObservations = NOTHING_OBSERVED,
 ): RelativePath[] {
   const { store, worktreeId } = context;
   const duringRun = ledger.tierChanges ?? new Set<RelativePath>();
@@ -201,6 +215,10 @@ export function recordTier(
     recordedAt: context.now(),
   };
   const unknown: { file: FileState; key: CheckKey }[] = [];
+  const rekeyed: TestFileRef[] = [];
+  const grown: { ref: TestFileRef; checkpointId: string | null }[] = [];
+  const unstable = (path: RelativePath) =>
+    changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report.end, context.now());
     for (const { file, key, inputs, checkpointId, forced } of tier.files) {
@@ -216,27 +234,47 @@ export function recordTier(
         unknown.push({ file, key });
         continue;
       }
-      if (inputs.some((path) => changedOnDisk.has(path) || duringRun.has(path))) {
+      const growth = observed.growth.get(file.id);
+      let storeKey: CheckKey | null = key;
+      if (growth !== undefined) {
+        const ranUnderCurrent = file.key === key;
+        rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
+        grown.push({ ref: file.ref, checkpointId });
+        storeKey = ranUnderCurrent ? context.keys.index.key(file.ref) : null;
+      }
+      if (inputs.some(unstable) || growth?.growth.some(unstable)) {
         ledger.discard(file, key);
         continue;
       }
+      if (storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
         ref: file.ref,
-        key,
+        key: storeKey,
         report,
         previousChecks: previous === null ? [] : store.results.checksForKey(previous),
         provenance,
         describe: context.describe,
       });
       if (records.length > 0) store.results.putMany(records);
-      if (file.key === key) ledger.applyResults(file, key, records, checkpointId);
+      if (growth === undefined && file.key === key) {
+        ledger.applyResults(file, key, records, checkpointId);
+      }
     }
+    // The grown files take their new key and, once stored, its results; a re-key reached others.
+    for (const { ref, checkpointId } of grown) {
+      ledger.settle([ref], NOTHING_CHANGED, { checkpointId });
+    }
+    ledger.settle(rekeyed, NOTHING_CHANGED);
+    storeClosures(
+      context,
+      grown.map((g) => g.ref),
+    );
     const reason = report.failure ?? `run ${report.end}`;
     ledger.markUnknown(unknown, reason);
     ledger.commit();
   });
-  return [...changedOnDisk];
+  return [...new Set([...changedOnDisk, ...observed.changed])];
 }
 
 /**
