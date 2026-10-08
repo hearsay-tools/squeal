@@ -9,10 +9,12 @@ import {
   type SlowSlot,
   waitForCapacity,
 } from "../slow/index.js";
+import { publishSlowActivity } from "../slow/state.js";
 import {
   CONSUMER_EXPIRY_MS,
   type EpochMs,
   type RelativePath,
+  type SlowTierActivity,
   type Store,
   type TestFileRef,
   type WorktreeId,
@@ -111,6 +113,7 @@ export class SlowTier {
       owner: { pid: process.pid, worktreeId: context.worktreeId },
     });
     if (slot === null) {
+      this.#publish({ kind: "waiting", for: "slot" });
       this.#slotMissed(context, dir);
       this.#arm();
       return null;
@@ -139,12 +142,14 @@ export class SlowTier {
     if (queued.length === 0) {
       this.#requested = false;
       this.#budgetMs = null;
+      this.#publish(null);
       return null;
     }
-    if (this.host.fastPending()) return null;
+    if (this.host.fastPending()) return this.#publish({ kind: "waiting", for: "fast" });
     const triggered = this.#trigger(context, ledger);
     const ref = queued.find(triggered);
     if (ref !== undefined) return ref;
+    this.#publish({ kind: "waiting", for: "idle" });
     this.#arm();
     return null;
   }
@@ -172,7 +177,10 @@ export class SlowTier {
         maxLoadPerCpu: slow.maxLoadPerCpu,
         maxDeferMs: budget,
         recheckMs: this.#recheckMs(),
-        sleep: (ms) => delay(ms, undefined, { signal: wait.signal }),
+        sleep: (ms) => {
+          this.#publish({ kind: "waiting", for: "load" });
+          return delay(ms, undefined, { signal: wait.signal });
+        },
         ...(this.options.load === undefined ? {} : { load: this.options.load }),
         ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
       });
@@ -222,7 +230,16 @@ export class SlowTier {
       );
     }
     const inputs = context.keys.stabilityPaths(ref);
+    const since = context.now();
+    this.#publish({ kind: "running", path: ref.path, since, lastDurationMs: file.durationMs });
     return startTier(context, ledger, [{ file, key, inputs, checkpointId, forced }], false);
+  }
+
+  /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
+  #publish(activity: SlowTierActivity | null): null {
+    const { context } = this.host.started();
+    publishSlowActivity(context.store, context.worktreeId, activity);
+    return null;
   }
 
   #slotMissed(context: SchedulerContext, dir: string): void {
