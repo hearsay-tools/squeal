@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { CheckKey, TestCheckId } from "../../src/core/types/index.js";
+import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 const check = (path: string, fullName: string): TestCheckId => ({
@@ -113,15 +116,28 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     await h.scheduler.idle();
 
     let batch: Promise<void> | null = null;
+    const fixed = 'import { it } from "vitest";\nit("survives", () => {});\n';
     h.runner.beforeRun = (files) => {
       if (batch !== null || !files.some((f) => f.path === "test/kill.test.ts")) return;
       // The agent fixes the file while the crashing run is in flight; the watcher reports it.
-      h.write("test/kill.test.ts", 'import { it } from "vitest";\nit("survives", () => {});\n');
-      batch = h.batch("test/kill.test.ts");
+      // The crashing test writes the fix itself: the adapter runs the bytes on disk at its
+      // start (task 001-146), so a fix written here would never crash.
+      const kill = join(h.root, "test/kill.test.ts");
+      batch = waitFor(() => readFileSync(kill, "utf8") === fixed, 60_000).then(() =>
+        h.batch("test/kill.test.ts"),
+      );
     };
     h.write(
       "test/kill.test.ts",
-      'import { it } from "vitest";\nit("kills its worker", () => { process.kill(process.pid, "SIGKILL"); });\n',
+      [
+        'import { writeFileSync } from "node:fs";',
+        'import { it } from "vitest";',
+        'it("kills its worker", () => {',
+        `  writeFileSync(new URL(import.meta.url), ${JSON.stringify(fixed)});`,
+        '  process.kill(process.pid, "SIGKILL");',
+        "});",
+        "",
+      ].join("\n"),
     );
     await h.batch("test/kill.test.ts");
     await h.scheduler.idle();
