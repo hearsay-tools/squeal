@@ -41,9 +41,8 @@ export async function startSession(
   let ensured = false;
   const text = await withContext(input, location, deps, async (context) => {
     // The store is open already: its daemon record spares the probe a second open (S8).
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
     ensured = true;
-    if ((await ensure(location, deps, record)) === "spawned") await settle(context, deps);
+    if ((await ensure(location, deps, context)) === "spawned") await settle(context, deps);
     // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
     // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
     // parallel reuses the main agent's (review wave 3, N3), and subagents have none.

@@ -40,6 +40,12 @@ export interface EnsureDaemonOptions extends ProbeOptions {
   readonly socketTimeoutMs?: number;
   /** Default `process.env`: `SQUEAL_CLI` and the runtime dir of the socket. */
   readonly env?: NodeJS.ProcessEnv;
+  /**
+   * Spawn the successor of a daemon just asked to step down (task 001-130):
+   * no probe, since the old daemon still answers, and `squeal daemon <root>
+   * --await-lock <ms>`, which waits up to this long for the lock.
+   */
+  readonly awaitLockMs?: number;
 }
 
 /** The socket to ask for a worktree's daemon, and what it answered there. */
@@ -157,13 +163,14 @@ export async function ensureDaemon(
   root: AbsolutePath,
   options: EnsureDaemonOptions = {},
 ): Promise<EnsureDaemonResult> {
-  const probe = await probeDaemon(
-    root,
-    options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS,
-    options,
-  );
-  if (probe.state === "alive") return "alive";
-  if (probe.state === "unresponsive") return "unavailable";
+  if (options.awaitLockMs === undefined) {
+    const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
+    const probe = await probeDaemon(root, timeoutMs, options);
+    if (probe.state === "alive") return "alive";
+    if (probe.state === "unresponsive") return "unavailable";
+  }
+  const lockWait =
+    options.awaitLockMs === undefined ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
   if (cli === null || !existsSync(cli)) return "unavailable";
   try {
@@ -171,7 +178,7 @@ export async function ensureDaemon(
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
     mkdirSync(cwd, { recursive: true });
-    const child = spawn(process.execPath, [cli, "daemon", root], {
+    const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
       cwd,
       detached: true,
       stdio: "ignore",

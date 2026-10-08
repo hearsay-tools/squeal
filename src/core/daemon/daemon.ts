@@ -39,6 +39,11 @@ export interface DaemonOptions {
   /** One line per event, for the foreground process's stderr. */
   readonly log?: (line: string) => void;
   readonly timings?: Partial<DaemonTimings>;
+  /**
+   * Task 001-130: a successor spawned by a step-down waits up to this long
+   * for the lock instead of exiting at once (`squeal daemon --await-lock`).
+   */
+  readonly awaitLockMs?: number;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -69,7 +74,7 @@ export interface RunningDaemon {
 export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon | DaemonExit> {
   const now = options.now ?? Date.now;
   const desk = prepareFrontDesk();
-  const opened = await openDaemon(options.root, now);
+  const opened = await openDaemon(options.root, now, options.awaitLockMs);
   if ("reason" in opened) {
     desk.discard();
     return opened;

@@ -41,7 +41,7 @@ export function submitPrompt(
     if (!options.register) return null;
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
     if (daemonLiveness(record, now).state !== "alive") {
-      if ((await ensure(location, deps, record)) === "spawned") await settle(context, deps);
+      if ((await ensure(location, deps, context)) === "spawned") await settle(context, deps);
     }
     // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
     const registration = await context.delivery.register(context.consumer, { inTurn: true });

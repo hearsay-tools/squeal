@@ -14,6 +14,7 @@ import {
   type TurnState,
 } from "../types/index.js";
 import { annotate, withDependencies } from "./attribution.js";
+import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
@@ -48,6 +49,11 @@ export interface DeliveryOptions {
    * recorded with it (lessons, defect 24); `null` records none. Default: none.
    */
   readonly harnessProcess?: () => HarnessProcess | null;
+  /**
+   * The registering hook's Squeal version, recorded with each registration
+   * (task 001-130); `null` records none. Default: none.
+   */
+  readonly squealVersion?: string | null;
 }
 
 /** A store read costs well under a millisecond; four reads a second keep an idle wake-up prompt. */
@@ -218,6 +224,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
         recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+        recordVersion(store, consumer, options.squealVersion ?? null);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,

@@ -63,6 +63,8 @@ export interface ContextOptions {
   readonly busyTimeoutMs?: number;
   /** The harness process a registration records (`DeliveryOptions.harnessProcess`). Default: none. */
   readonly harnessProcess?: () => HarnessProcess | null;
+  /** The hook's Squeal version a registration records (`DeliveryOptions.squealVersion`). Default: none. */
+  readonly squealVersion?: string;
 }
 
 /**
@@ -92,6 +94,7 @@ export function openContext(
       now,
       ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
       ...(options.harnessProcess === undefined ? {} : { harnessProcess: options.harnessProcess }),
+      ...(options.squealVersion === undefined ? {} : { squealVersion: options.squealVersion }),
     });
     return { ...location, store, delivery, consumer, close: () => store.close() };
   } catch (error) {

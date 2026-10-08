@@ -2,6 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
+import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
 import { daemonLiveness } from "../../core/delivery/liveness.js";
 import type { DaemonRecord, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
@@ -20,15 +21,29 @@ export const SPAWN_SETTLE_MS = 750;
 const SETTLE_POLL_MS = 25;
 
 /**
+ * How long the successor a step-down spawns waits for the old daemon's lock
+ * (task 001-130): its running tier, bounded by the backlog budget's few
+ * minutes in practice, then its shutdown.
+ */
+export const SUCCESSOR_LOCK_WAIT_MS = 120_000;
+
+/**
  * `ensureDaemon` with the hook's CLI (review wave 3, B1) and the socket
- * budget, after a daemon older than the hook was asked to step down.
+ * budget. With `context`, a daemon older than the hook is first asked to step
+ * down, and when it accepts, the hook spawns its successor from its own CLI.
  */
 export async function ensure(
   location: HookLocation,
   deps: HookDeps,
-  record?: DaemonRecord | null,
+  context?: HookContext,
 ): Promise<EnsureDaemonResult> {
-  if (record !== undefined) await stepDownIfOlder(record, (deps.now ?? Date.now)());
+  const record =
+    context === undefined
+      ? undefined
+      : (context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null);
+  if (context !== undefined && (await stepDown(context, deps, record ?? null))) {
+    return successor(location, deps);
+  }
   return (deps.ensureDaemon ?? ensureDaemon)(location.root, {
     socketTimeoutMs: SOCKET_TIMEOUT_MS,
     ...(deps.cli === undefined ? {} : { cli: deps.cli }),
@@ -49,10 +64,38 @@ export async function ensureIfStale(
   deps: HookDeps,
 ): Promise<EnsureDaemonResult | "fresh"> {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-  const now = (deps.now ?? Date.now)();
-  if (daemonLiveness(record, now).state !== "alive") return ensure(context, deps, record);
-  await stepDownIfOlder(record, now);
+  if (daemonLiveness(record, (deps.now ?? Date.now)()).state !== "alive") {
+    return ensure(context, deps, context);
+  }
+  if (await stepDown(context, deps, record)) await successor(context, deps);
   return "fresh";
+}
+
+/** `stepDownIfOlder` with this hook's version and the other sessions' recorded versions. */
+function stepDown(
+  context: HookContext,
+  deps: HookDeps,
+  record: DaemonRecord | null,
+): Promise<boolean> {
+  return stepDownIfOlder(
+    record,
+    (deps.now ?? Date.now)(),
+    deps.squealVersion ?? squealVersion(),
+    otherSessionVersions(context.store, context.consumer),
+  );
+}
+
+/**
+ * Task 001-130: the hook that asked a daemon to step down spawns its own
+ * CLI's daemon at once, with a lock wait, so a current daemon follows without
+ * another boundary, whichever plugin takes it.
+ */
+function successor(location: HookLocation, deps: HookDeps): Promise<EnsureDaemonResult> {
+  return (deps.ensureDaemon ?? ensureDaemon)(location.root, {
+    socketTimeoutMs: SOCKET_TIMEOUT_MS,
+    awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
+    ...(deps.cli === undefined ? {} : { cli: deps.cli }),
+  });
 }
 
 /**
@@ -60,23 +103,33 @@ export async function ensureIfStale(
  * A daemon whose recorded version (`worktrees.daemon_version`) is strictly
  * older than this hook's, while its heartbeat is fresh, is asked over its
  * socket to step down: it lets a tier in flight finish and store, persists
- * one note, clears its record and exits, and the next hook boundary finds
- * no daemon and spawns one from its own CLI. Until then the old daemon
- * holds the lock, so a daemon spawned meanwhile loses it and exits (D10).
- * A daemon from before the request answers "unknown request type" and is
- * sent `stop`, which shuts down in the same order. An equal or newer daemon
- * is left alone, so a downgrade replaces nothing; a version that is not
- * plain `major.minor.patch` on either side compares as not newer. At most
- * two round trips of the socket budget, only for an older daemon; with its
- * timers stopped a stepping daemon's heartbeat goes stale, so the request
- * is not repeated past two intervals. True when the daemon took a request.
+ * one note, clears its record and exits. The hook then spawns its successor
+ * (`successor`), which waits for the lock; a daemon spawned meanwhile loses
+ * it and exits (D10). A daemon from before the request answers "unknown
+ * request type" and is sent `stop`, which shuts down in the same order. An
+ * equal or newer daemon is left alone, so a downgrade replaces nothing; a
+ * version that is not plain `major.minor.patch` on either side compares as
+ * not newer.
+ *
+ * Review wave 12b, B1: a released older hook taking the boundary after a
+ * step-down would start a daemon older than the one that left. So nothing is
+ * asked while another session's consumer registered with an older version,
+ * or with none (`others`, every hook from before task 001-130): the daemon
+ * serves until those sessions leave. At most two round trips of the socket
+ * budget, only for an older daemon; with its timers stopped a stepping
+ * daemon's heartbeat goes stale, so the request is not repeated past two
+ * intervals. True when the daemon took a request to exit.
  */
 export async function stepDownIfOlder(
   record: DaemonRecord | null,
   now: EpochMs,
   version: string = squealVersion(),
+  others: readonly (string | null)[] = [],
 ): Promise<boolean> {
   if (record === null || !isNewerVersion(version, record.squealVersion)) return false;
+  if (!others.every((other) => other === version || isNewerVersion(other ?? "", version))) {
+    return false;
+  }
   if (daemonLiveness(record, now).state !== "alive") return false;
   try {
     const answer = await requestDaemon(
@@ -84,7 +137,7 @@ export async function stepDownIfOlder(
       { type: "step-down", version },
       SOCKET_TIMEOUT_MS,
     );
-    if (answer.ok) return true;
+    if (answer.ok) return answer.type === "step-down" && answer.steppingDown;
     if (!answer.error.startsWith("unknown request type")) return false;
     return (await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS)).ok;
   } catch {
