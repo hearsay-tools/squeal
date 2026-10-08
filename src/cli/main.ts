@@ -10,6 +10,7 @@ import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
 import { statusWaitCommand } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
+import { takeWait } from "./wait-arg.js";
 
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
@@ -30,6 +31,9 @@ Usage:
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
+  squeal run --slow [--wait <ms>]
+                                Run the slow tier once no fast work is pending; with
+                                --wait, then wait as status --wait does
   squeal stop [root]            Stop this worktree's daemon
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
@@ -91,19 +95,9 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
  * `status --wait` also exits 0 when its wait timed out.
  */
 function status(args: readonly string[], io: CliIo): number | Promise<number> {
-  const waitAt = args.findIndex((a) => a === "--wait" || a.startsWith("--wait="));
-  let waitMs: number | null = null;
-  let rest = args;
-  if (waitAt !== -1) {
-    const arg = args[waitAt] as string;
-    const inline = arg.startsWith("--wait=");
-    const value = inline ? arg.slice("--wait=".length) : args[waitAt + 1];
-    if (value === undefined || !/^\d+$/.test(value)) {
-      return usage("status", "--wait takes a whole number of milliseconds", io);
-    }
-    waitMs = Number(value);
-    rest = args.filter((_, i) => i !== waitAt && (inline || i !== waitAt + 1));
-  }
+  const wait = takeWait(args);
+  if (typeof wait === "string") return usage("status", wait, io);
+  const { waitMs, rest } = wait;
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
   if (parsed.positional.length > 0) return usage("status", "takes no arguments", io);

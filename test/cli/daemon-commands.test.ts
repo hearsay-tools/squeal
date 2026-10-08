@@ -49,7 +49,7 @@ describe("daemon commands: usage and no-daemon answers", () => {
     const cwd = tempDir();
     expect((await run(["daemon"], cwd)).code).toBe(2);
     expect((await run(["daemon", "a", "b"], cwd)).code).toBe(2);
-    expect((await run(["run"], cwd)).stderr).toContain("--all is required");
+    expect((await run(["run"], cwd)).stderr).toContain("--all or --slow is required");
     expect((await run(["run", "--all", "--fast"], cwd)).code).toBe(2);
     expect((await run(["start", "--now"], cwd)).code).toBe(2);
     expect((await run(["stop", "a", "b"], cwd)).code).toBe(2);
