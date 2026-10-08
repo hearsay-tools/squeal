@@ -116,6 +116,8 @@ Started: 2026-10-02
 
 - 2026-10-08, wave 12 (001-125, `lessons.md` defect 26; the comparison, the request and the stop fallback decided by the coordinator): D10 amended. A hook whose bundled version is strictly newer than the recorded `worktrees.daemon_version` (plain `major.minor.patch` only) sends `step-down` over the socket while the heartbeat is fresh; the daemon lets a tier in flight finish and store, persists one note and exits with reason `superseded`; an equal or newer daemon keeps running; a daemon from before the request is sent `stop`. In the window the old daemon holds the lock, so hooks spawn nothing and a spawned daemon loses and exits; the next boundary spawns a current one. Types, additive: `StepDownRequest`, `StepDownResponse`, `DaemonExitReason` `superseded`, `HandlerContext.onStepDown`, `DeskEvents.onStepDown`, `FromDesk` `step-down`; `isNewerVersion` in `version.ts`, `stepDownNote` in `lifecycle.ts`, `stepDownIfOlder` in `src/harness/shared/ensure.ts`. No schema change.
 
+- 2026-10-08, wave 12 (`reviews/wave-12.md` S1, coordinator): the 12 h consumer expiry removes the harness record and stamps the departure as every unregister does, so the 3 s exit applies after it too.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
