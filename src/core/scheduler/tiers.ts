@@ -51,8 +51,9 @@ export interface Tier {
  * Spec 001 D5: "runs them in tiers of a configurable size (default 4 test
  * files). Between tiers it re-plans against the latest revision." Each key is
  * looked up once more just before it would run, because another worktree may
- * have stored it meanwhile; forced entries skip the lookup. Returns `null`
- * when nothing is left to run.
+ * have stored it meanwhile (`Ledger.lookup`, spec 004 D6); forced entries
+ * skip the lookup. Returns `null` when no fast file is left to run: slow
+ * files are never in these tiers (spec 004 D2, `selectSlowTier`).
  *
  * While no queued file is recent, the tier is the backlog's: up to
  * `runner.backlogTierSize` files and `backlogBudget` of last-known file time,
@@ -62,7 +63,7 @@ export interface Tier {
  * the first file is always taken.
  */
 export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | null {
-  const { store, keys, policy } = context;
+  const { keys, policy } = context;
   const picked: TierFile[] = [];
   const backlog = !ledger.queue.hasRecent();
   const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
@@ -80,7 +81,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
     }
     const forced = ledger.queue.isForced(ref);
     if (!forced) {
-      const hits = store.results.byKey(key, context.now());
+      const hits = ledger.lookup(file, key);
       if (hits.length > 0) {
         ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
         continue;
@@ -98,7 +99,21 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
     return null;
   }
   ledger.queue.tierSelected(tookBacklog);
+  return startTier(context, ledger, picked, backlog);
+}
 
+/**
+ * Records the start of a tier of `picked`, files already off the queue: the
+ * stability snapshot, `running` phases and the run row. `cancellable` for a
+ * backlog tier, which an edit cancels; never for an edit's or a slow tier.
+ */
+export function startTier(
+  context: SchedulerContext,
+  ledger: Ledger,
+  picked: readonly TierFile[],
+  cancellable: boolean,
+): Tier {
+  const { store, keys } = context;
   const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
   const runId = randomUUID();
   const tier: Tier = {
@@ -111,7 +126,7 @@ export function selectTier(context: SchedulerContext, ledger: Ledger): Tier | nu
       keys.cache,
       picked.flatMap((p) => p.inputs),
     ),
-    cancel: backlog ? new AbortController() : null,
+    cancel: cancellable ? new AbortController() : null,
   };
   for (const { file, key } of picked) ledger.setRunning(file, key);
   ledger.tierChanges = new Set();

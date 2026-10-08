@@ -9,6 +9,7 @@ import type {
   RelativePath,
   Scheduler,
   SchedulerStatus,
+  SlowSuiteRequest,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
@@ -32,6 +33,7 @@ import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
+import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import {
   abandonFullSuite,
   executeTier,
@@ -57,6 +59,7 @@ class TierScheduler implements Scheduler {
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
   });
+  readonly #slow: SlowTier;
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
@@ -76,6 +79,16 @@ class TierScheduler implements Scheduler {
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
+    this.#slow = new SlowTier(
+      {
+        lock: this.#lock,
+        started: () => this.#started(),
+        closed: () => this.#closed,
+        pump: () => this.#pump(),
+        fastPending: () => this.#fastPending(),
+      },
+      options.slow,
+    );
   }
 
   async start(): Promise<void> {
@@ -160,6 +173,7 @@ class TierScheduler implements Scheduler {
         if (missing !== null) return this.#reinstall(ledger);
       }
       if (applied === null) return;
+      this.#slow.preempt();
       // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
       const running = this.#running;
       if (running?.cancel && cancelsBacklog(ledger, applied.revision, running)) {
@@ -214,6 +228,7 @@ class TierScheduler implements Scheduler {
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
     if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
+    this.#slow.preempt();
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
@@ -229,6 +244,19 @@ class TierScheduler implements Scheduler {
       }));
     this.#pump();
     return record;
+  }
+
+  /** Spec 004 D2 trigger (b); the slow tier still waits for pending fast work. */
+  async requestSlowSuite(): Promise<SlowSuiteRequest> {
+    const request = await this.#lock.run(() => {
+      const { context, ledger } = this.#started();
+      const revision = ledger.revision.number;
+      if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
+      this.#slow.request();
+      return { revision, queued: queueSlowSuite(context, ledger) };
+    });
+    this.#pump();
+    return request;
   }
 
   status(): SchedulerStatus {
@@ -251,6 +279,7 @@ class TierScheduler implements Scheduler {
   async close(): Promise<void> {
     if (this.#closed) return;
     this.#closed = true;
+    this.#slow.close();
     await this.#pumping;
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
@@ -281,6 +310,7 @@ class TierScheduler implements Scheduler {
     this.#stalled = false;
     this.#pumping = (async () => {
       let tier: Tier | null = null;
+      let slow: SlowRun | null = null;
       try {
         while (!this.#closed) {
           await this.#runnerWork.drain();
@@ -306,7 +336,14 @@ class TierScheduler implements Scheduler {
           });
           if (next === "runner-work") continue;
           tier = next;
-          if (tier === null) break;
+          if (tier === null) {
+            // Spec 004 D2: no fast file pending; a slow file may run, one per tier.
+            const after = await this.#slow.next();
+            if (after === "again") continue;
+            if (after === null) break;
+            slow = after;
+            tier = after.tier;
+          }
           const { context, ledger } = this.#started();
           const selected: Tier = tier;
           this.#running = selected;
@@ -321,6 +358,8 @@ class TierScheduler implements Scheduler {
             return recordTier(context, ledger, selected, report, changed, installMoved, observed);
           });
           tier = null;
+          slow?.slot.release();
+          slow = null;
           // The watcher may not have reported these yet; reconciling twice is harmless.
           if (moved.length > 0) await this.#reconcilePaths(moved);
         }
@@ -330,6 +369,7 @@ class TierScheduler implements Scheduler {
         this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
         if (tier !== null) await this.#requeue(tier);
       } finally {
+        slow?.slot.release();
         this.#pumping = null;
         if (this.#reinstalled) this.#tellReinstall();
         if (!this.#closed && !this.#stalled && this.#hasWork()) this.#pump();
@@ -338,10 +378,20 @@ class TierScheduler implements Scheduler {
     })();
   }
 
-  /** Never while waiting or reinstalled, so the pump cannot re-arm into a wait (review wave 11c, B1). */
+  /**
+   * Never while waiting or reinstalled, so the pump cannot re-arm into a wait
+   * (review wave 11c, B1). Slow files are not work here: the slow tier pumps
+   * again itself while they wait for a trigger or the slot (spec 004 D2).
+   */
   #hasWork(): boolean {
     if (this.#awaitingInstall || this.#reinstalled) return false;
-    return this.#runnerWork.size > 0 || (this.#ledger?.queue.size ?? 0) > 0;
+    return this.#runnerWork.size > 0 || (this.#ledger?.queue.fastSize ?? 0) > 0;
+  }
+
+  /** Fast work goes before a slow file (spec 004 D2), a refinement in flight included. */
+  #fastPending(): boolean {
+    const work = this.#runnerWork;
+    return work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0;
   }
 
   /** Puts the files of a tier that never got recorded back into the queue. */
