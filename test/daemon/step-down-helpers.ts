@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, readdirSync, readlinkSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { recorded } from "../harness/helpers.js";
@@ -19,7 +20,7 @@ import {
   stopProcess,
   waitFor,
 } from "./helpers.js";
-import { testBuildDir } from "./strays.js";
+import { findProcesses, testBuildDir } from "./strays.js";
 
 /*
  * Daemons of other versions and the hooks that step them down (lessons,
@@ -110,6 +111,21 @@ export function stepDownKit(suite: DaemonSuite) {
       const at = performance.now();
       await runHook(name as never, recorded(name, repo.root, { session_id: sessionId }), deps);
       return performance.now() - at;
+    },
+    /**
+     * True once a successor of `repo` (`--await-lock`) holds the daemon lock
+     * database open: it retries the lock, or holds it. Linux, from `/proc`.
+     */
+    successorAtLock(repo: FixtureRepo): boolean {
+      const lock = realpathSync(lockFileFor(repo.commonDir, repo.worktreeId));
+      return findProcesses(`daemon ${repo.root}`, "--await-lock").some(({ pid }) => {
+        try {
+          const fds = readdirSync(`/proc/${pid}/fd`);
+          return fds.some((fd) => readlinkSync(`/proc/${pid}/fd/${fd}`) === lock);
+        } catch {
+          return false;
+        }
+      });
     },
     async exitWithin(process: SpawnedProcess, ms: number, repo: FixtureRepo) {
       const exit = await Promise.race([process.exited, delay(ms).then(() => null)]);
