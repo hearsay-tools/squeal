@@ -9,6 +9,7 @@ import type {
   RunnerPackages,
 } from "../../core/types/index.js";
 import { projectCwd } from "./adapter-files.js";
+import { projectEnv } from "./recorders.js";
 
 /** What the project's Node said about itself, or why it could not run. */
 export type NodeProbe =
@@ -26,12 +27,11 @@ const PROBE = 'process.stdout.write(process.version + "\\n" + process.execPath +
  */
 export function probeNode(project: NodeTestProject, cwd: AbsolutePath): Promise<NodeProbe> {
   const node = project.node ?? "node";
-  const { NODE_TEST_CONTEXT: _, ...base } = process.env;
   return new Promise((done) => {
     execFile(
       node,
       ["-e", PROBE],
-      { cwd, env: { ...base, ...project.env }, timeout: PROBE_TIMEOUT_MS, encoding: "utf8" },
+      { cwd, env: projectEnv(project, process.env), timeout: PROBE_TIMEOUT_MS, encoding: "utf8" },
       (error, stdout) => {
         // A preload in the project's NODE_OPTIONS may print first: the probe's lines are last.
         const [version, execPath] = stdout.trimEnd().split("\n").slice(-2);

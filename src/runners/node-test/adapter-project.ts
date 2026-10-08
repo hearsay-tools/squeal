@@ -14,6 +14,7 @@ import { listTestFiles } from "./adapter-files.js";
 import { Observed } from "./adapter-observed.js";
 import { enumerate } from "./enumerate.js";
 import { createNodeTestGraph } from "./graph/index.js";
+import { projectEnv } from "./recorders.js";
 import { asyncLoaders, tokenizeNodeOptions } from "./run/node-options.js";
 import { runNodeTest } from "./run/run.js";
 
@@ -161,9 +162,12 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   };
 }
 
-/** The tokens of the `NODE_OPTIONS` the project's processes get; none when Node would reject it. */
+/**
+ * The tokens of the `NODE_OPTIONS` the project's processes get, without
+ * Squeal's own recorders (task 003-35); none when Node would reject it.
+ */
 function nodeOptionsOf(project: NodeTestProject): string[] {
-  return tokenizeNodeOptions(project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") ?? [];
+  return tokenizeNodeOptions(projectEnv(project, process.env).NODE_OPTIONS ?? "") ?? [];
 }
 
 /**

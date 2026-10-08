@@ -9,9 +9,10 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../../core/types/index.js";
+import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
 import { parseEvents } from "./events.js";
-import { holdsRequire } from "./node-options.js";
+import { holdsRequire, quoteNodeOption } from "./node-options.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { type ProcessExit, startGroup } from "./process.js";
 import { type FileReport, readFileStream } from "./report.js";
@@ -155,26 +156,19 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
 }
 
 /**
- * The daemon's environment with the project's merged over it (D1), minus
- * `NODE_TEST_CONTEXT`: inherited from a `node --test` around Squeal, it would
- * make the project's runner act as a child and write no report. Node runs a
- * `--require` in `NODE_OPTIONS` before those of argv, so when `NODE_OPTIONS`
- * holds one, however quoted (`holdsRequire`, review wave 2.6 B1), the
- * recorder goes first there as well; Node loads it once.
+ * The daemon's environment with the project's merged over it (D1), as
+ * `projectEnv` cleans it. Node runs a `--require` in `NODE_OPTIONS` before
+ * those of argv, so when `NODE_OPTIONS` holds one, however quoted
+ * (`holdsRequire`, review wave 2.6 B1), the recorder goes first there as
+ * well; Node loads it once.
  */
 function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
-  const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
-  const env = { ...base, ...options.project.env };
+  const env = projectEnv(options.project, options.env ?? process.env);
   const nodeOptions = env.NODE_OPTIONS;
   if (nodeOptions !== undefined && holdsRequire(nodeOptions)) {
     env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
   }
   return env;
-}
-
-/** A value as `NODE_OPTIONS` reads it: double quotes, `\\` and `"` escaped. */
-function quoteNodeOption(value: string): string {
-  return `"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 
 /**

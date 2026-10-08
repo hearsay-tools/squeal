@@ -31,6 +31,11 @@ export function tokenizeNodeOptions(value: string): string[] | null {
   return quoted ? null : tokens;
 }
 
+/** A value as `NODE_OPTIONS` reads it: double quotes, `\\` and `"` escaped. */
+export function quoteNodeOption(value: string): string {
+  return `"${value.replace(/["\\]/g, "\\$&")}"`;
+}
+
 /**
  * Whether Node would run a `--require` preload from this `NODE_OPTIONS`: a
  * token `--require` or `-r`, or one starting `--require=` or `-r=`. True too
