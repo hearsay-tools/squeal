@@ -122,3 +122,7 @@ Done when (the research's): (1) on a fixture under Vitest 5 forks and threads, a
 ## 001-133 review of 001-132
 
 Use /reviewer. Range: 001-132's commits as landed. Output `reviews/wave-12d.md`. Outcome: can the recorder change a test's result, miss a read that changes a result inside its stated reach, or keep a result current that a changed observed file invalidates. Probe the research's blind spots stay stated, an `env: {}` grandchild, worker threads, a test that writes then reads its own file, a symlinked source path, two worktrees sharing observed sets, the stability check during a run, and the contention result on `cezar`.
+
+## 001-133 dispatch note
+
+001-132 landed as 0.1.35. Range: its twelve commits as cherry-picked (`5125e99` to `c9c5612` in the worker's branch; on `main` the commits after `0c8bd5d` whose subject names 001-132) plus the build. Its evidence is in `tasks/001-132/notes.md`. Take especially: done-when 3's `on 1` round, where nine files failed only with the recorder and were attributed to load from overlapping runs (summed file time 11,319 s against about 6,500 s for the others); whether that attribution holds. Its brief noted `scripts/mock-cursor-print.mjs` is not on cezar's `main`; the cezar check used `1c97556a`.
