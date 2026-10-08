@@ -298,7 +298,7 @@ function knowsSoftInvalidation(vitest: Vitest, module: ModuleNode): boolean {
  * a file soft-invalidates its importers, and a soft-invalidated module is
  * re-served with its old resolutions, so both count.
  */
-function cachedTransform(module: ModuleNode): Transform | null {
+export function cachedTransform(module: ModuleNode): Transform | null {
   if (module.transformResult) return module.transformResult;
   const state = (module as { invalidationState?: unknown }).invalidationState;
   return typeof state === "object" && state !== null ? (state as Transform) : null;
