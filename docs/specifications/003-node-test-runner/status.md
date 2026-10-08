@@ -42,6 +42,8 @@ Started: 2026-10-07
 
 - 2026-10-08, 003-27 (0.1.27, done by a Cezar Codex worker on gpt-6.1-sol with the Squeal Codex plugin live, the 002-19 dogfooding task): the graph releases its `CachedInputFileSystem` and enhanced-resolve instances after each build or re-resolve and keeps compact resolution summaries for plain edits. Retained heap after a build, measured after an explicit GC: 10,000 modules 142.35 to 23.38 MiB (resolver 124.29 to 5.28), 1,000 modules 15.56 to 4.21 MiB; cost ratios unchanged (cold 238 ms, re-resolve 208 ms, a plain edit 1.1 ms, at load 66 to 85).
 
+- 2026-10-08, wave 2.6 (003-28), 0.1.28: D5 amended. The recorder is `runtime/recorder.cjs` loaded as the first `--require`, so it is installed before every project preload (Node runs all `--require` before any `--import`); a `--require` in the child's `NODE_OPTIONS` runs even earlier, so the recorder is prepended there when one is present, and that preload is keyed from its first run on. Adapter version 3: passes stored without these observations run once more. The recorder reaches the per-file child `node --test` spawns. Accepted from the worker: an edit of one project's preload helper also re-runs another project once, because the scheduler re-reads every environment when one project is recreated (`refinement.ts`), an extra run, not a missed one.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
