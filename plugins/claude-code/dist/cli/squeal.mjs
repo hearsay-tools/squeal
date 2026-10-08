@@ -2447,17 +2447,7 @@ function prune(conn, worktrees, paths, options) {
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
-  let resultsRemoved = conn.transaction(() => {
-    const removed = conn.run(
-      `DELETE FROM results
-       WHERE key NOT IN (${LIVE_KEYS})
-         AND rowid NOT IN (${MAIN_NEWEST})
-         AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`,
-      cutoff
-    );
-    dropOrphanFailureTexts(conn);
-    return removed;
-  });
+  let resultsRemoved = dropPrunable(conn, cutoff);
   if (options.maxSizeMb !== null) {
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
   }
@@ -2489,7 +2479,7 @@ function prune(conn, worktrees, paths, options) {
          UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`
     )
   );
-  conn.db.exec("PRAGMA incremental_vacuum");
+  vacuum(conn);
   return {
     resultsRemoved,
     runsRemoved: droppedRuns.length,
@@ -2499,11 +2489,33 @@ function prune(conn, worktrees, paths, options) {
     bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size")
   };
 }
+function dropPrunable(conn, cutoff) {
+  const ids = conn.read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff)).map((row) => num(row, "id"));
+  let removed = 0;
+  for (let at2 = 0; at2 < ids.length; at2 += DELETE_BATCH) {
+    const batch = JSON.stringify(ids.slice(at2, at2 + DELETE_BATCH));
+    removed += conn.transaction(
+      () => conn.run(
+        `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
+        batch,
+        cutoff
+      )
+    );
+  }
+  conn.transaction(() => dropOrphanFailureTexts(conn));
+  return removed;
+}
+function vacuum(conn) {
+  let free = pragmaNumber(conn, "freelist_count");
+  while (free > 0) {
+    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    const left = pragmaNumber(conn, "freelist_count");
+    if (left >= free) return;
+    free = left;
+  }
+}
 function evictToCap(conn, capBytes) {
-  const tiers = [
-    `key NOT IN (${LIVE_KEYS}) AND rowid NOT IN (${MAIN_NEWEST})`,
-    `key NOT IN (${LIVE_KEYS})`
-  ];
+  const tiers = [UNPROTECTED, `key NOT IN (${LIVE_KEYS})`];
   let removed = 0;
   for (const tier of tiers) {
     while (usedBytes(conn) > capBytes) {
@@ -2542,21 +2554,26 @@ function removeRunLog(paths, logDir) {
   const target = resolve3(logDir);
   if (target.startsWith(runsDir + sep3)) rmSync(target, { recursive: true, force: true });
 }
-var DAY_MS, EVICTION_BATCH, LIVE_KEYS, MAIN_NEWEST, LAST_COMPLETED_CHECKPOINTS;
+var DAY_MS, EVICTION_BATCH, DELETE_BATCH, VACUUM_PAGES, LIVE_KEYS, MAIN, UNPROTECTED, PRUNABLE, LAST_COMPLETED_CHECKPOINTS;
 var init_prune = __esm({
   "src/core/store/prune.ts"() {
     "use strict";
     init_codec();
     DAY_MS = 24 * 60 * 60 * 1e3;
     EVICTION_BATCH = 32;
+    DELETE_BATCH = 256;
+    VACUUM_PAGES = 512;
     LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
   WHERE k.key IS NOT NULL`;
-    MAIN_NEWEST = `
-  SELECT id FROM (
-    SELECT rowid AS id,
-      row_number() OVER (PARTITION BY check_id ORDER BY recorded_at DESC, rowid DESC) AS n
-    FROM results WHERE worktree_id IN (SELECT id FROM worktrees WHERE is_main = 1)
-  ) WHERE n = 1`;
+    MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
+    UNPROTECTED = `key NOT IN (${LIVE_KEYS})
+  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
+    SELECT 1 FROM results n
+    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
+      AND (n.recorded_at > results.recorded_at
+           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
+    PRUNABLE = `${UNPROTECTED}
+  AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`;
     LAST_COMPLETED_CHECKPOINTS = `
   SELECT id FROM (
     SELECT (SELECT x.id FROM checkpoints x
@@ -3487,7 +3504,7 @@ function connect(paths, options) {
         return { corrupt: problem };
       }
     }
-    db.exec("PRAGMA auto_vacuum = INCREMENTAL");
+    if (pragmaNumber2(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
     const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
     if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
     db.exec("PRAGMA synchronous = NORMAL");
@@ -3503,6 +3520,9 @@ function busyTimeout(options) {
   const ms = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(ms) || ms < 0) throw new RangeError(`busyTimeoutMs must be >= 0: ${ms}`);
   return ms;
+}
+function pragmaNumber2(db, name) {
+  return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
 }
 function integrityProblem(db) {
   const rows = db.prepare("PRAGMA integrity_check").all();
@@ -29272,7 +29292,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.43";
+  if (true) return "0.1.44";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
