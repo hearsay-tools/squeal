@@ -1,4 +1,5 @@
 import { testFileId } from "../keys/index.js";
+import { inheritsAcrossWorktrees } from "../slow/index.js";
 import {
   type CheckId,
   type CheckKey,
@@ -14,6 +15,7 @@ import { Checkpoints } from "./checkpoints.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, durationOf, type FileState, newFileState } from "./files.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
+import { slowView } from "./slow.js";
 
 /** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
 export const MAX_DISCARDS = 3;
@@ -67,6 +69,8 @@ export class Ledger {
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+    // Read at every query: a reload replaces `context.policy`.
+    this.queue.setSlow((ref) => slowView(context.policy).isSlow(ref));
   }
 
   file(ref: TestFileRef): FileState | undefined {
@@ -76,6 +80,11 @@ export class Ledger {
   /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
   ordered(): TestFileRef[] {
     return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null);
+  }
+
+  /** The slow class of the queue in the order the slow tier runs it (spec 004 D2). */
+  orderedSlow(): TestFileRef[] {
+    return this.queue.orderedSlow((ref) => this.file(ref)?.durationMs ?? null);
   }
 
   addFile(ref: TestFileRef): FileState {
@@ -139,7 +148,7 @@ export class Ledger {
         this.#syncPhase(file);
         continue;
       }
-      const hits = this.context.store.results.byKey(key, this.context.now());
+      const hits = this.lookup(file, key);
       if (hits.length > 0) {
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
@@ -155,6 +164,29 @@ export class Ledger {
       }
     }
     return misses;
+  }
+
+  /**
+   * The stored results of `key` that may stand for `file`: every hit, unless
+   * one comes from another worktree and the file may not inherit (spec 004
+   * D6, `inherits`), when there is none. The store holds one result per
+   * check and key, so a mixed set is never partly this worktree's own.
+   */
+  lookup(file: FileState, key: CheckKey): readonly ResultRecord[] {
+    const { store, worktreeId, now } = this.context;
+    const hits = store.results.byKey(key, now());
+    if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
+    return this.inherits(file.ref) ? hits : [];
+  }
+
+  /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
+  inherits(ref: TestFileRef): boolean {
+    const view = slowView(this.context.policy);
+    const slow = view.isSlow(ref);
+    if (!slow) return true;
+    const testFiles = new Set([...this.files.values()].map((file) => file.ref.path));
+    const declared = this.context.keys.declaredFor(ref.path);
+    return inheritsAcrossWorktrees({ path: ref.path, slow }, declared, testFiles, view.globs);
   }
 
   /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */

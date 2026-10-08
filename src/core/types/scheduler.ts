@@ -84,6 +84,21 @@ export interface FullSuiteRequest {
 }
 
 /**
+ * What a `squeal run --slow` request did (spec 004 D2, trigger (b)). The
+ * slow tier then runs once no fast file is pending, whatever the consumers'
+ * turns.
+ */
+export interface SlowSuiteRequest {
+  /** The worktree's revision when the request arrived. */
+  readonly revision: RevisionNumber;
+  /**
+   * Slow files the request put in the queue or found queued or running: 0
+   * when none is declared or every slow file is current at the revision.
+   */
+  readonly queued: number;
+}
+
+/**
  * Turns revisions into keys, lookups and tiered runs for one worktree.
  *
  * Spec 001 D5: "On each new revision the daemon: invalidates changed paths in
@@ -110,8 +125,18 @@ export interface Scheduler {
   handleBatch(batch: CandidateBatch): Promise<void>;
   /** Spec 001 D5 `squeal run --all`: one checkpoint of kind `run-all`, run in tiers. */
   requestFullSuite(request?: FullSuiteRequest): Promise<CheckpointRecord>;
+  /**
+   * Spec 004 D2 `squeal run --slow`: queues every slow file that is not
+   * current, and lets the slow tier run behind pending fast work even while
+   * a consumer is in a turn, until no slow file is left pending.
+   */
+  requestSlowSuite(): Promise<SlowSuiteRequest>;
   status(): SchedulerStatus;
-  /** Resolves once nothing is queued or running and no revision waits for its runner part. */
+  /**
+   * Resolves once nothing is queued or running and no revision waits for its
+   * runner part. Slow files that wait for a trigger or the slot (spec 004
+   * D2) do not count; a slow file running or waiting for load does.
+   */
   idle(): Promise<void>;
   /** Paths the stat cache holds, for `ChangeFeed` reconciliation passes. */
   trackedPaths(): Iterable<RelativePath>;

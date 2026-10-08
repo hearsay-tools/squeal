@@ -192,6 +192,8 @@ export interface HarnessOptions {
   readonly onReinstall?: SchedulerOptions["onReinstall"];
   /** The adapter records runtime inputs while policy `observe.runtimeInputs` holds (task 001-132). */
   readonly observe?: boolean;
+  /** `SchedulerOptions.slow` (spec 004): give tests with slow files their own slot directory. */
+  readonly slow?: SchedulerOptions["slow"];
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -257,6 +259,7 @@ export async function openHarness(
           },
         }),
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
+    ...(options.slow === undefined ? {} : { slow: options.slow }),
   });
   cleanups.push(async () => {
     await scheduler.close();

@@ -335,6 +335,11 @@ export class WorktreeKeys {
     return moved.length === 0 ? [] : this.index.rekey(moved);
   }
 
+  /** The existing files policy `inputs` selects for the test file at `path` (spec 004 D6). */
+  declaredFor(path: RelativePath): readonly RelativePath[] {
+    return this.#declared.for(path);
+  }
+
   /** Entries of policy `inputs` that select no test file among `testFiles` or no known file (review wave 4.5, S5). */
   unmatchedInputs(testFiles: Iterable<RelativePath>): UnmatchedInputs {
     return unmatchedInputs(this.#policy.inputs, testFiles, this.#knownFiles());

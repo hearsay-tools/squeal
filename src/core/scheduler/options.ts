@@ -61,4 +61,21 @@ export interface SchedulerOptions {
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
   readonly env?: NodeJS.ProcessEnv;
   readonly now?: () => EpochMs;
+  /** How the slow tier waits (spec 004 D2, D3); defaults suit a daemon. */
+  readonly slow?: SlowTierOptions;
+}
+
+/** The slow tier's surroundings, for tests and the daemon. */
+export interface SlowTierOptions {
+  /** Directory of the per-user slot (`slow.lock`). Default `userTmpDir()` (spec 004 D2). */
+  readonly slotDir?: AbsolutePath;
+  /**
+   * How often pending slow work that cannot start is looked at again: the
+   * slot taken, a consumer in a turn. Also the load guard's recheck (D3).
+   * Default and maximum 15000.
+   */
+  readonly recheckMs?: number;
+  /** The load guard's readings (`CapacityWait.load`, `cpus`); default the host's. */
+  readonly load?: () => readonly number[];
+  readonly cpus?: () => number;
 }
