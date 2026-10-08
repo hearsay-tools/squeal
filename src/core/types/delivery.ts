@@ -91,6 +91,12 @@ export interface TransitionEntry {
    * average when it ran (`CheckError.loadAverage`). Task 001-91.
    */
   readonly loadAverage?: number;
+  /**
+   * For a failure of a slow test file (spec 004 D8): the declared artifact
+   * globs it ran against, empty when none is declared. Its provenance line
+   * replaces the attribution line (`changesInClosure` is then absent).
+   */
+  readonly slowArtifact?: readonly string[];
 }
 
 /**

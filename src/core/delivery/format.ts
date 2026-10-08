@@ -1,4 +1,4 @@
-import { fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS, slowTierText } from "../state/index.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -129,6 +129,12 @@ function headerLine(header: StatusHeader, command: string): string {
     livenessSentence(header.daemon, revision) +
     (awaiting === null ? installSentences(header) : ` ${awaiting}`)
   );
+}
+
+/** The header line, then the slow-tier line when the repository declares slow files (spec 004 D8). */
+export function headerLines(header: StatusHeader, command: string): string[] {
+  const slow = slowTierText(header, command);
+  return slow === null ? [headerLine(header, command)] : [headerLine(header, command), slow];
 }
 
 /**
@@ -309,7 +315,7 @@ export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): str
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
   return assemble(
-    `${title}\n${headerLine(header, command)}`,
+    [title, ...headerLines(header, command)].join("\n"),
     blocks,
     overflow,
     tail,
@@ -337,7 +343,7 @@ export function formatRegistration(
   const { header, knownFailures } = registration;
   const head = [
     `SQUEAL · registered at revision ${header.revision}`,
-    headerLine(header, command),
+    ...headerLines(header, command),
     `Known failures: ${knownFailures.length}`,
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>

@@ -1,12 +1,7 @@
-import { formatRegistration, SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
 import { formatCheck } from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
-import {
-  type Consumer,
-  type KnownFailure,
-  PAYLOAD_SCHEMA_VERSION,
-  type StatusHeader,
-} from "../../core/types/index.js";
+import type { KnownFailure, StatusHeader } from "../../core/types/index.js";
 
 /*
  * Hook-specific wording. Spec 001 D6: "Wording is factual, never imperative:
@@ -17,31 +12,17 @@ import {
 const LISTED_FAILURES = 10;
 
 /**
- * The header line exactly as deltas and registrations render it: the second
- * line of a registration with no failures.
- */
-function headerLine(consumer: Consumer, header: StatusHeader, command: string): string {
-  const text = formatRegistration(
-    { schemaVersion: PAYLOAD_SCHEMA_VERSION, consumer, header, knownFailures: [] },
-    undefined,
-    command,
-  );
-  return text.split("\n")[1] ?? "";
-}
-
-/**
  * Stop with no delta: the status header and the known-failure count.
  * `command` is how the header names the CLI (spec 002 D1 as amended).
  */
 export function statusText(
-  consumer: Consumer,
   header: StatusHeader,
   failures: number,
   command: string = SQUEAL_COMMAND,
 ): string {
   return [
     `SQUEAL · status at revision ${header.revision}`,
-    headerLine(consumer, header, command),
+    ...headerLines(header, command),
     knownFailuresLine(failures),
   ].join("\n");
 }
