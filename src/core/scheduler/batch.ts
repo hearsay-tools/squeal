@@ -47,11 +47,13 @@ export async function reconcileBatch(
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
     for (const change of revision.changes) {
-      ledger.tierChanges?.add(change.path);
       ledger.refineChanges?.add(change.path);
       // An add or delete moves the listings of its directories (task 001-132).
-      if (change.oldHash === null || change.newHash === null) {
-        for (const listing of ancestorListings(change.path)) ledger.tierChanges?.add(listing);
+      const structural = change.oldHash === null || change.newHash === null;
+      const listings = structural ? [...ancestorListings(change.path)] : [];
+      for (const changes of ledger.tierChanges) {
+        changes.add(change.path);
+        for (const listing of listings) changes.add(listing);
       }
     }
     const content = rekeyContent(context, ledger, revision);

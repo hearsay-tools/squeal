@@ -104,7 +104,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     });
   });
 
-  it("closes with runner work queued: the tier finishes, the queued work is dropped", async () => {
+  it("closes with runner work queued: the tier and the runner part begun beside it finish, the work queued behind is dropped", async () => {
     const repo = createRepo("barrel");
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
@@ -133,14 +133,14 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     await h.scheduler.idle();
 
     expect(await outcome).toBe("squeal scheduler: closed");
-    expect(invalidated).toEqual([]);
+    // Task 001-140: the runner part began beside the tier, waited in the adapter for its run, and was applied.
+    expect(invalidated).toEqual(["src/math.ts"]);
     // The barrel tier in flight finished and was recorded; nothing ran after it.
     expect(h.runner.runs).toHaveLength(runs + 1);
-    // The runner part never ran, and the store says so: it is still pending.
     expect(h.header()).toMatchObject({
       revision,
-      refinedRevision: revision - 1,
-      runnerPartPending: true,
+      refinedRevision: revision,
+      runnerPartPending: false,
     });
   });
 });

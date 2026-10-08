@@ -49,8 +49,12 @@ export class Ledger {
   readonly queue = new RunQueue();
   readonly checkpoints: Checkpoints;
   revision: RevisionState = { number: 0, head: null, dirty: false };
-  /** Paths changed by revisions since the tier in flight was selected; `null` with no tier in flight. */
-  tierChanges: Set<RelativePath> | null = null;
+  /**
+   * One set per tier in flight (`Tier.changes`): each collects the paths
+   * revisions changed since its tier was selected (task 001-140: tiers of
+   * two lanes overlap).
+   */
+  readonly tierChanges = new Set<Set<RelativePath>>();
   /**
    * Paths changed by revisions since the runner phase of the refinement in
    * flight started; `null` with none in flight (`applyRunnerPart`).

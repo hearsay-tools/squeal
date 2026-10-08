@@ -30,12 +30,14 @@ export interface ObservedGrowth {
  * dropped: the watcher does not track it, so it cannot key (a blind spot,
  * named in status). Every file path is hashed into the stat cache, so the
  * keys `recordTier` computes have no untracked path; a path hashed only now,
- * after its read, is `firstSeen`. Empty while policy `observe.runtimeInputs`
+ * after its read and after run `run` (`WorktreeKeys.beginRun`) began, is
+ * `firstSeen`. Empty while policy `observe.runtimeInputs`
  * is off.
  */
 export async function observedGrowth(
   context: SchedulerContext,
   report: RunReport,
+  run: number,
 ): Promise<Map<string, ObservedGrowth>> {
   const out = new Map<string, ObservedGrowth>();
   const { keys } = context;
@@ -70,7 +72,7 @@ export async function observedGrowth(
   await keys.track(tracked);
   for (const { testFile, add, growth } of grown) {
     const firstSeen = growth.filter(
-      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path),
+      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path, run),
     );
     out.set(testFileId(testFile), { add, growth, firstSeen });
   }
@@ -91,14 +93,15 @@ export const NOTHING_OBSERVED: TierObservations = { growth: new Map(), changed: 
  * `observedGrowth`, and which of its file paths changed on disk since the
  * stat cache read them: the stability check of D5 for paths the tier's
  * snapshot did not hold. A listing is checked against the revisions during
- * the run (`Ledger.tierChanges`). Under the scheduler lock: it hashes paths
+ * the run (`Tier.changes`). Under the scheduler lock: it hashes paths
  * into the stat cache.
  */
 export async function prepareObserved(
   context: SchedulerContext,
   report: RunReport,
+  run: number,
 ): Promise<TierObservations> {
-  const growth = await observedGrowth(context, report);
+  const growth = await observedGrowth(context, report, run);
   if (growth.size === 0) return NOTHING_OBSERVED;
   const paths = new Set<RelativePath>();
   for (const { growth: grown } of growth.values()) {

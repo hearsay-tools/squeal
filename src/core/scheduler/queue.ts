@@ -131,9 +131,18 @@ export class RunQueue {
     return this.#entries.get(testFileId(ref))?.recent ?? false;
   }
 
-  /** Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5 as amended). */
-  hasRecent(): boolean {
-    return this.#fast().some((entry) => entry.recent);
+  /**
+   * Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5
+   * as amended). `where` narrows the entries looked at, to free lanes or one
+   * lane (task 001-140).
+   */
+  hasRecent(where: (ref: TestFileRef) => boolean = () => true): boolean {
+    return this.#fast().some((entry) => entry.recent && where(entry.ref));
+  }
+
+  /** Some fast entry `where` holds is queued (task 001-140: one of a free lane). */
+  hasFast(where: (ref: TestFileRef) => boolean): boolean {
+    return this.#fast().some((entry) => where(entry.ref));
   }
 
   /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */

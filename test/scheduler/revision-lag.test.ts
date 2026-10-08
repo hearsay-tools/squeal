@@ -64,9 +64,10 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
     });
 
     await h.scheduler.idle();
-    // The runner part came after the tier, once per revision, in batch order.
+    // The runner part of each revision, once and in batch order. Task 001-140: the first is
+    // called beside the tier in flight and waits in the adapter, which serializes behind its run.
     expect(invalidations).toEqual([
-      { runs: runsBefore + 1, paths: ["src/math.ts"] },
+      { runs: runsBefore, paths: ["src/math.ts"] },
       { runs: runsBefore + 1, paths: ["src/math.ts"] },
     ]);
     expect(h.header()).toMatchObject({

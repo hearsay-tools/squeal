@@ -109,7 +109,8 @@ async function statPart(path: AbsolutePath): Promise<string> {
  * Reads the environments again after `InstallStamps.takeChange`, so each
  * project's installed dependencies are read under task 001-104's rule and
  * every key they move is settled, as a revision changing the lockfile
- * would. Under the scheduler lock, between tiers. The stamp covers the root
+ * would. Under the scheduler lock, before a tier is selected; a tier of
+ * another lane in flight then sees the stamp moved and stores nothing. The stamp covers the root
  * `node_modules` entries only; a folder added deeper waits for a restart
  * (D3).
  */

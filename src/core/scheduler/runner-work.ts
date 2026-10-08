@@ -33,9 +33,9 @@ export interface RunnerWorkHost {
   backgroundError(subject: string, error: unknown): void;
 }
 
-/** The runner work of one scheduler, applied between tiers by its pump. */
+/** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
 export class RunnerWork {
-  /** Runner work in arrival order, applied between tiers by the pump. */
+  /** Runner work in arrival order; no tier is selected while any is left. */
   readonly #tasks: RunnerTask[] = [];
   /** A refinement is in its runner phase: shifted off `#tasks`, not applied yet. */
   #refining = false;
@@ -114,7 +114,7 @@ export class RunnerWork {
     }
   }
 
-  /** Runs `task` under the lock once the tier in flight and the runner work before it are done. */
+  /** Runs `task` under the lock once the runner work before it is done. */
   afterTier<T>(task: () => Promise<T>): Promise<T> {
     if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
     return new Promise<T>((resolve, reject) => {
