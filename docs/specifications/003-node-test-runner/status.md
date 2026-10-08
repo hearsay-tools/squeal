@@ -65,6 +65,8 @@ Started: 2026-10-07
 
 - 2026-10-08, from the 001 coordinator: 001-132 (observed runtime inputs) reversed this spec's open question 3 decision; processes a test spawns are now observed through the recorder in `NODE_OPTIONS`, for Vitest and node:test alike. Its recorder also sets `SQUEAL_OBSERVE`, which a nested daemon inherits, so row 003-35 ignores that variable and both recorders in an inherited `NODE_OPTIONS`.
 
+- 2026-10-08, wave 3.5 (003-33), 0.1.40: a node:test package's identity and lookup directory come from the resolved installed path, as Vitest's `installedEntry` does (D3 note: an ordinary bare import's `from` is now the directory holding `node_modules`, not the importer's; keys for a plain install are unchanged), whatever specifier reached it; a target in no package reports `module`; an unexpandable template import, a glob into `node_modules`, `createRequire` (also through `process.getBuiltinModule`) report `module`; an opaque load in a preload sends the project environment to the fallback. Adapter version 6. The external handoff's probe gives four key changes on this code. Gate at load 54 to 120: the full suite on Node 24 and 22 failed only on timing tests, and every failed file passed alone on both (109 tests each, load 71).
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
