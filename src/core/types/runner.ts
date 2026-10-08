@@ -221,6 +221,20 @@ export interface FileDuration {
   readonly durationMs: number;
 }
 
+/**
+ * What one completed test file's processes and threads were observed to
+ * read at run time (spec 001 D3, D4; task 001-132): project paths it read,
+ * stat'ed, loaded or executed and directories it listed, none of them
+ * written by the run. Worktree-relative and sorted. Not filtered against the
+ * closure or ignored paths; the core does that.
+ */
+export interface ObservedInputs {
+  readonly testFile: TestFileRef;
+  readonly paths: readonly RelativePath[];
+  /** Directories whose entry names the file read (`readdir`, `opendir`). */
+  readonly directories: readonly RelativePath[];
+}
+
 /** Everything one `run` call produced. Only test files passed to `run` appear here. */
 export interface RunReport {
   readonly end: RunEnd;
@@ -247,6 +261,11 @@ export interface RunReport {
    * leaves the file's duration to the sum of its test cases.
    */
   readonly fileDurations?: readonly FileDuration[];
+  /**
+   * Of the completed files, what each was observed to read at run time, when
+   * the runner observes (task 001-132). Absent: nothing observed.
+   */
+  readonly observed?: readonly ObservedInputs[];
 }
 
 /**
