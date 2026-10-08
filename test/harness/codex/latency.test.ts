@@ -15,7 +15,9 @@ import { buildCodexBundles, codexInput, codexRecorded, sessionOf } from "./helpe
  * the Claude Code hooks: rounds of 20 cold runs, a store with 50 test files of
  * 10 checks, a transition before every run of a delivering case. A hook
  * passes when one of up to 3 rounds meets the budget; above load average 4,
- * and in CI, the table is reported and nothing is asserted.
+ * and in CI, the table is reported and nothing is asserted: one round of
+ * `LOADED_RUNS` per hook, and no hook starts after `REPORT_BY_MS`, so the
+ * table comes well inside the timeout (lessons, defect 6).
  */
 
 const RUNS = 20;
@@ -24,6 +26,12 @@ const BUDGET_MS = 80;
 const MAX_LOAD = 4;
 const FILES = 50;
 const CHECKS_PER_FILE = 10;
+const LOADED_RUNS = 5;
+/** Half the test's 240 s timeout. */
+const REPORT_BY_MS = 120_000;
+
+/** Whether the budget is asserted: a quiet machine, outside CI. */
+const calm = () => (loadavg()[0] ?? 0) <= MAX_LOAD && process.env.CI === undefined;
 
 const SESSION = String(codexInput("exec", "session-start", "/").session_id);
 /** Moves the app-server `interrupt` record into the exec session, transcript included (D2). */
@@ -128,14 +136,18 @@ describe("bundled Codex hook latency", () => {
     const env = { XDG_RUNTIME_DIR: dir };
     await runBundle("session-start", input(CASES[0] as Case), env, dist);
 
+    const asserted = calm();
+    const [runs, maxRounds] = asserted ? [RUNS, ROUNDS] : [LOADED_RUNS, 1];
+    const started = performance.now();
     const rows: { hook: string; rounds: number; p50: number; p95: number; max: number }[] = [];
     for (const c of CASES) {
       let best: number[] | null = null;
       let rounds = 0;
-      while (rounds < ROUNDS && (best === null || p95(best) >= BUDGET_MS)) {
+      const late = performance.now() - started > REPORT_BY_MS;
+      while (!late && rounds < maxRounds && (best === null || p95(best) >= BUDGET_MS)) {
         rounds++;
         const samples: number[] = [];
-        for (let run = 0; run < RUNS; run++) {
+        for (let run = 0; run < runs; run++) {
           c.before?.(r, run);
           const out = await runBundle(c.hook, input(c), env, dist);
           expect(out.code, `${c.name}: ${out.stderr}`).toBe(0);
@@ -149,18 +161,22 @@ describe("bundled Codex hook latency", () => {
       rows.push({
         hook: c.name,
         rounds,
-        p50: Math.round(sorted[Math.floor(RUNS / 2)] ?? 0),
+        p50: Math.round(sorted[Math.floor(sorted.length / 2)] ?? Number.NaN),
         p95: Math.round(p95(sorted)),
-        max: Math.round(sorted.at(-1) ?? 0),
+        max: Math.round(sorted.at(-1) ?? Number.NaN),
       });
     }
 
     const load = loadavg()[0] ?? 0;
     console.log(
-      `Codex hook latency ms, best of up to ${ROUNDS} rounds of ${RUNS} cold runs, load ${load.toFixed(2)}`,
+      `Codex hook latency ms, best of up to ${maxRounds} rounds of ${runs} cold runs, load ${load.toFixed(2)}` +
+        (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
     );
     console.table(rows);
-    if (load > MAX_LOAD || process.env.CI !== undefined) return;
-    for (const row of rows) expect(row.p95, row.hook).toBeLessThan(BUDGET_MS);
+    if (!asserted || !calm()) return;
+    for (const row of rows) {
+      expect(row.rounds, `${row.hook}: not measured in time`).toBeGreaterThan(0);
+      expect(row.p95, row.hook).toBeLessThan(BUDGET_MS);
+    }
   }, 240_000);
 });
