@@ -1690,13 +1690,19 @@ var init_policy = __esm({
     "use strict";
     DEFAULT_POLICY = {
       interrupt: { onRegression: true },
-      stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
+      stop: {
+        blockOnKnownFailures: false,
+        requireFullSuite: false,
+        waitMs: 0,
+        requireSlowSuite: false
+      },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
       observe: { runtimeInputs: true },
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
       nodeTest: [],
+      slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5 },
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null }
     };
@@ -3661,12 +3667,13 @@ function entryProblem(entry2, at2, kept) {
   }
   return null;
 }
-var nonEmptyString, strings, globs, variables, insideRoot, FIELDS, REQUIRED;
+var boolean, nonEmptyString, strings, globs, variables, insideRoot, FIELDS, REQUIRED;
 var init_policy_node_test = __esm({
   "src/core/daemon/policy-node-test.ts"() {
     "use strict";
     init_fs();
     init_glob();
+    boolean = (v) => typeof v === "boolean" ? null : "true or false";
     nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
     strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
     globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
@@ -3683,9 +3690,31 @@ var init_policy_node_test = __esm({
       argv: strings,
       env: variables,
       include: globs,
-      exclude: globs
+      exclude: globs,
+      slow: boolean
     };
     REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+  }
+});
+
+// src/core/daemon/policy-slow.ts
+function slowInclude(value) {
+  if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
+    return "an array of strings";
+  }
+  const kept = [];
+  const problems = [];
+  value.forEach((glob, index) => {
+    const bad = compiles([glob]);
+    if (bad === null) kept.push(glob);
+    else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
+  });
+  return { kept, problems };
+}
+var init_policy_slow = __esm({
+  "src/core/daemon/policy-slow.ts"() {
+    "use strict";
+    init_policy_node_test();
   }
 });
 
@@ -3752,7 +3781,7 @@ function lastPolicyNote(store, worktreeId) {
   const texts = readDaemonNotes(store, worktreeId).map((note) => note.text);
   return texts.findLast((text2) => text2.startsWith(POLICY_FILE)) ?? null;
 }
-var POLICY_FILE, boolean, strings2, inputs, atLeastZero, aboveZero, positiveInteger, orNull, oneOf2, SHAPE;
+var POLICY_FILE, boolean2, strings2, inputs, atLeastZero, aboveZero, positiveInteger, orNull, oneOf2, SHAPE;
 var init_policy2 = __esm({
   "src/core/daemon/policy.ts"() {
     "use strict";
@@ -3760,8 +3789,9 @@ var init_policy2 = __esm({
     init_notes();
     init_types();
     init_policy_node_test();
+    init_policy_slow();
     POLICY_FILE = "squeal.config.json";
-    boolean = (v) => typeof v === "boolean" ? null : "true or false";
+    boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
     strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
     inputs = (v) => {
       const isList = strings2(v) === null;
@@ -3780,11 +3810,16 @@ var init_policy2 = __esm({
     };
     oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
     SHAPE = {
-      interrupt: { onRegression: boolean },
-      stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+      interrupt: { onRegression: boolean2 },
+      stop: {
+        blockOnKnownFailures: boolean2,
+        requireFullSuite: boolean2,
+        waitMs: atLeastZero,
+        requireSlowSuite: boolean2
+      },
       baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
       inputs,
-      observe: { runtimeInputs: boolean },
+      observe: { runtimeInputs: boolean2 },
       env: { allowlist: strings2 },
       runner: {
         tierSize: positiveInteger,
@@ -3792,6 +3827,12 @@ var init_policy2 = __esm({
         timeoutMs: orNull(positiveInteger)
       },
       nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+      slow: {
+        include: slowInclude,
+        maxWorkers: positiveInteger,
+        maxLoadPerCpu: aboveZero,
+        maxDeferMs: atLeastZero
+      },
       daemon: { idleExitMinutes: aboveZero },
       store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
     };
@@ -11614,17 +11655,133 @@ var init_adapter_files = __esm({
   }
 });
 
+// src/runners/node-test/run/node-options.ts
+function tokenizeNodeOptions(value) {
+  const tokens = [];
+  let quoted = false;
+  let fresh = true;
+  for (let i2 = 0; i2 < value.length; i2++) {
+    let c = value[i2];
+    if (c === "\\" && quoted) {
+      if (i2 + 1 === value.length) return null;
+      c = value[++i2];
+    } else if (c === " " && !quoted) {
+      fresh = true;
+      continue;
+    } else if (c === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (fresh) tokens.push(c);
+    else tokens[tokens.length - 1] += c;
+    fresh = false;
+  }
+  return quoted ? null : tokens;
+}
+function quoteNodeOption(value) {
+  return `"${value.replace(/["\\]/g, "\\$&")}"`;
+}
+function holdsRequire(value) {
+  const tokens = tokenizeNodeOptions(value);
+  if (tokens === null) return true;
+  return tokens.some(
+    (t) => t === "--require" || t === "-r" || t.startsWith("--require=") || t.startsWith("-r=")
+  );
+}
+function asyncLoaders(tokens) {
+  const loaders = [];
+  for (let i2 = 0; i2 < tokens.length; i2++) {
+    const token = tokens[i2];
+    const [name, value] = splitFlag(token);
+    if (name !== "--loader" && name !== "--experimental-loader") continue;
+    const loader = value ?? tokens[++i2];
+    if (loader !== void 0) loaders.push(loader);
+  }
+  return loaders;
+}
+function splitFlag(token) {
+  const equals = token.indexOf("=");
+  return equals === -1 ? [token, void 0] : [token.slice(0, equals), token.slice(equals + 1)];
+}
+var init_node_options = __esm({
+  "src/runners/node-test/run/node-options.ts"() {
+    "use strict";
+  }
+});
+
+// src/runners/node-test/recorders.ts
+import { fileURLToPath as fileURLToPath5 } from "node:url";
+function isSquealRecorder(specifier) {
+  let path = specifier;
+  if (specifier.startsWith("file:")) {
+    try {
+      path = fileURLToPath5(specifier);
+    } catch {
+      return false;
+    }
+  }
+  if (!path.startsWith("/")) return false;
+  return RECORDERS.some((suffix) => path.endsWith(suffix));
+}
+function withoutSquealRecorders(tokens) {
+  const kept = [];
+  for (let i2 = 0; i2 < tokens.length; i2++) {
+    const token = tokens[i2];
+    const equals = token.indexOf("=");
+    const flag2 = equals === -1 ? token : token.slice(0, equals);
+    if (!PRELOAD_FLAGS.has(flag2)) {
+      kept.push(token);
+      continue;
+    }
+    const value = equals === -1 ? tokens[i2 + 1] : token.slice(equals + 1);
+    if (value === void 0 || !isSquealRecorder(value)) {
+      kept.push(token);
+    } else if (equals === -1) {
+      i2++;
+    }
+  }
+  return kept;
+}
+function projectEnv(project, inherited) {
+  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE2]: __, ...base } = inherited;
+  const options = base.NODE_OPTIONS;
+  const tokens = options === void 0 ? null : tokenizeNodeOptions(options);
+  if (tokens !== null) {
+    const kept = withoutSquealRecorders(tokens);
+    if (kept.length === 0 && tokens.length > 0) delete base.NODE_OPTIONS;
+    else if (kept.length < tokens.length) base.NODE_OPTIONS = kept.map(asWritten).join(" ");
+  }
+  return { ...base, ...project.env };
+}
+function asWritten(token) {
+  return /[ "]/.test(token) ? quoteNodeOption(token) : token;
+}
+var RECORDERS, OBSERVE_VARIABLE2, PRELOAD_FLAGS;
+var init_recorders = __esm({
+  "src/runners/node-test/recorders.ts"() {
+    "use strict";
+    init_node_options();
+    RECORDERS = [
+      "/dist/observe/recorder.cjs",
+      "/dist/node-test/recorder.cjs",
+      "/src/runners/observe/recorder.cjs",
+      "/src/runners/node-test/runtime/recorder.cjs"
+    ];
+    OBSERVE_VARIABLE2 = "SQUEAL_OBSERVE";
+    PRELOAD_FLAGS = /* @__PURE__ */ new Set(["--require", "-r", "--import"]);
+  }
+});
+
 // src/runners/node-test/adapter-environment.ts
 import { execFile } from "node:child_process";
 import { relative as relative6, sep as sep8 } from "node:path";
 function probeNode(project, cwd) {
   const node = project.node ?? "node";
-  const { NODE_TEST_CONTEXT: _, ...base } = process.env;
   return new Promise((done) => {
     execFile(
       node,
       ["-e", PROBE],
-      { cwd, env: { ...base, ...project.env }, timeout: PROBE_TIMEOUT_MS, encoding: "utf8" },
+      { cwd, env: projectEnv(project, process.env), timeout: PROBE_TIMEOUT_MS, encoding: "utf8" },
       (error, stdout) => {
         const [version2, execPath] = stdout.trimEnd().split("\n").slice(-2);
         if (error === null && version2?.startsWith("v") && execPath) {
@@ -11669,6 +11826,7 @@ var init_adapter_environment = __esm({
     "use strict";
     init_fs();
     init_adapter_files();
+    init_recorders();
     PROBE_TIMEOUT_MS = 3e4;
     PROBE = 'process.stdout.write(process.version + "\\n" + process.execPath + "\\n")';
     NODE_UNAVAILABLE = "unavailable";
@@ -20504,7 +20662,7 @@ var require_path = __commonJS({
   "node_modules/enhanced-resolve/lib/util/path.js"(exports, module) {
     "use strict";
     var path = __require("path");
-    var { fileURLToPath: fileURLToPath9 } = __require("url");
+    var { fileURLToPath: fileURLToPath10 } = __require("url");
     var CHAR_HASH = "#".charCodeAt(0);
     var CHAR_SLASH = "/".charCodeAt(0);
     var CHAR_BACKSLASH = "\\".charCodeAt(0);
@@ -20762,8 +20920,8 @@ var require_path = __commonJS({
       return (c0 === CHAR_LOWER_F || c0 === CHAR_F) && FILE_URL_REGEXP.test(maybePath);
     };
     var toPath = (maybeURL) => {
-      if (maybeURL instanceof URL) return fileURLToPath9(maybeURL);
-      return isFileURL(maybeURL) ? fileURLToPath9(maybeURL) : maybeURL;
+      if (maybeURL instanceof URL) return fileURLToPath10(maybeURL);
+      return isFileURL(maybeURL) ? fileURLToPath10(maybeURL) : maybeURL;
     };
     module.exports.PathType = PathType;
     module.exports.createCachedBasename = createCachedBasename;
@@ -21364,7 +21522,7 @@ var require_DirectoryExistsPlugin = __commonJS({
 var require_identifier = __commonJS({
   "node_modules/enhanced-resolve/lib/util/identifier.js"(exports, module) {
     "use strict";
-    var { fileURLToPath: fileURLToPath9 } = __require("url");
+    var { fileURLToPath: fileURLToPath10 } = __require("url");
     var { isFileURL } = require_path();
     var PATH_QUERY_FRAGMENT_REGEXP = /^(#?(?:\0.|[^?#\0])*)(\?(?:\0.|[^#\0])*)?(#.*)?$/;
     var ZERO_ESCAPE_REGEXP = /\0(.)/g;
@@ -21380,7 +21538,7 @@ var require_identifier = __commonJS({
         return null;
       }
       if (isFileURL(identifier)) {
-        identifier = fileURLToPath9(identifier);
+        identifier = fileURLToPath10(identifier);
       }
       const firstEscape = identifier.indexOf("\0");
       if (firstEscape !== -1) {
@@ -22827,7 +22985,7 @@ var require_fileURLToPath = __commonJS({
       }
       return decodeURIComponent(pathname);
     }
-    function fileURLToPath9(path, options) {
+    function fileURLToPath10(path, options) {
       const url = typeof path === "string" ? new URL(path) : path;
       if (url.protocol !== "file:") {
         throw new TypeError("The URL must be of scheme file");
@@ -22835,7 +22993,7 @@ var require_fileURLToPath = __commonJS({
       const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
       return windows ? getPathFromURLWin32(url) : getPathFromURLPosix(url);
     }
-    module.exports = fileURLToPath9;
+    module.exports = fileURLToPath10;
   }
 });
 
@@ -22899,7 +23057,7 @@ var require_pathToFileURL = __commonJS({
 var require_packageMap = __commonJS({
   "node_modules/enhanced-resolve/lib/util/packageMap.js"(exports, module) {
     "use strict";
-    var fileURLToPath9 = require_fileURLToPath();
+    var fileURLToPath10 = require_fileURLToPath();
     var { isInside, normalize: normalize3 } = require_path();
     var pathToFileURL4 = require_pathToFileURL();
     function createError(message2, code) {
@@ -22926,7 +23084,7 @@ var require_packageMap = __commonJS({
           "ERR_INVALID_PACKAGE_MAP"
         );
       }
-      return normalize3(fileURLToPath9(parsed));
+      return normalize3(fileURLToPath10(parsed));
     }
     function parsePackageMap(data2, configFilePath) {
       if (!data2 || typeof data2 !== "object" || Array.isArray(data2)) {
@@ -28047,68 +28205,17 @@ var init_graph3 = __esm({
   }
 });
 
-// src/runners/node-test/run/node-options.ts
-function tokenizeNodeOptions(value) {
-  const tokens = [];
-  let quoted = false;
-  let fresh = true;
-  for (let i2 = 0; i2 < value.length; i2++) {
-    let c = value[i2];
-    if (c === "\\" && quoted) {
-      if (i2 + 1 === value.length) return null;
-      c = value[++i2];
-    } else if (c === " " && !quoted) {
-      fresh = true;
-      continue;
-    } else if (c === '"') {
-      quoted = !quoted;
-      continue;
-    }
-    if (fresh) tokens.push(c);
-    else tokens[tokens.length - 1] += c;
-    fresh = false;
-  }
-  return quoted ? null : tokens;
-}
-function holdsRequire(value) {
-  const tokens = tokenizeNodeOptions(value);
-  if (tokens === null) return true;
-  return tokens.some(
-    (t) => t === "--require" || t === "-r" || t.startsWith("--require=") || t.startsWith("-r=")
-  );
-}
-function asyncLoaders(tokens) {
-  const loaders = [];
-  for (let i2 = 0; i2 < tokens.length; i2++) {
-    const token = tokens[i2];
-    const [name, value] = splitFlag(token);
-    if (name !== "--loader" && name !== "--experimental-loader") continue;
-    const loader = value ?? tokens[++i2];
-    if (loader !== void 0) loaders.push(loader);
-  }
-  return loaders;
-}
-function splitFlag(token) {
-  const equals = token.indexOf("=");
-  return equals === -1 ? [token, void 0] : [token.slice(0, equals), token.slice(equals + 1)];
-}
-var init_node_options = __esm({
-  "src/runners/node-test/run/node-options.ts"() {
-    "use strict";
-  }
-});
-
 // src/runners/node-test/runtime.ts
 import { existsSync as existsSync15 } from "node:fs";
-import { fileURLToPath as fileURLToPath5 } from "node:url";
+import { fileURLToPath as fileURLToPath6 } from "node:url";
 function nodeTestRuntime(module = new URL(import.meta.url)) {
   const tried = [];
   for (const candidate of CANDIDATES2) {
     const dir = new URL(candidate, module);
-    const reporter = fileURLToPath5(new URL("reporter.mjs", dir));
-    const recorder = fileURLToPath5(new URL("recorder.cjs", dir));
+    const reporter = fileURLToPath6(new URL("reporter.mjs", dir));
+    const recorder = fileURLToPath6(new URL("recorder.cjs", dir));
     if (existsSync15(reporter) && existsSync15(recorder)) return { reporter, recorder };
-    tried.push(fileURLToPath5(dir));
+    tried.push(fileURLToPath6(dir));
   }
   throw new Error(
     `node:test runtime files not found beside ${module.href}: tried ${tried.join(", ")}`
@@ -28148,7 +28255,7 @@ var init_events = __esm({
 
 // src/runners/node-test/run/observed.ts
 import { realpathSync as realpathSync7 } from "node:fs";
-import { fileURLToPath as fileURLToPath6, pathToFileURL as pathToFileURL3 } from "node:url";
+import { fileURLToPath as fileURLToPath7, pathToFileURL as pathToFileURL3 } from "node:url";
 function observedClosure(testFile, absolute, graphs2, paths) {
   const edges = graphs2.flatMap(parseEdges);
   const entry2 = pathToFileURL3(real(absolute)).href;
@@ -28195,7 +28302,7 @@ function projectPaths(urls, paths) {
   const out = /* @__PURE__ */ new Set();
   for (const url of urls) {
     if (!url.startsWith("file:")) continue;
-    const file = fileURLToPath6(url.replace(/[?#].*$/, ""));
+    const file = fileURLToPath7(url.replace(/[?#].*$/, ""));
     if (!paths.isProjectFile(file)) continue;
     const relative11 = paths.toRelative(file);
     if (relative11 !== null) out.add(relative11);
@@ -28259,7 +28366,7 @@ var init_process = __esm({
 });
 
 // src/runners/node-test/run/errors.ts
-import { fileURLToPath as fileURLToPath7 } from "node:url";
+import { fileURLToPath as fileURLToPath8 } from "node:url";
 function toCheckError2(error, paths) {
   const cause = error?.cause;
   if (typeof cause === "object" && cause !== null && typeof cause.message === "string") {
@@ -28312,7 +28419,7 @@ function firstProjectLocation(text2, paths) {
   for (const match2 of text2.matchAll(POSITION)) {
     const [, where2, line, column] = match2;
     if (where2 === void 0) continue;
-    const file = where2.startsWith("file:") ? fileURLToPath7(where2) : where2;
+    const file = where2.startsWith("file:") ? fileURLToPath8(where2) : where2;
     if (!paths.isProjectFile(file)) continue;
     const location2 = paths.location(file, Number(line), Number(column));
     if (location2 !== null) return location2;
@@ -28484,16 +28591,12 @@ async function runNodeTest(options) {
   return { report: report2, observed };
 }
 function childEnv(options, runtime) {
-  const { NODE_TEST_CONTEXT: _, ...base } = options.env ?? process.env;
-  const env = { ...base, ...options.project.env };
+  const env = projectEnv(options.project, options.env ?? process.env);
   const nodeOptions = env.NODE_OPTIONS;
   if (nodeOptions !== void 0 && holdsRequire(nodeOptions)) {
     env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
   }
   return env;
-}
-function quoteNodeOption(value) {
-  return `"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 function ending(runs, completed, expired, timeoutMs, node) {
   const unfinished = runs.length - completed;
@@ -28542,6 +28645,7 @@ var init_run2 = __esm({
     "use strict";
     init_fs();
     init_worktree_paths();
+    init_recorders();
     init_runtime2();
     init_events();
     init_node_options();
@@ -28664,7 +28768,7 @@ async function openProject(context) {
   };
 }
 function nodeOptionsOf(project) {
-  return tokenizeNodeOptions(project.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") ?? [];
+  return tokenizeNodeOptions(projectEnv(project, process.env).NODE_OPTIONS ?? "") ?? [];
 }
 function loaderThreadNotes(project) {
   const loaders = [...asyncLoaders(project.argv), ...asyncLoaders(nodeOptionsOf(project))];
@@ -28692,6 +28796,7 @@ var init_adapter_project = __esm({
     init_adapter_observed();
     init_enumerate();
     init_graph3();
+    init_recorders();
     init_node_options();
     init_run2();
     NAMED_INCOMPLETE = 3;
@@ -29161,7 +29266,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.41";
+  if (true) return "0.1.42";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -32527,7 +32632,7 @@ import { setTimeout as sleep3 } from "node:timers/promises";
 init_store2();
 
 // src/cli/status-command.ts
-import { fileURLToPath as fileURLToPath8 } from "node:url";
+import { fileURLToPath as fileURLToPath9 } from "node:url";
 
 // src/harness/codex/command.ts
 import { join as join50 } from "node:path";
@@ -32538,7 +32643,7 @@ function codexCommand(env, bundleCli) {
 }
 
 // src/cli/status-command.ts
-function statusCommand(env, cli = fileURLToPath8(import.meta.url)) {
+function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
   const session = env.CODEX_SESSION_ID;
   return session === void 0 || session === "" ? SQUEAL_COMMAND : codexCommand(env, cli);
 }

@@ -3059,7 +3059,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.41";
+  if (true) return "0.1.42";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3292,6 +3292,7 @@ function compiles(globs2) {
   }
   return null;
 }
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
 var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
 var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
@@ -3308,7 +3309,8 @@ var FIELDS = {
   argv: strings,
   env: variables,
   include: globs,
-  exclude: globs
+  exclude: globs,
+  slow: boolean
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -3348,8 +3350,23 @@ function entryProblem(entry2, at2, kept) {
   return null;
 }
 
+// src/core/daemon/policy-slow.ts
+function slowInclude(value) {
+  if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
+    return "an array of strings";
+  }
+  const kept = [];
+  const problems = [];
+  value.forEach((glob, index) => {
+    const bad = compiles([glob]);
+    if (bad === null) kept.push(glob);
+    else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
+  });
+  return { kept, problems };
+}
+
 // src/core/daemon/policy.ts
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
@@ -3368,11 +3385,16 @@ var orNull = (leaf) => (v) => {
 };
 var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean },
-  stop: { blockOnKnownFailures: boolean, requireFullSuite: boolean, waitMs: atLeastZero },
+  interrupt: { onRegression: boolean2 },
+  stop: {
+    blockOnKnownFailures: boolean2,
+    requireFullSuite: boolean2,
+    waitMs: atLeastZero,
+    requireSlowSuite: boolean2
+  },
   baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
-  observe: { runtimeInputs: boolean },
+  observe: { runtimeInputs: boolean2 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -3380,6 +3402,12 @@ var SHAPE = {
     timeoutMs: orNull(positiveInteger)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  slow: {
+    include: slowInclude,
+    maxWorkers: positiveInteger,
+    maxLoadPerCpu: aboveZero,
+    maxDeferMs: atLeastZero
+  },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
