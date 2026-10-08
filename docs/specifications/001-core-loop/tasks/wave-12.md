@@ -65,3 +65,7 @@ Use /researcher. Topic: `research/README.md` "process-group-tests-under-squeal".
 ## 001-123 review of 001-122 (dispatch note)
 
 Range: 001-122's four commits as landed (`17d7e19` to `10e0bcc` as cherry-picked), build `dbeb862`. The worker ran a host-wide `pkill -f` matching every e2e fixture daemon at about 13:56 UTC; failures other sessions saw then may come from that, not from the code.
+
+## 001-128 research: Squeal observes runtime inputs itself
+
+Use /researcher. Topic: `research/README.md` "observed-runtime-inputs". Output `research/observed-runtime-inputs.md`, probes under `research/probes/observed-runtime-inputs/` (throwaway). Use a fresh clone of `cezar` for the cezar part; never a live worktree or its store, never stop a daemon you did not start. Read spec 003's `node:test` observed closure first. Done when every question has a tagged answer or "not determined, because", and the recommendation names the mechanism, its blind spots, its cost on `cezar`, and the row's done-when.
