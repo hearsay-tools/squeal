@@ -5,16 +5,20 @@
  *   writer <commonDir> <id> <transactions> <rowsPerTx>
  *   reader <commonDir> <id>          (until <commonDir>/stop exists)
  *   crasher <commonDir> <rowsPerTx>  (until killed; prints "committed <n>")
+ *   pruner <commonDir>               (one `prune`; prints its report)
+ *   waiter <commonDir> <busyMs>      (one-row writes until <commonDir>/stop exists)
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/index.js";
+import { isBusy, isStoreOpenFailure, openStore } from "../../../src/core/store/index.js";
 import type { ResultRecord, Store } from "../../../src/core/types/index.js";
 
 const [mode, commonDir, ...rest] = process.argv.slice(2);
 if (!mode || !commonDir) throw new Error("usage: worker <mode> <commonDir> ...");
 
-const opened = openStore(commonDir, { busyTimeoutMs: 60_000 });
+// A waiter waits on the write lock as a hook or a daemon does; the others wait for as long as it takes.
+const busyTimeoutMs = mode === "waiter" ? Number(rest[0]) : 60_000;
+const opened = openStore(commonDir, { busyTimeoutMs });
 if (isStoreOpenFailure(opened)) throw new Error(`open failed: ${JSON.stringify(opened)}`);
 const store: Store = opened;
 
@@ -84,6 +88,29 @@ if (mode === "writer") {
     });
     if (i % 10 === 0) console.log(`committed ${i}`);
   }
+} else if (mode === "pruner") {
+  const report = store.prune({ now: Date.now(), retentionDays: 7, maxSizeMb: null });
+  console.log(JSON.stringify(report));
+} else if (mode === "waiter") {
+  const stopFile = join(commonDir, "stop");
+  let writes = 0;
+  let busy = 0;
+  let longestMs = 0;
+  const deadline = Date.now() + 120_000;
+  console.log("ready");
+  do {
+    const started = performance.now();
+    try {
+      store.transaction(() => store.meta.set("waiter", String(writes)));
+      writes++;
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+      busy++;
+    }
+    longestMs = Math.max(longestMs, performance.now() - started);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  } while (!existsSync(stopFile) && Date.now() < deadline);
+  console.log(JSON.stringify({ mode, writes, busy, longestMs: Math.round(longestMs) }));
 } else {
   throw new Error(`unknown mode ${mode}`);
 }

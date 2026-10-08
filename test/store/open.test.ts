@@ -136,6 +136,32 @@ describe("openStore", () => {
     expect(open(commonDir).meta.get("kept")).toBe("yes");
   });
 
+  it("opens an existing store, integrity-checked, while another connection holds the write lock", () => {
+    // Task 001-141: `PRAGMA auto_vacuum = INCREMENTAL` on every open took the
+    // write lock, so a hook's or a status read's open waited behind a writer.
+    const commonDir = fakeCommonDir();
+    open(commonDir).meta.set("kept", "yes");
+    const writer = new DatabaseSync(storePaths(commonDir).database);
+    writer.exec("BEGIN IMMEDIATE");
+    try {
+      const store = openStore(commonDir, { busyTimeoutMs: 0, checkIntegrity: true });
+      if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
+      expect(store.meta.get("kept")).toBe("yes");
+      store.close();
+    } finally {
+      writer.exec("ROLLBACK");
+      writer.close();
+    }
+  });
+
+  it("creates the store with incremental auto_vacuum", () => {
+    const commonDir = fakeCommonDir();
+    open(commonDir);
+    const db = new DatabaseSync(storePaths(commonDir).database, { readOnly: true });
+    expect(db.prepare("PRAGMA auto_vacuum").get()?.auto_vacuum).toBe(2);
+    db.close();
+  });
+
   it("refuses a newer user_version and leaves the file untouched", () => {
     const commonDir = fakeCommonDir();
     const { database } = storePaths(commonDir);
