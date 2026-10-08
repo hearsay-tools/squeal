@@ -36,6 +36,24 @@ The same with `off` (today's keys):
 
 The edit re-keys nothing and runs nothing, and the old-mock worktree shares the one key with the edited one: `lessons.md` defect 28.
 
+## Done-when 3: three full suites each way, and the cost per file
+
+`ab.sh` alternated `ab.ts` off, on, off, on, off, on on one clone (Vitest's default pools, the recorder delivered as the daemon delivers it); `analyze.mjs` summarizes. Load is the 1-minute average at start and end of each run.
+
+| Run | Wall | Summed file time | Load | Failing files |
+| --- | --- | --- | --- | --- |
+| off 1 | 618 s | 6,802 s | 25 -> 11 | `web` `github.test.tsx` |
+| on 1 | 749 s | 11,319 s | 11 -> 6 | `github.test.tsx` and 9 `server` files (below) |
+| off 2 | 619 s | 6,547 s | 6 -> 11 | `github.test.tsx` and 6 `server` files: `runs/ci-wait-store`, `runs/store-order`, `runs/store-transcript-facts`, `server/nonblocking-discovery`, `server/project-context-repo-handle`, `server/usage-scope` |
+| on 2 | 555 s | 6,372 s | 11 -> 9 | `github.test.tsx` |
+| off 3 | 529 s | 6,632 s | 9 -> 2 | `github.test.tsx` |
+| on 3 | 508 s | 5,724 s | 2 -> 3 | `github.test.tsx` |
+
+- `web` `packages/web/src/routes/github/github.test.tsx` fails in all six runs, so not the recorder's.
+- Failing only with the recorder, each once, all in `on 1`: `application-update/service`, `artifacts/cli`, `autosave-timeout`, `ci-wait/process`, `discovery/cli`, `git-worktree-lock`, `server-install/platforms/ubuntu-vps`, `server/repo-branches-api`, `server/worktrees-api` (timeouts at 5 s and 15 s, a lock-wait race, a missing log under a dying watcher). `on 1` overlapped this worker's own `mock.ts` runs and Squeal's daemon re-running this repository's suite, hence its 11,319 s. Shown to be load: none fails in `on 2` or `on 3`, the nine pass three times out of three run alone with the recorder (`ab.ts ... <the nine>`: 14.2, 14.3, 14.4 s on; 14.1, 14.1, 15.6 s off; load 2 to 5), and `off 2` failed six other files without it.
+- Cost per file, the median of each file's three durations on over its median off: p25 0.87, p50 0.97, p75 1.20, p90 1.50; the difference p50 -47 ms, p90 +722 ms. By project: `server` (398 files) p50 0.95, -95 ms, p90 +386 ms; `web` (233 files, jsdom, no spawns) p50 1.20, +150 ms, p90 +886 ms; `contract` 0.98; `api-client` 1.08. Load dominates `server`; `web` pays a fixed cost per file, the preload and resolve hook in each worker.
+- Growth (`on 2`, `on 3` identical): 150 of 640 files observe paths beyond their snapshot, 1,719 distinct paths, 5,266 file-path pairs, per file p50 4, p90 54, max 787; 76 run a project script; `mock-cursor-print.mjs` is observed by 26 files. Before the closure filter, so a path also in a file's Vite graph counts (the research's 153 files and 1,092 paths were after it).
+
 ## Defects found on the way
 
 - The recorder skipped all of `tmpdir()`. This session's `TMPDIR` is an ancestor of the clone, so the first `cezar` run observed nothing. Now the temp directory is skipped only when the worktree is not inside it (`test/runners/vitest/observe.test.ts`, "inside the temp directory").
