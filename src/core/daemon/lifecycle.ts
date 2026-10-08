@@ -187,10 +187,11 @@ export function startTimers(context: TimerContext): () => void {
 /**
  * The one note of a daemon that steps down for a newer hook (lessons, defect
  * 26). The shutdown lets a tier in flight finish and store its results; the
- * next hook finds no daemon and starts one from its own, current CLI.
+ * asking hook's successor, waiting for the lock, starts from its own CLI
+ * (task 001-130).
  */
 export function stepDownNote(own: string, hook: string): string {
-  return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); the next hook starts a current one`;
+  return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); their daemon starts once this one exits`;
 }
 
 /** `1.8 s`, `60 min`. */

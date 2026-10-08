@@ -100,19 +100,20 @@ async function stepsDownAfterItsTier(cli: string, version: string, note: RegExp)
       .filter((n) => note.test(n)),
   ).toHaveLength(1);
 
-  // No further boundary: the successor took the lock and serves at the hooks' version.
+  // No further boundary: the successor took the lock, recorded itself and serves at the hooks' version.
+  const recorded = () => withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon);
   const next = await waitFor(
     async () => {
       const answer = await ping(repo.socketPath, 500);
-      return answer !== null && answer.pid !== first.pid ? answer : null;
+      return answer !== null && answer.pid !== first.pid && recorded() ? answer : null;
     },
     60_000,
     "the successor serving",
-  );
+  ).catch((error: Error) => {
+    throw new Error(`${error.message}; notes:\n${readNotes(repo).slice(notes).join("\n")}`);
+  });
   expect(next.squealVersion).toBe(HOOKS);
-  expect(
-    withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon?.squealVersion),
-  ).toBe(HOOKS);
+  expect(recorded()?.squealVersion).toBe(HOOKS);
 }
 
 describe("a daemon older than its hooks steps down (defect 26)", SLOW, () => {

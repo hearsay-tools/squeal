@@ -20,6 +20,7 @@ import {
   prepareScratch,
   removeScratch,
 } from "./scratch.js";
+import { isNewerVersion, squealVersion } from "./version.js";
 
 /** What a daemon owns once it won its worktree. */
 export interface OpenedDaemon {
@@ -122,17 +123,21 @@ export async function openDaemon(
 
 /**
  * Task 001-130, the successor's lock wait (`squeal daemon --await-lock`):
- * waiting on is pointless once a daemon other than the one first seen in
- * the store records itself (another hook's spawn won the lock), or the root
- * is gone.
+ * waiting on is pointless once the store records a daemon other than the
+ * one first seen there, or one at least as new as this one, which is never
+ * the older daemon it was spawned to replace (another hook's spawn won the
+ * lock), or once the root is gone.
  */
 function takenOver(root: AbsolutePath): () => boolean {
+  const own = squealVersion();
   let first: EpochMs | null | undefined;
   return () => {
     if (!existsSync(root)) return true;
-    const startedAt = recordedDaemon(root)?.startedAt ?? null;
+    const record = recordedDaemon(root);
+    const startedAt = record?.startedAt ?? null;
     if (first === undefined) first = startedAt;
-    return startedAt !== null && startedAt !== first;
+    if (record === null) return false;
+    return startedAt !== first || !isNewerVersion(own, record.squealVersion);
   };
 }
 

@@ -15,8 +15,18 @@ import { stepDownKit } from "./step-down-helpers.js";
  */
 
 const suite = daemonSuite();
-const { HOOKS, hasCommit, releasedCli, releasedDist, start, sockets, hookDeps, hook, exitWithin } =
-  stepDownKit(suite);
+const {
+  HOOKS,
+  hasCommit,
+  buildAt,
+  releasedCli,
+  releasedDist,
+  start,
+  sockets,
+  hookDeps,
+  hook,
+  exitWithin,
+} = stepDownKit(suite);
 /** Releases 0.1.31 (before the step-down request) and 0.1.32 (before this row). */
 const R31 = "8654424";
 const R32 = "dbeb862";
@@ -96,7 +106,7 @@ describe.runIf(hasReleases)(
 describe("the successor's lock wait (squeal daemon --await-lock)", SLOW, () => {
   it("exits with a note when the lock is still held at its bound; the holder keeps serving", async () => {
     const repo = suite.fixture();
-    const holder = start(suite.cli, repo);
+    const holder = start(buildAt("0.1.0"), repo);
     const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
     const notes = readNotes(repo).length;
     const successor = start(suite.cli, repo, ["--await-lock", "1500"]);
@@ -111,9 +121,9 @@ describe("the successor's lock wait (squeal daemon --await-lock)", SLOW, () => {
     expect(holder.child.exitCode).toBeNull();
   });
 
-  it("takes over once the holder stops, and serves", async () => {
+  it("takes over once the older holder stops, and serves", async () => {
     const repo = suite.fixture();
-    const holder = start(suite.cli, repo);
+    const holder = start(buildAt("0.1.0"), repo);
     const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
     const successor = start(suite.cli, repo, ["--await-lock", "60000"]);
     await delay(500);
@@ -129,6 +139,18 @@ describe("the successor's lock wait (squeal daemon --await-lock)", SLOW, () => {
       "the successor serving",
     );
     expect(next.pid).toBe(successor.child.pid);
+  });
+
+  it("exits at once, with no note, while a daemon at least as new holds the lock", async () => {
+    const repo = suite.fixture();
+    start(suite.cli, repo);
+    const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
+    const notes = readNotes(repo).length;
+    const successor = start(suite.cli, repo, ["--await-lock", "60000"]);
+    expect(await exitWithin(successor, 30_000, repo)).toEqual({ code: 0, signal: null });
+    expect(successor.stderr()).toMatch(/another daemon serves/);
+    expect(readNotes(repo).slice(notes)).toEqual([]);
+    expect((await ping(repo.socketPath, 500))?.pid).toBe(first.pid);
   });
 
   it("refuses a malformed wait", async () => {
