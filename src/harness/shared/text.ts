@@ -1,7 +1,7 @@
 import { headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
 import { formatCheck } from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
-import type { KnownFailure, StatusHeader } from "../../core/types/index.js";
+import type { KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
 
 /*
  * Hook-specific wording. Spec 001 D6: "Wording is factual, never imperative:
@@ -88,5 +88,23 @@ export function fullSuiteReason(header: StatusHeader, command: string = SQUEAL_C
   return (
     `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ` +
     `${header.revision}; ${before}. \`${command} run --all\` starts one.`
+  );
+}
+
+/**
+ * Spec 004 D7: the block reason of `stop.requireSlowSuite`, naming the slow
+ * test files not current at `revision` and that `run --slow` runs them.
+ * `command` is how the reason names the CLI.
+ */
+export function slowSuiteReason(
+  revision: number,
+  files: readonly TestFileRef[],
+  command: string = SQUEAL_COMMAND,
+): string {
+  const verb = files.length === 1 ? "is" : "are";
+  return (
+    `Squeal policy stop.requireSlowSuite is on and ${plural(files.length, "slow test file")} ` +
+    `${verb} not current at revision ${revision}: ${list(files.map((f) => f.path))}. ` +
+    `\`${command} run --slow\` runs them.`
   );
 }

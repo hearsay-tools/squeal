@@ -7,7 +7,7 @@ import {
   readLiveHeader,
 } from "../../core/delivery/index.js";
 import { slowFiles } from "../../core/slow/index.js";
-import { isFastPending, toKnownFailure } from "../../core/state/index.js";
+import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
 import type { KnownFailure, TestFileRef } from "../../core/types/index.js";
@@ -15,7 +15,13 @@ import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
-import { fullSuiteReason, knownFailuresLine, knownFailuresReason, statusText } from "./text.js";
+import {
+  fullSuiteReason,
+  knownFailuresLine,
+  knownFailuresReason,
+  slowSuiteReason,
+  statusText,
+} from "./text.js";
 
 /**
  * The longest `stop.waitMs` honoured. Every hook has `timeout: 2` (D9); Node
@@ -45,8 +51,10 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
 /**
  * Stop and SubagentStop (D9): wait up to `stop.waitMs` for the pending checks
  * of the current revision, deliver the delta with its status header, and
- * block with a factual reason when `stop.blockOnKnownFailures` or
- * `stop.requireFullSuite` is not met.
+ * block with a factual reason when `stop.blockOnKnownFailures`,
+ * `stop.requireFullSuite` or `stop.requireSlowSuite` (spec 004 D7: a slow
+ * test file not current at this revision) is not met. Stop never waits for
+ * slow files, whatever the policy (D9).
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
@@ -87,8 +95,8 @@ export function stopTurn(
     async (context) => {
       if (input.agent_id !== undefined && !isRegistered(context)) return null;
       await ensureIfStale(context, deps);
+      const isSlow = slowFiles(project, project.nodeTest);
       if (wait > 0) {
-        const isSlow = slowFiles(project, project.nodeTest);
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
       }
 
@@ -106,6 +114,11 @@ export function stopTurn(
         }
         if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
           reasons.push(fullSuiteReason(header, deps.command));
+        }
+        if (policy.requireSlowSuite) {
+          const keys = store.testFileKeys.list(consumer.worktreeId);
+          const open = slowFilesNotCurrent(states, keys, isSlow);
+          if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, deps.command));
         }
       }
       if (reasons.length > 0) {
