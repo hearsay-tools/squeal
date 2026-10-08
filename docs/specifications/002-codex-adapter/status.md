@@ -36,6 +36,8 @@ Started: 2026-10-07
 
 - 2026-10-08, 002-19 started (approved by the human 2026-10-07): the Codex plugin 0.1.24 installed into the real `~/.codex` from the main checkout `/home/agent/projects/squeal` with `codex plugin marketplace add` and `codex plugin add squeal@squeal`, its hooks trusted with `squeal init --harness codex --trust --yes`; a Cezar Codex worker does row 003-27 as the dogfooding task. Uninstall: `codex plugin remove squeal@squeal`.
 
+- 2026-10-08, 002-20 closed at 0.1.27: with 001-116's read transactions on main, the opt-in probe `SQUEAL_PROBE_TORN_STATUS=1 npx vitest run test/e2e/torn-status.test.ts` passes (it widens the window that failed 12 of 12 before), and `test/e2e/transitions.test.ts` passed 10 times with a second copy running beside each, 20 runs and 80 test executions, at load 4.6 to 7.5. Not repeated at the load 20 to 100 where the flake was first seen; the probe is the deterministic evidence.
+
 ## Research
 
 Complete 2026-10-07: `research/codex-hooks.md`, `research/codex-sessions-and-wake.md`, every question tagged, experiments on Linux only. The spec is written from these files.
