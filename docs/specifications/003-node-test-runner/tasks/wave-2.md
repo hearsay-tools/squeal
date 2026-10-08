@@ -89,3 +89,29 @@ Owns: `src/runners/node-test/graph/**`, `test/runners/node-test/graph*.test.ts`.
 Done when: retained heap after a build at 10,000 modules is measured before and after and reported, with the resolver share reduced; the graph tests and the cost ratios pass; lint, typecheck, full suite green. Do not run `npm run build`.
 
 Use /worker.
+
+## 003-28 the recorder runs before every preload (wave 2.6)
+
+Outcome: whatever a project preload loads at run time, `--require` or `--import`, is observed and keyed, so editing it re-runs the files and a worktree with different content misses.
+
+Read: `reviews/wave-2.5.md` (B1 and its probe, "Inputs for the coordinator"), `reviews/wave-2.md` B1, spec 003 D1, D3, D5, `status.md`; `src/runners/node-test/run/run.ts:74-86` (the command line), `runtime/recorder.mjs`, `runtime.ts`, `adapter-observed.ts`.
+
+Shape: repair. Test first: the review's probe (argv `["--require", "./scripts/setup.cjs"]`, `setup.cjs` runs `require("./helper" + ".cjs")`) fails on `2fa0daf`. Seam: `runtime/recorder.cjs`, a CommonJS recorder that calls `module.registerHooks` synchronously, passed as the first `--require` ahead of the project's argv, so Node installs it before any project `--require` and `--import`. Keep one recorder implementation (the `.mjs` may become a thin re-export, or go), keep the project's argv order and meaning, and find out whether a `--require` or `--import` in the child's `NODE_OPTIONS` (from the project's `env`) can still run before it; if it can, observe it too or note it once. Confirm the recorder reaches the per-file test child that `node --test` spawns. `runtime.ts` locates the new file from the source tree and from a built `dist/node-test/`; `src/harness/build.ts` copies `src/runners/node-test/runtime/*`, so check the `.cjs` is copied (ask the coordinator if that file needs a change). Raise `NODE_TEST_ADAPTER_VERSION` to `"3"`, so passes stored without these observations run once more.
+
+Owns: `src/runners/node-test/**`, `test/runners/node-test/**`, `test/integration/node-test*.test.ts`, new fixtures under `test/fixtures/node-test/`. Leave alone: everything else, `src/harness/build.ts` included unless the coordinator agrees.
+
+Done when: on Node 22 and 24, the probe's helper is in the observed preload paths after one run, an edit of it re-runs the file, and a second worktree with another helper misses; a nested `--require` preload and a `--require` of a package under `node_modules` that loads a worktree file are covered; existing `--import` preload tests unchanged; lint, typecheck, full suite green. Do not run `npm run build`.
+
+Use /worker.
+
+## 003-29 third review of the preload slice
+
+Outcome: `reviews/wave-2.6.md`: is `reviews/wave-2.5.md` B1 closed, and can any preload form still load a file that no key holds. Decided by the human 2026-10-08 as a third round on this slice.
+
+Range: the 003-28 commits on main (filled in at dispatch).
+
+Questions: (1) the review's `--require` probe and its nested and package variants, on the shipped plugin; (2) `NODE_OPTIONS` preloads, a preload that spawns a child, a `--loader`; (3) adapter version 3 re-runs exactly the passes it should; (4) the recorder's own cost and that it never changes a project's resolution.
+
+Rules as for 003-25. A remaining blocker after this round goes to the human.
+
+Use /reviewer.
