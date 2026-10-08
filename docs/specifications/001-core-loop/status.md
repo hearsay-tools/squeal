@@ -132,6 +132,8 @@ Started: 2026-10-02
 
 - 2026-10-08, after 001-132 (coordinator): a recorded path with a null byte (Vite's virtual `\0vite/dynamic-import-helper.js`) is dropped when observations are read; before, `statSync` threw and every check of this repository's worktree went unknown under a 0.1.35 daemon with the recorder on.
 
+- 2026-10-08, wave 12e (001-139, `reviews/wave-12e.md` B5; the contract agreed between 001-134 and 001-135): D4 amended. The recorder records a fourth kind `r`, a directory listed with `recursive: true` by `readdir`, `readdirSync`, `promises.readdir`, `opendir`, `opendirSync` or `promises.opendir`, still also a listing; `run()` returns it as `ObservedInputs.recursive`, which 001-134's scheduler expansion keys. `RECORDER_VERSION` 3, so observed passes from version 2 run once more. `test/scheduler/recursive-listing.test.ts` supplies nothing: the sync, callback and promise forms re-key and fail on a nested add and on removing the original file in both pools, and failed before. Types, additive: `RecordedFile.recursive`. Both plugin bundles need a rebuild.
+
 ## Research
 
 Complete. Four findings documents under `research/`, all with experiments on Linux. Nothing verified on macOS.
