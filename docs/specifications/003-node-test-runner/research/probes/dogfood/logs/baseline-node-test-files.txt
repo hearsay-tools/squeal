@@ -1,0 +1,75 @@
+fa450a0c [test:unit]
+  codex-reasoning-summary.test.ts exit=0 completed=true 0.7s pass=3 fail=0 skip=0
+  cursor-hang-stdin.test.ts exit=0 completed=true 0.3s pass=1 fail=0 skip=0
+  planner.test.ts exit=0 completed=true 1.0s pass=3 fail=0 skip=0
+  resolve-browser-launch.test.ts exit=0 completed=true 0.4s pass=10 fail=0 skip=0
+3a3d3a95 [test:unit]
+  skill-dirs.test.ts exit=0 completed=true 0.6s pass=1 fail=0 skip=0
+  skills-remote.test.ts exit=0 completed=true 2.6s pass=16 fail=0 skip=0
+  test-env-launcher.test.ts exit=0 completed=true 44.2s pass=17 fail=0 skip=0
+  todo-task-text.test.ts exit=0 completed=true 0.3s pass=8 fail=0 skip=0
+7519d3d5 [test:package]
+  alias-bin-exports.test.ts exit=0 completed=true 0.3s pass=1 fail=0 skip=0
+  application-update.test.ts exit=0 completed=true 43.4s pass=27 fail=0 skip=0
+7519d3d5 [test:unit]
+  web-typecheck.test.ts exit=0 completed=true 26.0s pass=5 fail=0 skip=0
+  workflow-types.test.ts exit=0 completed=true 0.4s pass=11 fail=0 skip=0
+9391ff37 [test:package]
+  cockpit-ownership.test.ts exit=0 completed=true 9.3s pass=1 fail=0 skip=0
+  delegation.test.ts exit=0 completed=true 25.4s pass=2 fail=0 skip=0
+  inline-contract.test.ts exit=0 completed=true 3.0s pass=4 fail=0 skip=0
+  package-cli.test.ts exit=0 completed=true 30.0s pass=1 fail=0 skip=0
+3c7c8433 [test:package]
+  release-snapshot.test.ts exit=0 completed=true 7.5s pass=8 fail=0 skip=0
+  release.test.ts exit=0 completed=true 7.2s pass=12 fail=0 skip=0
+  serve-port.test.ts exit=0 completed=true 12.3s pass=8 fail=0 skip=0
+  stop-child.test.ts exit=0 completed=true 0.4s pass=3 fail=0 skip=0
+6a94b691 [root:test:unit]
+  apply-issue-intake.test.cjs exit=0 completed=true 0.1s pass=5 fail=0 skip=0
+  automated-code-review.workflow.test.cjs exit=0 completed=true 1.8s pass=31 fail=0 skip=0
+6a94b691 [test:package]
+  task-cli.test.ts exit=0 completed=true 31.0s pass=1 fail=0 skip=0
+  tick-writer.test.ts exit=0 completed=true 0.3s pass=2 fail=0 skip=0
+865b59dd [root:test:unit]
+  automated-review.test.cjs exit=0 completed=true 0.1s pass=38 fail=0 skip=0
+  change-surface.test.cjs exit=0 completed=true 0.3s pass=11 fail=0 skip=0
+  ci-dispatch.workflow.test.cjs exit=0 completed=true 7.1s pass=5 fail=0 skip=0
+  ci-sweep-api.test.cjs exit=0 completed=true 0.1s pass=12 fail=0 skip=0
+9141b787 [root:test:unit]
+  ci-sweep-collect.test.cjs exit=0 completed=true 0.2s pass=17 fail=0 skip=0
+  ci-sweep-patterns.test.cjs exit=0 completed=true 0.1s pass=10 fail=0 skip=0
+  ci-sweep-report.test.cjs exit=0 completed=true 0.2s pass=11 fail=0 skip=0
+  ci-sweep-workflow.test.cjs exit=0 completed=true 0.2s pass=5 fail=0 skip=0
+cb6ed17d [root:test:unit]
+  ci-test-sequencer.test.cjs exit=0 completed=true 0.6s pass=6 fail=0 skip=0
+  ci.workflow.test.cjs exit=0 completed=true 2.0s pass=20 fail=0 skip=0
+  cockpit-test-sequencer.test.cjs exit=0 completed=true 0.7s pass=1 fail=0 skip=0
+  e2e-fetch.test.cjs exit=0 completed=true 0.2s pass=1 fail=0 skip=0
+f1741236 [root:test:unit]
+  e2e-runner.test.cjs exit=0 completed=true 1.6s pass=10 fail=0 skip=0
+  failure-diagnostics.test.cjs exit=0 completed=true 0.1s pass=15 fail=0 skip=0
+  failure-issue-writer.test.cjs exit=0 completed=true 0.2s pass=9 fail=0 skip=0
+  failure-workflow.test.cjs exit=0 completed=true 0.2s pass=3 fail=0 skip=0
+585d5702 [root:test:unit]
+  fetch-ci-results.test.cjs exit=0 completed=true 0.2s pass=31 fail=0 skip=0
+  issue-intake.workflow.test.cjs exit=0 completed=true 0.1s pass=2 fail=0 skip=0
+  issue-template.test.cjs exit=0 completed=true 0.1s pass=1 fail=0 skip=0
+  pr-readiness.test.cjs exit=0 completed=true 0.3s pass=15 fail=0 skip=0
+074ef29e [root:test:unit]
+  pr-snapshot.test.cjs exit=0 completed=true 3.3s pass=33 fail=0 skip=0
+  recover-review.test.cjs exit=0 completed=true 0.3s pass=68 fail=0 skip=0
+  release-bump-pr.test.cjs exit=0 completed=true 0.1s pass=8 fail=0 skip=0
+  release-ci.test.cjs exit=0 completed=true 0.9s pass=17 fail=0 skip=0
+07a3787f [root:test:unit]
+  release-finalization.test.cjs exit=0 completed=true 48.7s pass=34 fail=0 skip=0
+  release.workflow.test.cjs exit=0 completed=true 0.3s pass=6 fail=0 skip=0
+  report-workflow-failure.test.cjs exit=0 completed=true 0.2s pass=15 fail=0 skip=0
+  require-e2e-passed.test.cjs exit=0 completed=true 0.6s pass=5 fail=0 skip=0
+e2dd0e47 [root:test:unit]
+  sweep-ci-failures.test.cjs exit=0 completed=true 0.1s pass=10 fail=0 skip=0
+  upstream-ledger.test.cjs exit=0 completed=true 0.3s pass=13 fail=0 skip=0
+  upstream-scan.workflow.test.cjs exit=0 completed=true 0.2s pass=8 fail=0 skip=0
+  vitest-actions-report.test.cjs exit=0 completed=true 0.6s pass=2 fail=0 skip=0
+6522a120 [root:test:unit]
+  e2e-lanes.test.mjs exit=0 completed=true 6.2s pass=35 fail=0 skip=0
+  test-changed.test.mjs exit=0 completed=true 6.3s pass=19 fail=0 skip=0

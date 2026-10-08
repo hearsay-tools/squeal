@@ -1,0 +1,84 @@
+diff --git a/packages/cezar/scripts/mock-cursor-hang-stdin.mjs b/packages/cezar/scripts/mock-cursor-hang-stdin.mjs
+index 10e74073..5a8906b1 100755
+--- a/packages/cezar/scripts/mock-cursor-hang-stdin.mjs
++++ b/packages/cezar/scripts/mock-cursor-hang-stdin.mjs
+@@ -23,7 +23,7 @@ rl.on('line', line => {
+     rl.close();
+     process.stdin.destroy();
+     try { closeSync(0); } catch { /* already closed */ }
+-    emit({ id: msg.id, result: { protocolVersion: 1, agentCapabilities: { loadSession: true } } });
++    emit({ id: msg.id, result: { protocolVersion: msg.params?.protocolVersion ?? 1, agentCapabilities: { loadSession: true } } });
+   }
+ });
+ process.on('SIGTERM', () => { /* ignore — the child must outlive its stdin */ });
+diff --git a/packages/cezar/src/todos.ts b/packages/cezar/src/todos.ts
+index 28d02a4e..0026e31c 100644
+--- a/packages/cezar/src/todos.ts
++++ b/packages/cezar/src/todos.ts
+@@ -136,7 +136,8 @@ export function todoTaskText(
+   todo: Pick<TodoItem, 'summary' | 'suggestedPrompt' | 'suggestedArgs'>,
+ ): string {
+   let task = (todo.suggestedPrompt ?? todo.summary).trim() || todo.summary;
+-  if (todo.suggestedArgs) task += `\n\nArguments: ${todo.suggestedArgs}`;
++  const args = todo.suggestedArgs?.trim();
++  if (args) task += `\n\nArguments: ${args}`;
+   return task;
+ }
+ 
+diff --git a/packages/cezar/test/e2e/stop-child.test.ts b/packages/cezar/test/e2e/stop-child.test.ts
+index 9ca0a99d..b465a0b1 100644
+--- a/packages/cezar/test/e2e/stop-child.test.ts
++++ b/packages/cezar/test/e2e/stop-child.test.ts
+@@ -23,6 +23,7 @@ test('kills and names a child that ignores SIGTERM', async () => {
+     await once(child, 'message');
+     const exited = once(child, 'exit');
+     await assert.rejects(stopChild(child, 'stubborn fixture', 50), /stubborn fixture.*SIGTERM/);
++    assert.equal(child.signalCode, 'SIGKILL');
+     await exited;
+     assert.equal(child.signalCode, 'SIGKILL');
+   } finally {
+diff --git a/packages/cezar/test/e2e/stop-child.ts b/packages/cezar/test/e2e/stop-child.ts
+index 2a88a42f..3171d4ad 100644
+--- a/packages/cezar/test/e2e/stop-child.ts
++++ b/packages/cezar/test/e2e/stop-child.ts
+@@ -12,8 +12,18 @@ export async function stopChild(child: ChildProcess, name: string, timeoutMs = 3
+     // e2e-wait: process-deadline — bounded child termination escalates to SIGKILL
+     const timer = setTimeout(() => {
+       child.off('exit', onExit);
++      const error = new Error(`${name} ignored SIGTERM for ${timeoutMs}ms; sent SIGKILL`);
++      const onKilledExit = () => {
++        clearTimeout(killTimer);
++        reject(error);
++      };
++      child.once('exit', onKilledExit);
++      // e2e-wait: process-deadline — allow at most 1 s for SIGKILL to finish
++      const killTimer = setTimeout(() => {
++        child.off('exit', onKilledExit);
++        reject(error);
++      }, 1_000);
+       child.kill('SIGKILL');
+-      reject(new Error(`${name} ignored SIGTERM for ${timeoutMs}ms; sent SIGKILL`));
+     }, timeoutMs);
+     child.kill('SIGTERM');
+   });
+diff --git a/packages/cezar/test/fixtures/todo-task-text.json b/packages/cezar/test/fixtures/todo-task-text.json
+index a68a86c8..4bb6d386 100644
+--- a/packages/cezar/test/fixtures/todo-task-text.json
++++ b/packages/cezar/test/fixtures/todo-task-text.json
+@@ -43,6 +43,16 @@
+       "todo": { "summary": "Ship it", "suggestedArgs": "--dry-run" },
+       "expected": "Ship it\n\nArguments: --dry-run"
+     },
++    {
++      "name": "blank args add no Arguments line",
++      "todo": { "summary": "Ship it", "suggestedArgs": "   " },
++      "expected": "Ship it"
++    },
++    {
++      "name": "args with surrounding spaces are trimmed",
++      "todo": { "summary": "Ship it", "suggestedArgs": "  --dry-run  " },
++      "expected": "Ship it\n\nArguments: --dry-run"
++    },
+     {
+       "name": "an empty summary with no prompt stays empty",
+       "todo": { "summary": "" },
