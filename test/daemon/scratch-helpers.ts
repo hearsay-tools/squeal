@@ -79,7 +79,7 @@ export function callerTempDir(cleanups: (() => void)[]): string {
 /** The first known result of a test file, failing with the daemon's notes and stderr. */
 export function resultOf(
   repo: FixtureRepo,
-  spawned: SpawnedProcess,
+  spawned: SpawnedProcess | undefined,
   testPath: string,
 ): Promise<KnownState> {
   return waitFor(

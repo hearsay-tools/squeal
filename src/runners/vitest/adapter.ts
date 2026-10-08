@@ -66,21 +66,26 @@ export class VitestAdapter implements RunnerAdapter {
   #closed = false;
   readonly #note: (text: string) => void;
   readonly #observer: VitestObserver;
+  readonly #childEnv: Readonly<Record<string, string>>;
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
    * come from Squeal's Vitest, so loading this module loads no Vitest.
    * `note` records a fact the adapter worked around as a status note (D7).
    * `observe` is policy `observe.runtimeInputs`, read before each call
-   * (task 001-132); absent, nothing is observed.
+   * (task 001-132); absent, nothing is observed. `childEnv` goes into every
+   * worker's env beside the recorder's and, like it, stays out of the
+   * environment hash (D12, task 001-142).
    */
   constructor(
     readonly paths: WorktreePaths,
     vitest: VitestNode,
     note: (text: string) => void = () => {},
     observe: () => boolean = () => false,
+    childEnv: Readonly<Record<string, string>> = {},
   ) {
     this.#node = vitest;
+    this.#childEnv = childEnv;
     this.#note = note;
     this.#observer = new VitestObserver(paths, observe);
   }
@@ -94,13 +99,14 @@ export class VitestAdapter implements RunnerAdapter {
     }
     const generation = ++this.#generation;
     const current = () => (generation === this.#generation ? this.#collector : null);
+    const env = { ...this.#childEnv, ...this.#observer.start().env };
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
       watch: false,
       reporters: [createSquealReporter(current)],
       update: "none",
       includeTaskLocation: true,
-      ...this.#observer.start(),
+      ...(Object.keys(env).length === 0 ? {} : { env }),
     });
     try {
       await vitest.standalone();
@@ -228,7 +234,7 @@ export class VitestAdapter implements RunnerAdapter {
         paths: this.paths,
         runnerVersion: this.#node.version,
         adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
-        injected: this.#observer.injected,
+        injected: { ...this.#childEnv, ...this.#observer.injected },
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {

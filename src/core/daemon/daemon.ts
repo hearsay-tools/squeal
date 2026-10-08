@@ -13,6 +13,7 @@ import type {
 } from "../types/index.js";
 import { bootstrappedMetaKey, DEFAULT_POLICY } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
+import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { type DaemonTimings, type Presence, startTimers, stepDownNote } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
@@ -105,6 +106,8 @@ class Daemon {
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
   #vitest: RecoveringRunner | null = null;
   #loop: DaemonLoop | null = null;
+  /** What its tests leave running, stopped after each tier and at exit (D12). */
+  readonly #children = new EscapedChildren();
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
@@ -278,6 +281,7 @@ class Daemon {
                   root,
                   note: (text) => this.#note(text),
                   observe: () => this.#policy.observe.runtimeInputs,
+                  childEnv: this.#children.env,
                 }),
               onFailure: (text) =>
                 this.#note(
@@ -294,10 +298,14 @@ class Daemon {
         tierSize: () => this.#policy.runner.tierSize,
         note: (text) => this.#note(text),
       });
-      const runner = createCompositeRunner([
-        ...(vitestRunner === null ? [] : [vitestRunner]),
-        ...nodeTestRunners,
-      ]);
+      const runner = afterEachRun(
+        createCompositeRunner([
+          ...(vitestRunner === null ? [] : [vitestRunner]),
+          ...nodeTestRunners,
+        ]),
+        this.#children,
+        (text) => this.#note(text),
+      );
       this.#vitest = vitestRunner;
       this.#runner = runner;
       // Task 001-100: while no dependencies are installed nothing loads Vitest, so the
@@ -400,7 +408,8 @@ class Daemon {
 
   /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
-   * the tier in flight, abandons the open checkpoint), `runner.close()`, the
+   * the tier in flight, abandons the open checkpoint), `runner.close()`, what
+   * the tests left running (D12), the
    * temp directory once its leftovers are gone, `setDaemon(null)`,
    * `store.close()`. Then the socket, which closing unlinks, and last the
    * lock, so a successor never sees this daemon's socket go away after
@@ -415,6 +424,10 @@ class Daemon {
       const { store, worktreeId, lock } = this.opened;
       await this.#step("loop.close", () => this.#loop?.close());
       await this.#step("runner.close", () => this.#runner?.close());
+      await this.#step("escaped children", async () => {
+        const text = await this.#children.atExit();
+        if (text !== null) this.#note(text);
+      });
       await this.#step("temp dir removal", async () => {
         await this.opened.leftovers;
         removeScratch(this.opened.scratch);
