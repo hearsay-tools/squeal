@@ -25,9 +25,12 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * "6": a package is taken from the installed path a specifier resolves to, and
  * template imports, `createRequire` and `process.getBuiltinModule` report
  * `module` (task 003-33, review wave 3, B1 and B2), so a pass stored under a
- * key that missed a package runs once more.
+ * key that missed a package runs once more. "7": a slow project's spawned
+ * processes are recorded, and a load whose parent is no module and that is no
+ * preload joins the test file rather than the preloads (rows 003-37, 004-19),
+ * so a pass stored while those loads went unkeyed runs once more.
  */
-export const NODE_TEST_ADAPTER_VERSION = "6";
+export const NODE_TEST_ADAPTER_VERSION = "7";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;

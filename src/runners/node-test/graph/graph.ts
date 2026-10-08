@@ -37,7 +37,8 @@ export interface AffectedPaths {
   readonly transitive: readonly RelativePath[];
 }
 
-const MANIFEST = /^(?:package\.json|tsconfig.*\.json)$/;
+/** A manifest by its file name: `package.json`, `tsconfig*.json`. */
+export const MANIFEST = /^(?:package\.json|tsconfig.*\.json)$/;
 
 /**
  * Closures, the reverse index and `affected` over a {@link ModuleTable}

@@ -62,6 +62,18 @@ export function asyncLoaders(tokens: readonly string[]): string[] {
   return loaders;
 }
 
+/** Each `--import`, `--require` and `-r` value of a token list, in order: the preloads Node runs. */
+export function preloadSpecifiers(tokens: readonly string[]): string[] {
+  const preloads: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const [name, value] = splitFlag(tokens[i] as string);
+    if (name !== "--import" && name !== "--require" && name !== "-r") continue;
+    const preload = value ?? tokens[++i];
+    if (preload !== undefined) preloads.push(preload);
+  }
+  return preloads;
+}
+
 function splitFlag(token: string): readonly [string, string | undefined] {
   const equals = token.indexOf("=");
   return equals === -1 ? [token, undefined] : [token.slice(0, equals), token.slice(equals + 1)];

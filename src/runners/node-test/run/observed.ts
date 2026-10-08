@@ -5,10 +5,10 @@ import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath, TestFileRef } from "../../../core/types/index.js";
 
 /**
- * The project files one test file's process loaded, from the recorder's
- * edges (spec 003 D5). Worktree-relative, sorted, `node_modules` and paths
- * outside the worktree left out. A test that spawns `node` itself is not
- * observed past the spawn (open question 3).
+ * The project files one test file's run loaded, from the recorder's edges
+ * (spec 003 D5): its own process, the `node --test` child, and for a slow
+ * project the processes the test spawns (004 D5). Worktree-relative, sorted,
+ * `node_modules` and paths outside the worktree left out.
  */
 export interface ObservedClosure {
   readonly testFile: TestFileRef;
@@ -21,19 +21,27 @@ export interface ObservedClosure {
 interface Edge {
   readonly parent: string | null;
   readonly url: string;
+  /** The specifier as the importer wrote it. */
+  readonly specifier: string | null;
 }
 
 /**
- * Reachability from the test file's URL over the edges of its process
- * (`graphs`: the recorder's NDJSON files). Every other import whose parent
- * is no loaded module, such as an `--import` resolved from the cwd, is a
- * preload root. `null` when the recorder saw nothing of the test file:
- * a Node without `module.registerHooks`, or a process that never loaded it.
+ * Reachability over the edges of one file's run (`graphs`: the recorder's
+ * NDJSON files, one per process). An import whose parent is no loaded
+ * module (an `--import` resolves from the cwd's directory URL, a `--require`
+ * and an entry point from none) roots the preloads only when its specifier
+ * is one of `preloads`, the `--import` and `--require` values of the
+ * project's argv and `NODE_OPTIONS`. Every other such root is the test
+ * file's, since one run runs one test file (lessons.md defect 3): a module
+ * loaded through `createRequire(<package.json>)`, or a spawned process's
+ * entry point. `null` when the recorder saw nothing of the test file: a Node
+ * without `module.registerHooks`, or a process that never loaded it.
  */
 export function observedClosure(
   testFile: TestFileRef,
   absolute: AbsolutePath,
   graphs: readonly string[],
+  preloads: ReadonlySet<string>,
   paths: WorktreePaths,
 ): ObservedClosure | null {
   const edges = graphs.flatMap(parseEdges);
@@ -44,15 +52,17 @@ export function observedClosure(
     children.set(parent, [...(children.get(parent) ?? []), url]);
   }
   if (!edges.some((e) => e.url === entry || e.parent === entry)) return null;
-  // `--import` specifiers resolve from the cwd's directory URL, the entry point from no parent
   const loaded = new Set(edges.map((e) => e.url));
-  const roots = edges
-    .filter((e) => (e.parent === null || !loaded.has(e.parent)) && e.url !== entry)
-    .map((e) => e.url);
+  const fileRoots = [entry];
+  const preloadRoots: string[] = [];
+  for (const { parent, url, specifier } of edges) {
+    if (url === entry || (parent !== null && loaded.has(parent))) continue;
+    (specifier !== null && preloads.has(specifier) ? preloadRoots : fileRoots).push(url);
+  }
   return {
     testFile,
-    paths: projectPaths(reach([entry], children), paths),
-    preloadPaths: projectPaths(reach(roots, children), paths),
+    paths: projectPaths(reach(fileRoots, children), paths),
+    preloadPaths: projectPaths(reach(preloadRoots, children), paths),
   };
 }
 
@@ -61,9 +71,13 @@ function parseEdges(text: string): Edge[] {
   for (const line of text.split("\n")) {
     if (line.trim() === "") continue;
     try {
-      const { parent, url } = JSON.parse(line) as { parent?: unknown; url?: unknown };
+      const { parent, url, specifier } = JSON.parse(line) as Record<string, unknown>;
       if (typeof url !== "string") continue;
-      edges.push({ parent: typeof parent === "string" ? parent : null, url });
+      edges.push({
+        parent: typeof parent === "string" ? parent : null,
+        url,
+        specifier: typeof specifier === "string" ? specifier : null,
+      });
     } catch {
       // a partial last line of a killed process
     }

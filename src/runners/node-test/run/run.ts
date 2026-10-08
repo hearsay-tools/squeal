@@ -12,7 +12,12 @@ import type {
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
 import { parseEvents } from "./events.js";
-import { holdsRequire, quoteNodeOption } from "./node-options.js";
+import {
+  holdsRequire,
+  preloadSpecifiers,
+  quoteNodeOption,
+  tokenizeNodeOptions,
+} from "./node-options.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { type ProcessExit, startGroup } from "./process.js";
 import { type FileReport, readFileStream } from "./report.js";
@@ -72,6 +77,12 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   const paths = new WorktreePaths(options.root);
   const cwd = options.project.cwd ? toAbsolute(options.root, options.project.cwd) : options.root;
   const env = childEnv(options, runtime);
+  const preloads = new Set(
+    preloadSpecifiers([
+      ...(tokenizeNodeOptions(env.NODE_OPTIONS ?? "") ?? []),
+      ...options.project.argv,
+    ]),
+  );
   mkdirSync(options.logDir, { recursive: true });
 
   const runs: FileRun[] = options.files.map((testFile, index) => {
@@ -148,7 +159,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     ),
   };
   const observed = completed.flatMap((r) => {
-    const closure = observedClosure(r.testFile, r.absolute, graphs(options.logDir, r.index), paths);
+    const files = graphs(options.logDir, r.index);
+    const closure = observedClosure(r.testFile, r.absolute, files, preloads, paths);
     return closure === null ? [] : [closure];
   });
   writeRunLog(options.logDir, { node, cwd, runs, report });
@@ -160,13 +172,17 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
  * `projectEnv` cleans it. Node runs a `--require` in `NODE_OPTIONS` before
  * those of argv, so when `NODE_OPTIONS` holds one, however quoted
  * (`holdsRequire`, review wave 2.6 B1), the recorder goes first there as
- * well; Node loads it once.
+ * well; Node loads it once. For a slow project it goes there always, so a
+ * process the test spawns, which inherits no argv, records too (004 D5).
  */
 function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
   const env = projectEnv(options.project, options.env ?? process.env);
   const nodeOptions = env.NODE_OPTIONS;
+  const recorder = `--require ${quoteNodeOption(runtime.recorder)}`;
   if (nodeOptions !== undefined && holdsRequire(nodeOptions)) {
-    env.NODE_OPTIONS = `--require ${quoteNodeOption(runtime.recorder)} ${nodeOptions}`;
+    env.NODE_OPTIONS = `${recorder} ${nodeOptions}`;
+  } else if (options.project.slow === true) {
+    env.NODE_OPTIONS = nodeOptions === undefined ? recorder : `${recorder} ${nodeOptions}`;
   }
   return env;
 }

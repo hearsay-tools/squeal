@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { compare, sameList, toAbsolute } from "../../core/fs/index.js";
 import type {
   AbsolutePath,
@@ -13,9 +13,10 @@ import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environ
 import { listTestFiles } from "./adapter-files.js";
 import { Observed } from "./adapter-observed.js";
 import { enumerate } from "./enumerate.js";
-import { createNodeTestGraph } from "./graph/index.js";
+import { createNodeTestGraph, MANIFEST } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
 import { asyncLoaders, tokenizeNodeOptions } from "./run/node-options.js";
+import type { ObservedClosure } from "./run/observed.js";
 import { runNodeTest } from "./run/run.js";
 
 /** One project as `createNodeTestAdapter` resolved it. */
@@ -81,6 +82,8 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     }
   };
   notes();
+  /** Test files already named by {@link bareNote}. */
+  const bare = new Set<RelativePath>();
 
   return {
     name: "node-test",
@@ -156,6 +159,8 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           : { env: { ...process.env, TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir } }),
       });
       observed.record(seen, new Set(files));
+      const named = bareNote(seen, bare);
+      if (named !== null) note(named);
       return report;
     },
     close: async () => {},
@@ -183,6 +188,24 @@ function loaderThreadNotes(project: NodeTestProject): string[] {
     (loader) =>
       `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`,
   );
+}
+
+/**
+ * Lessons.md defect 6: test files whose run loaded nothing beyond themselves
+ * and a manifest, each named once (`named`), so their author can declare
+ * what they reach through a spawned process or a `readFileSync` in
+ * `inputs`. `null` when this run found none not named before.
+ */
+function bareNote(seen: readonly ObservedClosure[], named: Set<RelativePath>): string | null {
+  const found = seen
+    .filter(({ testFile, paths }) =>
+      paths.every((p) => p === testFile.path || MANIFEST.test(basename(p))),
+    )
+    .map((c) => c.testFile.path)
+    .filter((path) => !named.has(path));
+  if (found.length === 0) return null;
+  for (const path of found) named.add(path);
+  return `${found.length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${found.sort(compare).join(", ")}`;
 }
 
 /** A run of a project that cannot run: nothing completed (001 D12). */
