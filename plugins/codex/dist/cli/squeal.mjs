@@ -1786,7 +1786,7 @@ var init_types = __esm({
 });
 
 // src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
   let inheritedCount = 0;
@@ -1810,6 +1810,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    ...isSlow === void 0 ? {} : { slowPending: countSlowPending(states, keys, isSlow) },
     ...awaiting ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
   };
@@ -1821,6 +1822,12 @@ function readRefined(store, worktreeId) {
 }
 function isPending(header) {
   return header.counts.pending + header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+}
+function isFastPending(header) {
+  const slow = header.slowPending;
+  const checks = header.counts.pending - (slow?.checks ?? 0);
+  const files = header.testFilesWithoutChecks.pending - (slow?.testFilesWithoutChecks ?? 0);
+  return checks + files > 0 || header.runnerPartPending === true;
 }
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
@@ -1838,6 +1845,26 @@ function countFilesWithoutChecks(states, keys) {
     counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
   }
   return counts;
+}
+function countSlowPending(states, keys, isSlow) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const files = /* @__PURE__ */ new Set();
+  let checks = 0;
+  for (const state of states) {
+    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    checks++;
+    files.add(testFileKeyOf(state.check));
+  }
+  let testFilesWithoutChecks = 0;
+  for (const row of keys) {
+    const id2 = testFileId(row.testFile);
+    if (withChecks.has(id2) || !hasKey(row) || row.pending === null || !isSlow(row.testFile)) {
+      continue;
+    }
+    testFilesWithoutChecks++;
+    files.add(id2);
+  }
+  return { testFiles: files.size, checks, testFilesWithoutChecks };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -1994,6 +2021,7 @@ __export(state_exports, {
   describeFailure: () => describeFailure,
   formatCheck: () => formatCheck,
   fullSuiteText: () => fullSuiteText,
+  isFastPending: () => isFastPending,
   isPending: () => isPending,
   parseCheck: () => parseCheck,
   readHeader: () => readHeader,
@@ -7217,14 +7245,21 @@ var init_slow_tier = __esm({
           return null;
         }
         if (this.host.fastPending()) return null;
-        const idle2 = consumersIdle(context.store, context.worktreeId, context.now());
-        const runAll = ledger.checkpoints.active?.record.kind === "run-all";
-        const ref2 = queued.find(
-          (r) => idle2 || this.#requested || runAll && ledger.checkpoints.idFor(r) !== null
-        );
+        const triggered = this.#trigger(context, ledger);
+        const ref2 = queued.find(triggered);
         if (ref2 !== void 0) return ref2;
         this.#arm();
         return null;
+      }
+      /**
+       * Under the lock: whether a trigger lets a slow file run now. Idle or absent
+       * consumers, an open `run --slow` request, or the file's open `run --all`
+       * checkpoint.
+       */
+      #trigger(context, ledger) {
+        const idle2 = consumersIdle(context.store, context.worktreeId, context.now());
+        const runAll = ledger.checkpoints.active?.record.kind === "run-all";
+        return (ref2) => idle2 || this.#requested || runAll && ledger.checkpoints.idFor(ref2) !== null;
       }
       /** The load guard (D3) with the pass's remaining budget; the load it runs under at the bound. */
       async #waitForCapacity(context) {
@@ -7253,12 +7288,15 @@ var init_slow_tier = __esm({
       }
       /**
        * Under the lock, after the slot and the guard: the one-file tier, unless
-       * fast work arrived meanwhile, the file left the queue or class, or the
-       * store now holds a result that may stand for it (`Ledger.lookup`).
+       * fast work arrived meanwhile, the file left the queue or class, its
+       * trigger is gone (a consumer entered a turn during the wait; the file
+       * stays queued and the pass keeps its budget), or the store now holds a
+       * result that may stand for it (`Ledger.lookup`).
        */
       #select(ref2, ranUnderLoad) {
         const { context, ledger } = this.host.started();
         if (this.host.fastPending() || !ledger.queue.has(ref2) || !ledger.queue.isSlow(ref2)) return null;
+        if (!this.#trigger(context, ledger)(ref2)) return null;
         const file = ledger.file(ref2);
         const key2 = file?.key ?? null;
         const checkpointId = ledger.checkpoints.idFor(ref2);
@@ -29119,9 +29157,10 @@ function observedClosure(testFile, absolute, graphs2, preloads, paths) {
   const loaded = new Set(edges.map((e) => e.url));
   const fileRoots = [entry2];
   const preloadRoots = [];
-  for (const { parent: parent2, url, specifier } of edges) {
+  for (const { parent: parent2, url, specifier, preload } of edges) {
     if (url === entry2 || parent2 !== null && loaded.has(parent2)) continue;
-    (specifier !== null && preloads.has(specifier) ? preloadRoots : fileRoots).push(url);
+    const ofPreload = preload || specifier !== null && preloads.has(specifier);
+    (ofPreload ? preloadRoots : fileRoots).push(url);
   }
   return {
     testFile,
@@ -29134,12 +29173,13 @@ function parseEdges(text2) {
   for (const line of text2.split("\n")) {
     if (line.trim() === "") continue;
     try {
-      const { parent: parent2, url, specifier } = JSON.parse(line);
+      const { parent: parent2, url, specifier, preload } = JSON.parse(line);
       if (typeof url !== "string") continue;
       edges.push({
         parent: typeof parent2 === "string" ? parent2 : null,
         url,
-        specifier: typeof specifier === "string" ? specifier : null
+        specifier: typeof specifier === "string" ? specifier : null,
+        preload: preload === true
       });
     } catch {
     }
@@ -29780,7 +29820,7 @@ var init_adapter2 = __esm({
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
-    NODE_TEST_ADAPTER_VERSION = "7";
+    NODE_TEST_ADAPTER_VERSION = "8";
   }
 });
 
@@ -30155,7 +30195,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.47";
+  if (true) return "0.1.48";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

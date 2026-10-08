@@ -295,7 +295,7 @@ var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
   let inheritedCount = 0;
@@ -319,6 +319,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    ...isSlow === void 0 ? {} : { slowPending: countSlowPending(states, keys, isSlow) },
     ...awaiting ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
   };
@@ -344,6 +345,26 @@ function countFilesWithoutChecks(states, keys) {
     counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
   }
   return counts;
+}
+function countSlowPending(states, keys, isSlow) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const files = /* @__PURE__ */ new Set();
+  let checks = 0;
+  for (const state of states) {
+    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    checks++;
+    files.add(testFileKeyOf(state.check));
+  }
+  let testFilesWithoutChecks = 0;
+  for (const row of keys) {
+    const id = testFileId(row.testFile);
+    if (withChecks.has(id) || !hasKey(row) || row.pending === null || !isSlow(row.testFile)) {
+      continue;
+    }
+    testFilesWithoutChecks++;
+    files.add(id);
+  }
+  return { testFiles: files.size, checks, testFilesWithoutChecks };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -3098,7 +3119,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.47";
+  if (true) return "0.1.48";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3525,6 +3546,9 @@ function submitPrompt(input, location2, deps, options) {
     return withPrimer(registration2, deps.command, coversNodeTest(location2.root));
   });
 }
+
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/harness/codex/output.ts
 var CONTEXT_CAP_CHARS = 8e3;
