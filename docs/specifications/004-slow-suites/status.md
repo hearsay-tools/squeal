@@ -24,6 +24,8 @@ Started: 2026-10-08
 
 - 2026-10-09, wave 1.5 (004-20, 003-39), 0.1.48: B1, the slow tier checks its trigger again after the slot and the guard, through one predicate with the pre-wait check; a file whose trigger is gone stays queued with the pass's remaining budget. B2, Stop waits only for fast pending work (`isFastPending`); slow files stay in status and in `endTurn`'s idle snapshot. Type changes, additive: `SlowPendingCounts` and the optional `StatusHeader.slowPending` (filled only when a caller passes a slow predicate; only Stop does so far, 004-15 builds the slow-tier line on it), `readHeader`'s optional `isSlow` parameter. S1, a preload's `createRequire` helper is with the preloads (003-39, spec 003 D5 and `status.md`). `slow-tier.ts` is 327 lines. Re-review 004-21 dispatched.
 
+- 2026-10-09, re-review 004-21 (`reviews/wave-1.5.md`, PASS at `e9758a6`, gpt-6.1-sol): B1, B2 and the original S1 closed by independent probes on Node 22 and 24, the torn-read case included. Two nonblocking should-fixes from 003-39's preload tag, S2 (an `eval` Worker) and S3 (a test-spawned child's own `--require`), go to row 003-40. The slice is accepted; inputs for 004-15 (populate `slowPending` for status callers in one transaction) kept in the review's last section.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.

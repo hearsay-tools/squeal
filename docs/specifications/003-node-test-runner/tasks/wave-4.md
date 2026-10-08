@@ -29,3 +29,17 @@ Owns: `src/runners/node-test/**`, `test/runners/node-test/**`, `test/integration
 Done when: probes as tests (a `createRequire(package.json)` load re-runs only its file; a slow project's spawned CLI helper edit re-runs its file and `slow-spawn.test.ts` flips; a fast project is unchanged); the note test; lint, typecheck, full suite on Node 24 and 22.
 
 Use /worker.
+
+## 003-40 a preload phase belongs to the project only at the project's own startup (004 reviews/wave-1.5.md S2, S3)
+
+Outcome: what an `eval` Worker or a process the test spawns loads before its entry stays in that test file's closure; only the project's own preloads go to the environment.
+
+Read: 004 `reviews/wave-1.5.md` S2 and S3 and their probes; `tasks/003-37/notes.md`; spec 003 D5 as amended by 003-39.
+
+Shape: repair. Test first: both probes fail on `e9758a6` on Node 22 and 24, each beside an unrelated second file that must not be affected. Seam: the recorder (`src/runners/node-test/runtime/recorder.cjs:34`) tags `preload` only in the test file's own process during the project's startup, never in a Worker started with `eval: true` and never in a child the test spawned (it knows the run's process, for instance by the pid the runner started, or by a variable the runner sets that a child's own startup clears); `observedClosure` (`run/observed.ts:63`) unchanged in shape. Keep both original S1 probes, the slow spawned-CLI test and `adapter-attribution.test.ts` passing. Raise `NODE_TEST_ADAPTER_VERSION` if keys change; amend spec 003 D5 with a dated `status.md` line.
+
+Owns: `src/runners/node-test/runtime/recorder.cjs`, `src/runners/node-test/run/observed.ts`, `src/runners/node-test/adapter.ts` (the version), `test/runners/node-test/**`, fixtures under `test/fixtures/node-test/`, spec 003 D5 and `status.md`. Leave alone: `src/runners/node-test/run/run.ts` and the rest of `run/` (004-18 is running there), the scheduler, the daemon.
+
+Done when: both probes are tests on Node 22 and 24; existing attribution tests unchanged; lint, typecheck, full suite on Node 24 and 22.
+
+Use /worker.
