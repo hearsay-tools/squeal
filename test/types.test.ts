@@ -8,7 +8,7 @@ describe("core types", () => {
       stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
-      observe: { runtimeInputs: false },
+      observe: { runtimeInputs: true },
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
       nodeTest: [],

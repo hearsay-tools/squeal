@@ -125,8 +125,7 @@ export const DEFAULT_POLICY: Policy = {
   stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
-  // Off until reviews/wave-12d.md B1 to B6 are repaired (human, 2026-10-08).
-  observe: { runtimeInputs: false },
+  observe: { runtimeInputs: true },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
