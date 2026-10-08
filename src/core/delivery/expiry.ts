@@ -119,11 +119,30 @@ export function dropGoneHarnesses(
   return dropped;
 }
 
-/** Unregisters `consumer` the way `HarnessDelivery.unregister` does. Call inside a transaction. */
+/**
+ * Unregisters `consumer` the way `HarnessDelivery.unregister` does, and
+ * stamps the worktree's last departure. Call inside a transaction.
+ */
 export function drop(store: Store, consumer: Consumer, at: EpochMs): void {
   park(store, consumer, at);
   store.consumers.unregister(consumer);
   forget(store, consumer);
+  store.meta.set(departedMetaKey(consumer.worktreeId), String(at));
+}
+
+/** `meta` key of the time a consumer of the worktree last unregistered or was dropped. */
+export function departedMetaKey(worktreeId: WorktreeId): string {
+  return `departed:${worktreeId}`;
+}
+
+/**
+ * When a consumer of `worktreeId` last left (lessons, defect 24): a session
+ * that registers and ends between two of the daemon's counts still makes a
+ * daemon that had it exit. `null` when none left or the row is unreadable.
+ */
+export function lastDeparture(store: Store, worktreeId: WorktreeId): EpochMs | null {
+  const at = Number(store.meta.get(departedMetaKey(worktreeId)) ?? Number.NaN);
+  return Number.isFinite(at) ? at : null;
 }
 
 /** Drops what an unregistered consumer was told, its turn state and its harness process, beside its view. */

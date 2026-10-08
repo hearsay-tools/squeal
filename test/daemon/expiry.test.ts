@@ -41,7 +41,7 @@ describe("daemon expiry timer (D10, task 001-47)", () => {
         linkedDir: null,
         timings: { checkMs: 10, expireMs: 10, pruneMs: 60 * MIN, firstPruneMs: 60 * MIN },
         heartbeatMs: 60 * MIN,
-        presence: { lastPresentAt: null },
+        presence: { since: 0, lastPresentAt: null },
         lastActive: () => clock,
         active: () => {},
         note: () => {},
