@@ -53,18 +53,44 @@ interface Entry {
   recent: boolean;
 }
 
+const NOTHING_SLOW = (): boolean => false;
+
 /**
  * Test files waiting for a tier, one entry each. Re-planning between tiers
  * (D5 step 5) is `ordered()` on the queue as the latest revision left it.
+ *
+ * Slow files (spec 004 D1) form their own class (D2): `ordered`, `hasRecent`
+ * and the starvation bound see the fast entries only, `orderedSlow` the slow
+ * ones. Which file is slow is read when asked (`setSlow`), so a policy reload
+ * moves queued files between the classes.
  */
 export class RunQueue {
   readonly #entries = new Map<string, Entry>();
   #seq = 0;
   /** Tiers in a row that took recent entries only while others waited. */
   #recentTiers = 0;
+  #isSlow: (ref: TestFileRef) => boolean = NOTHING_SLOW;
 
+  /** Every entry, fast and slow. */
   get size(): number {
     return this.#entries.size;
+  }
+
+  get fastSize(): number {
+    return this.#fast().length;
+  }
+
+  get slowSize(): number {
+    return this.#entries.size - this.fastSize;
+  }
+
+  /** Spec 004 D1's `isSlow` under the policy in force. */
+  setSlow(isSlow: (ref: TestFileRef) => boolean): void {
+    this.#isSlow = isSlow;
+  }
+
+  isSlow(ref: TestFileRef): boolean {
+    return this.#isSlow(ref);
   }
 
   has(ref: TestFileRef): boolean {
@@ -107,13 +133,12 @@ export class RunQueue {
 
   /** Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5 as amended). */
   hasRecent(): boolean {
-    for (const entry of this.#entries.values()) if (entry.recent) return true;
-    return false;
+    return this.#fast().some((entry) => entry.recent);
   }
 
   /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */
   tierSelected(tookBacklog: boolean): void {
-    const waiting = [...this.#entries.values()].some((entry) => !entry.recent);
+    const waiting = this.#fast().some((entry) => !entry.recent);
     this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
   }
 
@@ -126,26 +151,48 @@ export class RunQueue {
    * duration first, so a slow integration file never delays the edited
    * module's own unit test." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
    * recent entries only (`tierSelected`), the backlog comes first once.
+   * Fast entries only.
    */
   ordered(durationOf: DurationOf = () => null): TestFileRef[] {
     const first = this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER ? -1 : 1;
-    const durations = new Map<Entry, number>();
-    for (const entry of this.#entries.values()) {
-      durations.set(entry, durationOf(entry.ref) ?? Number.POSITIVE_INFINITY);
-    }
-    const duration = (entry: Entry) => durations.get(entry) ?? Number.POSITIVE_INFINITY;
-    return [...this.#entries.values()]
-      .sort(
-        (a, b) =>
-          first * (Number(b.recent) - Number(a.recent)) ||
-          a.priority - b.priority ||
-          byDuration(duration(a), duration(b)) ||
-          a.seq - b.seq ||
-          compare(a.ref.project, b.ref.project) ||
-          compare(a.ref.path, b.ref.path),
-      )
-      .map((entry) => entry.ref);
+    return sorted(this.#fast(), durationOf, first);
   }
+
+  /**
+   * The slow entries in the order the slow tier runs them, one at a time
+   * (spec 004 D2): `ordered`'s, where recent work comes first too.
+   */
+  orderedSlow(durationOf: DurationOf = () => null): TestFileRef[] {
+    return sorted(
+      [...this.#entries.values()].filter((entry) => this.#isSlow(entry.ref)),
+      durationOf,
+      1,
+    );
+  }
+
+  #fast(): Entry[] {
+    return [...this.#entries.values()].filter((entry) => !this.#isSlow(entry.ref));
+  }
+}
+
+/** `RunQueue.ordered`'s sort; `first` is 1 for recent entries first, -1 for the backlog first. */
+function sorted(entries: readonly Entry[], durationOf: DurationOf, first: 1 | -1): TestFileRef[] {
+  const durations = new Map<Entry, number>();
+  for (const entry of entries) {
+    durations.set(entry, durationOf(entry.ref) ?? Number.POSITIVE_INFINITY);
+  }
+  const duration = (entry: Entry) => durations.get(entry) ?? Number.POSITIVE_INFINITY;
+  return [...entries]
+    .sort(
+      (a, b) =>
+        first * (Number(b.recent) - Number(a.recent)) ||
+        a.priority - b.priority ||
+        byDuration(duration(a), duration(b)) ||
+        a.seq - b.seq ||
+        compare(a.ref.project, b.ref.project) ||
+        compare(a.ref.path, b.ref.path),
+    )
+    .map((entry) => entry.ref);
 }
 
 /** Ascending; two unknown (infinite) durations are equal. */
