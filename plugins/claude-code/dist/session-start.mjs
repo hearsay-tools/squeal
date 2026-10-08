@@ -67,6 +67,78 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// src/core/keys/glob.ts
+function globToRegExp(glob) {
+  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
+  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function compile(glob, original) {
+  let out = "";
+  let i = 0;
+  while (i < glob.length) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        const atStart = i === 0 || glob[i - 1] === "/";
+        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+        if (atStart && atEnd) {
+          if (i + 2 === glob.length) out += ".+";
+          else out += "(?:.+/)?";
+          i += 3;
+          continue;
+        }
+      }
+      out += "[^/]*";
+      i += glob[i + 1] === "*" ? 2 : 1;
+    } else if (char === "?") {
+      out += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
+      const negated = body.startsWith("!");
+      if (negated) body = body.slice(1);
+      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
+      i = end + 1;
+    } else if (char === "{") {
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
+      i = end + 1;
+    } else {
+      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
+      i++;
+    }
+  }
+  return out;
+}
+function matchingBrace(glob, open, original) {
+  let depth = 0;
+  for (let i = open; i < glob.length; i++) {
+    if (glob[i] === "{") depth++;
+    else if (glob[i] === "}" && --depth === 0) return i;
+  }
+  throw new Error(`squeal: unclosed { in input glob: ${original}`);
+}
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}") depth--;
+    else if (body[i] === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -176,6 +248,26 @@ function bootstrappedMetaKey(worktreeId) {
 
 // src/core/types/delivery.ts
 var MAIN_AGENT = "main";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false
+  },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+  nodeTest: [],
+  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5 },
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
 
 // src/core/types/scheduler.ts
 var MAX_PERSISTED_NOTES = 20;
@@ -2896,7 +2988,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.44";
+  if (true) return "0.1.45";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3050,18 +3142,216 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
+// src/core/daemon/policy.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join10 } from "node:path";
+
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute3, posix } from "node:path";
+function compiles(globs2) {
+  for (const glob of globs2) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
+    }
+  }
+  return null;
+}
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+var insideRoot = (v) => {
+  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  return isAbsolute3(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+};
+var FIELDS = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  node: nonEmptyString,
+  argv: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean
+};
+var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+function nodeTestProjects(value, path) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry2, index) => {
+    const at2 = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at2, kept);
+    if (problem === null) kept.push(withDefaults(entry2));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function entryProblem(entry2, at2, kept) {
+  if (!isRecord(entry2))
+    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  for (const key of Object.keys(entry2)) {
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(FIELDS)) {
+    const given = entry2[key];
+    if (given === void 0 && !REQUIRED.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at2}.${key}" ${why}; ${skipped}`;
+  }
+  if (kept.some((project) => project.name === named)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  }
+  return null;
+}
+
+// src/core/daemon/policy-slow.ts
+function slowInclude(value) {
+  if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
+    return "an array of strings";
+  }
+  const kept = [];
+  const problems = [];
+  value.forEach((glob, index) => {
+    const bad = compiles([glob]);
+    if (bad === null) kept.push(glob);
+    else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
+  });
+  return { kept, problems };
+}
+
+// src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
+var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings2(v) === null;
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs2);
+};
+var atLeastZero = (v) => isNumber2(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero = (v) => isNumber2(v) && v > 0 ? null : "a number > 0";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
+};
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean2 },
+  stop: {
+    blockOnKnownFailures: boolean2,
+    requireFullSuite: boolean2,
+    waitMs: atLeastZero,
+    requireSlowSuite: boolean2
+  },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+  inputs,
+  observe: { runtimeInputs: boolean2 },
+  env: { allowlist: strings2 },
+  runner: {
+    tierSize: positiveInteger,
+    backlogTierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger)
+  },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  slow: {
+    include: slowInclude,
+    maxWorkers: positiveInteger,
+    maxLoadPerCpu: aboveZero,
+    maxDeferMs: atLeastZero
+  },
+  daemon: { idleExitMinutes: aboveZero },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+};
+function loadPolicy(root) {
+  let text;
+  try {
+    text = readFileSync5(join10(root, POLICY_FILE), "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return defaultsBecause(`not valid JSON (${error.message})`);
+  }
+  if (!isRecord(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
+  }
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged, problems };
+}
+function readPolicy(root) {
+  return loadPolicy(root).policy;
+}
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isRecord(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
+  }
+  return result;
+}
+function isNumber2(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 // src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND) {
+function primer(command = SQUEAL_COMMAND, nodeTest = false) {
+  const runners = nodeTest ? "Vitest and node:test" : "Vitest";
+  const run = nodeTest ? "Vitest or node:test" : "Vitest";
   return [
-    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
     `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     "Squeal does not cover typecheck, build or other test suites."
   ].join(" ");
 }
 var PRIMER = primer();
-function withPrimer(registration2, command = SQUEAL_COMMAND) {
-  const tail = primer(command);
+function coversNodeTest(root) {
+  return readPolicy(root).nodeTest.length > 0;
+}
+function withPrimer(registration2, command = SQUEAL_COMMAND, nodeTest = false) {
+  const tail = primer(command, nodeTest);
   const max = MESSAGE_CAP_CHARS - tail.length - 2;
   return `${formatRegistration(registration2, max, command)}
 
@@ -3113,7 +3403,8 @@ async function startSession(input, location2, deps) {
     ensured = true;
     if (await ensure(location2, deps, context) === "spawned") await settle(context, deps);
     const main = input.agent_id === void 0;
-    if (main && input.source === "compact" && isRegistered(context)) return primer(deps.command);
+    if (main && input.source === "compact" && isRegistered(context))
+      return primer(deps.command, coversNodeTest(location2.root));
     if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
@@ -3122,7 +3413,7 @@ async function startSession(input, location2, deps) {
     }
     const atStart = input.source !== "compact";
     const registration2 = await context.delivery.register(context.consumer, { atStart });
-    return withPrimer(registration2, deps.command);
+    return withPrimer(registration2, deps.command, coversNodeTest(location2.root));
   });
   if (!ensured) await ensure(location2, deps);
   return text;
@@ -3151,7 +3442,7 @@ var sessionStart = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync5 } from "node:fs";
+import { readFileSync as readFileSync6 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/claude-code/input.ts
@@ -3220,7 +3511,7 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync5(0, "utf8");
+    stdin = readFileSync6(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {

@@ -2632,7 +2632,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.44";
+  if (true) return "0.1.45";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2741,17 +2741,6 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-
-// src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND) {
-  return [
-    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
-    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    "Squeal does not cover typecheck, build or other test suites."
-  ].join(" ");
-}
-var PRIMER = primer();
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute2, posix } from "node:path";
@@ -2887,6 +2876,19 @@ var SHAPE = {
 function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
+
+// src/harness/shared/primer.ts
+function primer(command = SQUEAL_COMMAND, nodeTest = false) {
+  const runners = nodeTest ? "Vitest and node:test" : "Vitest";
+  const run = nodeTest ? "Vitest or node:test" : "Vitest";
+  return [
+    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
 
 // src/harness/shared/sweep.ts
 async function unregisterSession(context, sessionId, options) {

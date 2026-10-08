@@ -3128,7 +3128,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.44";
+  if (true) return "0.1.45";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3311,17 +3311,6 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
-
-// src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND) {
-  return [
-    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
-    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    "Squeal does not cover typecheck, build or other test suites."
-  ].join(" ");
-}
-var PRIMER = primer();
 
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync5 } from "node:fs";
@@ -3516,6 +3505,19 @@ function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// src/harness/shared/primer.ts
+function primer(command = SQUEAL_COMMAND, nodeTest = false) {
+  const runners = nodeTest ? "Vitest and node:test" : "Vitest";
+  const run = nodeTest ? "Vitest or node:test" : "Vitest";
+  return [
+    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
+
 // src/harness/shared/text.ts
 var LISTED_FAILURES = 10;
 function headerLine2(consumer, header, command) {
@@ -3651,10 +3653,10 @@ var CONTEXT_CAP_CHARS = 8e3;
 var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
 function capContext(text, command = SQUEAL_COMMAND) {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const end = `
+  const ends = [false, true].map((nodeTest) => `
 
-${primer(command)}`;
-  const tail = text.endsWith(end) ? end : "";
+${primer(command, nodeTest)}`);
+  const tail = ends.find((end) => text.endsWith(end)) ?? "";
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
