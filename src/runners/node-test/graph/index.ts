@@ -11,6 +11,7 @@ import { parserReady } from "./parse.js";
 import { createResolver } from "./resolver.js";
 
 export type { AffectedPaths, StaticClosure, TestFileClosure } from "./graph.js";
+export { MANIFEST } from "./graph.js";
 
 export interface NodeTestGraphOptions {
   /** The worktree root; closures hold paths inside it only. */

@@ -13,19 +13,12 @@ import { readRuns, until } from "../e2e/support.js";
 /*
  * Spec 004 D5 and goal 3 for a slow node:test project shaped like cezarion's
  * `test:package`: its test spawns the package's CLI in a process of its own,
- * and the CLI loads a helper the test file never imports. 001-132 observes
- * what spawned processes load under Vitest; 004-13 asked whether a node:test
- * file's key holds what its spawned CLI loaded.
- *
- * It does not, and this test pins the gap until a runner row closes it (the
- * 004-13 report). The node:test runner loads its module recorder through argv
- * `--require` (`runNodeTest`), which a spawned `node` does not inherit; it
- * goes into `NODE_OPTIONS` only when the project's own `NODE_OPTIONS` holds a
- * `--require`. 001-132's recorder, which follows spawns, is stripped from a
- * node:test project's environment (`projectEnv`, 003-35). Even with the
- * recorder in the child, `observedClosure` treats the CLI's entry (no parent)
- * as a preload root, so the helper would key the project's environment, not
- * the file. When the edit re-runs the file, flip the last three expectations.
+ * and the CLI loads a helper the test file never imports. 004-13 found the
+ * helper in no key; rows 003-37 and 004-19 closed it: for a slow project the
+ * node:test runner puts its module recorder in `NODE_OPTIONS` (`childEnv`),
+ * which the spawned `node` inherits, and `observedClosure` gives the CLI's
+ * loads to the test file, since its entry point is no preload. An edit of the
+ * helper re-runs the file, which now fails.
  */
 
 const REPO = resolve(import.meta.dirname, "../..");
@@ -106,27 +99,22 @@ const ranFiles = (root: string) =>
   readRuns(join(root, ".git/squeal/store.sqlite"), worktreeIdFor(root)).flatMap((r) => r.testFiles);
 
 describe("a slow node:test file whose test spawns the package's CLI", () => {
-  it(
-    "keeps a stale pass when only the spawned CLI loaded the edited helper (the gap)",
-    SLOW,
-    async () => {
-      const root = createRepo();
-      await startDaemon(root);
-      const baseline = await settle(root, "the baseline");
-      expect(baseline.knownFailures).toEqual([]);
-      expect(ranFiles(root)).toEqual([TEST_FILE]);
+  it("re-runs the file when only the spawned CLI loaded the edited helper", SLOW, async () => {
+    const root = createRepo();
+    await startDaemon(root);
+    const baseline = await settle(root, "the baseline");
+    expect(baseline.knownFailures).toEqual([]);
+    expect(ranFiles(root)).toEqual([TEST_FILE]);
 
-      // The CLI now prints "hi": the file would fail if it ran again. It does not run, and its
-      // pass stays current at the new revision.
-      const at = baseline.revision;
-      writeFileSync(join(root, HELPER), `export const greeting = "hi";\n`);
-      const edited = await settle(root, "the edit of the helper", at);
-      expect(edited.revision).toBeGreaterThan(at);
-      expect(ranFiles(root)).toEqual([TEST_FILE]);
-      expect(edited.knownFailures).toEqual([]);
-      expect(
-        execFileSync(process.execPath, [join(root, "bin/cli.mjs")], { encoding: "utf8" }),
-      ).toBe("hi\n");
-    },
-  );
+    // The CLI now prints "hi": the file runs again and fails.
+    const at = baseline.revision;
+    writeFileSync(join(root, HELPER), `export const greeting = "hi";\n`);
+    const edited = await settle(root, "the edit of the helper", at);
+    expect(edited.revision).toBeGreaterThan(at);
+    expect(ranFiles(root)).toEqual([TEST_FILE, TEST_FILE]);
+    expect(edited.knownFailures.map((f) => f.check.testPath)).toEqual([TEST_FILE]);
+    expect(execFileSync(process.execPath, [join(root, "bin/cli.mjs")], { encoding: "utf8" })).toBe(
+      "hi\n",
+    );
+  });
 });
