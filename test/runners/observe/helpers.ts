@@ -71,6 +71,7 @@ export function observe(
     stdout,
     paths: rel(recorded?.paths),
     listed: rel(recorded?.listed),
+    recursive: rel(recorded?.recursive),
     written: rel(recorded?.written),
   };
 }

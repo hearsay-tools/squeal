@@ -22,4 +22,13 @@ describe("takeRecorded", () => {
     expect([...(entry?.paths ?? [])]).toEqual(["/w/data.txt"]);
     expect([...(entry?.listed ?? [])]).toEqual([]);
   });
+
+  it("reads recursive listings, each a listing too (task 001-139)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-read-"));
+    const line = { t: "/w/t.ts", l: ["/w/tree", "/w/flat"], r: ["/w/tree", "/w/\u0000x"] };
+    writeFileSync(join(dir, "1.ndjson"), `${JSON.stringify(line)}\n`);
+    const entry = takeRecorded(dir).get("/w/t.ts");
+    expect([...(entry?.listed ?? [])]).toEqual(["/w/tree", "/w/flat"]);
+    expect([...(entry?.recursive ?? [])]).toEqual(["/w/tree"]);
+  });
 });

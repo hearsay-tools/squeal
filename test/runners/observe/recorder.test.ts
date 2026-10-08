@@ -55,4 +55,33 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
     expect(seen.written).toEqual(["made", "out.txt"]);
     expect(seen.listed).toEqual(["listed"]);
   });
+
+  it("records a listing with recursive: true as recursive in every form, and only those (task 001-139)", () => {
+    const forms = ["sync", "callback", "promise", "module", "dirsync", "dircallback", "dirpromise"];
+    const shallow = ["types", "encoding", "bare", "off"];
+    const seen = observe({
+      "main.mjs": [
+        'import { opendir, opendirSync, promises, readdir, readdirSync } from "node:fs";',
+        'import { readdir as readdirModule } from "node:fs/promises";',
+        "const on = { recursive: true };",
+        'const sync = readdirSync("sync", on);',
+        'const callback = await new Promise((r) => readdir("callback", on, (e, names) => r(names)));',
+        'const promise = await promises.readdir("promise", on);',
+        'const module = await readdirModule("module", on);',
+        'opendirSync("dirsync", on).closeSync();',
+        'await new Promise((r) => opendir("dircallback", on, (e, dir) => dir.close(r)));',
+        'await (await promises.opendir("dirpromise", on)).close();',
+        'readdirSync("types", { withFileTypes: true });',
+        'readdirSync("encoding", "utf8");',
+        'await new Promise((r) => readdir("bare", r));',
+        'await promises.readdir("off", { recursive: false });',
+        "process.stdout.write(JSON.stringify([sync, callback, promise, module].map((n) => n.sort())));",
+      ].join("\n"),
+      ...Object.fromEntries([...forms, ...shallow].map((dir) => [`${dir}/sub/a.txt`, ""])),
+    });
+    // the caller's result is unchanged
+    expect(JSON.parse(seen.stdout)).toEqual(forms.slice(0, 4).map(() => ["sub", "sub/a.txt"]));
+    expect(seen.recursive).toEqual([...forms].sort());
+    expect(seen.listed).toEqual(expect.arrayContaining([...forms, ...shallow]));
+  });
 });
