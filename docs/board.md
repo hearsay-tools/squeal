@@ -228,6 +228,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-125 a daemon older than its hooks steps down | running (brief in `specifications/001-core-loop/tasks/wave-12.md`) | Defect 26: a 0.1.24 daemon served 0.1.31 hooks for 5 h. A newer hook asks it to finish its tier and exit; a current daemon starts. | Real old daemon steps down after its tier; equal or newer untouched. |
 | 001-126 status says what its lines mean | running (brief in `specifications/001-core-loop/tasks/wave-12.md`) | Defect 27: "none completed since revision 0" and "Inherited: 0" read as staleness. Reworded in status, headers and the skill. | Format tests for both states; e2e parsers pass. |
 | 001-127 research: do cezar's process-group tests fail under Squeal | running (brief in `specifications/001-core-loop/tasks/wave-12.md`) | Defect 28: cezar shutdown-parity S26 to S28 fail under Squeal, pass directly. `/researcher` on a cezar clone. | `research/process-group-tests-under-squeal.md` with a recommendation. |
+| 001-128 research: Squeal observes runtime inputs itself | running (brief in `specifications/001-core-loop/tasks/wave-12.md`) | Human's goal: no one writes `inputs` by hand. Trace the files each test run reads and the scripts it spawns (preload in the pool's workers, passed to children), store them with the result, re-key when they change; `inputs` stays as an override. Measured on `cezar`. | `research/observed-runtime-inputs.md` with a mechanism and a done-when. |
 
 ## Feature 002: Codex adapter
 

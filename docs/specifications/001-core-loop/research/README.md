@@ -100,3 +100,15 @@ Added 2026-10-08 from `lessons.md` defect 28. In cezar worktree `c8580be4` (HEAD
 2. If (b) or (c) fails and (a) does not: which property differs (session id, process group, controlling terminal, `TMPDIR`, cwd during the run, Vitest pool and isolation), established by changing one at a time.
 3. Whether the test or Squeal is wrong: what the test assumes about its own process group, and whether Squeal should run Vitest so a test sees the same session and group as under a shell.
 4. Recommendation: no change, a Squeal change (which), or a note for cezar's test.
+
+## Topic: observed-runtime-inputs
+
+Added 2026-10-08 from `lessons.md` defect 28's cause (cezar S26 to S28: a test spawns `scripts/mock-cursor-print.mjs`, which is outside its import closure, so fixing the mock left the old FAIL current) and the human's goal: Squeal builds and maintains the list of files a test reads at run time itself, so no human or agent has to write `inputs`.
+
+1. How Squeal can observe, per test file, the project files a run reads and the scripts it spawns, under Vitest 4 and 5 with the forks and threads pools: a preload through the pool's `execArgv` or `NODE_OPTIONS` (`module.registerHooks`, wrapping `fs` and `child_process`), propagation into child processes, and what is not seen (worker threads, `env: {}` children, native addons, `fs` through other bindings). Verify by experiment on a fixture and on a `cezar` clone (`runner-shutdown-parity.test.ts` must show `mock-cursor-print.mjs`).
+2. Read the `node:test` runner's observed closure (spec 003, 003-13, `src/runners/node-test/`): what it records and how; whether one mechanism can serve both runners.
+3. Attribution and noise: mapping reads to the test file that caused them when a worker runs several files; filtering to files the watcher tracks (inside the worktree, not ignored, not the snapshot); writes and temp files.
+4. Soundness and keys: storing observed paths with a result, re-keying when one changes, a file changed during the run (D5's stability check), a read that disappears in a later run, and the first run's empty set. How `inputs` remains as an override.
+5. Cost per test file and per run on `cezar`, and the number of test files whose closure grows.
+
+Recommendation: the mechanism, the D3 and D4 sentences it changes, and a board row's done-when (including cezar S26 to S28 re-running when the mock changes, with no `inputs`).
