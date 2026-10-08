@@ -253,7 +253,8 @@ var DEFAULT_POLICY = {
   stop: { blockOnKnownFailures: false, requireFullSuite: false, waitMs: 0 },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
-  observe: { runtimeInputs: true },
+  // Off until reviews/wave-12d.md B1 to B6 are repaired (human, 2026-10-08).
+  observe: { runtimeInputs: false },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
@@ -2887,7 +2888,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.35";
+  if (true) return "0.1.36";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
