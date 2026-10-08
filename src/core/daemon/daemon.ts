@@ -103,7 +103,7 @@ class Daemon {
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
-  readonly #presence: Presence = { lastPresentAt: null };
+  readonly #presence: Presence;
   #exit: Promise<DaemonExit> | null = null;
   #resolveExit: (exit: DaemonExit) => void = () => {};
   readonly #exited = new Promise<DaemonExit>((resolve) => {
@@ -119,6 +119,7 @@ class Daemon {
     this.#socketPath = socketPathFor(opened.worktreeId, options.env);
     this.#startedAt = this.#now();
     this.#lastActive = this.#startedAt;
+    this.#presence = { since: this.#startedAt, lastPresentAt: null };
   }
 
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {

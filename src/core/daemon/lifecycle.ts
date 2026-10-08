@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { dropGoneHarnesses, expireConsumers } from "../delivery/index.js";
+import { dropGoneHarnesses, expireConsumers, lastDeparture } from "../delivery/index.js";
 import { storePaths } from "../store/index.js";
 import type {
   AbsolutePath,
@@ -37,11 +37,14 @@ export interface DaemonTimings {
 }
 
 /**
- * When the daemon last counted a consumer of its worktree; `null` while it
- * never had one. Kept by the daemon, so a policy reload that restarts the
- * timers does not forget it.
+ * When the daemon last knew a consumer of its worktree registered, from its
+ * own count or a departure stamped since `since`; `null` while it never had
+ * one. Kept by the daemon, so a policy reload that restarts the timers does
+ * not forget it.
  */
 export interface Presence {
+  /** When the daemon started: a departure before it was another daemon's. */
+  readonly since: EpochMs;
   lastPresentAt: EpochMs | null;
 }
 
@@ -77,8 +80,9 @@ export interface TimerContext {
  *
  * Lessons, defect 24, the human's rule: the idle period is for a daemon that
  * never had a consumer (`squeal start`). One that had a consumer exits once
- * none was counted for `departureGraceMs`, measured from the last count that
- * saw one, so the exit comes at most the grace after the last consumer left.
+ * was registered for `departureGraceMs`, measured from the last count that
+ * saw one or the last departure stamped, whichever is later, so the exit
+ * comes at most the grace after the last consumer left.
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
  */
@@ -130,10 +134,16 @@ export function startTimers(context: TimerContext): () => void {
   };
   /** Counts the worktree's consumers; true when there is none. */
   const countPresence = (at: EpochMs): boolean => {
-    if (store.consumers.list(worktreeId).length === 0) return true;
-    presence.lastPresentAt = at;
-    context.active(at);
-    return false;
+    if (store.consumers.list(worktreeId).length > 0) {
+      presence.lastPresentAt = at;
+      context.active(at);
+      return false;
+    }
+    const left = lastDeparture(store, worktreeId);
+    if (left !== null && left >= presence.since) {
+      presence.lastPresentAt = Math.max(presence.lastPresentAt ?? left, left);
+    }
+    return true;
   };
   const departure = () =>
     attempt("departure check", () => {

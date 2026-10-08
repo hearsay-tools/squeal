@@ -8,7 +8,7 @@ import { recorded, SESSION, SUBAGENT, squealRepo } from "./helpers.js";
 /*
  * Lessons, defect 24; `research/harness-process-liveness.md`: a hook records
  * the harness it runs under with each registration, the nearest ancestor that
- * is not a shell, `CLAUDE_PID` under Claude Code.
+ * is not a shell, the process `CLAUDE_PID` names under Claude Code.
  */
 
 /** A process table: pid -> [comm, ppid, start time, state]. */
@@ -30,7 +30,7 @@ const found = (pid: number, startTime: number): HarnessProcess => ({
 describe("findHarnessProcess", () => {
   it("is the hook's parent when that is the harness (exec form, Codex)", () => {
     const read = table({ 40: ["codex", 30, 400], 30: ["node", 1, 300] });
-    expect(findHarnessProcess({ env: {}, ppid: 40, read, namespace: NS })).toEqual(found(40, 400));
+    expect(findHarnessProcess({ ppid: 40, read, namespace: NS })).toEqual(found(40, 400));
   });
 
   it("walks past the shell of a shell-form hook, and past launchers", () => {
@@ -39,26 +39,14 @@ describe("findHarnessProcess", () => {
       41: ["timeout", 40, 410],
       40: ["claude", 2, 400],
     });
-    expect(findHarnessProcess({ env: {}, ppid: 50, read, namespace: NS })).toEqual(found(40, 400));
-  });
-
-  it("takes CLAUDE_PID when the walk reaches it, whatever its name", () => {
-    const read = table({ 50: ["sh", 40, 500], 40: ["bash", 2, 400] });
-    const env = { CLAUDE_PID: "40" };
-    expect(findHarnessProcess({ env, ppid: 50, read, namespace: NS })).toEqual(found(40, 400));
-  });
-
-  it("ignores a CLAUDE_PID inherited from an outer Claude Code", () => {
-    const read = table({ 60: ["codex", 40, 600], 40: ["claude", 2, 400] });
-    const env = { CLAUDE_PID: "40" };
-    expect(findHarnessProcess({ env, ppid: 60, read, namespace: NS })).toEqual(found(60, 600));
+    expect(findHarnessProcess({ ppid: 50, read, namespace: NS })).toEqual(found(40, 400));
   });
 
   it("names no process when the harness died first, the walk runs out, or there is no /proc", () => {
     const orphan = table({ 50: ["sh", 9, 500], 9: ["systemd", 1, 90] });
-    expect(findHarnessProcess({ env: {}, ppid: 50, read: orphan, namespace: NS })).toBeNull();
+    expect(findHarnessProcess({ ppid: 50, read: orphan, namespace: NS })).toBeNull();
     const toInit = table({ 50: ["sh", 1, 500] });
-    expect(findHarnessProcess({ env: {}, ppid: 50, read: toInit, namespace: NS })).toBeNull();
+    expect(findHarnessProcess({ ppid: 50, read: toInit, namespace: NS })).toBeNull();
     const shells = table({
       50: ["sh", 51, 1],
       51: ["sh", 52, 1],
@@ -66,20 +54,18 @@ describe("findHarnessProcess", () => {
       53: ["sh", 54, 1],
       54: ["node", 2, 1],
     });
-    expect(findHarnessProcess({ env: {}, ppid: 50, read: shells, namespace: NS })).toBeNull();
+    expect(findHarnessProcess({ ppid: 50, read: shells, namespace: NS })).toBeNull();
     const zombie = table({ 40: ["claude", 2, 400, "Z"] });
-    expect(findHarnessProcess({ env: {}, ppid: 40, read: zombie, namespace: NS })).toBeNull();
+    expect(findHarnessProcess({ ppid: 40, read: zombie, namespace: NS })).toBeNull();
     const failing = () => {
       throw new Error("EACCES");
     };
-    expect(findHarnessProcess({ env: {}, ppid: 40, read: failing, namespace: NS })).toBeNull();
-    expect(findHarnessProcess({ env: {}, ppid: 40, read: table({}), namespace: () => null })).toBe(
-      null,
-    );
+    expect(findHarnessProcess({ ppid: 40, read: failing, namespace: NS })).toBeNull();
+    expect(findHarnessProcess({ ppid: 40, read: table({}), namespace: () => null })).toBe(null);
   });
 
   it.runIf(process.platform === "linux")("finds this test's parent from /proc", () => {
-    const harness = findHarnessProcess({ env: {} });
+    const harness = findHarnessProcess({});
     expect(harness?.pid).toBe(process.ppid);
     expect(harness?.pidNamespace).toBe(pidNamespace());
   });

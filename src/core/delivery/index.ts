@@ -8,7 +8,13 @@ export {
   type DeliveryOptions,
 } from "./delivery.js";
 export { type DeltaPlan, type PlanInput, planDelta } from "./delta.js";
-export { dropGoneHarnesses, type ExpiryOptions, expireConsumers } from "./expiry.js";
+export {
+  departedMetaKey,
+  dropGoneHarnesses,
+  type ExpiryOptions,
+  expireConsumers,
+  lastDeparture,
+} from "./expiry.js";
 export {
   formatDelta,
   formatRegistration,

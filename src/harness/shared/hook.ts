@@ -40,7 +40,7 @@ export interface HookDeps {
   readonly pollIntervalMs?: number;
   /**
    * The harness process a registration records (lessons, defect 24).
-   * Default: `findHarnessProcess` from this hook's parent and `env`.
+   * Default: `findHarnessProcess` from this hook's parent.
    */
   readonly harnessProcess?: () => HarnessProcess | null;
 }
@@ -59,7 +59,7 @@ export async function withContext<T>(
   const options: ContextOptions = {
     ...(deps.now === undefined ? {} : { now: deps.now }),
     ...(deps.pollIntervalMs === undefined ? {} : { pollIntervalMs: deps.pollIntervalMs }),
-    harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess({ env: deps.env })),
+    harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
     ...overrides,
   };
   const context = openContext(input, location, options);
