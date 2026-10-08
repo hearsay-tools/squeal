@@ -15,11 +15,13 @@ Squeal runs this repository's Vitest tests in the background after every edit, a
 2. **On a FAIL**, read its first error line and location. When they are not enough, run the message's last line, `Full output: squeal why "<name>"`, for the full output and history. After your fix the recovery arrives as `FAIL -> PASS`. Done when each FAIL is fixed or you can say why it stays.
 3. **Wait only when you need a result before your next step**, for example before saying the task is done. By default results arrive with your next tool call, so keep working. When you need them now, run `squeal status --wait 60000`: it returns as soon as nothing is pending or a check changed. Done when its first line says `Returned on quiet` or `Returned on news`.
 4. **Before saying the task is done**, claim only what the latest header or `squeal status` shows. `Known failures: 0` with checks pending means "no known failures yet"; say what is still pending, and whether a full-suite checkpoint completed at the current revision. Done when every claim about tests matches a line of `squeal status`.
-5. **Run tests yourself only** when a header says no daemon is validating, a result is unknown, or the repository's own gate (CI, a pre-commit hook, the task) requires a run. Squeal covers the Vitest tests, and the node:test tests of the `nodeTest` projects `squeal.config.json` lists: run typecheck, build and other suites as the repository says.
+5. **Run tests yourself only** when a header says no daemon is validating, a result is unknown, or the repository's own gate (CI, a pre-commit hook, the task) requires a run. Squeal covers the Vitest tests, the node:test tests of the `nodeTest` projects `squeal.config.json` lists, and the slow test files its `slow` key marks: run typecheck, build and other suites as the repository says.
 
 ## Reading a header
 
 Every SQUEAL message starts with a header such as `Revision 21 (changed src/math.ts): 40 current, 3 pending, 0 stale, 0 unknown.` The files in parentheses are the files changed since your last report. They say what changed, not what caused a failure: a failure can come from any earlier edit, or from none of yours.
+
+Where `squeal.config.json` marks slow test files, a second line starts `Slow tier:` and says whether they are current, against which build output and at which revision, running, pending and why, or not run at this revision. Slow files run when you pause between turns or on `squeal run --slow`, never during Stop's wait. A slow failure wakes you when you are idle in an interactive Claude Code session; under Codex and in `-p` sessions it arrives with your next prompt or tool call.
 
 ## Reference
 
