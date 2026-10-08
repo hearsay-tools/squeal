@@ -1,4 +1,5 @@
-import { dirname } from "node:path";
+import { symlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
@@ -32,6 +33,40 @@ describe("vitest adapter: observed runtime inputs", SLOW, () => {
       expect(seen?.directories).toEqual(["data/listed"]);
       const other = report.observed?.find((o) => o.testFile.path === plain.path);
       for (const path of RUNTIME_READS) expect(other?.paths ?? []).not.toContain(path);
+    },
+  );
+
+  it.each(["forks", "threads"])(
+    "under %s, keeps review wave 12d's probes passing and sees what they read (task 001-135)",
+    async (pool) => {
+      const fx = await openFixture("observed", {}, observing);
+      symlinkSync("target.txt", join(fx.root, "data/alias.txt"));
+      symlinkSync("real", join(fx.root, "data/linked"));
+      const reach = ref("test/reach.test.ts", pool);
+      const report = await fx.adapter.run([reach], fx.runOptions());
+
+      expect(report.end).toBe("completed");
+      expect(report.results).toHaveLength(4);
+      // B6 among them: an invalid spawnSync still throws
+      expect.soft(report.results.filter((r) => r.outcome !== "pass")).toEqual([]);
+      const seen = report.observed?.find((o) => o.testFile.path === reach.path)?.paths;
+      const reads = (b: string, paths: string[]) =>
+        expect.soft(seen, b).toEqual(expect.arrayContaining(paths));
+      // the link and the bytes read
+      reads("B2", [
+        "data/alias.txt",
+        "data/target.txt",
+        "data/linked/inner.txt",
+        "data/real/inner.txt",
+      ]);
+      reads("B3", ["data/rplus.txt", "data/rdwr.txt", "data/handle.txt"]);
+      // the SHARE_ENV thread and its child
+      reads("B4", [
+        "scripts/shared.cjs",
+        "data/shared.txt",
+        "scripts/descendant.cjs",
+        "data/descendant.txt",
+      ]);
     },
   );
 
