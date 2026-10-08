@@ -40,7 +40,7 @@ export function seedNodeTest(root: string): NodeTestSeed {
 
   // Names are unique (D1); a script seeded from several packages is named by its package
   // too. Only seeded scripts count for a seeded name (review wave 2, N1): a refused one
-  // is never written, so it cannot collide.
+  // is never written; its printed template is renamed apart by `uniqueNames`.
   const all = new Map<string, number>();
   const seeded = new Map<string, number>();
   for (const { script, parsed } of found) {
@@ -64,7 +64,29 @@ export function seedNodeTest(root: string): NodeTestSeed {
       projects.push({ name, ...cwd, argv: parsed.argv, include: parsed.include });
     }
   }
-  return { projects, notes, templates };
+  return { projects, notes, templates: uniqueNames(templates, projects) };
+}
+
+/**
+ * `templates` renamed so none repeats a seeded or an earlier template's name
+ * (lessons, defect 7: a refused root `test:unit` beside a seeded package's
+ * `test:unit`): a taken name gets its package, `root` for the root, then a
+ * number.
+ */
+function uniqueNames(
+  templates: readonly SeededProject[],
+  projects: readonly SeededProject[],
+): SeededProject[] {
+  const taken = new Set(projects.map((project) => project.name));
+  return templates.map((template) => {
+    const base = taken.has(template.name)
+      ? `${template.cwd ?? "root"}:${template.name}`
+      : template.name;
+    let name = base;
+    for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+    taken.add(name);
+    return { ...template, name };
+  });
 }
 
 export interface ParsedScript {

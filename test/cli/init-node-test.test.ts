@@ -52,6 +52,17 @@ function init(cwd: string) {
   return { code: main(["init"], io), stdout: () => stdout, stderr: () => stderr };
 }
 
+/** The entries `squeal init` printed to complete by hand, as printed. */
+function printedTemplates(stdout: string): { name: string }[] {
+  const start = stdout.indexOf("nodeTest entries to complete by hand:\n");
+  if (start === -1) return [];
+  const json = stdout.slice(
+    stdout.indexOf("[", start),
+    stdout.indexOf("\nEach collaborator", start),
+  );
+  return JSON.parse(json);
+}
+
 function config(root: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(root, "squeal.config.json"), "utf8"));
 }
@@ -147,6 +158,28 @@ describe("squeal init seeds nodeTest", () => {
     expect(result.stdout()).toContain('script "test:unit" in package.json is not');
   });
 
+  /*
+   * Spec 003 lessons, defect 7: the refused root `test:unit` printed a template
+   * named `test:unit`, the seeded entry's name, so pasting it was a duplicate.
+   */
+  it("prints a template whose name is no seeded entry's name, prefixed by the root", () => {
+    const root = cezarion();
+    writeJson(join(root, "package.json"), {
+      private: true,
+      workspaces: ["packages/*", "!packages/ignored"],
+      scripts: { "test:unit": `npm run build && ${UNIT}` },
+    });
+    const result = init(root);
+    expect(result.code).toBe(0);
+    const seeded = (config(root).nodeTest as { name: string }[]).map((p) => p.name);
+    const templates = printedTemplates(result.stdout()).map((t) => t.name);
+    expect(templates).toEqual(["root:test:unit"]);
+    for (const name of templates) expect(seeded).not.toContain(name);
+    const pasted = [...(config(root).nodeTest as object[]), ...printedTemplates(result.stdout())];
+    writeJson(join(root, "squeal.config.json"), { nodeTest: pasted });
+    expect(loadPolicy(root).problems.filter((p) => p.includes("repeats"))).toEqual([]);
+  });
+
   it("writes the default policy when there is no package.json", () => {
     const root = fakeRepo().main;
     expect(init(root).code).toBe(0);
@@ -171,6 +204,19 @@ describe("seedNodeTest", () => {
       { name: "libs/a:test", cwd: "libs/a", argv: [], include: ["t/*.js"] },
       { name: "libs/group/b:test", cwd: "libs/group/b", argv: [], include: ["t/*.js"] },
     ]);
+  });
+
+  it("names templates apart from seeded entries and from each other", () => {
+    const root = fakeRepo().main;
+    writeJson(join(root, "package.json"), {
+      workspaces: ["root", "lib"],
+      scripts: { test: "tsc && node --test t/*.js" },
+    });
+    writeJson(join(root, "root/package.json"), { scripts: { test: "node --test t/*.js | x" } });
+    writeJson(join(root, "lib/package.json"), { scripts: { test: "node --test t/*.js" } });
+    const seed = seedNodeTest(root);
+    expect(seed.projects.map((p) => p.name)).toEqual(["test"]);
+    expect(seed.templates.map((t) => t.name)).toEqual(["root:test", "root:root:test"]);
   });
 
   it("notes a package.json that does not parse and keeps going", () => {
