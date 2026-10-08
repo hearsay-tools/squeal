@@ -1,0 +1,300 @@
+== 2026-10-07T22:50:24.922Z exit=0 0.00s
+$ command -v squeal; sed -n '1,100p' /home/agent/.codex/plugins/cache/squeal/squeal/0.1.24/skills/squeal/references/commands.md
+# Commands
+
+`squeal --help` lists every command and flag. This file says what their output means.
+
+## squeal status
+
+Prints the current state of this worktree. It reads the store and needs no daemon.
+
+```text
+Revision: 187
+Known failures: 0
+Affected checks: 47 passed, 3 running, 12 queued
+Full-suite checkpoint: none completed at revision 187; last completed at revision 170
+```
+
+- **Known failures: 0** with pending checks means "no known failures yet". Say that, not "all tests pass".
+- Pending checks mean the current revision is not fully validated yet: say what is still pending.
+- No full-suite checkpoint at the current revision: say so; `squeal run --all` requests one.
+
+`squeal status --json` gives the same snapshot as a versioned JSON object.
+
+## Waiting for pending checks
+
+Results arrive with your next tool call, so by default keep working. Only when you need a result before your next step, for example before saying the task is done, run `squeal status --wait 60000`. It replaces `sleep` and polling.
+
+It returns as soon as nothing is pending at the current revision, or as soon as a check changed (a new failure or a recovery), and at the latest after the given milliseconds; then it prints status. Its first line says why it returned, with the revision and the time waited:
+
+- `Returned on quiet`: nothing is pending at the current revision.
+- `Returned on news`: a check changed; read it as you would a SQUEAL message.
+- `Returned on timeout`: checks are still pending. Say so, or wait again.
+- `Returned without a daemon: no daemon has validated since <time>; results are as of revision N`: nothing gets validated, so results are as old as that revision, whatever the files hold now. Run `squeal start` and wait again, or run the tests yourself.
+
+The exit code is 0 in all four cases. Keep the limit below your shell tool's own timeout. It returns no sooner than 750 ms after it starts, so a revision for an edit you just made is recorded first. It starts no daemon. With `--json`, stdout is the snapshot with a `wait` field (`outcome` is `quiet`, `news`, `no-daemon` or `timeout`) and the line goes to stderr.
+
+## squeal why
+
+`squeal why "<check name>"` prints the history and provenance of one check and the path to its last run log, which holds the full output; SQUEAL messages carry only the first error line and its location. A FAIL report ends with the command for its first failure:
+
+```text
+Full output: squeal why "src/math.test.ts > math > adds"
+```
+
+Use a name exactly
+[...1441 more chars]
+== 2026-10-07T22:52:10.602Z exit=0 60.25s
+$ [heredoc writing a file] ... node plugins/codex/dist/cli/squeal.mjs status --wait 60000
+Returned on timeout after 60.1 s: 0 checks and 168 test files without checks pending at revision 2
+
+Revision: 2
+Known failures: 1
+  FAIL  test/cli/codex.test.ts > squeal init --harness codex > touches nothing under a scratch HOME/.codex or CODEX_HOME, run as the CLI
+        Test timed out in 5000ms.
+        at test/cli/codex.test.ts:102:3, observed at revision 0, current
+Affected checks: 140 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe (HEAD 96bd3d9, dirty at revision 2)
+Daemon: running, last heartbeat 0 s ago
+Inherited: 0 current results
+Test files without checks: 168 pending, 0 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-07T22:48:53.801Z, revision 0: no dependencies are installed in this worktree; Squeal lists and runs no tests until an install
+
+== 2026-10-07T22:53:43.898Z exit=0 0.79s
+$ node /home/agent/.nvm/versions/node/v24.21.0/lib/node_modules/cezarion/node_modules/@wjarka/cezarion/dist/index.js worker send 4c670899-aa9d-41d9-a611-4c2996e1cf44 '003-27 source candidate 462371e is committed and graph/lint/typecheck gates pass. Squeal reports expected plugin bundle drift: test/harness/plugin.test.ts bundles > are committed exactly as npm run build produces them (cli/squeal.mjs differs). Brief forbids build and owns no bundles. Please confirm this failure is deferred to your integration bundle rebuild, so I can hand off the source row with this expected full-suite exception; default is preserve ownership and do not build. Full Vitest gate still running.' --id 1d21a6f1-c529-47a5-8893-3a79ea4c1d0c --kind request
+{"message":{"senderRunId":"c7896f0e-662d-4172-adaf-81b907da8afe","recipientRunId":"4c670899-aa9d-41d9-a611-4c2996e1cf44","kind":"request","id":"1d21a6f1-c529-47a5-8893-3a79ea4c1d0c","text":"003-27 source candidate 462371e is committed and graph/lint/typecheck gates pass. Squeal reports expected plugin bundle drift: test/harness/plugin.test.ts bundles > are committed exactly as npm run build produces them (cli/squeal.mjs differs). Brief forbids build and owns no bundles. Please confirm this failure is deferred to your integration bundle rebuild, so I can hand off the source row with this expected full-suite exception; default is preserve ownership and do not build. Full Vitest gate still running.","createdAt":"2026-10-07T22:53:43.772Z","deadline":"2026-10-07T23:03:43.772Z","requestHash":"c8ae122b52b484b813f732025db411a7670e6b538c0090b29960adb29399f795","state":"accepted"},"delivery":"queued"}
+
+== 2026-10-07T22:55:16.720Z exit=0 0.18s
+$ node plugins/codex/dist/cli/squeal.mjs status --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "b2baa0c8131a6dc2",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe",
+  "revision": 3,
+  "counts": {
+    "current": 374,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 137,
+    "unknown": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "refinedRevision": 3,
+  "runnerPartPending": false,
+  "head": "96bd3d9cb6211b5808157e9c340be918777fa97a",
+  "dirty": true,
+  "dirtyObservedAt": 3,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1791413715404
+  },
+  "knownFailures": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/harness/plugin.test.ts",
+        "fullName": "bundles > are committed exactly as `npm run build` produces them"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 3,
+      "summary": "cli/squeal.mjs differs from the build: expected false to be true // Object.is equality",
+      "fingerprint": "AssertionError: cli/squeal.mjs differs from the build: expected false to be true // Object.is equality @ test/harness/bundle-helpers.ts:122:52",
+      "location": {
+        "path": "test/harness/bundle-helpers.ts",
+        "line": 122,
+        "column": 52
+      }
+    },
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/runners/node-test/graph-memory.test.ts",
+        "fullName": "releases build caches after cold builds, re-resolves, edits and listing changes"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 2,
+      "summary": "expected 15814984 to be less than 8388608",
+      "fingerprint": "AssertionError: expected 15814984 to be less than 8388608 @ test/runners/node-test/graph-memory.test.ts:85:73",
+      "location": {
+        "path": "test/runners/node-test/graph-memory.test.ts",
+        "line": 85,
+        "column": 73
+      }
+    }
+  ],
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 372,
+      "fail": 2,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 183,
+    "testFilesWithoutChecks": 137
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion":
+[...216 more chars]
+== 2026-10-07T22:57:51.675Z exit=0 0.03s
+$ node plugins/codex/dist/cli/squeal.mjs status --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "b2baa0c8131a6dc2",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe",
+  "revision": 3,
+  "counts": {
+    "current": 522,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 129,
+    "unknown": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "refinedRevision": 3,
+  "runnerPartPending": false,
+  "head": "96bd3d9cb6211b5808157e9c340be918777fa97a",
+  "dirty": true,
+  "dirtyObservedAt": 3,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1791413870481
+  },
+  "knownFailures": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/harness/plugin.test.ts",
+        "fullName": "bundles > are committed exactly as `npm run build` produces them"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 3,
+      "summary": "cli/squeal.mjs differs from the build: expected false to be true // Object.is equality",
+      "fingerprint": "AssertionError: cli/squeal.mjs differs from the build: expected false to be true // Object.is equality @ test/harness/bundle-helpers.ts:122:52",
+      "location": {
+        "path": "test/harness/bundle-helpers.ts",
+        "line": 122,
+        "column": 52
+      }
+    },
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/runners/node-test/graph-memory.test.ts",
+        "fullName": "releases build caches after cold builds, re-resolves, edits and listing changes"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 2,
+      "summary": "expected 15814984 to be less than 8388608",
+      "fingerprint": "AssertionError: expected 15814984 to be less than 8388608 @ test/runners/node-test/graph-memory.test.ts:85:73",
+      "location": {
+        "path": "test/runners/node-test/graph-memory.test.ts",
+        "line": 85,
+        "column": 73
+      }
+    }
+  ],
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 520,
+      "fail": 2,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 183,
+    "testFilesWithoutChecks": 129
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion":
+[...216 more chars]
+== 2026-10-07T22:58:30.517Z exit=1 0.05s
+$ node plugins/codex/dist/cli/squeal.mjs why 'transitions on PostToolBatch, claude-code'
+"transitions on PostToolBatch, claude-code" matches 2 checks in this worktree:
+  test/e2e/transitions.test.ts > transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between
+  test/e2e/transitions.test.ts > transitions on PostToolBatch, claude-code > stays silent when a check breaks and recovers between two PostToolBatch calls
+
+== 2026-10-07T22:58:37.690Z exit=0 0.05s
+$ node plugins/codex/dist/cli/squeal.mjs why 'test/e2e/transitions.test.ts > transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between'
+Check: test/e2e/transitions.test.ts > transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe
+Revision: 3
+
+Known state: FAIL, current, observed at revision 3, commit 96bd3d9
+  Summary: expected false to be true // Object.is equality
+  Location: test/e2e/transitions.test.ts:39:70
+  Fingerprint: AssertionError: expected false to be true // Object.is equality @ test/e2e/transitions.test.ts:39:70
+
+History (1 transition, oldest first):
+  revision 3  2026-10-07T22:58:09.260Z  first seen FAIL
+
+Results (18, newest first):
+  FAIL  2026-10-07T22:58:09.241Z  /home/agent/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe (this worktree), revision 3, commit 96bd3d9, dirty
+        run a7d5fbff-dd49-4a8e-92f6-f515cf039624, 5589 ms, key 30509bd9b461
+        log: /home/agent/projects/squeal/.git/squeal/runs/a7d5fbff-dd49-4a8e-92f6-f515cf039624
+        expected false to be true // Object.is equality
+        AssertionError: expected false to be true // Object.is equality
+            at test/e2e/transitions.test.ts:39:70
+            at processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:20
+        - Expected
+        + Received
+        
+        - true
+        + false
+  PASS  2026-10-07T22:57:17.514Z  /home/agent/projects/squeal/.ai/cezar/worktrees/a8d3f0d5-d0c2-4e37-9c8f-a7fec9cde24b, revision 25, commit 8e2928b, dirty
+        run c86fad67-0f11-4b1b-981e-20a58394a01a, 17908 ms, key f6d27695a08d
+        log: /home/agent/projects/squeal/.git/squeal/runs/c86fad67-0f11-4b1b-981e-20a58394a01a
+  PASS  2026-10-07T22:55:08.767Z  /home/agent/projects/squeal/.ai/cezar/worktrees/4819894e-393b-48ee-94af-06236fe79c96, revision 14, commit f55a732, dirty
+        run f4afa341-29ec-4031-913b-f54b1d61f855, 17170 ms, key db8394356b11
+        log: /home/agent/projects/squeal/.git/squeal/runs/f4afa341-29ec-4031-913b-f54b1d61f855
+  PASS  2026-10-07T22:51:04.951Z  /home/agent/projects/squeal/.ai/cezar/worktrees/cc21334e-c682-45c1-9f6e-92ed36f15c6d, revision 12, commit 2ce9771, dirty
+        run af9fff9d-4c38-4770-9b23-b62cd83ead3b, 18295 ms, key 1540db8e2958
+        log: /home/agent/projects/squeal/.git/squeal/runs/af9fff9d-4c38-4770-9b23-b62cd83ead3b
+  PASS  2026-10-07T22:47:16.442Z  /home/agent/projects/squeal/.ai/cezar/worktrees/4819894e-393b-48
+[...5392 more chars]

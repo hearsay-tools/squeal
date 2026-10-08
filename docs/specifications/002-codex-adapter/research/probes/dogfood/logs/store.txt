@@ -1,0 +1,28 @@
+## meta
+daemon-bootstrapped:b2baa0c8131a6dc2 = 1791413332723
+awaiting-install.b2baa0c8131a6dc2 = false
+refined.b2baa0c8131a6dc2 = 3
+revision-registered:b2baa0c8131a6dc2 = {}
+revision-registered-left:b2baa0c8131a6dc2 = {"01a1188e-2475-7030-aa81-c1396f0402c1\nmain":{"since":0,"gaps":[],"leftAt":3,"leftTime":1791413943169}}
+liveness-told:b2baa0c8131a6dc2 = {}
+revision-told:b2baa0c8131a6dc2 = {}
+turn:b2baa0c8131a6dc2 = {}
+state.baseline-findings.b2baa0c8131a6dc2 = {"checkpointId":"9f2e4285-2465-4b69-8436-7399a4e66859","entries":["test\u0000\u0000test/harness/plugin.test.ts\u0000bundles > are committed exactly as `npm run build` produces them\u0000AssertionError: cli/squeal.mjs differs from the build: expected false to be true // Object.is equality @ test/harness/bundle-helpers.ts:122:52","test\u0000\u0000test/e2e/transitions.test.ts\u0000transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between\u0000AssertionError: expected false to be true // Object.is equality @ test/e2e/transitions.test.ts:39:70","test\u0000\u0000test/harness/codex/plugin.test.ts\u0000committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them\u0000AssertionError: cli/squeal.mjs differs from the build: expected false to be true // Object.is equality @ test/harness/bundle-helpers.ts:122:52"]}
+notes.b2baa0c8131a6dc2 = [{"at":1791413333801,"revision":0,"text":"no dependencies are installed in this worktree; Squeal lists and runs no tests until an install"},{"at":1791417543380,"revision":3,"text":"daemon stopped: idle for 60 min with no registered consumers"}]
+
+## worktree
+
+## revisions
+
+## runs
+
+## checkpoints
+
+## transitions
+
+## results that failed
+results kept: 0, recorded - to -
+
+## consumers and views
+consumer_views rows: 0
+known_states: []
