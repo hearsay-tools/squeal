@@ -3,6 +3,7 @@ import { parentPort } from "node:worker_threads";
 import type { CheckpointRecord, DaemonPhase } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
+import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer, type DaemonServer } from "./server.js";
 
 /*
@@ -21,6 +22,11 @@ const waiting = new Map<
   { resolve: (checkpoint: CheckpointRecord) => void; reject: (error: Error) => void }
 >();
 
+const waitingSlow = new Map<
+  string,
+  { resolve: (requested: SlowSuiteRequested) => void; reject: (error: Error) => void }
+>();
+
 let server: DaemonServer | null = null;
 
 /** Started before the main thread holds the lock; binds only when told to. */
@@ -36,6 +42,12 @@ function bind(identity: DeskIdentity): void {
         const id = randomUUID();
         waiting.set(id, { resolve, reject });
         post({ type: "run-all", id, force });
+      }),
+    requestSlowSuite: () =>
+      new Promise((resolve, reject) => {
+        const id = randomUUID();
+        waitingSlow.set(id, { resolve, reject });
+        post({ type: "run-slow", id });
       }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
@@ -63,6 +75,13 @@ port.on("message", (message: ToDesk) => {
       waiting.delete(message.id);
       if (message.checkpoint !== null) entry?.resolve(message.checkpoint);
       else entry?.reject(new Error(message.error ?? "run --all failed"));
+      return;
+    }
+    case "run-slow-result": {
+      const entry = waitingSlow.get(message.id);
+      waitingSlow.delete(message.id);
+      if (message.requested !== null) entry?.resolve(message.requested);
+      else entry?.reject(new Error(message.error ?? "run --slow failed"));
       return;
     }
     case "close":

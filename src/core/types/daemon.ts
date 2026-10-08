@@ -1,4 +1,10 @@
-import type { AbsolutePath, EpochMs, PayloadSchemaVersion, WorktreeId } from "./common.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  PayloadSchemaVersion,
+  RevisionNumber,
+  WorktreeId,
+} from "./common.js";
 import type { CheckpointRecord } from "./store-records.js";
 
 /*
@@ -47,6 +53,21 @@ export interface RunAllStatusRequest {
   readonly requestId: string;
 }
 
+/**
+ * Spec 004 D2 `squeal run --slow`: the explicit trigger of the slow tier.
+ * Answered at once with a request id, like `run-all`; ask for what the
+ * scheduler queued with `RunSlowStatusRequest`.
+ */
+export interface RunSlowRequest {
+  readonly type: "run-slow";
+}
+
+/** What a `run-slow` request queued, once the scheduler took it. */
+export interface RunSlowStatusRequest {
+  readonly type: "run-slow-status";
+  readonly requestId: string;
+}
+
 /** `squeal stop`: answered, then the daemon shuts down (D10 shutdown order). */
 export interface StopRequest {
   readonly type: "stop";
@@ -71,6 +92,8 @@ export type DaemonRequest =
   | NudgeRequest
   | RunAllRequest
   | RunAllStatusRequest
+  | RunSlowRequest
+  | RunSlowStatusRequest
   | StopRequest
   | StepDownRequest;
 
@@ -108,6 +131,21 @@ export interface RunAllResponse {
   readonly error: string | null;
 }
 
+/**
+ * State of one `run-slow` request. `requested` is `null` until the scheduler
+ * took it: the revision it was taken at and how many slow files it queued
+ * (0 when none are declared or all are current). `error` is set when the
+ * request failed, for example on a daemon whose scheduler has no slow tier.
+ */
+export interface RunSlowResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "run-slow";
+  readonly requestId: string;
+  readonly requested: { readonly revision: RevisionNumber; readonly queued: number } | null;
+  readonly error: string | null;
+}
+
 export interface StopResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -124,7 +162,7 @@ export interface StepDownResponse {
   readonly steppingDown: boolean;
 }
 
-/** A request the daemon could not parse or does not know, or a `run-all-status` for an unknown id. */
+/** A request the daemon could not parse or does not know, or a status request for an unknown id. */
 export interface DaemonErrorResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: false;
@@ -135,6 +173,7 @@ export type DaemonResponse =
   | PingResponse
   | NudgeResponse
   | RunAllResponse
+  | RunSlowResponse
   | StopResponse
   | StepDownResponse
   | DaemonErrorResponse;

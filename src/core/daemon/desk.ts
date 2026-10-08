@@ -4,6 +4,7 @@ import { Worker } from "node:worker_threads";
 import type { CheckpointRecord, DaemonPhase } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
+import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer } from "./server.js";
 
 /** The daemon's socket, answering for the main thread. */
@@ -17,6 +18,7 @@ export interface FrontDesk {
 export interface DeskEvents {
   readonly onActivity: () => void;
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
+  readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
@@ -114,6 +116,19 @@ async function inWorker(
               }),
           );
           return;
+        case "run-slow":
+          events.requestSlowSuite().then(
+            (requested) =>
+              post({ type: "run-slow-result", id: message.id, requested, error: null }),
+            (error: unknown) =>
+              post({
+                type: "run-slow-result",
+                id: message.id,
+                requested: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
         case "stop":
           events.onStop();
           return;
@@ -165,6 +180,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       startedAt: identity.startedAt,
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
+      requestSlowSuite: events.requestSlowSuite,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown,
