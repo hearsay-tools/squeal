@@ -48,6 +48,19 @@ export interface FullSuiteState {
 export type TestFileCounts = Readonly<Record<Extract<Validity, "pending" | "unknown">, number>>;
 
 /**
+ * Spec 004 D1, D9: the pending work of slow test files, each count a part of
+ * the header's total of its kind. Stop waits for the rest only.
+ */
+export interface SlowPendingCounts {
+  /** Slow test files with a pending check, or queued or running without checks. */
+  readonly testFiles: number;
+  /** Pending checks of slow test files, a part of `counts.pending`. */
+  readonly checks: number;
+  /** Slow test files queued or running without checks, a part of `testFilesWithoutChecks.pending`. */
+  readonly testFilesWithoutChecks: number;
+}
+
+/**
  * Header carried by every delivered message and by status.
  *
  * Spec 001 D6: "Every delivered message carries a header: the worktree's
@@ -110,6 +123,11 @@ export interface StatusHeader {
    * `readHeader`; absent reads as `false`.
    */
   readonly runnerPartPending?: boolean;
+  /**
+   * The pending work of slow test files (spec 004 D9). Set by `readHeader`
+   * when its caller passes which files are slow; absent reads as none.
+   */
+  readonly slowPending?: SlowPendingCounts;
   /**
    * The paths changed since the revision this consumer was last told about,
    * a union over the revision records after it up to the current one; the

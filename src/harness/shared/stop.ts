@@ -6,10 +6,11 @@ import {
   readHeader,
   readLiveHeader,
 } from "../../core/delivery/index.js";
-import { isPending, toKnownFailure } from "../../core/state/index.js";
+import { slowFiles } from "../../core/slow/index.js";
+import { isFastPending, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
-import type { KnownFailure } from "../../core/types/index.js";
+import type { KnownFailure, TestFileRef } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale } from "./ensure.js";
@@ -76,7 +77,8 @@ export function stopTurn(
   location: HookLocation,
   deps: HookDeps,
 ): Promise<StopOutcome> {
-  const policy = readPolicy(location.root).stop;
+  const project = readPolicy(location.root);
+  const policy = project.stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext<StopOutcome>(
     input,
@@ -85,7 +87,10 @@ export function stopTurn(
     async (context) => {
       if (input.agent_id !== undefined && !isRegistered(context)) return null;
       await ensureIfStale(context, deps);
-      if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
+      if (wait > 0) {
+        const isSlow = slowFiles(project, project.nodeTest);
+        await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
+      }
 
       const { store, consumer } = context;
       const news = await newsText(context, deps.command);
@@ -164,17 +169,27 @@ async function newsText(context: HookContext, command?: string): Promise<string 
 }
 
 /**
- * Polls the header until nothing is pending at the current revision, the
- * runner part of the revision included (review wave 4.5, S1), or `waitMs`
- * passed. Each read is one read transaction, so it never pairs a new revision
- * with the previous revision's states (lessons defect 23).
+ * Polls the header until nothing but slow test files is pending at the
+ * current revision, the runner part of the revision included (review wave
+ * 4.5, S1), or `waitMs` passed. Stop never waits for slow files (spec 004
+ * D9); they stay in the idle snapshot `endTurn` writes. Each read is one read
+ * transaction, so it never pairs a new revision with the previous revision's
+ * states (lessons defect 23).
  */
-async function waitForPending(context: HookContext, waitMs: number, pollMs: number) {
+async function waitForPending(
+  context: HookContext,
+  waitMs: number,
+  pollMs: number,
+  isSlow: (testFile: TestFileRef) => boolean,
+) {
   const deadline = performance.now() + waitMs;
   for (;;) {
     const { store, consumer } = context;
-    const header = readTransaction(store, () => readHeader(store, consumer.worktreeId));
-    if (!isPending(header)) return;
+    const id = consumer.worktreeId;
+    const header = readTransaction(store, () =>
+      readHeader(store, id, store.knownStates.list(id), store.testFileKeys.list(id), isSlow),
+    );
+    if (!isFastPending(header)) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
     await sleep(Math.min(pollMs, left));
