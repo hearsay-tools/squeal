@@ -29,6 +29,7 @@ function parseRequest(line) {
   switch (request.type) {
     case "ping":
     case "nudge":
+    case "run-slow":
     case "stop":
       return { type: request.type };
     case "run-all":
@@ -42,6 +43,9 @@ function parseRequest(line) {
     case "run-all-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-all-status", requestId: request.requestId };
+    case "run-slow-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "run-slow-status", requestId: request.requestId };
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
@@ -49,6 +53,9 @@ function parseRequest(line) {
 function errorResponse(error) {
   return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
 }
+
+// src/core/daemon/run-slow.ts
+var SLOW_NOT_SUPPORTED = "run --slow is not supported by this daemon";
 
 // src/core/daemon/version.ts
 function isNewerVersion(version, than) {
@@ -69,12 +76,21 @@ function versionParts(version) {
 var MAX_REQUESTS = 32;
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
+  const slowRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
     type: "run-all",
     requestId,
     checkpoint: state.checkpoint,
+    error: state.error
+  });
+  const runSlow = (requestId, state) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "run-slow",
+    requestId,
+    requested: state.requested,
     error: state.error
   });
   return (request) => {
@@ -99,11 +115,7 @@ function createHandlers(context) {
         context.onActivity();
         const requestId = randomUUID();
         const state = { checkpoint: null, error: null };
-        requests.set(requestId, state);
-        for (const old of requests.keys()) {
-          if (requests.size <= MAX_REQUESTS) break;
-          requests.delete(old);
-        }
+        remember(requests, requestId, state);
         context.requestFullSuite(request.force === true).then(
           (checkpoint) => {
             state.checkpoint = checkpoint;
@@ -118,6 +130,28 @@ function createHandlers(context) {
         const state = requests.get(request.requestId);
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return runAll(request.requestId, state);
+      }
+      case "run-slow": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        const requestId = randomUUID();
+        const state = { requested: null, error: null };
+        remember(slowRequests, requestId, state);
+        const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
+        request2.then(
+          (requested) => {
+            state.requested = requested;
+          },
+          (error) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          }
+        );
+        return runSlow(requestId, state);
+      }
+      case "run-slow-status": {
+        const state = slowRequests.get(request.requestId);
+        if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+        return runSlow(request.requestId, state);
       }
       case "stop":
         context.onStop();
@@ -135,6 +169,13 @@ function createHandlers(context) {
       }
     }
   };
+}
+function remember(requests, requestId, state) {
+  requests.set(requestId, state);
+  for (const old of requests.keys()) {
+    if (requests.size <= MAX_REQUESTS) break;
+    requests.delete(old);
+  }
 }
 
 // src/core/daemon/server.ts
@@ -235,6 +276,7 @@ if (port === null) throw new Error("squeal front desk: not a worker thread");
 var post = (message) => port.postMessage(message);
 var phase = "starting";
 var waiting = /* @__PURE__ */ new Map();
+var waitingSlow = /* @__PURE__ */ new Map();
 var server = null;
 function bind(identity) {
   const handle = createHandlers({
@@ -247,6 +289,11 @@ function bind(identity) {
       const id = randomUUID2();
       waiting.set(id, { resolve, reject });
       post({ type: "run-all", id, force });
+    }),
+    requestSlowSuite: () => new Promise((resolve, reject) => {
+      const id = randomUUID2();
+      waitingSlow.set(id, { resolve, reject });
+      post({ type: "run-slow", id });
     }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
@@ -273,6 +320,13 @@ port.on("message", (message) => {
       waiting.delete(message.id);
       if (message.checkpoint !== null) entry?.resolve(message.checkpoint);
       else entry?.reject(new Error(message.error ?? "run --all failed"));
+      return;
+    }
+    case "run-slow-result": {
+      const entry = waitingSlow.get(message.id);
+      waitingSlow.delete(message.id);
+      if (message.requested !== null) entry?.resolve(message.requested);
+      else entry?.reject(new Error(message.error ?? "run --slow failed"));
       return;
     }
     case "close":

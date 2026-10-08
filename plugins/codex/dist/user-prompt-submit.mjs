@@ -248,6 +248,26 @@ function bootstrappedMetaKey(worktreeId) {
 // src/core/types/delivery.ts
 var MAIN_AGENT = "main";
 
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false
+  },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+  nodeTest: [],
+  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5 },
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
 // src/core/types/scheduler.ts
 var MAX_PERSISTED_NOTES = 20;
 function notesMetaKey(worktreeId) {
@@ -3078,7 +3098,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.44";
+  if (true) return "0.1.45";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3271,23 +3291,9 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND) {
-  return [
-    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
-    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    "Squeal does not cover typecheck, build or other test suites."
-  ].join(" ");
-}
-var PRIMER = primer();
-function withPrimer(registration2, command = SQUEAL_COMMAND) {
-  const tail = primer(command);
-  const max = MESSAGE_CAP_CHARS - tail.length - 2;
-  return `${formatRegistration(registration2, max, command)}
-
-${tail}`;
-}
+// src/core/daemon/policy.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join9 } from "node:path";
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute3, posix } from "node:path";
@@ -3375,6 +3381,7 @@ function slowInclude(value) {
 }
 
 // src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
 var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
@@ -3420,8 +3427,84 @@ var SHAPE = {
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
+function loadPolicy(root) {
+  let text;
+  try {
+    text = readFileSync5(join9(root, POLICY_FILE), "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return defaultsBecause(`not valid JSON (${error.message})`);
+  }
+  if (!isRecord(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
+  }
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged, problems };
+}
+function readPolicy(root) {
+  return loadPolicy(root).policy;
+}
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isRecord(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
+  }
+  return result;
+}
 function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+// src/harness/shared/primer.ts
+function primer(command = SQUEAL_COMMAND, nodeTest = false) {
+  const runners = nodeTest ? "Vitest and node:test" : "Vitest";
+  const run = nodeTest ? "Vitest or node:test" : "Vitest";
+  return [
+    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
+function coversNodeTest(root) {
+  return readPolicy(root).nodeTest.length > 0;
+}
+function withPrimer(registration2, command = SQUEAL_COMMAND, nodeTest = false) {
+  const tail = primer(command, nodeTest);
+  const max = MESSAGE_CAP_CHARS - tail.length - 2;
+  return `${formatRegistration(registration2, max, command)}
+
+${tail}`;
 }
 
 // src/harness/shared/prompt.ts
@@ -3439,7 +3522,7 @@ function submitPrompt(input, location2, deps, options) {
       if (await ensure(location2, deps, context) === "spawned") await settle(context, deps);
     }
     const registration2 = await context.delivery.register(context.consumer, { inTurn: true });
-    return withPrimer(registration2, deps.command);
+    return withPrimer(registration2, deps.command, coversNodeTest(location2.root));
   });
 }
 
@@ -3448,10 +3531,10 @@ var CONTEXT_CAP_CHARS = 8e3;
 var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
 function capContext(text, command = SQUEAL_COMMAND) {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const end = `
+  const ends = [false, true].map((nodeTest) => `
 
-${primer(command)}`;
-  const tail = text.endsWith(end) ? end : "";
+${primer(command, nodeTest)}`);
+  const tail = ends.find((end) => text.endsWith(end)) ?? "";
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
@@ -3472,14 +3555,14 @@ var userPromptSubmit = async (input, location2, deps) => {
 };
 
 // src/harness/codex/main.ts
-import { readFileSync as readFileSync5 } from "node:fs";
+import { readFileSync as readFileSync6 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join9(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join10(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
@@ -3536,7 +3619,7 @@ async function runCodexHandler(name, handler, stdin, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync5(0, "utf8");
+    stdin = readFileSync6(0, "utf8");
   } catch {
   }
   const cli = fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
