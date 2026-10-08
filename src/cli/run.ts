@@ -5,9 +5,11 @@ import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, CheckpointRecord, RunAllResponse } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 
-const USAGE = "usage: squeal run --all [--force] [--wait]\n";
+const USAGE =
+  "usage: squeal run --all [--force] [--wait]\n       squeal run --slow [--wait <ms>]\n";
 /** Without `--wait`, how long to wait for the scheduler to record the checkpoint. */
 const RECORD_WAIT_MS = 10_000;
 const POLL_MS = 100;
@@ -21,10 +23,11 @@ const POLL_MS = 100;
  */
 export async function runCommand(args: readonly string[], io: CliIo): Promise<number> {
   const flags = new Set(args);
+  if (flags.has("--slow") && !flags.has("--all")) return runSlowCommand(args, io, USAGE);
   const unknown = args.filter((a) => !["--all", "--force", "--wait"].includes(a));
   if (!flags.has("--all") || unknown.length > 0) {
     io.stderr(
-      `squeal run: ${unknown.length > 0 ? `unknown argument "${unknown[0]}"` : "--all is required"}\n${USAGE}`,
+      `squeal run: ${unknown.length > 0 ? `unknown argument "${unknown[0]}"` : "--all or --slow is required"}\n${USAGE}`,
     );
     return 2;
   }
