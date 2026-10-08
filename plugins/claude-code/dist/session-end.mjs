@@ -2475,7 +2475,7 @@ function forget(store, consumer) {
 }
 
 // src/core/delivery/format.ts
-var MESSAGE_CAP_CHARS = 1e4;
+var SQUEAL_COMMAND = "squeal";
 
 // src/harness/shared/context.ts
 function locate(cwd) {
@@ -2526,13 +2526,15 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
 }
 
 // src/harness/shared/primer.ts
-var PRIMER = [
-  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-  "Squeal does not cover typecheck, build or other test suites."
-].join(" ");
-var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
+function primer(command = SQUEAL_COMMAND) {
+  return [
+    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
 
 // src/harness/shared/sweep.ts
 async function unregisterSession(context, sessionId, options) {

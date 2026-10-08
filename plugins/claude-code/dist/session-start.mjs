@@ -2519,12 +2519,14 @@ function installSentences(header) {
 var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 200;
 var INDENT = "      ";
-var STATUS_POINTER = "`squeal status` lists every known failure.";
+var SQUEAL_COMMAND = "squeal";
+var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-function whyLine(check) {
-  const name = checkName(check);
-  const quoted = /["$`\\]/.test(name) ? `'${name.replaceAll("'", "'\\''")}'` : `"${name}"`;
-  return `Full output: squeal why ${quoted}`;
+function shellWord(text) {
+  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
+}
+function whyLine(check, command) {
+  return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
 function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
@@ -2584,7 +2586,7 @@ ${overflow(blocks.slice(i))}`, room)}${end}`;
   }
   return `${out}${end}`;
 }
-function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
+function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND) {
   const { header, knownFailures } = registration2;
   const head = [
     `SQUEAL \xB7 registered at revision ${header.revision}`,
@@ -2606,8 +2608,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS) {
   return assemble(
     head,
     blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${STATUS_POINTER}`,
-    first === void 0 ? null : whyLine(first.check),
+    (left) => `Not shown: ${left.length} more known failures. ${statusPointer(command)}`,
+    first === void 0 ? null : whyLine(first.check, command),
     max
   );
 }
@@ -2847,17 +2849,21 @@ function isRegistered(context) {
 }
 
 // src/harness/shared/primer.ts
-var PRIMER = [
-  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-  "Squeal does not cover typecheck, build or other test suites."
-].join(" ");
-var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
-function withPrimer(registration2) {
-  return `${formatRegistration(registration2, REGISTRATION_MAX)}
+function primer(command = SQUEAL_COMMAND) {
+  return [
+    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
+function withPrimer(registration2, command = SQUEAL_COMMAND) {
+  const tail = primer(command);
+  const max = MESSAGE_CAP_CHARS - tail.length - 2;
+  return `${formatRegistration(registration2, max, command)}
 
-${PRIMER}`;
+${tail}`;
 }
 
 // src/harness/shared/sweep.ts
@@ -2906,7 +2912,7 @@ async function startSession(input, location2, deps) {
     ensured = true;
     if (await ensure(location2, deps, record) === "spawned") await settle(context, deps);
     const main = input.agent_id === void 0;
-    if (main && input.source === "compact" && isRegistered(context)) return PRIMER;
+    if (main && input.source === "compact" && isRegistered(context)) return primer(deps.command);
     if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
@@ -2915,7 +2921,7 @@ async function startSession(input, location2, deps) {
     }
     const atStart = input.source !== "compact";
     const registration2 = await context.delivery.register(context.consumer, { atStart });
-    return withPrimer(registration2);
+    return withPrimer(registration2, deps.command);
   });
   if (!ensured) await ensure(location2, deps);
   return text;

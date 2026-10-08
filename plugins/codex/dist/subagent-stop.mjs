@@ -2517,7 +2517,10 @@ function forget(store, consumer) {
 }
 
 // src/core/delivery/format.ts
-var MESSAGE_CAP_CHARS = 1e4;
+var SQUEAL_COMMAND = "squeal";
+function shellWord(text) {
+  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
+}
 
 // src/harness/shared/context.ts
 function locate(cwd) {
@@ -2571,13 +2574,15 @@ function isRegistered(context) {
 }
 
 // src/harness/shared/primer.ts
-var PRIMER = [
-  "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
-  "Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`.",
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-  "Squeal does not cover typecheck, build or other test suites."
-].join(" ");
-var REGISTRATION_MAX = MESSAGE_CAP_CHARS - PRIMER.length - 2;
+function primer(command = SQUEAL_COMMAND) {
+  return [
+    "Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something.",
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+    "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    "Squeal does not cover typecheck, build or other test suites."
+  ].join(" ");
+}
+var PRIMER = primer();
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute2, posix } from "node:path";
@@ -2694,6 +2699,14 @@ var subagentStop = (input, location2, deps) => input.agent_id === void 0 ? Promi
 import { readFileSync as readFileSync3 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+// src/harness/codex/command.ts
+import { join as join6 } from "node:path";
+function codexCommand(env, bundleCli) {
+  const root = env.PLUGIN_ROOT;
+  const cli = root === void 0 || root === "" ? bundleCli : join6(root, "dist/cli/squeal.mjs");
+  return `node ${shellWord(cli)}`;
+}
+
 // src/harness/codex/input.ts
 function isUnservedThread(input) {
   return input.agent_id === void 0 && input.transcript_path !== void 0 && !input.transcript_path.endsWith(`${input.session_id}.jsonl`);
@@ -2750,10 +2763,11 @@ async function runMain(name, handler) {
     stdin = readFileSync3(0, "utf8");
   } catch {
   }
+  const cli = fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url));
   const result = await runCodexHandler(name, handler, stdin, {
     env: process.env,
-    // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs.
-    cli: fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url))
+    cli,
+    command: codexCommand(process.env, cli)
   });
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);
