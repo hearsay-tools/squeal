@@ -222,6 +222,9 @@ export async function openHarness(
   const errors: Error[] = [];
   const policy: Policy = {
     ...DEFAULT_POLICY,
+    // An observing harness turns the recorder on unless the test says otherwise (it is off by default while
+    // reviews/wave-12d.md is repaired).
+    ...(options.observe === true ? { observe: { runtimeInputs: true } } : {}),
     ...options.policy,
     runner: {
       ...DEFAULT_POLICY.runner,
