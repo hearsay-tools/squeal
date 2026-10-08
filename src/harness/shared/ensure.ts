@@ -22,8 +22,9 @@ const SETTLE_POLL_MS = 25;
 
 /**
  * How long the successor a step-down spawns waits for the old daemon's lock
- * (task 001-130): its running tier, bounded by the backlog budget's few
- * minutes in practice, then its shutdown.
+ * (task 001-130): its running tier, then its shutdown. The backlog budget
+ * bounds a tier's last-known run time only, so a tier can outlast this
+ * wait; the successor then exits with a note and the next boundary spawns.
  */
 export const SUCCESSOR_LOCK_WAIT_MS = 120_000;
 
