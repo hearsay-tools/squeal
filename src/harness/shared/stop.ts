@@ -185,9 +185,8 @@ async function waitForPending(
   const deadline = performance.now() + waitMs;
   for (;;) {
     const { store, consumer } = context;
-    const id = consumer.worktreeId;
     const header = readTransaction(store, () =>
-      readHeader(store, id, store.knownStates.list(id), store.testFileKeys.list(id), isSlow),
+      readHeader(store, consumer.worktreeId, undefined, undefined, isSlow),
     );
     if (!isFastPending(header)) return;
     const left = deadline - performance.now();
