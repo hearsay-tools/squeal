@@ -391,7 +391,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-19 a slow node:test project's spawned processes are observed | done (0.1.45, with 003-37) | D5's recorder sentence, from 004-13's finding: the recorder in `NODE_OPTIONS` for slow node:test projects; a child process's loads belong to the test file, not the preloads. | `test/integration/slow-spawn.test.ts` flips: a spawned CLI's helper edit re-runs the slow file. |
 | 004-20 the slow tier rechecks its trigger; Stop never waits for slow files | done (0.1.48) | `reviews/wave-1.md` B1: a slow file the idle trigger chose starts after the consumer entered a turn during the guard's wait; B2: a Stop with only slow files pending still waits `stop.waitMs`. | Both probes are tests; full suite on Node 22 and 24. |
 | 004-21 re-review of wave 1.5 | done: PASS at `e9758a6`; S2 and S3 to 003-40 | `/reviewer` on gpt-6.1-sol: B1, B2 and S1 closed. Second round on this slice. | `reviews/wave-1.5.md`. |
-| 004-18 a separate lane for slow files | running (brief in `tasks/wave-1.md`; on 001-140's lanes, 0.1.49) | D2's execution: a second runner at low priority, concurrent with fast tiers. | An edit's fast file is reported while a slow file is running. |
+| 004-18 a separate lane for slow files | running (brief in `tasks/wave-1.md`; on 001-140's lanes, 0.1.49; also closes 001 `reviews/wave-13.md` B1 and S2 in `escaped.ts`) | D2's execution: a second runner at low priority, concurrent with fast tiers. | An edit's fast file is reported while a slow file is running. |
 | 004-14 review of wave 1 | done: FAIL, B1 and B2 to 004-20, S1 to 003-39 | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
 ### Wave 2: telling the agent; Wave 3: proof
