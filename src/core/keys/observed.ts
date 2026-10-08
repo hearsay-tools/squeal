@@ -55,8 +55,9 @@ export class ObservedSets {
 
   constructor(private readonly store: Store) {}
 
-  /** The observed paths of `testFile`, sorted; listing paths among them. */
+  /** The observed paths of `testFile`, sorted; listing paths among them. Reads its project once. */
   of(testFile: TestFileRef): readonly RelativePath[] {
+    if (!this.#raw.has(testFile.project)) this.refresh([testFile.project]);
     const set = this.#sets.get(id(testFile));
     return set === undefined ? [] : [...set].sort(compare);
   }
