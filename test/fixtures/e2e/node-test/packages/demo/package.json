@@ -1,0 +1,12 @@
+{
+  "name": "@reference/demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --import ../../scripts/preload.mjs --import tsx --test test/unit/*.test.ts",
+    "test:package": "node --import ../../scripts/preload.mjs --import tsx --test test/e2e/*.test.ts"
+  },
+  "dependencies": {
+    "@reference/util": "*"
+  }
+}
