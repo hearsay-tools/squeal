@@ -6,12 +6,20 @@
 // `<SQUEAL_NODE_TEST_GRAPH>-<pid>.ndjson`. A synchronous `module.registerHooks` resolve hook, since
 // `module.register` misses `require` (research, module-graph 2). Without the variable, or on a Node
 // without `registerHooks` (before 22.15), it records nothing.
+//
+// Not in Node's internal threads (task 003-30, review wave 2.6 S1). With an async loader (`--loader`,
+// or `module.register`), Node starts a hooks thread that runs every `--require` preload too; on Node
+// 22 a synchronous hook there reaches `Hooks.resolveSync`, which throws ERR_METHOD_NOT_IMPLEMENTED,
+// and the process dies (`initializeHooks` in `lib/internal/modules/esm/utils.js`, v22.23.3). The
+// test's own threads record as before; what the hooks thread loads, the loader's modules, is not
+// recorded on any Node. `isInternalThread` exists from 22.14, before `registerHooks`.
 "use strict";
 const { appendFileSync } = require("node:fs");
 const module_ = require("node:module");
+const { isInternalThread } = require("node:worker_threads");
 
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;
-if (prefix && typeof module_.registerHooks === "function") {
+if (prefix && typeof module_.registerHooks === "function" && !isInternalThread) {
   const file = `${prefix}-${process.pid}.ndjson`;
   const seen = new Set();
   module_.registerHooks({
