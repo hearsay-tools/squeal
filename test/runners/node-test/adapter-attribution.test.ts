@@ -93,6 +93,48 @@ describe("a createRequire load (lessons.md defect 3)", () => {
   });
 });
 
+// Review 004 wave 1, S1 (row 003-39): a preload's `createRequire(package.json)` load has no loaded
+// parent and a specifier no preload flag names; the recorder marks it as made before the test file.
+describe("a preload's createRequire load (004 review S1)", () => {
+  const CREATE_REQUIRE = [
+    `const req = createRequire(process.cwd() + "/package.json");`,
+    `req("./scripts/marker" + ".cjs");`,
+    "",
+  ].join("\n");
+  const preloads = {
+    "--require": [
+      "scripts/create-require.cjs",
+      `const { createRequire } = require("node:module");\n${CREATE_REQUIRE}`,
+    ],
+    "--import": [
+      "scripts/create-require.mjs",
+      `import { createRequire } from "node:module";\n${CREATE_REQUIRE}`,
+    ],
+  } as const;
+
+  for (const [flag, [path, text]] of Object.entries(preloads)) {
+    it(`stays with the ${flag} preload, out of both test closures`, SLOW, async () => {
+      const root = repo(`preload-create-require${flag}`, {
+        "package.json": `${JSON.stringify({ name: "pcr", private: true, type: "module" })}\n`,
+        [path]: text,
+        "scripts/marker.cjs": "globalThis.marked = true;\n",
+        "test/a.test.mjs": `${TEST}test("a", () => {});\n`,
+        "test/b.test.mjs": `${TEST}test("b", () => {});\n`,
+      });
+      const adapter = await createNodeTestAdapter(project({ argv: [flag, `./${path}`] }), {
+        root,
+      });
+      await ran(adapter, "test/a.test.mjs", "test/b.test.mjs");
+      expect((await adapter.environment())[0]?.files).toEqual(
+        expect.arrayContaining([path, "scripts/marker.cjs"]),
+      );
+      for (const file of ["test/a.test.mjs", "test/b.test.mjs"]) {
+        expect((await adapter.closure({ project: "p", path: file })).paths).toEqual([file]);
+      }
+    });
+  }
+});
+
 describe("a test that spawns the package's CLI (spec 004 D5)", () => {
   const spawnRepo = (name: string) => {
     cpSync(join(FIXTURES, "spawn-cli"), join(scratch, name), { recursive: true });
