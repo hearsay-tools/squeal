@@ -46,6 +46,10 @@ Use a name exactly as a SQUEAL message or `squeal status` printed it. Any unique
 
 Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in headers and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
 
+## squeal run --slow
+
+Asks the daemon to run the repository's slow files (`slow` in `squeal.config.json`: end-to-end and other suites too slow to run after every edit) as soon as no fast work is pending. They also run on their own while you are idle; ask when you need their result now, for example before saying the task is done. It prints how many slow files it queued at which revision, or that there are none to run (none declared, or all current at this revision). Their results arrive with your next tool call, so by default keep working; `--wait <ms>` waits after the request as `squeal status --wait` does and prints status. Exit 1 means no daemon runs, or this daemon has no slow tier yet.
+
 ## squeal remove
 
 Takes Squeal out of the repository: stops the daemon of every worktree, then deletes the store and the daemons' temp directories. `--config` also deletes `squeal.config.json`. Run it only when the user asks to remove Squeal. Exit 1 means a daemon did not stop and nothing was deleted; its output names the worktree. Exit 3 means it deleted what it could, and the paths it could not delete are listed under "Still there" with their error codes: tell the user. It prints what remains: the plugin, the config when kept, and the `squeal.config.json` of every other worktree, where the next session starts Squeal again. A deleted config that git tracks is a change to commit.
