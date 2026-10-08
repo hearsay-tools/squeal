@@ -46,6 +46,8 @@ Started: 2026-10-07
 
 - 2026-10-08, third review 003-29 (`reviews/wave-2.6.md`, FAIL at dd4be01, gpt-6.1-sol): plain, nested and package `--require` preloads and ordinary `NODE_OPTIONS` requires are now observed (proven on the shipped plugin). B1: a quoted option name in `NODE_OPTIONS` (`"--require" ./setup.cjs`, `"--require=./setup.cjs"`), which Node accepts, bypasses the regex in `run.ts` `childEnv`, so that preload's computed load stays unkeyed and its pass is inherited. S1, a regression from 003-28: on Node 22.23.3 the first-`--require` recorder makes any async `--loader`, even an identity one, crash the test process (`ERR_METHOD_NOT_IMPLEMENTED: resolveSync`); the run is reported `crashed`, so nothing false is stored; Node 24 is unaffected. Taken to the human.
 
+- 2026-10-08, decided by the human after the third failing review: fix `reviews/wave-2.6.md` B1 and S1 (row 003-30) and run a fourth review (003-31, gpt-6.1-sol).
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.

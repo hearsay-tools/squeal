@@ -115,3 +115,33 @@ Questions: (1) the review's `--require` probe and its nested and package variant
 Rules as for 003-25. A remaining blocker after this round goes to the human.
 
 Use /reviewer.
+
+## 003-30 quoted `NODE_OPTIONS` requires; async loaders on Node 22 (wave 2.7)
+
+Outcome: every `--require` a project's Node will run, however `NODE_OPTIONS` spells it, runs after Squeal's recorder; and a project with an async `--loader` runs on Node 22 as it does without Squeal, with whatever Squeal cannot observe said in a note.
+
+Read: `reviews/wave-2.6.md` (B1, S1, "Inputs for the coordinator") and `reviews/wave-2.5.md`; spec 003 D5 as amended; `status.md`; `src/runners/node-test/run/run.ts` (`childEnv` at about 160-171, the argv at 77-85), `runtime/recorder.cjs`.
+
+Shape: repair. Test first: both probes of `reviews/wave-2.6.md` (the quoted `NODE_OPTIONS` forms `"--require" ./scripts/setup.cjs` and `"--require=./scripts/setup.cjs"`; the identity async loader) fail on `c34c78c` before the fix.
+
+B1: replace the regex with a tokenizer for `NODE_OPTIONS` that follows Node's rules (whitespace separation, double quotes, `\\` escapes inside quotes; read Node's `src/node_options.cc` / `ParseNodeOptionsEnvVar` at the installed versions and cite it), and prepend the recorder when any token is `--require`, `-r`, `--require=...` or `-r=...`. Keep the recorder path quoting. If the tokenizer cannot parse the value, prepend the recorder anyway (an extra recorder only records more).
+
+S1: establish on Node 22.23.3 and 24.21.0 which recorder installation works beside an async loader (`--loader`, `--experimental-loader`, in argv or `NODE_OPTIONS`, and `module.register` from an `--import` preload): for example the recorder registering after the loader chain is ready, or `--import` placement when an async loader is present. Pick the one that keeps observation widest; where a combination leaves `--require` preloads unobserved on a Node version, the adapter says so in one note per project and marks the affected closures incomplete with that reason, so nothing claims complete. Never remove the project's loader and never let the run crash where it did not without Squeal.
+
+Raise `NODE_TEST_ADAPTER_VERSION` to `"4"`. Amend nothing in the spec yourself; report the D5 sentences that change.
+
+Owns: `src/runners/node-test/**`, `test/runners/node-test/**`, `test/integration/node-test*.test.ts`, new fixtures under `test/fixtures/node-test/`. Leave alone: everything else (002-22 is running in `src/harness/` and `src/cli/`).
+
+Done when: on Node 22 and 24, both quoted forms observe the helper, re-run on its edit and miss in a worktree with another helper; the identity and a transforming async loader pass on both versions with the recorder present, and the note appears where observation is narrower; the existing preload and integration tests unchanged; lint, typecheck, full suite green. Keep scratch in one `/tmp` directory of your own and remove it; no CPU burners; never delete or kill what you did not start. Do not run `npm run build`.
+
+Use /worker.
+
+## 003-31 fourth review of the preload slice
+
+Outcome: `reviews/wave-2.7.md`: are `reviews/wave-2.6.md` B1 and S1 closed, and what preload or loader form, if any, still lets a file load outside every key or makes a run crash that runs without Squeal. Decided by the human 2026-10-08.
+
+Range: the 003-30 commits on main (filled in at dispatch).
+
+Rules as for 003-25 and 003-29. A remaining blocker goes to the human.
+
+Use /reviewer.
