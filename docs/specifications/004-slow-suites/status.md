@@ -16,6 +16,8 @@ Started: 2026-10-08
 
 - 2026-10-08, wave 0 (004-10, 004-11), 0.1.42: the `slow` object, `nodeTest[].slow` and `stop.requireSlowSuite` in the policy and its loader, `slowFiles(policy, projects).isSlow`; the slot is an exclusive SQLite lock on `/tmp/squeal-<uid>/slow.lock` (freed when its holder dies, so no pid is read back), and the guard returns the load per CPU it ran under at the bound and treats a load exactly at the threshold as within it. The scheduler carries the guard's remaining budget per slow pass (004-12).
 
+- 2026-10-08, 004-13: `squeal run --slow` reaches the scheduler through a `run-slow` request, but a slow node:test file's spawned CLI is not observed (`tasks/004-13/notes.md`): the recorder is only in argv, 001-132's recorder is never given to node:test, and a child's loads would be counted as preloads. D5's recorder sentence stands; it is built by new row 004-19, dispatched with 003-37 as one worker since both change the same attribution. Both wave-1 workers were cancelled by a coordinator session restart at 23:22; 004-13 had committed everything and was verified by the coordinator; 004-12 is finished by a second worker from its commits.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
