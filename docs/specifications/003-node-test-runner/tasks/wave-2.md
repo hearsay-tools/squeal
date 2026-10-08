@@ -108,7 +108,7 @@ Use /worker.
 
 Outcome: `reviews/wave-2.6.md`: is `reviews/wave-2.5.md` B1 closed, and can any preload form still load a file that no key holds. Decided by the human 2026-10-08 as a third round on this slice.
 
-Range: the 003-28 commits on main (filled in at dispatch).
+Range: `647f6ce^..e9e36d2` on main, the 003-28 commits, the build fix that replaces `dist/node-test` and the 0.1.28 bundles.
 
 Questions: (1) the review's `--require` probe and its nested and package variants, on the shipped plugin; (2) `NODE_OPTIONS` preloads, a preload that spawns a child, a `--loader`; (3) adapter version 3 re-runs exactly the passes it should; (4) the recorder's own cost and that it never changes a project's resolution.
 
