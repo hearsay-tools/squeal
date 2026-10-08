@@ -313,6 +313,8 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 
 ## Later
 
+- 001 follow-up, filed 2026-10-08 by the 002/003 coordinator (the 001 coordinator's session had ended): tests under `test/daemon/` and `test/scheduler/` that start a daemon from the sources through tsx in a child process declare no `inputs`, so their keys do not change when the daemon code they run changes and a pass can stay current after a `src` edit (002 `lessons.md` defect 5, same shape). Declaring `src/**/*.ts` for them is correct and costs a re-run on every `src` edit: a cost trade-off for the 001 coordinator.
+
 - 004 slow suites by policy: a check class (e2e, integration) that runs at checkpoints rather than on every revision, with its own timeout, a load guard and inherited results across worktrees; after 003. Dogfood first on this repository's `test/e2e` under Vitest. The human's e2e blocker, 2026-10-07.
 - 005 `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share.
 - 006 pytest runner adapter.
