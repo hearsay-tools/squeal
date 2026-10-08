@@ -23,18 +23,21 @@ interface Edge {
   readonly url: string;
   /** The specifier as the importer wrote it. */
   readonly specifier: string | null;
+  /** Resolved before its process's entry point, so a preload made it (the recorder's phase). */
+  readonly preload: boolean;
 }
 
 /**
  * Reachability over the edges of one file's run (`graphs`: the recorder's
  * NDJSON files, one per process). An import whose parent is no loaded
  * module (an `--import` resolves from the cwd's directory URL, a `--require`
- * and an entry point from none) roots the preloads only when its specifier
- * is one of `preloads`, the `--import` and `--require` values of the
- * project's argv and `NODE_OPTIONS`. Every other such root is the test
- * file's, since one run runs one test file (lessons.md defect 3): a module
- * loaded through `createRequire(<package.json>)`, or a spawned process's
- * entry point. `null` when the recorder saw nothing of the test file: a Node
+ * and an entry point from none) roots the preloads when its specifier is one
+ * of `preloads`, the `--import` and `--require` values of the project's argv
+ * and `NODE_OPTIONS`, or when the recorder saw it before its process's entry
+ * point: a preload's `createRequire(<package.json>)` load (004 review S1).
+ * Every other such root is the test file's, since one run runs one test file
+ * (lessons.md defect 3): the test's own `createRequire(<package.json>)` load,
+ * or a spawned process's entry point. `null` when the recorder saw nothing of the test file: a Node
  * without `module.registerHooks`, or a process that never loaded it.
  */
 export function observedClosure(
@@ -55,9 +58,10 @@ export function observedClosure(
   const loaded = new Set(edges.map((e) => e.url));
   const fileRoots = [entry];
   const preloadRoots: string[] = [];
-  for (const { parent, url, specifier } of edges) {
+  for (const { parent, url, specifier, preload } of edges) {
     if (url === entry || (parent !== null && loaded.has(parent))) continue;
-    (specifier !== null && preloads.has(specifier) ? preloadRoots : fileRoots).push(url);
+    const ofPreload = preload || (specifier !== null && preloads.has(specifier));
+    (ofPreload ? preloadRoots : fileRoots).push(url);
   }
   return {
     testFile,
@@ -71,12 +75,13 @@ function parseEdges(text: string): Edge[] {
   for (const line of text.split("\n")) {
     if (line.trim() === "") continue;
     try {
-      const { parent, url, specifier } = JSON.parse(line) as Record<string, unknown>;
+      const { parent, url, specifier, preload } = JSON.parse(line) as Record<string, unknown>;
       if (typeof url !== "string") continue;
       edges.push({
         parent: typeof parent === "string" ? parent : null,
         url,
         specifier: typeof specifier === "string" ? specifier : null,
+        preload: preload === true,
       });
     } catch {
       // a partial last line of a killed process

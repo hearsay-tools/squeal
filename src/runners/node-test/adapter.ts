@@ -28,9 +28,12 @@ import { openProject, type ProjectContext, unavailable } from "./adapter-project
  * key that missed a package runs once more. "7": a slow project's spawned
  * processes are recorded, and a load whose parent is no module and that is no
  * preload joins the test file rather than the preloads (rows 003-37, 004-19),
- * so a pass stored while those loads went unkeyed runs once more.
+ * so a pass stored while those loads went unkeyed runs once more. "8": a load
+ * with no loaded parent that a preload made before the process's entry point,
+ * a preload's `createRequire`, joins the preloads rather than every test file
+ * (row 003-39, 004 review S1), so observed keys change shape.
  */
-export const NODE_TEST_ADAPTER_VERSION = "7";
+export const NODE_TEST_ADAPTER_VERSION = "8";
 
 /** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
 export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
