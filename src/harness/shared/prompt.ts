@@ -3,7 +3,7 @@ import { daemonLiveness } from "../../core/delivery/liveness.js";
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
 import { ensure, settle } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { coversNodeTest, withPrimer } from "./primer.js";
+import { coversNodeTest, coversSlowSuites, withPrimer } from "./primer.js";
 
 /**
  * A user prompt (task 001-47; lessons, defects 8 and 10). A prompt starts a
@@ -45,6 +45,11 @@ export function submitPrompt(
     }
     // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
     const registration = await context.delivery.register(context.consumer, { inTurn: true });
-    return withPrimer(registration, deps.command, coversNodeTest(location.root));
+    return withPrimer(
+      registration,
+      deps.command,
+      coversNodeTest(location.root),
+      coversSlowSuites(location.root),
+    );
   });
 }

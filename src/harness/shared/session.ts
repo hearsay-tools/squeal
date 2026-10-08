@@ -1,7 +1,7 @@
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
 import { ensure, settle } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { coversNodeTest, primer, withPrimer } from "./primer.js";
+import { coversNodeTest, coversSlowSuites, primer, withPrimer } from "./primer.js";
 import { unregisterSession } from "./sweep.js";
 
 /** Sources after which no earlier run of the session id goes on. */
@@ -48,7 +48,7 @@ export async function startSession(
     // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
     const main = input.agent_id === undefined;
     if (main && input.source === "compact" && isRegistered(context))
-      return primer(deps.command, coversNodeTest(location.root));
+      return primer(deps.command, coversNodeTest(location.root), coversSlowSuites(location.root));
     if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
@@ -58,7 +58,12 @@ export async function startSession(
     // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
     const atStart = input.source !== "compact";
     const registration = await context.delivery.register(context.consumer, { atStart });
-    return withPrimer(registration, deps.command, coversNodeTest(location.root));
+    return withPrimer(
+      registration,
+      deps.command,
+      coversNodeTest(location.root),
+      coversSlowSuites(location.root),
+    );
   });
   if (!ensured) await ensure(location, deps);
   return text;

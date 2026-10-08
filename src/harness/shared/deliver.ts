@@ -2,7 +2,7 @@ import { formatDelta, notValidatedLine, worktreeLiveness } from "../../core/deli
 import type { HookContext } from "./context.js";
 import { ensureIfStale } from "./ensure.js";
 import { type HookDeps, isRegistered } from "./hook.js";
-import { coversNodeTest, withPrimer } from "./primer.js";
+import { coversNodeTest, coversSlowSuites, withPrimer } from "./primer.js";
 
 /**
  * Claude Code's tools known not to change files in the worktree. Any other
@@ -55,7 +55,12 @@ export async function deliver(
   const ensured = await ensureIfStale(context, deps);
   if (!isRegistered(context)) {
     const registration = await context.delivery.register(context.consumer, { inTurn: true });
-    return withPrimer(registration, deps.command, coversNodeTest(context.root));
+    return withPrimer(
+      registration,
+      deps.command,
+      coversNodeTest(context.root),
+      coversSlowSuites(context.root),
+    );
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const text = delta === null ? null : formatDelta(delta, deps.command);
