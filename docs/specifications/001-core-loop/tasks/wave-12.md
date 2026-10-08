@@ -126,3 +126,39 @@ Use /reviewer. Range: 001-132's commits as landed. Output `reviews/wave-12d.md`.
 ## 001-133 dispatch note
 
 001-132 landed as 0.1.35. Range: its twelve commits as cherry-picked (`5125e99` to `c9c5612` in the worker's branch; on `main` the commits after `0c8bd5d` whose subject names 001-132) plus the build. Its evidence is in `tasks/001-132/notes.md`. Take especially: done-when 3's `on 1` round, where nine files failed only with the recorder and were attributed to load from overlapping runs (summed file time 11,319 s against about 6,500 s for the others); whether that attribution holds. Its brief noted `scripts/mock-cursor-print.mjs` is not on cezar's `main`; the cezar check used `1c97556a`.
+
+## After 001-133
+
+`reviews/wave-12d.md` failed 001-132 on six proven blockers. First repair round on the 001-132 slice, in two rows on disjoint files, then one re-review (001-136). N1 fixed by the coordinator. S1 (the `on 1` attribution) is 001-137, run after the repairs land.
+
+## 001-134 observed inputs are keyed soundly in the scheduler
+
+Use /worker. Shape: repair. `reviews/wave-12d.md` B1 and B5 (each has a fixture and fix steps).
+
+Outcome: no result is stored under a key whose observed inputs were not stable across its run, and a recursive listing re-keys on any change it returned.
+
+Decided: B1: a path observed for the first time in a run has no pre-run evidence; such a result is not stored as current under the key that includes the path. The run's result for that file is discarded (the file stays pending), the path is merged into the observed set, and the file re-runs under its full key at the next tier. A path with a pre-run hash is checked by D5's stability check as today. B5: a recursive `readdir` records each visited directory's immediate listing (the recorder already sees the traversal or reports the root with a recursive flag that the scheduler expands to each directory's listing); ordinary shallow listings unchanged.
+
+Own: `src/core/scheduler/` (tiers, keying, stability), `src/core/keys/` (observed set, listing keys), tests under `test/scheduler/`, `test/keys/`, D3 and D5 in `spec.md`, one `status.md` line. If B5 needs a recorder field, agree its shape with 001-135 through the coordinator. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: the review's B1 probe (a test that creates the file it reads mid-run) never stores pass under the present-file key and a second worktree does not inherit it; B5's probe re-keys on a nested addition and removal; the cost of the extra re-run is reported on the cezar measurement set (how many files re-run once on first observation).
+
+## 001-135 the recorder records what a test reads, and changes nothing
+
+Use /worker. Shape: repair. `reviews/wave-12d.md` B2, B3, B4, B6 (each has a fixture and fix steps).
+
+Outcome: reads through a file symlink, `r+` and other readable opens, reads in a `SHARE_ENV` Worker are all recorded, and the recorder never changes the outcome of a spawn call.
+
+Decided as the review says: B2 key both the link path and its in-scope target; B3 classify actual reads and writes, not open flags; B4 carry attribution into shared-env threads without copying the env or touching `workerData`; B6 inject only into valid spawn overloads, passing invalid calls through unchanged so Node's own validation runs. Bump the recorder version.
+
+Own: `src/runners/observe/`, `src/runners/vitest/observe.ts`, tests under `test/runners/`, `test/fixtures/` (recorder fixtures), D4 in `spec.md`, one `status.md` line. Leave `src/core/scheduler/` and `src/core/keys/` to 001-134. Do not run `npm run build` or touch any `dist`. Commit as you go.
+
+Done when: each of B2, B3, B4, B6's probes is a test that fails before and passes after, in both Vitest pools where the probe applies; the recorder's existing fixture tests stay green.
+
+## 001-136 re-review of 001-134 and 001-135
+
+Use /reviewer. Last round on the 001-132 slice: blockers go to the human. Output `reviews/wave-12e.md`. Re-run `reviews/wave-12d.md`'s six probes and S2; probe a file created then deleted within a run, a symlink retarget out of the worktree, `O_RDWR` numeric flags, a shared-env worker's own children, and every spawn overload's invalid forms.
+
+## 001-137 evidence: does the recorder cause cezar's contention failures
+
+Use /researcher. `reviews/wave-12d.md` S1: run the nine `on 1` files in a bounded alternating on/off comparison under a fixed competing workload, fixed Vitest concurrency and unchanged deadlines, on a fresh cezar clone; record per-file outcomes, worker and child counts, overlap timestamps and load through each run. Output appended to `tasks/001-132/notes.md` as a dated section, and replace "shown to be load" there with what the evidence supports.
