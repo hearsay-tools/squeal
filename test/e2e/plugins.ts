@@ -38,6 +38,8 @@ export interface Plugin {
   readonly editTool: string;
   /** Whether the plugin ships `bin/squeal`; Codex hooks call the bundled CLI by path (D1). */
   readonly bin: boolean;
+  /** The CLI arguments of `squeal init` for this harness (spec 002 D1, 003 D1). */
+  readonly init: readonly string[];
   /** Runs `hook` of the plugin copy at `copy` for the worktree `root`, with `env` added. */
   run(
     copy: string,
@@ -53,6 +55,7 @@ const CLAUDE_CODE: Plugin = {
   boundary: "PostToolBatch",
   editTool: "Edit",
   bin: true,
+  init: ["init"],
   run: (copy, hook, root, overrides, env) =>
     runNode(
       ["--disable-warning=ExperimentalWarning", join(copy, "dist", `${hook}.mjs`)],
@@ -110,6 +113,7 @@ const CODEX: Plugin = {
   boundary: "PostToolUse",
   editTool: "apply_patch",
   bin: false,
+  init: ["init", "--harness", "codex"],
   run: (copy, hook, root, overrides, env) => {
     const [mode, name] = CODEX_INPUT[hook];
     const input: Record<string, unknown> = {

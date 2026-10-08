@@ -8,7 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeAll, type TestContext } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
@@ -16,13 +16,13 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse, StatusSnapshot } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { type Install, vitestInstall } from "./install.js";
+import { fixtureInstall, type Install, type InstallKind } from "./install.js";
 import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
-import { MATH, SLOW, type Source, STRINGS } from "./sources.js";
+import { DEMO, MATH, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
 import { daemonPids, metric, type RunRow, readRuns, until } from "./support.js";
 
 export { type HookName, PLUGINS, type Plugin } from "./plugins.js";
-export { MATH, SLOW, SLOW_MS, STRINGS } from "./sources.js";
+export { DEMO, MATH, SLOW, SLOW_MS, STRINGS } from "./sources.js";
 export { hasNodeModulesAbove, until } from "./support.js";
 
 /*
@@ -43,7 +43,8 @@ const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
 /** Spec 001 D9: every hook has `timeout: 2`. */
 export const HOOK_BUDGET_MS = 2_000;
 const DAEMON_WAIT_MS = 45_000;
-const SETTLE_WAIT_MS = 90_000;
+/** The integration test's budget (`test/integration/node-test.test.ts`): node:test runs a process per file. */
+const SETTLE_WAIT_MS = 120_000;
 
 /** The recorded hook JSON's session is the default consumer; this is a second one. */
 export const OTHER_SESSION = "0d7c5b1e-3f0a-4b8e-9a51-2c6e8f4d7a90";
@@ -71,6 +72,16 @@ export interface FixtureOptions {
   readonly slow?: boolean;
 }
 
+interface BuildOptions extends FixtureOptions {
+  /**
+   * The install is the node:test workspace's, and the fixture adds
+   * `test/fixtures/e2e/node-test`, shaped like `test/fixtures/node-test/reference`;
+   * `squeal.config.json` is then written by the shipped CLI's `squeal init`
+   * from its scripts, and `policy` is unused.
+   */
+  readonly nodeTest?: boolean;
+}
+
 const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
 
@@ -92,7 +103,7 @@ export class E2E {
     this.#env = { XDG_RUNTIME_DIR: runtime };
   }
 
-  static create(kind: Plugin, install: string, options: FixtureOptions = {}): E2E {
+  static create(kind: Plugin, install: string, options: BuildOptions = {}): E2E {
     // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
     const base = realpathSync(mkdtempSync("/tmp/squeal-e2e-"));
     const e2e = new E2E(kind, base, realpathSync(mkdtempSync("/tmp/sq-")), install);
@@ -106,26 +117,45 @@ export class E2E {
     return e2e;
   }
 
-  #build(options: FixtureOptions): void {
+  #build(options: BuildOptions): void {
     copyPlugin(this.kind.name, this.plugin);
 
     const repo = this.main;
+    const nodeTest = options.nodeTest === true;
     cpSync(join(FIXTURE, "project"), repo, { recursive: true });
     execFileSync("mv", [join(repo, "_gitignore"), join(repo, ".gitignore")]);
     if (options.slow === true) cpSync(join(FIXTURE, "slow"), repo, { recursive: true });
-    mkdirSync(join(repo, "src"));
+    if (nodeTest) cpSync(join(FIXTURE, "node-test"), repo, { recursive: true });
     this.write(repo, "math", MATH());
     this.write(repo, "strings", STRINGS());
     if (options.slow === true) this.write(repo, "slow", SLOW());
-    const policy = options.policy ?? {};
-    writeFileSync(
-      join(repo, "squeal.config.json"),
-      typeof policy === "string" ? policy : `${JSON.stringify(policy, null, 2)}\n`,
-    );
+    if (nodeTest) this.write(repo, "demo", DEMO());
     this.#copyInstall(repo, true);
     git(repo, ["init", "-q", "-b", "main"]);
+    if (nodeTest) {
+      // Spec 003 D1: the configuration a user gets, seeded from the packages' scripts.
+      execFileSync(
+        process.execPath,
+        ["--disable-warning=ExperimentalWarning", this.#cliPath, ...this.kind.init],
+        {
+          cwd: repo,
+          stdio: "pipe",
+          env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...this.#env },
+        },
+      );
+    } else {
+      const policy = options.policy ?? {};
+      writeFileSync(
+        join(repo, "squeal.config.json"),
+        typeof policy === "string" ? policy : `${JSON.stringify(policy, null, 2)}\n`,
+      );
+    }
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
+  }
+
+  get #cliPath(): string {
+    return join(this.plugin, "dist/cli/squeal.mjs");
   }
 
   /** package.json, its lockfile and node_modules from the cached install, as `npm install` leaves them. */
@@ -146,9 +176,11 @@ export class E2E {
     return realpathSync(root);
   }
 
-  /** Writes `src/<file>.ts` with a fresh counter comment, so its content is new to the store. */
+  /** Writes the source `file` with a fresh counter comment, so its content is new to the store. */
   write(root: string, file: Source, body: string): void {
-    writeFileSync(join(root, "src", `${file}.ts`), `// edit ${this.#edits++}\n${body}`);
+    const path = join(root, SOURCE_PATH[file]);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `// edit ${this.#edits++}\n${body}`);
   }
 
   /** Runs a hook the way the plugin's harness does, fed the recorded input with `cwd` set to `root`. */
@@ -169,7 +201,7 @@ export class E2E {
   /** The shipped CLI, as `bin/squeal` runs it. */
   cli(root: string, args: readonly string[]): Promise<BundleRun> {
     return runNode(
-      ["--disable-warning=ExperimentalWarning", join(this.plugin, "dist/cli/squeal.mjs"), ...args],
+      ["--disable-warning=ExperimentalWarning", this.#cliPath, ...args],
       "",
       this.#env,
       root,
@@ -200,7 +232,10 @@ export class E2E {
 
   /**
    * Waits until status has nothing pending, a daemon validating, a revision
-   * after `after` (when given) and `accept` holds.
+   * after `after` (when given) and `accept` holds. The runner part of a
+   * revision counts as pending (001 D2): a node:test observed-only path
+   * re-keys its test file only in the refinement, as the integration test
+   * found under load.
    */
   settle(
     root: string,
@@ -213,13 +248,14 @@ export class E2E {
       const quiet =
         s.daemon.state === "alive" &&
         s.revision > after &&
+        s.runnerPartPending !== true &&
         s.counts.pending + s.testFilesWithoutChecks.pending + s.testFilesWithoutChecks.unknown ===
           0;
       return quiet && accept(s) ? s : null;
     });
   }
 
-  /** Writes `src/<file>.ts` and waits for the revision it makes to settle. */
+  /** Writes the source `file` and waits for the revision it makes to settle. */
   async edit(
     root: string,
     file: Source,
@@ -229,7 +265,8 @@ export class E2E {
     const before = (await this.status(root)).revision;
     const started = performance.now();
     this.write(root, file, body);
-    const settled = await this.settle(root, `the edit of src/${file}.ts to settle`, accept, before);
+    const what = `the edit of ${SOURCE_PATH[file]} to settle`;
+    const settled = await this.settle(root, what, accept, before);
     metric({ plugin: this.kind.name, settle: file, ms: Math.round(performance.now() - started) });
     return settled;
   }
@@ -257,21 +294,24 @@ export class E2E {
 
 /**
  * Registers the suite's install and cleanup; returns a fixture factory that
- * skips the test, with the reason, when Vitest cannot be installed.
+ * skips the test, with the reason, when the install cannot be made. Every
+ * fixture of a `node-test` suite is the node:test workspace (`BuildOptions`).
  */
-export function e2eSuite(): (ctx: TestContext, kind: Plugin, options?: FixtureOptions) => E2E {
+export function e2eSuite(
+  kind: InstallKind = "vitest",
+): (ctx: TestContext, plugin: Plugin, options?: FixtureOptions) => E2E {
   let install: Install = { ok: false, reason: "the install did not run" };
   const fixtures: E2E[] = [];
   beforeAll(async () => {
-    install = await vitestInstall();
+    install = await fixtureInstall(kind);
   }, 400_000);
   afterEach(async () => {
     await Promise.all(fixtures.splice(0).map((f) => f.cleanup()));
   }, 120_000);
-  return (ctx, kind, options) => {
+  return (ctx, plugin, options = {}) => {
     const ready = install;
     if (!ready.ok) return ctx.skip(`end to end skipped: ${ready.reason}`);
-    const fixture = E2E.create(kind, ready.dir, options);
+    const fixture = E2E.create(plugin, ready.dir, { ...options, nodeTest: kind === "node-test" });
     fixtures.push(fixture);
     return fixture;
   };
