@@ -47,3 +47,15 @@ Contract unchanged: `Scheduler.requestSlowSuite(): Promise<SlowSuiteRequest>`, `
 Owns and leave alone: as 004-12 above. No CPU burners; never delete or kill anything you did not start; remove your own scratch when done.
 
 Use /worker.
+
+## 004-14 review of wave 1
+
+Outcome: `reviews/wave-1.md` in this spec folder, committed.
+
+Range: `687fb0e^..7314670` on main, 0.1.45: 004-12, 004-13, 004-19 with 003-37, and the small 003-36 and 003-38. The 001 commits around it are out of scope.
+
+Questions: (1) Goal 1 and D2: can a slow file run while fast work is pending or a consumer is in a turn, can an expired or crashed consumer keep the slow tier from ever running, and does a silent Stop record slow files pending without waiting? (2) D4 and D6: can a slow result be stored under a key whose inputs changed during its run, or be inherited from another worktree without a declared artifact, through any lookup (start, `selectTier`'s re-lookup)? (3) D2 and D3: can two daemons of one user run slow files at once, can a crash, a preempt or a close leave the slot held or the guard's budget wrong, can the guard defer past `maxDeferMs`? (4) 003-37 and 004-19, adapter version 7: can a real preload land in a test file's closure, or a test file's own load in the preloads, for every way a preload is written (`--require=x`, `-r x`, `--import=x`, quoted paths, a package specifier, project `env.NODE_OPTIONS` against inherited)? Does a slow project's spawned process record into its own file's closure when files run concurrently? (5) `run --slow` against a daemon without the method and an older daemon; 003-38's mark reaching node:test children; 003-36's primer reading the policy in every hook without failing on a bad config.
+
+Rules as for 003-25: change no code; label findings proven, plausible or unverified; only a proven break blocks; probes under `/tmp`, removed after; never this repository's store, never `/home/agent/projects/cezar`. A probe that runs a slow file under a real daemon sets `slow.maxLoadPerCpu` high, or this host's load defers it for up to 10 minutes. No CPU burners. First review round on this slice.
+
+Use /reviewer.

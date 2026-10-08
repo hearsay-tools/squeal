@@ -384,7 +384,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-13 `squeal run --slow`; slow node:test processes observed | done (0.1.45; the spawned-CLI gap went to 004-19) | D2's explicit trigger through a `run-slow` daemon request; a test that a slow node:test file's spawned CLI is observed (001-132). | The request reaches the scheduler; the spawn test passes or names the gap. |
 | 004-19 a slow node:test project's spawned processes are observed | done (0.1.45, with 003-37) | D5's recorder sentence, from 004-13's finding: the recorder in `NODE_OPTIONS` for slow node:test projects; a child process's loads belong to the test file, not the preloads. | `test/integration/slow-spawn.test.ts` flips: a spawned CLI's helper edit re-runs the slow file. |
 | 004-18 a separate lane for slow files | planned, after 004-12 | D2's execution: a second runner at low priority, concurrent with fast tiers. | An edit's fast file is reported while a slow file is running. |
-| 004-14 review of wave 1 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
+| 004-14 review of wave 1 | running | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
 ### Wave 2: telling the agent; Wave 3: proof
 
