@@ -122,6 +122,9 @@ export function copyNodeTestRuntime(
   if (!existsSync(from)) return;
   const files = readdirSync(from).filter((f) => f.endsWith(".mjs") || f.endsWith(".cjs"));
   if (files.length === 0) return;
+  // Replaced as a whole, so a runtime file removed from the sources leaves no copy behind
+  // (003-28 replaced recorder.mjs by recorder.cjs).
+  rmSync(join(outdir, "node-test"), { recursive: true, force: true });
   mkdirSync(join(outdir, "node-test"), { recursive: true });
   for (const file of files) copyFileSync(join(from, file), join(outdir, "node-test", file));
 }
