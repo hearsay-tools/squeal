@@ -196,6 +196,19 @@ export interface ConsumerRecord {
   readonly lastDeliveredAt: EpochMs | null;
 }
 
+/**
+ * The harness process a consumer registered from (lessons, defect 24;
+ * `research/harness-process-liveness.md`): its PID, the start time from
+ * `/proc/<pid>/stat` field 22 in clock ticks, which a reused PID does not
+ * share, and the PID namespace the PID means something in
+ * (`readlink /proc/self/ns/pid`). Kept in `meta` beside the consumer.
+ */
+export interface HarnessProcess {
+  readonly pid: number;
+  readonly startTime: number;
+  readonly pidNamespace: string;
+}
+
 /** Spec 001 D10: consumer expiry. */
 export const CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1000;
 

@@ -1,5 +1,10 @@
 import type { EnsureDaemonOptions } from "../../core/daemon/ensure.js";
-import type { AbsolutePath, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
+import type {
+  AbsolutePath,
+  EnsureDaemonResult,
+  EpochMs,
+  HarnessProcess,
+} from "../../core/types/index.js";
 import {
   type ConsumerInput,
   type ContextOptions,
@@ -7,6 +12,7 @@ import {
   type HookLocation,
   openContext,
 } from "./context.js";
+import { findHarnessProcess } from "./harness-process.js";
 
 export interface HookDeps {
   /** Environment of the hook process: `CLAUDE_CODE_*` variables decide whether the waiter runs. */
@@ -32,6 +38,11 @@ export interface HookDeps {
   readonly waiterTimeoutMs?: number;
   /** Store polling interval of Stop's wait and the waiter. */
   readonly pollIntervalMs?: number;
+  /**
+   * The harness process a registration records (lessons, defect 24).
+   * Default: `findHarnessProcess` from this hook's parent and `env`.
+   */
+  readonly harnessProcess?: () => HarnessProcess | null;
 }
 
 /** Every synchronous hook in hooks.json has `timeout: 2`; Claude Code kills it after this. */
@@ -48,6 +59,7 @@ export async function withContext<T>(
   const options: ContextOptions = {
     ...(deps.now === undefined ? {} : { now: deps.now }),
     ...(deps.pollIntervalMs === undefined ? {} : { pollIntervalMs: deps.pollIntervalMs }),
+    harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess({ env: deps.env })),
     ...overrides,
   };
   const context = openContext(input, location, options);
