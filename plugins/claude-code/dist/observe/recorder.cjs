@@ -30,9 +30,11 @@
 // listed, `r` listed with `recursive: true` (each also in `l`), `w` written. Not only at
 // exit: Vitest stops a fork with SIGTERM and a thread with `terminate()`, and
 // neither runs an exit hook. Also at once before a process or thread sends a
-// message (`process.send`, `MessagePort.postMessage`): a parent that stops it
-// on that message, as Vitest does after a file's results, stops it before the
-// next turn.
+// message it can be stopped at (`process.send`, a thread's
+// `MessagePort.postMessage`): a parent that stops it on that message, as Vitest
+// does after a file's results, stops it before the next turn. Not before a
+// main thread's port message, nor a thread's message to a Worker it started:
+// neither stops the sender, and tsx's esbuild posts one per module (001-147).
 //
 // Not in Node's internal threads: a synchronous resolve hook in an async
 // loader's hooks thread kills the process on Node 22 (003-30).
@@ -180,6 +182,7 @@ function install(settings) {
     }
   };
 
+  const Worker = workerThreads.Worker; // before `wrapChildren` replaces it
   wrapFs({ scoped, record });
   wrapChildren({ current, record, scoped, self: SELF, variable: VARIABLE, settings });
 
@@ -208,20 +211,40 @@ function install(settings) {
   }
 
   process.on("exit", flush);
-  const flushBefore = (target, name) => {
+  // Before a message the sender can be stopped at: `process.send`, and a thread's port message,
+  // unless it goes to a Worker this thread started. A main thread is stopped by no thread, and
+  // a message to its own Worker stops no sender: esbuild posts one per `transformSync` (001-147).
+  const wrap = (target, name, around) => {
     const original = target?.[name];
     if (typeof original !== "function") return;
     const wrapped = function (...args) {
-      try {
-        flush();
-      } catch {
-        // never the test's failure
-      }
-      return original.apply(this, args);
+      return around(() => original.apply(this, args));
     };
     Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(original));
     target[name] = wrapped;
   };
-  flushBefore(workerThreads.MessagePort?.prototype, "postMessage");
-  flushBefore(process, "send");
+  const flushFirst = (call) => {
+    try {
+      flush();
+    } catch {
+      // never the test's failure
+    }
+    return call();
+  };
+  if (!workerThreads.isMainThread) {
+    // `Worker.prototype.postMessage` posts through a `MessagePort`
+    let toWorker = 0;
+    wrap(Worker?.prototype, "postMessage", (call) => {
+      toWorker++;
+      try {
+        return call();
+      } finally {
+        toWorker--;
+      }
+    });
+    wrap(workerThreads.MessagePort?.prototype, "postMessage", (call) =>
+      toWorker > 0 ? call() : flushFirst(call),
+    );
+  }
+  wrap(process, "send", flushFirst);
 }
