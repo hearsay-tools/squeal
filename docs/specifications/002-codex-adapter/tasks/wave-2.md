@@ -97,3 +97,17 @@ Owns: `docs/specifications/002-codex-adapter/lessons.md` (a new section only) an
 Done when: the section has a verdict per goal (held, not shown, broken), the excerpts that prove it, and the defects; committed.
 
 Use /worker.
+
+## 002-22 a Codex agent can run Squeal; latency tests report under load
+
+Outcome: every Squeal text a Codex agent receives names a command that runs in its shell, and the two bundled-hook latency tests always report.
+
+Read: `lessons.md` "Dogfooding with a Cezar Codex worker", defects 4 and 6; spec 002 D1 as amended 2026-10-08; `src/harness/shared/primer.ts`, `src/harness/codex/output.ts` (the primer tail and the cap), where the FAIL report's `Full output: squeal why ...` line is built (`src/core/delivery/format.ts` or the shared hooks), `plugins/codex/skills/squeal/` (built from `plugins/claude-code/skills/squeal/` by `src/harness/codex/build.ts`).
+
+Shape: repair. Seam: make the CLI command a parameter of the texts, with `squeal` as the Claude Code default (its plugin puts `bin/squeal` on PATH) and, under Codex, `node "<PLUGIN_ROOT>/dist/cli/squeal.mjs"` from the hook's `PLUGIN_ROOT`, quoted for a shell; when `PLUGIN_ROOT` is absent, fall back to the path of the running bundle's sibling `cli/squeal.mjs`. The skill under Codex: the build rewrites `squeal ` command examples in its copy to say "the command the primer names", or adds one line saying so; pick the smaller change and say why. Then defect 6: each latency test runs fewer cold runs when the load is above its threshold and returns its table well inside its timeout; it asserts only below the threshold, as now.
+
+Owns: `src/harness/codex/**`, `src/harness/shared/primer.ts` and the one place the `squeal why` line is formatted (additive parameter only), `src/harness/codex/build.ts`, `test/harness/codex/**`, `test/harness/latency.test.ts` (agreed with the 001 coordinator's file, test only), `test/harness/primer*.test.ts`. Leave alone: `plugins/codex/hooks/hooks.json` (its hashes are pinned; no command changes), `src/core/scheduler/**`, `src/runners/**`.
+
+Done when: a recorded Codex SessionStart's primer, run in `bash -c` from a directory with no `squeal` on PATH and `PLUGIN_ROOT` set to a built plugin, names a command that prints status; a Codex FAIL report's last line likewise; every Claude Code text byte-identical to today (their tests unchanged); both latency tests finish inside their timeouts with a parallel load of 2 extra suite copies and still assert below the threshold; the hooks.json hash pin test passes unchanged; lint, typecheck, full suite green. Do not run `npm run build`.
+
+Use /worker.
