@@ -69,7 +69,7 @@ import(${JSON.stringify(escaped)}).then(async ({ EscapedChildren }) => {
   const leaves = "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 600000)'], { stdio: 'ignore' }).unref()";
   const parent = spawn(process.execPath, ["-e", leaves], { stdio: "ignore" });
   await new Promise((done) => parent.on("exit", done));
-  console.log(await children.afterTier(since));
+  console.log(await children.afterRun("", since, since));
 });
 `;
 }

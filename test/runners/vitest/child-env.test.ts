@@ -70,7 +70,7 @@ async function sweepsOwnSleepers(ready: (pool: string) => Promise<void>): Promis
     });
     expect(isAlive(pid)).toBe(true);
     await ready(pool);
-    const note = await children.afterTier(since);
+    const note = await children.afterRun("vitest", since, since);
     expect(note).toBe(
       `stopped 1 process a test left running after its tier: ${pid} ${process.execPath} -e setTimeout(() => {}, 600000)`,
     );

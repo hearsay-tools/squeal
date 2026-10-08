@@ -2,12 +2,19 @@ import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { RunnerAdapter } from "../types/index.js";
+import {
+  isSlowLane,
+  type RunnerAdapter,
+  type RunOptions,
+  type TestFileRef,
+} from "../types/index.js";
+import { lowerWhile } from "./low-priority.js";
 
 /**
  * The variable every Vitest worker of a daemon carries, and with it every
  * process a test starts with its env, wherever it ends up (spec 001 D12;
- * lessons 003, defect 8; task 001-142).
+ * lessons 003, defect 8; task 001-142). Its value is the daemon's token and
+ * the lane of the run, `<token>:<lane>` (task 004-18).
  */
 export const CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 
@@ -22,7 +29,7 @@ const CHUNK = 64;
 /** The longest command line a note names. */
 const COMMAND_CHARS = 120;
 
-interface ProcessEntry {
+export interface ProcessEntry {
   readonly pid: number;
   readonly ppid: number;
   readonly pgrp: number;
@@ -32,19 +39,22 @@ interface ProcessEntry {
 
 /**
  * Finds and stops the processes a daemon's tests left behind (spec 001 D12).
- * Two kinds are a test's: a process carrying `env`, which only the daemon's
- * Vitest workers get and which nothing else of the daemon runs while no tier
- * does; and a member of the daemon's own process group that no longer
- * descends from the daemon, which only a child whose parent exited is. The
- * group counts only when the daemon leads it (`squeal daemon` spawned
- * detached); a daemon inside another process's group leaves the group alone.
- * What shared the group when the daemon started, such as the rest of a
- * shell pipeline, is never the daemon's, and neither is what it starts.
- * Linux only, through `/proc`; elsewhere nothing is found.
+ * Two kinds are a test's: a process carrying the daemon's mark, which only
+ * the daemon's test workers get and which nothing else of the daemon runs
+ * while no tier does; and a member of the daemon's own process group that no
+ * longer descends from the daemon, which only a child whose parent exited
+ * is. The group counts only when the daemon leads it (`squeal daemon`
+ * spawned detached); a daemon inside another process's group leaves the
+ * group alone. What shared the group when the daemon started, such as the
+ * rest of a shell pipeline, is never the daemon's, and neither is what it
+ * starts. The mark names the lane of the run (`envFor`), so a run's stop
+ * reaches its own lane's processes only (task 004-18). Linux only, through
+ * `/proc`; elsewhere nothing is found.
  */
 export class EscapedChildren {
-  /** What the daemon's Vitest workers add to their env. */
+  /** The daemon's mark with no lane: what a runner that is told no lane gives its processes. */
   readonly env: Readonly<Record<string, string>>;
+  /** The mark's start in a process's environ, whatever lane follows it. */
   readonly #needle: string;
   readonly #self: number;
   /** When the daemon started, so the exit looks no further back. */
@@ -54,12 +64,17 @@ export class EscapedChildren {
 
   constructor(token: string = randomUUID(), self: number = process.pid) {
     this.env = { [CHILD_VARIABLE]: token };
-    this.#needle = `${CHILD_VARIABLE}=${token}\0`;
+    this.#needle = `\0${CHILD_VARIABLE}=${token}`;
     this.#self = self;
     this.#born = this.mark();
     this.#strangers = strangersOf(self);
     // Read only through `#find`, which waits for it; a failed scan leaves the group alone.
     this.#strangers.catch(() => {});
+  }
+
+  /** What the processes of a run of `lane` add to their env: the daemon's mark of that lane. */
+  envFor(lane: string): Readonly<Record<string, string>> {
+    return { [CHILD_VARIABLE]: `${this.env[CHILD_VARIABLE]}:${lane}` };
   }
 
   /** The clock `stop` compares start times with: now, a second early, in ticks since boot. */
@@ -68,49 +83,68 @@ export class EscapedChildren {
   }
 
   /**
-   * After a tier: stops every carrier of `env` started since `since` and every
-   * orphan of the daemon's group. Resolves with a note naming them, or `null`.
+   * After a run of `lane`: stops every carrier of that lane's mark started
+   * since `since`. With `alone`, no run of another lane in flight, also the
+   * carriers of the bare mark (`env`) and the unmarked orphans of the
+   * daemon's group since `alone`, a mark taken when the first of the
+   * overlapping runs started. Never another lane's carrier: a run of it may
+   * have just started (review 001-149). Resolves with a note naming them, or
+   * `null`.
    */
-  async afterTier(since: number): Promise<string | null> {
-    const stopped = await this.#stop(since, false);
+  async afterRun(lane: string, since: number, alone: number | null = null): Promise<string | null> {
+    const stopped = await this.#stop({ lane, since, alone });
     return describe(stopped, "a test left running after its tier");
   }
 
   /**
-   * At exit, once the runners closed: every carrier, and every other member
-   * of the group, a global setup's child among them.
+   * At exit, once the runners closed: every carrier of any lane, and every
+   * other member of the group, a global setup's child among them.
    */
   async atExit(): Promise<string | null> {
-    const stopped = await this.#stop(this.#born, true);
+    const stopped = await this.#stop(null);
     return describe(stopped, "the runners left running when the daemon exited");
   }
 
-  async #stop(since: number, exiting: boolean): Promise<Stopped[]> {
+  /** The carriers of `lane`'s mark started since `since`, for `lowerWhile` (spec 004 D2). */
+  async carriers(lane: string, since: number): Promise<ProcessEntry[]> {
+    if (process.platform !== "linux") return [];
+    const entries = (await snapshot()).filter((e) => e.pid !== this.#self && e.start >= since);
+    const marks = await Promise.all(entries.map(({ pid }) => this.#markOf(pid)));
+    return entries.filter((_, i) => marks[i] === lane);
+  }
+
+  /** `scope` `null` is the exit. */
+  async #stop(scope: Scope | null): Promise<Stopped[]> {
     if (process.platform !== "linux") return [];
     let entries = await snapshot();
-    if (await this.#workersGone(entries, since)) entries = await snapshot();
+    if (await this.#workersGone(entries, scope)) entries = await snapshot();
     const stopped: Stopped[] = [];
-    const seen = new Set<number>();
+    // By identity, pid and start time, through every round (review 001-149 S2).
+    const seen = new Set<string>();
     // A round's kills orphan the children of what it killed, which the next finds in the group.
     for (let round = 0; round < ROUNDS; round++) {
       if (round > 0) entries = await snapshot();
-      const found = (await this.#find(entries, since, exiting)).filter(({ pid }) => !seen.has(pid));
+      const found = (await this.#find(entries, scope)).filter((entry) => !seen.has(key(entry)));
       if (found.length === 0) break;
-      for (const { pid } of found) seen.add(pid);
+      for (const entry of found) seen.add(key(entry));
       stopped.push(...(await terminate(found)));
     }
     return stopped;
   }
 
   /**
-   * Vitest resolves a run before its workers exit, and they carry `env`: the
-   * daemon's own children that do get up to the grace to go first. One still
-   * there, such as a thread worker's child, is stopped with the rest.
-   * Whether there were any to wait for.
+   * Vitest resolves a run before its workers exit, and they carry the mark:
+   * the daemon's own children of the run's lane get up to the grace to go
+   * first. One still there, such as a thread worker's child, is stopped with
+   * the rest. Whether there were any to wait for.
    */
-  async #workersGone(entries: readonly ProcessEntry[], since: number): Promise<boolean> {
+  async #workersGone(entries: readonly ProcessEntry[], scope: Scope | null): Promise<boolean> {
+    const since = scope?.since ?? this.#born;
     const children = entries.filter(({ ppid, start }) => ppid === this.#self && start >= since);
-    const carrying = await Promise.all(children.map(({ pid }) => this.#carries(pid)));
+    const marks = await Promise.all(children.map(({ pid }) => this.#markOf(pid)));
+    const carrying = marks.map((mark) =>
+      scope === null ? mark !== undefined : mark === scope.lane,
+    );
     let alive = children.filter((_, i) => carrying[i]);
     if (alive.length === 0) return false;
     const deadline = Date.now() + GRACE_MS;
@@ -121,46 +155,70 @@ export class EscapedChildren {
     return true;
   }
 
-  async #find(
-    entries: readonly ProcessEntry[],
-    since: number,
-    exiting: boolean,
-  ): Promise<ProcessEntry[]> {
+  async #find(entries: readonly ProcessEntry[], scope: Scope | null): Promise<ProcessEntry[]> {
     const strangers = await this.#strangers.catch(() => null);
     const descendants = descendantsOf([this.#self], entries);
     const foreign = strangers === null ? new Set<number>() : lineOf(strangers, entries);
     const others = entries.filter(({ pid }) => pid !== this.#self);
-    const carrying = await Promise.all(
-      others.map(({ pid, start }) => (start >= since ? this.#carries(pid) : false)),
+    // The earliest start any rule below reaches back to.
+    const since = scope === null ? this.#born : Math.min(scope.since, scope.alone ?? scope.since);
+    const marks = await Promise.all(
+      others.map(({ pid, start }) => (start >= since ? this.#markOf(pid) : undefined)),
     );
     const orphaned = (entry: ProcessEntry) =>
       strangers !== null &&
       entry.pgrp === this.#self &&
       !foreign.has(entry.pid) &&
-      (exiting || !descendants.has(entry.pid));
-    return others.filter((entry, i) => carrying[i] || orphaned(entry));
+      (scope === null || !descendants.has(entry.pid));
+    return others.filter((entry, i) => {
+      const mark = marks[i];
+      if (scope === null) return mark !== undefined || orphaned(entry);
+      if (mark === scope.lane) return entry.start >= scope.since;
+      if (scope.alone === null || entry.start < scope.alone) return false;
+      return mark === null || (mark === undefined && orphaned(entry));
+    });
   }
 
-  async #carries(pid: number): Promise<boolean> {
+  /**
+   * The lane whose mark `pid` carries: a lane, `null` for the bare mark,
+   * `undefined` for none (another daemon's, or gone).
+   */
+  async #markOf(pid: number): Promise<string | null | undefined> {
+    let environ: string;
     try {
-      return `${await readFile(`/proc/${pid}/environ`, "latin1")}\0`.includes(this.#needle);
+      environ = `\0${await readFile(`/proc/${pid}/environ`, "latin1")}\0`;
     } catch {
       // Gone, or another user's.
-      return false;
+      return undefined;
     }
+    const at = environ.indexOf(this.#needle);
+    if (at < 0) return undefined;
+    const rest = environ.slice(at + this.#needle.length, environ.indexOf("\0", at + 1));
+    if (rest === "") return null;
+    return rest.startsWith(":") ? rest.slice(1) : undefined;
   }
 }
 
+/** What a stop after a run reaches; see `EscapedChildren.afterRun`. */
+interface Scope {
+  readonly lane: string;
+  readonly since: number;
+  readonly alone: number | null;
+}
+
 /** What `afterEachRun` needs of `EscapedChildren`. */
-export type RunSweeper = Pick<EscapedChildren, "mark" | "afterTier">;
+export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | "carriers">;
 
 /**
- * Stops what the runs of `runner` left behind once they settle, before the
- * last one's result is returned. Runs of two lanes overlap (001 D5 as
- * amended, task 001-140) and a carrier does not say whose run started it, so
- * the stop waits for the last run in flight and looks back to the mark of
- * the first: a run that ends while another is in flight stops nothing, which
- * would stop that run's workers. A run alone is stopped after as before.
+ * Stops what each run of `runner` left behind once it settles, before its
+ * result is returned (001 D12; task 004-18). Each run is told its lane and
+ * the mark of that lane for its processes (`RunOptions.lane`, `childEnv`),
+ * so its stop reaches what its own lane started and never a run of another
+ * lane in flight, which overlap (001 D5 as amended, task 001-140). What no
+ * lane's mark says is whose, the bare mark and the group's orphans, is
+ * stopped when the last overlapping run settles, looking back to the mark of
+ * the first. A slow lane's processes run at low priority (`lowerWhile`,
+ * spec 004 D2).
  */
 export function afterEachRun(
   runner: RunnerAdapter,
@@ -168,8 +226,11 @@ export function afterEachRun(
   note: (text: string) => void,
 ): RunnerAdapter {
   let inFlight = 0;
-  let since = 0;
+  let first = 0;
   const lane = runner.lane?.bind(runner);
+  const releaseLane = runner.releaseLane?.bind(runner);
+  const laneOf = (testFiles: readonly TestFileRef[], options: RunOptions): string =>
+    options.lane ?? (testFiles[0] === undefined ? "" : (lane?.(testFiles[0]) ?? ""));
   return {
     name: runner.name,
     adapterVersion: runner.adapterVersion,
@@ -180,17 +241,24 @@ export function afterEachRun(
     testFiles: () => runner.testFiles(),
     environment: () => runner.environment(),
     ...(lane === undefined ? {} : { lane }),
+    ...(releaseLane === undefined ? {} : { releaseLane }),
     async run(testFiles, options) {
-      if (inFlight === 0) since = children.mark();
+      const at = laneOf(testFiles, options);
+      const since = children.mark();
+      if (inFlight === 0) first = since;
       inFlight += 1;
+      const settled = new AbortController();
+      const lowering = isSlowLane(at) ? lowerWhile(children, at, since, settled.signal) : null;
       try {
-        return await runner.run(testFiles, options);
+        const childEnv = { ...options.childEnv, ...children.envFor(at) };
+        return await runner.run(testFiles, { ...options, lane: at, childEnv });
       } finally {
+        settled.abort();
+        await lowering;
         inFlight -= 1;
-        if (inFlight === 0) {
-          const text = await children.afterTier(since).catch(() => null);
-          if (text !== null) note(text);
-        }
+        const alone = inFlight === 0 ? first : null;
+        const text = await children.afterRun(at, since, alone).catch(() => null);
+        if (text !== null) note(text);
       }
     },
     close: () => runner.close(),
@@ -198,22 +266,50 @@ export function afterEachRun(
 }
 
 /** SIGTERM, up to the grace to go, then SIGKILL. */
-async function terminate(found: readonly ProcessEntry[]): Promise<Stopped[]> {
-  const named = await Promise.all(
-    found.map(async (entry) => ({ pid: entry.pid, args: await args(entry) })),
-  );
-  for (const { pid } of named) signal(pid, "SIGTERM");
-  const deadline = Date.now() + GRACE_MS;
-  let alive = survivors(found);
-  while (alive.length > 0 && Date.now() < deadline) {
-    await sleep(25);
-    alive = survivors(alive);
-  }
-  for (const { pid } of alive) signal(pid, "SIGKILL");
-  return named;
+/** What `terminate` reads and signals; `PROC` on Linux, a table of its own in tests. */
+export interface ProcessTable {
+  /** The process now at `pid`, or `null` when none is. */
+  stat(pid: number): ProcessEntry | null;
+  commandLine(pid: number): Promise<string>;
+  signal(pid: number, name: NodeJS.Signals): void;
 }
 
-interface Stopped {
+const PROC: ProcessTable = { stat: statOf, commandLine, signal };
+
+/**
+ * SIGTERM, up to the grace to go, then SIGKILL. Each signal and the command
+ * line a note names reach a process only while the pid still holds the one
+ * the scan found, same start time, checked right before (review 001-149 S2):
+ * a pid reused in between gets nothing and is not named. Between the check
+ * and the signal the pid can still be reused; a pidfd would close that, at
+ * the cost of a native call Node does not expose.
+ */
+export async function terminate(
+  found: readonly ProcessEntry[],
+  table: ProcessTable = PROC,
+): Promise<Stopped[]> {
+  const same = (entry: ProcessEntry) => table.stat(entry.pid)?.start === entry.start;
+  const named: { entry: ProcessEntry; args: string }[] = [];
+  for (const entry of found) {
+    if (!same(entry)) continue;
+    named.push({ entry, args: await table.commandLine(entry.pid) });
+  }
+  const termed = named.filter(({ entry }) => same(entry)).map(({ entry }) => entry);
+  for (const { pid } of termed) table.signal(pid, "SIGTERM");
+  const deadline = Date.now() + GRACE_MS;
+  let alive = termed.filter(same);
+  while (alive.length > 0 && Date.now() < deadline) {
+    await sleep(25);
+    alive = alive.filter(same);
+  }
+  for (const entry of alive) if (same(entry)) table.signal(entry.pid, "SIGKILL");
+  const stopped = new Set(termed);
+  return named
+    .filter(({ entry }) => stopped.has(entry))
+    .map(({ entry, args }) => ({ pid: entry.pid, args }));
+}
+
+export interface Stopped {
   readonly pid: number;
   readonly args: string;
 }
@@ -294,11 +390,9 @@ function survivors(entries: readonly ProcessEntry[]): ProcessEntry[] {
   return entries.filter((entry) => statOf(entry.pid)?.start === entry.start);
 }
 
-async function args(entry: ProcessEntry): Promise<string> {
+async function commandLine(pid: number): Promise<string> {
   try {
-    const text = (await readFile(`/proc/${entry.pid}/cmdline`, "utf8"))
-      .replaceAll("\0", " ")
-      .trim();
+    const text = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
     return text.length > COMMAND_CHARS ? `${text.slice(0, COMMAND_CHARS - 3)}...` : text;
   } catch {
     return "";
