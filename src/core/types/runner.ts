@@ -208,6 +208,27 @@ export interface RunOptions {
    * own. An adapter that cannot cancel runs to the end.
    */
   readonly signal?: AbortSignal;
+  /**
+   * The tier's lane (`RunnerAdapter.lane`, or `SLOW_LANE_PREFIX` and it for a
+   * slow file, spec 004 D2): the runner instance that runs it. Absent: the
+   * adapter's own.
+   */
+  readonly lane?: string;
+  /**
+   * What the run's processes add to their env: the daemon's mark of the
+   * lane (001 D12, task 004-18). An adapter that starts processes per run
+   * puts it over its own; one whose workers start with the instance ignores
+   * it.
+   */
+  readonly childEnv?: Readonly<Record<string, string>>;
+}
+
+/** The lane of a slow file is this and its runner's lane (spec 004 D2, task 004-18). */
+export const SLOW_LANE_PREFIX = "slow:";
+
+/** A slow file's lane: its runs go to a runner instance of their own. */
+export function isSlowLane(lane: string): boolean {
+  return lane.startsWith(SLOW_LANE_PREFIX);
 }
 
 /**
@@ -325,6 +346,14 @@ export interface RunnerAdapter {
    * so one tier at a time.
    */
   lane?(testFile: TestFileRef): string;
+
+  /**
+   * The scheduler has no tier queued for `lane` any more: what serves only
+   * that lane may close (spec 004 D2: the slow tier's Vitest instance closes
+   * when the slow pass drains). Never called while a tier of the lane is in
+   * flight; a later tier of the lane may follow.
+   */
+  releaseLane?(lane: string): Promise<void>;
 
   close(): Promise<void>;
 }
