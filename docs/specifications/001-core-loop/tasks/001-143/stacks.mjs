@@ -1,4 +1,7 @@
-// Task 001-143 evidence, not product code. The call stacks under which a
+// Task 001-143 evidence, not product code. Each sample is charged the gap before it
+// (`timeDeltas[i]`): the profiler's signal waits out a disk write, so a sample
+// landing in a write after a long gap measures that write. SQUEAL143_TIME's
+// direct timing of the appends agrees. The call stacks under which a
 // .cpuprofile spent self time in functions named <name>, by total time, with
 // how many samples and the largest single run of consecutive samples.
 // Usage: node stacks.mjs <file.cpuprofile> <name> [depth]

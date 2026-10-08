@@ -1,0 +1,119 @@
+# 001-143 raw summary (analyze.mjs), 2026-10-08, cezar 1c97556a, Node 24.21.0, 24 cores
+# Files: artifacts/cli.test.ts and discovery/cli.test.ts in one Vitest instance, maxWorkers 23.
+
+## Arm a: no burners, ambient load (host disk healthy; earlier runs discarded, disk full)
+# io some %: PSI sampled from round 4 on only.
+variant | runs | help tests failed | child wall s, median (min to max) | child CPU s, median | flushes before a message, median | their append s, median | child wall minus its appends s, median | load1 | runnable | io some %
+flushbefore | 6 | 0 of 12 | 3.6 (2.3 to 4.8) | 2.2 | 0 | 0.0 | 3.6 | 106 | 45 | 53
+heldfd | 6 | 7 of 12 | 10.1 (2.8 to 55.3) | 2.4 | 238 | 4.6 | 4.9 | 114 | 47 | 77
+off | 6 | 0 of 12 | 4.7 (2.5 to 7.6) | 2.4 | - | - | - | 124 | 56 | 67
+on | 6 | 6 of 12 | 11.4 (3.8 to 27.3) | 2.6 | 238 | 5.9 | 5.5 | 123 | 46 | 57
+shm | 6 | 0 of 12 | 3.9 (2.7 to 6.2) | 2.3 | 239 | 0.0 | 3.9 | 107 | 49 | 33
+threadport | 6 | 0 of 12 | 4.0 (1.8 to 6.3) | 2.3 | 0 | 0.0 | 3.9 | 104 | 46 | 67
+
+## Arm b: 8 busy loops (arm.sh), ambient load on top
+variant | runs | help tests failed | child wall s, median (min to max) | child CPU s, median | flushes before a message, median | their append s, median | child wall minus its appends s, median | load1 | runnable | io some %
+off | 3 | 0 of 6 | 5.4 (3.6 to 8.0) | 2.3 | - | - | - | 115 | 61 | 60
+on | 3 | 2 of 6 | 5.4 (3.8 to 22.5) | 2.2 | 238 | 1.5 | 3.8 | 102 | 49 | 52
+shm | 3 | 0 of 6 | 5.6 (3.8 to 8.6) | 2.4 | 239 | 0.0 | 5.5 | 113 | 56 | 61
+threadport | 3 | 0 of 6 | 4.0 (2.8 to 5.8) | 2.1 | 0 | 0.0 | 4.0 | 98 | 44 | 62
+
+## Per run (round, variant, run, the two help tests, load1, runnable)
+a 1-flushbefore driver crashed on an empty stamp (fixed); replaced by round 7
+a 1-heldfd heldfd: run 40.2 s, help tests ["passed 11.9","failed 15.0"], load1 86, runnable 47
+a 1-off driver crashed on an empty stamp (fixed); replaced by round 7
+a 1-on driver crashed on an empty stamp (fixed); replaced by round 7
+a 1-shm shm: run 41.7 s, help tests ["passed 6.1","passed 4.0"], load1 100, runnable 57
+a 1-threadport threadport: run 29.8 s, help tests ["passed 6.4","passed 4.7"], load1 90, runnable 55
+a 2-flushbefore flushbefore: run 13.8 s, help tests ["passed 3.1","passed 2.3"], load1 81, runnable 22
+a 2-heldfd heldfd: run 15.0 s, help tests ["passed 2.8","passed 6.9"], load1 59, runnable 32
+a 2-off off: run 54.2 s, help tests ["passed 6.2","passed 4.6"], load1 82, runnable 58
+a 2-on on: run 79.0 s, help tests ["failed 15.0","failed 15.0"], load1 111, runnable 44
+a 2-shm shm: run 25.8 s, help tests ["passed 3.5","passed 4.3"], load1 59, runnable 42
+a 2-threadport threadport: run 13.9 s, help tests ["passed 2.4","passed 1.9"], load1 70, runnable 22
+a 3-flushbefore flushbefore: run 63.9 s, help tests ["passed 3.6","passed 4.9"], load1 134, runnable 48
+a 3-heldfd heldfd: run 77.0 s, help tests ["failed 15.0","failed 15.0"], load1 135, runnable 42
+a 3-off off: run 96.6 s, help tests ["passed 5.0","passed 2.9"], load1 153, runnable 51
+a 3-on on: run 51.7 s, help tests ["passed 11.1","failed 15.0"], load1 136, runnable 50
+a 3-shm shm: run 61.3 s, help tests ["passed 3.4","passed 3.6"], load1 144, runnable 46
+a 3-threadport threadport: run 67.9 s, help tests ["passed 4.2","passed 4.1"], load1 118, runnable 38
+a 4-flushbefore flushbefore: run 24.0 s, help tests ["passed 4.0","passed 3.1"], load1 129, runnable 48
+a 4-heldfd heldfd: run 69.2 s, help tests ["failed 15.0","failed 15.0"], load1 123, runnable 53
+a 4-off off: run 80.9 s, help tests ["passed 5.5","passed 7.7"], load1 166, runnable 85
+a 4-on on: run 64.5 s, help tests ["failed 15.0","passed 11.6"], load1 180, runnable 58
+a 4-shm shm: run 107.8 s, help tests ["passed 5.6","passed 6.3"], load1 150, runnable 75
+a 4-threadport threadport: run 30.5 s, help tests ["passed 3.4","passed 3.7"], load1 110, runnable 49
+a 5-flushbefore flushbefore: run 44.1 s, help tests ["passed 4.0","passed 4.1"], load1 97, runnable 61
+a 5-heldfd heldfd: run 128.1 s, help tests ["failed 15.0","failed 15.0"], load1 176, runnable 73
+a 5-off off: run 26.2 s, help tests ["passed 3.9","passed 4.1"], load1 87, runnable 46
+a 5-on on: run 35.8 s, help tests ["passed 9.6","passed 11.6"], load1 79, runnable 48
+a 5-shm shm: run 26.2 s, help tests ["passed 5.0","passed 4.0"], load1 95, runnable 46
+a 5-threadport threadport: run 58.9 s, help tests ["passed 4.1","passed 5.4"], load1 123, runnable 65
+a 6-flushbefore flushbefore: run 40.8 s, help tests ["passed 4.8","passed 3.5"], load1 122, runnable 50
+a 6-heldfd heldfd: run 31.4 s, help tests ["passed 8.5","passed 7.4"], load1 103, runnable 35
+a 6-off off: run 88.1 s, help tests ["passed 5.9","passed 5.2"], load1 187, runnable 55
+a 6-on on: run 70.3 s, help tests ["failed 15.0","failed 15.0"], load1 158, runnable 50
+a 6-shm shm: run 16.8 s, help tests ["passed 2.8","passed 2.9"], load1 95, runnable 30
+a 6-threadport threadport: run 54.3 s, help tests ["passed 4.4","passed 4.6"], load1 113, runnable 47
+a 7-flushbefore flushbefore: run 33.4 s, help tests ["passed 2.9","passed 4.2"], load1 73, runnable 41
+a 7-off off: run 27.1 s, help tests ["passed 2.6","passed 2.7"], load1 70, runnable 41
+a 7-on on: run 17.3 s, help tests ["passed 3.9","passed 6.4"], load1 76, runnable 26
+b 1-off off: run 55.3 s, help tests ["passed 5.3","passed 5.9"], load1 85, runnable 64
+b 1-on on: run 18.2 s, help tests ["passed 5.5","passed 4.9"], load1 62, runnable 39
+b 1-shm shm: run 19.6 s, help tests ["passed 4.3","passed 3.9"], load1 63, runnable 46
+b 1-threadport threadport: run 21.9 s, help tests ["passed 4.3","passed 4.0"], load1 63, runnable 45
+b 2-off off: run 50.6 s, help tests ["passed 8.3","passed 5.1"], load1 123, runnable 62
+b 2-on on: run 68.3 s, help tests ["failed 15.1","failed 15.0"], load1 129, runnable 77
+b 2-shm shm: run 63.9 s, help tests ["passed 6.5","passed 5.6"], load1 133, runnable 55
+b 2-threadport threadport: run 95.1 s, help tests ["passed 5.5","passed 6.0"], load1 137, runnable 60
+b 3-off off: run 63.1 s, help tests ["passed 6.5","passed 3.7"], load1 136, runnable 56
+b 3-on on: run 18.6 s, help tests ["passed 5.5","passed 3.8"], load1 113, runnable 31
+b 3-shm shm: run 69.6 s, help tests ["passed 8.9","passed 5.8"], load1 144, runnable 67
+b 3-threadport threadport: run 15.6 s, help tests ["passed 2.9","passed 3.2"], load1 94, runnable 27
+
+## Fisher two-sided, help tests failed
+on 6/12 vs off 0/12, arm a: p 0.0137. Both arms, on 8/18 vs off 0/18: p 0.0029; on vs threadport 8/18 vs 0/18: p 0.0029. heldfd 7/12 vs off 0/12, arm a: p 0.0046.
+
+## child.sh: the `artifact --help` child alone, outside Vitest (load1 85, io some 41% at start)
+COLD=1 (fresh TMPDIR per run, tsx cache empty), wall s:
+  on 13.57, 7.26, 7.25, 6.91 | off 4.62, 4.89, 4.08, 4.45 | threadport 3.11, 3.85, 5.09, 3.25
+warm (the shared TMPDIR's tsx cache), wall s:
+  on 2.20, 1.18, 1.68 | off 0.85, 1.03, 1.56 | threadport 1.03, 1.24, 2.30
+CPU s, cold: on 2.4 to 2.7, off 2.4 to 3.1, threadport 2.1 to 2.6.
+
+## Profile, variant on, artifacts/cli.test.ts alone, healthy disk (load1 65, io some 26%)
+The `artifact --help` child: span 7,707 ms; self time 3,895 ms in writeFileUtf8, 3,875 ms of it (131 samples) on
+writeFileUtf8 < writeFileSync < (recorder fs wrapper) < appendFileSync < flush < flushBefore wrapper
+< Worker.postMessage < runCallSync < transformSync (esbuild 0.28.1, called by tsx 4.23.0);
+1,985 ms in runCallSync, the Atomics.wait on esbuild's worker that every variant pays on a cold cache.
+
+## Arm c: each other candidate disabled alone, no burners, ambient load, after arm b
+# children: the spawned child gets no test file in SQUEAL_OBSERVE, so it records nothing and wrote no
+# output file at all (only the two Vitest workers did: 1 and 2 lines). Not a single-candidate test.
+variant | runs | help tests failed | child wall s, median (min to max) | child CPU s, median | flushes before a message, median | their append s, median | child wall minus its appends s, median | load1 | runnable | io some %
+children | 3 | 0 of 6 | 3.9 (2.7 to 6.0) | 2.3 | 0 | 0.0 | 3.9 | 68 | 44 | 36
+fs | 3 | 1 of 6 | 11.3 (3.0 to 18.3) | 2.4 | 239 | 6.0 | 4.6 | 73 | 40 | 47
+hook | 3 | 1 of 6 | 9.2 (6.6 to 13.9) | 2.5 | 238 | 4.6 | 5.1 | 72 | 44 | 45
+off | 3 | 0 of 6 | 3.2 (2.7 to 5.1) | 2.2 | - | - | - | 72 | 39 | 38
+on | 3 | 0 of 6 | 9.9 (3.1 to 13.2) | 2.4 | 239 | 5.4 | 4.5 | 71 | 36 | 42
+realpath | 3 | 2 of 6 | 8.0 (2.7 to 19.5) | 2.4 | 238 | 3.4 | 4.4 | 73 | 50 | 47
+
+## Arm c per run
+c 1-children children: run 22.4 s, help tests ["passed 2.9","passed 4.7"], load1 61, runnable 34
+c 1-fs fs: run 36.0 s, help tests ["passed 12.1","passed 10.9"], load1 63, runnable 38
+c 1-hook hook: run 31.5 s, help tests ["passed 8.8","passed 10.7"], load1 62, runnable 34
+c 1-off off: run 22.9 s, help tests ["passed 3.1","passed 3.5"], load1 58, runnable 31
+c 1-on on: run 33.3 s, help tests ["passed 10.8","passed 9.5"], load1 61, runnable 37
+c 1-realpath realpath: run 27.4 s, help tests ["passed 8.6","passed 7.8"], load1 63, runnable 39
+c 2-children children: run 22.5 s, help tests ["passed 3.9","passed 4.0"], load1 91, runnable 42
+c 2-fs fs: run 48.3 s, help tests ["failed 15.0","passed 11.9"], load1 103, runnable 59
+c 2-hook hook: run 41.0 s, help tests ["passed 9.3","failed 15.0"], load1 69, runnable 56
+c 2-off off: run 13.6 s, help tests ["passed 2.7","passed 2.8"], load1 75, runnable 27
+c 2-on on: run 12.8 s, help tests ["passed 3.2","passed 3.5"], load1 65, runnable 27
+c 2-realpath realpath: run 62.8 s, help tests ["failed 15.0","failed 15.0"], load1 99, runnable 68
+c 3-children children: run 30.1 s, help tests ["passed 3.8","passed 6.1"], load1 52, runnable 57
+c 3-fs fs: run 11.2 s, help tests ["passed 3.3","passed 3.1"], load1 52, runnable 24
+c 3-hook hook: run 30.8 s, help tests ["passed 14.0","passed 6.7"], load1 86, runnable 42
+c 3-off off: run 35.7 s, help tests ["passed 5.3","passed 5.2"], load1 84, runnable 59
+c 3-on on: run 45.4 s, help tests ["passed 12.3","passed 13.2"], load1 89, runnable 45
+c 3-realpath realpath: run 19.3 s, help tests ["passed 8.1","passed 2.8"], load1 58, runnable 42

@@ -130,3 +130,58 @@ The two modes ran under comparable load. Per-round rows, every failure with its 
 - The p50/p90 cost figures above stay measurements under different loads. They are not causal overhead estimates, and they hide this tail.
 
 Open: where the time goes in those two workers (a profile of `artifacts/cli.test.ts` alone, on and off, under at most 8 burners); whether `ubuntu-vps` and `git-worktree-lock` also lean on the recorder; who killed the rounds.
+
+## 2026-10-08: 001-143, where the recorder's time goes in a spawned node CLI
+
+Question (001-137's open item): with the recorder, cezar's `artifacts/cli` and `discovery/cli` take far longer under contention and their `node --import tsx src/index.ts ... --help` child misses its 15 s deadline, while CPU rises 3%. Where is the wall time spent? Answer: in about 238 synchronous `appendFileSync` calls in the child's main thread, one before each `postMessage` to esbuild's worker. The child makes those calls because its tsx cache is always cold. Each append blocks on the shared, I/O-saturated disk. Drivers, recorder copy and raw summary: `tasks/001-143/` (`README.md`, `results.txt`).
+
+### Setup
+
+- A fresh clone of `/home/agent/projects/cezar` at `1c97556a`, `npm ci`, Vitest 4.1.10, tsx 4.23.0, esbuild 0.28.1, Node 24.21.0, Linux, 24 cores. Every cezar command ran under `env -u` for each `CEZ_*` variable, cwd in the clone, in its own session.
+- `two.ts` runs the two files in one Vitest instance, `maxWorkers` 23, the recorder delivered as `VitestObserver` delivers it (`--require` first in `NODE_OPTIONS`, settings in `SQUEAL_OBSERVE`, output under `tmpdir()`). The recorder is `tasks/001-143/recorder/`, a copy of `src/runners/observe/` at `75c2fbf` whose `SQUEAL143_OFF` disables one candidate at a time. `stamp.cjs` times every worker and child (wall from process start, CPU, context switches). `SQUEAL143_TIME` times each append. Samples of load1, runnable count and I/O pressure (PSI `some avg10`) every 500 ms.
+- The host was never idle. Ambient load ran 35 to 190, with I/O pressure 30% to 87% from other sessions. Runs before 23:18 local were discarded, because the host disk was full until then (the coordinator's note). The arms below all ran on a healthy disk. Variants rotate within each round.
+
+### Candidates
+
+| Candidate (001-137) | Verdict | Tag |
+| --- | --- | --- |
+| The flush before each IPC message | The cause, in its `MessagePort` form: 238 appends before esbuild's `postMessage` in the child's main thread. Vitest's `process.send` flushes are 2 or 3 per worker, not a factor. | verified by experiment |
+| One `realpathSync` per new path | Not the cause. Disabled alone: still slow, 2 of 6 failed. | verified by experiment |
+| The `registerHooks` resolve hook | Not the cause. Disabled alone: still slow, 1 of 6 failed. | verified by experiment |
+| tsx's loader under the hook | The trigger, not the cost. A cold tsx cache makes about 238 `transformSync` calls, each a `postMessage`. | verified by experiment, read in source code |
+| (also) the `fs` wrappers | Not the cause. Disabled alone: still slow, 1 of 6 failed. | verified by experiment |
+
+### Results (median child wall over both `--help` children; failures of the two `--help` tests)
+
+| Arm | off | on | flushbefore | threadport | shm | heldfd |
+| --- | --- | --- | --- | --- | --- | --- |
+| a: no burners, load1 ~110, 6 rounds | 4.7 s, 0 of 12 | 11.4 s, 6 of 12 | 3.6 s, 0 of 12 | 4.0 s, 0 of 12 | 3.9 s, 0 of 12 | 10.1 s, 7 of 12 |
+| b: 8 burners, load1 ~105, 3 rounds | 5.4 s, 0 of 6 | 5.4 s (to 22.5), 2 of 6 | | 4.0 s, 0 of 6 | 5.6 s, 0 of 6 | |
+
+| Arm c: one candidate off, 3 rounds, load1 ~70 | off | on | hook | realpath | fs |
+| --- | --- | --- | --- | --- | --- |
+| median child wall, failures | 3.2 s, 0 of 6 | 9.9 s, 0 of 6 | 9.2 s, 1 of 6 | 8.0 s, 2 of 6 | 11.3 s, 1 of 6 |
+
+- `flushbefore` drops the flush before `process.send` and `postMessage`. `threadport` is a candidate fix: it flushes before a `MessagePort` message only in a worker thread, and still before every `process.send`. `shm` keeps the whole recorder but writes its output to tmpfs. `heldfd` keeps the flush but writes through one held descriptor (`writeSync`), with no open and close.
+- On against off: 8 of 18 against 0 of 18 failed, Fisher p 0.003. The same holds against `threadport`. Verified by experiment.
+- Accounting: in `on`, the child's appends sum to a median 5.9 s (arm a). Its wall minus its own appends is 5.5 s, against 4.7 s off. The same subtraction for `hook`, `realpath` and `fs` gives 4.4 to 5.1 s, against 3.2 s off and 4.5 s for `on` (arm c). The appends account for the difference. The child's CPU is 2.6 s on and 2.4 s off, so the time is spent blocked, not computing. Verified by experiment.
+- Profile (`--cpu-prof`, `on`, healthy disk, load1 65): of the child's 7.7 s, 3.9 s is self time in `writeFileUtf8`. The stack is `appendFileSync < flush < flushBefore < Worker.postMessage < runCallSync < transformSync` (esbuild, called by tsx). Verified by experiment.
+- The bounded-load arm (b) shows the same order, with weaker numbers. Its appends cost less (median 1.5 s), because I/O pressure moved independently of the burners: the burners add CPU, while the cost is disk waits.
+
+### Why the cache is cold, and why the writes are slow
+
+- cezar's `packages/cezar/vitest.setup.ts` points `TMPDIR` at a fresh `/tmp/cez-vitest-tmp-*` in every worker. tsx caches its transforms in `path.join(os.tmpdir(), "tsx-" + uid)` (`tsx/dist/temporary-directory-*.mjs`). esbuild's `transformSync` does `worker.postMessage(msg)`, then `Atomics.wait` (`esbuild/lib/main.js`, `runCallSync`). Read in source code.
+- Outside Vitest, the `artifact --help` child alone (`child.sh`). With a fresh `TMPDIR` per run: on 13.6, 7.3, 7.3, 6.9 s; off 4.6, 4.9, 4.1, 4.5 s; threadport 3.1, 3.9, 5.1, 3.3 s. With the shared, warm cache: on 2.2, 1.2, 1.7 s; off 0.9, 1.0, 1.6 s. 001-137's `child.sh` ran warm, which is why it found no difference. Verified by experiment.
+- Each flush is one `appendFileSync` (open, write, close) of the paths the module brought in. On this host's ext4 root (96% full at times, I/O pressure some 40% to 87%), these calls sum to seconds per child: 238 calls, a mean of about 25 ms each in arm a. A lone append loop measured 0.01 to 0.02 ms at the median. `heldfd` (one `write` per flush) is as slow as `on`, and `shm` (the same writes to tmpfs) is as fast as off. So the cost is the write reaching this disk, not the open and close, and not the flush's own work. Verified by experiment. Which kernel wait it is (journal, dirty-page throttling): not determined, because the kernel was not traced.
+- Squeal's own recorder writes to `mkdtempSync(join(tmpdir(), "squeal-observe-"))` (`src/runners/vitest/observe.ts:62`), the daemon's temp directory, on the same disk here. Read in source code.
+
+### Recommendation
+
+- Flush before `MessagePort.prototype.postMessage` only in a worker thread (`!workerThreads.isMainThread`), and keep the flush before `process.send` and at exit. The flush exists because a parent stops a thread or a fork on its message (001-132's defect: a Worker terminated at its message kept 8 of 40 paths). A process's main thread is not stopped by what it posts to its own Worker. Expected effect, measured as `threadport`: the `--help` child at off's wall (4.0 s against 4.7 s off and 11.4 s on, arm a), and 0 of 18 failures against 8 of 18. The paths still reach the file at the turn's batch or at exit. Verified by experiment (timing). That no path is lost is inferred; the recorder's own tests (`test/runners/observe/`, the Worker-terminated case) would show it.
+- Not recommended alone: `heldfd` (no gain). `shm` fixes it here, but `/dev/shm` is Linux-only, and it would put the output outside the daemon's temp directory.
+
+### Open
+
+- A worker thread that itself makes many synchronous esbuild calls, for example a Vitest `threads`-pool test calling `transformSync`, still pays one append per call under `threadport`. Not measured. Narrowing the flush to the port that leads to the thread's parent would cover it. How to recognize that port in Vitest's thread pool: not determined, because not read.
+- Whether `ubuntu-vps` and `git-worktree-lock` (001-137's two leaning files) spawn tsx children the same way: not determined, because not measured here.
+- macOS: not determined. No macOS host.

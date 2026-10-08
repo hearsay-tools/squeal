@@ -7,7 +7,9 @@
 # other name: the copy with SQUEAL143_OFF=<name> (`+` joins several).
 # Prints round, variant, wall s, user+sys CPU s, voluntary and involuntary
 # context switches, recorded paths.
-# Usage: child.sh <clone> <rounds> <variant ...>
+# With COLD=1 each run gets a fresh TMPDIR, so tsx's transform cache
+# ($TMPDIR/tsx-<uid>) starts empty, as under cezar's vitest.setup.ts.
+# Usage: [COLD=1] child.sh <clone> <rounds> <variant ...>
 set -u
 clone=$1; rounds=$2; shift 2; variants=("$@")
 here=$(cd "$(dirname "$0")" && pwd)
@@ -18,14 +20,17 @@ for i in $(seq 1 "$rounds"); do
   for k in $(seq 0 $((n - 1))); do
     mode=${variants[$(((i + k) % n))]}
     out=$(mktemp -d)
+    temp=$(mktemp -d)
+    cold=()
+    [ "${COLD:-}" = 1 ] && cold=(TMPDIR="$temp")
     case $mode in
       off) extra=() ;;
       on) extra=(NODE_OPTIONS="--require \"$recorder\"" SQUEAL_OBSERVE="{\"out\":\"$out\",\"root\":\"$clone\",\"skip\":[],\"file\":\"$clone/packages/cezar/src/artifacts/cli.test.ts\"}") ;;
       *) extra=(SQUEAL143_OFF="${mode//+/,}" NODE_OPTIONS="--require \"$recorder\"" SQUEAL_OBSERVE="{\"out\":\"$out\",\"root\":\"$clone\",\"skip\":[],\"file\":\"$clone/packages/cezar/src/artifacts/cli.test.ts\"}") ;;
     esac
-    t=$( (cd "$clone" && env $unset_cez "${extra[@]}" /usr/bin/time -f "%e %U %S %w %c" node --import tsx packages/cezar/src/index.ts artifact --help >/dev/null) 2>&1 | tail -1)
+    t=$( (cd "$clone" && env $unset_cez "${cold[@]}" "${extra[@]}" /usr/bin/time -f "%e %U %S %w %c" node --import tsx packages/cezar/src/index.ts artifact --help >/dev/null) 2>&1 | tail -1)
     paths=$(cat "$out"/*.ndjson 2>/dev/null | grep -o '"/[^"]*"' | sort -u | wc -l)
     echo "$i $mode $t $paths" | awk '{ printf "%d %s wall %.2f cpu %.2f vcs %d ics %d paths %d\n", $1, $2, $3, $4 + $5, $6, $7, $8 }'
-    rm -rf "$out"
+    rm -rf "$out" "$temp"
   done
 done
