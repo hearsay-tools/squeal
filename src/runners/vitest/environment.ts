@@ -8,6 +8,12 @@ export interface EnvironmentContext {
   readonly paths: WorktreePaths;
   readonly runnerVersion: string;
   readonly adapterVersion: string;
+  /**
+   * What the runtime-input recorder added to the workers' env (task
+   * 001-132), left out of the resolved config: its directory differs per
+   * instance, and Vitest copies the `env` option into a root project's config.
+   */
+  readonly injected?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -33,7 +39,7 @@ export function projectEnvironment(
     runnerName: "vitest",
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths),
+    resolvedConfig: canonicalConfig(project, paths, context.injected),
     files: [...files].sort(compare),
   };
 }
@@ -42,17 +48,45 @@ export function projectEnvironment(
  * Canonical JSON of the config tests receive (`serializedConfig`), plus
  * `globalSetup`, which runs in the main process and is not serialized.
  * `sequence.seed` is dropped: Vitest draws it from the clock on every start.
- * Keys sorted, absolute paths relativized to the worktree root.
+ * Keys sorted, absolute paths relativized to the worktree root. The env the
+ * recorder added (`injected`) is left out, and so is its `--require` ahead of
+ * a project's own `NODE_OPTIONS` (task 001-132).
  */
-export function canonicalConfig(project: TestProject, paths: WorktreePaths): string {
-  const { sequence, ...config } = project.serializedConfig;
+export function canonicalConfig(
+  project: TestProject,
+  paths: WorktreePaths,
+  injected: Readonly<Record<string, string>> = {},
+): string {
+  const { sequence, env, ...config } = project.serializedConfig;
   const { seed: _seed, ...stableSequence } = sequence;
   return JSON.stringify(
     canonicalize(
-      { ...config, sequence: stableSequence, globalSetup: globalSetupFiles(project) },
+      {
+        ...config,
+        ...(env === undefined ? {} : { env: withoutInjected(env, injected) }),
+        sequence: stableSequence,
+        globalSetup: globalSetupFiles(project),
+      },
       paths,
     ),
   );
+}
+
+function withoutInjected(
+  env: Readonly<Record<string, unknown>>,
+  injected: Readonly<Record<string, string>>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const require = injected.NODE_OPTIONS?.match(/^--require "[^"]*"/)?.[0];
+  for (const [key, value] of Object.entries(env)) {
+    if (injected[key] !== undefined && value === injected[key]) continue;
+    if (key === "NODE_OPTIONS" && require !== undefined && typeof value === "string") {
+      out[key] = value.startsWith(`${require} `) ? value.slice(require.length + 1) : value;
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
 }
 
 function canonicalize(value: unknown, paths: WorktreePaths): unknown {

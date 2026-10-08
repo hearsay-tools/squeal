@@ -48,6 +48,17 @@ describe("vitest adapter: observed runtime inputs", SLOW, () => {
     expect(observed?.resolvedConfig).toBe(environment?.resolvedConfig);
   });
 
+  it("keeps the recorder's per-instance env out of a root project's resolved config", async () => {
+    // Vitest copies the `env` option into a root project's config; `observed` uses `projects`.
+    const off = await openFixture("basic");
+    const first = await openFixture("basic", {}, observing);
+    const second = await openFixture("basic", {}, observing);
+    const config = async (fx: typeof off) => (await fx.adapter.environment())[0]?.resolvedConfig;
+    const expected = await config(off);
+    expect(await config(first)).toBe(expected);
+    expect(await config(second)).toBe(expected);
+  });
+
   it("follows the policy: switching it on recreates the instance with the recorder", async () => {
     let enabled = false;
     const fx = await openFixture("observed", {}, (root) =>

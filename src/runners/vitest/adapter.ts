@@ -82,7 +82,7 @@ export class VitestAdapter implements RunnerAdapter {
   ) {
     this.#node = vitest;
     this.#note = note;
-    this.#observer = new VitestObserver(paths, observe, note);
+    this.#observer = new VitestObserver(paths, observe);
   }
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
@@ -228,6 +228,7 @@ export class VitestAdapter implements RunnerAdapter {
         paths: this.paths,
         runnerVersion: this.#node.version,
         adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
+        injected: this.#observer.injected,
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
