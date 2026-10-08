@@ -1,4 +1,5 @@
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
+import { worktreeSlowView } from "../state/index.js";
 import type {
   CheckId,
   CheckKey,
@@ -77,7 +78,9 @@ function closureFor(store: Store, worktreeId: WorktreeId) {
  * worktree's changes, the ones the agent made. A closure that holds a path a
  * `start` revision changed gets neither line: those changes may or may not
  * be the agent's (`changedAfter`, task 001-96). "None of the files changed here" also
- * needs `seesEveryChange`.
+ * needs `seesEveryChange`. A failure of a slow test file (spec 004 D8) gets
+ * the artifact it ran against (`slowArtifact`) instead: its closure holds few
+ * sources, so the changes line would be true and misleading.
  */
 export function attribute(
   store: Store,
@@ -90,21 +93,22 @@ export function attribute(
   const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
   const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
   const closureOf = closureFor(store, consumer.worktreeId);
+  const slow = worktreeSlowView(store, consumer.worktreeId);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const { project, testPath } = entry.check;
+    const load = loadOf(store, consumer.worktreeId, entry);
+    const loaded = load === undefined ? {} : { loadAverage: load };
+    if (slow?.isSlow({ project, path: testPath }) === true) {
+      return { ...entry, slowArtifact: slow.artifactFor(testPath), ...loaded };
+    }
     const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
       changed === null || closure === undefined || closure.some((p) => changed.unknown.has(p))
         ? undefined
         : closure.filter((p) => changed.changed.has(p));
     const told = touched?.length === 0 && !sure ? undefined : touched;
-    const load = loadOf(store, consumer.worktreeId, entry);
-    return {
-      ...entry,
-      ...(told === undefined ? {} : { changesInClosure: told }),
-      ...(load === undefined ? {} : { loadAverage: load }),
-    };
+    return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...loaded };
   });
 }
 
