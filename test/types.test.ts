@@ -9,7 +9,7 @@ describe("core types", () => {
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
       env: { allowlist: [] },
-      runner: { tierSize: 4, timeoutMs: 600_000 },
+      runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
       nodeTest: [],
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null },

@@ -36,6 +36,12 @@ export interface Policy {
     /** Test files per tier (D5). Default `4`. */
     readonly tierSize: number;
     /**
+     * Test files per tier while the queue holds backlog work only (D5 step 5
+     * as amended, task 001-124): every queued backlog file up to this many,
+     * and up to `BACKLOG_TIER_BUDGET_MS` of last known file time. Default `200`.
+     */
+    readonly backlogTierSize: number;
+    /**
      * Per run. Spec 001 D11: "`runner.timeoutMs` per run (`600000`, because a
      * synchronous loop in a test worker cannot be stopped by the runner's own
      * test timeout)". `null` means no limit.
@@ -111,7 +117,7 @@ export const DEFAULT_POLICY: Policy = {
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   env: { allowlist: [] },
-  runner: { tierSize: 4, timeoutMs: 600_000 },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
