@@ -70,6 +70,11 @@ function globToRegExp(glob) {
   const source = glob.startsWith("./") ? glob.slice(2) : glob;
   return new RegExp(`^${compile(source, glob)}$`, "s");
 }
+function createInputMatcher(globs2) {
+  if (globs2.length === 0) return () => false;
+  const patterns = globs2.map(globToRegExp);
+  return (path) => patterns.some((pattern) => pattern.test(path));
+}
 function compile(glob, original) {
   let out = "";
   let i = 0;
@@ -295,7 +300,7 @@ var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId)) {
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
   let inheritedCount = 0;
@@ -319,6 +324,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    ...isSlow === void 0 ? {} : { slowPending: countSlowPending(states, keys, isSlow) },
     ...awaiting ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
   };
@@ -328,8 +334,11 @@ function readRefined(store, worktreeId) {
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
-function isPending(header) {
-  return header.counts.pending + header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+function isFastPending(header) {
+  const slow = header.slowPending;
+  const checks = header.counts.pending - (slow?.checks ?? 0);
+  const files = header.testFilesWithoutChecks.pending - (slow?.testFilesWithoutChecks ?? 0);
+  return checks + files > 0 || header.runnerPartPending === true;
 }
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
@@ -347,6 +356,26 @@ function countFilesWithoutChecks(states, keys) {
     counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
   }
   return counts;
+}
+function countSlowPending(states, keys, isSlow) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const files = /* @__PURE__ */ new Set();
+  let checks = 0;
+  for (const state of states) {
+    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    checks++;
+    files.add(testFileKeyOf(state.check));
+  }
+  let testFilesWithoutChecks = 0;
+  for (const row of keys) {
+    const id = testFileId(row.testFile);
+    if (withChecks.has(id) || !hasKey(row) || row.pending === null || !isSlow(row.testFile)) {
+      continue;
+    }
+    testFilesWithoutChecks++;
+    files.add(id);
+  }
+  return { testFiles: files.size, checks, testFilesWithoutChecks };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -3128,7 +3157,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.47";
+  if (true) return "0.1.48";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3572,6 +3601,20 @@ function fullSuiteReason(header, command = SQUEAL_COMMAND) {
 
 // src/harness/shared/stop.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
+
+// src/core/slow/classify.ts
+function slowFiles(policy, projects) {
+  const matches = createInputMatcher(policy.slow.include);
+  const slowProjects = new Set(
+    projects.filter((project) => project.slow === true).map((project) => project.name)
+  );
+  return (testFile) => slowProjects.has(testFile.project) || matches(testFile.path);
+}
+
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/harness/shared/stop.ts
 var STOP_WAIT_CAP_MS = 1500;
 var STOP_MARGIN_MS = 250;
 var STOP_POLL_MS = 100;
@@ -3579,7 +3622,8 @@ function stopBusyTimeoutMs(waitMs) {
   return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
 }
 function stopTurn(input, location2, deps) {
-  const policy = readPolicy(location2.root).stop;
+  const project = readPolicy(location2.root);
+  const policy = project.stop;
   const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
   return withContext(
     input,
@@ -3588,7 +3632,10 @@ function stopTurn(input, location2, deps) {
     async (context) => {
       if (input.agent_id !== void 0 && !isRegistered(context)) return null;
       await ensureIfStale(context, deps);
-      if (wait > 0) await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS);
+      if (wait > 0) {
+        const isSlow = slowFiles(project, project.nodeTest);
+        await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
+      }
       const { store, consumer } = context;
       const news = await newsText(context, deps.command);
       const states = store.knownStates.list(consumer.worktreeId);
@@ -3636,12 +3683,15 @@ async function newsText(context, command) {
   return `${formatDelta(delta, command)}
 ${knownFailuresLine(failures)}`;
 }
-async function waitForPending(context, waitMs, pollMs) {
+async function waitForPending(context, waitMs, pollMs, isSlow) {
   const deadline = performance.now() + waitMs;
   for (; ; ) {
     const { store, consumer } = context;
-    const header = readTransaction(store, () => readHeader(store, consumer.worktreeId));
-    if (!isPending(header)) return;
+    const header = readTransaction(
+      store,
+      () => readHeader(store, consumer.worktreeId, void 0, void 0, isSlow)
+    );
+    if (!isFastPending(header)) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
     await sleep2(Math.min(pollMs, left));
