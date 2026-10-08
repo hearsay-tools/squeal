@@ -17,16 +17,16 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { archivePlugin, type HookName, PLUGINS } from "./plugins.js";
+import { copyPlugin, type HookName, PLUGINS } from "./plugins.js";
 
 /*
  * Review wave 3, S5: the plugin exactly as a marketplace install copies it.
- * `git archive HEAD plugins/claude-code` into a directory with no
- * `node_modules` above it, a fixture project with its own `npm install` of
+ * The tracked files of `plugins/claude-code`, from the worktree (002-24),
+ * into a directory with no `node_modules` above it, a fixture project with its own `npm install` of
  * Vitest, no `SQUEAL_CLI` anywhere. The session-start bundle spawns the
  * shipped CLI as the daemon, which loads the project's Vitest; an edit then
- * reaches PostToolBatch as `PASS -> FAIL`. Committed bundles are what this
- * tests, so run `npm run build` and commit before trusting a local result.
+ * reaches PostToolBatch as `PASS -> FAIL`. The worktree's tracked bundles
+ * are what this tests, so run `npm run build` before trusting a local result.
  * Spec 002: the same for `plugins/codex`, on PostToolUse, each hook run as
  * Codex runs it (`plugins.ts`).
  */
@@ -101,7 +101,7 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
     base = realpathSync(mkdtempSync("/tmp/squeal-ship-"));
     plugin = join(base, "plugin");
     project = join(base, "project");
-    archivePlugin(kind, plugin);
+    copyPlugin(kind.name, plugin);
 
     mkdirSync(join(project, "src"), { recursive: true });
     mkdirSync(join(project, "test"));

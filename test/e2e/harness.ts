@@ -17,7 +17,7 @@ import type { PingResponse, StatusSnapshot } from "../../src/core/types/index.js
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { type Install, vitestInstall } from "./install.js";
-import { archivePlugin, type HookName, type Plugin } from "./plugins.js";
+import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
 import { MATH, SLOW, type Source, STRINGS } from "./sources.js";
 import { daemonPids, metric, type RunRow, readRuns, until } from "./support.js";
 
@@ -27,13 +27,15 @@ export { hasNodeModulesAbove, until } from "./support.js";
 
 /*
  * Spec 001 Testing, end to end, and review wave 3 "Inputs for wave 4": the
- * plugin as a marketplace install copies it (`git archive HEAD
- * plugins/claude-code` under /tmp, no `node_modules` above it), a fixture
+ * plugin as a marketplace install copies it (the tracked files of
+ * `plugins/<name>` under /tmp, no `node_modules` above it), a fixture
  * repository with its own Vitest, hook bundles driven by recorded hook JSON,
  * daemons spawned by those bundles from the shipped CLI, and no `SQUEAL_CLI`
  * anywhere: the hooks get PATH, HOME and a private XDG_RUNTIME_DIR only.
- * Committed bundles are what runs, so build and commit before trusting a
- * local result. Spec 002 runs every scenario for the Codex plugin too, each
+ * The worktree's tracked files are what runs, not HEAD's (002-24): Squeal
+ * keys these files by worktree content, so a result always belongs to what
+ * ran; untracked files still do not ship, as a marketplace install would not
+ * have them. Build before trusting a local result. Spec 002 runs every scenario for the Codex plugin too, each
  * hook as its harness runs it (`plugins.ts`).
  */
 
@@ -105,7 +107,7 @@ export class E2E {
   }
 
   #build(options: FixtureOptions): void {
-    archivePlugin(this.kind, this.plugin);
+    copyPlugin(this.kind.name, this.plugin);
 
     const repo = this.main;
     cpSync(join(FIXTURE, "project"), repo, { recursive: true });

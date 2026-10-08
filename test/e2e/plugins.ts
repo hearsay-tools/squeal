@@ -1,15 +1,15 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
 
 /*
- * Spec 002 Testing, end to end: the two shipped plugins, each archived from
- * HEAD and each hook run the way its harness runs it. Claude Code: `node
- * <bundle>` with the recorded JSON of `test/harness/recorded/`, as 001's
- * suite always ran it. Codex: the command string of the archived
+ * Spec 002 Testing, end to end: the two shipped plugins, each copied from
+ * the worktree's tracked files (`copyPlugin`) and each hook run the way its
+ * harness runs it. Claude Code: `node <bundle>` with the recorded JSON of
+ * `test/harness/recorded/`, as 001's suite always ran it. Codex: the command string of the copied
  * `hooks/hooks.json`, shell fast path included, under `bash -c` in the
  * thread's `cwd` with `PWD` and `PLUGIN_ROOT` set and no `CLAUDE_*`
  * variable (`research/wave-0-checks.md` 2), fed the recorded JSON of
@@ -138,17 +138,31 @@ const CODEX: Plugin = {
 
 export const PLUGINS: readonly Plugin[] = [CLAUDE_CODE, CODEX];
 
-/** `git archive HEAD plugins/<name>` unpacked at `dest`, as a marketplace install copies it. */
-export function archivePlugin(plugin: Plugin, dest: string): void {
-  const archive = execFileSync("git", ["archive", "HEAD", `plugins/${plugin.name}`], {
-    cwd: REPO_ROOT,
+/**
+ * The tracked files of `plugins/<name>` (`git ls-files`), copied from the
+ * worktree of `repo` to `dest`, as a marketplace install copies them once
+ * committed (002-24). Squeal keys the e2e files by worktree content, so what
+ * runs is the worktree's: a version raise run before its commit stores no
+ * result under the keys of the committed state. Untracked files still do not
+ * ship, as a marketplace install would not have them; a tracked file deleted
+ * in the worktree is left out, as its commit would leave it out.
+ */
+export function copyPlugin(name: PluginName, dest: string, repo: string = REPO_ROOT): void {
+  const prefix = `plugins/${name}/`;
+  const listed = execFileSync("git", ["ls-files", "-z", "--", prefix], {
+    cwd: repo,
+    encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
-  const unpacked = `${dest}.archive`;
-  mkdirSync(unpacked);
-  execFileSync("tar", ["-x", "-C", unpacked], { input: archive });
-  execFileSync("mv", [join(unpacked, "plugins", plugin.name), dest]);
-  rmSync(unpacked, { recursive: true });
+  mkdirSync(dest, { recursive: true });
+  for (const path of listed.split("\0")) {
+    const from = join(repo, path);
+    if (path === "" || !existsSync(from)) continue;
+    const to = join(dest, path.slice(prefix.length));
+    mkdirSync(dirname(to), { recursive: true });
+    // copyFileSync keeps the mode, so `bin/squeal` and the CLI stay executable.
+    copyFileSync(from, to);
+  }
 }
 
 /** `bash -c <command>` in `cwd` with HOME and `env` only, stdin piped, timed. */
