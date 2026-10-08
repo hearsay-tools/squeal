@@ -48,6 +48,8 @@ Started: 2026-10-07
 
 - 2026-10-08, decided by the human after the third failing review: fix `reviews/wave-2.6.md` B1 and S1 (row 003-30) and run a fourth review (003-31, gpt-6.1-sol).
 
+- 2026-10-08, wave 2.7 (003-30), 0.1.30: D5 amended. `NODE_OPTIONS` is tokenized as Node does (`ParseNodeOptionsEnvVar`, identical at 22.23.3 and 24.21.0), so `"--require" x` and `"--require=x"` get the recorder first (B1). With an async loader, Node 22 runs `--require` preloads again in its internal loader thread, where the recorder's synchronous hook reached `Hooks.resolveSync` and crashed the process; the recorder now skips internal threads (user worker threads are still recorded), and each project with a `--loader` gets one note that what the loader loads enters no key (S1). Adapter version 4. Coordinator fix in the same landing: the Codex CLI command passes `--disable-warning=ExperimentalWarning`, as `bin/squeal` does, since Node 22 printed the `node:sqlite` warning on every agent run. Full suite green on Node 24 and Node 22 (196 files, 1,642 tests each).
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
