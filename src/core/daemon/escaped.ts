@@ -151,12 +151,25 @@ export class EscapedChildren {
   }
 }
 
-/** Stops what each run of `runner` left behind once it settles, before its result is returned. */
+/** What `afterEachRun` needs of `EscapedChildren`. */
+export type RunSweeper = Pick<EscapedChildren, "mark" | "afterTier">;
+
+/**
+ * Stops what the runs of `runner` left behind once they settle, before the
+ * last one's result is returned. Runs of two lanes overlap (001 D5 as
+ * amended, task 001-140) and a carrier does not say whose run started it, so
+ * the stop waits for the last run in flight and looks back to the mark of
+ * the first: a run that ends while another is in flight stops nothing, which
+ * would stop that run's workers. A run alone is stopped after as before.
+ */
 export function afterEachRun(
   runner: RunnerAdapter,
-  children: EscapedChildren,
+  children: RunSweeper,
   note: (text: string) => void,
 ): RunnerAdapter {
+  let inFlight = 0;
+  let since = 0;
+  const lane = runner.lane?.bind(runner);
   return {
     name: runner.name,
     adapterVersion: runner.adapterVersion,
@@ -166,13 +179,18 @@ export function afterEachRun(
     enumerate: (testFile) => runner.enumerate(testFile),
     testFiles: () => runner.testFiles(),
     environment: () => runner.environment(),
+    ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
-      const since = children.mark();
+      if (inFlight === 0) since = children.mark();
+      inFlight += 1;
       try {
         return await runner.run(testFiles, options);
       } finally {
-        const text = await children.afterTier(since).catch(() => null);
-        if (text !== null) note(text);
+        inFlight -= 1;
+        if (inFlight === 0) {
+          const text = await children.afterTier(since).catch(() => null);
+          if (text !== null) note(text);
+        }
       }
     },
     close: () => runner.close(),
