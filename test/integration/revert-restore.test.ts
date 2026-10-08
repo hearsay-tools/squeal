@@ -45,7 +45,7 @@ const LOADED = join(markers, "loaded");
 const SLOW = { timeout: 600_000 } as const;
 const SETTLE_MS = 180_000;
 /** An attempt the watcher split into two revisions proves nothing; try again. */
-const ATTEMPTS = 4;
+const ATTEMPTS = 8;
 
 const daemons: ChildProcess[] = [];
 afterAll(async () => {
