@@ -1,0 +1,66 @@
+# cezar store, worktree c8580be4 (id aba1f97b2081b6b9), read-only, 2026-10-08T12:51:37Z. Times UTC.
+## revisions 162-178: number, time, head, which paths changed
+{"number":162,"at":"2026-10-08 10:49:19","head":"1c97556a","paths":".ai/specs/2026-09-26-worker-orphan-finalization.md .ai/specs/2026-10-07-worktree-setup.md .env.example AGENTS.md AGENT_PROTOCOL.md BACKWARD_COMPATIBILITY.md README.md packages/cezar/package.json packages/cezar/scripts/benchmark-stuck-destroys.ts packages/cezar/scripts/mock-claude.mjs packages/cezar/ ..."}
+{"number":163,"at":"2026-10-08 10:49:30","head":"1c97556a","paths":"packages/cezar/src/core/harness-parity.testkit.ts"}
+{"number":164,"at":"2026-10-08 10:54:02","head":"1c97556a","paths":"packages/cezar/scripts/mock-cursor-print.mjs packages/cezar/src/core/cursor-print-runner.test.ts packages/cezar/src/core/cursor-print-ui-mapper.test.ts"}
+{"number":165,"at":"2026-10-08 10:54:12","head":"1c97556a","paths":"packages/cezar/scripts/mock-cursor-print.mjs"}
+{"number":166,"at":"2026-10-08 10:55:03","head":"1c97556a","paths":"packages/cezar/src/core/cursor-print-runner.test.ts packages/cezar/src/core/cursor-print-runner.ts packages/cezar/src/core/cursor-print-ui-mapper.ts"}
+{"number":167,"at":"2026-10-08 10:55:56","head":"1c97556a","paths":"packages/cezar/src/core/__fixtures__/cursor/print-lifecycle.expected.json packages/cezar/src/core/__fixtures__/cursor/print-lifecycle.ndjson packages/cezar/src/core/ui-parity.test.ts"}
+{"number":168,"at":"2026-10-08 10:56:25","head":"1c97556a","paths":"packages/cezar/src/core/process-usage.test.ts"}
+{"number":169,"at":"2026-10-08 10:56:41","head":"1c97556a","paths":"packages/cezar/src/core/process-usage.ts packages/cezar/src/workflows/run.ts"}
+{"number":170,"at":"2026-10-08 10:57:29","head":"1c97556a","paths":"packages/cezar/scripts/mock-cursor-print.mjs"}
+{"number":171,"at":"2026-10-08 11:00:52","head":"1c97556a","paths":"packages/cezar/scripts/mock-cursor-print.mjs packages/cezar/src/core/skill-resume-parity.test.ts"}
+{"number":172,"at":"2026-10-08 11:01:03","head":"1c97556a","paths":"packages/cezar/src/core/skill-resume-parity.test.ts"}
+{"number":173,"at":"2026-10-08 11:14:23","head":"1c97556a","paths":"packages/web/src/routes/task-thread/run-relationships.test.tsx"}
+{"number":174,"at":"2026-10-08 11:17:56","head":"1c97556a","paths":"packages/cezar/src/core/harness-parity.test.ts"}
+{"number":175,"at":"2026-10-08 11:18:35","head":"1c97556a","paths":"packages/cezar/src/workflows/grouped-command.test.ts"}
+{"number":176,"at":"2026-10-08 11:22:14","head":"1c97556a","paths":"packages/cezar/src/core/harness-parity.test.ts"}
+{"number":177,"at":"2026-10-08 12:14:09","head":"6b660859","paths":"packages/cezar/src/core/harness-parity.testkit.ts packages/cezar/src/core/skill-resume-parity.test.ts"}
+{"number":178,"at":"2026-10-08 12:16:37","head":"6b660859","paths":"packages/cezar/src/workflows/run.ts"}
+## runs that included runner-shutdown-parity.test.ts
+{"id":"bbcd1daa-db47-4539-b899-0e81169e7253","revision":163,"s":"2026-10-08 10:52:20","e":"2026-10-08 10:53:01","end_state":"completed"}
+{"id":"eb90fd0a-628a-45c8-9ed5-8b317ede38df","revision":166,"s":"2026-10-08 10:55:30","e":"2026-10-08 10:56:10","end_state":"completed"}
+{"id":"520e17d1-dea1-49db-9bd1-a1174070f526","revision":169,"s":"2026-10-08 10:56:52","e":"2026-10-08 10:57:32","end_state":"completed"}
+{"id":"1204ea70-0630-412e-ba7e-8a91b992f583","revision":177,"s":"2026-10-08 12:14:10","e":"2026-10-08 12:14:35","end_state":"completed"}
+## results of cursor S26-S28
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"fail","key":"6a2e55a081d6","revision":163,"at":"2026-10-08 10:53:01"}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"fail","key":"6a2e55a081d6","revision":163,"at":"2026-10-08 10:53:01"}
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"fail","key":"6a2e55a081d6","revision":163,"at":"2026-10-08 10:53:01"}
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"fail","key":"58c924db8442","revision":166,"at":"2026-10-08 10:56:10"}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"fail","key":"58c924db8442","revision":166,"at":"2026-10-08 10:56:10"}
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"fail","key":"58c924db8442","revision":166,"at":"2026-10-08 10:56:10"}
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"fail","key":"d6ac9b18adf7","revision":169,"at":"2026-10-08 10:57:32"}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"fail","key":"d6ac9b18adf7","revision":169,"at":"2026-10-08 10:57:32"}
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"fail","key":"d6ac9b18adf7","revision":169,"at":"2026-10-08 10:57:32"}
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"pass","key":"1f36e15795d5","revision":177,"at":"2026-10-08 12:14:35"}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"pass","key":"1f36e15795d5","revision":177,"at":"2026-10-08 12:14:35"}
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"pass","key":"1f36e15795d5","revision":177,"at":"2026-10-08 12:14:35"}
+{"full_name":"cursor S26 the session leader leads its own process group","outcome":"pass","key":"02967b3721d8","revision":178,"at":"2026-10-08 12:43:52"}
+{"full_name":"cursor S27 stop ends the leader's process group but not a setsid child","outcome":"pass","key":"02967b3721d8","revision":178,"at":"2026-10-08 12:43:52"}
+{"full_name":"cursor S28 end escalation reaches the whole process group","outcome":"pass","key":"02967b3721d8","revision":178,"at":"2026-10-08 12:43:52"}
+## transitions of cursor S26
+{"kind":"first-seen-fail","revision":163,"at":"2026-10-08 10:53:01"}
+{"kind":"fail-changed","revision":167,"at":"2026-10-08 10:56:10"}
+{"kind":"fail-changed","revision":170,"at":"2026-10-08 10:57:32"}
+{"kind":"fail-to-pass","revision":177,"at":"2026-10-08 12:14:35"}
+## closure of runner-shutdown-parity.test.ts
+{"n":178,"method":"static imports plus declared inputs","any_mock":0,"testkit":1,"print_runner":0,"process_usage":1}
+## S26-S28 per backend in run 520e17d1 (revision 169) vitest.log
+PASS claude S26 377 ms
+PASS claude S27 468 ms
+PASS claude S28 610 ms
+PASS codex S26 126 ms
+PASS codex S27 215 ms
+PASS codex S28 355 ms
+PASS opencode S26 180 ms
+PASS opencode S27 281 ms
+PASS opencode S28 4184 ms
+PASS pi S26 128 ms
+PASS pi S27 270 ms
+PASS pi S28 356 ms
+FAIL cursor S26 5557 ms
+FAIL cursor S27 5503 ms
+FAIL cursor S28 5506 ms
+PASS omp S26 126 ms
+PASS omp S27 268 ms
+PASS omp S28 356 ms
