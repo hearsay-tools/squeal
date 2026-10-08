@@ -8,6 +8,9 @@ import type {
   StatusUnavailable,
 } from "../types/index.js";
 
+/** The CLI that prints status names itself. */
+const STATUS_COMMAND = "squeal";
+
 /**
  * Human rendering of `squeal status`. The first lines reproduce the vision
  * example ("The desired experience"): revision, known failures (each listed
@@ -32,11 +35,11 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
       ].join(", ")}`,
     ]),
     `Affected checks: ${affected(result)}`,
-    `Full-suite checkpoint: ${fullSuiteText(result)}`,
+    `Full-suite checkpoint: ${fullSuiteText(result, STATUS_COMMAND)}`,
     "",
     worktreeLine(result),
     daemonLine(result, now),
-    `Inherited: ${plural(result.inherited.count, "current result")}`,
+    inheritedLine(result),
     ...result.inherited.sources.map(
       (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`,
     ),
@@ -50,6 +53,16 @@ export function formatStatus(result: StatusResult, now: EpochMs): string {
     ...notes(result),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Says where current results come from, and at 0 that none was reused, so the
+ * line never reads as nothing being current (lessons, defect 27).
+ */
+function inheritedLine(s: StatusSnapshot): string {
+  return s.inherited.count === 0
+    ? "Inherited from other worktrees: none (every current result here was run in this worktree)"
+    : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}`;
 }
 
 /** Status's own notes, then the daemon's with time and revision. */

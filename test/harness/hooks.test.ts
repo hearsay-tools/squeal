@@ -250,7 +250,7 @@ describe("Stop and SubagentStop", () => {
       reason:
         "Squeal policy stop.blockOnKnownFailures is on and 1 known failure exists at revision 1: src/math.test.ts > math > subtracts.\n\n" +
         "SQUEAL · status at revision 1\n" +
-        "Revision 1 (changed src/math.ts): 2 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\n" +
+        "Revision 1 (changed src/math.ts): 2 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one).\n" +
         "Known failures: 1",
     });
   });

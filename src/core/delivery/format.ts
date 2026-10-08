@@ -106,7 +106,7 @@ function changedText(paths: readonly string[] | undefined): string {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 
-function headerLine(header: StatusHeader): string {
+function headerLine(header: StatusHeader, command: string): string {
   const { revision, counts, testFilesWithoutChecks: files } = header;
   const inherited =
     (header.inheritedCount ?? 0) === 0
@@ -125,7 +125,7 @@ function headerLine(header: StatusHeader): string {
   return (
     `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ` +
     `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
-    `Full-suite checkpoint: ${fullSuiteText(header)}.` +
+    `Full-suite checkpoint: ${fullSuiteText(header, command)}.` +
     livenessSentence(header.daemon, revision) +
     (awaiting === null ? installSentences(header) : ` ${awaiting}`)
   );
@@ -308,7 +308,7 @@ export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): str
     return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
-  return assemble(`${title}\n${headerLine(header)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
+  return assemble(`${title}\n${headerLine(header, command)}`, blocks, overflow, tail, MESSAGE_CAP_CHARS);
 }
 
 /** The title of a delta that carries only a change of daemon liveness. */
@@ -331,7 +331,7 @@ export function formatRegistration(
   const { header, knownFailures } = registration;
   const head = [
     `SQUEAL · registered at revision ${header.revision}`,
-    headerLine(header),
+    headerLine(header, command),
     `Known failures: ${knownFailures.length}`,
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>

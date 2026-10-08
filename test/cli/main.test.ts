@@ -55,7 +55,7 @@ describe("squeal status", () => {
       "        expected 3, received 4",
       "        observed at revision 3, current",
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
-      "Full-suite checkpoint: none completed at any revision",
+      "Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)",
     ]);
   });
 
