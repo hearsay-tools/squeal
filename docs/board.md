@@ -238,6 +238,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-135 the recorder records what a test reads, and changes nothing | done (0.1.37) (brief in `specifications/001-core-loop/tasks/wave-12.md`) | `reviews/wave-12d.md` B2 (file symlink target), B3 (`r+` read dropped), B4 (`SHARE_ENV` Worker), B6 (sync-spawn wrapper changed a test result). | Each probe a failing-then-passing test. |
 | 001-136 re-review of 001-134 and 001-135 | running | `/reviewer` on gpt-6.1-sol, last round on the 001-132 slice. | `reviews/wave-12e.md` committed. |
 | 001-137 evidence: does the recorder cause cezar's contention failures | planned, after 001-134 and 001-135 | `reviews/wave-12d.md` S1: alternating on/off runs of the nine files under a fixed competing load. | Dated section in `tasks/001-132/notes.md`. |
+| 001-138 test daemons never outlive the suite | planned | Defect 29: daemons that `test/daemon/` tests start from the built copy under `node_modules/.cache/squeal-test/` survive the run and block worktree removal. Every such test stops what it started in teardown, and a global teardown fails the run and kills any daemon still running from that cache. | A deliberately leaked test daemon fails the suite and is gone after it. |
 
 ## Feature 002: Codex adapter
 
