@@ -1,0 +1,90 @@
+[
+  {
+    "copy": "sq-b",
+    "file": "shipped-plugin.test.ts",
+    "label": "finish-discard",
+    "edit_at_s": 3,
+    "cancel": false,
+    "exit": 0,
+    "wall_s": 6.973,
+    "stop_s": null,
+    "input_changed": true
+  },
+  {
+    "copy": "sq-b",
+    "file": "shipped-plugin.test.ts",
+    "label": "finish-retry",
+    "edit_at_s": null,
+    "cancel": false,
+    "exit": 0,
+    "wall_s": 7.381,
+    "stop_s": null,
+    "input_changed": false
+  },
+  {
+    "copy": "sq-b",
+    "file": "shipped-plugin.test.ts",
+    "label": "cancel",
+    "edit_at_s": 3,
+    "cancel": true,
+    "exit": 143,
+    "wall_s": 3.219,
+    "stop_s": 0.218,
+    "input_changed": true
+  },
+  {
+    "copy": "sq-b",
+    "file": "shipped-plugin.test.ts",
+    "label": "cancel-retry",
+    "edit_at_s": null,
+    "cancel": false,
+    "exit": 0,
+    "wall_s": 6.829,
+    "stop_s": null,
+    "input_changed": false
+  },
+  {
+    "copy": "cz-b",
+    "file": "application-update.test.ts",
+    "label": "finish-discard",
+    "edit_at_s": 3,
+    "cancel": false,
+    "exit": 0,
+    "wall_s": 34.488,
+    "stop_s": null,
+    "input_changed": true
+  },
+  {
+    "copy": "cz-b",
+    "file": "application-update.test.ts",
+    "label": "finish-retry",
+    "edit_at_s": null,
+    "cancel": false,
+    "exit": 0,
+    "wall_s": 35.497,
+    "stop_s": null,
+    "input_changed": false
+  },
+  {
+    "copy": "cz-b",
+    "file": "application-update.test.ts",
+    "label": "cancel",
+    "edit_at_s": 3,
+    "cancel": true,
+    "exit": 1,
+    "wall_s": 3.024,
+    "stop_s": 0.02,
+    "input_changed": true
+  },
+  {
+    "copy": "cz-b",
+    "file": "application-update.test.ts",
+    "label": "cancel-retry",
+    "edit_at_s": null,
+    "cancel": false,
+    "exit": 0,
+    "wall_s": 39.975,
+    "stop_s": null,
+    "input_changed": false
+  }
+]

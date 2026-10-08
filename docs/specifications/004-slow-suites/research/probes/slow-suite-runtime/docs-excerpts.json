@@ -1,0 +1,55 @@
+[
+  {
+    "url": "https://nodejs.org/download/release/v24.21.0/docs/api/os.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "Returns an array containing the 1, 5, and 15 minute load averages. The load average is a measure of system activity calculated by the operating system and expressed as a fractional number. The load average is a Unix-specific concept. On Windows, the return value is always [0, 0, 0] . os.machine() # Added in: v18.9.0, v16.18.0 Returns: <string> Returns the machine type as a string, such as arm , arm64 , aarch64 , mips , mips64 , ppc64 , ppc64le , s390x , i386 , i686 , x86_64 . On POSIX systems, the machine type is determined by calling uname(3) . On Windows, RtlGetVersion() is used, and if it is not available, GetVersionExW() will be used. See",
+      "The priority input must be an integer between -20 (high priority) and 19 (low priority). Due to differences between Unix priority levels and Windows priority classes, priority is mapped to one of six priority constants in os.constants.priority . When retrieving a process priority level, this range mapping may cause the return value to be slightly different on Windows. To avoid confusion, set priority to one of the priority constants. On Windows, setting priority to PRIORITY_HIGHEST requires elevated user privileges. Otherwise the set priority will be silently reduced to PRIORITY_HIGH . os.tmpdir() # History Version Changes v2.0.0 This functio",
+      "os.availableParallelism() # Added in: v19.4.0, v18.14.0 Returns: <integer> Returns an estimate of the default amount of parallelism a program should use. Always returns a value greater than zero. This function is a small wrapper about libuv's uv_available_parallelism() . os.arch() # Added in: v0.5.0 Returns: <string> Returns the operating system CPU architecture for which the Node.js binary was compiled. Possible values are 'arm' , 'arm64' , 'ia32' , 'loong64' , 'mips' , 'mipsel' , 'ppc64' , 'riscv64' , 's390x' , and 'x64' . The return value is equivalent to process.arch . os.constants # Added in: v6.3.0 Type: <Object> Contains commonly used "
+    ]
+  },
+  {
+    "url": "https://man7.org/linux/man-pages/man1/nice.1.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "Niceness values range from -20 (most favorable to the process) to 19 (least favorable to the process). Mandatory arguments to long options are mandatory for short options too. -n, --adjustment=N add integer N to the niceness (default 10) --help display this help and exit --version output version information and exit Your shell may have its own version of nice, which usually supersedes the version described here. Please refer to your shell's documentation for details about the options it supports. Exit status: 125 if the nice command itself fails 126 if COMMAND is found but cannot be invoked 127 if COMMAND cannot be found - the exit status of "
+    ]
+  },
+  {
+    "url": "https://man7.org/linux/man-pages/man1/ionice.1.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "Idle A program running with idle I/O priority will only get disk time when no other program has asked for disk I/O for a defined grace period. The impact of an idle I/O process on normal system activity should be zero. This scheduling class does not take a priority argument. Presently, this scheduling class is permitted for an ordinary user (since kernel 2.6.25). Best-effort This is the effective scheduling class for any process that has not asked for a specific I/O priority. This class takes a priority argument from 0-7 , with a lower number being higher priority. Programs running at the same best-effort priority are served in a round-robin ",
+      "Linux supports I/O scheduling priorities and classes since 2.6.13 with the CFQ I/O scheduler. EXAMPLES top \u2022 # ionice -c 3 -p 89 Sets process with PID 89 as an idle I/O process. \u2022 # ionice -c 2 -n 0 bash Runs 'bash' as a best-effort program with highest priority. \u2022 # ionice -p 89 91 Prints the class and priority of the processes with PID 89 and 91. AUTHORS top Jens Axboe <jens@axboe.dk>, Karel Zak <kzak@redhat.com> SEE ALSO top ioprio_set(2) REPORTING BUGS top For bug reports, use the issue tracker < https://github.com/util-linux/util-linux/issues >. AVAILABILITY top The ionice command is part of the util-linux package which can be downloaded"
+    ]
+  },
+  {
+    "url": "https://man7.org/linux/man-pages/man1/taskset.1.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "CPU affinity is a scheduler property that \"bonds\" a process to a given set of CPUs on the system. The Linux scheduler will honor the given CPU affinity and the process will not run on any other CPUs. Note that the Linux scheduler also supports natural CPU affinity: the scheduler attempts to keep processes on the same CPU as long as practical for performance reasons. Therefore, forcing a specific CPU affinity is useful only in certain applications. The affinity of some processes like kernel per-CPU threads cannot be set. The CPU affinity is represented as a bit mask, with the lowest order bit corresponding to the first logical CPU and the high"
+    ]
+  },
+  {
+    "url": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "CPUQuota= \u00b6 This setting controls the cpu controller in the unified hierarchy. Assign the specified CPU time quota to the processes executed. Takes a percentage value, suffixed with \"%\". The percentage specifies how much CPU time the unit shall get at maximum, relative to the total CPU time available on one CPU. Use values > 100% for allotting CPU time on more than one CPU. This controls the \" cpu.max \" attribute on the unified control group hierarchy and \" cpu.cfs_quota_us \" on legacy. For details about these control group attributes, see Control Groups v2 and CFS Bandwidth Control . Setting CPUQuota= to an empty value unsets the quota. Exam"
+    ]
+  },
+  {
+    "url": "https://man7.org/linux/man-pages/man5/proc_loadavg.5.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "The first three fields in this file are load average figures giving the number of jobs in the run queue (state R) or waiting for disk I/O (state D) averaged over 1, 5, and 15 minutes. They are the same as the load average numbers given by uptime(1) and other programs. The fourth field consists of two numbers separated by a slash (/). The first of these is the number of currently runnable kernel scheduling entities (processes, threads). The value after the slash is the number of kernel scheduling entities that currently exist on the system. The fifth field is the PID of the process that was most recently created on the system. SEE ALSO top pro"
+    ]
+  },
+  {
+    "url": "https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getpriority.2.html",
+    "retrieved": "2026-10-08",
+    "excerpts": [
+      "The scheduling priority of the process, process group, or user as indi- cated indicated cated by which and who is obtained with the getpriority () call and set with the setpriority () call. Additionally, the current thread can be set to background state. Which is one of PRIO_PROCESS, PRIO_PGRP, PRIO_USER, or PRIO_DARWIN_THREAD, and who is interpreted relative to which (a process identifier for PRIO_PROCESS, process group identifier for PRIO_PGRP, and a user ID for PRIO_USER). A zero value of who denotes the current process, process group, user, thread (for PRIO_DARWIN_THREAD). prio is a value in the range -20 to 20. The default priority is 0;",
+      "Only the super-user may lower priorities, but any thread can set itself into background state. RETURN VALUES Since getpriority () can legitimately return the value -1, it is necessary to clear the external variable errno prior to the call, then check it afterward to determine if a -1 is an error or a legitimate value. The setpriority () call returns 0 if there is no error, or -1 if there is. ERRORS Getpriority () and setpriority () will fail if: [EINVAL] Which is not one of PRIO_PROCESS, PRIO_PGRP, PRIO_USER, or PRIO_DARWIN_THREAD. [EINVAL] Who is not a valid process, process group, or user ID. [EINVAL] Who is not 0 when which is PRIO_DARWIN_"
+    ]
+  }
+]
