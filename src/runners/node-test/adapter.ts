@@ -70,7 +70,10 @@ export interface NodeTestAdapterOptions {
    * unrecognized loader, incomplete closures, a failed observation write.
    */
   readonly note?: (text: string) => void;
-  /** Processes at once, read per run: policy `runner.tierSize`. Default every file of the tier. */
+  /**
+   * Processes at once, read per run: policy `runner.tierSize`. Default every
+   * file of the tier; a slow lane's run always starts every file (task 004-37).
+   */
   readonly concurrency?: () => number;
   /** Spec 001 D10: the daemon's temp directory, every child's `TMPDIR`, `TMP` and `TEMP`. */
   readonly tempDir?: AbsolutePath;
