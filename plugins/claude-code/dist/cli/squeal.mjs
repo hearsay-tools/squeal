@@ -31257,7 +31257,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.58";
+  if (true) return "0.1.59";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33861,30 +33861,19 @@ function acquireDaemonLock(path) {
   return lock2;
 }
 async function awaitDaemonLock(path, wait) {
-  const db = lockDatabase(path);
   const deadline = performance.now() + wait.timeoutMs;
   let checkAt = 0;
-  try {
-    for (; ; ) {
-      const lock2 = tryLock(db);
-      if (lock2 !== null) return lock2;
-      const at2 = performance.now();
-      if (at2 >= checkAt) {
-        if (wait.giveUp()) break;
-        checkAt = at2 + (wait.checkMs ?? 250);
-      }
-      if (at2 >= deadline) {
-        db.close();
-        return "timed-out";
-      }
-      await sleep3(Math.min(wait.pollMs ?? 10, deadline - at2));
+  for (; ; ) {
+    const lock2 = acquireDaemonLock(path);
+    if (lock2 !== null) return lock2;
+    const at2 = performance.now();
+    if (at2 >= checkAt) {
+      if (wait.giveUp()) return "gave-up";
+      checkAt = at2 + (wait.checkMs ?? 250);
     }
-  } catch (error) {
-    db.close();
-    throw error;
+    if (at2 >= deadline) return "timed-out";
+    await sleep3(Math.min(wait.pollMs ?? 10, deadline - at2));
   }
-  db.close();
-  return "gave-up";
 }
 function lockDatabase(path) {
   mkdirSync6(dirname7(path), { recursive: true });
