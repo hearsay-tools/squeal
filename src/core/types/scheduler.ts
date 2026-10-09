@@ -3,7 +3,7 @@ import type { TestFileRef } from "./keys.js";
 import type { CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
-/** A test file and the revision whose change last moved its key (`Scheduler.rekeyedSince`). */
+/** A test file and a revision whose move of its key has no result yet (`Scheduler.rekeyedSince`). */
 export interface RekeyedTestFile {
   readonly testFile: TestFileRef;
   readonly revision: RevisionNumber;
@@ -157,9 +157,12 @@ export interface Scheduler {
   refined(): Promise<void>;
   /**
    * Test files whose key a revision numbered after `after` up to `upTo`
-   * last moved: its content, closure, declared inputs, observed paths or
-   * environment, or the file was added (task 001-186, `status --wait`). Not
-   * the baseline's, a backlog's or a run's moves. Empty before the start.
+   * moved: its content, closure, declared inputs, observed paths or
+   * environment, or the file was added (task 001-186, `status --wait`). Each
+   * at the earliest and the latest such revision with no result at the key
+   * since, so a later move never hides an earlier one (task 001-194), and a
+   * file with a result, or `unknown`, at its key is in no window. Not the
+   * baseline's, a backlog's or a run's moves. Empty before the start.
    */
   rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly RekeyedTestFile[];
   /**

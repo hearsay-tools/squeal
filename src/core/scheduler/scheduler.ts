@@ -307,9 +307,11 @@ class TierScheduler implements Scheduler {
   rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly RekeyedTestFile[] {
     const files: RekeyedTestFile[] = [];
     for (const file of this.#ledger?.files.values() ?? []) {
-      const revision = file.keyedAt;
-      if (revision !== null && revision > after && revision <= upTo) {
-        files.push({ testFile: file.ref, revision });
+      // The earliest move still owed, and the latest for a window after it (task 001-194).
+      for (const revision of new Set([file.keyedAt, file.lastKeyedAt])) {
+        if (revision !== null && revision > after && revision <= upTo) {
+          files.push({ testFile: file.ref, revision });
+        }
       }
     }
     return files;
