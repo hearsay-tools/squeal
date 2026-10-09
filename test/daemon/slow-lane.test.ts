@@ -24,9 +24,14 @@ it("holds until the flag", async () => {
   while (!existsSync(${at("flag")}) && Date.now() < deadline) {
     await new Promise((done) => setTimeout(done, 100));
   }
+  // The daemon lowers a slow lane's processes on a 1 s poll (lowerWhile): give a loaded host time.
+  const lowered = Date.now() + 20_000;
+  while (getPriority() !== 10 && Date.now() < lowered) {
+    await new Promise((done) => setTimeout(done, 100));
+  }
   writeFileSync(${at("priority")}, String(getPriority()));
   expect(existsSync(${at("flag")})).toBe(true);
-}, 170_000);
+}, 190_000);
 `;
 }
 
