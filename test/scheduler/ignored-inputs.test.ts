@@ -174,6 +174,42 @@ describe("a gitignored declared input (lessons defect 7)", SLOW, () => {
     await b.scheduler.idle();
   });
 
+  it.each([
+    { where: "an ignored directory", linked: false },
+    { where: "a tracked build link", linked: true },
+  ])(
+    "joins a file a rebuild only adds in $where at the next interval reconciliation (004-33)",
+    async ({ linked }) => {
+      const { repo } = linked ? linkedBuilds(true) : { repo: repoWithIgnoredDist() };
+      const store = openRepoStore(repo.commonDir);
+      const glob = linked ? "**/dist/**" : "dist/**";
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        ...options(),
+        policy: { ...policy, inputs: { [STRINGS]: [glob] } },
+      });
+      const build = linked ? "real-build" : "dist";
+      h.write(`${build}/index.js`, "export const build = 'a';\n");
+      await h.scheduler.start();
+      await h.scheduler.idle();
+      const before = h.keyOf(STRINGS);
+      expect(before).not.toBeNull();
+
+      // No watch batch reports an addition under an ignored directory.
+      h.write(`${build}/chunk.js`, "export const chunk = 1;\n");
+      await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
+      expect(h.scheduler.extraFiles()).toContain("dist/chunk.js");
+      const added = h.keyOf(STRINGS);
+      expect(added).not.toBe(before);
+      // A pass that finds nothing new leaves the key, and the chunk is watched from here on.
+      await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
+      expect(h.keyOf(STRINGS)).toBe(added);
+      h.write(`${build}/chunk.js`, "export const chunk = 2;\n");
+      await h.batch("dist/chunk.js");
+      expect(h.keyOf(STRINGS)).not.toBe(added);
+      await h.scheduler.idle();
+    },
+  );
+
   it("lists them again when a policy reload declares them", async () => {
     const repo = repoWithIgnoredDist();
     const store = openRepoStore(repo.commonDir);
