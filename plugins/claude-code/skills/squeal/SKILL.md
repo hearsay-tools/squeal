@@ -11,9 +11,20 @@ Squeal runs this repository's Vitest tests in the background after every edit, a
 
 1. **Keep working; read the reports instead of running Vitest, or node:test where `nodeTest` projects are listed.** Results arrive with your next tool call, as SQUEAL messages. No message means nothing changed, not that everything passes. Done when you have read every FAIL in every SQUEAL message that arrived.
 2. **On a FAIL**, read its first error line and location. When they are not enough, run the message's last line, `Full output: squeal why "<name>"`, for the full output and history. After your fix the recovery arrives as `FAIL -> PASS`. Done when each FAIL is fixed or you can say why it stays.
-3. **Wait only when you need a result before your next step**, for example before saying the task is done. By default results arrive with your next tool call, so keep working. When you need them now, run `squeal status --wait 60000`: it returns as soon as nothing is pending or a check changed. Done when its first line says `Returned on quiet` or `Returned on news`.
+3. **Wait only when you need a result before your next step**, for example before saying the task is done. By default results arrive with your next tool call, so keep working. When you need them now, run `squeal status --wait 60000`, or `--wait 120000` on a busy host (at load 100 to 170 on 24 CPUs, an edited file's result took up to 51 s): it returns as soon as the test files your edits re-keyed have their results, or one of their checks changed. Done when its first line says `Returned on quiet` or `Returned on news`; on `Returned on timeout`, wait again.
 4. **Before saying the task is done**, claim only what the latest header or `squeal status` shows. `Known failures: 0` with checks pending means "no known failures yet"; say what is still pending, and whether a full-suite checkpoint completed at the current revision. Done when every claim about tests matches a line of `squeal status`.
-5. **Run tests yourself only** when a header says no daemon is validating, a result is unknown, or the repository's own gate (CI, a pre-commit hook, the task) requires a run. Squeal covers the Vitest tests, the node:test tests of the `nodeTest` projects `squeal.config.json` lists, and the slow test files its `slow` key marks: run typecheck, build and other suites as the repository says.
+5. **Run tests yourself only** when a header says no daemon is validating, a result is unknown, or the repository's own gate (CI, a pre-commit hook, the task) requires a run. Squeal covers the Vitest tests, the node:test tests of the `nodeTest` projects `squeal.config.json` lists, and the slow test files its `slow` key marks: run typecheck, build and other suites as the repository says. Running the test files beside your edit to learn sooner duplicates what Squeal is already running, so wait instead (step 3); a gate the repository requires is still yours to run.
+
+## Red/green: checking that a test catches the bug
+
+To show that a test fails without your fix and passes with it, let Squeal run it rather than running it yourself. Results would arrive with your next tool call anyway; here each step needs its result before the next, so wait after each edit:
+```sh
+# 1. Revert the fix, then:
+squeal status --wait 60000   # Returned on news: the test's PASS -> FAIL
+# 2. Restore the fix, then:
+squeal status --wait 60000   # Returned on news: FAIL -> PASS
+```
+Each edit is its own revision, so the first wait reports the revert, not the fix: the result is the FAIL the test had before your fix, often looked up from the store at once since the reverted files are the same bytes. A wait after the revert that returns on quiet means the test still passes: it does not catch the bug.
 
 ## Reading a header
 

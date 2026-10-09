@@ -60,6 +60,25 @@ describe("the squeal skill", () => {
     expect(body).toContain('`Full output: squeal why "<name>"`');
   });
 
+  /*
+   * Task 001-174, from 001-172's measurement (`lessons.md`, "`status --wait`
+   * on a loaded host"): an agent ran neighbouring suites itself rather than
+   * wait. The skill shows red/green through the wait, quotes the measured
+   * wait for a busy host, and says a re-run beside Squeal's is a duplicate.
+   */
+  it("shows red/green through the wait, with the measured wait and no duplicate runs", () => {
+    const example = body.slice(body.indexOf("## Red/green"), body.indexOf("## Reading a header"));
+    expect(example).toMatch(
+      /Revert the fix[\s\S]*status --wait[\s\S]*Restore the fix[\s\S]*status --wait/,
+    );
+    expect(example).toContain("its own revision");
+    expect(example).toContain("PASS -> FAIL");
+    expect(body).toContain("`--wait 120000` on a busy host");
+    expect(read("commands.md")).toContain("On a busy host give it `120000`");
+    expect(body).toContain("duplicates what Squeal is already running");
+    expect(body).toContain("a gate the repository requires is still yours to run");
+  });
+
   it("states the next-tool-call default before every `squeal status --wait`", () => {
     const texts = [body, ...references.map(read), PRIMER];
     let pointers = 0;
