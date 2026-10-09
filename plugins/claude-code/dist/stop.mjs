@@ -697,6 +697,46 @@ function readFailureKeys(store, worktreeId) {
   }
 }
 
+// src/core/state/slow-sources.ts
+function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
+  if (since >= revision) return false;
+  const tested = /* @__PURE__ */ new Map();
+  const now = /* @__PURE__ */ new Map();
+  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
+    for (const change2 of changes) {
+      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
+      now.set(change2.path, change2.newHash);
+    }
+  }
+  const isArtifact = createInputMatcher(artifact);
+  return [...now].some(
+    ([path, hash]) => hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
+  );
+}
+function artifactSources(store, keys, view) {
+  const testFiles = new Set(keys.map((row) => row.testFile.path));
+  let closures;
+  const isFastInput = createInputMatcher([
+    ...new Set(
+      keys.filter((row) => !view.isSlow(row.testFile)).flatMap((row) => view.artifactFor(row.testFile.path))
+    )
+  ]);
+  return (path) => {
+    if (isFastInput(path)) return false;
+    if (!inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs)) {
+      return false;
+    }
+    closures ??= listedClosures(store, keys);
+    return closures.has(path);
+  };
+}
+function listedClosures(store, keys) {
+  const listed = new Set(keys.map((row) => testFileId(row.testFile)));
+  return new Set(
+    store.testFiles.list().filter((record) => listed.has(testFileId(record.testFile))).flatMap((record) => record.closure.paths)
+  );
+}
+
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
   const globs2 = slowGlobs(policy, policy.nodeTest);
@@ -765,8 +805,7 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
     }
   }
   const globs2 = [...artifact].sort();
-  const testFiles = new Set(keys.map((row) => row.testFile.path));
-  const isSource = (path) => inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs);
+  const isSource = artifactSources(store, keys, view);
   return {
     testFiles: files.size,
     ...counts,
@@ -821,21 +860,6 @@ function consumerInTurn(store, worktreeId) {
     const turn = turns[slot(record.consumer)];
     return isRecord(turn) && turn.turn === "in-turn";
   });
-}
-function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
-  if (since >= revision) return false;
-  const tested = /* @__PURE__ */ new Map();
-  const now = /* @__PURE__ */ new Map();
-  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
-    for (const change2 of changes) {
-      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
-      now.set(change2.path, change2.newHash);
-    }
-  }
-  const isArtifact = createInputMatcher(artifact);
-  return [...now].some(
-    ([path, hash]) => hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
-  );
 }
 function slowFilesNotCurrent(states, keys, isSlow) {
   return [...classifySlowFiles(states, keys, isSlow).values()].filter((file) => file.class !== "current").map((file) => file.ref);
@@ -3826,7 +3850,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.87";
+  if (true) return "0.1.88";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
