@@ -18,10 +18,11 @@ import {
 
 /*
  * Task 001-161: a starting daemon exited on "database is locked" 5 s after
- * another worktree's daemon began recording a 250-file tier. `Ledger.commit`
+ * another worktree's daemon began recording a large tier. `Ledger.commit`
  * called the sink once per file, and each call listed every known state of
- * the worktree inside the write transaction: 6 s with 4,982 states, 30 s with
- * 15,468, on a copy of cezar's store at load 2 per CPU.
+ * the worktree inside the write transaction: on a copy of cezar's store,
+ * applying a 198-file tier took 11 to 17 s with 4,982 states and 59 to 67 s
+ * with 15,468.
  */
 
 const WORKTREE = "wt-161" as WorktreeId;
@@ -160,7 +161,7 @@ describe("Ledger.commit writes a tier in one short transaction (task 001-161)", 
 
     expect(lists).toEqual([2]);
     expect(store.knownStates.list(WORKTREE)).toHaveLength(20_000);
-    // Per file this was 250 lists of 15,000 states: about 30 s at load 2 per CPU.
+    // Per file this was 250 lists of 15,000 states: 29 s here before the fix.
     expect(heldMs).toBeLessThan(5_000);
   }, 120_000);
 });
