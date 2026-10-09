@@ -56,6 +56,19 @@ const CLASSES: Readonly<Record<string, Class>> = {
       ),
     },
   },
+  // Vitest processes no CSS by default, and `?inline` is then empty.
+  "a CSS ?inline import with CSS processed": {
+    path: "src/style.css",
+    transient: '.x { content: "new"; }\n',
+    disk: '.x { content: "old"; }\n',
+    files: {
+      "vitest.config.ts": config(`test: { ${INCLUDE}, css: { include: [/.+/] } }`),
+      "test/t.test.ts": testFile(
+        'import css from "../src/style.css?inline";',
+        '  expect(css).toContain("new");',
+      ),
+    },
+  },
   "a \\0 ID a plugin resolves to the file": {
     files: {
       "vitest.config.ts": config(
