@@ -54,6 +54,12 @@ export interface Presence {
   /** When the daemon started: a departure before it was another daemon's. */
   readonly since: EpochMs;
   lastPresentAt: EpochMs | null;
+  /**
+   * The grace after the last consumer left ended with slow files pending, and
+   * the daemon runs them before it exits (task 004-29); its note is written.
+   * Cleared when a consumer is counted again.
+   */
+  draining?: boolean;
 }
 
 /**
@@ -90,6 +96,12 @@ export interface TimerContext {
   readonly observedChanged?: () => boolean;
   /** Carried across restarts; a fresh one when absent. */
   readonly observedSeen?: ObservedSeen;
+  /**
+   * A slow file is queued or running (`Scheduler.slowPending`): the last
+   * session's departure drains them before the exit (task 004-29). Absent or
+   * false: the daemon exits at the grace.
+   */
+  readonly slowPending?: () => boolean;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
@@ -109,6 +121,14 @@ export interface TimerContext {
  * was registered for `departureGraceMs`, measured from the last count that
  * saw one or the last departure stamped, whichever is later, so the exit
  * comes at most the grace after the last consumer left.
+ *
+ * Task 004-29, the human's rules (board row 001-162): when the grace ends
+ * with slow files pending, the daemon drains them before it exits, for at
+ * most `daemon.idleExitMinutes` after the departure, with one note when the
+ * drain starts and one for the exit (drained, or the bound). The drain is no
+ * activity for the idle period, and a consumer that registers during it
+ * cancels the exit: the daemon serves on, its slow files still behind the
+ * consumer's fast work (spec 004 D2).
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
  *
@@ -166,6 +186,7 @@ export function startTimers(context: TimerContext): () => void {
   const countPresence = (at: EpochMs): boolean => {
     if (store.consumers.list(worktreeId).length > 0) {
       presence.lastPresentAt = at;
+      presence.draining = false;
       context.active(at);
       return false;
     }
@@ -179,10 +200,26 @@ export function startTimers(context: TimerContext): () => void {
     attempt("departure check", () => {
       const at = now();
       if (!countPresence(at) || presence.lastPresentAt === null) return;
-      if (at - presence.lastPresentAt >= graceMs) {
+      const gone = at - presence.lastPresentAt;
+      if (gone < graceMs) return;
+      if (context.slowPending?.() !== true) {
         context.shutdown(
           "sessions-gone",
-          `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`,
+          presence.draining === true
+            ? "daemon stopped: the slow files pending when its last session ended have run"
+            : `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`,
+        );
+      } else if (gone >= idleMs) {
+        context.shutdown(
+          "sessions-gone",
+          `daemon stopped: slow files were still pending ${duration(idleMs)} after its last ` +
+            "session ended (daemon.idleExitMinutes)",
+        );
+      } else if (presence.draining !== true) {
+        presence.draining = true;
+        context.note(
+          "the last session ended with slow files pending; this daemon runs them before it " +
+            `exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`,
         );
       }
     });
