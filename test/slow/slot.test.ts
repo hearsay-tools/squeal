@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { currentUid } from "../../src/core/daemon/paths.js";
-import { acquireSlowSlot } from "../../src/core/slow/index.js";
+import { currentUid, userTmpDir } from "../../src/core/daemon/paths.js";
+import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/index.js";
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const slotModule = fileURLToPath(new URL("../../src/core/slow/slot.ts", import.meta.url));
@@ -179,5 +179,32 @@ describe("the slot directory is checked as spec 001 D10 checks the per-user dire
   test("a directory owned by another uid is refused", () => {
     mkdirSync(dir, { mode: 0o700 });
     expect(() => acquireSlowSlot({ dir, owner, uid: currentUid() + 1 })).toThrow(/is owned by uid/);
+  });
+});
+
+describe("the slot directory follows the daemon's XDG_RUNTIME_DIR (spec 004 D2, 004-16)", () => {
+  test("squeal in an absolute XDG_RUNTIME_DIR, else the per-user /tmp directory", () => {
+    expect(slowSlotDir({ XDG_RUNTIME_DIR: "/run/user/1000" })).toBe("/run/user/1000/squeal");
+    expect(slowSlotDir({})).toBe(userTmpDir());
+    expect(slowSlotDir({ XDG_RUNTIME_DIR: "" })).toBe(userTmpDir());
+    expect(slowSlotDir({ XDG_RUNTIME_DIR: "relative/run" })).toBe(userTmpDir());
+  });
+
+  test("a daemon under another runtime directory takes its own slot while the outer one is held", {
+    timeout: 60_000,
+  }, async () => {
+    const outer = join(root, "outer-run");
+    const inner = join(root, "inner-run");
+    mkdirSync(outer, { mode: 0o700 });
+    mkdirSync(inner, { mode: 0o700 });
+    const holder = spawnHolder(slowSlotDir({ XDG_RUNTIME_DIR: outer }), "outer");
+    await holder.waitFor("took");
+    expect(acquireSlowSlot({ dir: slowSlotDir({ XDG_RUNTIME_DIR: outer }), owner })).toBeNull();
+    const mine = acquireSlowSlot({ dir: slowSlotDir({ XDG_RUNTIME_DIR: inner }), owner });
+    expect(mine).not.toBeNull();
+    expect(statSync(join(inner, "squeal")).mode & 0o777).toBe(0o700);
+    mine?.release();
+    holder.child.stdin?.end("release\n");
+    await holder.waitFor("released");
   });
 });

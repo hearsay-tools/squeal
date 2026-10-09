@@ -1,6 +1,6 @@
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { currentUid, preparePrivateDir } from "../daemon/paths.js";
+import { currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
 import { isBusy } from "../store/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 
@@ -11,7 +11,7 @@ export interface SlowSlotOwner {
 }
 
 export interface SlowSlotRequest {
-  /** The per-user directory, `userTmpDir()` (spec 001 D10); the lock is `slow.lock` in it. */
+  /** The slot's directory, `slowSlotDir()`; the lock is `slow.lock` in it. */
   readonly dir: AbsolutePath;
   readonly owner: SlowSlotOwner;
   /** Releases the slot when it aborts; an already aborted signal takes nothing. */
@@ -29,10 +29,23 @@ export interface SlowSlot {
 export const SLOW_LOCK_FILE = "slow.lock";
 
 /**
+ * The slot's directory: `squeal` in the daemon's `XDG_RUNTIME_DIR` when it is
+ * set to an absolute path, as its socket follows it (`runtimeDir`), else the
+ * per-user `/tmp/squeal-<uid>` (spec 001 D10). Spec 004 D2 as amended
+ * (004-16): a daemon started under another runtime directory, such as an
+ * end-to-end test's inner daemon run by an outer daemon's slow file, has a
+ * slot of its own, so the outer file holding its slot cannot starve it.
+ */
+export function slowSlotDir(env: NodeJS.ProcessEnv = process.env): AbsolutePath {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? join(xdg, "squeal") : userTmpDir();
+}
+
+/**
  * Takes the per-user slow slot, or returns `null` when another holder has it.
  *
  * Spec 004 D2: one slow tier at a time per user on the host, through
- * `/tmp/squeal-<uid>/slow.lock`, held for one slow file and released between
+ * `slow.lock` in `slowSlotDir()`, held for one slow file and released between
  * files. The lock is SQLite's exclusive locking, as the daemon singleton
  * (001 D10), not an `O_EXCL` pid file: the OS drops it when the holder dies,
  * so a SIGKILLed holder frees the slot at once, and no pid is read back, so
