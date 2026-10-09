@@ -1,0 +1,49 @@
+== 2026-10-09T06:54:58.311Z exit=0 1.24s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" status --wait 60000
+Returned without a daemon: no daemon has validated since 2026-10-09T06:51:26.665Z; results are as of revision 0
+
+Revision: 0
+Known failures: 1
+  FAIL  [server] packages/cezar/src/application-update/lock.test.ts > npm-compatible directory lock > waits for an owner and releases after its operation
+        release is not a function
+        at packages/cezar/src/application-update/lock.test.ts:18:5, observed at revision 0, current
+Affected checks: 4482 passed, 0 running, 0 queued, 2 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 13 test files; 13 pending. Not covered by Stop's wait; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --slow` runs them now.
+
+Worktree: /tmp/squeal-dogfood-cezarion-004-6191defd (HEAD c07b0bf, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-09T06:51:26.665Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 66 pending, 401 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-09T06:15:28.413Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what thei
+[...2312 more chars]
+== 2026-10-09T07:13:59.086Z exit=0 0.65s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --slow
+Slow tier requested at revision 2: 1 slow file queued; they run once no fast work is pending.
+
+== 2026-10-09T07:14:20.996Z exit=0 15.13s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" status --wait 60000
+Returned on news: 1 transition since the wait started, at revision 2 after 15.2 s
+
+Revision: 2
+Known failures: 1
+  FAIL  [server] packages/cezar/src/application-update/lock.test.ts > npm-compatible directory lock > waits for an owner and releases after its operation
+        release is not a function
+        at packages/cezar/src/application-update/lock.test.ts:18:5, observed at revision 0, stale
+Affected checks: 118 passed, 0 running, 0 queued, 4485 stale
+Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 13 test files; 13 current against packages/cezar/dist/** as of revision 1, sources changed since. Not covered by Stop's wait.
+
+Worktree: /tmp/squeal-dogfood-cezarion-004-6191defd (HEAD c07b0bf, dirty at revision 2)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 453 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-09T06:15:28.413Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/
+[...4771 more chars]

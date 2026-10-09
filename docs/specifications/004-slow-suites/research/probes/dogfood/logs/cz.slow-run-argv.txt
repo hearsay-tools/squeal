@@ -1,0 +1,18 @@
+# argv of A's slow run of release.test.ts (run 8cf58e36, 0.1.58), from run.json
+{
+ "cwd": "/tmp/squeal-dogfood-cezarion-004-6191defd/packages/cezar",
+ "command": [
+  "node",
+  "--enable-source-maps",
+  "--require",
+  "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/node-test/recorder.cjs",
+  "--import",
+  "../../scripts/test-git-env.mjs",
+  "--import",
+  "tsx",
+  "--test",
+  "--test-reporter=/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/node-test/reporter.mjs",
+  "--test-reporter-destination=/home/agent/projects/cezar/.git/squeal/runs/8cf58e36-6f79-40c2-852e-2b7db08a2ec0/node-test/test%3Apackage/events-0.ndjson",
+  "test/e2e/release.test.ts"
+ ]
+}

@@ -1,0 +1,104 @@
+squeal daemon: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+squeal daemon: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+squeal daemon: serving /tmp/squeal-dogfood-cezarion-004-6191defd on /run/user/1001/squeal-7be860c111f6af60.sock
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: daemon error: squeal scheduler: could not persist a note (scheduler stopped running tiers: Error: database is locked): Error: database is locked
+squeal daemon: daemon error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/alias-bin-exports.test.ts
+squeal daemon: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/cursor-print.test.ts
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: consumer expiry failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

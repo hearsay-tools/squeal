@@ -1,0 +1,55 @@
+## meta (this worktree)
+revision-registered:7be860c111f6af60 = {"01a11f6e-5b85-7b53-bab5-3e725f78082e\nmain":{"since":0,"gaps":[],"scanned":1791526963816}}
+harness-process:7be860c111f6af60 = {"01a11f6e-5b85-7b53-bab5-3e725f78082e\nmain":{"pid":2594549,"startTime":66702948,"pidNamespace":"pid:[4026531836]"}}
+consumer-version:7be860c111f6af60 = {"01a11f6e-5b85-7b53-bab5-3e725f78082e\nmain":"0.1.57"}
+turn:7be860c111f6af60 = {"01a11f6e-5b85-7b53-bab5-3e725f78082e\nmain":{"turn":"in-turn"}}
+liveness-told:7be860c111f6af60 = {"01a11f6e-5b85-7b53-bab5-3e725f78082e\nmain":"down"}
+revision-told:7be860c111f6af60 = {"01a11f6e-5b85-7b53-bab5-3e725f78082e\nmain":0}
+awaiting-install.7be860c111f6af60 = false
+refined.7be860c111f6af60 = 1
+daemon-bootstrapped:7be860c111f6af60 = 1791529167717
+notes.7be860c111f6af60 = [{"at":1791526528413,"revision":null,"text":"node-test project \"test:package\": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contr
+failure-keys:7be860c111f6af60 = {"test\u0000server\u0000packages/cezar/src/application-update/lock.test.ts\u0000npm-compatible directory lock > waits for an owner and releases after its operation":"6fe96410ed74dbb043da078a98c602605bb4ec4ed18df776c9018a93a7e96ef4","test\u0000test:package\u0000packages/cezar/test/e2e/package-cli.test.ts\u0000the release tarball installs and runs the dry-run CLI workflow":"8dfdf961ff18fd8ddb59d9ca96e5416f65e05fee43385d991c6cad9b53257ad5"}
+state.baseline-findings.7be860c111f6af60 = {"checkpointId":"889b47dc-eb75-47b6-9185-901a1782321f","entries":["test\u0000server\u0000packages/cezar/src/application-update/lock.test.ts\u0000npm-compatible directory lock > waits for an owner and releases after its operation\u0000TypeError: release is not a function @ packages/cezar/src/application-update/lock.test.ts:18:5"]}
+slow-artifacts:7be860c111f6af60 = {"a04605314bad25ec58b0d4b2746b2b9e2d92388b559867530a0b9debb5b12e57":["packages/cezar/dist/**"],"07cca01bef09d7403dcccc2bec65b332a11cbab2bebb02cca074c6d8f5876547":["packages/cezar/dist/**"],"26ee868acd3a5cca0ea14550468a63556c499a47964ccdbb94f8698ad69a05fb":["packages/cezar/dist/**"],"110f9c3e17324d3b316adb27a473c902b20cb7bccc7c811112a8452d0c977474":["packages/cezar/dist/**"],"d759b5cedfa26d73fc54e72741bbce2664b07d16f7758893a97949c1bc7be9f8":["packages/cezar/dist/**"],"8985f2637b6bc635b0b53514ad76dded8b9ccc4bd9b178dd6e2ac2d9fe1a97e8":["packages/cezar/dist/**"],"8dfdf961ff18fd8ddb59d9ca96e5416f65
+slow-tier:7be860c111f6af60 = null
+
+## revisions
+r1 06:57:37.994 +-252.4s start dirty=1 [{"path":"packages/cezar/dist/todos.js","oldHash":"eabce0074f17e947be7c7f3dab7cc6a6b156ca96","newHash":"9f5bdef14c2a7cd03382f61bb8a142ef5f369096"},{"path":"packages/cezar/src/server/provider-action-gate.test.ts","oldHash":"56708a03938f187d441c5719af894c73e0302f05","newHash":"de8e327bd3b18eca77266b5d
+
+## runs (S = holds slow files)
+S r1 07:07:14.660 +324.3s -> 07:07:15.264 +324.9s (0.6s) completed alias-bin-exports.test.ts
+S r1 07:07:15.362 +325.0s -> 07:10:36.530 +526.2s (201.2s) completed application-update.test.ts
+S r1 07:11:51.659 +601.3s -> 07:12:00.306 +609.9s (8.6s) completed cockpit-ownership.test.ts
+S r1 07:12:02.132 +611.8s -> 07:12:09.003 +618.6s (6.9s) completed cursor-print.test.ts
+S r1 07:12:09.069 +618.7s -> 07:12:25.310 +634.9s (16.2s) completed delegation.test.ts
+S r1 07:12:25.358 +635.0s -> 07:12:27.372 +637.0s (2.0s) completed inline-contract.test.ts
+S r1 07:12:27.419 +637.1s -> 07:12:39.863 +649.5s (12.4s) completed package-cli.test.ts
+S r1 07:12:39.905 +649.5s -> 07:12:48.929 +658.6s (9.0s) completed release-snapshot.test.ts
+S r1 07:12:48.986 +658.6s -> 07:12:55.973 +665.6s (7.0s) completed release.test.ts
+S r1 07:12:56.018 +665.7s -> 07:13:07.919 +677.6s (11.9s) completed serve-port.test.ts
+S r1 07:13:07.963 +677.6s -> 07:13:08.458 +678.1s (0.5s) completed stop-child.test.ts
+S r1 07:13:08.503 +678.1s -> 07:13:30.557 +700.2s (22.1s) completed task-cli.test.ts
+S r1 07:13:30.621 +700.3s -> 07:13:31.010 +700.6s (0.4s) completed tick-writer.test.ts
+
+## transitions
+r1 07:12:39.883 +649.5s first-seen-fail - -> fail [test:package] packages/cezar/test/e2e/package-cli.test.ts > the release tarball installs and runs the dry-run CLI workflow
+
+## known_states of slow files by outcome, validity, origin
+packages/cezar/test/e2e/alias-bin-exports.test.ts pass current own  2
+packages/cezar/test/e2e/application-update.test.ts pass current own  28
+packages/cezar/test/e2e/cockpit-ownership.test.ts pass current own  2
+packages/cezar/test/e2e/cursor-print.test.ts pass current own  2
+packages/cezar/test/e2e/delegation.test.ts pass current own  3
+packages/cezar/test/e2e/inline-contract.test.ts pass current own  5
+packages/cezar/test/e2e/package-cli.test.ts fail current own  1
+packages/cezar/test/e2e/package-cli.test.ts pass current own  1
+packages/cezar/test/e2e/release-snapshot.test.ts pass current own  9
+packages/cezar/test/e2e/release.test.ts pass current own  13
+packages/cezar/test/e2e/serve-port.test.ts pass current own  9
+packages/cezar/test/e2e/stop-child.test.ts pass current own  4
+packages/cezar/test/e2e/task-cli.test.ts pass current own  2
+packages/cezar/test/e2e/tick-writer.test.ts pass current own  3
+
+## consumers
+01a11f6e-5b85-7b53-bab5-3e725f78082e/main registered 06:51:28.902 +-621.5s seen 06:51:48.390 +-602.0s delivered 06:51:41.120 +-609.2s

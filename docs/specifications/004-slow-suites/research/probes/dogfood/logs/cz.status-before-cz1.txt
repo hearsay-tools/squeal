@@ -1,0 +1,12 @@
+Revision: 0
+Known failures: 1
+  FAIL  [server] packages/cezar/src/application-update/lock.test.ts > npm-compatible directory lock > waits for an owner and releases after its operation
+        release is not a function
+        at packages/cezar/src/application-update/lock.test.ts:18:5, observed at revision 0, current
+Affected checks: 4482 passed, 0 running, 0 queued, 2 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: 13 test files; 13 pending. Not covered by Stop's wait; `squeal run --slow` runs them now.
+
+Worktree: /tmp/squeal-dogfood-cezarion-004-6191defd (HEAD c07b0bf, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)

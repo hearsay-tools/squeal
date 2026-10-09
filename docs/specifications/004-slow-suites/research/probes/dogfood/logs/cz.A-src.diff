@@ -1,0 +1,70 @@
+diff --git a/packages/cezar/src/server/provider-action-gate.test.ts b/packages/cezar/src/server/provider-action-gate.test.ts
+index 56708a03..de8e327b 100644
+--- a/packages/cezar/src/server/provider-action-gate.test.ts
++++ b/packages/cezar/src/server/provider-action-gate.test.ts
+@@ -44,7 +44,7 @@ describe('provider action gate', () => {
+         { provider: 'codex', status: 'connected', enabled: false },
+         { provider: 'opencode', status: 'not-installed', enabled: true },
+       ],
+-    })).toBe('Codex is disabled. Enable it in Settings → Agents → Providers.');
++    })).toBe('Codex is turned off. Turn it on in Settings → Agents → Providers.');
+   });
+ 
+   it.each(['disconnected', 'unknown'] as const)(
+@@ -59,7 +59,7 @@ describe('provider action gate', () => {
+   it('names OMP the way every other surface does', () => {
+     expect(unavailableProviderMessage(['omp'], {
+       providers: [{ provider: 'omp', status: 'connected', enabled: false }],
+-    })).toBe('OMP is disabled. Enable it in Settings → Agents → Providers.');
++    })).toBe('OMP is turned off. Turn it on in Settings → Agents → Providers.');
+   });
+ 
+   it('reports unavailable credentials when the provider status row is missing', () => {
+diff --git a/packages/cezar/src/server/provider-action-gate.ts b/packages/cezar/src/server/provider-action-gate.ts
+index 85e62996..9792bf85 100644
+--- a/packages/cezar/src/server/provider-action-gate.ts
++++ b/packages/cezar/src/server/provider-action-gate.ts
+@@ -50,7 +50,7 @@ export function unavailableProviderMessage(
+   for (const provider of required) {
+     const row = response.providers.find(({ provider: id }) => id === provider);
+     if (row?.enabled === false) {
+-      return `${LABEL[provider]} is disabled. Enable it in Settings → Agents → Providers.`;
++      return `${LABEL[provider]} is turned off. Turn it on in Settings → Agents → Providers.`;
+     }
+     if (row?.status !== 'connected') {
+       return `${LABEL[provider]} credentials are unavailable. Authorize it in Settings → Agents → Providers.`;
+diff --git a/packages/cezar/src/todos.ts b/packages/cezar/src/todos.ts
+index 28d02a4e..0026e31c 100644
+--- a/packages/cezar/src/todos.ts
++++ b/packages/cezar/src/todos.ts
+@@ -136,7 +136,8 @@ export function todoTaskText(
+   todo: Pick<TodoItem, 'summary' | 'suggestedPrompt' | 'suggestedArgs'>,
+ ): string {
+   let task = (todo.suggestedPrompt ?? todo.summary).trim() || todo.summary;
+-  if (todo.suggestedArgs) task += `\n\nArguments: ${todo.suggestedArgs}`;
++  const args = todo.suggestedArgs?.trim();
++  if (args) task += `\n\nArguments: ${args}`;
+   return task;
+ }
+ 
+diff --git a/packages/cezar/test/fixtures/todo-task-text.json b/packages/cezar/test/fixtures/todo-task-text.json
+index a68a86c8..4bb6d386 100644
+--- a/packages/cezar/test/fixtures/todo-task-text.json
++++ b/packages/cezar/test/fixtures/todo-task-text.json
+@@ -43,6 +43,16 @@
+       "todo": { "summary": "Ship it", "suggestedArgs": "--dry-run" },
+       "expected": "Ship it\n\nArguments: --dry-run"
+     },
++    {
++      "name": "blank args add no Arguments line",
++      "todo": { "summary": "Ship it", "suggestedArgs": "   " },
++      "expected": "Ship it"
++    },
++    {
++      "name": "args with surrounding spaces are trimmed",
++      "todo": { "summary": "Ship it", "suggestedArgs": "  --dry-run  " },
++      "expected": "Ship it\n\nArguments: --dry-run"
++    },
+     {
+       "name": "an empty summary with no prompt stays empty",
+       "todo": { "summary": "" },

@@ -1,0 +1,61 @@
+=== 2026-10-09T06:47:40.727Z
+SQUEAL · 2 checks changed at revision 12
+Revision 12 (changed src/harness/shared/text.ts, test/harness/bundles.test.ts, test/harness/codex/hooks.test.ts and 4 more): 2336 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 7 (the counts are for revision 12; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.57/dist/cli/squeal.mjs" run --all` requests one).
+Slow tier: 10 test files; 10 current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 12. Not covered by Stop's wait.
+
+FAIL  test/e2e/policy.test.ts > PreToolUse with interrupt.onRegression, claude-code > denies once on a regression and leaves the recovery for PostToolBatch
+      PASS -> FAIL, slow tier, Squeal's run saw it at revision 12, against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 12
+      expected 'SQUEAL · 1 check changed at revision …' to contain 'denied this Edit call, so the edit wa…'
+      at test/e2e/policy.test.ts:56:23
+
+FAIL  test/e2e/policy.test.ts > PreToolUse with interrupt.onRegression, codex > denies once on a regression and leaves the recovery for PostToolUse
+      PASS -> FAIL, slow tier, Squeal's run saw it at revision 12, against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 12
+      expected 'SQUEAL · 1 check changed at revision …' to contain 'denied this apply_patch call, so the …'
+      at test/e2e/policy.test.ts:56:23
+
+Full output: node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.57/dist/cli
+=== 2026-10-09T07:18:43.308Z
+SQUEAL · 23 checks changed at revision 13
+Revision 13 (changed test/e2e/policy.test.ts): 2329 current, 0 pending, 0 stale, 7 unknown. Full-suite checkpoint: none completed since revision 7 (the counts are for revision 13; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --all` requests one).
+Slow tier: 10 test files; 10 current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 13. Not covered by Stop's wait.
+
+FAIL  test/daemon/lifecycle.test.ts > ensureDaemon (spec 001 D10, for the hooks of 001-31) > spawns on a cold start without waiting, and finds it alive on a warm one
+      PASS -> FAIL, seen by Squeal's run at revision 13
+      spawned daemon not met in 30000 ms
+      at test/daemon/helpers.ts:182:49
+
+FAIL  test/daemon/lifecycle.test.ts > ensureDaemon (spec 001 D10, for the hooks of 001-31) > squeal start spawns the daemon and prints its status
+      PASS -> FAIL, seen by Squeal's run at revision 13
+      expected { code: 1, signal: null } to deeply equal { code: +0, signal: null }
+      at test/daemon/lifecycle.test.ts:244:32
+
+FAIL  test/daemon/lifecycle.test.ts > squeal daemon: singleton and restart (spec 001 D10) > SIGTERM shuts down the same way
+      PASS -> FAIL, seen by Squeal's run at revision 13
+      daemon ready not met in 60000 ms
+      at test/daemon/helpers.ts:217:11
+
+FAIL  test/daemon/lifecycle.test.ts > squeal daemon: singleton and restart (spec 001 D10) > a registered consumer keeps an idle daemon alive
+      PASS -> FAIL, seen by Squeal's run at revision 13
+      a daemon serving not met in 60000 ms
+      at test/daemon/helpers.ts:182:49
+
+FAIL  test/daemon/lifecycle.test.ts > squeal 
+=== 2026-10-09T07:13:46.056Z
+SQUEAL · 1 check changed at revision 1
+Revision 1 (changed packages/cezar/dist/todos.js, packages/cezar/src/server/provider-action-gate.test.ts, packages/cezar/src/server/provider-action-gate.ts and 3 more): 84 current, 0 pending, 4485 stale, 0 unknown. Test files without checks: 0 pending, 454 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --all` requests one).
+Slow tier: 13 test files; 13 current against packages/cezar/dist/** as of revision 1. Not covered by Stop's wait.
+
+FAIL  [test:package] packages/cezar/test/e2e/package-cli.test.ts > the release tarball installs and runs the dry-run CLI workflow
+      first observed: FAIL, slow tier, Squeal's run saw it at revision 1, against packages/cezar/dist/** as of revision 1
+      The input did not match the regular expression /Claude Code is disabled/. Input:
+      at packages/cezar/test/e2e/package-cli.test.ts:208:16
+
+Full output: node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" why "[test:package] packages/cezar/test/e2e/package-cli.test.ts > the release tarball installs and runs the dry-run CLI workflow"
+=== 2026-10-09T07:14:21.377Z
+SQUEAL · 1 check changed at revision 2
+Revision 2 (changed packages/cezar/test/e2e/package-cli.test.ts): 118 current, 0 pending, 4485 stale, 0 unknown. Test files without checks: 0 pending, 453 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.58/dist/cli/squeal.mjs" run --all` requests one).
+Slow tier: 13 test files; 13 current against packages/cezar/dist/** as of revision 1, sources changed since. Not covered by Stop's wait.
+
+PASS  [test:package] packages/cezar/test/e2e/package-cli.test.ts > the release tarball installs and runs the dry-run CLI workflow
+      FAIL -> PASS
+      at packages/cezar/test/e2e/package-cli.test.ts:15:1

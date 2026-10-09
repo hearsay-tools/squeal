@@ -1,0 +1,12 @@
+diff --git a/squeal.config.json b/squeal.config.json
+index 74ffad1..beedd2a 100644
+--- a/squeal.config.json
++++ b/squeal.config.json
+@@ -31,5 +31,6 @@
+       "src/harness/build.ts"
+     ],
+     "test/integration/node-test.test.ts": ["src/**/*.ts", "test/fixtures/node-test/**"]
+-  }
++  },
++  "slow": { "include": ["test/e2e/**/*.test.ts"] }
+ }

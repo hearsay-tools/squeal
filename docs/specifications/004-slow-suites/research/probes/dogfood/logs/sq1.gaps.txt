@@ -1,0 +1,4 @@
+2026-10-09T06:24:22.573Z SessionStart +798 ms after session_meta: SQUEAL · registered at revision 1
+2026-10-09T06:25:21.665Z PostToolUse +155 ms after "git diff -- src/core/state/slow-text.ts test/status/slow-tier.test.ts;" completed: SQUEAL · 5 checks changed at revision 3
+2026-10-09T06:26:15.464Z PostToolUse +1063 ms after "tail -n 8 /tmp/squeal-duration-vitest.log; git diff --check" completed: SQUEAL · 7 checks changed at revision 7
+tool items: 30, code-mode cells: 22

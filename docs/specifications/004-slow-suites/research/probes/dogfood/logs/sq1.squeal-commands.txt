@@ -1,0 +1,145 @@
+== 2026-10-09T06:24:57.850Z exit=0 0.02s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" status
+Revision: 2
+Known failures: 2
+  FAIL  test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > after its running tier, with one note; a spawn meanwhile loses the lock; the hook's successor serves
+        the successor serving not met in 60000 ms; notes: (1 more error)
+        at test/daemon/step-down.test.ts:113:11, observed at revision 1, pending
+  FAIL  test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+        a daemon serving not met in 60000 ms
+        at test/daemon/helpers.ts:182:49, observed at revision 1, pending
+Affected checks: 1035 passed, 107 running, 1159 queued, 7 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 10 test files; 10 pending, waiting for host load to drop. Not covered by Stop's wait; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --slow` runs them now.
+
+Worktree: /tmp/squeal-dogfood-004-6191defd (HEAD 6b42c98, dirty at revision 2)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 3 pending, 0 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-09T06:14:38.839Z, revision 1: stopped 1 process a test left running after its tier: 1162576 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --import file:///tmp/squeal-do...
+
+== 2026-10-09T06:25:19.071Z exit=0 5.74s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" status --wait 60000
+Returned on news: 5 transitions since the wait started, at revision 3 after 5.8 s
+
+Revision: 3
+Known failures: 7
+  FAIL  test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > after its running tier, with one note; a spawn meanwhile loses the lock; the hook's successor serves
+        the successor serving not met in 60000 ms; notes: (1 more error)
+        at test/daemon/step-down.test.ts:113:11, observed at revision 1, current
+  FAIL  test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+        a daemon serving not met in 60000 ms
+        at test/daemon/helpers.ts:182:49, observed at revision 1, current
+  FAIL  test/status/slow-tier.test.ts > durationText > formats 3599500 ms as 1 h
+        expected '60 min' to be '1 h' // Object.is equality
+        at test/status/slow-tier.test.ts:274:30, observed at revision 3, current
+  FAIL  test/status/slow-tier.test.ts > durationText > formats 3600000 ms as 1 h
+        expected '60 min' to be '1 h' // Object.is equality
+        at test/status/slow-tier.test.ts:274:30, observed at revision 3, current
+  FAIL  test/status/slow-tier.test.ts > durationText > formats 3601000 ms as 1 h 1 s
+        expected '60 min 1 s' to be '1 h 1 s' // Object.is equality
+        at test/status/slow-tier.test.ts:274:30, observed at revision 3, current
+  FAIL  test/status/slow-tier.test.ts > durationText > formats 3725000 ms as 1 h 2 min 5 s
+        expected '62 min 5 s' to be '1 h 2 min 5 s' // Object.is equality
+        at test/status/slow-tier.test.ts:274:30, observed at revision 3, current
+  FAIL  test/status/slow-tier.test.ts > durationText > formats 7260000 ms as 2 h 1 min
+        expected '121 min' to be '2 h 1 min' // Object.is equality
+        at test/status/slow-tier.test.ts:274:30, observed at revision 3, current
+Affected checks: 2304 passed, 0 running, 0 queued, 8 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 10 test files; 7 current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 1, sources changed since; 3 pending, waiting for the agent to pause. Not covered by Stop's wait; `node --disable-warning=ExperimentalWarning "/home/agent/.c
+[...644 more chars]
+== 2026-10-09T06:26:10.956Z exit=0 23.95s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" status --wait 60000
+Returned on news: 7 transitions since the wait started, at revision 7 after 23.9 s
+
+Revision: 7
+Known failures: 0
+Affected checks: 1057 passed, 0 running, 1255 queued, 7 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 7; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 10 test files; 10 pending, waiting for the agent to pause. Not covered by Stop's wait; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --slow` runs them now.
+
+Worktree: /tmp/squeal-dogfood-004-6191defd (HEAD 6b42c98, dirty at revision 7)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 3 pending, 0 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-09T06:14:38.839Z, revision 1: stopped 1 process a test left running after its tier: 1162576 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --import file:///tmp/squeal-do...
+
+== 2026-10-09T06:26:24.048Z exit=1 0.02s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" why "test/status/slow-tier.test.ts > durationText"
+"test/status/slow-tier.test.ts > durationText" matches 11 checks in this worktree:
+  test/status/slow-tier.test.ts > durationText > formats -1000 ms as 0 s
+  test/status/slow-tier.test.ts > durationText > formats 0 ms as 0 s
+  test/status/slow-tier.test.ts > durationText > formats 3599000 ms as 59 min 59 s
+  test/status/slow-tier.test.ts > durationText > formats 3599500 ms as 1 h
+  test/status/slow-tier.test.ts > durationText > formats 3600000 ms as 1 h
+  test/status/slow-tier.test.ts > durationText > formats 3601000 ms as 1 h 1 s
+  test/status/slow-tier.test.ts > durationText > formats 3725000 ms as 1 h 2 min 5 s
+  test/status/slow-tier.test.ts > durationText > formats 59000 ms as 59 s
+  test/status/slow-tier.test.ts > durationText > formats 60000 ms as 1 min
+  test/status/slow-tier.test.ts > durationText > formats 72000 ms as 1 min 12 s
+  test/status/slow-tier.test.ts > durationText > formats 7260000 ms as 2 h 1 min
+
+== 2026-10-09T06:26:36.376Z exit=0 0.06s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" why "test/status/slow-tier.test.ts > durationText > formats 3725000 ms as 1 h 2 min 5 s"
+Check: test/status/slow-tier.test.ts > durationText > formats 3725000 ms as 1 h 2 min 5 s
+Worktree: /tmp/squeal-dogfood-004-6191defd
+Revision: 7
+
+Known state: PASS, current, observed at revision 4, commit 6b42c98
+  Location: test/status/slow-tier.test.ts:272:5
+
+History (2 transitions, oldest first):
+  revision 3  2026-10-09T06:25:18.947Z  first seen FAIL
+  revision 7  2026-10-09T06:26:10.346Z  FAIL -> PASS
+
+Results (2, newest first):
+  PASS  2026-10-09T06:26:10.240Z  /tmp/squeal-dogfood-004-6191defd (this worktree), revision 4, commit 6b42c98, dirty
+        run feac761c-d9c1-410a-aba5-5338dc55171b, 3 ms, key 69f38fb7b40d
+        log: /home/agent/projects/squeal/.git/squeal/runs/feac761c-d9c1-410a-aba5-5338dc55171b
+  FAIL  2026-10-09T06:25:18.919Z  /tmp/squeal-dogfood-004-6191defd (this worktree), revision 3, commit 6b42c98, dirty
+        run 89e86073-f020-42af-8c29-ab86d7135454, 0 ms, key 33d2447ef0ab
+        log: /home/agent/projects/squeal/.git/squeal/runs/89e86073-f020-42af-8c29-ab86d7135454
+        expected '62 min 5 s' to be '1 h 2 min 5 s' // Object.is equality
+        AssertionError: expected '62 min 5 s' to be '1 h 2 min 5 s' // Object.is equality
+            at test/status/slow-tier.test.ts:274:30
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2868:91
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+        Expected: "1 h 2 min 5 s"
+        Received: "62 min 5 s"
+
+Last run log: /home/agent/projects/squeal/.git/squeal/runs/feac761c-d9c1-410a-aba5-5338dc55171b
+
+== 2026-10-09T06:30:21.015Z exit=0 60.02s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" status --wait 60000
+Returned on timeout after 60.0 s: 122 checks and 3 test files without checks pending at revision 7
+
+Revision: 7
+Known failures: 0
+Affected checks: 2190 passed, 20 running, 102 queued, 7 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 7; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 10 test files; 10 pending, waiting for the agent to pause. Not covered by Stop's wait; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --slow` runs them now.
+
+Worktree: /tmp/squeal-dogfood-004-6191defd (HEAD 6b42c98, dirty at revision 7)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 3 pending, 0 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-09T06:14:38.839Z, revision 1: stopped 1 process a test left running after its tier: 1162576 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --import file:///tmp/squeal-do...
+  2026-10-09T06:27:39.818Z, revision 7: stopped 3 processes a test left running after its tier: 1666891 /usr/bin/git -c safe.bareRepository=explicit ls-remote https://github.com/openai/plugins.git HEAD; 1666893 /usr/lib/git-core/git remote-https https://github.com/openai/plugins.git https://github.com/openai/plugins.git; 1666895 /usr/lib/git-core/git-remote-https https://github.com/openai/plugins.git https://github.com/openai/plugins.git
+

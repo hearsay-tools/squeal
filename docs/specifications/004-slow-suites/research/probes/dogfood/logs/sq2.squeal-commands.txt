@@ -1,0 +1,115 @@
+== 2026-10-09T06:33:43.930Z exit=0 0.03s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" status --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "4a1e2fec7c9b9e8f",
+  "worktreeRoot": "/tmp/squeal-dogfood-004-6191defd",
+  "revision": 12,
+  "counts": {
+    "current": 1951,
+    "pending": 368,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 3,
+    "unknown": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "refinedRevision": 12,
+  "runnerPartPending": false,
+  "slowPending": {
+    "testFiles": 10,
+    "checks": 40,
+    "testFilesWithoutChecks": 3
+  },
+  "slowTier": {
+    "testFiles": 10,
+    "current": 0,
+    "pending": 10,
+    "notRun": 0,
+    "currentAt": null,
+    "artifact": [],
+    "sourcesChangedSince": false,
+    "activity": null
+  },
+  "head": "6b42c986f1eb5a3308ff676a48b004ca94b62ba8",
+  "dirty": true,
+  "dirtyObservedAt": 12,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1791527620272
+  },
+  "knownFailures": [],
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 1944,
+      "fail": 0,
+      "skip": 7,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 338,
+      "running": 30
+    },
+    "testFiles": 268,
+    "testFilesWithoutChecks": 3
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1791526478839,
+      "revision": 1,
+      "text": "stopped
+[...1209 more chars]
+== 2026-10-09T06:34:05.376Z exit=0 60.02s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" status --wait 60000
+Returned on timeout after 60.0 s: 368 checks and 3 test files without checks pending at revision 12
+
+Revision: 12
+Known failures: 0
+Affected checks: 1944 passed, 30 running, 338 queued, 7 skipped
+Full-suite checkpoint: none completed at any revision (the counts are for revision 12; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 10 test files; 10 pending. Not covered by Stop's wait; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.56/dist/cli/squeal.mjs" run --slow` runs them now.
+
+Worktree: /tmp/squeal-dogfood-004-6191defd (HEAD 6b42c98, dirty at revision 12)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 3 pending, 0 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-09T06:14:38.839Z, revision 1: stopped 1 process a test left running after its tier: 1162576 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --import file:///tmp/squeal-do...
+  2026-10-09T06:27:39.818Z, revision 7: stopped 3 processes a test left running after its tier: 1666891 /usr/bin/git -c safe.bareRepository=explicit ls-remote https://github.com/openai/plugins.git HEAD; 1666893 /usr/lib/git-core/git remote-https https://github.com/openai/plugins.git https://github.com
+[...607 more chars]
+== 2026-10-09T06:48:44.612Z exit=0 0.19s
+$ node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.57/dist/cli/squeal.mjs" status
+Revision: 12
+Known failures: 2
+  FAIL  test/e2e/policy.test.ts > PreToolUse with interrupt.onRegression, claude-code > denies once on a regression and leaves the recovery for PostToolBatch
+        expected 'SQUEAL · 1 check changed at revision …' to contain 'denied this Edit call, so the edit wa…'
+        at test/e2e/policy.test.ts:56:23, observed at revision 12, current
+  FAIL  test/e2e/policy.test.ts > PreToolUse with interrupt.onRegression, codex > denies once on a regression and leaves the recovery for PostToolUse
+        expected 'SQUEAL · 1 check changed at revision …' to contain 'denied this apply_patch call, so the …'
+        at test/e2e/policy.test.ts:56:23, observed at revision 12, current
+Affected checks: 2324 passed, 0 running, 0 queued, 10 skipped
+Full-suite checkpoint: none completed since revision 7 (the counts are for revision 12; `node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/squeal/squeal/0.1.57/dist/cli/squeal.mjs" run --all` requests one)
+Slow tier: 10 test files; 10 current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 12. Not covered by Stop's wait.
+
+Worktree: /tmp/squeal-dogfood-004-6191defd (HEAD 6b42c98, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-09T06:47:50.463Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports 
+[...1333 more chars]

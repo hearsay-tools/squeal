@@ -1,0 +1,6 @@
+run --slow at 07:01:50.366 load 10.43 24.59 32.56
+Slow tier requested at revision 1: 13 slow files queued; they run once no fast work is pending.
+
+real	0m0.395s
+user	0m0.119s
+sys	0m0.038s

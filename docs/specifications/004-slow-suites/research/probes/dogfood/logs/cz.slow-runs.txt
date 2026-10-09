@@ -1,0 +1,15 @@
+revision start end seconds end_state load/cpu daemon file
+r1 07:07:14 07:07:15 0.6 completed 0.48 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/alias-bin-exports.test.ts
+r1 07:07:15 07:10:36 201.2 completed 0.48 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/application-update.test.ts
+r1 07:11:51 07:12:00 8.6 completed 0.80 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/cockpit-ownership.test.ts
+r1 07:12:02 07:12:09 6.9 completed 0.68 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/cursor-print.test.ts
+r1 07:12:09 07:12:25 16.2 completed 0.64 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/delegation.test.ts
+r1 07:12:25 07:12:27 2.0 completed 0.55 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/inline-contract.test.ts
+r1 07:12:27 07:12:39 12.4 completed 0.55 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/package-cli.test.ts
+r1 07:12:39 07:12:48 9.0 completed 0.50 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/release-snapshot.test.ts
+r1 07:12:48 07:12:55 7.0 completed 0.45 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/release.test.ts
+r1 07:12:56 07:13:07 11.9 completed 0.45 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/serve-port.test.ts
+r1 07:13:07 07:13:08 0.5 completed 0.38 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/stop-child.test.ts
+r1 07:13:08 07:13:30 22.1 completed 0.38 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/task-cli.test.ts
+r1 07:13:30 07:13:31 0.4 completed 0.34 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/tick-writer.test.ts
+r2 07:14:00 07:14:20 20.3 completed 0.23 2831757@0.1.58,2831760@0.1.58 packages/cezar/test/e2e/package-cli.test.ts

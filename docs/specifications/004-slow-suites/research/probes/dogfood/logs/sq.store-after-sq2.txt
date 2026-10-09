@@ -1,0 +1,70 @@
+## meta (this worktree)
+revision-registered-left:4a1e2fec7c9b9e8f = {"01a11f55-87a0-7382-a79c-d6107d3f9d7f\nmain":{"since":1,"gaps":[],"scanned":1791526466197,"leftAt":7,"leftTime":1791527437071}}
+departed:4a1e2fec7c9b9e8f = 1791527437071
+revision-registered:4a1e2fec7c9b9e8f = {"01a11f5c-de02-7b30-9999-e09e4a3fa637\nmain":7}
+harness-process:4a1e2fec7c9b9e8f = {"01a11f5c-de02-7b30-9999-e09e4a3fa637\nmain":{"pid":1854257,"startTime":66588341,"pidNamespace":"pid:[4026531836]"}}
+consumer-version:4a1e2fec7c9b9e8f = {"01a11f5c-de02-7b30-9999-e09e4a3fa637\nmain":"0.1.56"}
+awaiting-install.4a1e2fec7c9b9e8f = false
+liveness-told:4a1e2fec7c9b9e8f = {"01a11f5c-de02-7b30-9999-e09e4a3fa637\nmain":"alive"}
+revision-told:4a1e2fec7c9b9e8f = {"01a11f5c-de02-7b30-9999-e09e4a3fa637\nmain":7}
+daemon-bootstrapped:4a1e2fec7c9b9e8f = 1791527543699
+notes.4a1e2fec7c9b9e8f = [{"at":1791526478839,"revision":1,"text":"stopped 1 process a test left running after its tier: 1162576 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --import file:///tmp/squeal-do..."},{"at":1791527259818,"revision":7,"text":"stopped 3 processes a test left running after its tier: 1666891 /usr/bin/git -c safe.bareRepository=explicit ls-remote https://github.com/openai/plugins.git HEAD; 1666893 /usr/lib/git-core/git remote-https https://github.com/openai/plugins.git https://github.com/openai/plugins.git; 1666895 /usr/lib/git-core/git-remote-https https:
+refined.4a1e2fec7c9b9e8f = 12
+turn:4a1e2fec7c9b9e8f = {"01a11f5c-de02-7b30-9999-e09e4a3fa637\nmain":{"turn":"idle","testFiles":["\u0000test/daemon/departure.test.ts","\u0000test/daemon/handover.test.ts","\u0000test/daemon/step-down.test.ts","\u0000test/e2e/lifecycle.test.ts","\u0000test/e2e/node-test.test.ts","\u0000test/e2e/plugin-copy.test.ts","\u0000test/e2e/policy.test.ts","\u0000test/e2e/shipped-plugin.test.ts","\u0000test/e2e/slow-node-test.test.ts","\u0000test/e2e/slow-vitest.test.ts","\u0000test/e2e/torn-status.test.ts","\u0000test/e2e/transitions.test.ts","\u0000test/e2e/worktrees.test.ts","\u0000test/harness/attribution.test.ts","\u0000
+failure-keys:4a1e2fec7c9b9e8f = {"test\u0000\u0000test/e2e/policy.test.ts\u0000PreToolUse with interrupt.onRegression, claude-code > denies once on a regression and leaves the recovery for PostToolBatch":"f26e540db79bedd5fffdb4f7995ff57239827c17d2242c7215684624363a967f","test\u0000\u0000test/e2e/policy.test.ts\u0000PreToolUse with interrupt.onRegression, codex > denies once on a regression and leaves the recovery for PostToolUse":"f26e540db79bedd5fffdb4f7995ff57239827c17d2242c7215684624363a967f"}
+state.baseline-findings.4a1e2fec7c9b9e8f = {"checkpointId":"252fab2c-da68-4d0e-a13f-7fd2b16b14b0","entries":[]}
+slow-artifacts:4a1e2fec7c9b9e8f = {"3dbea149cb773c9943f58609f5315cb154031a7cbca7e69436cd17b736fbb8cc":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"506e4fc69c1ad356f46cf60d18d0d45cbeb76c856f5cbd659b47afb1470dce10":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"27624247304aeabe2c60f567bc9d41a16c3e95106fcdeba17f48cac3bd27b3d5":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"854bf787fcd59c4a
+slow-tier:4a1e2fec7c9b9e8f = {"kind":"waiting","for":"load"}
+
+## revisions
+r1 06:14:37.111 +-1064.5s watch dirty=1 [{"path":".agents/skills/coordinator/SKILL.md","oldHash":null,"newHash":"bea97b34960ddee7792269effbeb08b1b9f60303"},{"path":".agents/skills/judge/SKILL.md","oldHash":null,"newHash":"1f81000e5716f48457f86e4d63f1acb464858367"},{"path":".agents/skills/quality/SKILL.md","oldHash":null,"newHash":"838e903
+r2 06:24:41.167 +-460.4s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"e031fb2c9b857ee9b8d5c397ea7ec06bdffe8e93","newHash":"ce7128a757c6ce0c49deeaf04b7958aab1bd5bda"}]
+r3 06:25:12.030 +-429.5s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"ce7128a757c6ce0c49deeaf04b7958aab1bd5bda","newHash":"e031fb2c9b857ee9b8d5c397ea7ec06bdffe8e93"},{"path":"test/status/slow-tier.test.ts","oldHash":"80ad8cc7128f1cbb7a20a93f0b1d07cf671d8359","newHash":"cfacd3309c5acad8a9562598f3c18d2e96a4bdb3"}]
+r4 06:25:35.828 +-405.7s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"e031fb2c9b857ee9b8d5c397ea7ec06bdffe8e93","newHash":"1612b93e4a640a6c930b5411a05fff9373ab754b"},{"path":"test/status/slow-tier.test.ts","oldHash":"cfacd3309c5acad8a9562598f3c18d2e96a4bdb3","newHash":"71b7890e21d775c7f125ed812ded4ba11555cb81"}]
+r5 06:25:39.094 +-402.5s watch dirty=1 [{"path":"plugins/claude-code/dist/cli/squeal.mjs","oldHash":"fe107b1be033465c78a2dabc82bc6322afefa81f","newHash":"df3a7347ac93e493caff49c0cd00b5a3e364a999"},{"path":"plugins/claude-code/dist/post-tool-batch.mjs","oldHash":"1caf203d50203880e8b11618e87b79243467322c","newHash":"8234ef7b9a53ad3dd5fc749
+r6 06:25:39.681 +-401.9s watch dirty=1 [{"path":"plugins/codex/skills/squeal/SKILL.md","oldHash":"ae2d22ebde7585fe84aca5caa6c169a99e64d4a0","newHash":"415fedf0d78fd08c9a86c4ad1ed5b337e3fbf8ac"}]
+r7 06:25:40.500 +-401.1s watch dirty=1 [{"path":"plugins/codex/dist/cli/squeal.mjs","oldHash":"fe107b1be033465c78a2dabc82bc6322afefa81f","newHash":"df3a7347ac93e493caff49c0cd00b5a3e364a999"},{"path":"plugins/codex/dist/post-tool-use.mjs","oldHash":"7e3fd147e71ee4aa5332ff3e349313d02c7f3f79","newHash":"ba3debf3722536ba0d821deb0cd12161390f8
+r8 06:32:56.923 +35.4s watch dirty=1 [{"path":"src/harness/shared/text.ts","oldHash":"43ce1635cd5cf716b68de812226954af388be500","newHash":"1fdf6b99755f6856ff23d40688c60fc3b69b9938"},{"path":"test/harness/bundles.test.ts","oldHash":"1ef01796bd464d7daa4b3bbb8acab23910ad3ac0","newHash":"0d4e3f8389898dd20076db5da64d0772c8157d6e"},{"path":"
+r9 06:32:59.755 +38.2s watch dirty=1 [{"path":"plugins/claude-code/dist/pre-tool-use.mjs","oldHash":"d4a56302972a68de9bebc31b770f7f0c1fee7f4b","newHash":"6a3bd18e95291bc8a1df1e0bb75067c5a74ee013"}]
+r10 06:33:00.133 +38.6s watch dirty=1 [{"path":"plugins/codex/skills/squeal/SKILL.md","oldHash":"ae2d22ebde7585fe84aca5caa6c169a99e64d4a0","newHash":"415fedf0d78fd08c9a86c4ad1ed5b337e3fbf8ac"}]
+r11 06:33:01.138 +39.6s watch dirty=1 [{"path":"plugins/codex/dist/pre-tool-use.mjs","oldHash":"89f1d30f0bace0c90ff858377294d8853fcf5548","newHash":"a819ed1af22d3e8be2ce2412be7ba45200772c31"}]
+r12 06:33:08.616 +47.0s watch dirty=1 [{"path":"plugins/codex/skills/squeal/SKILL.md","oldHash":"415fedf0d78fd08c9a86c4ad1ed5b337e3fbf8ac","newHash":"ae2d22ebde7585fe84aca5caa6c169a99e64d4a0"}]
+
+## runs (S = holds slow files)
+S r1 06:20:10.835 +-730.7s -> 06:20:49.189 +-692.4s (38.4s) completed checkpoint lifecycle.test.ts
+S r1 06:20:49.213 +-692.4s -> 06:21:05.777 +-675.8s (16.6s) completed checkpoint node-test.test.ts
+S r1 06:21:05.806 +-675.8s -> 06:21:06.098 +-675.5s (0.3s) completed checkpoint plugin-copy.test.ts
+S r1 06:21:06.142 +-675.4s -> 06:22:06.460 +-615.1s (60.3s) completed checkpoint policy.test.ts
+S r1 06:22:06.503 +-615.1s -> 06:22:14.572 +-607.0s (8.1s) completed checkpoint shipped-plugin.test.ts
+S r1 06:22:14.613 +-607.0s -> 06:22:40.193 +-581.4s (25.6s) completed checkpoint slow-node-test.test.ts
+S r1 06:22:40.215 +-581.4s -> 06:24:07.053 +-494.5s (86.8s) completed checkpoint slow-vitest.test.ts
+S r12 06:41:18.220 +536.6s -> 06:41:59.334 +577.8s (41.1s) completed checkpoint lifecycle.test.ts
+S r12 06:41:59.361 +577.8s -> 06:42:15.889 +594.3s (16.5s) completed checkpoint node-test.test.ts
+S r12 06:42:15.917 +594.3s -> 06:42:16.221 +594.6s (0.3s) completed checkpoint plugin-copy.test.ts
+S r12 06:42:16.289 +594.7s -> 06:43:13.528 +652.0s (57.2s) completed checkpoint policy.test.ts
+S r12 06:43:13.557 +652.0s -> 06:43:22.079 +660.5s (8.5s) completed checkpoint shipped-plugin.test.ts
+S r12 06:43:22.113 +660.5s -> 06:43:44.956 +683.4s (22.8s) completed checkpoint slow-node-test.test.ts
+S r12 06:43:44.983 +683.4s -> 06:44:33.120 +731.5s (48.1s) completed checkpoint slow-vitest.test.ts
+S r12 06:44:33.225 +731.7s -> 06:44:33.682 +732.1s (0.5s) completed checkpoint torn-status.test.ts
+S r12 06:44:33.763 +732.2s -> 06:45:13.267 +771.7s (39.5s) completed checkpoint transitions.test.ts
+
+## transitions
+r12 06:43:13.539 +652.0s pass-to-fail pass -> fail [] test/e2e/policy.test.ts > PreToolUse with interrupt.onRegression, claude-code > denies once on a regression and leaves the recovery for PostToolBatch
+r12 06:43:13.539 +652.0s pass-to-fail pass -> fail [] test/e2e/policy.test.ts > PreToolUse with interrupt.onRegression, codex > denies once on a regression and leaves the recovery for PostToolUse
+
+## known_states of slow files by outcome, validity, origin
+test/e2e/lifecycle.test.ts pass current own  7
+test/e2e/node-test.test.ts pass current own  5
+test/e2e/plugin-copy.test.ts pass current own  2
+test/e2e/policy.test.ts fail current own  2
+test/e2e/policy.test.ts pass current own  5
+test/e2e/shipped-plugin.test.ts pass current own  8
+test/e2e/shipped-plugin.test.ts skip current own  1
+test/e2e/slow-node-test.test.ts pass current own  5
+test/e2e/slow-vitest.test.ts pass current own  5
+test/e2e/torn-status.test.ts pass current own  1
+test/e2e/torn-status.test.ts skip current own  2
+test/e2e/transitions.test.ts pass current own  5
+
+## consumers
+01a11f5c-de02-7b30-9999-e09e4a3fa637/main registered 06:32:23.443 +1.9s seen 06:34:17.881 +116.3s delivered 06:32:30.226 +8.7s

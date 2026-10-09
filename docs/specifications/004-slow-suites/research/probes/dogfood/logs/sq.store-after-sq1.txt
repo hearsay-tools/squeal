@@ -1,0 +1,110 @@
+## meta (this worktree)
+awaiting-install.4a1e2fec7c9b9e8f = false
+daemon-bootstrapped:4a1e2fec7c9b9e8f = 1791526466197
+slow-artifacts:4a1e2fec7c9b9e8f = {"3dbea149cb773c9943f58609f5315cb154031a7cbca7e69436cd17b736fbb8cc":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"506e4fc69c1ad356f46cf60d18d0d45cbeb76c856f5cbd659b47afb1470dce10":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"27624247304aeabe2c60f567bc9d41a16c3e95106fcdeba17f48cac3bd27b3d5":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"854bf787fcd59c4a
+refined.4a1e2fec7c9b9e8f = 7
+failure-keys:4a1e2fec7c9b9e8f = {}
+state.baseline-findings.4a1e2fec7c9b9e8f = {"checkpointId":"2e217b80-7498-46d9-b5ff-3e2b4aa341ee","entries":[]}
+revision-registered:4a1e2fec7c9b9e8f = {}
+revision-registered-left:4a1e2fec7c9b9e8f = {"01a11f55-87a0-7382-a79c-d6107d3f9d7f\nmain":{"since":1,"gaps":[],"scanned":1791526466197,"leftAt":7,"leftTime":1791527437071}}
+liveness-told:4a1e2fec7c9b9e8f = {}
+revision-told:4a1e2fec7c9b9e8f = {}
+turn:4a1e2fec7c9b9e8f = {}
+harness-process:4a1e2fec7c9b9e8f = {}
+consumer-version:4a1e2fec7c9b9e8f = {}
+departed:4a1e2fec7c9b9e8f = 1791527437071
+notes.4a1e2fec7c9b9e8f = [{"at":1791526478839,"revision":1,"text":"stopped 1 process a test left running after its tier: 1162576 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --import file:///tmp/squeal-do..."},{"at":1791527259818,"revision":7,"text":"stopped 3 processes a test left running after its tier: 1666891 /usr/bin/git -c safe.bareRepository=explicit ls-remote https://github.com/openai/plugins.git HEAD; 1666893 /usr/lib/git-core/git remote-https https://github.com/openai/plugins.git https://github.com/openai/plugins.git; 1666895 /usr/lib/git-core/git-remote-https https:
+slow-tier:4a1e2fec7c9b9e8f = null
+
+## revisions
+r1 06:14:37.111 +-583.7s watch dirty=1 [{"path":".agents/skills/coordinator/SKILL.md","oldHash":null,"newHash":"bea97b34960ddee7792269effbeb08b1b9f60303"},{"path":".agents/skills/judge/SKILL.md","oldHash":null,"newHash":"1f81000e5716f48457f86e4d63f1acb464858367"},{"path":".agents/skills/quality/SKILL.md","oldHash":null,"newHash":"838e903
+r2 06:24:41.167 +20.4s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"e031fb2c9b857ee9b8d5c397ea7ec06bdffe8e93","newHash":"ce7128a757c6ce0c49deeaf04b7958aab1bd5bda"}]
+r3 06:25:12.030 +51.2s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"ce7128a757c6ce0c49deeaf04b7958aab1bd5bda","newHash":"e031fb2c9b857ee9b8d5c397ea7ec06bdffe8e93"},{"path":"test/status/slow-tier.test.ts","oldHash":"80ad8cc7128f1cbb7a20a93f0b1d07cf671d8359","newHash":"cfacd3309c5acad8a9562598f3c18d2e96a4bdb3"}]
+r4 06:25:35.828 +75.0s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"e031fb2c9b857ee9b8d5c397ea7ec06bdffe8e93","newHash":"1612b93e4a640a6c930b5411a05fff9373ab754b"},{"path":"test/status/slow-tier.test.ts","oldHash":"cfacd3309c5acad8a9562598f3c18d2e96a4bdb3","newHash":"71b7890e21d775c7f125ed812ded4ba11555cb81"}]
+r5 06:25:39.094 +78.3s watch dirty=1 [{"path":"plugins/claude-code/dist/cli/squeal.mjs","oldHash":"fe107b1be033465c78a2dabc82bc6322afefa81f","newHash":"df3a7347ac93e493caff49c0cd00b5a3e364a999"},{"path":"plugins/claude-code/dist/post-tool-batch.mjs","oldHash":"1caf203d50203880e8b11618e87b79243467322c","newHash":"8234ef7b9a53ad3dd5fc749
+r6 06:25:39.681 +78.9s watch dirty=1 [{"path":"plugins/codex/skills/squeal/SKILL.md","oldHash":"ae2d22ebde7585fe84aca5caa6c169a99e64d4a0","newHash":"415fedf0d78fd08c9a86c4ad1ed5b337e3fbf8ac"}]
+r7 06:25:40.500 +79.7s watch dirty=1 [{"path":"plugins/codex/dist/cli/squeal.mjs","oldHash":"fe107b1be033465c78a2dabc82bc6322afefa81f","newHash":"df3a7347ac93e493caff49c0cd00b5a3e364a999"},{"path":"plugins/codex/dist/post-tool-use.mjs","oldHash":"7e3fd147e71ee4aa5332ff3e349313d02c7f3f79","newHash":"ba3debf3722536ba0d821deb0cd12161390f8
+
+## runs (S = holds slow files)
+  r0 06:14:32.329 +-588.5s -> 06:14:38.887 +-581.9s (6.6s) completed checkpoint 200 files
+  r1 06:14:38.965 +-581.8s -> 06:17:46.194 +-394.6s (187.2s) completed checkpoint 200 files
+  r1 06:17:47.222 +-393.6s -> 06:18:40.411 +-340.4s (53.2s) completed checkpoint 47 files
+S r1 06:20:10.835 +-250.0s -> 06:20:49.189 +-211.6s (38.4s) completed checkpoint lifecycle.test.ts
+S r1 06:20:49.213 +-211.6s -> 06:21:05.777 +-195.0s (16.6s) completed checkpoint node-test.test.ts
+S r1 06:21:05.806 +-195.0s -> 06:21:06.098 +-194.7s (0.3s) completed checkpoint plugin-copy.test.ts
+S r1 06:21:06.142 +-194.7s -> 06:22:06.460 +-134.4s (60.3s) completed checkpoint policy.test.ts
+S r1 06:22:06.503 +-134.3s -> 06:22:14.572 +-126.2s (8.1s) completed checkpoint shipped-plugin.test.ts
+S r1 06:22:14.613 +-126.2s -> 06:22:40.193 +-100.6s (25.6s) completed checkpoint slow-node-test.test.ts
+S r1 06:22:40.215 +-100.6s -> 06:24:07.053 +-13.8s (86.8s) completed checkpoint slow-vitest.test.ts
+  r2 06:24:41.796 +21.0s -> 06:25:03.394 +42.6s (21.6s) completed test/daemon/step-down.test.ts test/harness/skill.test.ts test/harness/codex/output.test.ts test/harness/codex/input.test.ts
+  r2 06:25:03.512 +42.7s -> 06:25:04.018 +43.2s (0.5s) completed test/scheduler/records.test.ts test/delivery/collapse.test.ts test/state/transitions.test.ts test/delivery/provenance.test.ts
+  r2 06:25:04.080 +43.3s -> 06:25:04.770 +44.0s (0.7s) completed test/status/header.test.ts test/harness/step-down.test.ts test/state/fingerprint.test.ts test/status/builder.test.ts
+  r2 06:25:04.903 +44.1s -> 06:25:06.157 +45.3s (1.3s) completed test/harness/init.test.ts test/delivery/format.test.ts test/status/head.test.ts test/delivery/slow-provenance.test.ts
+  r2 06:25:06.257 +45.4s -> 06:25:08.215 +47.4s (2.0s) completed test/delivery/changed.test.ts test/harness/register-race.test.ts test/delivery/consumer-version.test.ts test/status/runner-part.test.ts
+  r2 06:25:08.312 +47.5s -> 06:25:10.126 +49.3s (1.8s) completed test/daemon/open.test.ts test/daemon/expiry.test.ts test/status/torn-read.test.ts test/status/why.test.ts
+  r2 06:25:10.196 +49.4s -> 06:25:11.679 +50.9s (1.5s) completed test/delivery/harness-process.test.ts test/cli/daemon-commands.test.ts test/cli/init-node-test.test.ts test/cli/round-trip.test.ts
+  r2 06:25:11.754 +50.9s -> 06:25:14.856 +54.0s (3.1s) completed test/delivery/slow-represented-run.test.ts test/delivery/turn.test.ts test/harness/harness-process.test.ts test/harness/plugin.test.ts
+  r3 06:25:14.868 +54.1s -> 06:25:18.919 +58.1s (4.1s) completed test/status/slow-tier.test.ts test/integration/slow-spawn.test.ts
+  r4 06:25:36.769 +76.0s -> 06:26:10.240 +109.4s (33.5s) completed test/status/slow-tier.test.ts test/daemon/step-down.test.ts test/harness/skill.test.ts test/harness/codex/output.test.ts
+  r7 06:26:10.754 +109.9s -> 06:26:12.721 +111.9s (2.0s) completed test/harness/codex/output.test.ts test/plugins/codex/hooks-json.test.ts test/harness/codex/input.test.ts test/scheduler/records.test.ts
+  r7 06:26:13.298 +112.5s -> 06:26:14.454 +113.6s (1.2s) completed test/delivery/collapse.test.ts test/state/transitions.test.ts test/delivery/provenance.test.ts test/harness/cli-pipe.test.ts
+  r7 06:26:15.181 +114.4s -> 06:26:17.990 +117.2s (2.8s) completed test/status/header.test.ts test/harness/step-down.test.ts test/state/fingerprint.test.ts test/status/builder.test.ts
+  r7 06:26:18.204 +117.4s -> 06:26:21.757 +120.9s (3.6s) completed test/harness/init.test.ts test/delivery/format.test.ts test/status/head.test.ts test/delivery/slow-provenance.test.ts
+  r7 06:26:22.055 +121.2s -> 06:26:26.024 +125.2s (4.0s) completed test/delivery/changed.test.ts test/harness/register-race.test.ts test/delivery/consumer-version.test.ts test/status/runner-part.test.ts
+  r7 06:26:26.288 +125.5s -> 06:26:30.468 +129.7s (4.2s) completed test/daemon/open.test.ts test/daemon/expiry.test.ts test/status/torn-read.test.ts test/status/why.test.ts
+  r7 06:26:31.216 +130.4s -> 06:26:34.515 +133.7s (3.3s) completed test/delivery/harness-process.test.ts test/cli/daemon-commands.test.ts test/cli/init-node-test.test.ts test/cli/round-trip.test.ts
+  r7 06:26:34.873 +134.1s -> 06:26:44.248 +143.4s (9.4s) completed test/integration/slow-spawn.test.ts test/delivery/slow-represented-run.test.ts test/delivery/turn.test.ts test/harness/harness-process.test.ts
+  r7 06:26:44.463 +143.7s -> 06:26:50.226 +149.4s (5.8s) completed test/harness/plugin.test.ts test/harness/primer-slow.test.ts test/cli/daemon-socket.test.ts test/harness/user-prompt-submit.test.ts
+  r7 06:26:50.568 +149.8s -> 06:26:55.687 +154.9s (5.1s) completed test/cli/codex.test.ts test/daemon/departure-timers.test.ts test/plugins/codex/fast-path.test.ts test/daemon/observed-timer.test.ts
+  r7 06:26:56.087 +155.3s -> 06:27:01.811 +161.0s (5.7s) completed test/harness/ensure.test.ts test/cli/main.test.ts test/delivery/expiry.test.ts test/harness/codex/command.test.ts
+  r7 06:27:02.452 +161.6s -> 06:27:09.370 +168.6s (6.9s) completed test/harness/stop-require-slow.test.ts test/harness/stop-retry-bound.test.ts test/harness/stop-require-slow-snapshot.test.ts test/cli/run-slow.test.ts
+  r7 06:27:09.952 +169.1s -> 06:27:17.762 +177.0s (7.8s) completed test/delivery/liveness.test.ts test/keys/require-helper.test.ts test/harness/stop-slow.test.ts test/harness/session-start.test.ts
+  r7 06:27:18.203 +177.4s -> 06:27:31.463 +190.7s (13.3s) completed test/delivery/slow-run-artifact.test.ts test/state/sink.test.ts test/scheduler/daemon-loop.test.ts test/status/status.test.ts
+  r7 06:27:31.877 +191.1s -> 06:27:39.896 +199.1s (8.0s) completed test/scheduler/slow-artifact.test.ts test/integration/slow-tier.test.ts test/cli/codex-trust.test.ts test/harness/stop.test.ts
+  r7 06:27:40.240 +199.4s -> 06:27:49.048 +208.2s (8.8s) completed test/harness/forks.test.ts test/delivery/attribution.test.ts test/harness/codex/plugin.test.ts test/harness/codex/review.test.ts
+  r7 06:27:49.401 +208.6s -> 06:27:59.050 +218.2s (9.6s) completed test/keys/install-refresh.test.ts test/daemon/symlinked-install.test.ts test/daemon/install-wait.test.ts test/scheduler/slow-trigger.test.ts
+  r7 06:27:59.484 +218.7s -> 06:28:11.663 +230.9s (12.2s) completed test/harness/attribution.test.ts test/harness/liveness.test.ts test/harness/session-lifecycle.test.ts test/harness/waiter.test.ts
+  r7 06:28:11.896 +231.1s -> 06:28:23.071 +242.3s (11.2s) completed test/harness/pre-tool-use.test.ts test/scheduler/declared-inputs.test.ts test/harness/codex/turns.test.ts test/delivery/registered.test.ts
+  r7 06:28:23.287 +242.5s -> 06:28:32.993 +252.2s (9.7s) completed test/scheduler/observed-growth.test.ts test/harness/hooks.test.ts test/scheduler/slow-lane.test.ts test/daemon/reinstall.test.ts
+  r7 06:28:33.108 +252.3s -> 06:28:43.677 +262.9s (10.6s) completed test/keys/install-inheritance.test.ts test/scheduler/discards.test.ts test/daemon/symlinked-source.test.ts test/harness/hung-daemon.test.ts
+  r7 06:28:43.780 +263.0s -> 06:28:53.101 +272.3s (9.3s) completed test/integration/node-test-packages.test.ts test/harness/turn.test.ts test/integration/revert-restore.test.ts test/runners/vitest/broken.test.ts
+  r7 06:28:53.205 +272.4s -> 06:29:04.730 +283.9s (11.5s) completed test/scheduler/recursive-listing.test.ts test/integration/project-config-stamps.test.ts test/cli/remove.test.ts test/scheduler/checkpoints.test.ts
+  r7 06:29:04.817 +284.0s -> 06:29:13.761 +292.9s (8.9s) completed test/daemon/scratch.test.ts test/harness/codex/bundles.test.ts test/harness/latency.test.ts test/scheduler/policy-reload.test.ts
+  r7 06:29:13.920 +293.1s -> 06:29:25.273 +304.5s (11.4s) completed test/cli/status-wait.test.ts test/harness/codex/latency.test.ts test/scheduler/lanes.test.ts test/scheduler/install-wait.test.ts
+  r7 06:29:25.394 +304.6s -> 06:29:37.022 +316.2s (11.6s) completed test/harness/codex/hooks.test.ts test/scheduler/runner-failure.test.ts test/scheduler/validity.test.ts test/delivery/delivery.test.ts
+  r7 06:29:37.111 +316.3s -> 06:29:48.209 +327.4s (11.1s) completed test/scheduler/slow-activity.test.ts test/harness/bundles.test.ts test/scheduler/integration.test.ts test/scheduler/runs.test.ts
+  r7 06:29:48.261 +327.4s -> 06:30:08.275 +347.5s (20.0s) completed test/integration/node-test.test.ts test/daemon/handover.test.ts test/scheduler/refinement-lock.test.ts test/daemon/hardening.test.ts
+  r7 06:30:08.351 +347.5s -> 06:30:26.756 +365.9s (18.4s) completed test/scheduler/reinstall.test.ts test/store/contention.test.ts test/daemon/serving.test.ts test/scheduler/first-observation.test.ts
+  r7 06:30:26.842 +366.0s -> 06:31:00.955 +400.1s (34.1s) completed test/scheduler/revision-lag.test.ts test/scheduler/backlog.test.ts test/scheduler/ordering.test.ts test/scheduler/slow-tier.test.ts
+
+## transitions
+r1 06:17:46.511 +-394.3s first-seen-fail - -> fail [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+r1 06:17:46.511 +-394.3s first-seen-fail - -> fail [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > after its running tier, with one note; a spawn meanwhile loses the lock; the hook's successor serves
+r2 06:25:03.436 +42.6s fail-to-pass fail -> pass [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+r2 06:25:03.436 +42.6s fail-to-pass fail -> pass [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > after its running tier, with one note; a spawn meanwhile loses the lock; the hook's successor serves
+r3 06:25:12.243 +51.4s pass-to-fail pass -> fail [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+r3 06:25:12.243 +51.4s pass-to-fail pass -> fail [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > after its running tier, with one note; a spawn meanwhile loses the lock; the hook's successor serves
+r3 06:25:18.947 +58.1s first-seen-fail - -> fail [] test/status/slow-tier.test.ts > durationText > formats 3599500 ms as 1 h
+r3 06:25:18.947 +58.1s first-seen-fail - -> fail [] test/status/slow-tier.test.ts > durationText > formats 3600000 ms as 1 h
+r3 06:25:18.947 +58.1s first-seen-fail - -> fail [] test/status/slow-tier.test.ts > durationText > formats 3601000 ms as 1 h 1 s
+r3 06:25:18.947 +58.1s first-seen-fail - -> fail [] test/status/slow-tier.test.ts > durationText > formats 3725000 ms as 1 h 2 min 5 s
+r3 06:25:18.947 +58.1s first-seen-fail - -> fail [] test/status/slow-tier.test.ts > durationText > formats 7260000 ms as 2 h 1 min
+r7 06:26:10.346 +109.5s fail-to-pass fail -> pass [] test/status/slow-tier.test.ts > durationText > formats 3599500 ms as 1 h
+r7 06:26:10.346 +109.5s fail-to-pass fail -> pass [] test/status/slow-tier.test.ts > durationText > formats 3600000 ms as 1 h
+r7 06:26:10.346 +109.5s fail-to-pass fail -> pass [] test/status/slow-tier.test.ts > durationText > formats 3601000 ms as 1 h 1 s
+r7 06:26:10.346 +109.5s fail-to-pass fail -> pass [] test/status/slow-tier.test.ts > durationText > formats 3725000 ms as 1 h 2 min 5 s
+r7 06:26:10.346 +109.5s fail-to-pass fail -> pass [] test/status/slow-tier.test.ts > durationText > formats 7260000 ms as 2 h 1 min
+r7 06:26:10.405 +109.6s fail-to-pass fail -> pass [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+r7 06:26:10.405 +109.6s fail-to-pass fail -> pass [] test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > after its running tier, with one note; a spawn meanwhile loses the lock; the hook's successor serves
+
+## known_states of slow files by outcome, validity, origin
+test/e2e/lifecycle.test.ts pass pending own  7
+test/e2e/node-test.test.ts pass pending own  5
+test/e2e/plugin-copy.test.ts pass pending own  2
+test/e2e/policy.test.ts pass pending own  7
+test/e2e/shipped-plugin.test.ts pass pending own  8
+test/e2e/shipped-plugin.test.ts skip pending own  1
+test/e2e/slow-node-test.test.ts pass pending own  5
+test/e2e/slow-vitest.test.ts pass pending own  5
+
+## consumers
