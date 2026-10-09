@@ -444,7 +444,9 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-40 re-review of wave 4.5 | done: FAIL; two remaining cases (wave-4 B3 with a tracked link and a wildcard glob, B4 interval addition) to the human | `/reviewer` on gpt-6.1-sol; second and last round. | `reviews/wave-4.5.md`. |
 | 004-41 every ignored declared artifact enters the key | done (0.1.67) | `reviews/wave-4.5.md` B1: a git-tracked build link with a leading-wildcard glob contributes no bytes; with 004-33. | The review probe and a literal control on both Nodes. |
 | 004-42 a first interval addition counts | done (0.1.67) | `reviews/wave-4.5.md` B2: drop 004-39's interval filter once the start walk makes no revision. | The review probe as a test. |
-| 004-43 fourth review | running | Human-approved fourth and last round for wave-4.5 B1 and B2, limited to them; first round for 004-33 and 004-35. | `reviews/wave-4.6.md`. |
+| 004-43 fourth review | done: FAIL; wave-4.5 B1 and B2 closed, 004-35 fits; 004-33's new B1 to 004-44 | Human-approved fourth and last round for wave-4.5 B1 and B2, limited to them; first round for 004-33 and 004-35. | `reviews/wave-4.6.md`. |
+| 004-44 a file a rebuild adds joins the key on every interval pass | running (wave 4.7) | `reviews/wave-4.6.md` B1: 004-33's re-listing runs only on an interval pass with no other change, so steady source edits keep a stale slow pass current. | The probe and its quiet control on both Nodes; no touch from an unchanged ignored rewrite. |
+| 004-45 re-review of 004-44 | planned | `/reviewer` on gpt-6.1-sol; second and last round for 004-33. | `reviews/wave-4.7.md`. |
 
 ## Later
 
