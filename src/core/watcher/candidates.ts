@@ -129,11 +129,13 @@ export async function candidatesForReconcile(
   const nested = new NestedRepoProbe(ctx.root);
   const all = new Set<RelativePath>([...statusPaths, ...ctx.trackedPaths(), ...ctx.extraFiles]);
   const paths = [...all].filter((rel) => !isGitMetadata(rel));
+  const symlinks = new Set<RelativePath>();
   const stats = await mapConcurrent(paths, async (rel) => {
     const stats = await lstatOrNull(toAbsolute(ctx.root, rel));
     // Only a directory can hold a `.git` entry itself; for anything else, probe the ones above it.
     const probe = stats?.isDirectory() ? rel : parentDir(rel);
     if (probe !== null && (await nested.isInside(probe))) return undefined;
+    if (stats?.isSymbolicLink()) symlinks.add(rel);
     return stats && !stats.isDirectory() ? toFileStat(stats) : null;
   });
   const out = new Map<RelativePath, FileStat | null>();
@@ -141,7 +143,10 @@ export async function candidatesForReconcile(
     const stat = stats[i];
     if (stat !== undefined) out.set(rel, stat);
   });
-  const { links, linkedDirs } = await linksAmong(ctx.root, [...out.keys()]);
+  // Task 001-192: only a symlink can be a linked directory, and the stat above already tells
+  // which paths are, so the link probe does not stat every path a second time.
+  const linkCandidates = [...out.keys()].filter((rel) => symlinks.has(rel));
+  const { links, linkedDirs } = await linksAmong(ctx.root, linkCandidates);
   for (const rel of await filesUnderLinks(ctx, linkedDirs.keys(), nested)) {
     out.set(rel, await statOrNull(ctx.root, rel));
   }
@@ -175,9 +180,10 @@ async function topLinks(
 ): Promise<Map<RelativePath, AbsolutePath>> {
   const probe = new SymlinkProbe(root);
   const links = new Map<RelativePath, AbsolutePath>();
-  for (const rel of paths) {
+  const linked = await mapConcurrent(paths, (rel) => isLinkedDir(toAbsolute(root, rel)));
+  for (const [i, rel] of paths.entries()) {
     const abs = toAbsolute(root, rel);
-    if (!(await isLinkedDir(abs)) || (await probe.linkAbove(rel)) !== null) continue;
+    if (!linked[i] || (await probe.linkAbove(rel)) !== null) continue;
     const target = await realpath(abs).catch(() => null);
     if (target !== null) links.set(rel, target);
   }
