@@ -93,6 +93,8 @@ Started: 2026-10-07
 
 - 2026-10-09, decided by the human after `reviews/wave-4.5.md`: no third 003 round. The remaining case is verified in the 001 lane's review 001-195, over 0.1.83 to 001-194, which carries the three-file probe and asks the combined `keyedAt` rule over both cases on the integrated candidate. The joint hub release follows 001-195.
 
+- 2026-10-09, the 001 lane's review 001-195 (`../001-core-loop/reviews/wave-13k.md`, FAIL at `ff5808eb`, gpt-6.1-sol): both `reviews/wave-4.md` B1 and `reviews/wave-4.5.md` B1 are closed on the integrated candidate (003-45 with 001-194) on Node 22 and 24, which settles 003-43's slice. Its B1, the same completed-sibling boundary when a result under the previous key and a later growth fall in one revision, and S1 concern `status --wait` only (no wrong result stored or shown) and are the 001 lane's repair. The joint hub release 0.1.86 (from `2bc1c995`, approved by the human) carries 003-43 and 003-45.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
