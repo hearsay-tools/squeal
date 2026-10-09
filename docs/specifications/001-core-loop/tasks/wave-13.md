@@ -160,3 +160,21 @@ Outcome: every Vite server a Vitest instance creates for a project, whatever its
 Own: `src/runners/vitest/sources.ts`, the plugin wiring in `src/runners/vitest/adapter.ts`, tests under `test/runners/vitest/` and `test/integration/`, D4 if its paragraph on the bytes Vite read changes. Do not run `npm run build`.
 
 Done when: the reviewer's probe, as a test with a project configured through its own config file, fails without the fix and passes with it; 001-146's tests and the root, inline-project, rename and symlink controls still pass; the report says how the plugin reaches each project's server and that it attaches per Vitest instance.
+
+## 001-154 each Vitest project server's cached transforms are checked against that server's own stamps
+
+Use /worker. Shape: repair. From `reviews/wave-13b.md` B2 (001-152). Decided by the human (2026-10-09): fix, then a third review round (001-155).
+
+The defect (proven twice, observation on and off): two projects with their own config files (`vitest.a.config.ts`, `vitest.b.config.ts`) import the same `src/mod.ts`. Project A's closure walk caches a transform of transient passing bytes; the file is restored; project B's load stamps the restored bytes into the one `Map<AbsolutePath, Stamp>` in `src/runners/vitest/sources.ts`, overwriting A's. `stale()` unions transformed paths and compares them with that one stamp, so A's cached transient transform looks current: the scheduler stores A current PASS and B current FAIL while a fresh adapter fails both.
+
+Outcome: stamps, and the unknowns from before attachment, are kept per plugin container (per server and environment), not only per path; each cached transform is compared with its own container's stamp; a mismatch in any container invalidates that absolute path in every project (conservative); `loadedSince` evidence is per container; attachment stays idempotent per instance. A result whose server's executed bytes are uncertain is never stored as current.
+
+Read: `reviews/wave-13b.md` B2 (its probe steps), `reviews/wave-13.md` B2, `tasks/001-146/notes.md`, 001-151's commits (`SourceStamps.attach`), D4's paragraph on the bytes Vite read.
+
+Own: `src/runners/vitest/sources.ts`, the stamp wiring in `src/runners/vitest/adapter.ts` only if needed (001-150 is running in `adapter.ts`; keep that edit minimal and say which lines), tests under `test/runners/vitest/` and `test/integration/`, D4. Do not run `npm run build`.
+
+Done when: the reviewer's two-separate-config-project probe is a scheduler regression with observation on and off, plus a fresh-adapter control, failing without the fix and passing with it; the root, inline and one-separate-config-project controls (001-146, 001-151) still pass; the same probe repeated in 004-18's slow instance passes.
+
+## 001-155 third review of wave 13's stale-transform slice
+
+Use /reviewer on gpt-6.1-sol, after 001-154 lands. Output `reviews/wave-13c.md`. Range: from `6418a6b` to 001-154's landing. Question: is `reviews/wave-13b.md` B2 closed, and is there any other way, in any configuration of Vitest projects, servers or instances, for a cached transform's bytes to differ from the bytes a stored result's key names? Also verify the 002/003/004 coordinator's wave-13b S2 fix (`248723c`, `src/core/daemon/escaped.ts` `terminate`) with the two-target controlled table. Decided by the human: blockers from this round go to the human again.
