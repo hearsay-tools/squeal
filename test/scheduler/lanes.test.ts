@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import type { NodeTestProject, Store, WorktreeId } from "../../src/core/types/index.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -68,6 +68,13 @@ function holdVitest(h: Harness, path: string) {
 }
 
 const HELD = "test/held.test.ts";
+
+const markerDirs: string[] = [];
+// Before the harness's cleanup closes the adapter (hooks run as a stack):
+// removing the hold releases the worker, so a failed test still closes.
+afterEach(() => {
+  for (const dir of markerDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 /**
  * A Vitest test file whose worker waits while `hold` exists, after writing
@@ -138,8 +145,7 @@ describe("scheduler: lanes (001 D5 as amended, task 001-140)", SLOW, () => {
     const markers = mkdtempSync(join(tmpdir(), "squeal-001-150-"));
     const hold = join(markers, "hold");
     const started = join(markers, "started");
-    // Removing the hold releases the worker, so a failed assertion still lets the scheduler close.
-    onTestFinished(() => rmSync(markers, { recursive: true, force: true }));
+    markerDirs.push(markers);
     const { h, store } = await openMixed(true, { [HELD]: heldTest(hold, started, 1) });
     expect(h.runsOf(HELD)).toHaveLength(1);
 
