@@ -1,4 +1,4 @@
-import { existsSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../src/core/types/index.js";
@@ -23,7 +23,10 @@ const POOLS = ["forks", "threads"] as const;
 const OBSERVING = { observe: true, policy: { observe: { runtimeInputs: true } } } as const;
 const at = (path: string, project: string): TestFileRef => ({ project, path });
 
-/** Reads `read` before it exists; the driver creates `data/appeared.txt` while the run sleeps. */
+/**
+ * Reads `read` before it exists, then says so in a `ready-*` file of its own;
+ * the driver creates `data/appeared.txt` while the run sleeps.
+ */
 const appearTest = (read: string) => `import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -32,7 +35,7 @@ const root = join(import.meta.dirname, "..");
 
 test("${read} is absent", async () => {
   const absent = !existsSync(join(root, "${read}"));
-  writeFileSync(join(root, "ready.txt"), "ready");
+  writeFileSync(join(root, \`ready-\${process.pid}-\${Math.random()}.txt\`), "ready");
   await new Promise((resolve) => setTimeout(resolve, 1500));
   expect(absent).toBe(true);
 });
@@ -68,10 +71,10 @@ const runOutcomes = (h: Harness, ref: TestFileRef) =>
       .map((r) => r.outcome),
   );
 
-/** Creates `data/appeared.txt` once a run of the appear test has looked for it; `then` may report it. */
-function appearWhenReady(root: string, then: () => Promise<void>): () => void {
+/** Creates `data/appeared.txt` once `looked` runs of the appear test have looked for it; `then` may report it. */
+function appearWhenReady(root: string, looked: number, then: () => Promise<void>): () => void {
   const timer = setInterval(() => {
-    if (!existsSync(join(root, "ready.txt"))) return;
+    if (readdirSync(root).filter((name) => name.startsWith("ready-")).length < looked) return;
     clearInterval(timer);
     writeFileSync(join(root, "data/appeared.txt"), "appeared\n");
     void then();
@@ -79,20 +82,28 @@ function appearWhenReady(root: string, then: () => Promise<void>): () => void {
   return () => clearInterval(timer);
 }
 
-/** The cases of review wave 12d B1: plain, read behind a directory link nothing cached, reported mid-run. */
+/**
+ * The cases of review wave 12d B1: plain, read behind a directory link nothing
+ * cached, reported mid-run. `looked`: how many runs look before the file
+ * appears. The link case waits for both pools, the order in which no run's
+ * recorder can resolve the absent file's target (task 001-148); the others
+ * leave the order to the race.
+ */
 const CASES = [
-  { name: "unreported", read: "data/appeared.txt", link: false, watched: false },
+  { name: "unreported", read: "data/appeared.txt", link: false, watched: false, looked: 1 },
   {
     name: "read through a directory link",
     read: "linked/appeared.txt",
     link: true,
     watched: false,
+    looked: POOLS.length,
   },
   {
     name: "reported by a watch batch during the run",
     read: "data/appeared.txt",
     link: false,
     watched: true,
+    looked: 1,
   },
 ] as const;
 
@@ -107,14 +118,14 @@ describe(
   () => {
     it.each(CASES)(
       "$name: never stores the run's pass under the key with the present file, and a second worktree inherits only the re-run",
-      async ({ read, link, watched }) => {
+      async ({ read, link, watched, looked }) => {
         const repo = createRepo("observed");
         const store = openRepoStore(repo.commonDir);
         const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
         await h.scheduler.start();
         await h.scheduler.idle();
         // An edit's tier, which a watch batch during it does not cancel, as a backlog tier's is.
-        const stop = appearWhenReady(repo.main, () =>
+        const stop = appearWhenReady(repo.main, looked, () =>
           watched ? h.batch("data/appeared.txt") : Promise.resolve(),
         );
         try {
@@ -129,7 +140,10 @@ describe(
         let probed = 0;
         for (const pool of POOLS) {
           const ref = at(APPEAR, pool);
-          expect(store.testFiles.get(ref)?.closure.paths).toContain(read);
+          // The link's spelling with its in-scope target (task 001-135), read or not (task 001-148).
+          expect(store.testFiles.get(ref)?.closure.paths).toEqual(
+            expect.arrayContaining([read, "data/appeared.txt"]),
+          );
           const key = keyOf(h, ref);
           expect(key).not.toBeNull();
           keys.push(key ?? "");
@@ -146,7 +160,7 @@ describe(
           expect(outcomes.length).toBeLessThanOrEqual(2);
           expect(outcomes.at(-1)).toBe("fail");
         }
-        expect(probed).toBeGreaterThan(0);
+        expect(probed).toBeGreaterThanOrEqual(looked);
 
         const root = addWorktree(repo.main, repo.dir, "second");
         plant(root, read, link);
