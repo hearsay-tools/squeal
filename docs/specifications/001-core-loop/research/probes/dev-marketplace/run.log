@@ -1,0 +1,51 @@
+
+### install tool@tool from marketplace tool, both harnesses
+✔ Successfully added marketplace: tool (declared in user settings)
+Installing plugin "tool@tool"...✔ Successfully installed plugin: tool@tool (scope: user)
+Added marketplace `tool` from http://127.0.0.1:8766/tool.git.
+Installed plugin root: <scratch>/home/.codex/plugins/cache/tool/tool/0.1.0
+
+### rename manifests to tool-dev, version 0.1.1, push
+
+### claude marketplace update tool
+Replacing the existing marketplace clone…
+Clone complete, validating marketplace…
+✔ Successfully updated marketplace: tool
+  ❯ anthropic-plugin-directory
+    Source: Built in (Anthropic Directory)
+
+  ❯ tool
+    Source: Git (http://127.0.0.1:8766/tool.git)
+
+
+  ❯ tool@tool
+    Version: 0.1.0
+    Scope: user
+    Status: ✔ enabled
+
+
+### claude plugin update tool@tool
+Checking for updates for plugin "tool@tool"…
+✔ Plugin "tool" updated from 0.1.0 to 0.1.1 for scope user. Restart to apply changes.
+tool
+0.1.0
+0.1.1
+
+### codex plugin list before upgrade
+Marketplace `tool`
+<scratch>/home/.codex/.tmp/marketplaces/tool/.agents/plugins/marketplace.json
+tool@tool  installed, enabled  0.1.0    <scratch>/home/.codex/.tmp/marketplaces/tool/plugins/codex
+
+### codex marketplace upgrade tool
+Failed to upgrade marketplace `tool`: upgraded marketplace name `tool-dev` does not match configured marketplace `tool`
+Error: 1 upgrade failure(s) occurred.
+MARKETPLACE  ROOT
+tool         <scratch>/home/.codex/.tmp/marketplaces/tool
+Marketplace `tool`
+<scratch>/home/.codex/.tmp/marketplaces/tool/.agents/plugins/marketplace.json
+tool@tool  installed, enabled  0.1.0    <scratch>/home/.codex/.tmp/marketplaces/tool/plugins/codex
+tool
+0.1.0
+1:[marketplaces.tool]
+3:source = "http://127.0.0.1:8766/tool.git"
+5:[plugins."tool@tool"]
