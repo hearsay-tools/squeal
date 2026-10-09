@@ -324,3 +324,23 @@ Use /worker. Shape: docs. After 001-172 (to quote its measured wait). Outcome: t
 Use /reviewer on gpt-6.1-sol, beside 001-169. Output `reviews/wave-13g.md`. So the next hub release carries only reviewed 001 work (`docs/process.md` 6a). Rows: 001-156 (0.1.57, a registration after a spawn reports a starting daemon), 001-153 (0.1.59, each successor lock attempt on its own connection), 001-164 (0.1.62, the plugin id `squeal@hearsay`, init's migration, Codex trust), 001-161 (0.1.66, one sink call per checkpoint; a starting daemon's 120 s busy timeout), 001-167 (0.1.66, parcel extras at `realpath(parent)`), 001-166 (0.1.65, the start seed under linked directories). Find each row's commits on main by its id. Not in scope: 001-159 and 001-168 (001-169's), and the other coordinator's rows.
 
 Questions: can any of these store or show a stale result as current, kill or orphan the wrong process, exit or lose a daemon wrongly, or break an existing install (the `squeal@squeal` migration under either harness)? 001-161: does merging a checkpoint's applied entries ever change a state or transition (a check applied twice, unknowns between), and does the 120 s start timeout ever block a hook? 001-153: can two successors both serve, or none for longer than one retry? 001-166: can a real addition at start be missed? Decided by the human: blockers go to the human.
+
+## 001-176 Squeal's Vitest instances run with the dependency optimizer off
+
+Use /worker. Shape: repair. From `reviews/wave-13f.md` (001-169) B3, B4, S1, N1, N2. Decided by the human (2026-10-09): turn the optimizer off, then a seventh review (001-177).
+
+Six review rounds found Vite's dependency optimizer holding project bytes outside the module graph: a separately configured project's bundle reused after restart (B3), a bundle built before the startup key scan (B4), and an ordinary edit of an aliased source leaving the old bundle in place (S1, pre-existing). Vitest leaves it off by default; this repository and cezar do not enable it.
+
+Outcome: every Vitest instance Squeal creates (fast and slow, every project, root or own config file, every environment) runs with the dependency optimizer off (`test.deps.optimizer.ssr.enabled` and `.client.enabled` false, and whatever Vitest 4 and 5 need so it is effectively off per project), verified on the effective project config, not only the `createVitest` argument, as 001-157 did for `fsModuleCache`. 001-168's `forceOptimizeDeps` goes, since there is nothing to rebuild. When a project's own config enables the optimizer, `squeal status` and the registration header say once that Squeal runs it without the optimizer and why, and the reason sits in D4.
+
+Also: N1 (D4 still suggests declaring a fixture writer's file as a remedy; align it with the skill: write outside the worktree or under an ignored path) and N2 (the missing 001-168 amendment line in `status.md`).
+
+Read: `reviews/wave-13f.md`, `reviews/wave-13e.md`, `reviews/wave-13d.md` S1, `tasks/001-157/notes.md` (`fsModuleCache`), `tasks/001-168/notes.md`, D4.
+
+Own: `src/runners/vitest/`, the status/header note in `src/core/delivery/` or `src/core/state/` (additive), the skill's references, tests under `test/runners/vitest/` and `test/integration/`, D4, `status.md` (N2 only). Do not run `npm run build`.
+
+Done when: B3 (separate config, restart and forced checkpoint), B4 (pre-scan start, real daemon) and S1 (ordinary edit of an aliased source) are regressions, observation on and off, each storing what a fresh adapter without the optimizer gives; a test reads the effective optimizer setting of a root and a separately configured project as off; the note appears for a config that enables it; every earlier probe still passes.
+
+## 001-177 seventh review: the stale-transform slice with the optimizer off
+
+Use /reviewer on gpt-6.1-sol, after 001-176 lands. Output `reviews/wave-13h.md`. Range: from 0.1.69's landing to 001-176's. Are `reviews/wave-13f.md` B3, B4 and S1 closed; is the optimizer off in every project, environment and instance, as Vitest actually resolves it; can any cached state still run bytes other than a stored result's key names. Decided by the human: blockers go to the human.
