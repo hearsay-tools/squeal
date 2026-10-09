@@ -471,7 +471,8 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-48 the slow-tier line after a session ends, after a restart, after a revert | done (0.1.74) | `lessons.md` defects 11, 12, 15. | One test per case. |
 | 004-49 review of wave 5.5 | done: FAIL, B1 (warm store) to 004-50; 004-48 holds; N1 nit | `/reviewer` on gpt-6.1-sol; first round. | `reviews/wave-5.5.md`. |
 | 004-50 cached ignored scratch never becomes a declared input after an upgrade | done (0.1.75) | `reviews/wave-5.5.md` B1: a store a pre-fix daemon wrote keeps ignored fast scratch in the cache; bootstrap re-adds it as an extra and a declared input, so 004-47's loop returns on every upgraded store. | The warm-store probe and its cold control on both Nodes. |
-| 004-51 re-review of 004-50 | running | `/reviewer` on gpt-6.1-sol; second and last round for 004-47's slice. | `reviews/wave-5.6.md`. |
+| 004-51 re-review of 004-50 | done: PASS at `3a3e752` (executable `1a3d231`); S1 to 004-52 | `/reviewer` on gpt-6.1-sol; second and last round for 004-47's slice. | `reviews/wave-5.6.md`. |
+| 004-52 a predecessor's saved closure does not re-add dropped scratch to the watch set | planned (should-fix, nonblocking) | `reviews/wave-5.6.md` S1: a pre-fix store's saved combined closure in `test_files` puts declaration-only scratch back into the extras: one extra revision on a full interval pass, no rerun, the result stays current. | A complete predecessor store (hashes and saved closures) test; reintroduced dropped paths removed once current closures replace the stored ones. |
 
 ## Feature 005: agent adoption
 

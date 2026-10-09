@@ -73,6 +73,8 @@ Started: 2026-10-08
 
 - 2026-10-09, 004-50, 0.1.75 (gate: Node 22 all 2268 passed; Node 24 one departure timing miss, 3,589 ms against 3,500, passing alone 3 of 3): at bootstrap, before the start reconcile, a cached ignored path a declaration selects but 004-47's rule rejects is dropped from the stat cache and the store; one a closure, environment, lockfile or observed read still names is tracked again; declared inputs are built from git-visible files plus allowed ignored artifacts at all four places. Re-review 004-51 dispatched, last round for 004-47's slice.
 
+- 2026-10-09, re-review 004-51 (`reviews/wave-5.6.md`, PASS at `3a3e752`, executable `1a3d231`, gpt-6.1-sol): the warm-store loop is closed on Node 22 and 24 (cold and warm probes, a pre-004-50 negative control). One nonblocking should-fix, S1 (row 004-52): a predecessor's saved combined closure re-adds dropped scratch to the watch set, costing one revision on a full interval pass and no rerun. With this, every review of spec 004 has passed and every planned row except the should-fix 004-52 is done; the re-dogfood's defects 1, 2, 3, 7, 8, 10, 11, 12, 15 are fixed in this spec.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
