@@ -71,3 +71,17 @@ Use /worker.
 ## 004-33 a new file in an ignored declared directory joins the key (from 004-28)
 
 Planned after 001-159. Today a file that appears in a gitignored declared directory, with no existing declared file changing, is picked up only at the next policy reload or daemon start: the watcher does not report additions under ignored directories. Brief when 001-159 lands.
+
+## 004-34 the slow lane catches up: beside background work, and several files at once when idle
+
+Outcome: D2 as amended 2026-10-09 by the human holds: a slow file may start while only background fast work (baseline, environment change, `run --all`) is pending or running, never while an edit's own fast work is; and when the machine is idle a slow tier takes up to `slow.maxParallel` files at once.
+
+Read: spec 004 D2 (amended), D3, D7; `lessons.md` defect 3 and the open-question-1 timings (this repository's 10 e2e files: 261 s one by one against 60 to 70 s in parallel; cezarion's 13: 299 s against 63 s); 001-140's notes "For 004-18" (lanes, `#pump`'s gate that asks the slow tier only with no tier in flight).
+
+Shape: slice. Test first. Seams, in order: (1) the gate: `#pump` in `src/core/scheduler/scheduler.ts` and `SlowTier`'s `fastPending` checks in `src/core/scheduler/slow-tier.ts` distinguish edit-caused work (the runner part, `RunQueue`'s recent class) from background work (the backlog class), so a slow tier may start beside a backlog tier in flight; triggers unchanged. (2) Parallel when idle: with no fast work pending or running in the worktree and the load per CPU below `slow.maxLoadPerCpu`, select up to `slow.maxParallel` slow files into one tier (the slow instance runs them with that many workers; node:test with that concurrency); otherwise one file as today; preemption between tiers as today. (3) The slot (`src/core/slow/slot.ts`): `slow.maxParallel` permits per user, a tier of k files holding k, keeping 004-30's waiter marks. (4) `slow.maxParallel` in the policy type and loader (`src/core/types/policy.ts`, `src/core/daemon/policy.ts`, default 4, positive integer), `squeal init`'s defaults if it writes the `slow` object, and both skills' `references/policy.md`.
+
+Owns: `src/core/scheduler/slow-tier.ts`, `#pump`'s slow gate and the backlog/recent distinction in `src/core/scheduler/scheduler.ts` and `queue.ts`, `src/core/slow/slot.ts`, the policy files above, both `references/policy.md`, their tests. Leave alone: `src/core/daemon/lifecycle.ts` and daemon exit (004-29 is running there; it may add one method on `Scheduler`), the runners' internals, the store.
+
+Done when: scheduler tests: a slow file runs beside a held backlog tier and not beside a held edit tier; an idle tier takes up to `slow.maxParallel` files and one file when fast work or load is present; two schedulers share `slow.maxParallel` permits; lint, typecheck, full suite on Node 24 and 22. Report every type change.
+
+Use /worker.
