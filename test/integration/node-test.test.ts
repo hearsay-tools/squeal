@@ -221,7 +221,13 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
       writeFileSync(join(wt3, HELPER), "globalThis.helperValue = 2;\n");
       writeFileSync(join(wt3, REQUIRED), "globalThis.requiredValue = 2;\n");
       await startDaemon(wt3);
-      const third = await settle(wt3, "the third baseline", (s) => s.counts.current === CHECKS);
+      // A forced re-run keeps the result current while it waits (D5), so the
+      // count of current checks is reached before 001-171's re-runs end.
+      const third = await settle(
+        wt3,
+        "the third baseline and its re-runs",
+        (s) => s.counts.current === CHECKS && ranFiles(main, wt3).length >= 6,
+      );
       const missed = [
         "packages/a/test/hidden.test.ts",
         "packages/c/test/c.test.ts",
