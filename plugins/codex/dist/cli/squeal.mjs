@@ -5158,6 +5158,7 @@ function newFileState(ref2) {
     runningKey: null,
     unknownKey: null,
     discards: 0,
+    rerunKey: null,
     blocked: null
   };
 }
@@ -6367,6 +6368,43 @@ var init_records = __esm({
   }
 });
 
+// src/core/scheduler/rerun.ts
+function holdsNewFailure(context, prior, records) {
+  const { store, worktreeId } = context;
+  const failed2 = new Set(prior.filter((p) => p.outcome === "fail").map((p) => checkId(p.check)));
+  return records.some(
+    (r) => r.outcome === "fail" && !failed2.has(checkId(r.check)) && store.knownStates.get(worktreeId, r.check)?.outcome !== "fail"
+  );
+}
+function queueReruns(context, ledger, failures) {
+  const due = failures.filter(
+    ({ file, key: key2, forced }) => !forced && file.rerunKey !== key2 && !ledger.queue.isSlow(file.ref)
+  );
+  if (due.length === 0) return;
+  if (due.length > context.rerunCap) {
+    const files = due.length === 1 ? "test file" : "test files";
+    context.note(
+      `${due.length} ${files} failed anew in one tier, more than the ${context.rerunCap} Squeal re-runs: a mass break is not re-run (${listPaths(due.map(({ file }) => file.ref.path))})`
+    );
+    return;
+  }
+  for (const { file, key: key2 } of due) {
+    file.rerunKey = key2;
+    ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  }
+}
+var RERUN_CAP;
+var init_rerun = __esm({
+  "src/core/scheduler/rerun.ts"() {
+    "use strict";
+    init_context();
+    init_files();
+    init_notes2();
+    init_queue();
+    RERUN_CAP = 8;
+  }
+});
+
 // src/core/slow/guard.ts
 import { availableParallelism, loadavg } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
@@ -6535,13 +6573,13 @@ var init_slow3 = __esm({
 // src/core/scheduler/store-results.ts
 function storeResults(context, records) {
   const [first] = records;
-  if (first === void 0) return;
+  if (first === void 0) return [];
   const { store, worktreeId, now } = context;
-  store.transaction(() => {
+  return store.transaction(() => {
     const prior = store.results.byKey(first.key, 0);
     store.results.putMany(records);
     const flips = recordFlips(store, prior, records, now());
-    if (!flips.some((note) => note.to === "pass")) return;
+    if (!flips.some((note) => note.to === "pass")) return prior;
     const { project, testPath } = first.check;
     const sink = createStateSink(store, { now });
     for (const row of store.testFileKeys.withKey(first.key)) {
@@ -6550,6 +6588,7 @@ function storeResults(context, records) {
       const revision = store.revisions.latest(row.worktreeId)?.number ?? row.revision;
       sink.refresh(row.worktreeId, revision, { checkpointId: null }, [row.testFile]);
     }
+    return prior;
   });
 }
 var init_store_results = __esm({
@@ -6696,6 +6735,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   const rekeyed = [];
   const grown = [];
   const firstSeen = [];
+  const failedAnew = [];
   const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
@@ -6738,8 +6778,9 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         provenance,
         describe: context.describe
       });
-      storeResults(context, records);
+      const prior = storeResults(context, records);
       if (growth === void 0 && file.key === key2) {
+        if (holdsNewFailure(context, prior, records)) failedAnew.push({ file, key: key2, forced });
         ledger.applyResults(file, key2, records, checkpointId);
       }
     }
@@ -6748,6 +6789,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
     ledger.rerunFirstSeen(firstSeen);
+    queueReruns(context, ledger, failedAnew);
     storeClosures(
       context,
       grown.map((g2) => g2.ref)
@@ -6806,6 +6848,7 @@ var init_tiers = __esm({
     init_observed2();
     init_queue();
     init_records();
+    init_rerun();
     init_revision2();
     init_slow3();
     init_stability();
@@ -8823,6 +8866,7 @@ var init_scheduler2 = __esm({
     init_mutex();
     init_observed2();
     init_queue();
+    init_rerun();
     init_revision2();
     init_runner_work();
     init_slow_tier();
@@ -8910,7 +8954,8 @@ var init_scheduler2 = __esm({
             describe: options.describeFailure ?? describeFailure,
             head: options.head,
             now: options.now ?? Date.now,
-            note: (message2) => this.#note(message2)
+            note: (message2) => this.#note(message2),
+            rerunCap: options.rerunCap ?? RERUN_CAP
           };
           const ledger = new Ledger(context);
           this.#ledger = ledger;
@@ -32056,7 +32101,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.72";
+  if (true) return "0.1.73";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
