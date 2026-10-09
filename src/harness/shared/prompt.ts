@@ -1,7 +1,7 @@
 import { formatDelta } from "../../core/delivery/index.js";
 import { daemonLiveness } from "../../core/delivery/liveness.js";
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
-import { ensure, settle } from "./ensure.js";
+import { ensureToRegister } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import { coversNodeTest, coversSlowSuites, withPrimer } from "./primer.js";
 
@@ -40,11 +40,15 @@ export function submitPrompt(
     }
     if (!options.register) return null;
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (daemonLiveness(record, now).state !== "alive") {
-      if ((await ensure(location, deps, context)) === "spawned") await settle(context, deps);
-    }
+    const startingSince =
+      daemonLiveness(record, now).state === "alive"
+        ? undefined
+        : await ensureToRegister(location, deps, context);
     // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
-    const registration = await context.delivery.register(context.consumer, { inTurn: true });
+    const registration = await context.delivery.register(context.consumer, {
+      inTurn: true,
+      ...(startingSince === undefined ? {} : { startingSince }),
+    });
     return withPrimer(
       registration,
       deps.command,

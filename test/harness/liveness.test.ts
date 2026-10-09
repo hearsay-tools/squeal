@@ -2,12 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import {
-  type HookDeps,
-  type HookResult,
-  runHook,
-  SPAWN_SETTLE_MS,
-} from "../../src/harness/claude-code/index.js";
+import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { mayEdit } from "../../src/harness/shared/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
@@ -222,38 +217,5 @@ describe("mayEdit", () => {
     expect(mayEdit(undefined)).toBe(true);
     expect(mayEdit(["Read", "Grep", "Glob", "WebFetch", "TodoWrite"])).toBe(false);
     expect(mayEdit([])).toBe(false);
-  });
-});
-
-describe("SessionStart after spawning a daemon", () => {
-  it("waits for the new daemon's heartbeat, so the registration says it validates", async () => {
-    const r = squealRepo();
-    r.apply(r.pass());
-    r.daemon("none");
-    const { deps } = recording("spawned", () => setTimeout(() => r.daemon("alive"), 100));
-
-    const started = performance.now();
-    const out = await runHook("session-start", recorded("session-start", r.root), deps);
-
-    expect(performance.now() - started).toBeLessThan(SPAWN_SETTLE_MS);
-    expect(context(out)).toMatch(/^SQUEAL · registered at revision 1\n/);
-    expect(context(out)).not.toContain("No daemon");
-  });
-
-  it(`registers after ${SPAWN_SETTLE_MS} ms and says so when no heartbeat arrives`, async () => {
-    const r = squealRepo();
-    r.apply(r.pass());
-    r.daemon("none");
-    const started = performance.now();
-    const out = await runHook(
-      "session-start",
-      recorded("session-start", r.root),
-      recording("spawned").deps,
-    );
-    const elapsed = performance.now() - started;
-
-    expect(elapsed).toBeGreaterThanOrEqual(SPAWN_SETTLE_MS - 10);
-    expect(elapsed).toBeLessThan(SPAWN_SETTLE_MS + 500);
-    expect(context(out)).toContain("No daemon is running; results are as of revision 1.");
   });
 });

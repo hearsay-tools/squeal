@@ -19,12 +19,13 @@ import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import {
+  livenessChange,
   readLiveHeader,
   tellLiveness,
   tellRevision,
   toldLiveness,
   toldRevision,
-  worktreeLiveness,
+  withTold,
 } from "./liveness.js";
 import { scannedDaemon, tellRegistered } from "./registered.js";
 import {
@@ -105,12 +106,6 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     return keep === null ? full : restrictPlan(full, keep);
   }
 
-  /** The daemon's liveness when it differs from what `consumer` was told, else `null`. */
-  function livenessChange(consumer: Consumer, at: EpochMs) {
-    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at);
-    return live.state === toldLiveness(store, consumer) ? null : live;
-  }
-
   /**
    * Reads the delta, writes the view and returns the delta, in one
    * transaction. `heardFrom` records the consumer as seen even when nothing
@@ -147,7 +142,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
       if (selection === "silent") return null;
-      const quiet = !liveness || livenessChange(consumer, now()) === null;
+      const quiet = !liveness || livenessChange(store, consumer, now()) === null;
       const empty = isEmpty(plan(consumer, states, now(), selection.only));
       if (quiet && empty && selection.trim === null) return null;
     }
@@ -161,7 +156,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const delta = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const changed = liveness ? livenessChange(consumer, at) : null;
+      const changed = liveness ? livenessChange(store, consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
       const delivered = delta.entries.length > 0 || changed !== null;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -171,7 +166,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const live = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      const read = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      const live = withTold(read, toldLiveness(store, consumer), at);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -197,7 +193,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   }
 
   return {
-    register: async (consumer, { inTurn = false, atStart = false } = {}) =>
+    register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) =>
       store.transaction(() => {
         const at = now();
         // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
@@ -208,10 +204,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           consumer,
           states.map((s) => toView(s, at)),
         );
-        const live = readLiveHeader(store, consumer.worktreeId, at, states);
+        // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
+        const told = startingSince === undefined ? null : { startingSince };
+        const read = readLiveHeader(store, consumer.worktreeId, at, states);
+        const live = told === null ? read : withTold(read, told, at);
         const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
         const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
-        tellLiveness(store, consumer, header.daemon?.state ?? null);
+        const starting =
+          header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
+        tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
         tellRevision(store, consumer, header.revision);
         if (!registered) {
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.

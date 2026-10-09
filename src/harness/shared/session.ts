@@ -1,5 +1,5 @@
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
-import { ensure, settle } from "./ensure.js";
+import { ensure, ensureToRegister } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import { coversNodeTest, coversSlowSuites, primer, withPrimer } from "./primer.js";
 import { unregisterSession } from "./sweep.js";
@@ -14,7 +14,8 @@ const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
  * daemon. Without a usable store the daemon is still ensured, and the first
  * tool boundary registers. After spawning a daemon, registration waits
  * briefly for its heartbeat, so its header reports a daemon that is about to
- * validate as validating.
+ * validate as validating, and as starting when the heartbeat is later
+ * (task 001-156).
  *
  * Lessons, defect 5: a session start (not a subagent's) with source `startup`
  * or `resume` means any earlier run of that session id is gone, so every
@@ -42,7 +43,7 @@ export async function startSession(
   const text = await withContext(input, location, deps, async (context) => {
     // The store is open already: its daemon record spares the probe a second open (S8).
     ensured = true;
-    if ((await ensure(location, deps, context)) === "spawned") await settle(context, deps);
+    const startingSince = await ensureToRegister(location, deps, context);
     // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
     // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
     // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
@@ -57,7 +58,10 @@ export async function startSession(
     }
     // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
     const atStart = input.source !== "compact";
-    const registration = await context.delivery.register(context.consumer, { atStart });
+    const registration = await context.delivery.register(context.consumer, {
+      atStart,
+      ...(startingSince === undefined ? {} : { startingSince }),
+    });
     return withPrimer(
       registration,
       deps.command,

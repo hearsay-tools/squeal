@@ -226,7 +226,16 @@ export interface StatusHeader {
  */
 export type DaemonLiveness =
   | { readonly state: "alive"; readonly lastHeartbeatAt: EpochMs }
-  | { readonly state: "down"; readonly since: EpochMs | null };
+  | {
+      readonly state: "down";
+      readonly since: EpochMs | null;
+      /**
+       * Task 001-156: a daemon a hook spawned at this time has not heartbeat
+       * yet, and a registration said it is starting. Set only on a header
+       * delivered to a consumer told so, within `DAEMON_START_GRACE_MS`.
+       */
+      readonly startingSince?: EpochMs;
+    };
 
 /** One known failure in status. */
 export interface KnownFailure {

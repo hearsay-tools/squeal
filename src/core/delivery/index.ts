@@ -27,6 +27,7 @@ export {
 } from "./format.js";
 export { harnessOf, type ProcStat, pidNamespace, readProcStat } from "./harness-process.js";
 export {
+  DAEMON_START_GRACE_MS,
   daemonLiveness,
   livenessMetaKey,
   readLiveHeader,

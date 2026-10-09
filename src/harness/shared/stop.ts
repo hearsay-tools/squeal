@@ -10,10 +10,16 @@ import { slowFiles } from "../../core/slow/index.js";
 import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
-import type { KnownFailure, Policy, StatusHeader, TestFileRef } from "../../core/types/index.js";
+import type {
+  EpochMs,
+  KnownFailure,
+  Policy,
+  StatusHeader,
+  TestFileRef,
+} from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
-import { ensureIfStale } from "./ensure.js";
+import { ensureIfStale, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import {
   fullSuiteReason,
@@ -94,14 +100,15 @@ export function stopTurn(
     deps,
     async (context) => {
       if (input.agent_id !== undefined && !isRegistered(context)) return null;
-      await ensureIfStale(context, deps);
+      const at = (deps.now ?? Date.now)();
+      const starting = startingAfter(await ensureIfStale(context, deps), at);
       const isSlow = slowFiles(project, project.nodeTest);
       if (wait > 0) {
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
       }
 
       const { consumer } = context;
-      const news = await newsText(context, deps.command);
+      const news = await newsText(context, starting, deps.command);
       const now = deps.now ?? Date.now;
       const blocking =
         !input.stopHookActive &&
@@ -223,10 +230,14 @@ async function finishSubagent(context: HookContext): Promise<void> {
  * no registration, its registration when that lists known failures. `null`
  * when there is nothing new.
  */
-async function newsText(context: HookContext, command?: string): Promise<string | null> {
+async function newsText(
+  context: HookContext,
+  starting: { readonly startingSince?: EpochMs },
+  command?: string,
+): Promise<string | null> {
   const { store, delivery, consumer } = context;
   if (!isRegistered(context)) {
-    const registration = await delivery.register(consumer, { inTurn: true });
+    const registration = await delivery.register(consumer, { inTurn: true, ...starting });
     return registration.knownFailures.length > 0
       ? formatRegistration(registration, undefined, command)
       : null;

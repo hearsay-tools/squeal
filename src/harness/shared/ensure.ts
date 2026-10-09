@@ -149,16 +149,41 @@ export async function stepDownIfOlder(
 /**
  * Waits up to `SPAWN_SETTLE_MS` for a fresh heartbeat in the store. Not for
  * the daemon's start scan: attribution needs no wait (task 001-96, review
- * wave 10c S1).
+ * wave 10c S1). True when it came.
  */
-export async function settle(context: HookContext, deps: HookDeps): Promise<void> {
+export async function settle(context: HookContext, deps: HookDeps): Promise<boolean> {
   const deadline = performance.now() + SPAWN_SETTLE_MS;
   const now = deps.now ?? Date.now;
   for (;;) {
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (daemonLiveness(record, now()).state === "alive") return;
+    if (daemonLiveness(record, now()).state === "alive") return true;
     const left = deadline - performance.now();
-    if (left <= 0) return;
+    if (left <= 0) return false;
     await sleep(Math.min(SETTLE_POLL_MS, left));
   }
+}
+
+/**
+ * `ensure` before a registration (SessionStart, a registering
+ * UserPromptSubmit), then `settle` after a spawn. Task 001-156: on a loaded
+ * host the spawned daemon's first heartbeat can come after the settle (1.5 s
+ * at load 127); the time of the spawn then, as `RegisterOptions.startingSince`,
+ * so the registration says a daemon is starting; `undefined` otherwise.
+ */
+export async function ensureToRegister(
+  location: HookLocation,
+  deps: HookDeps,
+  context: HookContext,
+): Promise<EpochMs | undefined> {
+  const at = (deps.now ?? Date.now)();
+  if ((await ensure(location, deps, context)) !== "spawned") return undefined;
+  return (await settle(context, deps)) ? undefined : at;
+}
+
+/** `RegisterOptions.startingSince` of a registration after a hook's `ensure` at `at` returned `ensured`. */
+export function startingAfter(
+  ensured: EnsureDaemonResult | "fresh",
+  at: EpochMs,
+): { readonly startingSince?: EpochMs } {
+  return ensured === "spawned" ? { startingSince: at } : {};
 }
