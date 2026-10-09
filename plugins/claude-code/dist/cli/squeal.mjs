@@ -6123,110 +6123,279 @@ var init_install = __esm({
   }
 });
 
-// src/core/scheduler/link-target.ts
-import { realpath as realpath3 } from "node:fs/promises";
-import { dirname as dirname11, join as join26, relative as relative2, sep as sep4 } from "node:path";
-async function linkTargets(root, paths) {
-  const directories = /* @__PURE__ */ new Map();
-  const resolve11 = (directory) => {
-    let real2 = directories.get(directory);
-    if (real2 === void 0) {
-      real2 = realpath3(join26(root, directory)).then(
-        (abs) => abs === root ? "" : abs.startsWith(root + sep4) ? relative2(root, abs) : null,
-        () => null
-      );
-      directories.set(directory, real2);
-    }
-    return real2;
-  };
-  const targets = await Promise.all(
-    [...paths].map(async (path) => {
-      const directory = dirname11(path);
-      if (directory === ".") return null;
-      const real2 = await resolve11(directory);
-      if (real2 === null || real2 === directory) return null;
-      const target = real2 === "" ? path.slice(directory.length + 1) : `${real2}/${path.slice(directory.length + 1)}`;
-      return kept(target) ? target : null;
-    })
-  );
-  return targets.filter((target) => target !== null);
+// src/core/slow/guard.ts
+import { availableParallelism, loadavg } from "node:os";
+import { setTimeout as delay } from "node:timers/promises";
+async function waitForCapacity(wait) {
+  const load = wait.load ?? loadavg;
+  const cpus = wait.cpus ?? availableParallelism;
+  const sleep11 = wait.sleep ?? delay;
+  const now = wait.now ?? (() => performance.now());
+  const recheckMs = wait.recheckMs ?? 15e3;
+  const perCpu = () => (load()[0] ?? 0) / Math.max(1, cpus());
+  const start = now();
+  for (; ; ) {
+    const current2 = perCpu();
+    const waitedMs = now() - start;
+    if (current2 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
+    const left = wait.maxDeferMs - waitedMs;
+    if (left <= 0) return { waitedMs, ranUnderLoad: current2 };
+    await sleep11(Math.min(recheckMs, left));
+  }
 }
-var kept;
-var init_link_target = __esm({
-  "src/core/scheduler/link-target.ts"() {
+var init_guard = __esm({
+  "src/core/slow/guard.ts"() {
     "use strict";
-    kept = (path) => !path.split("/").some((segment) => segment === "node_modules" || segment === ".git");
   }
 });
 
-// src/core/scheduler/observed.ts
-async function observedGrowth(context, report2, run) {
-  const out = /* @__PURE__ */ new Map();
-  const { keys } = context;
-  if (!keys.observing || report2.observed === void 0 || report2.observed.length === 0) return out;
-  keys.refreshObserved(report2.observed.map((o) => o.testFile.project));
-  const candidates = /* @__PURE__ */ new Set();
-  const seen = [];
-  for (const observed of report2.observed) {
-    const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
-    const listed = new Set(observed.directories.map(listingPath));
-    for (const root of observed.recursive ?? []) {
-      for (const path of keys.listingsBelow(root)) listed.add(path);
+// src/core/slow/slot.ts
+import { createHash as createHash13 } from "node:crypto";
+import { readdirSync as readdirSync6, rmSync as rmSync6, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { isAbsolute as isAbsolute6, join as join26 } from "node:path";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+function slowSlotDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join26(xdg, "squeal") : userTmpDir();
+}
+function acquireSlowSlot(request) {
+  const { dir, owner: owner2, signal: signal2 } = request;
+  if (signal2?.aborted) return null;
+  preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  const permits = Math.max(1, request.permits ?? 1);
+  const want = Math.max(1, request.want ?? 1);
+  const held2 = [];
+  try {
+    for (let i2 = 0; i2 < permits && held2.length < want; i2++) {
+      const db = takePermit(join26(dir, permitFile(i2)), owner2);
+      if (db !== null) held2.push(db);
     }
-    const read4 = observed.paths.filter((path) => !closure.has(path));
-    const targets = await linkTargets(context.root, read4);
-    const fresh = [.../* @__PURE__ */ new Set([...read4, ...targets, ...listed])].filter(
-      (path) => !closure.has(path)
-    );
-    for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
-    seen.push({ observed, closure, fresh });
+  } catch (error) {
+    for (const db of held2) db.close();
+    throw error;
   }
-  const ignored = await checkIgnored(
-    context.root,
-    [...candidates].filter((p) => p !== "")
-  );
-  const tracked = [];
-  const grown = [];
-  for (const { observed, closure, fresh } of seen) {
-    const add = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
-    const known2 = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
-    const growth = [.../* @__PURE__ */ new Set([...known2, ...add])];
-    if (growth.length === 0) continue;
-    for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
-    grown.push({ testFile: observed.testFile, add, growth });
-  }
-  await keys.track(tracked);
-  for (const { testFile, add, growth } of grown) {
-    const firstSeen = growth.filter(
-      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path, run)
-    );
-    out.set(testFileId(testFile), { add, growth, firstSeen });
-  }
-  return out;
+  if (held2.length === 0) return null;
+  const keep = (count) => {
+    for (const db of held2.splice(count)) db.close();
+    if (held2.length === 0) signal2?.removeEventListener("abort", release);
+  };
+  const release = () => keep(0);
+  signal2?.addEventListener("abort", release, { once: true });
+  return {
+    get permits() {
+      return held2.length;
+    },
+    shrinkTo: (count) => keep(Math.max(1, count)),
+    release
+  };
 }
-async function prepareObserved(context, report2, run) {
-  const growth = await observedGrowth(context, report2, run);
-  if (growth.size === 0) return NOTHING_OBSERVED;
-  const paths = /* @__PURE__ */ new Set();
-  for (const { growth: grown } of growth.values()) {
-    for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
-  }
-  const snapshot3 = snapshotInputs(context.keys.cache, paths);
-  return { growth, ...await changedSince(snapshot3, paths, context.hasher) };
+function permitFile(i2) {
+  return i2 === 0 ? SLOW_LOCK_FILE : `slow.${i2}.lock`;
 }
-var NOTHING_OBSERVED;
-var init_observed2 = __esm({
-  "src/core/scheduler/observed.ts"() {
+function takePermit(path, owner2) {
+  const db = new DatabaseSync5(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    if (isBusy(error)) return null;
+    throw error;
+  }
+  try {
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS holder (pid INTEGER NOT NULL, worktree_id TEXT NOT NULL, since INTEGER NOT NULL)"
+    );
+    db.exec("DELETE FROM holder");
+    db.prepare("INSERT INTO holder (pid, worktree_id, since) VALUES (?, ?, ?)").run(
+      owner2.pid,
+      owner2.worktreeId,
+      Date.now()
+    );
+    db.exec("COMMIT");
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  return db;
+}
+function waiterPath(dir, worktreeId) {
+  const name = createHash13("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  return join26(dir, `${WAITER_PREFIX}${name}`);
+}
+function markSlotWaiter(dir, worktreeId) {
+  writeFileSync3(waiterPath(dir, worktreeId), `${worktreeId}
+`, { mode: 384 });
+}
+function clearSlotWaiter(dir, worktreeId) {
+  rmSync6(waiterPath(dir, worktreeId), { force: true });
+}
+function othersWaitingForSlot(dir, worktreeId, now = Date.now()) {
+  const own = waiterPath(dir, worktreeId);
+  let names;
+  try {
+    names = readdirSync6(dir);
+  } catch {
+    return false;
+  }
+  return names.some((name) => {
+    const path = join26(dir, name);
+    if (!name.startsWith(WAITER_PREFIX) || path === own) return false;
+    const stat7 = statSync2(path, { throwIfNoEntry: false });
+    return stat7 !== void 0 && now - stat7.mtimeMs < SLOT_WAITER_FRESH_MS;
+  });
+}
+var SLOW_LOCK_FILE, WAITER_PREFIX, SLOT_WAITER_FRESH_MS;
+var init_slot = __esm({
+  "src/core/slow/slot.ts"() {
+    "use strict";
+    init_paths4();
+    init_store2();
+    SLOW_LOCK_FILE = "slow.lock";
+    WAITER_PREFIX = "slow.wait.";
+    SLOT_WAITER_FRESH_MS = 3e4;
+  }
+});
+
+// src/core/slow/index.ts
+var init_slow2 = __esm({
+  "src/core/slow/index.ts"() {
+    "use strict";
+    init_classify();
+    init_guard();
+    init_inherit();
+    init_slot();
+  }
+});
+
+// src/core/scheduler/checkpoints.ts
+var Checkpoints;
+var init_checkpoints = __esm({
+  "src/core/scheduler/checkpoints.ts"() {
     "use strict";
     init_keys();
-    init_git2();
-    init_link_target();
-    init_stability();
-    NOTHING_OBSERVED = {
-      growth: /* @__PURE__ */ new Map(),
-      changed: /* @__PURE__ */ new Set(),
-      touched: /* @__PURE__ */ new Set()
+    Checkpoints = class {
+      constructor(store, worktreeId, now) {
+        this.store = store;
+        this.worktreeId = worktreeId;
+        this.now = now;
+      }
+      store;
+      worktreeId;
+      now;
+      #active = null;
+      get active() {
+        const active = this.#active;
+        return active === null ? null : { record: active.record, remaining: active.remaining.size };
+      }
+      /** Id of the open checkpoint when it requested `ref`, else `null`. */
+      idFor(ref2) {
+        const active = this.#active;
+        return active?.remaining.has(testFileId(ref2)) ? active.record.id : null;
+      }
+      /** Records a new checkpoint, abandoning the open one. With no files it completes at once. */
+      start(id2, kind, revision, testFiles, strict = false) {
+        this.finish("abandoned");
+        const record = this.store.checkpoints.start({
+          id: id2,
+          worktreeId: this.worktreeId,
+          revision,
+          kind,
+          testFiles,
+          startedAt: this.now()
+        });
+        this.#active = { record, remaining: new Set(testFiles.map(testFileId)), strict, failed: false };
+        this.#settle();
+        return record;
+      }
+      /**
+       * Records a checkpoint that cannot run, abandoned at once and never
+       * `completed`, even with no files: a `run --all` while the worktree waits
+       * for an install (review wave 11, B1). Abandons the open one first.
+       */
+      abandon(id2, kind, revision, testFiles) {
+        this.finish("abandoned");
+        const record = this.store.checkpoints.start({
+          id: id2,
+          worktreeId: this.worktreeId,
+          revision,
+          kind,
+          testFiles,
+          startedAt: this.now()
+        });
+        this.store.checkpoints.finish(id2, "abandoned", this.now());
+        return record;
+      }
+      /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
+      done(ref2, by) {
+        const active = this.#active;
+        if (active === null || active.strict && by !== active.record.id) return;
+        active.remaining.delete(testFileId(ref2));
+        this.#settle();
+      }
+      /** `ref` crashed or timed out: the checkpoint cannot complete. */
+      failed(ref2) {
+        const active = this.#active;
+        if (!active?.remaining.delete(testFileId(ref2))) return;
+        active.failed = true;
+        this.#settle();
+      }
+      /** Ends the open checkpoint, if any. */
+      finish(end) {
+        const active = this.#active;
+        if (active === null) return;
+        this.#active = null;
+        this.store.checkpoints.finish(active.record.id, end, this.now());
+      }
+      #settle() {
+        const active = this.#active;
+        if (active !== null && active.remaining.size === 0) {
+          this.finish(active.failed ? "abandoned" : "completed");
+        }
+      }
     };
+  }
+});
+
+// src/core/scheduler/held.ts
+function heldFilesMetaKey(worktreeId) {
+  return `held-files:${worktreeId}`;
+}
+function addHeldFile(store, worktreeId, file) {
+  const held2 = readHeldFiles(store, worktreeId).filter(
+    (h) => testFileId(h.testFile) !== testFileId(file.testFile)
+  );
+  store.meta.set(heldFilesMetaKey(worktreeId), JSON.stringify([...held2, file]));
+}
+function takeHeldFiles(store, worktreeId) {
+  return store.transaction(() => {
+    const held2 = readHeldFiles(store, worktreeId);
+    if (held2.length > 0) store.meta.set(heldFilesMetaKey(worktreeId), "[]");
+    return held2;
+  });
+}
+function readHeldFiles(store, worktreeId) {
+  const raw = store.meta.get(heldFilesMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isHeldFile) : [];
+  } catch {
+    return [];
+  }
+}
+function isHeldFile(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { testFile, key: key2 } = value;
+  if (typeof key2 !== "string" || typeof testFile !== "object" || testFile === null) return false;
+  const { project, path } = testFile;
+  return typeof project === "string" && typeof path === "string";
+}
+var init_held = __esm({
+  "src/core/scheduler/held.ts"() {
+    "use strict";
+    init_keys();
   }
 });
 
@@ -6364,78 +6533,6 @@ var init_queue = __esm({
   }
 });
 
-// src/core/scheduler/records.ts
-function fileCheck(ref2) {
-  return { kind: "file", project: ref2.project, testPath: ref2.path };
-}
-function recordsForFile(input) {
-  const { ref: ref2, key: key2, report: report2, provenance, describe: describe2 } = input;
-  const inFile = (check) => check.project === ref2.project && check.testPath === ref2.path;
-  const records = [];
-  const ran = /* @__PURE__ */ new Set();
-  let testsMs = 0;
-  for (const result of report2.results) {
-    if (!inFile(result.check)) continue;
-    ran.add(checkId(result.check));
-    testsMs += result.durationMs;
-    const failure3 = result.outcome === "fail" ? describe2(result.errors, result.location) : { summary: null, fingerprint: null };
-    records.push({
-      check: result.check,
-      key: key2,
-      outcome: result.outcome,
-      durationMs: result.durationMs,
-      location: result.location,
-      ...failure3,
-      errors: result.errors,
-      provenance
-    });
-  }
-  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref2.project && e.testFile.path === ref2.path).flatMap((e) => e.errors);
-  const fileMs = report2.fileDurations?.find(
-    (d) => d.testFile.project === ref2.project && d.testFile.path === ref2.path
-  )?.durationMs;
-  const outsideTestsMs = fileMs === void 0 ? 0 : Math.max(0, fileMs - testsMs);
-  if (errors.length === 0) {
-    records.push({
-      check: fileCheck(ref2),
-      key: key2,
-      outcome: "pass",
-      durationMs: outsideTestsMs,
-      location: null,
-      summary: null,
-      fingerprint: null,
-      errors: [],
-      provenance
-    });
-    return records;
-  }
-  const location2 = errors[0]?.location ?? null;
-  const failure2 = describe2(errors, location2);
-  const failed2 = (check) => ({
-    check,
-    key: key2,
-    outcome: "fail",
-    durationMs: 0,
-    location: location2,
-    ...failure2,
-    errors,
-    provenance
-  });
-  for (const check of input.previousChecks) {
-    if (check.kind === "test" && inFile(check) && !ran.has(checkId(check))) {
-      records.push(failed2(check));
-    }
-  }
-  records.push({ ...failed2(fileCheck(ref2)), durationMs: outsideTestsMs });
-  return records;
-}
-var init_records = __esm({
-  "src/core/scheduler/records.ts"() {
-    "use strict";
-    init_files();
-  }
-});
-
 // src/core/scheduler/rerun-memory.ts
 function rerunsMetaKey(worktreeId) {
   return `reruns:${worktreeId}`;
@@ -6549,168 +6646,6 @@ var init_rerun = __esm({
   }
 });
 
-// src/core/scheduler/sharing.ts
-function joinSpan(span, durationMs) {
-  const time = durationMs ?? 0;
-  const fastest = Math.min(span?.fastest ?? time, time);
-  const slowest = Math.max(span?.slowest ?? time, time);
-  return slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest) ? { fastest, slowest } : null;
-}
-var SHARE_FLOOR_MS, SHARE_RATIO;
-var init_sharing = __esm({
-  "src/core/scheduler/sharing.ts"() {
-    "use strict";
-    SHARE_FLOOR_MS = 1e3;
-    SHARE_RATIO = 4;
-  }
-});
-
-// src/core/slow/guard.ts
-import { availableParallelism, loadavg } from "node:os";
-import { setTimeout as delay } from "node:timers/promises";
-async function waitForCapacity(wait) {
-  const load = wait.load ?? loadavg;
-  const cpus = wait.cpus ?? availableParallelism;
-  const sleep11 = wait.sleep ?? delay;
-  const now = wait.now ?? (() => performance.now());
-  const recheckMs = wait.recheckMs ?? 15e3;
-  const perCpu = () => (load()[0] ?? 0) / Math.max(1, cpus());
-  const start = now();
-  for (; ; ) {
-    const current2 = perCpu();
-    const waitedMs = now() - start;
-    if (current2 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
-    const left = wait.maxDeferMs - waitedMs;
-    if (left <= 0) return { waitedMs, ranUnderLoad: current2 };
-    await sleep11(Math.min(recheckMs, left));
-  }
-}
-var init_guard = __esm({
-  "src/core/slow/guard.ts"() {
-    "use strict";
-  }
-});
-
-// src/core/slow/slot.ts
-import { createHash as createHash13 } from "node:crypto";
-import { readdirSync as readdirSync6, rmSync as rmSync6, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join27 } from "node:path";
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
-function slowSlotDir(env = process.env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join27(xdg, "squeal") : userTmpDir();
-}
-function acquireSlowSlot(request) {
-  const { dir, owner: owner2, signal: signal2 } = request;
-  if (signal2?.aborted) return null;
-  preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
-  const permits = Math.max(1, request.permits ?? 1);
-  const want = Math.max(1, request.want ?? 1);
-  const held2 = [];
-  try {
-    for (let i2 = 0; i2 < permits && held2.length < want; i2++) {
-      const db = takePermit(join27(dir, permitFile(i2)), owner2);
-      if (db !== null) held2.push(db);
-    }
-  } catch (error) {
-    for (const db of held2) db.close();
-    throw error;
-  }
-  if (held2.length === 0) return null;
-  const keep = (count) => {
-    for (const db of held2.splice(count)) db.close();
-    if (held2.length === 0) signal2?.removeEventListener("abort", release);
-  };
-  const release = () => keep(0);
-  signal2?.addEventListener("abort", release, { once: true });
-  return {
-    get permits() {
-      return held2.length;
-    },
-    shrinkTo: (count) => keep(Math.max(1, count)),
-    release
-  };
-}
-function permitFile(i2) {
-  return i2 === 0 ? SLOW_LOCK_FILE : `slow.${i2}.lock`;
-}
-function takePermit(path, owner2) {
-  const db = new DatabaseSync5(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-  } catch (error) {
-    db.close();
-    if (isBusy(error)) return null;
-    throw error;
-  }
-  try {
-    db.exec(
-      "CREATE TABLE IF NOT EXISTS holder (pid INTEGER NOT NULL, worktree_id TEXT NOT NULL, since INTEGER NOT NULL)"
-    );
-    db.exec("DELETE FROM holder");
-    db.prepare("INSERT INTO holder (pid, worktree_id, since) VALUES (?, ?, ?)").run(
-      owner2.pid,
-      owner2.worktreeId,
-      Date.now()
-    );
-    db.exec("COMMIT");
-  } catch (error) {
-    db.close();
-    throw error;
-  }
-  return db;
-}
-function waiterPath(dir, worktreeId) {
-  const name = createHash13("sha256").update(worktreeId).digest("hex").slice(0, 16);
-  return join27(dir, `${WAITER_PREFIX}${name}`);
-}
-function markSlotWaiter(dir, worktreeId) {
-  writeFileSync3(waiterPath(dir, worktreeId), `${worktreeId}
-`, { mode: 384 });
-}
-function clearSlotWaiter(dir, worktreeId) {
-  rmSync6(waiterPath(dir, worktreeId), { force: true });
-}
-function othersWaitingForSlot(dir, worktreeId, now = Date.now()) {
-  const own = waiterPath(dir, worktreeId);
-  let names;
-  try {
-    names = readdirSync6(dir);
-  } catch {
-    return false;
-  }
-  return names.some((name) => {
-    const path = join27(dir, name);
-    if (!name.startsWith(WAITER_PREFIX) || path === own) return false;
-    const stat7 = statSync2(path, { throwIfNoEntry: false });
-    return stat7 !== void 0 && now - stat7.mtimeMs < SLOT_WAITER_FRESH_MS;
-  });
-}
-var SLOW_LOCK_FILE, WAITER_PREFIX, SLOT_WAITER_FRESH_MS;
-var init_slot = __esm({
-  "src/core/slow/slot.ts"() {
-    "use strict";
-    init_paths4();
-    init_store2();
-    SLOW_LOCK_FILE = "slow.lock";
-    WAITER_PREFIX = "slow.wait.";
-    SLOT_WAITER_FRESH_MS = 3e4;
-  }
-});
-
-// src/core/slow/index.ts
-var init_slow2 = __esm({
-  "src/core/slow/index.ts"() {
-    "use strict";
-    init_classify();
-    init_guard();
-    init_inherit();
-    init_slot();
-  }
-});
-
 // src/core/scheduler/slow.ts
 function slowView(policy) {
   let view = views.get(policy);
@@ -6727,6 +6662,591 @@ var init_slow3 = __esm({
     "use strict";
     init_slow2();
     views = /* @__PURE__ */ new WeakMap();
+  }
+});
+
+// src/core/scheduler/ledger.ts
+function mergeApplied(applied) {
+  const merged = [];
+  let seen = /* @__PURE__ */ new Set();
+  for (const { results: results2, checkpointId } of applied) {
+    const ids = results2.map((r) => checkId(r.check));
+    const last = merged.at(-1);
+    if (last === void 0 || last.checkpointId !== checkpointId || ids.some((id2) => seen.has(id2))) {
+      merged.push({ results: [...results2], checkpointId });
+      seen = new Set(ids);
+      continue;
+    }
+    last.results.push(...results2);
+    for (const id2 of ids) seen.add(id2);
+  }
+  return merged;
+}
+var MAX_DISCARDS, Ledger;
+var init_ledger = __esm({
+  "src/core/scheduler/ledger.ts"() {
+    "use strict";
+    init_keys();
+    init_slow2();
+    init_state3();
+    init_types();
+    init_checkpoints();
+    init_context();
+    init_files();
+    init_held();
+    init_queue();
+    init_rerun();
+    init_slow3();
+    MAX_DISCARDS = 3;
+    Ledger = class {
+      constructor(context) {
+        this.context = context;
+        this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+        this.queue.setSlow((ref2) => slowView(context.policy).isSlow(ref2));
+      }
+      context;
+      files = /* @__PURE__ */ new Map();
+      queue = new RunQueue();
+      checkpoints;
+      revision = { number: 0, head: null, dirty: false };
+      /**
+       * One set per tier in flight (`Tier.changes`): each collects the paths
+       * revisions changed since its tier was selected (task 001-140: tiers of
+       * two lanes overlap).
+       */
+      tierChanges = /* @__PURE__ */ new Set();
+      /**
+       * Paths changed by revisions since the runner phase of the refinement in
+       * flight started; `null` with none in flight (`applyRunnerPart`).
+       */
+      refineChanges = null;
+      /** Some files are blocked by a runner failure; the next revision or `run --all` retries the runner. */
+      broken = false;
+      /** The last test file listing failed; the next revision lists again. */
+      listingFailed = false;
+      #dirty = /* @__PURE__ */ new Set();
+      #removed = [];
+      #applied = [];
+      #unknown = [];
+      #retired = [];
+      file(ref2) {
+        return this.files.get(testFileId(ref2));
+      }
+      /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
+      ordered() {
+        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null);
+      }
+      /** The slow class of the queue in the order the slow tier runs it (spec 004 D2). */
+      orderedSlow() {
+        return this.queue.orderedSlow((ref2) => this.file(ref2)?.durationMs ?? null);
+      }
+      addFile(ref2) {
+        const file = newFileState(ref2);
+        this.files.set(file.id, file);
+        this.#dirty.add(file.id);
+        return file;
+      }
+      /** Forgets a test file that no longer exists and retires its checks. */
+      removeFile(file) {
+        this.context.keys.removeTestFile(file.ref);
+        this.queue.remove(file.ref);
+        this.files.delete(file.id);
+        this.#retired.push(...file.checks);
+        this.#removed.push(file.ref);
+        this.checkpoints.done(file.ref, this.checkpoints.idFor(file.ref));
+      }
+      /**
+       * Takes each file's key from the key index and decides what it needs.
+       *
+       * Spec 001 D5 step 3: "looks each new key up in the store. A hit is promoted
+       * to current for this worktree with its provenance intact. No run is
+       * needed." A key that already has this worktree's results, that the tier in
+       * flight runs, or that crashed (D12) needs nothing. Forced entries stay
+       * queued. Returns the misses.
+       *
+       * A miss is queued as recent when `changed` holds the test file or a path
+       * of its closure, or the runner named it a direct importer: work an edit
+       * caused, which runs ahead of the rest (D5 step 4 as amended, task
+       * 001-100). An environment input is in no closure, so the files an install
+       * or a config change re-keys are not.
+       */
+      settle(refs, changed, options = {}) {
+        const misses = [];
+        const seen = /* @__PURE__ */ new Set();
+        const recent = this.recentOf(changed, options.direct);
+        for (const ref2 of refs) {
+          const file = this.file(ref2);
+          if (!file || seen.has(file.id)) continue;
+          seen.add(file.id);
+          const key2 = this.context.keys.index.key(ref2);
+          if (key2 !== file.key) {
+            file.key = key2;
+            if (options.keyedAt !== void 0) file.keyedAt = options.keyedAt;
+            this.#dirty.add(file.id);
+          }
+          if (file.rerunPending && key2 !== file.rerunKey) {
+            endRerun(this.context, file);
+            this.queue.remove(ref2);
+          }
+          if (this.queue.isForced(ref2)) continue;
+          if (key2 === null || key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey) {
+            this.queue.remove(ref2);
+            this.#syncPhase(file);
+            continue;
+          }
+          const hits = this.lookup(file, key2);
+          if (hits.length > 0) {
+            const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref2);
+            this.applyResults(file, key2, hits, checkpointId);
+            continue;
+          }
+          misses.push(file);
+          if (file.blocked !== null) {
+            this.queue.remove(ref2);
+            this.#syncPhase(file);
+          } else if (options.queueMisses !== false) {
+            this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
+          }
+        }
+        return misses;
+      }
+      /**
+       * The stored results of `key` that may stand for `file`: every hit, unless
+       * one comes from another worktree and the file may not inherit (spec 004
+       * D6, `inherits`), or one is another worktree's fail this worktree has not
+       * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
+       * there is none: the file is a miss and runs here, and its local result
+       * replaces the shared row. The store holds one result per check and key,
+       * so a mixed set is never partly this worktree's own.
+       */
+      lookup(file, key2) {
+        const { store, worktreeId, now } = this.context;
+        const hits = store.results.byKey(key2, now());
+        if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
+        if (!this.inherits(file.ref)) return [];
+        return heldFailure(store, worktreeId, hits) === void 0 ? hits : [];
+      }
+      /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
+      inherits(ref2) {
+        const view = slowView(this.context.policy);
+        const slow = view.isSlow(ref2);
+        if (!slow) return true;
+        const testFiles = new Set([...this.files.values()].map((file) => file.ref.path));
+        const declared = this.context.keys.declaredFor(ref2.path);
+        return inheritsAcrossWorktrees({ path: ref2.path, slow }, declared, testFiles, view.globs);
+      }
+      /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */
+      recentOf(changed, direct) {
+        const ids = new Set(direct);
+        if (changed.size === 0) return ids;
+        for (const ref2 of this.context.keys.index.reverse.referencing(changed))
+          ids.add(testFileId(ref2));
+        for (const file of this.files.values()) if (changed.has(file.ref.path)) ids.add(file.id);
+        return ids;
+      }
+      /**
+       * Makes `results` the current results of `file` under `key`: from a run of
+       * this worktree or a lookup hit. Checks of the previous results that are
+       * not among them are retired (D8).
+       */
+      applyResults(file, key2, results2, checkpointId) {
+        if (results2.length > 0) this.#applied.push({ results: results2, checkpointId });
+        const next = results2.map((r) => r.check);
+        const kept2 = new Set(next.map(checkId));
+        this.#retired.push(...file.checks.filter((check) => !kept2.has(checkId(check))));
+        file.resultKey = key2;
+        file.checks = next;
+        file.failing = results2.some((r) => r.outcome === "fail");
+        file.durationMs = durationOf(results2) ?? file.durationMs;
+        file.unknownKey = null;
+        file.discards = 0;
+        file.blocked = null;
+        if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
+        this.#syncPhase(file);
+        this.checkpoints.done(file.ref, checkpointId);
+      }
+      /**
+       * Review wave 13i, B1: queues the files another worktree's heal left held
+       * here (`takeHeldFiles`). A file still at that key loses its `resultKey`,
+       * the shortcut that would count it done, and is queued at its normal D5
+       * priority unless a tier runs it; every such file's row is written again,
+       * so the `queued` the heal wrote gives way to the phase held here. Returns
+       * whether there were any, so the caller commits.
+       */
+      confirmHeld() {
+        const held2 = takeHeldFiles(this.context.store, this.context.worktreeId);
+        for (const { testFile, key: key2 } of held2) {
+          const file = this.file(testFile);
+          if (!file) continue;
+          this.touch(file);
+          if (file.key !== key2 || file.runningKey === key2) continue;
+          if (file.resultKey === key2) file.resultKey = null;
+          if (file.blocked === null) this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+        }
+        return held2.length > 0;
+      }
+      enqueue(file, priority, forced = false, recent = false) {
+        this.queue.add(file.ref, priority, forced, recent);
+        this.#syncPhase(file);
+      }
+      /** The tier holding these files starts or ends. */
+      setRunning(file, key2) {
+        file.runningKey = key2;
+        this.#syncPhase(file);
+      }
+      /**
+       * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
+       * is stored under a key; the files' checks become `unknown` at this revision.
+       * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
+       */
+      markUnknown(entries2, reason2) {
+        if (entries2.length === 0) return;
+        for (const { file, key: key2 } of entries2) {
+          file.unknownKey = key2;
+          if (file.key === key2 && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
+          this.#syncPhase(file);
+          this.checkpoints.failed(file.ref);
+        }
+        this.#unknown.push({ testFiles: entries2.map((e) => e.file.ref), reason: reason2 });
+      }
+      /**
+       * Spec 001 D5: "that file's results are discarded as unreliable and the file
+       * is re-queued". After `MAX_DISCARDS` in a row at a key that did not move the
+       * file is `unknown` until its key changes: something rewrites its inputs
+       * during every run. A discard whose key moved is an edit the agent made
+       * while the file ran; it is not counted (review S5).
+       */
+      discard(file, key2, forced = false) {
+        file.discards = file.key === key2 ? file.discards + 1 : 0;
+        if (file.discards >= MAX_DISCARDS) {
+          this.markUnknown([{ file, key: key2 }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
+        } else if (file.key !== null && file.blocked === null) {
+          this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key2);
+        }
+      }
+      /**
+       * Files whose run read a path first seen during it (`ObservedGrowth.firstSeen`,
+       * task 001-134), once `settle` moved them to the key with that path: they
+       * re-run under it. Counted with `discard`'s, since their own growth, not an
+       * edit, moved the key; at `MAX_DISCARDS` in a row the file is `unknown`
+       * until its key changes, so a run that reads a new path every time cannot
+       * re-run forever. A file `settle` gave a result at the new key (another
+       * worktree stored it) is current and not counted.
+       */
+      rerunFirstSeen(files) {
+        const exhausted = [];
+        for (const file of files) {
+          if (file.key === null || file.resultKey === file.key) continue;
+          file.discards += 1;
+          if (file.discards >= MAX_DISCARDS) exhausted.push({ file, key: file.key });
+        }
+        this.markUnknown(exhausted, `${MAX_DISCARDS} runs in a row read paths no earlier run had read`);
+      }
+      /**
+       * Writes what this round of work owes the store and the sink, in one
+       * transaction. `refined` is the revision whose runner part this commit
+       * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
+       * spec 001 D2 as amended), so headers stop counting that runner part as
+       * pending in the same transaction that applies it.
+       */
+      commit(options = {}) {
+        const { store, sink, worktreeId } = this.context;
+        const revision = this.revision.number;
+        const rows = [];
+        const removed = this.#removed.splice(0);
+        for (const id2 of this.#dirty) {
+          const file = this.files.get(id2);
+          if (!file) continue;
+          const pending = file.key === null ? null : file.phase;
+          rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
+        }
+        this.#dirty.clear();
+        const applied = this.#applied;
+        const unknown = this.#unknown;
+        const retired = this.#retired;
+        this.#applied = [];
+        this.#unknown = [];
+        this.#retired = [];
+        store.transaction(() => {
+          if (rows.length > 0) store.testFileKeys.upsertMany(rows);
+          if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
+          for (const { results: results2, checkpointId } of mergeApplied(applied)) {
+            sink.applyResults(worktreeId, revision, results2, { checkpointId });
+          }
+          for (const { testFiles, reason: reason2 } of unknown) {
+            sink.markUnknown(worktreeId, revision, testFiles, reason2);
+          }
+          if (retired.length > 0) sink.retire(worktreeId, retired);
+          for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
+            sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
+          }
+          if (options.refined !== void 0) {
+            store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
+          }
+        });
+      }
+      #byCheckpoint(rows) {
+        const groups = /* @__PURE__ */ new Map();
+        for (const { testFile } of rows) {
+          const id2 = this.checkpoints.idFor(testFile);
+          const group = groups.get(id2);
+          if (group) group.push(testFile);
+          else groups.set(id2, [testFile]);
+        }
+        return groups;
+      }
+      /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
+      #syncPhase(file) {
+        const phase = file.runningKey !== null ? "running" : this.queue.has(file.ref) ? "queued" : null;
+        if (phase === file.phase) return;
+        file.phase = phase;
+        this.#dirty.add(file.id);
+      }
+      /** Marks a file's key row as owed, for callers that change a file directly. */
+      touch(file) {
+        this.#dirty.add(file.id);
+      }
+    };
+  }
+});
+
+// src/core/scheduler/environment-growth.ts
+async function rekeyEnvironments(context, report2, tier) {
+  const { keys } = context;
+  const loaded = /* @__PURE__ */ new Map();
+  for (const { project, paths } of report2.environmentObserved ?? []) loaded.set(project, paths);
+  const files = /* @__PURE__ */ new Map();
+  for (const { file, inputs: inputs2 } of tier.files) {
+    const keyed = new Set(inputs2);
+    const beyond = (loaded.get(file.ref.project) ?? []).filter((path) => !keyed.has(path));
+    if (beyond.length > 0) files.set(file.id, beyond);
+  }
+  if (files.size === 0) return void 0;
+  const stale = [...loaded].some(([project, paths]) => {
+    const held2 = new Set(keys.environmentFiles(project));
+    return paths.some((path) => !held2.has(path));
+  });
+  if (!stale) return { files, changes: [] };
+  const environments2 = await tryRunner(context, "environment", () => context.runner.environment());
+  return { files, changes: environments2 === null ? [] : await keys.setEnvironments(environments2) };
+}
+function rerunGrown(ledger, growth, files) {
+  for (const file of files) {
+    if (file.key === null || file.resultKey === file.key) continue;
+    file.discards += 1;
+    if (file.discards >= MAX_DISCARDS) {
+      const paths = listPaths(growth.files.get(file.id) ?? []);
+      ledger.markUnknown(
+        [{ file, key: file.key }],
+        `${MAX_DISCARDS} runs in a row loaded environment files their key lacked (${paths})`
+      );
+    } else if (file.blocked === null && !ledger.queue.has(file.ref)) {
+      ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+    }
+  }
+}
+var init_environment_growth = __esm({
+  "src/core/scheduler/environment-growth.ts"() {
+    "use strict";
+    init_context();
+    init_ledger();
+    init_notes2();
+    init_queue();
+  }
+});
+
+// src/core/scheduler/link-target.ts
+import { realpath as realpath3 } from "node:fs/promises";
+import { dirname as dirname11, join as join27, relative as relative2, sep as sep4 } from "node:path";
+async function linkTargets(root, paths) {
+  const directories = /* @__PURE__ */ new Map();
+  const resolve11 = (directory) => {
+    let real2 = directories.get(directory);
+    if (real2 === void 0) {
+      real2 = realpath3(join27(root, directory)).then(
+        (abs) => abs === root ? "" : abs.startsWith(root + sep4) ? relative2(root, abs) : null,
+        () => null
+      );
+      directories.set(directory, real2);
+    }
+    return real2;
+  };
+  const targets = await Promise.all(
+    [...paths].map(async (path) => {
+      const directory = dirname11(path);
+      if (directory === ".") return null;
+      const real2 = await resolve11(directory);
+      if (real2 === null || real2 === directory) return null;
+      const target = real2 === "" ? path.slice(directory.length + 1) : `${real2}/${path.slice(directory.length + 1)}`;
+      return kept(target) ? target : null;
+    })
+  );
+  return targets.filter((target) => target !== null);
+}
+var kept;
+var init_link_target = __esm({
+  "src/core/scheduler/link-target.ts"() {
+    "use strict";
+    kept = (path) => !path.split("/").some((segment) => segment === "node_modules" || segment === ".git");
+  }
+});
+
+// src/core/scheduler/observed.ts
+async function observedGrowth(context, report2, run) {
+  const out = /* @__PURE__ */ new Map();
+  const { keys } = context;
+  if (!keys.observing || report2.observed === void 0 || report2.observed.length === 0) return out;
+  keys.refreshObserved(report2.observed.map((o) => o.testFile.project));
+  const candidates = /* @__PURE__ */ new Set();
+  const seen = [];
+  for (const observed of report2.observed) {
+    const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
+    const listed = new Set(observed.directories.map(listingPath));
+    for (const root of observed.recursive ?? []) {
+      for (const path of keys.listingsBelow(root)) listed.add(path);
+    }
+    const read4 = observed.paths.filter((path) => !closure.has(path));
+    const targets = await linkTargets(context.root, read4);
+    const fresh = [.../* @__PURE__ */ new Set([...read4, ...targets, ...listed])].filter(
+      (path) => !closure.has(path)
+    );
+    for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
+    seen.push({ observed, closure, fresh });
+  }
+  const ignored = await checkIgnored(
+    context.root,
+    [...candidates].filter((p) => p !== "")
+  );
+  const tracked = [];
+  const grown = [];
+  for (const { observed, closure, fresh } of seen) {
+    const add = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
+    const known2 = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
+    const growth = [.../* @__PURE__ */ new Set([...known2, ...add])];
+    if (growth.length === 0) continue;
+    for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
+    grown.push({ testFile: observed.testFile, add, growth });
+  }
+  await keys.track(tracked);
+  for (const { testFile, add, growth } of grown) {
+    const firstSeen = growth.filter(
+      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path, run)
+    );
+    out.set(testFileId(testFile), { add, growth, firstSeen });
+  }
+  return out;
+}
+async function prepareObserved(context, report2, run) {
+  const growth = await observedGrowth(context, report2, run);
+  if (growth.size === 0) return NOTHING_OBSERVED;
+  const paths = /* @__PURE__ */ new Set();
+  for (const { growth: grown } of growth.values()) {
+    for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
+  }
+  const snapshot3 = snapshotInputs(context.keys.cache, paths);
+  return { growth, ...await changedSince(snapshot3, paths, context.hasher) };
+}
+var NOTHING_OBSERVED;
+var init_observed2 = __esm({
+  "src/core/scheduler/observed.ts"() {
+    "use strict";
+    init_keys();
+    init_git2();
+    init_link_target();
+    init_stability();
+    NOTHING_OBSERVED = {
+      growth: /* @__PURE__ */ new Map(),
+      changed: /* @__PURE__ */ new Set(),
+      touched: /* @__PURE__ */ new Set()
+    };
+  }
+});
+
+// src/core/scheduler/records.ts
+function fileCheck(ref2) {
+  return { kind: "file", project: ref2.project, testPath: ref2.path };
+}
+function recordsForFile(input) {
+  const { ref: ref2, key: key2, report: report2, provenance, describe: describe2 } = input;
+  const inFile = (check) => check.project === ref2.project && check.testPath === ref2.path;
+  const records = [];
+  const ran = /* @__PURE__ */ new Set();
+  let testsMs = 0;
+  for (const result of report2.results) {
+    if (!inFile(result.check)) continue;
+    ran.add(checkId(result.check));
+    testsMs += result.durationMs;
+    const failure3 = result.outcome === "fail" ? describe2(result.errors, result.location) : { summary: null, fingerprint: null };
+    records.push({
+      check: result.check,
+      key: key2,
+      outcome: result.outcome,
+      durationMs: result.durationMs,
+      location: result.location,
+      ...failure3,
+      errors: result.errors,
+      provenance
+    });
+  }
+  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref2.project && e.testFile.path === ref2.path).flatMap((e) => e.errors);
+  const fileMs = report2.fileDurations?.find(
+    (d) => d.testFile.project === ref2.project && d.testFile.path === ref2.path
+  )?.durationMs;
+  const outsideTestsMs = fileMs === void 0 ? 0 : Math.max(0, fileMs - testsMs);
+  if (errors.length === 0) {
+    records.push({
+      check: fileCheck(ref2),
+      key: key2,
+      outcome: "pass",
+      durationMs: outsideTestsMs,
+      location: null,
+      summary: null,
+      fingerprint: null,
+      errors: [],
+      provenance
+    });
+    return records;
+  }
+  const location2 = errors[0]?.location ?? null;
+  const failure2 = describe2(errors, location2);
+  const failed2 = (check) => ({
+    check,
+    key: key2,
+    outcome: "fail",
+    durationMs: 0,
+    location: location2,
+    ...failure2,
+    errors,
+    provenance
+  });
+  for (const check of input.previousChecks) {
+    if (check.kind === "test" && inFile(check) && !ran.has(checkId(check))) {
+      records.push(failed2(check));
+    }
+  }
+  records.push({ ...failed2(fileCheck(ref2)), durationMs: outsideTestsMs });
+  return records;
+}
+var init_records = __esm({
+  "src/core/scheduler/records.ts"() {
+    "use strict";
+    init_files();
+  }
+});
+
+// src/core/scheduler/sharing.ts
+function joinSpan(span, durationMs) {
+  const time = durationMs ?? 0;
+  const fastest = Math.min(span?.fastest ?? time, time);
+  const slowest = Math.max(span?.slowest ?? time, time);
+  return slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest) ? { fastest, slowest } : null;
+}
+var SHARE_FLOOR_MS, SHARE_RATIO;
+var init_sharing = __esm({
+  "src/core/scheduler/sharing.ts"() {
+    "use strict";
+    SHARE_FLOOR_MS = 1e3;
+    SHARE_RATIO = 4;
   }
 });
 
@@ -6748,47 +7268,6 @@ var init_growth = __esm({
   "src/core/scheduler/growth.ts"() {
     "use strict";
     init_types();
-  }
-});
-
-// src/core/scheduler/held.ts
-function heldFilesMetaKey(worktreeId) {
-  return `held-files:${worktreeId}`;
-}
-function addHeldFile(store, worktreeId, file) {
-  const held2 = readHeldFiles(store, worktreeId).filter(
-    (h) => testFileId(h.testFile) !== testFileId(file.testFile)
-  );
-  store.meta.set(heldFilesMetaKey(worktreeId), JSON.stringify([...held2, file]));
-}
-function takeHeldFiles(store, worktreeId) {
-  return store.transaction(() => {
-    const held2 = readHeldFiles(store, worktreeId);
-    if (held2.length > 0) store.meta.set(heldFilesMetaKey(worktreeId), "[]");
-    return held2;
-  });
-}
-function readHeldFiles(store, worktreeId) {
-  const raw = store.meta.get(heldFilesMetaKey(worktreeId));
-  if (raw === null) return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.filter(isHeldFile) : [];
-  } catch {
-    return [];
-  }
-}
-function isHeldFile(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { testFile, key: key2 } = value;
-  if (typeof key2 !== "string" || typeof testFile !== "object" || testFile === null) return false;
-  const { project, path } = testFile;
-  return typeof project === "string" && typeof path === "string";
-}
-var init_held = __esm({
-  "src/core/scheduler/held.ts"() {
-    "use strict";
-    init_keys();
   }
 });
 
@@ -6971,7 +7450,9 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   const rekeyed = [];
   const grown = [];
   const firstSeen = [];
+  const grewEnvironment = [];
   const failedAnew = [];
+  const { environment } = observed;
   const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
@@ -7004,6 +7485,10 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         if (file.key === key2) firstSeen.push(file);
         continue;
       }
+      if (environment?.files.has(file.id)) {
+        grewEnvironment.push(file);
+        continue;
+      }
       if (storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
@@ -7024,6 +7509,14 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
       if (growth === void 0 && file.key === key2) {
         ledger.applyResults(file, key2, records, checkpointId);
       }
+    }
+    if (environment !== void 0) {
+      ledger.settle(
+        environment.changes.map((change2) => change2.testFile),
+        NOTHING_CHANGED,
+        { keyedAt: ledger.revision.number }
+      );
+      rerunGrown(ledger, environment, grewEnvironment);
     }
     for (const { ref: ref2, checkpointId } of grown) {
       ledger.settle([ref2], NOTHING_CHANGED, { checkpointId });
@@ -7086,6 +7579,7 @@ var init_tiers = __esm({
     init_types();
     init_backlog();
     init_context();
+    init_environment_growth();
     init_files();
     init_observed2();
     init_queue();
@@ -8062,440 +8556,6 @@ var init_keying = __esm({
   }
 });
 
-// src/core/scheduler/checkpoints.ts
-var Checkpoints;
-var init_checkpoints = __esm({
-  "src/core/scheduler/checkpoints.ts"() {
-    "use strict";
-    init_keys();
-    Checkpoints = class {
-      constructor(store, worktreeId, now) {
-        this.store = store;
-        this.worktreeId = worktreeId;
-        this.now = now;
-      }
-      store;
-      worktreeId;
-      now;
-      #active = null;
-      get active() {
-        const active = this.#active;
-        return active === null ? null : { record: active.record, remaining: active.remaining.size };
-      }
-      /** Id of the open checkpoint when it requested `ref`, else `null`. */
-      idFor(ref2) {
-        const active = this.#active;
-        return active?.remaining.has(testFileId(ref2)) ? active.record.id : null;
-      }
-      /** Records a new checkpoint, abandoning the open one. With no files it completes at once. */
-      start(id2, kind, revision, testFiles, strict = false) {
-        this.finish("abandoned");
-        const record = this.store.checkpoints.start({
-          id: id2,
-          worktreeId: this.worktreeId,
-          revision,
-          kind,
-          testFiles,
-          startedAt: this.now()
-        });
-        this.#active = { record, remaining: new Set(testFiles.map(testFileId)), strict, failed: false };
-        this.#settle();
-        return record;
-      }
-      /**
-       * Records a checkpoint that cannot run, abandoned at once and never
-       * `completed`, even with no files: a `run --all` while the worktree waits
-       * for an install (review wave 11, B1). Abandons the open one first.
-       */
-      abandon(id2, kind, revision, testFiles) {
-        this.finish("abandoned");
-        const record = this.store.checkpoints.start({
-          id: id2,
-          worktreeId: this.worktreeId,
-          revision,
-          kind,
-          testFiles,
-          startedAt: this.now()
-        });
-        this.store.checkpoints.finish(id2, "abandoned", this.now());
-        return record;
-      }
-      /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
-      done(ref2, by) {
-        const active = this.#active;
-        if (active === null || active.strict && by !== active.record.id) return;
-        active.remaining.delete(testFileId(ref2));
-        this.#settle();
-      }
-      /** `ref` crashed or timed out: the checkpoint cannot complete. */
-      failed(ref2) {
-        const active = this.#active;
-        if (!active?.remaining.delete(testFileId(ref2))) return;
-        active.failed = true;
-        this.#settle();
-      }
-      /** Ends the open checkpoint, if any. */
-      finish(end) {
-        const active = this.#active;
-        if (active === null) return;
-        this.#active = null;
-        this.store.checkpoints.finish(active.record.id, end, this.now());
-      }
-      #settle() {
-        const active = this.#active;
-        if (active !== null && active.remaining.size === 0) {
-          this.finish(active.failed ? "abandoned" : "completed");
-        }
-      }
-    };
-  }
-});
-
-// src/core/scheduler/ledger.ts
-function mergeApplied(applied) {
-  const merged = [];
-  let seen = /* @__PURE__ */ new Set();
-  for (const { results: results2, checkpointId } of applied) {
-    const ids = results2.map((r) => checkId(r.check));
-    const last = merged.at(-1);
-    if (last === void 0 || last.checkpointId !== checkpointId || ids.some((id2) => seen.has(id2))) {
-      merged.push({ results: [...results2], checkpointId });
-      seen = new Set(ids);
-      continue;
-    }
-    last.results.push(...results2);
-    for (const id2 of ids) seen.add(id2);
-  }
-  return merged;
-}
-var MAX_DISCARDS, Ledger;
-var init_ledger = __esm({
-  "src/core/scheduler/ledger.ts"() {
-    "use strict";
-    init_keys();
-    init_slow2();
-    init_state3();
-    init_types();
-    init_checkpoints();
-    init_context();
-    init_files();
-    init_held();
-    init_queue();
-    init_rerun();
-    init_slow3();
-    MAX_DISCARDS = 3;
-    Ledger = class {
-      constructor(context) {
-        this.context = context;
-        this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
-        this.queue.setSlow((ref2) => slowView(context.policy).isSlow(ref2));
-      }
-      context;
-      files = /* @__PURE__ */ new Map();
-      queue = new RunQueue();
-      checkpoints;
-      revision = { number: 0, head: null, dirty: false };
-      /**
-       * One set per tier in flight (`Tier.changes`): each collects the paths
-       * revisions changed since its tier was selected (task 001-140: tiers of
-       * two lanes overlap).
-       */
-      tierChanges = /* @__PURE__ */ new Set();
-      /**
-       * Paths changed by revisions since the runner phase of the refinement in
-       * flight started; `null` with none in flight (`applyRunnerPart`).
-       */
-      refineChanges = null;
-      /** Some files are blocked by a runner failure; the next revision or `run --all` retries the runner. */
-      broken = false;
-      /** The last test file listing failed; the next revision lists again. */
-      listingFailed = false;
-      #dirty = /* @__PURE__ */ new Set();
-      #removed = [];
-      #applied = [];
-      #unknown = [];
-      #retired = [];
-      file(ref2) {
-        return this.files.get(testFileId(ref2));
-      }
-      /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
-      ordered() {
-        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null);
-      }
-      /** The slow class of the queue in the order the slow tier runs it (spec 004 D2). */
-      orderedSlow() {
-        return this.queue.orderedSlow((ref2) => this.file(ref2)?.durationMs ?? null);
-      }
-      addFile(ref2) {
-        const file = newFileState(ref2);
-        this.files.set(file.id, file);
-        this.#dirty.add(file.id);
-        return file;
-      }
-      /** Forgets a test file that no longer exists and retires its checks. */
-      removeFile(file) {
-        this.context.keys.removeTestFile(file.ref);
-        this.queue.remove(file.ref);
-        this.files.delete(file.id);
-        this.#retired.push(...file.checks);
-        this.#removed.push(file.ref);
-        this.checkpoints.done(file.ref, this.checkpoints.idFor(file.ref));
-      }
-      /**
-       * Takes each file's key from the key index and decides what it needs.
-       *
-       * Spec 001 D5 step 3: "looks each new key up in the store. A hit is promoted
-       * to current for this worktree with its provenance intact. No run is
-       * needed." A key that already has this worktree's results, that the tier in
-       * flight runs, or that crashed (D12) needs nothing. Forced entries stay
-       * queued. Returns the misses.
-       *
-       * A miss is queued as recent when `changed` holds the test file or a path
-       * of its closure, or the runner named it a direct importer: work an edit
-       * caused, which runs ahead of the rest (D5 step 4 as amended, task
-       * 001-100). An environment input is in no closure, so the files an install
-       * or a config change re-keys are not.
-       */
-      settle(refs, changed, options = {}) {
-        const misses = [];
-        const seen = /* @__PURE__ */ new Set();
-        const recent = this.recentOf(changed, options.direct);
-        for (const ref2 of refs) {
-          const file = this.file(ref2);
-          if (!file || seen.has(file.id)) continue;
-          seen.add(file.id);
-          const key2 = this.context.keys.index.key(ref2);
-          if (key2 !== file.key) {
-            file.key = key2;
-            if (options.keyedAt !== void 0) file.keyedAt = options.keyedAt;
-            this.#dirty.add(file.id);
-          }
-          if (file.rerunPending && key2 !== file.rerunKey) {
-            endRerun(this.context, file);
-            this.queue.remove(ref2);
-          }
-          if (this.queue.isForced(ref2)) continue;
-          if (key2 === null || key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey) {
-            this.queue.remove(ref2);
-            this.#syncPhase(file);
-            continue;
-          }
-          const hits = this.lookup(file, key2);
-          if (hits.length > 0) {
-            const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref2);
-            this.applyResults(file, key2, hits, checkpointId);
-            continue;
-          }
-          misses.push(file);
-          if (file.blocked !== null) {
-            this.queue.remove(ref2);
-            this.#syncPhase(file);
-          } else if (options.queueMisses !== false) {
-            this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
-          }
-        }
-        return misses;
-      }
-      /**
-       * The stored results of `key` that may stand for `file`: every hit, unless
-       * one comes from another worktree and the file may not inherit (spec 004
-       * D6, `inherits`), or one is another worktree's fail this worktree has not
-       * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
-       * there is none: the file is a miss and runs here, and its local result
-       * replaces the shared row. The store holds one result per check and key,
-       * so a mixed set is never partly this worktree's own.
-       */
-      lookup(file, key2) {
-        const { store, worktreeId, now } = this.context;
-        const hits = store.results.byKey(key2, now());
-        if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
-        if (!this.inherits(file.ref)) return [];
-        return heldFailure(store, worktreeId, hits) === void 0 ? hits : [];
-      }
-      /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
-      inherits(ref2) {
-        const view = slowView(this.context.policy);
-        const slow = view.isSlow(ref2);
-        if (!slow) return true;
-        const testFiles = new Set([...this.files.values()].map((file) => file.ref.path));
-        const declared = this.context.keys.declaredFor(ref2.path);
-        return inheritsAcrossWorktrees({ path: ref2.path, slow }, declared, testFiles, view.globs);
-      }
-      /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */
-      recentOf(changed, direct) {
-        const ids = new Set(direct);
-        if (changed.size === 0) return ids;
-        for (const ref2 of this.context.keys.index.reverse.referencing(changed))
-          ids.add(testFileId(ref2));
-        for (const file of this.files.values()) if (changed.has(file.ref.path)) ids.add(file.id);
-        return ids;
-      }
-      /**
-       * Makes `results` the current results of `file` under `key`: from a run of
-       * this worktree or a lookup hit. Checks of the previous results that are
-       * not among them are retired (D8).
-       */
-      applyResults(file, key2, results2, checkpointId) {
-        if (results2.length > 0) this.#applied.push({ results: results2, checkpointId });
-        const next = results2.map((r) => r.check);
-        const kept2 = new Set(next.map(checkId));
-        this.#retired.push(...file.checks.filter((check) => !kept2.has(checkId(check))));
-        file.resultKey = key2;
-        file.checks = next;
-        file.failing = results2.some((r) => r.outcome === "fail");
-        file.durationMs = durationOf(results2) ?? file.durationMs;
-        file.unknownKey = null;
-        file.discards = 0;
-        file.blocked = null;
-        if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
-        this.#syncPhase(file);
-        this.checkpoints.done(file.ref, checkpointId);
-      }
-      /**
-       * Review wave 13i, B1: queues the files another worktree's heal left held
-       * here (`takeHeldFiles`). A file still at that key loses its `resultKey`,
-       * the shortcut that would count it done, and is queued at its normal D5
-       * priority unless a tier runs it; every such file's row is written again,
-       * so the `queued` the heal wrote gives way to the phase held here. Returns
-       * whether there were any, so the caller commits.
-       */
-      confirmHeld() {
-        const held2 = takeHeldFiles(this.context.store, this.context.worktreeId);
-        for (const { testFile, key: key2 } of held2) {
-          const file = this.file(testFile);
-          if (!file) continue;
-          this.touch(file);
-          if (file.key !== key2 || file.runningKey === key2) continue;
-          if (file.resultKey === key2) file.resultKey = null;
-          if (file.blocked === null) this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
-        }
-        return held2.length > 0;
-      }
-      enqueue(file, priority, forced = false, recent = false) {
-        this.queue.add(file.ref, priority, forced, recent);
-        this.#syncPhase(file);
-      }
-      /** The tier holding these files starts or ends. */
-      setRunning(file, key2) {
-        file.runningKey = key2;
-        this.#syncPhase(file);
-      }
-      /**
-       * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
-       * is stored under a key; the files' checks become `unknown` at this revision.
-       * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
-       */
-      markUnknown(entries2, reason2) {
-        if (entries2.length === 0) return;
-        for (const { file, key: key2 } of entries2) {
-          file.unknownKey = key2;
-          if (file.key === key2 && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
-          this.#syncPhase(file);
-          this.checkpoints.failed(file.ref);
-        }
-        this.#unknown.push({ testFiles: entries2.map((e) => e.file.ref), reason: reason2 });
-      }
-      /**
-       * Spec 001 D5: "that file's results are discarded as unreliable and the file
-       * is re-queued". After `MAX_DISCARDS` in a row at a key that did not move the
-       * file is `unknown` until its key changes: something rewrites its inputs
-       * during every run. A discard whose key moved is an edit the agent made
-       * while the file ran; it is not counted (review S5).
-       */
-      discard(file, key2, forced = false) {
-        file.discards = file.key === key2 ? file.discards + 1 : 0;
-        if (file.discards >= MAX_DISCARDS) {
-          this.markUnknown([{ file, key: key2 }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
-        } else if (file.key !== null && file.blocked === null) {
-          this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key2);
-        }
-      }
-      /**
-       * Files whose run read a path first seen during it (`ObservedGrowth.firstSeen`,
-       * task 001-134), once `settle` moved them to the key with that path: they
-       * re-run under it. Counted with `discard`'s, since their own growth, not an
-       * edit, moved the key; at `MAX_DISCARDS` in a row the file is `unknown`
-       * until its key changes, so a run that reads a new path every time cannot
-       * re-run forever. A file `settle` gave a result at the new key (another
-       * worktree stored it) is current and not counted.
-       */
-      rerunFirstSeen(files) {
-        const exhausted = [];
-        for (const file of files) {
-          if (file.key === null || file.resultKey === file.key) continue;
-          file.discards += 1;
-          if (file.discards >= MAX_DISCARDS) exhausted.push({ file, key: file.key });
-        }
-        this.markUnknown(exhausted, `${MAX_DISCARDS} runs in a row read paths no earlier run had read`);
-      }
-      /**
-       * Writes what this round of work owes the store and the sink, in one
-       * transaction. `refined` is the revision whose runner part this commit
-       * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
-       * spec 001 D2 as amended), so headers stop counting that runner part as
-       * pending in the same transaction that applies it.
-       */
-      commit(options = {}) {
-        const { store, sink, worktreeId } = this.context;
-        const revision = this.revision.number;
-        const rows = [];
-        const removed = this.#removed.splice(0);
-        for (const id2 of this.#dirty) {
-          const file = this.files.get(id2);
-          if (!file) continue;
-          const pending = file.key === null ? null : file.phase;
-          rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
-        }
-        this.#dirty.clear();
-        const applied = this.#applied;
-        const unknown = this.#unknown;
-        const retired = this.#retired;
-        this.#applied = [];
-        this.#unknown = [];
-        this.#retired = [];
-        store.transaction(() => {
-          if (rows.length > 0) store.testFileKeys.upsertMany(rows);
-          if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
-          for (const { results: results2, checkpointId } of mergeApplied(applied)) {
-            sink.applyResults(worktreeId, revision, results2, { checkpointId });
-          }
-          for (const { testFiles, reason: reason2 } of unknown) {
-            sink.markUnknown(worktreeId, revision, testFiles, reason2);
-          }
-          if (retired.length > 0) sink.retire(worktreeId, retired);
-          for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
-            sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
-          }
-          if (options.refined !== void 0) {
-            store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
-          }
-        });
-      }
-      #byCheckpoint(rows) {
-        const groups = /* @__PURE__ */ new Map();
-        for (const { testFile } of rows) {
-          const id2 = this.checkpoints.idFor(testFile);
-          const group = groups.get(id2);
-          if (group) group.push(testFile);
-          else groups.set(id2, [testFile]);
-        }
-        return groups;
-      }
-      /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
-      #syncPhase(file) {
-        const phase = file.runningKey !== null ? "running" : this.queue.has(file.ref) ? "queued" : null;
-        if (phase === file.phase) return;
-        file.phase = phase;
-        this.#dirty.add(file.id);
-      }
-      /** Marks a file's key row as owed, for callers that change a file directly. */
-      touch(file) {
-        this.#dirty.add(file.id);
-      }
-    };
-  }
-});
-
 // src/core/scheduler/mutex.ts
 var Mutex;
 var init_mutex = __esm({
@@ -9216,6 +9276,7 @@ var init_scheduler2 = __esm({
     init_batch();
     init_bootstrap();
     init_context();
+    init_environment_growth();
     init_install();
     init_install_stamp();
     init_keying();
@@ -9600,7 +9661,9 @@ var init_scheduler2 = __esm({
             const inputs2 = await unstableInputs(context, tier);
             const installMoved = this.#reinstalled || await this.#install.stamp() !== installStamp;
             const moved = await this.#lock.run(async () => {
-              const observed = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
+              const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
+              const read4 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
+              const observed = environment === void 0 || read4 === void 0 ? read4 : { ...read4, environment };
               const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
               const report2 = withheldForTouch(ran, touched);
               return context.store.transaction(() => {
@@ -14995,7 +15058,12 @@ var init_adapter_observed = __esm({
         this.preloadsGrew = false;
         return recreate;
       }
-      /** D3, D5: what each completed, listed file and its preloads loaded beyond the static graph. */
+      /**
+       * D3, D5: what each completed, listed file and its preloads loaded beyond
+       * the static graph. Returns the preloads' observed-only paths of this run,
+       * sorted, so the scheduler keeps no result of a file whose key lacked
+       * one (task 003-43).
+       */
       record(seen, listed) {
         const tests = {};
         const preloadStatic = new Set(this.graph.preloads().paths);
@@ -15011,13 +15079,15 @@ var init_adapter_observed = __esm({
           if (added.length > 0) tests[testFile.path] = added;
         }
         const addedPreloads = this.addPreloads([...preloads]);
-        if (this.store === void 0) return;
-        try {
-          if (Object.keys(tests).length > 0) this.store.write(tests);
-          if (addedPreloads.length > 0) this.store.writePreloads(addedPreloads);
-        } catch (error) {
-          this.note(`could not store observed paths: ${String(error)}`);
+        if (this.store !== void 0) {
+          try {
+            if (Object.keys(tests).length > 0) this.store.write(tests);
+            if (addedPreloads.length > 0) this.store.writePreloads(addedPreloads);
+          } catch (error) {
+            this.note(`could not store observed paths: ${String(error)}`);
+          }
         }
+        return [...preloads].sort(compare);
       }
       /** Adds paths to one test file's set; returns the new ones. */
       addTest(testFile, paths) {
@@ -31877,10 +31947,11 @@ async function openProject(context) {
         ...options.concurrency === void 0 || slowLane(runOptions.lane) ? {} : { concurrency: options.concurrency() },
         ...env === void 0 ? {} : { env }
       });
-      observed.record(seen, new Set(files));
+      const preloaded = observed.record(seen, new Set(files));
       const named = bareNote(seen, bare);
       if (named !== null) note(named);
-      return report2;
+      if (preloaded.length === 0) return report2;
+      return { ...report2, environmentObserved: [{ project: project.name, paths: preloaded }] };
     },
     close: async () => {
     }
@@ -32379,6 +32450,7 @@ function merge2(parts) {
   );
   const timed = reports.some((report2) => report2.fileDurations !== void 0);
   const observed = reports.some((report2) => report2.observed !== void 0);
+  const environment = reports.flatMap((report2) => report2.environmentObserved ?? []);
   return {
     end,
     durationMs: reports.reduce((sum, report2) => sum + report2.durationMs, 0),
@@ -32387,7 +32459,8 @@ function merge2(parts) {
     fileErrors: reports.flatMap((report2) => report2.fileErrors),
     failure: failures.length === 0 ? null : failures.join("; "),
     ...timed ? { fileDurations: reports.flatMap((report2) => report2.fileDurations ?? []) } : {},
-    ...observed ? { observed: reports.flatMap((report2) => report2.observed ?? []) } : {}
+    ...observed ? { observed: reports.flatMap((report2) => report2.observed ?? []) } : {},
+    ...environment.length > 0 ? { environmentObserved: environment } : {}
   };
 }
 function compareRefs2(a, b) {
@@ -32475,7 +32548,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.81";
+  if (true) return "0.1.82";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
