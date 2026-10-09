@@ -1,0 +1,195 @@
+# named dogfooding record, specs 001 to 004: 76 sessions
+{
+ "sessions": 76,
+ "withEdits": 47,
+ "withOwnRuns": 21,
+ "editSessionsWithOwnRuns": 19,
+ "runs": 32,
+ "byScope": {
+  "files": 25,
+  "full": 7
+ },
+ "byOutcome": {
+  "unknown": 4,
+  "fail": 7,
+  "pass": 21
+ },
+ "byRunner": {
+  "vitest": 23,
+  "node:test": 7,
+  "npm-script": 2
+ },
+ "byReason": {
+  "own-change": 16,
+  "gate": 6,
+  "coverage-text": 4,
+  "no-daemon": 6
+ },
+ "byStated": {
+  "gate": 5,
+  "coverage-text": 4,
+  "confirm-change": 5,
+  "no-daemon": 6,
+  "none-stated": 12
+ },
+ "byEvident": {
+  "squeal-current": 3,
+  "edits-since-last-squeal-state": 18,
+  "squeal-pending": 4,
+  "no-daemon": 7
+ },
+ "byStore": {},
+ "byCrossCheck": {},
+ "byRole": {
+  "reviewer": {
+   "sessions": 1,
+   "editSessions": 1,
+   "editSessionsWithOwnRuns": 1,
+   "runs": 3,
+   "full": 1,
+   "files": 2,
+   "pattern": 0,
+   "pulls": 5,
+   "waits": 1
+  },
+  "other": {
+   "sessions": 75,
+   "editSessions": 46,
+   "editSessionsWithOwnRuns": 18,
+   "runs": 29,
+   "full": 6,
+   "files": 23,
+   "pattern": 0,
+   "pulls": 32,
+   "waits": 12
+  }
+ },
+ "byHarness": {
+  "codex": {
+   "sessions": 7,
+   "editSessions": 7,
+   "editSessionsWithOwnRuns": 6,
+   "runs": 14,
+   "full": 2,
+   "files": 12,
+   "pattern": 0,
+   "pulls": 24,
+   "waits": 11
+  },
+  "claude-code": {
+   "sessions": 69,
+   "editSessions": 40,
+   "editSessionsWithOwnRuns": 13,
+   "runs": 18,
+   "full": 5,
+   "files": 13,
+   "pattern": 0,
+   "pulls": 13,
+   "waits": 2
+  }
+ },
+ "pulls": {
+  "status --wait": 13,
+  "status": 15,
+  "why": 7,
+  "run --slow": 1,
+  "run --all": 1
+ },
+ "waits": 13,
+ "sessionsPulling": 19,
+ "skillLoads": 23,
+ "flags": {
+  "pass-claim-without-evidence": 6,
+  "pass-claim-against-known-failures": 1
+ },
+ "runWallMin": 12.6
+}
+
+session	harness	edits	squealMsgs	pulls	skill	t	runner	scope	wall_s	exit	reason	evident	store	command
+01a1188e	codex	3	{"registration":1,"transitions":4}	{"status --wait":1,"status":2,"why":2}	2	22:51:48 +38s	vitest	files	11.8	1	own-change/gate	squeal-current	-	npx vitest run test/runners/node-test/graph-memory.test.ts > /tmp/squeal-003-27-red.log 2>&1
+01a1188e	codex	3	{"registration":1,"transitions":4}	{"status --wait":1,"status":2,"why":2}	2	22:52:35 +9.7s	vitest	files	11.4	0	own-change/gate	edits-since-last-squeal-state	-	npx vitest run test/runners/node-test/graph*.test.ts > /tmp/squeal-003-27-graph.log 2>&1
+01a1188e	codex	3	{"registration":1,"transitions":4}	{"status --wait":1,"status":2,"why":2}	2	22:53:26 +60.6s	vitest	full	247.4	1	gate/gate	squeal-pending	-	npx vitest run --silent=false > /tmp/squeal-003-27-vitest.log 2>&1
+01a11ab3	codex	2	{"registration":1,"transitions":2}	{"status --wait":2,"why":3}	1	-	-	-	-	-	-	-	-	(no own run) flags=pass-claim-without-evidence
+01a11abf	codex	2	{"registration":1}	{"status --wait":1}	1	09:02:20 +0.6s	node:test	files	0.3	1	coverage-text/coverage-text	edits-since-last-squeal-state	-	node --import tsx --test packages/cezar/test/e2e/stop-child.test.ts
+01a11abf	codex	2	{"registration":1}	{"status --wait":1}	1	09:02:35 +0.7s	node:test	files	0.2	0	coverage-text/coverage-text	edits-since-last-squeal-state	-	node --import tsx --test packages/cezar/test/e2e/stop-child.test.ts
+01a11ac4	codex	2	{"registration":1}	{"status --wait":1}	1	09:08:18 +18.9s	node:test	files	0.2	1	coverage-text/coverage-text	edits-since-last-squeal-state	-	node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/cursor-hang-stdin.test.ts
+01a11ac4	codex	2	{"registration":1}	{"status --wait":1}	1	09:08:27 +0.5s	node:test	files	0.2	0	coverage-text/coverage-text	edits-since-last-squeal-state	-	node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/cursor-hang-stdin.test.ts
+01a11f55	codex	2	{"registration":1,"transitions":2}	{"status":1,"status --wait":3,"why":2}	2	06:25:48 +12.2s	vitest	full	205.0	1	gate/confirm-change	squeal-pending	-	npx vitest run > /tmp/squeal-duration-vitest.log 2>&1
+01a11f5c	codex	3	{"registration":1,"other":2,"transitions":2}	{"status --wait":1,"status":2}	2	06:33:19 +22.9s	vitest	files	13.1	0	own-change/gate	squeal-pending	-	npx vitest run test/harness
+01a11f5c	codex	3	{"registration":1,"other":2,"transitions":2}	{"status --wait":1,"status":2}	2	06:48:08 +9.8s	vitest	files	93.4	0	no-daemon/no-daemon	no-daemon	-	npx vitest run test/e2e/policy.test.ts
+01a11f6e	codex	6	{"registration":1,"other":1,"transitions":2}	{"status --wait":2,"run --slow":1}	2	06:51:56 +9.2s	node:test	files	0.5	1	no-daemon/no-daemon	no-daemon	-	node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/todo-task-text.test.ts
+01a11f6e	codex	6	{"registration":1,"other":1,"transitions":2}	{"status --wait":2,"run --slow":1}	2	06:52:09 +0.3s	node:test	files	0.4	1	no-daemon/no-daemon	no-daemon	-	node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/todo-task-text.test.ts
+01a11f6e	codex	6	{"registration":1,"other":1,"transitions":2}	{"status --wait":2,"run --slow":1}	2	06:52:20 +0.5s	node:test	files	0.4	0	no-daemon/no-daemon	no-daemon	-	node --import ../../scripts/test-git-env.mjs --import tsx --test test/unit/todo-task-text.test.ts
+01a11f6e	codex	6	{"registration":1,"other":1,"transitions":2}	{"status --wait":2,"run --slow":1}	2	06:55:17 +21.3s	npm-script	files	2.6	0	no-daemon/no-daemon	no-daemon	-	npm test -w @wjarka/cezarion -- src/server/provider-action-gate.test.ts
+022c9d06	claude-code	0	{"registration":1,"stop-block":2,"deny":1}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run) flags=pass-claim-without-evidence
+1ecda6e9	claude-code	0	{}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+227f99ee	claude-code	1	{"registration":1,"other":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+2942559c	claude-code	1	{"registration":1,"deny":1,"transitions":1}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run)
+320f2adb	claude-code	3	{"registration":1,"deny":1,"transitions":1}	{"status --wait":1}	1	-	-	-	-	-	-	-	-	(no own run)
+348c0a53	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+3a8a2740	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+4407f9ae	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+45367ff5	claude-code	0	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+45ccb080	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+556b15d2	claude-code	1	{"registration":1,"stop-block":2,"deny":1}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run)
+5b0e3575	claude-code	0	{"registration":1}	{}	0	11:04:54 +-s	vitest	files	2.3	0	own-change/none-stated	squeal-current	-	npx vitest run test/money.test.ts 2>&1
+a5aacb15	claude-code	0	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+a6115a0d	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+b1d470fa	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+bb1dc4ff	claude-code	1	{"registration":1}	{}	0	11:05:32 +0.3s	vitest	files	4.8	0	own-change/none-stated	edits-since-last-squeal-state	-	npx vitest run test/format.test.ts 2>&1
+d8c6401c	claude-code	0	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+e32b31ce	claude-code	4	{"registration":1,"deny":1,"transitions":1}	{}	1	11:04:31 +1.9s	vitest	full	4.0	0	gate/confirm-change	no-daemon	-	npx vitest run 2>&1
+0f0700a2	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+26880404	claude-code	13	{"registration":1}	{}	0	11:15:39 +2.4s	vitest	files	48.2	1	own-change/none-stated	edits-since-last-squeal-state	-	npx vitest run test/daemon test/e2e test/harness
+26880404	claude-code	13	{"registration":1}	{}	0	11:16:43 +2.6s	vitest	files	48.2	0	own-change/confirm-change	edits-since-last-squeal-state	-	npx vitest run test/daemon test/e2e test/harness
+35136778	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+3afe952a	claude-code	3	{"registration":1,"transitions":1}	{}	0	11:20:02 +2.2s	vitest	files	1.7	0	own-change/confirm-change	edits-since-last-squeal-state	-	npx vitest run test/delivery/format.test.ts test/harness/plugin.test.ts 2>&1
+550d80eb	claude-code	6	{"registration":1,"transitions":2}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+5e7b1779	claude-code	0	{}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+778a8e69	claude-code	5	{"registration":1,"transitions":2}	{}	0	11:13:39 +3.2s	vitest	files	1.5	0	own-change/none-stated	squeal-pending	-	npx vitest run test/harness/plugin.test.ts 2>&1
+7fe8aec5	claude-code	1	{"registration":1}	{}	0	11:14:08 +0.3s	vitest	files	1.6	0	own-change/none-stated	edits-since-last-squeal-state	-	npx vitest run test/status/why.test.ts 2>&1
+9af7c279	claude-code	1	{"registration":1,"deny":1,"transitions":1}	{"status --wait":1}	1	-	-	-	-	-	-	-	-	(no own run)
+c04d6aa3	claude-code	2	{"registration":1,"transitions":2,"stop-block":2}	{}	0	11:23:48 +0s	vitest	files	12.5	0	own-change/none-stated	edits-since-last-squeal-state	-	npx vitest run test/cli test/status 2>&1
+c04d6aa3	claude-code	2	{"registration":1,"transitions":2,"stop-block":2}	{}	0	11:24:09 +0.3s	vitest	files	12.3	0	own-change/confirm-change	edits-since-last-squeal-state	-	npx vitest run test/cli test/status 2>&1
+d93002f3	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+e8ad0add	claude-code	1	{"registration":1,"transitions":2}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+e9cf82c3	claude-code	7	{"registration":1,"transitions":3}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+6db9ebb4	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+b29bf4ed	claude-code	0	{}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+e3538344	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+a5c7ac19	claude-code	0	{"transitions":2,"deny":1}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run)
+2c323aef	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+adad0ca6	claude-code	0	{"registration":1,"stop-block":2}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+533babaf	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+39abc89b	claude-code	1	{"registration":1,"stop-block":4}	{"run --all":1}	0	-	-	-	-	-	-	-	-	(no own run)
+90562945	claude-code	1	{"registration":1,"stop-block":2}	{}	0	17:59:00 +0.2s	vitest	full	3.8	0	gate/none-stated	edits-since-last-squeal-state	-	npx vitest run 2>&1
+099c8979	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+0d9892e7	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+23f2b79c	claude-code	4	{"registration":1}	{}	0	14:27:58 +0.4s	npm-script	full	3.1	0	gate/none-stated	edits-since-last-squeal-state	-	npm test 2>&1
+2aea1136	claude-code	0	{"registration":1,"transitions":1}	{}	0	14:39:38 +-s	vitest	files	12.3	0	own-change/none-stated	squeal-current	-	npx vitest run test/money.test.ts 2>&1
+2e230d4b	claude-code	3	{"registration":1,"deny":1,"transitions":2}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run) flags=pass-claim-against-known-failures
+34afc9f8	claude-code	1	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+3993e1aa	claude-code	1	{"registration":1,"deny":1,"transitions":1}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run) flags=pass-claim-without-evidence
+6a3c3380	claude-code	3	{"registration":1,"deny":1}	{"status":1}	1	14:44:35 +5.9s	vitest	full	3.3	0	no-daemon/no-daemon	no-daemon	-	npx vitest run 2>&1
+88e604c5	claude-code	0	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+896b6e9d	claude-code	0	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+aaf28f73	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+cb6318d5	claude-code	6	{"registration":1,"transitions":2}	{}	0	14:29:31 +0.4s	vitest	full	3.6	0	gate/none-stated	edits-since-last-squeal-state	-	npx vitest run 2>&1
+d2ca4ddf	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+d74034fc	claude-code	1	{"registration":1,"deny":1}	{"status":1}	1	-	-	-	-	-	-	-	-	(no own run)
+e07393be	claude-code	4	{"registration":1,"deny":1}	{"status":2}	1	-	-	-	-	-	-	-	-	(no own run)
+e3f922e6	claude-code	2	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+04c1fe49	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+078a5182	claude-code	11	{"registration":2}	{}	0	14:16:57 +1.6s	vitest	files	1.8	0	own-change/none-stated	edits-since-last-squeal-state	-	npx vitest run test/status/why.test.ts test/delivery/format.test.ts test/cli/round-trip.test.ts 2>&1
+078a5182	claude-code	11	{"registration":2}	{}	0	14:19:30 +0s	vitest	files	1.7	0	own-change/gate	edits-since-last-squeal-state	-	npx vitest run test/harness/plugin.test.ts 2>&1
+20a84348	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+3a036efe	claude-code	0	{}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+4899188f	claude-code	1	{"registration":1,"transitions":2}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+4fe031a4	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+5f1afd40	claude-code	1	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+7dc8b010	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+8de2556c	claude-code	1	{"registration":1}	{}	0	14:22:25 +0.3s	vitest	files	1.6	0	own-change/none-stated	edits-since-last-squeal-state	-	npx vitest run test/status/why.test.ts 2>&1
+be61725b	claude-code	4	{}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+d602479b	claude-code	1	{"registration":1,"transitions":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+e7bfaec2	claude-code	9	{"registration":1,"transitions":5}	{}	0	-	-	-	-	-	-	-	-	(no own run)
+19978a23	claude-code	0	{"registration":1}	{}	0	-	-	-	-	-	-	-	-	(no own run)

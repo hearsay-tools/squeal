@@ -1,0 +1,155 @@
+# Cezar sessions in cezar with Squeal registered (store: copy of cezar .git/squeal/store.sqlite, same time): 93 sessions
+{
+ "sessions": 93,
+ "withEdits": 61,
+ "withOwnRuns": 39,
+ "editSessionsWithOwnRuns": 37,
+ "runs": 746,
+ "byScope": {
+  "files": 469,
+  "pattern": 226,
+  "full": 51
+ },
+ "byOutcome": {
+  "unknown": 369,
+  "pass": 164,
+  "fail": 213
+ },
+ "byRunner": {
+  "node:test": 12,
+  "npm-script": 697,
+  "vitest": 37
+ },
+ "byReason": {
+  "own-change": 380,
+  "re-run": 86,
+  "investigation": 226,
+  "gate": 51,
+  "no-daemon": 3
+ },
+ "byStated": {
+  "red-step": 146,
+  "investigation": 35,
+  "gate": 229,
+  "confirm-change": 142,
+  "flake-isolation": 20,
+  "none-stated": 82,
+  "probe": 89,
+  "no-daemon": 3
+ },
+ "byEvident": {
+  "edits-since-last-squeal-state": 461,
+  "squeal-pending": 207,
+  "squeal-current": 13,
+  "no-squeal-text": 42,
+  "no-daemon": 23
+ },
+ "byStore": {
+  "not-covered": 52,
+  "files-unlisted": 2,
+  "redundant": 6,
+  "no-revision": 5,
+  "redundant-if-lookup": 8,
+  "partly-current": 9,
+  "no-files": 27
+ },
+ "byCrossCheck": {
+  "squeal-not-reached": 61,
+  "outcome-unknown": 4,
+  "agrees": 2
+ },
+ "byRole": {
+  "other": {
+   "sessions": 29,
+   "editSessions": 24,
+   "editSessionsWithOwnRuns": 20,
+   "runs": 408,
+   "full": 23,
+   "files": 269,
+   "pattern": 116,
+   "pulls": 21,
+   "waits": 2
+  },
+  "reviewer": {
+   "sessions": 58,
+   "editSessions": 31,
+   "editSessionsWithOwnRuns": 13,
+   "runs": 107,
+   "full": 4,
+   "files": 57,
+   "pattern": 46,
+   "pulls": 15,
+   "waits": 2
+  },
+  "dev-flow": {
+   "sessions": 4,
+   "editSessions": 4,
+   "editSessionsWithOwnRuns": 3,
+   "runs": 155,
+   "full": 22,
+   "files": 102,
+   "pattern": 31,
+   "pulls": 163,
+   "waits": 41
+  },
+  "plan-issue": {
+   "sessions": 1,
+   "editSessions": 1,
+   "editSessionsWithOwnRuns": 0,
+   "runs": 0,
+   "full": 0,
+   "files": 0,
+   "pattern": 0,
+   "pulls": 0,
+   "waits": 0
+  },
+  "implement-issue": {
+   "sessions": 1,
+   "editSessions": 1,
+   "editSessionsWithOwnRuns": 1,
+   "runs": 76,
+   "full": 2,
+   "files": 41,
+   "pattern": 33,
+   "pulls": 7,
+   "waits": 0
+  }
+ },
+ "byHarness": {
+  "claude-code": {
+   "sessions": 43,
+   "editSessions": 33,
+   "editSessionsWithOwnRuns": 25,
+   "runs": 433,
+   "full": 26,
+   "files": 284,
+   "pattern": 123,
+   "pulls": 22,
+   "waits": 2
+  },
+  "codex": {
+   "sessions": 50,
+   "editSessions": 28,
+   "editSessionsWithOwnRuns": 12,
+   "runs": 313,
+   "full": 25,
+   "files": 185,
+   "pattern": 103,
+   "pulls": 184,
+   "waits": 43
+  }
+ },
+ "pulls": {
+  "status --wait": 45,
+  "status": 128,
+  "why": 31,
+  "run": 2
+ },
+ "waits": 45,
+ "sessionsPulling": 16,
+ "skillLoads": 54,
+ "flags": {
+  "pass-claim-without-evidence": 5
+ },
+ "runWallMin": 679.8
+}
