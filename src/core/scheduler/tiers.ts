@@ -18,7 +18,7 @@ import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
-import { holdsNewFailure, queueRerun } from "./rerun.js";
+import { holdsNewFailure, type NewFailure, queueReruns } from "./rerun.js";
 import { storeClosures } from "./revision.js";
 import { slowView } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
@@ -282,6 +282,7 @@ export function recordTier(
   const rekeyed: TestFileRef[] = [];
   const grown: { ref: TestFileRef; checkpointId: string | null }[] = [];
   const firstSeen: FileState[] = [];
+  const failedAnew: NewFailure[] = [];
   const unstable = (path: RelativePath) =>
     changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
@@ -327,9 +328,8 @@ export function recordTier(
       });
       const prior = storeResults(context, records);
       if (growth === undefined && file.key === key) {
-        const failedAnew = holdsNewFailure(context, prior, records);
+        if (holdsNewFailure(context, prior, records)) failedAnew.push({ file, key, forced });
         ledger.applyResults(file, key, records, checkpointId);
-        if (failedAnew) queueRerun(ledger, file, key, forced);
       }
     }
     // The grown files take their new key and, once stored, its results; a re-key reached others.
@@ -338,6 +338,7 @@ export function recordTier(
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
     ledger.rerunFirstSeen(firstSeen);
+    queueReruns(context, ledger, failedAnew);
     storeClosures(
       context,
       grown.map((g) => g.ref),

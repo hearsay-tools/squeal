@@ -30,6 +30,11 @@ export interface SchedulerOptions {
   /** Summary and fingerprint of a failure. Defaults to `describeFailure` (D6). */
   readonly describeFailure?: FailureDescriber;
   /**
+   * The most new failures of one tier that are re-run (task 001-171): with
+   * more, none is, and a note says why. Defaults to `RERUN_CAP`.
+   */
+  readonly rerunCap?: number;
+  /**
    * The full extra-file list whenever it grows. Called while a batch is being
    * handled: hand it to `ChangeFeed.setExtraFiles` without awaiting, because
    * the feed delivers the next batch only after this one.

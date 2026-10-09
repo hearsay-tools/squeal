@@ -4,10 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { formatDelta } from "../../src/core/delivery/index.js";
+import { readDaemonNotes } from "../../src/core/notes.js";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { createRepo, type HarnessOptions, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
  * Spec 001 D6 as amended (task 001-171, decided by the human 2026-10-09): a
@@ -56,10 +57,10 @@ function flakyRepo(once: boolean) {
  * file held until a consumer is registered, so its failure is delivered as
  * news; `holdRerun` holds the second run of that file too.
  */
-async function failFirst(once: boolean) {
+async function failFirst(once: boolean, options: HarnessOptions = {}) {
   const repo = flakyRepo(once);
   const store = openRepoStore(repo.commonDir);
-  const h = await openHarness(repo.main, store, repo.commonDir);
+  const h = await openHarness(repo.main, store, repo.commonDir, options);
   const gates: (() => void)[] = [];
   const reached: (() => void)[] = [];
   const atRun = [0, 1].map((i) => new Promise<void>((resolve) => (reached[i] = resolve)));
@@ -151,5 +152,17 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
     expect(h.keyOf(FLAKY)).not.toBe(before);
     expect(h.runsOf(FLAKY)).toHaveLength(3);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
+  });
+
+  it("re-runs none of a tier's new failures above the cap, and says why", async () => {
+    const { store, h } = await failFirst(true, { rerunCap: 0 });
+    await h.scheduler.idle();
+    expect(h.runsOf(FLAKY)).toHaveLength(1);
+    expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
+    expect(readDaemonNotes(store, h.worktreeId).map((n) => n.text)).toContainEqual(
+      expect.stringContaining(
+        "1 test file failed anew in one tier, above the re-run cap of 0 per tier",
+      ),
+    );
   });
 });
