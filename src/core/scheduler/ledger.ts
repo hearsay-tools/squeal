@@ -17,6 +17,12 @@ import { checkId, durationOf, type FileState, newFileState } from "./files.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { slowView } from "./slow.js";
 
+/** Results `applyResults` made current, owed to the sink at the next commit. */
+interface Applied {
+  readonly results: readonly ResultRecord[];
+  readonly checkpointId: string | null;
+}
+
 /** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
 export const MAX_DISCARDS = 3;
 
@@ -67,7 +73,7 @@ export class Ledger {
 
   readonly #dirty = new Set<string>();
   readonly #removed: TestFileRef[] = [];
-  #applied: { results: readonly ResultRecord[]; checkpointId: string | null }[] = [];
+  #applied: Applied[] = [];
   #unknown: { testFiles: TestFileRef[]; reason: string }[] = [];
   #retired: CheckId[] = [];
 
@@ -323,7 +329,7 @@ export class Ledger {
     store.transaction(() => {
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
-      for (const { results, checkpointId } of applied) {
+      for (const { results, checkpointId } of mergeApplied(applied)) {
         sink.applyResults(worktreeId, revision, results, { checkpointId });
       }
       for (const { testFiles, reason } of unknown) {
@@ -364,4 +370,34 @@ export class Ledger {
   touch(file: FileState): void {
     this.#dirty.add(file.id);
   }
+}
+
+/**
+ * Task 001-161: one sink call per run of consecutive entries of one
+ * checkpoint, not one per file. Each call lists every known state and key of
+ * the worktree inside the commit's write transaction: per file, a 250-file
+ * tier held the lock 6 s with 4,982 states, 30 s with 15,468 (cezar's store),
+ * and a starting daemon beside it exited on "database is locked". A check
+ * met again starts a new call, so it sees the state the one before wrote, as
+ * separate calls did.
+ */
+function mergeApplied(applied: readonly Applied[]): Applied[] {
+  const merged: { results: ResultRecord[]; checkpointId: string | null }[] = [];
+  let seen = new Set<string>();
+  for (const { results, checkpointId } of applied) {
+    const ids = results.map((r) => checkId(r.check));
+    const last = merged.at(-1);
+    if (
+      last === undefined ||
+      last.checkpointId !== checkpointId ||
+      ids.some((id) => seen.has(id))
+    ) {
+      merged.push({ results: [...results], checkpointId });
+      seen = new Set(ids);
+      continue;
+    }
+    last.results.push(...results);
+    for (const id of ids) seen.add(id);
+  }
+  return merged;
 }
