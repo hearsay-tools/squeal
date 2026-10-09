@@ -1,4 +1,5 @@
-import { dirname } from "node:path";
+import { realpath } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import type {
   AbsolutePath,
   WatcherBackend,
@@ -44,7 +45,9 @@ export async function loadOwnParcel(): Promise<Parcel> {
  * with the new spec before it unsubscribes the old one, so events in between
  * may be reported twice but are not lost. Extra files inside excluded
  * directories get one subscription per parent directory, filtered to those
- * files.
+ * files. The parent is subscribed at its realpath, since parcel refuses a
+ * link on Linux and FSEvents reports canonical paths on macOS, and each event
+ * is reported under every declared path that names the file.
  */
 export const parcelBackend: WatcherBackend = createParcelBackend(() => loadOwnParcel());
 
@@ -78,24 +81,27 @@ async function subscribeAll(
   const exclusions = new Exclusions(spec);
   const main = await parcel.subscribe(
     spec.root,
-    callback(listener, (path) => !exclusions.excludes(path)),
+    callback(listener, (path) => (exclusions.excludes(path) ? [] : [path])),
     { ignore: [...spec.excluded] },
   );
   const subs = [main];
 
   const withoutExtras = new Exclusions({ ...spec, extraFiles: [] });
-  const hidden = new Map<AbsolutePath, Set<AbsolutePath>>();
+  const hidden = new Map<AbsolutePath, Map<AbsolutePath, AbsolutePath[]>>();
   for (const file of spec.extraFiles) {
     if (!withoutExtras.excludes(file)) continue;
-    const parent = dirname(file);
-    hidden.set(parent, (hidden.get(parent) ?? new Set()).add(file));
+    const parent = await realpath(dirname(file)).catch(() => dirname(file));
+    const files = hidden.get(parent) ?? new Map<AbsolutePath, AbsolutePath[]>();
+    const real = join(parent, basename(file));
+    files.set(real, [...(files.get(real) ?? []), file]);
+    hidden.set(parent, files);
   }
   for (const [parent, files] of hidden) {
     try {
       subs.push(
         await parcel.subscribe(
           parent,
-          callback(listener, (path) => files.has(path)),
+          callback(listener, (path) => files.get(path) ?? []),
         ),
       );
     } catch (error) {
@@ -107,7 +113,11 @@ async function subscribeAll(
   return subs;
 }
 
-function callback(listener: WatchListener, keep: (path: AbsolutePath) => boolean): ParcelCallback {
+/** `report` names the paths an event is reported under, none to drop it. */
+function callback(
+  listener: WatchListener,
+  report: (path: AbsolutePath) => AbsolutePath[],
+): ParcelCallback {
   return (error, events) => {
     if (error) {
       if (DROPPED.test(error.message)) listener.onDropped(error.message);
@@ -116,7 +126,7 @@ function callback(listener: WatchListener, keep: (path: AbsolutePath) => boolean
     }
     const hints: WatchHint[] = [];
     for (const event of events) {
-      if (keep(event.path)) hints.push({ path: event.path, kind: KINDS[event.type] });
+      for (const path of report(event.path)) hints.push({ path, kind: KINDS[event.type] });
     }
     if (hints.length > 0) listener.onHints(hints);
   };
