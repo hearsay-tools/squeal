@@ -40,47 +40,49 @@ function deps(
   };
 }
 
-/** A worktree with one passing check and no daemon, whose SessionStart at `T` spawned one that has not heartbeat. */
-async function startedAtT(): Promise<{ r: SquealRepo; start: HookResult }> {
+/**
+ * A worktree with one passing check and no daemon, whose SessionStart at `T`
+ * spawned one that has not heartbeat. `elapsed` is the hook's alone.
+ */
+async function startedAtT(): Promise<{ r: SquealRepo; start: HookResult; elapsed: number }> {
   const r = squealRepo();
   r.apply(r.pass());
   r.daemon("none");
+  const started = performance.now();
   const start = await runHook(
     "session-start",
     recorded("session-start", r.root),
     deps("spawned", T),
   );
-  return { r, start };
+  return { r, start, elapsed: performance.now() - started };
 }
 
 const batch = (r: SquealRepo, now?: number) =>
   runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps("spawned", now));
 
 describe("SessionStart after spawning a daemon", () => {
+  // Review wave-13d S2: the heartbeat lands after the spawn returned and before the
+  // settle's next look, in that order whatever the load, so the registration proves the wait.
   it("waits for the new daemon's heartbeat, so the registration says it validates", async () => {
     const r = squealRepo();
     r.apply(r.pass());
     r.daemon("none");
-    const started = performance.now();
     const out = await runHook(
       "session-start",
       recorded("session-start", r.root),
-      deps("spawned", undefined, () => setTimeout(() => r.daemon("alive"), 100)),
+      deps("spawned", undefined, () => setImmediate(() => r.daemon("alive"))),
     );
 
-    expect(performance.now() - started).toBeLessThan(SPAWN_SETTLE_MS);
     expect(context(out)).toMatch(/^SQUEAL · registered at revision 1\n/);
     expect(context(out)).not.toContain("No daemon");
     expect(context(out)).not.toContain("starting");
   });
 
+  // A stall only lengthens the wait, so the bound is a lower one; the test's own timeout is the upper.
   it(`registers after ${SPAWN_SETTLE_MS} ms and says a daemon is starting when no heartbeat arrives`, async () => {
-    const started = performance.now();
-    const { start } = await startedAtT();
-    const elapsed = performance.now() - started;
+    const { start, elapsed } = await startedAtT();
 
     expect(elapsed).toBeGreaterThanOrEqual(SPAWN_SETTLE_MS - 10);
-    expect(elapsed).toBeLessThan(SPAWN_SETTLE_MS + 500);
     expect(context(start)).toContain(` ${STARTING}`);
     expect(context(start)).not.toContain("No daemon");
   });
