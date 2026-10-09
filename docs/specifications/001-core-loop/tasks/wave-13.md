@@ -248,3 +248,19 @@ Read: `research/release-hub.md` (the migration section), D9 and D12's install te
 Own: `src/cli/`, `src/harness/` only for the id, `plugins/*/README.md` and the skill's references (not `dist`), the two in-repo marketplace manifests, tests under `test/cli/` and `test/harness/`. Do not run `npm run build`.
 
 Done when: no `squeal@squeal` remains outside the previous-id handling and its tests; `squeal init` (Claude Code and Codex) writes `squeal@hearsay`; a repository initialized with `squeal@squeal` is migrated by `squeal init` and cleaned by `squeal remove`; the Codex trust hash uses the new key and a test pins its value.
+
+## 001-161 a daemon starting on a shared store never exits on "database is locked"
+
+Use /worker. Shape: fix, reproduce first. From 004 `lessons.md` D9 (004-17 dogfooding): at 06:15:37 a cezarion daemon starting beside 0.1.55 and 0.1.56 daemons exited on `database is locked`. 001-141 (0.1.44) shortened the prune's holds and made `open` take no write lock, so this is another holder, or a startup path that runs without a busy timeout (the daemon lock, a migration, the first heartbeat, the bootstrap seed, the 004 slow slot).
+
+Read: `tasks/001-141/notes.md`, `src/core/store/` (open, connection, migrations), `src/core/daemon/` startup and `lock.ts` (001-153 changed the successor's lock attempts), D6, D8, D10.
+
+Name the holder and the waiter with a test that starts a daemon beside two busy daemons on one store, repeatedly; fix so every startup statement waits within the busy timeout or retries, and no startup transaction holds the write lock long. Own: `src/core/store/`, `src/core/daemon/` startup (not the slow slot in `src/core/slow/`, the 002/003/004 coordinator's; ask), tests under `test/store/` and `test/daemon/`, D6/D8/D10. Do not run `npm run build`. Done when: the cause is named; the repeated test starts every daemon without a lock exit.
+
+## 001-166 a worktree's first walk of linked directories makes no revision
+
+Use /worker. Shape: fix. The board row's evidence (004-39): bootstrap seeds only git-listed paths, so the change feed's first walk under symlinked directories (`.agents/skills/*`, `test/fixtures/node-test/*/node_modules`) records about 23 spurious adds as revision 1. Fix: seed files the start walk finds under linked directories without a revision, as bootstrap does for git-listed ones; also check the watch-triggered variant (`#reconcilePaths(moved)` after a tier, `scheduler.ts:466`). Own: `src/core/watcher/` start walk and `src/core/scheduler/bootstrap.ts`, tests under `test/watcher/` and `test/scheduler/`, D2. Do not touch `src/core/watcher/parcel-backend.ts` (001-167). Do not run `npm run build`. Done when: a worktree with a linked directory starts at revision 0 with no spurious adds, and an edit under the link still makes a revision.
+
+## 001-167 the parcel backend watches extra files behind a symlinked directory
+
+Use /worker. Shape: fix. The board row's evidence (004-38): `subscribeAll` in `src/core/watcher/parcel-backend.ts` subscribes an extra's parent, which can be a link (`dist -> real-build`), and fails with "inotify_add_watch ... Not a directory" on Linux; on macOS, FSEvents likely reports canonical paths that `files.has(path)` drops. Fix: subscribe hidden extras at `realpath(parent)` and map events back to the declared extra paths. Own: `src/core/watcher/parcel-backend.ts`, tests under `test/watcher/`. Do not touch the start walk (001-166). Do not run `npm run build`. Done when: a parcel-backend test on Linux with `dist -> real-build` reports a rebuild of `real-build/index.js` as `dist/index.js` within one batch, with no watch error.
