@@ -14,3 +14,11 @@ Started: 2026-10-09
 ## Research
 
 Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`, `hook-levers`; board rows 005-01 to 005-03.
+
+- 2026-10-09, research round done (`adoption-baseline` `2b342d3`, `instruction-surfaces` `88f34a1`, `hook-levers` `e01e691`). In short:
+  - with the plugin and no test gate, no agent ran tests in 22 controlled sessions (warm daemon, 3 s suite);
+  - a gate demanding `npx vitest run` gave a full run in 5 of 5 sessions; the same gate reworded to `squeal run --all --wait` gave none in 5 of 5;
+  - an instruction block added nothing next to the plugin, but worked as the fallback without it;
+  - in real sessions in this repository 210 of 226 editing sessions ran tests themselves, 55% of runs checking the agent's own change while Squeal had not reached at least one covered file in 78% of store-checked runs, and gate runs took 39% of test wall time;
+  - `run --all --wait` exits 0 with failing tests; Claude Code checks permission rules against a rewritten command, and Codex rewrites only with `allow`;
+  - the agent's own runs caught Squeal wrong 5 times.

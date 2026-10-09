@@ -452,15 +452,17 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 Status and brief: `specifications/005-agent-adoption/status.md`, `research/README.md`. No spec yet (human, 2026-10-09: "The tool will have no value if agents ignore it").
 
-### Research
+### Research (done; the human decides whether a spec follows)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 005-01 research: adoption-baseline | running (`699bf271`, Opus) | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
-| 005-02 research: instruction-surfaces | running (`2413fd40`, Opus) | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
-| 005-03 research: hook-levers | running (`4f3e9ac9`, Astra) | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
+| 005-01 research: adoption-baseline | done (`2b342d3`, Opus, `research/adoption-baseline.md`; 0 subject sessions) | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
+| 005-02 research: instruction-surfaces | done (`88f34a1`, Opus, `research/instruction-surfaces.md`; 40 sessions, $2.45 Claude Code plus Codex tokens; host proxy URL redacted at landing) | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
+| 005-03 research: hook-levers | done (`e01e691`, Astra, `research/hook-levers.md`; 40 sessions, $0.35 Claude Code plus Codex tokens) | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
 
 ## Later
+
+- 001: a SubagentStop report restarts the subagent in Claude Code, so the parent receives the subagent's reply to the report instead of its answer to the task (005 `research/instruction-surfaces.md` 1, session `can-c`; 2.1.295). Probe first.
 
 - 001: `squeal` is not on a user's PATH after a plugin install (the CLI is `<plugin>/dist/cli/squeal.mjs`), so the READMEs' and the migration's `squeal init` fails with "command not found" (the human, 2026-10-09). Print the absolute command from `squeal init` and the hooks (the primer already does), and make the READMEs say `node ~/.claude/plugins/cache/hearsay/squeal/<version>/dist/cli/squeal.mjs` or offer a one-line shim.
 
