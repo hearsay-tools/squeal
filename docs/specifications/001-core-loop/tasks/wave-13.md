@@ -149,6 +149,8 @@ Use /worker. Shape: fix. Planned.
 
 Reported 2026-10-09 by the 002/003/004 coordinator's 0.1.51 gate on Node 22: `test/daemon/step-down.test.ts` "a released 0.1.31 daemon, from before the request, is sent stop and exits after its tier" failed with "the successor serving not met in 60000 ms", once alone, then passed four times alone at load 6 to 24. 001-145 fixed the sibling case in `handover.test.ts` by waiting for the successor at the lock; a 60 s miss at low load is not that race. Name the cause (log the successor's spawn, its lock attempts and its notes) before changing anything.
 
+Own: `test/daemon/step-down.test.ts`, `test/daemon/step-down-helpers.ts`, `src/core/daemon/` step-down, successor and lock paths, D10 if a rule changes. 001-156 (0.1.57) found this is not the liveness flap; only the slow daemon start under load is shared. Do not run `npm run build`. Done when: the cause is named with evidence; the case passes ten runs in a row on Node 22 and on Node 24 (`PATH=/home/agent/.nvm/versions/node/v22.23.3/bin:$PATH`).
+
 ## 001-151 every Vitest project's server is stamped, so no transient transform is stored as current
 
 Use /worker. Shape: repair. From `reviews/wave-13.md` B2 (001-149; the report lands on `cez/96885322` and then main, read it when it is there). Agreed with the 002/003/004 coordinator: limited to `src/runners/vitest/sources.ts` and the plugin wiring lines in `src/runners/vitest/adapter.ts`; 004-18 is changing `adapter.ts` for a second (slow) Vitest instance, and whichever lands second rebases.
