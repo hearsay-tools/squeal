@@ -455,7 +455,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 ## Feature 005: agent adoption
 
-Spec: `specifications/005-agent-adoption/spec.md`, draft 2026-10-09, awaiting the human's approval; sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
+Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held: no wave starts until the human's go; sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
 ### Research (done)
 
@@ -465,7 +465,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, draft 2026-10-09, awaiting th
 | 005-02 research: instruction-surfaces | done (`88f34a1`, Opus, `research/instruction-surfaces.md`; 40 sessions, $2.45 Claude Code plus Codex tokens; host proxy URL redacted at landing) | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
 | 005-03 research: hook-levers | done (`e01e691`, Astra, `research/hook-levers.md`; 40 sessions, $0.35 Claude Code plus Codex tokens) | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
 
-### Wave 0: checks (after approval)
+### Wave 0: checks (on the human's go)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|

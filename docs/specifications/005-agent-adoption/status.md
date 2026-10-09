@@ -1,6 +1,6 @@
 # 005 Agent adoption: status
 
-Stage: draft (spec written 2026-10-09 from the research round; awaiting the human's approval)
+Stage: approved (2026-10-09, by the human; waves on `docs/board.md`, not started until the human's go)
 Started: 2026-10-09
 
 ## Decisions so far
@@ -24,6 +24,11 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
   - the agent's own runs caught Squeal wrong 5 times.
 
 - 2026-10-09, the human: write the spec and reword this repository's gate in parallel; setup is a skill shipped with the plugin that interviews the user and runs `squeal init` for them, not a command the user types (spec D3).
+
+
+## Amendments after approval
+
+- 2026-10-09, decided by the human at approval: the skill is named `setup` (`/squeal:setup`, D3); goal 6's targets as proposed (agent-run Vitest outside a gate at most half of 9.0 per editing session, workers' full-suite Vitest near zero); no wave starts until the human says so.
 
 ## Dogfooding
 
