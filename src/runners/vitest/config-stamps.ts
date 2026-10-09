@@ -1,10 +1,10 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { mapConcurrent } from "../../core/fs/index.js";
-import { isRacy, RACY_WINDOW_MS, sameStat } from "../../core/hash/index.js";
+import { isRacy, sameStat } from "../../core/hash/index.js";
 import type { AbsolutePath, EpochMs, FileStat } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
-import { readStamp, statOrNull } from "./sources.js";
+import { changedBefore, readStamp, statOrNull } from "./stamp.js";
 
 /** A script at the root: where config files and the files they import usually sit. */
 const ROOT_SCRIPT = /\.[cm]?[jt]sx?$/;
@@ -22,8 +22,8 @@ interface Stamp {
  * last instance's config files, and the scripts at the root, which is where
  * a first instance's usually are. After creation, `unsure` names each
  * config file the instance may have read other bytes of than those on disk:
- * stamped and moved since, or not stamped and written since shortly before
- * the stamps were taken.
+ * stamped and moved since, or not stamped and changed since the stamps
+ * were taken.
  */
 export class ConfigStamps {
   private constructor(
@@ -53,8 +53,7 @@ export class ConfigStamps {
       const stat = await statOrNull(file);
       const stamp = this.stamps.get(file);
       if (stat === null) return true;
-      // A filesystem ticks in up to two seconds: an older change came before the reads.
-      if (!stamp) return stat.ctimeMs >= this.takenAt - RACY_WINDOW_MS;
+      if (!stamp) return !changedBefore(stat, this.takenAt);
       if (!sameStat(stat, stamp.stat)) return true;
       return isRacy(stamp.stat, stamp.hashedAt) && (await readStamp(file))?.hash !== stamp.hash;
     });

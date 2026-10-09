@@ -23,6 +23,7 @@ import { projectEnvironment } from "./environment.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
+import { mayHaveRun, withoutFiles } from "./moved.js";
 import { VitestObserver } from "./observe.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
@@ -37,7 +38,7 @@ import {
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
-import { invalidateStale, mayHaveRun, SourceStamps, withoutFiles } from "./sources.js";
+import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
 
 /**

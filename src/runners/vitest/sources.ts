@@ -1,18 +1,10 @@
-import { createHash } from "node:crypto";
-import { lstat, readFile } from "node:fs/promises";
 import type { Vitest } from "vitest/node";
-import { isMissing, mapConcurrent } from "../../core/fs/index.js";
+import { mapConcurrent } from "../../core/fs/index.js";
 import { isRacy, sameStat } from "../../core/hash/index.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  FileStat,
-  RunReport,
-  TestFileRef,
-} from "../../core/types/index.js";
+import type { AbsolutePath, EpochMs, FileStat } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
-import { refKey } from "./results.js";
 import { cachedTransform } from "./stale.js";
+import { changedBefore, readStamp, statOrNull } from "./stamp.js";
 
 /** What was on disk when Vite read one project file: the stat taken before the read, and the bytes' hash. */
 interface Stamp {
@@ -33,12 +25,24 @@ interface Hashed {
   readonly hashedAt: EpochMs;
 }
 
-/**
- * One plugin container's reads, per module ID. Review wave-13c B1: query
- * variants of one file (`mod.ts?variant`, `mod.ts?raw`) are cached as
- * modules of their own, each from its own read, so each keeps its own stamp.
- */
-type Reads = Map<string, Stamp>;
+/** One plugin container's reads. */
+interface Reads {
+  /**
+   * Per module ID of a project file. Review wave-13c B1: query variants of
+   * one file (`mod.ts?variant`, `mod.ts?raw`) are cached as modules of their
+   * own, each from its own read, so each keeps its own stamp.
+   */
+  readonly stamps: Map<string, Stamp>;
+  /**
+   * Per virtual module ID (one that names no project file): when its load
+   * began, and a stamp of each project file its plugin read and declared
+   * (`addWatchFile`, a module node without a transform among its imports).
+   */
+  readonly virtual: Map<
+    string,
+    { readonly loadedAt: EpochMs; readonly inputs: Map<string, Stamp> }
+  >;
+}
 
 /**
  * Task 001-146: a cached transform holds the bytes on disk when Vite read
@@ -54,7 +58,9 @@ type Reads = Map<string, Stamp>;
  * stats as the stat cache does (D3) and hashing only when the stat moved or
  * is racy. A cached module of a project file with no stamp was not loaded
  * through a stamped container (cached before `attach`, or by Vitest's
- * `fsModuleCache`): what it holds is not known, so it is stale.
+ * `fsModuleCache`): what it holds is not known, so it is stale. A virtual
+ * module's declared inputs are stamped at the first check after its load,
+ * if they changed before it began; one changed since is stale.
  */
 export class SourceStamps {
   /**
@@ -92,7 +98,7 @@ export class SourceStamps {
     for (const environment of environments(vitest)) {
       const container = environment.pluginContainer;
       if (this.#containers.has(container)) continue;
-      const reads: Reads = new Map();
+      const reads: Reads = { stamps: new Map(), virtual: new Map() };
       this.#containers.set(container, reads);
       const load = container.load.bind(container);
       container.load = async (id) => {
@@ -104,11 +110,14 @@ export class SourceStamps {
 
   async #stamp(reads: Reads, id: string): Promise<void> {
     const file = sourceOf(id, this.paths);
-    if (file === null) return;
     const loadedAt = this.now();
+    if (file === null) {
+      reads.virtual.set(id, { loadedAt, inputs: new Map() });
+      return;
+    }
     const read = await readStamp(file);
-    if (read === null) reads.delete(id);
-    else reads.set(id, { file, ...read, hashedAt: loadedAt, loadedAt });
+    if (read === null) reads.stamps.delete(id);
+    else reads.stamps.set(id, { file, ...read, hashedAt: loadedAt, loadedAt });
   }
 
   /**
@@ -128,13 +137,33 @@ export class SourceStamps {
     this.attach(vitest);
     const since = loadedSince ?? 0;
     const unknownAt = Number.POSITIVE_INFINITY as EpochMs;
-    const checks: { readonly reads: Reads; readonly id: string; readonly file: AbsolutePath }[] =
-      [];
+    // `stamps.get(key)` is what was read of `file`; without one, a stamp is
+    // taken now if `file` changed before `after`, else the read is unknown.
+    const checks: {
+      readonly stamps: Map<string, Stamp>;
+      readonly key: string;
+      readonly file: AbsolutePath;
+      readonly after?: EpochMs | undefined;
+    }[] = [];
     for (const environment of environments(vitest)) {
       const reads = this.#containers.get(environment.pluginContainer);
       if (!reads) continue;
       for (const [id, file] of cachedModules(environment, this.paths)) {
-        if ((reads.get(id)?.loadedAt ?? unknownAt) >= since) checks.push({ reads, id, file });
+        const stamps = reads.stamps;
+        if ((stamps.get(id)?.loadedAt ?? unknownAt) >= since)
+          checks.push({ stamps, key: id, file });
+      }
+      for (const [id, files] of virtualInputs(environment, this.paths)) {
+        const load = reads.virtual.get(id);
+        if ((load?.loadedAt ?? unknownAt) < since) continue;
+        for (const file of files) {
+          checks.push({
+            stamps: load?.inputs ?? new Map(),
+            key: file,
+            file,
+            after: load?.loadedAt,
+          });
+        }
       }
     }
     // One stat and at most one hash per file, however many modules read it.
@@ -147,15 +176,23 @@ export class SourceStamps {
         const read = await readStamp(file);
         return read && { ...read, hashedAt };
       });
-    const moved = await mapConcurrent(checks, async ({ reads, id, file }) => {
-      const stamp = reads.get(id);
-      if (!stamp) return unknownAt;
+    const moved = await mapConcurrent(checks, async ({ stamps, key, file, after }) => {
+      const stamp = stamps.get(key);
       const stat = await statOnce(file);
+      if (!stamp) {
+        if (after === undefined || stat === null || !changedBefore(stat, after))
+          return after ?? unknownAt;
+        const read = await hashOnce(file);
+        if (read === null) return after;
+        stamps.set(key, { file, ...read, loadedAt: after });
+        return null;
+      }
       if (stat && sameStat(stat, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return null;
       const read = await hashOnce(file);
       if (read === null || read.hash !== stamp.hash) return stamp.loadedAt;
       // A load meanwhile (a run in flight) stamped what it read; that stamp stays.
-      if (reads.get(id) === stamp) reads.set(id, { ...stamp, ...read, loadedAt: stamp.loadedAt });
+      if (stamps.get(key) === stamp)
+        stamps.set(key, { ...stamp, ...read, loadedAt: stamp.loadedAt });
       return null;
     });
     const found = new Set<AbsolutePath>();
@@ -188,87 +225,17 @@ export async function invalidateStale(
   for (const file of stale) vitest.invalidateFile(file);
   const files = new Set<AbsolutePath>(stale);
   for (const environment of environments(vitest)) {
+    const graph = environment.moduleGraph;
     for (const [id, file] of cachedModules(environment, stamps.paths)) {
-      const module = environment.moduleGraph.getModuleById(id);
-      if (files.has(file) && module) environment.moduleGraph.invalidateModule(module);
+      const module = graph.getModuleById(id);
+      if (files.has(file) && module) graph.invalidateModule(module);
+    }
+    for (const [id, inputs] of virtualInputs(environment, stamps.paths)) {
+      const module = graph.getModuleById(id);
+      if (inputs.some((file) => files.has(file)) && module) graph.invalidateModule(module);
     }
   }
   return stale;
-}
-
-/**
- * The run's test files that may have executed `stale`, files the run read
- * whose bytes moved since: those whose import graph in their project reaches
- * one. A stale file no test file of the run reaches was loaded by a
- * specifier Vite never saw (a computed `import()`), so every file of the run
- * may have executed it.
- */
-export function mayHaveRun(
-  vitest: Vitest,
-  stale: readonly AbsolutePath[],
-  testFiles: readonly TestFileRef[],
-  paths: WorktreePaths,
-): TestFileRef[] {
-  const tainted = new Set<string>();
-  for (const file of stale) {
-    const reached = testFiles.filter((ref) => reaches(vitest, file, ref, paths));
-    for (const ref of reached.length > 0 ? reached : testFiles) tainted.add(refKey(ref));
-  }
-  return testFiles.filter((ref) => tainted.has(refKey(ref)));
-}
-
-/** True when `ref`'s module imports `file`, directly or not, in some environment of its project. */
-function reaches(
-  vitest: Vitest,
-  file: AbsolutePath,
-  ref: TestFileRef,
-  paths: WorktreePaths,
-): boolean {
-  const target = paths.toAbsolute(ref.path);
-  for (const project of vitest.projects.filter((p) => p.name === ref.project)) {
-    for (const environment of Object.values(project.vite.environments)) {
-      type Node = NonNullable<ReturnType<typeof environment.moduleGraph.getModuleById>>;
-      const queue: Node[] = [...(environment.moduleGraph.getModulesByFile(file) ?? [])];
-      const seen = new Set<Node>();
-      for (let node = queue.pop(); node !== undefined; node = queue.pop()) {
-        if (seen.has(node)) continue;
-        seen.add(node);
-        if (node.file === target) return true;
-        queue.push(...node.importers);
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * `report` without `dropped`: their results, errors, durations and observed
- * inputs go, and `failure` says which files moved, so the scheduler records
- * them `unknown` with that reason (D5) instead of storing what they ran.
- */
-export function withoutFiles(
-  report: RunReport,
-  dropped: readonly TestFileRef[],
-  stale: readonly AbsolutePath[],
-  paths: WorktreePaths,
-): RunReport {
-  if (dropped.length === 0) return report;
-  const gone = new Set(dropped.map(refKey));
-  const kept = (ref: TestFileRef) => !gone.has(refKey(ref));
-  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
-  const reason = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
-  const { fileDurations, observed } = report;
-  return {
-    ...report,
-    completedFiles: report.completedFiles.filter(kept),
-    results: report.results.filter((r) =>
-      kept({ project: r.check.project, path: r.check.testPath }),
-    ),
-    fileErrors: report.fileErrors.filter((e) => kept(e.testFile)),
-    failure: report.failure === null ? reason : `${report.failure}\n${reason}`,
-    ...(fileDurations ? { fileDurations: fileDurations.filter((d) => kept(d.testFile)) } : {}),
-    ...(observed ? { observed: observed.filter((o) => kept(o.testFile)) } : {}),
-  };
 }
 
 type Environment = Vitest["projects"][number]["vite"]["environments"][string];
@@ -289,6 +256,28 @@ function cachedModules(environment: Environment, paths: WorktreePaths): Map<stri
 }
 
 /**
+ * Each cached virtual module of `environment` (its ID names no project file)
+ * and the project files it declared it read: its imports without a
+ * transform of their own.
+ */
+function virtualInputs(
+  environment: Environment,
+  paths: WorktreePaths,
+): Map<string, AbsolutePath[]> {
+  const found = new Map<string, AbsolutePath[]>();
+  for (const [id, module] of environment.moduleGraph.idToModuleMap) {
+    if (cachedTransform(module) === null || sourceOf(id, paths) !== null) continue;
+    const inputs: AbsolutePath[] = [];
+    for (const imported of module.importedModules) {
+      const file = cachedTransform(imported) === null ? sourceOf(imported.id ?? "", paths) : null;
+      if (file !== null) inputs.push(file);
+    }
+    if (inputs.length > 0) found.set(id, inputs);
+  }
+  return found;
+}
+
+/**
  * The project file a module ID names: without its query or hash, as Vite's
  * `cleanUrl`, and without the `\0` a plugin marks a virtual ID with. `null`
  * when it names none.
@@ -305,33 +294,4 @@ function memo<K, V>(cache: Map<K, Promise<V>>, key: K, compute: () => Promise<V>
     cache.set(key, value);
   }
   return value;
-}
-
-/** The stat, then the bytes' hash; `null` when the file is gone. */
-export async function readStamp(
-  file: AbsolutePath,
-): Promise<{ stat: FileStat; hash: string } | null> {
-  const stat = await statOrNull(file);
-  if (stat === null) return null;
-  try {
-    return {
-      stat,
-      hash: createHash("sha1")
-        .update(await readFile(file))
-        .digest("hex"),
-    };
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
-export async function statOrNull(file: AbsolutePath): Promise<FileStat | null> {
-  try {
-    const s = await lstat(file);
-    return { mtimeMs: s.mtimeMs, ctimeMs: s.ctimeMs, size: s.size, inode: s.ino };
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
 }

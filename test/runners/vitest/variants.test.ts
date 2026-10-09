@@ -68,6 +68,18 @@ const CLASSES: Readonly<Record<string, Class>> = {
       ),
     },
   },
+  "a virtual module built from the file": {
+    files: {
+      "vitest.config.ts": config(
+        `plugins: [{ name: "virtual-which", resolveId: (id) => (id === "virtual:which" ? "\\0virtual:which" : null), load(id) { if (id !== "\\0virtual:which") return null; const file = resolve(import.meta.dirname, "src/mod.ts"); this.addWatchFile(file); return readFileSync(file, "utf8"); } }], test: { ${INCLUDE} }`,
+        'import { readFileSync } from "node:fs";\nimport { resolve } from "node:path";\n',
+      ),
+      "test/t.test.ts": testFile(
+        'import { which } from "virtual:which";',
+        '  expect(which).toBe("new");',
+      ),
+    },
+  },
   "an eager import.meta.glob": {
     files: {
       "test/t.test.ts": testFile(
