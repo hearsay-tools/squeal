@@ -1,4 +1,11 @@
-import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -41,6 +48,66 @@ function repoWithIgnoredDist() {
   git(repo.main, ["commit", "-qam", "ignore dist"]);
   return repo;
 }
+
+/**
+ * reviews/wave-4.md B3: `dist -> real-build`, both ignored, in two worktrees
+ * with different builds, and a tracked `build.json` identical in both.
+ */
+function linkedBuilds() {
+  const repo = createRepo();
+  appendFileSync(join(repo.main, ".gitignore"), "dist\nreal-build/\n");
+  writeFileSync(join(repo.main, "build.json"), '{"version":1}\n');
+  git(repo.main, ["add", "-A"]);
+  git(repo.main, ["commit", "-qm", "ignore the build"]);
+  const second = addWorktree(repo.main, repo.dir, "second");
+  for (const [root, build] of [
+    [repo.main, "a"],
+    [second, "b"],
+  ] as const) {
+    mkdirSync(join(root, "real-build"));
+    writeFileSync(join(root, "real-build/index.js"), `export const build = '${build}';\n`);
+    symlinkSync("real-build", join(root, "dist"));
+  }
+  return { repo, second };
+}
+
+describe(
+  "a declared build beyond a symlinked ignored directory (reviews/wave-4.md B3)",
+  SLOW,
+  () => {
+    it("keys each worktree by its own build, so neither inherits the other's pass, and re-keys on its edit", async () => {
+      const { repo, second } = linkedBuilds();
+      const store = openRepoStore(repo.commonDir);
+      const declared = {
+        ...options(),
+        policy: { ...policy, inputs: { [STRINGS]: ["dist/**", "build.json"] } },
+      };
+      const a = await openHarness(repo.main, store, repo.commonDir, declared);
+      await a.scheduler.start();
+      await expect.poll(() => a.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
+      await a.scheduler.idle();
+      expect(a.scheduler.extraFiles()).toContain("dist/index.js");
+
+      const b = await openHarness(second, store, repo.commonDir, declared);
+      await b.scheduler.start();
+      expect(b.scheduler.extraFiles()).toContain("dist/index.js");
+      expect(b.keyOf(STRINGS)).not.toBe(a.keyOf(STRINGS));
+      // B's build differs, so B runs the slow file itself instead of inheriting A's pass.
+      await expect.poll(() => b.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
+      await b.scheduler.idle();
+
+      const before = a.keyOf(STRINGS);
+      a.write("real-build/index.js", "export const build = 'a2';\n");
+      await a.batch("dist/index.js");
+      expect(a.keyOf(STRINGS)).not.toBe(before);
+      // The same build in both worktrees shares the key.
+      a.write("real-build/index.js", "export const build = 'b';\n");
+      await a.batch("dist/index.js");
+      expect(a.keyOf(STRINGS)).toBe(b.keyOf(STRINGS));
+      await a.scheduler.idle();
+    });
+  },
+);
 
 describe("a gitignored declared input (lessons defect 7)", SLOW, () => {
   it("keys the slow file by the build, per worktree, and re-keys on its edit", async () => {
