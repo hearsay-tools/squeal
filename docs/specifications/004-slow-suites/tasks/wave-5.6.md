@@ -16,6 +16,6 @@ Use /worker.
 
 ## 004-51 re-review of 004-50
 
-Outcome: `reviews/wave-5.6.md`: is `reviews/wave-5.5.md` B1 closed on a warm store, and nothing around it broken (closure and environment extras kept, artifacts still keyed). Range pinned at dispatch. Second and last round for 004-47's slice: a remaining blocker goes to the human. Rules as for 004-14.
+Outcome: `reviews/wave-5.6.md`: is `reviews/wave-5.5.md` B1 closed on a warm store, and nothing around it broken (closure and environment extras kept, artifacts still keyed). Range: `0aeff3b` (004-50) and `1a3d231` (the 0.1.75 bundles) on main. Second and last round for 004-47's slice: a remaining blocker goes to the human. Rules as for 004-14.
 
 Use /reviewer.
