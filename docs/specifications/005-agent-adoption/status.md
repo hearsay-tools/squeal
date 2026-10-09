@@ -33,6 +33,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
   - D2 and D6 are reconciled with 001-172 (one-file `status --wait` latency on a loaded host) and 001-174 (the skill's red/green workflow and one-file wait), which may make D2 smaller or unnecessary;
   - the `squeal why` console-output gap is 001-173's;
   - the baseline was measured at that load, so `metric.mjs` records the load average per session and the proof runs at calm load, since Squeal "not having reached the file" (78% of store-checked runs) may be mostly load.
+- 2026-10-09, the human, after asking whether `init` starts the first run (it does not; the next hook's daemon does): setup offers the warm-up (decided). A user who knows Squeal should set a fresh repository up from the terminal before starting an agent, perhaps as one `squeal setup` (init, the Codex trust step, the warm-up), and how the CLI is distributed and updated is open, possibly outside the plugin. D3 is reopened until research topic `cli-distribution` (005-05) reports; the rest of 005 stays held.
 
 ## Dogfooding
 

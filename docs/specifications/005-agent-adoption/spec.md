@@ -50,6 +50,8 @@ Amends 001 D5 and D7. `squeal status --wait <ms> <path>...`. A test-file path se
 
 ### D3. The setup skill
 
+Reopened 2026-10-09 (`status.md`): setup offers the warm-up, a terminal `squeal setup` is the human's direction, and the CLI's distribution waits for `research/cli-distribution.md` (005-05). The text below stands until then.
+
 A second skill in both plugins, `skills/setup/SKILL.md`, invoked by the user (`/squeal:setup` in Claude Code; the Codex form is a wave-0 check) or by its description ("set up Squeal", "add Squeal to this repository", "update or remove Squeal's setup"). The READMEs tell a user to install the plugin and ask their agent. `squeal init` stays as the engine the skill runs, documented in the skill's references, not in the READMEs. Its body, steps first, like `skills/squeal`:
 
 1. **Find the CLI.** In Claude Code, `squeal` is on the Bash PATH through the plugin's `bin/`. In Codex it is the plugin's `dist/cli/squeal.mjs`, found from the skill's own path (wave-0 check). This replaces the board's Later fix for `squeal init` not being on the PATH.
