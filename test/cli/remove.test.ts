@@ -238,6 +238,35 @@ describe("squeal remove", () => {
     expect(result.stdout).not.toContain(`${linkedConfig}: the next`);
   });
 
+  it("names squeal@hearsay's uninstall when settings name no Squeal id", async () => {
+    const repo = storedRepo();
+    const result = await run(["remove"], repo.root);
+    expect(result.code, result.stderr).toBe(0);
+    expect(result.stdout).toContain(
+      "  The plugin: claude plugin uninstall squeal@hearsay --scope project (the scope it was installed with).\n",
+    );
+  });
+
+  it("names the previous squeal@squeal and the entries settings still hold (001-164)", async () => {
+    const repo = storedRepo();
+    mkdirSync(join(repo.root, ".claude"));
+    writeFileSync(
+      join(repo.root, ".claude", "settings.json"),
+      JSON.stringify({
+        extraKnownMarketplaces: { squeal: {}, team: {} },
+        enabledPlugins: { "squeal@squeal": true, "formatter@team": true },
+      }),
+    );
+    const result = await run(["remove"], repo.root);
+    expect(result.code, result.stderr).toBe(0);
+    expect(result.stdout).toContain(
+      "  The plugin: claude plugin uninstall squeal@squeal --scope project (the scope it was " +
+        "installed with), and the entries squeal init added to .claude/settings.json: " +
+        'extraKnownMarketplaces.squeal, enabledPlugins["squeal@squeal"].\n',
+    );
+    expect(result.stdout).not.toContain("squeal@hearsay");
+  });
+
   it("rejects other arguments", async () => {
     const result = await run(["remove", "--all"], "/");
     expect(result).toMatchObject({ code: 2, stderr: "usage: squeal remove [--config]\n" });
