@@ -25,7 +25,7 @@ Use /worker.
 
 Outcome: `reviews/wave-2.md` in this spec folder, committed.
 
-Range: 004-15, 004-18 and 003-40 and the 0.1.51 bundles on main (`git log --oneline cef8a30..<0.1.51 landing>`; 001 commits in it are out of scope).
+Range: 004-15, 004-18 and 003-40 and the 0.1.51 bundles on main (`git log --oneline cef8a30..6418a6b` on main; 001 commits in it are out of scope).
 
 Questions: (1) Goal 1 with a real daemon: is an edit's fast file reported while a slow file runs in its own lane and instance, on both runners; can a fast tier's stop, the slow instance's close or `releaseLane` stop or strand a slow run; does D2's start rule still hold (no slow start while fast work is pending or in flight, a trigger required)? (2) Is the slow instance keyed and stamped exactly as the fast one (`SourceStamps.attach`, observed inputs, the environment hash), and do invalidations queued while it runs reach it before its next run? (3) D8: is every state of the slow-tier line true for the store and the daemon's published state, under a torn read and with no daemon validating; does a slow failure's provenance hold; does `readHeader` reading the policy per hook call cost measurably at a hook's budget? (4) D7 and D9: does `stop.requireSlowSuite` block exactly while a slow file is not current, and does an ordinary Stop never wait for slow files? (5) 003-40: can a test's own load or a project preload's still land on the wrong side of the boundary (a worker thread running a project `--require`, an absolute `--require` path, nested `node --test`)?
 
