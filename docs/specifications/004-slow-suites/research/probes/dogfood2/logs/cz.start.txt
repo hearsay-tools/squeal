@@ -1,0 +1,3 @@
+cz start 15:25:16.690154547
++3.13s squeal start exit 0: Squeal daemon spawned for /tmp/squeal-dogfood2-cezarion-58239afe
++60.01s worktree f5a30f76673c5551, daemon pid 116600, RSS now 711.9 MiB, peak 715.8 MiB

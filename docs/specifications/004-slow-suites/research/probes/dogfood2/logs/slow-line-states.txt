@@ -1,0 +1,49 @@
+sq 15:25:16 -
+sq 15:27:48 Slow tier: no slow test files listed yet; not covered by Stop's wait.
+sq 15:28:14 Slow tier: N test files; N pending, waiting for the agent to pause. Not covered by Stop's wait; `squeal run --slow` runs them now.
+sq 15:49:43 Slow tier: N test files; N pending, running test/eNe/lifecycle.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+sq 15:52:23 Slow tier: N test files; N current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/eNe/**, test/harness/recorded/** as of revision N, sources changed since; N pending, waiting for fast test files. Not covered by Stop's wait; `squeal run --slow` runs them now.
+cz 15:25:16 -
+cz 15:25:20 Slow tier: no slow test files listed yet; not covered by Stop's wait.
+cz 15:26:51 Slow tier: N test files; N pending, running packages/cezar/test/eNe/alias-bin-exports.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+cz 15:26:59 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/application-update.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+cz 15:27:24 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, last reported running packages/cezar/test/eNe/application-update.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+cz 15:36:27 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N, sources changed since; N pending, running packages/cezar/test/eNe/application-update.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+cz 15:38:10 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N, sources changed since; N pending, waiting for fast test files. Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:40:07 -
+czb 15:40:11 Slow tier: no slow test files listed yet; not covered by Stop's wait.
+czb 15:40:55 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/cockpit-ownership.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:42:13 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/cursor-print.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:43:17 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/delegation.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:44:35 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/inline-contract.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:44:42 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/package-cli.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:46:22 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/release-snapshot.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:46:46 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/release.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:47:04 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/serve-port.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:47:35 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/task-cli.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:48:31 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N. Not covered by Stop's wait.
+czb 15:55:12 Slow tier: N test files; N pending, running packages/cezar/test/eNe/tick-writer.test.ts since N:N (last run N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:55:17 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/stop-child.test.ts since N:N (last run N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:55:21 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/alias-bin-exports.test.ts since N:N (last run N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:55:25 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/inline-contract.test.ts since N:N (last run N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:55:34 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/release.test.ts since N:N (last run N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czb 15:56:22 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/release-snapshot.test.ts since N:N (last run N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:38:14 -
+czc 15:38:21 Slow tier: no slow test files listed yet; not covered by Stop's wait.
+czc 15:39:18 Slow tier: N test files; N pending, running packages/cezar/test/eNe/alias-bin-exports.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:39:21 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/application-update.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:44:46 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/cockpit-ownership.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:45:26 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/cursor-print.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:46:09 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/delegation.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:47:00 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/inline-contract.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:47:04 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending. Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:47:07 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/package-cli.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:47:56 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/release-snapshot.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:48:24 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/release.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:48:53 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/serve-port.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:49:41 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; N pending, running packages/cezar/test/eNe/task-cli.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:51:52 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N; running packages/cezar/test/eNe/tick-writer.test.ts since N:N (no earlier run). Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:51:57 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N. Not covered by Stop's wait.
+czc 15:55:28 Slow tier: N test files; N current against packages/cezar/dist/** as of revision N, sources changed since. Not covered by Stop's wait.
+czc 15:55:40 Slow tier: N test files; N pending. Not covered by Stop's wait; `squeal run --slow` runs them now.
+czc 15:55:45 Slow tier: N test files; N pending, running packages/cezar/test/eNe/task-cli.test.ts since N:N (last run N min N s). Not covered by Stop's wait; `squeal run --slow` runs them now.
