@@ -1,13 +1,15 @@
 import { existsSync } from "node:fs";
 import { dropGoneHarnesses, expireConsumers, lastDeparture } from "../delivery/index.js";
 import { storePaths } from "../store/index.js";
-import type {
-  AbsolutePath,
-  DaemonExitReason,
-  EpochMs,
-  Policy,
-  Store,
-  WorktreeId,
+import {
+  type AbsolutePath,
+  type DaemonExitReason,
+  type EpochMs,
+  nodeTestObservedMetaKey,
+  nodeTestObservedPreloadsMetaKey,
+  type Policy,
+  type Store,
+  type WorktreeId,
 } from "../types/index.js";
 
 /** How often the daemon does its periodic work. Every field has a default. */
@@ -34,6 +36,12 @@ export interface DaemonTimings {
    * `/clear` and `/resume` keep it (lessons, defect 24). Default 3 s.
    */
   readonly departureGraceMs: number;
+  /**
+   * How often the daemon reads the shared node:test observed keys, so another
+   * worktree's observation re-keys this one without an edit (task 003-26).
+   * Default 5 s.
+   */
+  readonly observedMs: number;
 }
 
 /**
@@ -64,6 +72,12 @@ export interface TimerContext {
   /** Last nudge, request or registered consumer. */
   readonly lastActive: () => EpochMs;
   readonly active: (at: EpochMs) => void;
+  /**
+   * A `nodeTest` project's observed keys changed since the last call that
+   * returned true: queue a runner-only refinement. False while nothing takes
+   * it (no scheduler yet); the timer asks again at its next read.
+   */
+  readonly observedChanged?: () => boolean;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
@@ -85,6 +99,10 @@ export interface TimerContext {
  * comes at most the grace after the last consumer left.
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
+ *
+ * Task 003-26: with `nodeTest` projects, the shared observed keys are read
+ * every `observedMs`, and a change asks for a runner-only refinement. What it
+ * queues is not activity: the idle and departure exits never wait for it.
  */
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
@@ -160,6 +178,20 @@ export function startTimers(context: TimerContext): () => void {
     attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
     attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
   };
+  const observedKeys = context.policy.nodeTest.flatMap(({ name }) => [
+    nodeTestObservedMetaKey(name),
+    nodeTestObservedPreloadsMetaKey(name),
+  ]);
+  const readObserved = () => JSON.stringify(observedKeys.map((key) => store.meta.get(key)));
+  let observedSeen: string | null = null;
+  attempt("observed read", () => {
+    observedSeen = readObserved();
+  });
+  const observed = () =>
+    attempt("observed check", () => {
+      const read = readObserved();
+      if (read !== observedSeen && context.observedChanged?.() === true) observedSeen = read;
+    });
   const prune = () =>
     attempt("prune", () => {
       store.prune({
@@ -174,6 +206,9 @@ export function startTimers(context: TimerContext): () => void {
     setInterval(check, checkMs),
     setInterval(departure, presenceMs),
     setInterval(prune, pruneMs),
+    ...(observedKeys.length > 0 && context.observedChanged
+      ? [setInterval(observed, timings.observedMs ?? 5_000)]
+      : []),
   ];
   const first = setTimeout(prune, timings.firstPruneMs ?? 60_000);
   // The socket server keeps the process alive; timers alone never should.
