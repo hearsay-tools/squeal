@@ -5216,6 +5216,7 @@ function newFileState(ref2) {
     ref: ref2,
     id: testFileId(ref2),
     key: null,
+    keyedAt: null,
     resultKey: null,
     checks: [],
     failing: false,
@@ -5718,7 +5719,7 @@ function rekeyContent(context, ledger, revision) {
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, new Set(changes.map((c) => c.path)));
+  ledger.settle(touched, new Set(changes.map((c) => c.path)), { keyedAt: revision.number });
   return { rekeyed, environment: inputs2 || policy.environment };
 }
 function reloadPolicy(context, ledger, changes) {
@@ -8266,6 +8267,7 @@ var init_ledger = __esm({
           const key2 = this.context.keys.index.key(ref2);
           if (key2 !== file.key) {
             file.key = key2;
+            if (options.keyedAt !== void 0) file.keyedAt = options.keyedAt;
             this.#dirty.add(file.id);
           }
           if (file.rerunPending && key2 !== file.rerunKey) {
@@ -8584,7 +8586,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     closures
   };
 }
-async function applyRunnerPart(context, ledger, part, changedMeanwhile) {
+async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt) {
   const { keys } = context;
   const changed = new Set(part.revision.changes.map((c) => c.path));
   const touched = /* @__PURE__ */ new Map();
@@ -8606,7 +8608,10 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile) {
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved);
   touch(part.reresolved);
-  ledger.settle(touched.values(), changed, { direct: part.direct });
+  ledger.settle(touched.values(), changed, {
+    direct: part.direct,
+    ...keyedAt === void 0 ? {} : { keyedAt }
+  });
   settleFailures(ledger, part.failures, part.retrying, changed);
   return stale;
 }
@@ -8738,7 +8743,13 @@ var init_runner_work = __esm({
           await this.host.lock.run(async () => {
             const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
             ledger.refineChanges = null;
-            const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
+            const stale = await applyRunnerPart(
+              context,
+              ledger,
+              part,
+              changedMeanwhile,
+              refined ?? void 0
+            );
             for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
             ledger.commit(refined === null ? {} : { refined });
           });
@@ -9434,6 +9445,19 @@ var init_scheduler2 = __esm({
       }
       status() {
         return { revision: this.#ledger?.revision.number ?? 0 };
+      }
+      async refined() {
+        await this.#runnerWork.afterTier(() => Promise.resolve());
+      }
+      rekeyedSince(after, upTo) {
+        const files = [];
+        for (const file of this.#ledger?.files.values() ?? []) {
+          const revision = file.keyedAt;
+          if (revision !== null && revision > after && revision <= upTo) {
+            files.push({ testFile: file.ref, revision });
+          }
+        }
+        return files;
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
@@ -32451,7 +32475,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.79";
+  if (true) return "0.1.80";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33890,9 +33914,14 @@ function parseRequest(line) {
     case "ping":
     case "nudge":
     case "run-slow":
-    case "sync":
     case "stop":
       return { type: request.type };
+    case "sync":
+      if (request.after === void 0) return { type: "sync" };
+      if (!Number.isInteger(request.after) || request.after < 0) {
+        return '"after" must be a revision number';
+      }
+      return { type: "sync", after: request.after };
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -33956,7 +33985,8 @@ function createHandlers(context) {
     type: "sync",
     requestId,
     revision: state.revision,
-    error: state.error
+    error: state.error,
+    ...state.rekeyed === null ? {} : { rekeyed: state.rekeyed }
   });
   return (request) => {
     switch (request.type) {
@@ -34022,11 +34052,12 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
-        const state = { revision: null, error: null };
+        const state = { revision: null, error: null, rekeyed: null };
         remember(syncRequests, requestId, state);
-        context.requestSync().then(
-          (revision) => {
-            state.revision = revision;
+        context.requestSync(request.after ?? null).then(
+          (answer2) => {
+            state.revision = answer2.revision;
+            state.rekeyed = answer2.rekeyed;
           },
           (error) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -34227,12 +34258,12 @@ async function inWorker(worker, identity, events) {
           );
           return;
         case "sync":
-          events.requestSync().then(
-            (revision) => post({ type: "sync-result", id: message2.id, revision, error: null }),
+          events.requestSync(message2.after).then(
+            (answer2) => post({ type: "sync-result", id: message2.id, answer: answer2, error: null }),
             (error) => post({
               type: "sync-result",
               id: message2.id,
-              revision: null,
+              answer: null,
               error: error instanceof Error ? error.message : String(error)
             })
           );
@@ -34914,6 +34945,10 @@ function tellLiveness(store, consumer, told) {
 }
 function revisionMetaKey(worktreeId) {
   return `revision-told:${worktreeId}`;
+}
+function toldRevision(store, consumer) {
+  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
+  return typeof told === "number" ? told : null;
 }
 function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
@@ -35930,7 +35965,7 @@ var Daemon = class {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: () => this.#requestSync(),
+        requestSync: (after) => this.#requestSync(after),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -35964,14 +35999,22 @@ var Daemon = class {
     }
     return requestSlowSuite(this.#loop.scheduler);
   }
-  /** Lessons, defect 30: the revision of every change made before the request, once stored. */
-  async #requestSync() {
+  /**
+   * Lessons, defect 30: the revision of every change made before the
+   * request, once stored. With `after` (task 001-186), once its runner part
+   * is applied too, with the test files the revisions after `after` re-keyed.
+   */
+  async #requestSync(after) {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
     await this.#loop.reconcile();
-    return this.#loop.scheduler.status().revision;
+    const scheduler = this.#loop.scheduler;
+    const revision = scheduler.status().revision;
+    if (after === null) return { revision, rekeyed: null };
+    await scheduler.refined();
+    return { revision, rekeyed: scheduler.rekeyedSince(after, revision) };
   }
   #note(text2) {
     this.#log(text2);
@@ -36537,7 +36580,6 @@ init_text();
 import { setTimeout as sleep6 } from "node:timers/promises";
 init_fs();
 init_state3();
-init_text();
 
 // src/cli/status-command.ts
 import { fileURLToPath as fileURLToPath9 } from "node:url";
@@ -36559,13 +36601,13 @@ function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
 // src/cli/status-sync.ts
 import { setTimeout as sleep5 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
-function syncDaemon(root, pollMs) {
+function syncDaemon(root, pollMs, after = null) {
   let current2 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   void (async () => {
     for (; ; ) {
-      const outcome2 = await syncOnce(root, pollMs, isStopped);
+      const outcome2 = await syncOnce(root, pollMs, after, isStopped);
       if (outcome2 !== "again") return outcome2;
     }
   })().then(
@@ -36583,14 +36625,17 @@ function syncDaemon(root, pollMs) {
     }
   };
 }
-async function syncOnce(root, pollMs, stopped) {
+async function syncOnce(root, pollMs, after, stopped) {
   const socketPath = await daemonSocket(root).catch(() => null);
   if (socketPath === null || stopped()) return UNSUPPORTED;
-  const first = await askDaemon(socketPath, { type: "sync" }).catch(() => null);
+  const request = after === null ? { type: "sync" } : { type: "sync", after };
+  const first = await askDaemon(socketPath, request).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state = first;
   for (; ; ) {
-    if (state.revision !== null) return { state: "synced", revision: state.revision };
+    if (state.revision !== null) {
+      return { state: "synced", revision: state.revision, rekeyed: state.rekeyed ?? null };
+    }
     if (state.error !== null) return UNSUPPORTED;
     await sleep5(pollMs, void 0, { ref: false });
     if (stopped()) return UNSUPPORTED;
@@ -36604,6 +36649,89 @@ async function syncOnce(root, pollMs, stopped) {
   }
 }
 
+// src/cli/status-wait-edit.ts
+init_keys();
+init_state3();
+function lastHeard(store, worktreeId, revision, session) {
+  if (session === null) return revision;
+  const told = store.consumers.list(worktreeId).filter((record) => record.consumer.sessionId === session).flatMap((record) => toldRevision(store, record.consumer) ?? []);
+  return Math.min(revision, ...told);
+}
+function editWindow(store, worktreeId, heard, revision, rekeyed) {
+  const after = rekeyed.some((file) => file.revision > heard);
+  const refs = rekeyed.filter((file) => !after || file.revision > heard).map((f) => f.testFile);
+  const isSlow = worktreeSlowView(store, worktreeId)?.isSlow;
+  return {
+    since: after ? heard + 1 : heard,
+    revision,
+    ids: new Set(refs.map(testFileId)),
+    slow: new Set(refs.filter((ref2) => isSlow?.(ref2) === true).map(testFileId))
+  };
+}
+function heldPending(window, keys) {
+  return keys.filter((row) => {
+    const id2 = testFileId(row.testFile);
+    return row.pending !== null && window.ids.has(id2) && !window.slow.has(id2);
+  }).length;
+}
+function windowRefined(window, header) {
+  const refined = header.refinedRevision ?? null;
+  return refined === null || refined >= window.revision;
+}
+function splitNews(window, entries2) {
+  const own = entries2.filter((entry2) => window.ids.has(testFileId(testFileOf(entry2.check)))).length;
+  return { own, other: entries2.length - own };
+}
+
+// src/cli/status-wait-lines.ts
+init_state3();
+init_text();
+function waitLine(wait) {
+  const { outcome: outcome2, transitions, edit, result: snapshot3 } = wait;
+  const after = `after ${(wait.waitedMs / 1e3).toFixed(1)} s`;
+  const at2 = `at revision ${snapshot3.revision}`;
+  if (edit !== void 0 && outcome2 !== "no-daemon") return editLine(edit, wait, at2, after);
+  switch (outcome2) {
+    case "quiet":
+      return `Returned on quiet: nothing pending ${at2} ${after}`;
+    case "news":
+      return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at2} ${after}`;
+    case "no-daemon":
+      return `Returned without a daemon: ${noDaemonText(snapshot3.daemon)}; results are as of revision ${snapshot3.revision}`;
+    case "timeout":
+      return `Returned on timeout ${after}: ${pendingText2(snapshot3)} ${at2}`;
+  }
+}
+function editLine(edit, wait, at2, after) {
+  const files = `${plural(edit.testFiles, "test file")} the edits since revision ${edit.since} re-keyed`;
+  const others = edit.otherTransitions > 0 ? `; ${plural(edit.otherTransitions, "transition")} of other checks` : "";
+  const pending = anyPending(wait.result) ? `; ${pendingText2(wait.result)} in all` : "";
+  switch (wait.outcome) {
+    case "quiet":
+      return `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at2} ${after}${pending}${others}`;
+    case "news":
+      return `Returned on news: ${plural(wait.transitions, "transition")} in the ${files}, ${at2} ${after}${pending}${others}`;
+    default:
+      return `Returned on timeout ${after}: ${edit.pending} of the ${files} pending ${at2}${pending}${others}`;
+  }
+}
+function noDaemonText(daemon) {
+  if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
+  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+}
+function anyPending(snapshot3) {
+  const { counts, testFilesWithoutChecks, runnerPartPending } = snapshot3;
+  return counts.pending + testFilesWithoutChecks.pending > 0 || runnerPartPending === true;
+}
+function pendingText2(snapshot3) {
+  const checks = snapshot3.counts.pending;
+  const files = snapshot3.testFilesWithoutChecks.pending;
+  const parts = [plural(checks, "check")];
+  if (files > 0) parts.push(`${plural(files, "test file")} without checks`);
+  if (snapshot3.runnerPartPending === true) parts.push(runnerPartText(snapshot3.revision));
+  return parts.length === 1 ? `${parts[0]} pending` : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
+}
+
 // src/cli/status-wait.ts
 var STATUS_WAIT_POLL_MS = 250;
 var STATUS_WAIT_SETTLE_MS = 750;
@@ -36612,6 +36740,7 @@ async function waitForStatus(cwd, options) {
   const pollMs = options.pollMs ?? STATUS_WAIT_POLL_MS;
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
   const startSync = options.sync ?? syncDaemon;
+  const session = options.session ?? null;
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start = null;
@@ -36626,13 +36755,42 @@ async function waitForStatus(cwd, options) {
         const states = store.knownStates.list(id2);
         const header = readHeader(store, id2, states);
         start ??= states.map(toStartView);
-        const transitions = countNews(start, states, header.revision);
-        syncing.sync ??= startSync(root, pollMs);
+        const news = newsOf(start, states, header.revision);
+        syncing.heard ??= lastHeard(store, id2, header.revision, session);
+        const heard = syncing.heard;
+        syncing.sync ??= startSync(root, pollMs, Math.max(0, heard - 1));
+        const current2 = syncing.sync.current();
+        if (current2.state === "synced" && current2.rekeyed !== null) {
+          syncing.window ??= editWindow(store, id2, heard, current2.revision, current2.rekeyed);
+        }
+        const window = syncing.window;
         const settled = final || elapsed() >= settleMs;
-        const synced = isSynced(syncing.sync, header.revision, settled);
         const daemon = worktreeLiveness(store.worktrees.get(id2), now());
-        const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : synced && !isPending(header) ? "quiet" : final ? "timeout" : null;
-        return outcome2 === null ? null : { outcome: outcome2, transitions, result: buildSnapshot(store, root, now()) };
+        let transitions;
+        let quiet;
+        let edit;
+        if (window !== void 0) {
+          const split = splitNews(window, news);
+          const pending = heldPending(window, store.testFileKeys.list(id2));
+          transitions = split.own;
+          quiet = header.revision >= window.revision && windowRefined(window, header) && pending === 0;
+          edit = {
+            since: window.since,
+            testFiles: window.ids.size,
+            pending,
+            otherTransitions: split.other
+          };
+        } else if (current2.state === "pending") {
+          transitions = 0;
+          quiet = false;
+        } else {
+          transitions = news.length;
+          quiet = isSynced(current2, header.revision, settled) && !isPending(header);
+        }
+        const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
+        if (outcome2 === null) return null;
+        const result = buildSnapshot(store, root, now());
+        return { outcome: outcome2, transitions, ...edit === void 0 ? {} : { edit }, result };
       });
       if (read4 !== null && "available" in read4) {
         if (start === null || final) {
@@ -36648,15 +36806,14 @@ async function waitForStatus(cwd, options) {
     syncing.sync?.stop();
   }
 }
-function isSynced(sync, revision, settled) {
-  const current2 = sync.current();
+function isSynced(current2, revision, settled) {
   if (current2.state === "synced") return revision >= current2.revision;
   return current2.state === "unsupported" && settled;
 }
 function toStartView(state) {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
 }
-function countNews(start, states, revision) {
+function newsOf(start, states, revision) {
   return planDelta({
     view: start,
     states,
@@ -36664,59 +36821,36 @@ function countNews(start, states, revision) {
     toldAt: 0,
     rootOf: () => null,
     revision
-  }).entries.length;
+  }).entries;
 }
 async function statusWaitCommand(timeoutMs, json3, io) {
   const now = io.now ?? Date.now;
-  const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now });
+  const env = io.env ?? process.env;
+  const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
+  const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now, session });
   const result = wait.result;
   if (wait.outcome === "unavailable") {
     io.stdout(json3 ? `${JSON.stringify(result, null, 2)}
 ` : formatStatus(result, now()));
     return 1;
   }
-  const line = `${waitLine(wait.outcome, wait.transitions, wait.result, wait.waitedMs)}
+  const line = `${waitLine(wait)}
 `;
   if (json3) {
     const payload = {
       outcome: wait.outcome,
       waitedMs: Math.round(wait.waitedMs),
-      transitions: wait.transitions
+      transitions: wait.transitions,
+      ...wait.edit === void 0 ? {} : { edit: wait.edit }
     };
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}
 `);
     io.stderr(line);
   } else {
     io.stdout(`${line}
-${formatStatus(result, now(), statusCommand(io.env ?? process.env))}`);
+${formatStatus(result, now(), statusCommand(env))}`);
   }
   return 0;
-}
-function waitLine(outcome2, transitions, snapshot3, waitedMs) {
-  const after = `after ${(waitedMs / 1e3).toFixed(1)} s`;
-  const at2 = `at revision ${snapshot3.revision}`;
-  switch (outcome2) {
-    case "quiet":
-      return `Returned on quiet: nothing pending ${at2} ${after}`;
-    case "news":
-      return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at2} ${after}`;
-    case "no-daemon":
-      return `Returned without a daemon: ${noDaemonText(snapshot3.daemon)}; results are as of revision ${snapshot3.revision}`;
-    case "timeout":
-      return `Returned on timeout ${after}: ${pendingText2(snapshot3)} ${at2}`;
-  }
-}
-function noDaemonText(daemon) {
-  if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
-  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
-}
-function pendingText2(snapshot3) {
-  const checks = snapshot3.counts.pending;
-  const files = snapshot3.testFilesWithoutChecks.pending;
-  const parts = [plural(checks, "check")];
-  if (files > 0) parts.push(`${plural(files, "test file")} without checks`);
-  if (snapshot3.runnerPartPending === true) parts.push(runnerPartText(snapshot3.revision));
-  return parts.length === 1 ? `${parts[0]} pending` : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
 }
 
 // src/cli/wait-arg.ts

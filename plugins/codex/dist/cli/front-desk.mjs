@@ -30,9 +30,14 @@ function parseRequest(line) {
     case "ping":
     case "nudge":
     case "run-slow":
-    case "sync":
     case "stop":
       return { type: request.type };
+    case "sync":
+      if (request.after === void 0) return { type: "sync" };
+      if (!Number.isInteger(request.after) || request.after < 0) {
+        return '"after" must be a revision number';
+      }
+      return { type: "sync", after: request.after };
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -104,7 +109,8 @@ function createHandlers(context) {
     type: "sync",
     requestId,
     revision: state.revision,
-    error: state.error
+    error: state.error,
+    ...state.rekeyed === null ? {} : { rekeyed: state.rekeyed }
   });
   return (request) => {
     switch (request.type) {
@@ -170,11 +176,12 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
-        const state = { revision: null, error: null };
+        const state = { revision: null, error: null, rekeyed: null };
         remember(syncRequests, requestId, state);
-        context.requestSync().then(
-          (revision) => {
-            state.revision = revision;
+        context.requestSync(request.after ?? null).then(
+          (answer2) => {
+            state.revision = answer2.revision;
+            state.rekeyed = answer2.rekeyed;
           },
           (error) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -330,10 +337,10 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestSync: () => new Promise((resolve, reject) => {
+    requestSync: (after) => new Promise((resolve, reject) => {
       const id = randomUUID2();
       waitingSync.set(id, { resolve, reject });
-      post({ type: "sync", id });
+      post({ type: "sync", id, after });
     }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
@@ -372,7 +379,7 @@ port.on("message", (message) => {
     case "sync-result": {
       const entry = waitingSync.get(message.id);
       waitingSync.delete(message.id);
-      if (message.revision !== null) entry?.resolve(message.revision);
+      if (message.answer !== null) entry?.resolve(message.answer);
       else entry?.reject(new Error(message.error ?? "sync failed"));
       return;
     }
