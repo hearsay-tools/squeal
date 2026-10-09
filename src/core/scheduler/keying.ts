@@ -92,6 +92,13 @@ export class WorktreeKeys {
    * one hashes it again and watches it.
    */
   readonly #dropped = new Set<RelativePath>();
+  /**
+   * Dropped paths a closure tracked again. A predecessor's saved closure
+   * names its declaration-only scratch too, so each is dropped once more
+   * when no closure, environment, lockfile or observed read names it
+   * (reviews/wave-5.6.md S1).
+   */
+  readonly #revived = new Set<RelativePath>();
   readonly #lockfiles: Lockfiles;
   /** How each project's installed dependencies enter its keys (D3, task 001-105). */
   #dependencies = new Map<ProjectName, DependencyKeys>();
@@ -437,9 +444,35 @@ export class WorktreeKeys {
     const declared = this.#ignoredStale ? await this.#relistIgnoredInputs() : [];
     const paths = [...this.#untracked];
     this.#untracked.clear();
-    if (paths.length === 0) return declared;
-    await this.track(paths);
-    return [...declared, ...this.index.rekey(paths)];
+    for (const path of paths) if (this.#dropped.has(path)) this.#revived.add(path);
+    if (paths.length > 0) await this.track(paths);
+    this.#release();
+    return paths.length === 0 ? declared : [...declared, ...this.index.rekey(paths)];
+  }
+
+  /**
+   * Drops again the revived paths nothing names now: the closures that named
+   * them were saved ones, since replaced by the runner's (`#revived`). An
+   * artifact a slow file's declaration admits stays.
+   */
+  #release(): void {
+    if (this.#revived.size === 0) return;
+    const admits = this.#artifactRule()?.admits ?? (() => false);
+    const named = new Set([...this.#environmentFiles, ...this.#lockfiles.paths()]);
+    for (const runner of this.#runnerClosures.values()) {
+      for (const path of this.#observed.of(runner.testFile)) named.add(path);
+    }
+    const unnamed = [...this.#revived].filter(
+      (path) =>
+        !named.has(path) && !admits(path) && this.index.reverse.referencing([path]).length === 0,
+    );
+    if (unnamed.length === 0) return;
+    for (const path of unnamed) {
+      this.#revived.delete(path);
+      this.#extra.delete(path);
+    }
+    this.#drop(unnamed);
+    this.options.onExtraFiles(this.extraFiles());
   }
 
   /** Lists and tracks the gitignored declared inputs; re-keys every closure when one is new. */

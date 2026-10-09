@@ -10,7 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import { createFsHasher, StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import { statCandidates } from "../../src/core/revision/index.js";
 import {
   DEFAULT_POLICY,
   type NodeTestProject,
@@ -279,5 +280,55 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     await second.scheduler.idle();
     expect(second.runsOf(GEN)).toHaveLength(2);
     expect(second.runsOf(MATH)).toHaveLength(0);
+  });
+});
+
+describe("a predecessor's saved closure (reviews/wave-5.6.md S1)", SLOW, () => {
+  it("naming dropped scratch keeps it unwatched, and no revision follows a full pass", async () => {
+    const SCRATCH = "fixtures/.tmp/out.txt";
+    const r = repo("fixtures/.tmp/", { "fixtures/data.txt": "data\n" });
+    mkdirSync(join(r.main, "fixtures/.tmp"));
+    writeFileSync(join(r.main, SCRATCH), "scratch\n");
+    const store = openRepoStore(r.commonDir);
+    const options = { policy: policy({ [MATH]: ["fixtures/**"] }), slow: calm() };
+    const first = await openHarness(r.main, store, r.commonDir, options);
+    await first.scheduler.start();
+    await expect.poll(() => first.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
+    await first.scheduler.idle();
+    const ref = first.runner.runs.flatMap((run) => run.files).find((f) => f.path === MATH);
+    await first.scheduler.close();
+    await first.runner.close();
+
+    // As a daemon from 0.1.60 to 0.1.73 left it: the scratch hashed, and in the saved closure.
+    await seedPredecessor(store, r.main, [SCRATCH]);
+    const saved = ref === undefined ? null : store.testFiles.get(ref);
+    if (saved === null) throw new Error("no saved closure of the fast file");
+    const closure = { ...saved.closure, paths: [...saved.closure.paths, SCRATCH].sort() };
+    store.testFiles.put({ ...saved, closure });
+
+    const h = await openHarness(r.main, store, r.commonDir, options);
+    h.runner.beforeRun = (files) => {
+      if (files.some((f) => f.path === MATH)) h.write(SCRATCH, `${Math.random()}\n`);
+    };
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const revision = h.scheduler.status().revision;
+    const runs = h.runsOf(MATH).length;
+    // A run of the fast file, or anything else, rewrites the scratch.
+    h.write(SCRATCH, `${Math.random()}\n`);
+
+    // A full pass, as the change feed's: every tracked and extra path is a candidate.
+    const all = [...h.scheduler.trackedPaths(), ...h.scheduler.extraFiles()];
+    const paths = await statCandidates(all, createFsHasher(r.main, "sha1"));
+    await h.scheduler.handleBatch({ trigger: "interval", paths });
+    await h.scheduler.idle();
+    expect(h.scheduler.status().revision).toBe(revision);
+    expect(h.runsOf(MATH)).toHaveLength(runs);
+    expect(h.scheduler.extraFiles()).not.toContain(SCRATCH);
+    expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+    expect([...h.scheduler.trackedPaths()]).not.toContain(SCRATCH);
+    expect(store.fileHashes.list(worktreeIdFor(r.main)).map((row) => row.path)).not.toContain(
+      SCRATCH,
+    );
   });
 });
