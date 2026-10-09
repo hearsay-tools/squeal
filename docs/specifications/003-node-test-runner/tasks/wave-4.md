@@ -57,3 +57,17 @@ Owns: `src/core/scheduler/runner-work.ts`, the method this needs in `src/core/sc
 Done when: the two-scheduler test; a test that an idle daemon with no observed change does no runner work; lint, typecheck, full suite on Node 24 and 22.
 
 Use /worker.
+
+## 003-41 the observed timer's news is never lost at startup (004 `reviews/wave-2.5.md` B3)
+
+Outcome: growth another worktree records while this daemon's scheduler is still starting re-keys this worktree once the scheduler can act, without a local edit.
+
+Read: 004 `reviews/wave-2.5.md` B3 and its probe; `tasks/003-26/notes.md`.
+
+Shape: repair. Test first: the review's probe (a timer acknowledging preload growth while the scheduler's baseline is held; B keeps an inherited pass with zero runs past another interval) fails at `068f6de` on Node 22 and 24. Seam: `Scheduler.refreshObserved()` (`src/core/scheduler/scheduler.ts:279`) reports whether it accepted the refinement, or keeps a notification that arrives before `#context` and drains it after the baseline; the daemon callback (`src/core/daemon/daemon.ts`) returns that answer, so the timer (`src/core/daemon/lifecycle.ts`) acknowledges a snapshot only once accepted. Not activity, no revision; keep the timer unref'd and cleared on stop, the after-startup two-file control and the no-growth control.
+
+Owns: `refreshObserved` in `src/core/scheduler/scheduler.ts`, the callback in `src/core/daemon/daemon.ts`, the observed timer in `src/core/daemon/lifecycle.ts`, `src/core/types/scheduler.ts` (the method's return type), `test/scheduler/observed-growth.test.ts`, `test/daemon/observed-timer.test.ts`. Leave alone: everything else (the 001 lane runs in `src/runners/vitest/` and `src/core/scheduler/observed.ts`).
+
+Done when: the probe is a test on Node 22 and 24; lint, typecheck, full suite on Node 24 and 22. Do not run `npm run build`; keep scratch in one `/tmp` directory of your own and remove it; no CPU burners.
+
+Use /worker.
