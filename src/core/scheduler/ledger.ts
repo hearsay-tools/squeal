@@ -375,9 +375,10 @@ export class Ledger {
 /**
  * Task 001-161: one sink call per run of consecutive entries of one
  * checkpoint, not one per file. Each call lists every known state and key of
- * the worktree inside the commit's write transaction: per file, a 250-file
- * tier held the lock 6 s with 4,982 states, 30 s with 15,468 (cezar's store),
- * and a starting daemon beside it exited on "database is locked". A check
+ * the worktree inside the commit's write transaction: per file, applying a
+ * 198-file tier held the lock 11 to 17 s with 4,982 states and 59 to 67 s
+ * with 15,468 (cezar's store), and a daemon starting beside such a tier
+ * exited on "database is locked". A check
  * met again starts a new call, so it sees the state the one before wrote, as
  * separate calls did.
  */
