@@ -437,7 +437,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-37 a parallel slow tier: each file its own artifact and start | done (0.1.63) | `reviews/wave-4.md` B1 (first file's artifact on every file), B2 (node:test slow width follows `runner.tierSize`; unstarted files start after an edit or close), S2 (drain tests start their file before the session ends). | Probes as tests on both Nodes. |
 | 004-38 a symlinked ignored build directory enters the key | done (0.1.63) | `reviews/wave-4.md` B3: `dist -> real-build`, both ignored, keys equal across different builds; an inherited pass proven. | The two-worktree probe as a test. |
 | 004-39 a real source addition at revision 1 counts | done (0.1.63) | `reviews/wave-4.md` B4: 004-31's start-scan filter also hides a genuine first-revision addition. | Paired status tests. |
-| 004-40 re-review of wave 4.5 | running | `/reviewer` on gpt-6.1-sol; second and last round. | `reviews/wave-4.5.md`. |
+| 004-40 re-review of wave 4.5 | done: FAIL; two remaining cases (wave-4 B3 with a tracked link and a wildcard glob, B4 interval addition) to the human | `/reviewer` on gpt-6.1-sol; second and last round. | `reviews/wave-4.5.md`. |
 
 ## Later
 
