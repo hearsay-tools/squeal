@@ -413,7 +413,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 ## Later
 
-- 001: `store.prune` removes a removed worktree's results but not its per-worktree `meta` rows (`slow-tier:<worktreeId>` from 004-15, `slow-artifacts:<worktreeId>` from 004-23, and a third from 004-25 (checkId to the applied slow result's key; prefix to be sent when it lands), all built in `src/core/slow/state.ts`). Prune them with the worktree by those known prefixes (a registry of per-worktree prefixes), never by a `:<worktreeId>` suffix match: the shared `nodeTest.observed.<project>` and `nodeTest.observedPreloads.<project>` keys must survive, in the same short batches as 001-141. Reported by the 002/003/004 coordinator, 2026-10-09.
+- 001: `store.prune` removes a removed worktree's results but not its per-worktree `meta` rows (`slow-tier:<worktreeId>` from 004-15, `slow-artifacts:<worktreeId>` from 004-23, and `failure-keys:<worktreeId>` from 004-25 (newest 1,024 failing checks' keys, written by `src/core/state/sink.ts`), all built in `src/core/slow/state.ts`). Prune them with the worktree by those known prefixes (a registry of per-worktree prefixes), never by a `:<worktreeId>` suffix match: the shared `nodeTest.observed.<project>` and `nodeTest.observedPreloads.<project>` keys must survive, in the same short batches as 001-141. Reported by the 002/003/004 coordinator, 2026-10-09.
 
 - 001: the e2e suite leaves its `/tmp/squeal-e2e-*` fixture directories (40 to 80 MB each) behind when a test fails or the run is killed; 20 had piled up by 2026-10-08 and the host disk reached 98%. Remove them in the test teardown, and at the start of a run for a dead run's leftovers, as 001-138 does for daemons. Reported by the 002/003/004 coordinator.
 
