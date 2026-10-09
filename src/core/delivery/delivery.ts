@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { baselineFindings, toKnownFailure } from "../state/index.js";
+import { type ChangeMarker, changeMarker } from "../store/index.js";
 import {
   type Consumer,
   type Delta,
@@ -57,7 +58,10 @@ export interface DeliveryOptions {
   readonly squealVersion?: string | null;
 }
 
-/** A store read costs well under a millisecond; four reads a second keep an idle wake-up prompt. */
+/**
+ * Four polls a second keep an idle wake-up prompt; a poll that finds the
+ * store unchanged reads only its change marker (task 001-178).
+ */
 export const DEFAULT_POLL_INTERVAL_MS = 250;
 
 interface DeliverOptions {
@@ -71,6 +75,8 @@ interface Selection {
   readonly only: ((entry: DeltaEntry) => boolean) | null;
   readonly trim: TurnState | null;
 }
+
+const sameMarker = (a: ChangeMarker, b: ChangeMarker) => a.others === b.others && a.own === b.own;
 
 const isEmpty = (plan: DeltaPlan) =>
   plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
@@ -192,6 +198,30 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     });
   }
 
+  /** Per consumer, the store as the waiter's last empty poll left it (task 001-178). */
+  const quietAt = new Map<string, ChangeMarker>();
+
+  /**
+   * The waiter's poll: `deliver` lists every known state, 15,000 on a large
+   * worktree, so a poll that finds the store as the last empty one left it
+   * returns `null` without it (task 001-178). The marker is read before
+   * `deliver`, so a commit during it is seen next poll; after an empty one
+   * that wrote, the marker moved by its own write is kept unless another
+   * connection committed meanwhile.
+   */
+  function deliverIdle(consumer: Consumer): Delta | null {
+    const key = JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId]);
+    const before = changeMarker(store);
+    const last = quietAt.get(key);
+    if (before !== null && last !== undefined && sameMarker(before, last)) return null;
+    const delta = deliver(consumer, { heardFrom: false, idle: true });
+    quietAt.delete(key);
+    if (delta !== null || before === null) return delta;
+    const after = changeMarker(store);
+    quietAt.set(key, after !== null && after.others === before.others ? after : before);
+    return null;
+  }
+
   return {
     register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) =>
       store.transaction(() => {
@@ -261,7 +291,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const deadline = performance.now() + timeoutMs;
       for (;;) {
         if (signal?.aborted) return null;
-        const delta = deliver(consumer, { heardFrom: false, idle: true });
+        const delta = deliverIdle(consumer);
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
