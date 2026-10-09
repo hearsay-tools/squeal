@@ -16,6 +16,6 @@ Use /worker.
 
 ## 004-24 re-review of wave 2.5
 
-Outcome: `reviews/wave-2.5.md`: are `reviews/wave-2.md` B1 to B3 closed, and did the repair break anything around them. Range: the 004-23 commits and its bundles on main. Rules as for 004-14. Second and last review round on this slice: a remaining blocker goes to the human.
+Outcome: `reviews/wave-2.5.md`: are `reviews/wave-2.md` B1 to B3 closed, and did the repair break anything around them. Range: `git log --oneline d882196..068f6de` on main, 0.1.52. In scope: the 004-23 commits and the bundles. Also in scope as a first review round: 003-26 (the daemon's observed timer, `Scheduler.refreshObserved`, the runner-only refinement): can it re-key too little (a grown preload set, a project added while running), run when nothing changed, keep the daemon alive, or count as activity? The 001 commits and the wave-13b S2 fix in `escaped.ts` are out of scope. Rules as for 004-14. For 004-23 this is the second and last review round: a remaining blocker goes to the human.
 
 Use /reviewer.
