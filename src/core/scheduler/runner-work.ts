@@ -23,6 +23,19 @@ interface RunnerTask {
   readonly refine?: true;
 }
 
+/** A runner-only refinement re-keys no content. */
+const NO_CONTENT: ContentRekey = { rekeyed: [], environment: false };
+
+/**
+ * The current revision with no changed path, for a runner-only refinement:
+ * the runner phase reads only its changes, and it is never stored.
+ */
+function unchanged(context: SchedulerContext, ledger: Ledger): Revision {
+  const { number, head, dirty } = ledger.revision;
+  const { worktreeId, now } = context;
+  return { worktreeId, number, createdAt: now(), head, dirty, trigger: "interval", changes: [] };
+}
+
 /** What the runner work needs from its scheduler. */
 export interface RunnerWorkHost {
   readonly lock: Mutex;
@@ -55,7 +68,27 @@ export class RunnerWork {
   /** Queues the runner part of `revision`. */
   queueRefine(revision: Revision, content: ContentRekey): void {
     this.#tasks.push({
-      run: () => this.#refine(revision, content),
+      run: () => this.#refine(revision, content, revision.number),
+      cancel: () => {},
+      refine: true,
+    });
+  }
+
+  /**
+   * Queues a runner-only refinement (task 003-26): another worktree grew the
+   * observed paths, which may move keys this worktree holds results under.
+   * It asks the runner what any refinement asks with no changed path, so the
+   * adapters report the grown files and projects and their keys are fetched
+   * again; it stores no revision. A refinement queued and not started yet
+   * asks the same, so it stands in for this one.
+   */
+  queueObserved(): void {
+    if (this.#tasks.some((task) => task.refine === true)) return;
+    this.#tasks.push({
+      run: () => {
+        const { context, ledger } = this.host.started();
+        return this.#refine(unchanged(context, ledger), NO_CONTENT, null);
+      },
       cancel: () => {},
       refine: true,
     });
@@ -79,9 +112,14 @@ export class RunnerWork {
    * reconciled meanwhile; the apply phase takes the lock, applies what the
    * runner said, and commits it with the revision as refined (D2 as
    * amended). Never rejects: an error is a note, and the revision counts as
-   * refined so no wait hangs on it.
+   * refined so no wait hangs on it. A runner-only refinement (`refined`
+   * `null`) commits no refined revision.
    */
-  async #refine(revision: Revision, content: ContentRekey): Promise<void> {
+  async #refine(
+    revision: Revision,
+    content: ContentRekey,
+    refined: Revision["number"] | null,
+  ): Promise<void> {
     const { context, ledger } = this.host.started();
     this.#refining = true;
     try {
@@ -94,11 +132,15 @@ export class RunnerWork {
         ledger.refineChanges = null;
         const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
         for (const ref of stale) this.#carried.set(testFileId(ref), ref);
-        ledger.commit({ refined: revision.number });
+        ledger.commit(refined === null ? {} : { refined });
       });
     } catch (error) {
-      this.host.backgroundError(`could not apply revision ${revision.number}`, error);
-      this.#refinedAfterError(context, revision.number);
+      if (refined === null) {
+        this.host.backgroundError("could not apply observed paths", error);
+      } else {
+        this.host.backgroundError(`could not apply revision ${refined}`, error);
+        this.#refinedAfterError(context, refined);
+      }
     } finally {
       ledger.refineChanges = null;
       this.#refining = false;
