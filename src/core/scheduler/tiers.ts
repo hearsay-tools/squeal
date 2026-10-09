@@ -384,6 +384,8 @@ export function abandonFullSuite(ledger: Ledger): CheckpointRecord {
 
 export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord {
   const id = randomUUID();
+  // A file another worktree's heal left held here is not done (review wave 13i, B1).
+  ledger.confirmHeld();
   const files = [...ledger.files.values()];
   const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
   const runnable = files.filter((file) => file.key !== null && file.blocked === null);
