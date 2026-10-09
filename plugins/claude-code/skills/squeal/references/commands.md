@@ -23,14 +23,14 @@ Full-suite checkpoint: none completed at revision 187; last completed at revisio
 
 Results arrive with your next tool call, so by default keep working. Only when you need a result before your next step, for example before saying the task is done, run `squeal status --wait 60000`. It replaces `sleep` and polling.
 
-It returns as soon as nothing is pending at the current revision, or as soon as a check changed (a new failure or a recovery), and at the latest after the given milliseconds; then it prints status. Its first line says why it returned, with the revision and the time waited:
+It returns once the test files your edits re-keyed since Squeal last told you something have their results (a pass, a failure, a skip, or unknown with a reason), or as soon as one of their checks changed (a new failure or a recovery), and at the latest after the given milliseconds; then it prints status. A baseline, a backlog, slow files and other worktrees' work do not hold it, and other checks' changes do not end it: the line names them and what else is pending. An edit to an environment input (the Vitest config, a setup file, the installed lockfile) re-keys every test file, so its wait holds for all of them. Its first line says why it returned, with the revision and the time waited:
 
-- `Returned on quiet`: nothing is pending at the current revision.
-- `Returned on news`: a check changed; read it as you would a SQUEAL message.
-- `Returned on timeout`: checks are still pending. Say so, or wait again.
+- `Returned on quiet`: none of the test files your edits re-keyed is pending.
+- `Returned on news`: a check of those files changed; read it as you would a SQUEAL message.
+- `Returned on timeout`: some of those files are still pending, and the line says how many. Say so, or wait again.
 - `Returned without a daemon: no daemon has validated since <time>; results are as of revision N`: nothing gets validated, so results are as old as that revision, whatever the files hold now. Run `squeal start` and wait again, or run the tests yourself.
 
-The exit code is 0 in all four cases. Keep the limit below your shell tool's own timeout. It returns no sooner than 750 ms after it starts, so a revision for an edit you just made is recorded first. It starts no daemon. With `--json`, stdout is the snapshot with a `wait` field (`outcome` is `quiet`, `news`, `no-daemon` or `timeout`) and the line goes to stderr.
+The exit code is 0 in all four cases. Keep the limit below your shell tool's own timeout. It first asks the daemon to record any edit you just made, so it never returns quiet at the revision before it. It starts no daemon. A daemon from before this rule names no files: the wait then returns when nothing at all is pending, or on any check's change. With `--json`, stdout is the snapshot with a `wait` field (`outcome` is `quiet`, `news`, `no-daemon` or `timeout`; `edit`, when the daemon named the files, holds `since`, the first revision of the window, `testFiles`, `pending` and `otherTransitions`) and the line goes to stderr.
 
 ## squeal why
 
