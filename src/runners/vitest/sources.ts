@@ -24,6 +24,20 @@ interface Stamp {
   readonly loadedAt: EpochMs;
 }
 
+/** The bytes on disk and when they were hashed. */
+interface Hashed {
+  readonly stat: FileStat;
+  readonly hash: string;
+  readonly hashedAt: EpochMs;
+}
+
+/** One plugin container's reads: its stamps, and the files it cached before it was attached. */
+interface Reads {
+  readonly stamps: Map<AbsolutePath, Stamp>;
+  /** Cached before the container was attached: what it read is not known. */
+  readonly unknown: Set<AbsolutePath>;
+}
+
 /**
  * Task 001-146: a cached transform holds the bytes on disk when Vite read
  * them, while a check key names the bytes the watcher hashed. A revert and
@@ -39,11 +53,13 @@ interface Stamp {
  * way (Vitest's `fsModuleCache`) has no stamp and is not checked.
  */
 export class SourceStamps {
-  readonly #stamps = new Map<AbsolutePath, Stamp>();
-  /** The plugin containers whose `load` stamps. */
-  readonly #attached = new WeakSet<object>();
-  /** Files cached by a container before it was attached: what it read is not known. */
-  readonly #unknown = new Set<AbsolutePath>();
+  /**
+   * Review wave-13b B2: per plugin container, what it read. Two servers (two
+   * projects with config files of their own) cache the same file each from
+   * its own read, so one stamp per path let the second read hide the first:
+   * each transform is checked against its own container's stamp.
+   */
+  readonly #containers = new WeakMap<object, Reads>();
   /**
    * Task 001-150: what `stale` found moved since the last run's check, and
    * when Vite had read it. The runner part checks during a run, and the
@@ -71,30 +87,32 @@ export class SourceStamps {
   attach(vitest: Vitest): void {
     for (const environment of environments(vitest)) {
       const container = environment.pluginContainer;
-      if (this.#attached.has(container)) continue;
-      this.#attached.add(container);
-      for (const file of cachedFiles(environment)) this.#unknown.add(file);
+      if (this.#containers.has(container)) continue;
+      const reads: Reads = { stamps: new Map(), unknown: new Set(cachedFiles(environment)) };
+      this.#containers.set(container, reads);
       const load = container.load.bind(container);
       container.load = async (id) => {
-        await this.#stamp(id);
+        await this.#stamp(reads, id);
         return load(id);
       };
     }
   }
 
-  async #stamp(id: string): Promise<void> {
+  async #stamp(reads: Reads, id: string): Promise<void> {
     const file = id as AbsolutePath;
     if (id.includes("?") || id.startsWith("\0") || !this.paths.isProjectFile(file)) return;
     const loadedAt = this.now();
     const read = await this.#read(file);
-    this.#unknown.delete(file);
-    if (read === null) this.#stamps.delete(file);
-    else this.#stamps.set(file, { ...read, hashedAt: loadedAt, loadedAt });
+    reads.unknown.delete(file);
+    if (read === null) reads.stamps.delete(file);
+    else reads.stamps.set(file, { ...read, hashedAt: loadedAt, loadedAt });
   }
 
   /**
    * The cached files, among those Vite read at or after `loadedSince`, whose
-   * bytes on disk differ from the ones read, or which are gone. A file whose
+   * bytes on disk differ from the ones read, or which are gone. Each
+   * environment's transform is checked against what its own container read,
+   * and a file stale in one is named once, for every project. A file whose
    * bytes are unchanged takes its new stat, so a touch is hashed once. A
    * file cached before its server was attached is stale until Vite reads it
    * again.
@@ -107,26 +125,42 @@ export class SourceStamps {
     this.attach(vitest);
     const since = loadedSince ?? 0;
     const unknownAt = Number.POSITIVE_INFINITY as EpochMs;
-    const files = [...transformedFiles(vitest)].filter(
-      (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= since,
-    );
-    const moved = await mapConcurrent(files, async (file): Promise<EpochMs | null> => {
-      if (this.#unknown.has(file)) return unknownAt;
-      const stamp = this.#stamps.get(file);
+    const checks: { readonly reads: Reads; readonly file: AbsolutePath }[] = [];
+    for (const environment of environments(vitest)) {
+      const reads = this.#containers.get(environment.pluginContainer);
+      if (!reads) continue;
+      for (const file of cachedFiles(environment)) {
+        if (reads.unknown.has(file) || (reads.stamps.get(file)?.loadedAt ?? -1) >= since) {
+          checks.push({ reads, file });
+        }
+      }
+    }
+    // One stat and at most one hash per file, however many containers read it.
+    const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
+    const hashes = new Map<AbsolutePath, Promise<Hashed | null>>();
+    const statOnce = (file: AbsolutePath) => memo(stats, file, () => statOrNull(file));
+    const hashOnce = (file: AbsolutePath) =>
+      memo(hashes, file, async () => {
+        const hashedAt = this.now();
+        const read = await this.#read(file);
+        return read && { ...read, hashedAt };
+      });
+    const moved = await mapConcurrent(checks, async ({ reads, file }): Promise<EpochMs | null> => {
+      if (reads.unknown.has(file)) return unknownAt;
+      const stamp = reads.stamps.get(file);
       if (!stamp) return null;
-      const stat = await statOrNull(file);
+      const stat = await statOnce(file);
       if (stat && sameStat(stat, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return null;
-      const hashedAt = this.now();
-      const read = await this.#read(file);
+      const read = await hashOnce(file);
       if (read === null || read.hash !== stamp.hash) return stamp.loadedAt;
       // A load meanwhile (a run in flight) stamped what it read; that stamp stays.
-      if (this.#stamps.get(file) === stamp) {
-        this.#stamps.set(file, { ...read, hashedAt, loadedAt: stamp.loadedAt });
+      if (reads.stamps.get(file) === stamp) {
+        reads.stamps.set(file, { ...read, loadedAt: stamp.loadedAt });
       }
       return null;
     });
     const found = new Set<AbsolutePath>();
-    files.forEach((file, i) => {
+    checks.forEach(({ file }, i) => {
       const loadedAt = moved[i];
       if (loadedAt === null || loadedAt === undefined) return;
       found.add(file);
@@ -259,9 +293,13 @@ function cachedFiles(environment: Environment): AbsolutePath[] {
   return files;
 }
 
-/** Every project file with a cached transform in some environment. */
-function transformedFiles(vitest: Vitest): Set<AbsolutePath> {
-  return new Set([...environments(vitest)].flatMap(cachedFiles));
+function memo<K, V>(cache: Map<K, Promise<V>>, key: K, compute: () => Promise<V>): Promise<V> {
+  let value = cache.get(key);
+  if (value === undefined) {
+    value = compute();
+    cache.set(key, value);
+  }
+  return value;
 }
 
 async function statOrNull(file: AbsolutePath): Promise<FileStat | null> {
