@@ -809,8 +809,8 @@ var init_packages = __esm({
       }
       /** Identities of `start` and everything it can load, memoized per location. */
       #closure(start) {
-        const memo = this.#closures.get(start);
-        if (memo !== void 0) return memo;
+        const memo2 = this.#closures.get(start);
+        if (memo2 !== void 0) return memo2;
         const identities = [];
         const seen = /* @__PURE__ */ new Set();
         const stack = [start];
@@ -12733,8 +12733,13 @@ function cachedFiles2(environment) {
   }
   return files;
 }
-function transformedFiles(vitest) {
-  return new Set([...environments(vitest)].flatMap(cachedFiles2));
+function memo(cache, key2, compute) {
+  let value = cache.get(key2);
+  if (value === void 0) {
+    value = compute();
+    cache.set(key2, value);
+  }
+  return value;
 }
 async function statOrNull3(file) {
   try {
@@ -12760,11 +12765,13 @@ var init_sources = __esm({
       }
       paths;
       now;
-      #stamps = /* @__PURE__ */ new Map();
-      /** The plugin containers whose `load` stamps. */
-      #attached = /* @__PURE__ */ new WeakSet();
-      /** Files cached by a container before it was attached: what it read is not known. */
-      #unknown = /* @__PURE__ */ new Set();
+      /**
+       * Review wave-13b B2: per plugin container, what it read. Two servers (two
+       * projects with config files of their own) cache the same file each from
+       * its own read, so one stamp per path let the second read hide the first:
+       * each transform is checked against its own container's stamp.
+       */
+      #containers = /* @__PURE__ */ new WeakMap();
       /**
        * Task 001-150: what `stale` found moved since the last run's check, and
        * when Vite had read it. The runner part checks during a run, and the
@@ -12786,28 +12793,30 @@ var init_sources = __esm({
       attach(vitest) {
         for (const environment of environments(vitest)) {
           const container = environment.pluginContainer;
-          if (this.#attached.has(container)) continue;
-          this.#attached.add(container);
-          for (const file of cachedFiles2(environment)) this.#unknown.add(file);
+          if (this.#containers.has(container)) continue;
+          const reads = { stamps: /* @__PURE__ */ new Map(), unknown: new Set(cachedFiles2(environment)) };
+          this.#containers.set(container, reads);
           const load = container.load.bind(container);
           container.load = async (id2) => {
-            await this.#stamp(id2);
+            await this.#stamp(reads, id2);
             return load(id2);
           };
         }
       }
-      async #stamp(id2) {
+      async #stamp(reads, id2) {
         const file = id2;
         if (id2.includes("?") || id2.startsWith("\0") || !this.paths.isProjectFile(file)) return;
         const loadedAt = this.now();
         const read3 = await this.#read(file);
-        this.#unknown.delete(file);
-        if (read3 === null) this.#stamps.delete(file);
-        else this.#stamps.set(file, { ...read3, hashedAt: loadedAt, loadedAt });
+        reads.unknown.delete(file);
+        if (read3 === null) reads.stamps.delete(file);
+        else reads.stamps.set(file, { ...read3, hashedAt: loadedAt, loadedAt });
       }
       /**
        * The cached files, among those Vite read at or after `loadedSince`, whose
-       * bytes on disk differ from the ones read, or which are gone. A file whose
+       * bytes on disk differ from the ones read, or which are gone. Each
+       * environment's transform is checked against what its own container read,
+       * and a file stale in one is named once, for every project. A file whose
        * bytes are unchanged takes its new stat, so a touch is hashed once. A
        * file cached before its server was attached is stale until Vite reads it
        * again.
@@ -12820,25 +12829,39 @@ var init_sources = __esm({
         this.attach(vitest);
         const since = loadedSince ?? 0;
         const unknownAt = Number.POSITIVE_INFINITY;
-        const files = [...transformedFiles(vitest)].filter(
-          (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= since
-        );
-        const moved = await mapConcurrent(files, async (file) => {
-          if (this.#unknown.has(file)) return unknownAt;
-          const stamp = this.#stamps.get(file);
-          if (!stamp) return null;
-          const stat7 = await statOrNull3(file);
-          if (stat7 && sameStat(stat7, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return null;
+        const checks = [];
+        for (const environment of environments(vitest)) {
+          const reads = this.#containers.get(environment.pluginContainer);
+          if (!reads) continue;
+          for (const file of cachedFiles2(environment)) {
+            if (reads.unknown.has(file) || (reads.stamps.get(file)?.loadedAt ?? -1) >= since) {
+              checks.push({ reads, file });
+            }
+          }
+        }
+        const stats = /* @__PURE__ */ new Map();
+        const hashes = /* @__PURE__ */ new Map();
+        const statOnce = (file) => memo(stats, file, () => statOrNull3(file));
+        const hashOnce = (file) => memo(hashes, file, async () => {
           const hashedAt = this.now();
           const read3 = await this.#read(file);
+          return read3 && { ...read3, hashedAt };
+        });
+        const moved = await mapConcurrent(checks, async ({ reads, file }) => {
+          if (reads.unknown.has(file)) return unknownAt;
+          const stamp = reads.stamps.get(file);
+          if (!stamp) return null;
+          const stat7 = await statOnce(file);
+          if (stat7 && sameStat(stat7, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return null;
+          const read3 = await hashOnce(file);
           if (read3 === null || read3.hash !== stamp.hash) return stamp.loadedAt;
-          if (this.#stamps.get(file) === stamp) {
-            this.#stamps.set(file, { ...read3, hashedAt, loadedAt: stamp.loadedAt });
+          if (reads.stamps.get(file) === stamp) {
+            reads.stamps.set(file, { ...read3, loadedAt: stamp.loadedAt });
           }
           return null;
         });
         const found = /* @__PURE__ */ new Set();
-        files.forEach((file, i2) => {
+        checks.forEach(({ file }, i2) => {
           const loadedAt = moved[i2];
           if (loadedAt === null || loadedAt === void 0) return;
           found.add(file);
@@ -31016,7 +31039,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.53";
+  if (true) return "0.1.54";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
