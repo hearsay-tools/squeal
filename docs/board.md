@@ -409,6 +409,8 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 ## Later
 
+- 001: `store.prune` removes a removed worktree's results but not its per-worktree `meta` rows (`slow-tier:<worktreeId>` from 004-15, `slow-artifacts:<worktreeId>` from 004-23, and any other `*:<worktreeId>` key). Prune them with the worktree, in the same short batches as 001-141. Reported by the 002/003/004 coordinator, 2026-10-09.
+
 - 001: the e2e suite leaves its `/tmp/squeal-e2e-*` fixture directories (40 to 80 MB each) behind when a test fails or the run is killed; 20 had piled up by 2026-10-08 and the host disk reached 98%. Remove them in the test teardown, and at the start of a run for a dead run's leftovers, as 001-138 does for daemons. Reported by the 002/003/004 coordinator.
 
 - Load-sensitive tests seen failing under load only (001's): `test/watcher/reconcile-pass.test.ts:72` (re-stat of 10,000 paths, 526 to 541 ms against 500), `test/daemon/lifecycle.test.ts:79` (idle exit before readiness observed), `test/harness/stop.test.ts:176` (1,977 ms against 1,875). Each passes alone at calm load. Also 003's `test/runners/node-test/graph-cost.test.ts:97` (re-resolve 291 ms against a 265 ms cold build at load 20 to 33, passing alone 3 of 3 at the same load): two close timings taken apart in a loaded suite.
