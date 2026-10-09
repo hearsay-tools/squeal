@@ -210,6 +210,8 @@ export interface HarnessOptions {
   readonly slow?: SchedulerOptions["slow"];
   /** node:test projects beside Vitest, behind the daemon's composite (spec 003 D7). */
   readonly nodeTest?: readonly NodeTestProject[];
+  /** Their processes at once follow policy `runner.tierSize`, as the daemon's adapters do (task 004-37). */
+  readonly nodeTestTierSize?: boolean;
   /**
    * `beforeRun` holds a run without holding the Vitest adapter's other
    * calls, and the recorder adds no queue of its own: the adapter's
@@ -242,7 +244,15 @@ export async function openHarness(
   const runner = recording(adapter, options.environmentRoot, options.runnerPartBesideRun);
   for (const call of options.failing ?? []) runner.failing.add(call);
   const nodeTest = await Promise.all(
-    (options.nodeTest ?? []).map((project) => createNodeTestAdapter(project, { root, note })),
+    (options.nodeTest ?? []).map((project) =>
+      createNodeTestAdapter(project, {
+        root,
+        note,
+        ...(options.nodeTestTierSize === true
+          ? { concurrency: () => current?.runner.tierSize ?? 1 }
+          : {}),
+      }),
+    ),
   );
   const schedulerRunner =
     nodeTest.length === 0 ? runner : createCompositeRunner([runner, ...nodeTest]);

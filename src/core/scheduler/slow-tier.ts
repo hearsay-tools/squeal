@@ -188,7 +188,7 @@ export class SlowTier {
 
   /**
    * Under the lock: the slow files a trigger lets run now, in order, all of
-   * the first one's lane, since a tier runs in one lane; none when none may.
+   * the first one's lane and runner (`runnerOf`); none when none may.
    */
   #candidates(): TestFileRef[] {
     const { context, ledger } = this.host.started();
@@ -207,8 +207,8 @@ export class SlowTier {
     const triggered = queued.filter(this.#trigger(context, ledger));
     const first = triggered[0];
     if (first !== undefined) {
-      const lane = laneOf(context, first);
-      return triggered.filter((ref) => laneOf(context, ref) === lane);
+      const runner = runnerOf(context, first);
+      return triggered.filter((ref) => runnerOf(context, ref) === runner);
     }
     this.#publish({ kind: "waiting", for: "idle" });
     this.#arm();
@@ -430,6 +430,18 @@ export class SlowTier {
       context.note(text);
     }
   }
+}
+
+/**
+ * What runs `ref`: its lane, since a tier runs in one, and for a node:test
+ * project the project, as each is a runner of its own that the composite
+ * runs after the previous one (spec 003 D7). A slow tier starts all its files
+ * at once, so none starts after an edit or a close (review wave 4, B2).
+ */
+function runnerOf(context: SchedulerContext, ref: TestFileRef): string {
+  const lane = laneOf(context, ref);
+  const nodeTest = context.policy.nodeTest.some((project) => project.name === ref.project);
+  return nodeTest ? `${lane}\0${ref.project}` : lane;
 }
 
 /** The longest of the files' last known run times, `null` when none is known: a tier lasts its longest file. */

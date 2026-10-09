@@ -1,12 +1,13 @@
 import { basename, join } from "node:path";
 import { compare, sameList, toAbsolute } from "../../core/fs/index.js";
-import type {
-  AbsolutePath,
-  NodeTestProject,
-  RelativePath,
-  RunnerAdapter,
-  RunReport,
-  TestFileRef,
+import {
+  type AbsolutePath,
+  isSlowLane,
+  type NodeTestProject,
+  type RelativePath,
+  type RunnerAdapter,
+  type RunReport,
+  type TestFileRef,
 } from "../../core/types/index.js";
 import type { NodeTestAdapterOptions } from "./adapter.js";
 import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
@@ -153,7 +154,11 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         files: testFiles,
         logDir: join(runOptions.logDir, "node-test", encodeURIComponent(project.name)),
         timeoutMs: runOptions.timeoutMs,
-        ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency() }),
+        // A slow tier starts every file it holds (004 D2, D4): the scheduler sized it to the
+        // slot's permits, and a file queued here would start after an edit or a close.
+        ...(options.concurrency === undefined || slowLane(runOptions.lane)
+          ? {}
+          : { concurrency: options.concurrency() }),
         ...(env === undefined ? {} : { env }),
       });
       observed.record(seen, new Set(files));
@@ -163,6 +168,11 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     },
     close: async () => {},
   };
+}
+
+/** A run in a slow file's lane (task 004-18). */
+function slowLane(lane: string | undefined): boolean {
+  return lane !== undefined && isSlowLane(lane);
 }
 
 /**
