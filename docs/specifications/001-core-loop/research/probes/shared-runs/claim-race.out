@@ -1,0 +1,6 @@
+inside: tiers 19/14/15/12, keys taken 600 for 600, keys taken twice or more 0, per process w0=190 w1=140 w2=150 w3=120
+outside: tiers 30/27/26/28, keys taken 1110 for 600, keys taken twice or more 340, per process w0=300 w1=270 w2=260 w3=280
+inside: tiers 23/19/10/8, keys taken 600 for 600, keys taken twice or more 0, per process w0=230 w1=190 w2=100 w3=80
+outside: tiers 40/24/28/13, keys taken 1050 for 600, keys taken twice or more 300, per process w0=400 w1=240 w2=280 w3=130
+inside: tiers 19/17/12/12, keys taken 600 for 600, keys taken twice or more 0, per process w0=190 w1=170 w2=120 w3=120
+outside: tiers 37/38/33/35, keys taken 1430 for 600, keys taken twice or more 450, per process w0=370 w1=380 w2=330 w3=350

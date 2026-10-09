@@ -1,0 +1,35 @@
+commit 933dd90874f800293ed066e3310d438200fa3551
+Author: probe <probe@x>
+Date:   Sat Oct 10 00:29:58 2026 +0200
+
+    probe 001-201: subset
+
+ vitest.config.ts | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+commit 933dd90874f800293ed066e3310d438200fa3551
+Author: probe <probe@x>
+Date:   Sat Oct 10 00:29:58 2026 +0200
+
+    probe 001-201: subset
+
+diff --git a/vitest.config.ts b/vitest.config.ts
+index 3fa5f1bd..c48eb733 100644
+--- a/vitest.config.ts
++++ b/vitest.config.ts
+@@ -12,6 +12,8 @@ export default defineConfig({
+     // The suites are still being grown; a project that currently matches no file must not
+     // fail the validation gate. Root-level only — vitest rejects this inside a project.
+     passWithNoTests: true,
++    // PROBE 001-201: the server project left out and two workers per worktree, to bound host load.
++    maxWorkers: 2,
+     // Balance CI shards by measured duration; new tests remain automatically discovered.
+     sequence: { sequencer: CiTestSequencer },
+     // Pin reporters so Actions gets exactly one `github-actions` job summary for the whole
+@@ -23,7 +25,6 @@ export default defineConfig({
+         ? ['default', ['github-actions', { jobSummary: { title: 'Vitest Test Report' } }]]
+         : ['default'],
+     projects: [
+-      './packages/cezar/vitest.config.ts',
+       './packages/contract/vitest.config.ts',
+       './packages/api-client/vitest.config.ts',
+       './packages/web/vitest.config.ts',

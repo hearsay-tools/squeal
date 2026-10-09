@@ -1,0 +1,80 @@
+diff --git a/src/core/scheduler/scheduler.ts b/src/core/scheduler/scheduler.ts
+index c0fff09f..08b347de 100644
+--- a/src/core/scheduler/scheduler.ts
++++ b/src/core/scheduler/scheduler.ts
+@@ -48,6 +48,7 @@ import {
+   queueFullSuite,
+   recordTier,
+   selectTier,
++  probeClaims,
+   type Tier,
+   unstableInputs,
+ } from "./tiers.js";
+@@ -438,6 +439,11 @@ class TierScheduler implements Scheduler {
+               continue;
+             }
+           }
++          if (probeClaims.waiting) {
++            // PROBE 001-201: queued files another daemon is running; look again in a second.
++            await Promise.race([this.#nextEvent(), new Promise((r) => setTimeout(r, 1_000))]);
++            continue;
++          }
+           if (this.#inFlight.size === 0 && !this.#woken) break;
+           await this.#nextEvent();
+         }
+diff --git a/src/core/scheduler/tiers.ts b/src/core/scheduler/tiers.ts
+index 1d7fcb6f..703836aa 100644
+--- a/src/core/scheduler/tiers.ts
++++ b/src/core/scheduler/tiers.ts
+@@ -32,6 +32,20 @@ import { slowView } from "./slow.js";
+ import { changedSince, type Moved, snapshotInputs } from "./stability.js";
+ import { storeResults } from "./store-results.js";
+ import { requeueSplit, timedOutReason, timeoutCap } from "./timeout-split.js";
++import { connectionOf } from "../store/store.js";
++
++/** PROBE 001-201: another live daemon's tier is running `key`. */
++export function claimedElsewhere(context: SchedulerContext, key: CheckKey): boolean {
++  if (process.env.SQUEAL_PROBE_CLAIMS !== "1") return false;
++  const row = connectionOf(context.store).get(
++    `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
++     WHERE k.key = ? AND k.pending = 'running' AND k.worktree_id <> ?
++       AND w.daemon_heartbeat_at >= ? - 2 * COALESCE(w.daemon_heartbeat_interval_ms, 5000) LIMIT 1`,
++    key, context.worktreeId, context.now(),
++  );
++  return row !== null;
++}
++export const probeClaims = { skipped: 0, waiting: false };
+ 
+ /** One test file of a tier and the key it runs under. */
+ export interface TierFile {
+@@ -113,8 +127,18 @@ export function selectTier(
+   context: SchedulerContext,
+   ledger: Ledger,
+   busy: ReadonlySet<string> = new Set(),
++): Tier | null {
++  // PROBE 001-201: the claim check and the claim (the running phase) in one write transaction.
++  return context.store.transaction(() => selectTierIn(context, ledger, busy));
++}
++
++function selectTierIn(
++  context: SchedulerContext,
++  ledger: Ledger,
++  busy: ReadonlySet<string>,
+ ): Tier | null {
+   const { keys, policy } = context;
++  probeClaims.waiting = false;
+   const picked: TierFile[] = [];
+   const backlog = !ledger.queue.hasRecent((ref) => !busy.has(laneOf(context, ref)));
+   let size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+@@ -142,6 +166,11 @@ export function selectTier(
+         continue;
+       }
+     }
++    if (!forced && !ledger.queue.isRecent(ref) && ledger.inherits(ref) && claimedElsewhere(context, key)) {
++      probeClaims.skipped += 1;
++      probeClaims.waiting = true;
++      continue;
++    }
+     const cap = Math.min(size, file.tierCap ?? size);
+     if (picked.length >= cap) continue;
+     if (!backlog) {

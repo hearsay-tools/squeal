@@ -1,0 +1,93 @@
+idle {
+  checkDerived651: 4.32,
+  checkMeta651: 2.89,
+  checkTable651: 2.96,
+  claimMeta200: 20.4,
+  releaseMeta200: 0.7,
+  claimTable200: 0.71,
+  releaseTable200: 0.59,
+  claimTable4: 0.12,
+  releaseTable4: 0.1
+}
+idle {
+  checkDerived651: 3.63,
+  checkMeta651: 2.34,
+  checkTable651: 2.24,
+  claimMeta200: 0.58,
+  releaseMeta200: 0.4,
+  claimTable200: 0.41,
+  releaseTable200: 0.46,
+  claimTable4: 0.04,
+  releaseTable4: 0.03
+}
+idle {
+  checkDerived651: 3.19,
+  checkMeta651: 3.08,
+  checkTable651: 2.27,
+  claimMeta200: 0.5,
+  releaseMeta200: 0.52,
+  claimTable200: 0.55,
+  releaseTable200: 0.31,
+  claimTable4: 0.05,
+  releaseTable4: 0.03
+}
+load {
+  checkDerived651: 4.42,
+  checkMeta651: 2.88,
+  checkTable651: 2.23,
+  claimMeta200: 0.54,
+  releaseMeta200: 0.34,
+  claimTable200: 0.47,
+  releaseTable200: 0.3,
+  claimTable4: 0.05,
+  releaseTable4: 0.03
+}
+load {
+  checkDerived651: 4,
+  checkMeta651: 2.17,
+  checkTable651: 2.07,
+  claimMeta200: 7.88,
+  releaseMeta200: 0.5,
+  claimTable200: 0.46,
+  releaseTable200: 0.27,
+  claimTable4: 0.04,
+  releaseTable4: 0.03
+}
+load {
+  checkDerived651: 3.47,
+  checkMeta651: 2.18,
+  checkTable651: 1.97,
+  claimMeta200: 0.44,
+  releaseMeta200: 0.29,
+  claimTable200: 0.35,
+  releaseTable200: 0.28,
+  claimTable4: 0.03,
+  releaseTable4: 0.02
+}
+load {
+  checkDerived651: 3.49,
+  checkMeta651: 2.32,
+  checkTable651: 1.98,
+  claimMeta200: 18.93,
+  releaseMeta200: 0.29,
+  claimTable200: 0.38,
+  releaseTable200: 0.28,
+  claimTable4: 0.03,
+  releaseTable4: 0.02
+}
+load {
+  checkDerived651: 3.85,
+  checkMeta651: 2.58,
+  checkTable651: 2.21,
+  claimMeta200: 38.27,
+  releaseMeta200: 19,
+  claimTable200: 0.38,
+  releaseTable200: 0.35,
+  claimTable4: 0.03,
+  releaseTable4: 0.05
+}
+writers [
+  { commits: 100, p50: 46.71595300000263, max: 199.98795400000017 },
+  { commits: 99, p50: 48.068240999999944, max: 264.1285520000001 },
+  { commits: 100, p50: 46.39182299999993, max: 184.4958719999995 }
+]
