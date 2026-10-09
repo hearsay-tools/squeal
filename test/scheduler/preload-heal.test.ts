@@ -131,9 +131,9 @@ describe("no heal under a preload path the environment key lacks", SLOW, () => {
     release();
     await aStarted;
     await a.scheduler.idle();
-    // A ran under B's key, which lacks `src/hidden.cjs`, and passed.
-    expect(a.runs()).toBeGreaterThan(0);
-    expect(a.keyOf()).toBe(b.keyOf());
+    // A's run loaded `src/hidden.cjs`, which its key lacked: it ran again under a key with it (task 003-43).
+    expect(a.runs()).toBeGreaterThan(1);
+    expect(a.keyOf()).not.toBe(b.keyOf());
     expect(stateOf(store, repo.main)).toMatchObject({ outcome: "pass", origin: { kind: "own" } });
     // B's own fail stands: no heal, and no flaky note claims the inputs were the same.
     expect(stateOf(store, rootB)).toMatchObject({
