@@ -339,8 +339,14 @@ export function recordTier(
         describe: context.describe,
       });
       const prior = storeResults(context, records);
+      // A grown file's results become current at `storeKey` through `settle` below; its new
+      // failure is judged here, before the sink applies them (review wave 13i, B3).
+      if (growth !== undefined || file.key === key) {
+        if (holdsNewFailure(context, prior, records)) {
+          failedAnew.push({ file, key: storeKey, forced });
+        }
+      }
       if (growth === undefined && file.key === key) {
-        if (holdsNewFailure(context, prior, records)) failedAnew.push({ file, key, forced });
         ledger.applyResults(file, key, records, checkpointId);
       }
     }
