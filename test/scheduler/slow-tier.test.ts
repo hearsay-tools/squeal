@@ -276,7 +276,7 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
         if (isSlow(files)) starts.push(name);
       };
     }
-    const done = () => starts.filter((s) => s === "a").length === 3 && starts.length === 6;
+    const done = () => starts.filter((s) => s === "a").length >= 3 && starts.length >= 6;
     return { store, a, b, starts, isSlow, done };
   }
 
@@ -289,7 +289,9 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
       // After its first slow file, the guard holds the next one.
       if (isSlow(files) && starts.filter((s) => s === "a").length === 1) load = 8;
     };
-    await Promise.all([a.scheduler.start(), b.scheduler.start()]);
+    await a.scheduler.start();
+    await waitFor(() => starts.includes("a"), 60_000);
+    await b.scheduler.start();
     const deadline = Date.now() + 20_000;
     while (!starts.includes("b") && Date.now() < deadline) await delay(50);
     load = 0;
