@@ -36,6 +36,6 @@ Use /worker.
 
 ## 004-40 re-review of wave 4.5
 
-Outcome: `reviews/wave-4.5.md`: are `reviews/wave-4.md` B1 to B4 and S2 closed, and nothing around them broken. Range pinned at dispatch. Rules as for 004-14. Second and last round on this slice: a remaining blocker goes to the human.
+Outcome: `reviews/wave-4.5.md`: are `reviews/wave-4.md` B1 to B4 and S2 closed, and nothing around them broken. Range: `git log --oneline 96cb807..641f95b` on main, 0.1.63 (004-37, 004-38, 004-39 and their bundles; 001's 0.1.62 and docs commits in it are out of scope). Also check 004-37's one-project rule for multi-file node:test slow tiers, and 004-38's two exported watcher predicates. Rules as for 004-14. Second and last round on this slice: a remaining blocker goes to the human.
 
 Use /reviewer.

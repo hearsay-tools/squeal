@@ -434,10 +434,10 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-34 the slow lane catches up: beside background work, several files when idle | done (0.1.61) | D2 as amended by the human 2026-10-09: a slow file may start beside background-only fast work; when the machine is idle a slow tier takes up to `slow.maxParallel` (new, default 4) files; edits keep priority. Fixes `lessons.md` defect 3. | Scheduler tests for both rules and the shared permits. |
 | 004-35 the slow-tier line names every running slow file | planned | From 004-34: when an idle tier runs several files, the line names only the first. | The line names each running file, or how many. |
 | 004-36 review of wave 4 | done: FAIL, B1 to B4 to wave 4.5; S1 and N1 settled in the spec | `/reviewer` on gpt-6.1-sol over 0.1.60 and 0.1.61: 004-28, 004-30, 004-31, 004-32, 004-29, 004-34. First round. | `reviews/wave-4.md`. |
-| 004-37 a parallel slow tier: each file its own artifact and start | verified, lands in the next version | `reviews/wave-4.md` B1 (first file's artifact on every file), B2 (node:test slow width follows `runner.tierSize`; unstarted files start after an edit or close), S2 (drain tests start their file before the session ends). | Probes as tests on both Nodes. |
-| 004-38 a symlinked ignored build directory enters the key | verified, lands in the next version | `reviews/wave-4.md` B3: `dist -> real-build`, both ignored, keys equal across different builds; an inherited pass proven. | The two-worktree probe as a test. |
-| 004-39 a real source addition at revision 1 counts | verified, lands in the next version | `reviews/wave-4.md` B4: 004-31's start-scan filter also hides a genuine first-revision addition. | Paired status tests. |
-| 004-40 re-review of wave 4.5 | planned | `/reviewer` on gpt-6.1-sol; second and last round. | `reviews/wave-4.5.md`. |
+| 004-37 a parallel slow tier: each file its own artifact and start | done (0.1.63) | `reviews/wave-4.md` B1 (first file's artifact on every file), B2 (node:test slow width follows `runner.tierSize`; unstarted files start after an edit or close), S2 (drain tests start their file before the session ends). | Probes as tests on both Nodes. |
+| 004-38 a symlinked ignored build directory enters the key | done (0.1.63) | `reviews/wave-4.md` B3: `dist -> real-build`, both ignored, keys equal across different builds; an inherited pass proven. | The two-worktree probe as a test. |
+| 004-39 a real source addition at revision 1 counts | done (0.1.63) | `reviews/wave-4.md` B4: 004-31's start-scan filter also hides a genuine first-revision addition. | Paired status tests. |
+| 004-40 re-review of wave 4.5 | running | `/reviewer` on gpt-6.1-sol; second and last round. | `reviews/wave-4.5.md`. |
 
 ## Later
 
