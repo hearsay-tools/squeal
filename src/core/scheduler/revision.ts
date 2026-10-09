@@ -48,7 +48,7 @@ export function rekeyContent(
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, new Set(changes.map((c) => c.path)));
+  ledger.settle(touched, new Set(changes.map((c) => c.path)), { keyedAt: revision.number });
   return { rekeyed, environment: inputs || policy.environment };
 }
 

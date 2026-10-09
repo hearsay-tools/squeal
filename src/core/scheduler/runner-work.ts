@@ -163,7 +163,13 @@ export class RunnerWork {
       await this.host.lock.run(async () => {
         const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
         ledger.refineChanges = null;
-        const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
+        const stale = await applyRunnerPart(
+          context,
+          ledger,
+          part,
+          changedMeanwhile,
+          refined ?? undefined,
+        );
         for (const ref of stale) this.#carried.set(testFileId(ref), ref);
         ledger.commit(refined === null ? {} : { refined });
       });
