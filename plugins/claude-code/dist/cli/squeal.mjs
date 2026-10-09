@@ -5251,7 +5251,8 @@ function newFileState(ref2) {
     discards: 0,
     rerunKey: null,
     rerunPending: false,
-    blocked: null
+    blocked: null,
+    tierCap: null
   };
 }
 function classify2(file) {
@@ -6885,6 +6886,7 @@ var init_ledger = __esm({
         file.unknownKey = null;
         file.discards = 0;
         file.blocked = null;
+        file.tierCap = null;
         if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
         this.#syncPhase(file);
         this.checkpoints.done(file.ref, checkpointId);
@@ -7331,6 +7333,29 @@ var init_store_results = __esm({
   }
 });
 
+// src/core/scheduler/timeout-split.ts
+function timeoutCap(report2, lane, files, completed) {
+  if (report2.end !== "timed-out" || files.length < 2 || isSlowLane(lane)) return null;
+  const incomplete = files.filter((file) => !completed.has(file.id)).length;
+  return Math.max(1, Math.floor(incomplete / 2));
+}
+function requeueSplit(ledger, file, cap2, forced, recent) {
+  file.tierCap = Math.min(cap2, file.tierCap ?? cap2);
+  if (file.key === null || file.blocked !== null) return;
+  ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, recent);
+}
+function timedOutReason(timeoutMs) {
+  return timeoutMs === null ? null : `timed out after ${timeoutMs / 1e3} s`;
+}
+var init_timeout_split = __esm({
+  "src/core/scheduler/timeout-split.ts"() {
+    "use strict";
+    init_types();
+    init_context();
+    init_queue();
+  }
+});
+
 // src/core/scheduler/tiers.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
 import { join as join28 } from "node:path";
@@ -7342,7 +7367,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   const { keys, policy } = context;
   const picked = [];
   const backlog = !ledger.queue.hasRecent((ref2) => !busy.has(laneOf(context, ref2)));
-  const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+  let size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known2 = 0;
   let span = null;
@@ -7367,6 +7392,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
         continue;
       }
     }
+    const cap2 = Math.min(size, file.tierCap ?? size);
+    if (picked.length >= cap2) continue;
     if (!backlog) {
       const joined = joinSpan(span, file.durationMs);
       if (joined === null) continue;
@@ -7374,11 +7401,13 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     }
     known2 += file.durationMs ?? 0;
     if (picked.length > 0 && known2 > budget) break;
-    tookBacklog ||= !ledger.queue.isRecent(ref2);
+    const recent = ledger.queue.isRecent(ref2);
+    tookBacklog ||= !recent;
     lane = at2;
+    size = cap2;
     ledger.queue.remove(ref2);
     const checkpointId = ledger.checkpoints.idFor(ref2);
-    picked.push({ file, key: key2, inputs: keys.stabilityPaths(ref2), checkpointId, forced });
+    picked.push({ file, key: key2, inputs: keys.stabilityPaths(ref2), checkpointId, forced, recent });
   }
   if (picked.length === 0) {
     ledger.commit();
@@ -7462,6 +7491,8 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   endTier(context, ledger, tier);
   const completed = new Set(report2.completedFiles.map(testFileId));
   const cancelled = tier.cancel?.signal.aborted === true && report2.end === "completed";
+  const files = tier.files.map((f) => f.file);
+  const splitCap = timeoutCap(report2, tier.lane, files, completed);
   const provenance = {
     worktreeId,
     revision: tier.revision.number,
@@ -7480,7 +7511,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
-    for (const { file, key: key2, inputs: inputs2, checkpointId, forced } of tier.files) {
+    for (const { file, key: key2, inputs: inputs2, checkpointId, forced, recent } of tier.files) {
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
       if (installMoved || cancelled && !completed.has(file.id)) {
@@ -7490,7 +7521,8 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         continue;
       }
       if (!completed.has(file.id)) {
-        unknown.push({ file, key: key2 });
+        if (splitCap === null) unknown.push({ file, key: key2 });
+        else requeueSplit(ledger, file, splitCap, forced, recent === true);
         continue;
       }
       const growth = observed.growth.get(file.id);
@@ -7554,7 +7586,8 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
       context,
       grown.map((g2) => g2.ref)
     );
-    const reason2 = report2.failure ?? `run ${report2.end}`;
+    const timedOut = report2.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
+    const reason2 = timedOut ?? report2.failure ?? `run ${report2.end}`;
     ledger.markUnknown(unknown, reason2);
     ledger.commit();
   });
@@ -7616,6 +7649,7 @@ var init_tiers = __esm({
     init_slow3();
     init_stability();
     init_store_results();
+    init_timeout_split();
   }
 });
 
@@ -32581,7 +32615,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.84";
+  if (true) return "0.1.85";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
