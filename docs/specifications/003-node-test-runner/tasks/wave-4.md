@@ -71,3 +71,17 @@ Owns: `refreshObserved` in `src/core/scheduler/scheduler.ts`, the callback in `s
 Done when: the probe is a test on Node 22 and 24; lint, typecheck, full suite on Node 24 and 22. Do not run `npm run build`; keep scratch in one `/tmp` directory of your own and remove it; no CPU burners.
 
 Use /worker.
+
+## 003-43 a run that observes a new preload path never stores its result under the environment key that lacks it
+
+Outcome: two worktrees that differ only in a file a preload reaches through a computed load never share a node:test key, before or after either one's first run.
+
+Read: the board row; `test/scheduler/observed-growth.test.ts` "the timer re-keys both files on preload growth after B started" (skipped in `fa858a4`, naming this row) and its `twoWorktrees(true)` setup; the 001 coordinator's sequence (below); spec 003 D3, D5; 001-132 and 001-134's growth rule (`src/core/scheduler/observed.ts`: a file's own observed paths join the key its result is stored under, a path first hashed after the run began certifies nothing), which covers per-file paths but not preloads.
+
+Sequence (001-170's report, 2026-10-09): the `nt` project runs with `--require ./scripts/setup.cjs`, which loads `nt/src/hidden.cjs` through a computed `require`; A's `hidden.cjs` sets 1, B's sets 2, and both test files check 1. Both worktrees compute the same keys (`control.test.mjs` `1be48a59…`, `hidden.test.mjs` `03205bf8…`), stable across fresh repositories, and missing `nt/src/hidden.cjs`. B runs first and stores its fails; its run observes the preload path into `nodeTest.observedPreloads`, but its results sit under the environment key computed before. A starts before the timer re-keys anything, gets the same keys, runs, passes, and its passes replace B's rows (001-170: a local pass heals all), so B reads pass. Before 001-170, A inherited B's fail instead.
+
+Shape: repair. Probe first, test first: re-enable the skipped case and add a direct test of the two keys. Seam, to confirm: a node:test run's report carries the preload paths it observed beyond the environment it was keyed with, and its results are stored only under the environment key that includes them (as 001-134 does for per-file growth), or not shared with other worktrees until re-keyed. If the fix needs `src/core/scheduler/**` (records, keying, `observed.ts`), stop and send me the seam and the diff you propose before editing: those are the 001 lane's, and 001-171 is in the ledger.
+
+Owns: `src/runners/node-test/**`, `test/scheduler/observed-growth.test.ts`, `test/runners/node-test/**`, fixtures. Done when: the re-enabled case passes 10 of 10 on Node 24 and 22, and the key test shows A's and B's keys differ once either has observed the preload; lint, typecheck, full suite.
+
+Use /worker.
