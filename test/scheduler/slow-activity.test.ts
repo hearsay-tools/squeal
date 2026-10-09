@@ -73,7 +73,10 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
 
   it("waits for the slot another daemon holds", async () => {
     const dir = slotDir();
-    const held = acquireSlowSlot({ dir, owner: { pid: process.pid, worktreeId: "other" } });
+    // Every permit of the user's slot (spec 004 D2, `slow.maxParallel`).
+    const { maxParallel } = DEFAULT_POLICY.slow;
+    const owner = { pid: process.pid, worktreeId: "other" };
+    const held = acquireSlowSlot({ dir, owner, permits: maxParallel, want: maxParallel });
     try {
       const { h, activity } = await harness(0, dir);
       await h.scheduler.start();

@@ -37,7 +37,7 @@ import type { Mutex } from "./mutex.js";
 import { listPaths, persistedNoteTexts } from "./notes.js";
 import type { SlowTierOptions } from "./options.js";
 import { slowView } from "./slow.js";
-import { startTier, type Tier } from "./tiers.js";
+import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
 
 /** Spec 004 D2, D3: the longest a pending slow file waits before the scheduler looks again. */
 export const SLOW_RECHECK_MS = 15_000;
@@ -51,13 +51,19 @@ export interface SlowHost {
   started(): { context: SchedulerContext; ledger: Ledger };
   closed(): boolean;
   pump(): void;
-  /** Runner work, or a fast file, is pending: it goes first (D2). */
-  fastPending(): boolean;
+  /**
+   * An edit's fast work is pending or running: runner work, a recent fast
+   * file queued, or an edit's tier in flight. It goes first (D2 as amended
+   * 2026-10-09); background fast work does not hold the slow tier back.
+   */
+  editPending(): boolean;
+  /** No fast work at all is pending or running: an idle slow tier may take several files (D2). */
+  fastIdle(): boolean;
 }
 
 /**
- * A one-file slow tier, selected, with the slot it holds until it is
- * recorded and the artifact globs its file was declared to test (D5).
+ * A slow tier, selected, with the slot permits it holds until it is recorded
+ * (one per file) and the artifact globs its files were declared to test (D5).
  */
 export interface SlowRun {
   readonly tier: Tier;
@@ -70,14 +76,18 @@ export type SlowNext = SlowRun | "again" | null;
 
 /**
  * Spec 004 D2 to D5: the slow tier of one worktree. Slow files wait in the
- * queue's slow class until no fast file is pending and a trigger holds: every
- * registered consumer is idle or none is (`consumersIdle`), a `run --slow`
- * request is open (`request`), or a `run --all` checkpoint requested the file.
- * Then, one file at a time, `next` takes the per-user slot, waits for the
- * load guard with what is left of the pass's `slow.maxDeferMs`, and selects a
- * one-file tier, which the pump runs and records as any tier (D4: the
- * stability check discards and re-queues). A pass ends when no slow file is
- * pending. Waiting for a trigger or the slot arms a timer that pumps again.
+ * queue's slow class until no edit's fast work is pending or running (D2 as
+ * amended 2026-10-09: background fast work runs beside them) and a trigger
+ * holds: every registered consumer is idle or none is (`consumersIdle`), a
+ * `run --slow` request is open (`request`), or a `run --all` checkpoint
+ * requested the file. Then `next` waits for the load guard with what is left
+ * of the pass's `slow.maxDeferMs`, takes the per-user slot, and selects a
+ * tier: one file, or up to `slow.maxParallel` files of one lane when the
+ * machine is idle (no fast work at all and the load below the guard's
+ * threshold), holding a permit per file. The pump runs and records it as any
+ * tier (D4: the stability check discards and re-queues). A pass ends when no
+ * slow file is pending. Waiting for a trigger or the slot arms a timer that
+ * pumps again.
  */
 export class SlowTier {
   /** A `run --slow` request is open until no slow file is pending. */
@@ -130,20 +140,21 @@ export class SlowTier {
    */
   async next(): Promise<SlowNext> {
     const preemptions = this.#preemptions;
-    const ref = await this.host.lock.run(() => this.#candidate());
+    const refs = await this.host.lock.run(() => this.#candidates());
     const { context } = this.host.started();
     const dir = this.options.slotDir ?? slowSlotDir();
-    if (ref === null) {
+    if (refs.length === 0) {
       this.#unmark(dir, context.worktreeId);
       return null;
     }
     if (preemptions !== this.#preemptions) return "again";
     const load = await this.#waitForCapacity(context);
     if (load === "preempted" || preemptions !== this.#preemptions) return "again";
+    const { maxParallel } = context.policy.slow;
+    const want = load === null && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
     const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
-    const slot = yieldTurn
-      ? null
-      : acquireSlowSlot({ dir, owner: { pid: process.pid, worktreeId: context.worktreeId } });
+    const owner = { pid: process.pid, worktreeId: context.worktreeId };
+    const slot = yieldTurn ? null : acquireSlowSlot({ dir, owner, permits: maxParallel, want });
     if (slot === null) {
       this.#tookLast = false;
       markSlotWaiter(dir, context.worktreeId);
@@ -159,7 +170,7 @@ export class SlowTier {
     this.#slotNoted = false;
     let run: SlowRun | null = null;
     try {
-      const selected = await this.host.lock.run(() => this.#select(ref, load));
+      const selected = await this.host.lock.run(() => this.#select(refs, load, slot));
       if (selected === null) return "again";
       run = { ...selected, slot };
       return run;
@@ -174,8 +185,11 @@ export class SlowTier {
     clearSlotWaiter(dir, worktreeId);
   }
 
-  /** Under the lock: the first slow file a trigger lets run now, or `null`. */
-  #candidate(): TestFileRef | null {
+  /**
+   * Under the lock: the slow files a trigger lets run now, in order, all of
+   * the first one's lane, since a tier runs in one lane; none when none may.
+   */
+  #candidates(): TestFileRef[] {
     const { context, ledger } = this.host.started();
     this.#noteMissingArtifacts(context, ledger);
     const queued = ledger.orderedSlow();
@@ -183,15 +197,21 @@ export class SlowTier {
       this.#requested = false;
       this.#budgetMs = null;
       this.#publish(null);
-      return null;
+      return [];
     }
-    if (this.host.fastPending()) return this.#publish({ kind: "waiting", for: "fast" });
-    const triggered = this.#trigger(context, ledger);
-    const ref = queued.find(triggered);
-    if (ref !== undefined) return ref;
+    if (this.host.editPending()) {
+      this.#publish({ kind: "waiting", for: "fast" });
+      return [];
+    }
+    const triggered = queued.filter(this.#trigger(context, ledger));
+    const first = triggered[0];
+    if (first !== undefined) {
+      const lane = laneOf(context, first);
+      return triggered.filter((ref) => laneOf(context, ref) === lane);
+    }
     this.#publish({ kind: "waiting", for: "idle" });
     this.#arm();
-    return null;
+    return [];
   }
 
   /**
@@ -235,19 +255,59 @@ export class SlowTier {
   }
 
   /**
-   * Under the lock, after the slot and the guard: the one-file tier, unless
-   * fast work arrived meanwhile, the file left the queue or class, its
-   * trigger is gone (a consumer entered a turn during the wait; the file
-   * stays queued and the pass keeps its budget), or the store now holds a
-   * result that may stand for it (`Ledger.lookup`).
+   * Under the lock, after the guard and the slot: the tier, of `refs` in
+   * order, as many as `slot` has permits while the machine is still idle,
+   * else one; the permits it does not use go. Nothing when an edit's fast
+   * work arrived meanwhile. A file is passed over when it left the queue or
+   * class, its trigger is gone (a consumer entered a turn during the wait;
+   * the file stays queued and the pass keeps its budget), or the store now
+   * holds a result that may stand for it (`Ledger.lookup`).
    */
   #select(
-    ref: TestFileRef,
+    refs: readonly TestFileRef[],
     ranUnderLoad: number | null,
+    slot: SlowSlot,
   ): { tier: Tier; artifact: readonly string[] } | null {
     const { context, ledger } = this.host.started();
-    if (this.host.fastPending() || !ledger.queue.has(ref) || !ledger.queue.isSlow(ref)) return null;
-    if (!this.#trigger(context, ledger)(ref)) return null;
+    if (this.host.editPending()) return null;
+    const width = this.host.fastIdle() ? slot.permits : 1;
+    const triggered = this.#trigger(context, ledger);
+    const picked: TierFile[] = [];
+    for (const ref of refs) {
+      if (picked.length >= width) break;
+      if (!ledger.queue.has(ref) || !ledger.queue.isSlow(ref) || !triggered(ref)) continue;
+      const tierFile = this.#pick(ref, context, ledger);
+      if (tierFile !== null) picked.push(tierFile);
+    }
+    const first = picked[0];
+    if (first === undefined) return null;
+    slot.shrinkTo(picked.length);
+    for (const { file } of picked) {
+      ledger.queue.remove(file.ref);
+      if (ranUnderLoad === null) continue;
+      context.note(
+        `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above ` +
+          `slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had ` +
+          `waited slow.maxDeferMs for this slow pass (spec 004 D3)`,
+      );
+    }
+    const since = context.now();
+    const artifact = slowPolicyView(context.policy)?.artifactFor(first.file.ref.path) ?? [];
+    const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
+    // The activity names the file in the transaction that marks it running (review wave 2, B1).
+    return context.store.transaction(() => {
+      const tier = startTier(context, ledger, picked, false);
+      this.#publish({ kind: "running", path: first.file.ref.path, since, lastDurationMs });
+      return { tier, artifact };
+    });
+  }
+
+  /**
+   * Under the lock: `ref` as a file of the tier, or `null` when it has no key
+   * or is blocked (it leaves the queue), or when another worktree's result
+   * stands for it (applied).
+   */
+  #pick(ref: TestFileRef, context: SchedulerContext, ledger: Ledger): TierFile | null {
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     const checkpointId = ledger.checkpoints.idFor(ref);
@@ -264,23 +324,7 @@ export class SlowTier {
       ledger.commit();
       return null;
     }
-    ledger.queue.remove(ref);
-    if (ranUnderLoad !== null) {
-      context.note(
-        `slow file ${ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above ` +
-          `slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had ` +
-          `waited slow.maxDeferMs for this slow pass (spec 004 D3)`,
-      );
-    }
-    const inputs = context.keys.stabilityPaths(ref);
-    const since = context.now();
-    const artifact = slowPolicyView(context.policy)?.artifactFor(ref.path) ?? [];
-    // The activity names the file in the transaction that marks it running (review wave 2, B1).
-    return context.store.transaction(() => {
-      const tier = startTier(context, ledger, [{ file, key, inputs, checkpointId, forced }], false);
-      this.#publish({ kind: "running", path: ref.path, since, lastDurationMs: file.durationMs });
-      return { tier, artifact };
-    });
+    return { file, key, inputs: context.keys.stabilityPaths(ref), checkpointId, forced };
   }
 
   /**
@@ -288,26 +332,25 @@ export class SlowTier {
    * wave 2 B1 and B2): the keys it ran under were declared to test its
    * artifact, and its activity goes with it (`ended`).
    */
-  recorded(run: SlowRun, ledger: Ledger, othersInFlight: boolean): void {
+  recorded(run: SlowRun, ledger: Ledger): void {
     const { context } = this.host.started();
     const runs = new Map(tierKeys(run.tier, ledger).map((key) => [key, run.artifact]));
     recordSlowArtifacts(context.store, context.worktreeId, runs);
-    this.ended(othersInFlight);
+    this.ended();
   }
 
   /**
    * Under the lock, as a slow run ends, recorded, discarded or put back: its
    * "running" activity goes in favour of what the remaining slow files wait
-   * for, without starting one (review wave 2, B1). Fast work in flight or
-   * pending, or the agent not pausing; when a trigger already holds, nothing
-   * until `next` decides. `othersInFlight`: a tier of another lane runs.
+   * for, without starting one (review wave 2, B1). An edit's fast work in
+   * flight or pending, or the agent not pausing; when a trigger already
+   * holds, nothing until `next` decides.
    */
-  ended(othersInFlight: boolean): void {
+  ended(): void {
     const { context, ledger } = this.host.started();
     const queued = ledger.orderedSlow();
     if (queued.length === 0) this.#publish(null);
-    else if (othersInFlight || this.host.fastPending())
-      this.#publish({ kind: "waiting", for: "fast" });
+    else if (this.host.editPending()) this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
     else this.#publish({ kind: "waiting", for: "idle" });
   }
@@ -378,6 +421,12 @@ export class SlowTier {
       context.note(text);
     }
   }
+}
+
+/** The longest of the files' last known run times, `null` when none is known: a tier lasts its longest file. */
+function longest(durations: readonly (number | null)[]): number | null {
+  const known = durations.filter((ms): ms is number => ms !== null);
+  return known.length === 0 ? null : Math.max(...known);
 }
 
 /**
