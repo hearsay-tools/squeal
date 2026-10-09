@@ -8,6 +8,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createScheduler } from "../../src/core/scheduler/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
+  type CheckKey,
   DEFAULT_POLICY,
   type NodeTestProject,
   type RunnerAdapter,
@@ -80,6 +81,18 @@ function writePreloadProject(root: string): void {
       ].join("\n"),
     );
   }
+}
+
+/** A node:test file's current key in the worktree at `root`. */
+function keyOf(store: Store, root: string, path = HIDDEN_TEST): CheckKey | null | undefined {
+  return store.testFileKeys.list(worktreeIdFor(root)).find((r) => r.testFile.path === path)?.key;
+}
+
+/** Whether a node:test file's known outcome is the worktree's own or inherited. */
+function origin(store: Store, root: string, path = HIDDEN_TEST): string | undefined {
+  return store.knownStates
+    .list(worktreeIdFor(root))
+    .find((s) => s.check.testPath === path && s.check.kind === "test")?.origin?.kind;
 }
 
 /** A node:test file's known outcome for its test, as `squeal status` reads it. */
@@ -287,15 +300,70 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
   it("the timer re-keys both files on preload growth while B's baseline is held", () =>
     preloadGrowth(true));
 
-  /*
-   * Row 003-43: a node:test preload observation is keyed into the project
-   * environment hash, so a run observing a new preload path stores its result
-   * under the old environment key. Here A keys both files before the preload
-   * growth moves either key, under the same keys as B, which miss
-   * `nt/src/hidden.cjs` where they differ; A's pass then replaces B's own
-   * fail and task 001-170's heal makes B pass. Before 001-170 the same race
-   * gave A B's fail instead.
-   */
   it.skip("the timer re-keys both files on preload growth after B started", () =>
     preloadGrowth(false));
+
+  /*
+   * Row 003-43, 001 review wave 13i B2: a run that first observes a preload
+   * path stores its result only under the environment key that holds the
+   * path. A keys both files before B's run observes `nt/src/hidden.cjs`, where
+   * the worktrees differ; A's pass under those keys must not stand for B.
+   */
+  // Red until 003-43's scheduler seam lands (`it.fails` passes while the probe still fails).
+  it.fails("a held worktree's pass never heals the fail of one that differs in an observed preload path", async () => {
+    const { repo, rootB, store } = await twoWorktrees(true);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    onTestFinished(() => release());
+    const a = await open(repo.main, store, repo.commonDir, held, PRELOADED);
+    const b = await open(rootB, store, repo.commonDir, undefined, PRELOADED);
+
+    // A read its environment and computed a closure before any run observed the preload path.
+    const aStarted = a.scheduler.start();
+    await expect.poll(() => a.closures()).toBeGreaterThan(0);
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    expect(outcome(store, rootB)).toBe("fail");
+    release();
+    await aStarted;
+    await a.scheduler.idle();
+
+    expect(outcome(store, repo.main)).toBe("pass");
+    expect(outcome(store, rootB)).toBe("fail");
+    expect(origin(store, rootB)).toBe("own");
+    expect(keyOf(store, repo.main)).not.toBe(keyOf(store, rootB));
+  });
+
+  it.fails("stores a run's result only under the key whose environment holds the preload path it observed", async () => {
+    const { repo, rootB, store } = await twoWorktrees(true);
+    const b = await open(rootB, store, repo.commonDir, undefined, PRELOADED);
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    await b.scheduler.close();
+    expect(outcome(store, rootB)).toBe("fail");
+    const runs = b.runs.length;
+
+    // B reopened keys with the observed path, and finds its own fail there without a run.
+    const again = await open(rootB, store, repo.commonDir, undefined, PRELOADED);
+    await again.scheduler.start();
+    await again.scheduler.idle();
+    expect(again.runs).toEqual([]);
+    const keyB = keyOf(store, rootB);
+    const stored = store.results
+      .byKey(keyB ?? null, 0)
+      .filter((r) => r.check.testPath === HIDDEN_TEST && r.check.kind === "test");
+    expect(stored.map((r) => r.outcome)).toEqual(["fail"]);
+    expect(runs).toBeGreaterThan(0);
+
+    // A, keyed with its own copy of the path, gets a different key and runs.
+    const a = await open(repo.main, store, repo.commonDir, undefined, PRELOADED);
+    await a.scheduler.start();
+    await a.scheduler.idle();
+    expect(keyOf(store, repo.main)).not.toBe(keyB);
+    expect(a.runs.flat().map((f) => f.path)).toContain(HIDDEN_TEST);
+    expect(outcome(store, repo.main)).toBe("pass");
+    expect(outcome(store, rootB)).toBe("fail");
+  });
 });
