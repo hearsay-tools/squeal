@@ -9,6 +9,7 @@ import type {
   DaemonPhase,
   EpochMs,
   Policy,
+  RevisionNumber,
   RunnerAdapter,
   WorktreeId,
 } from "../types/index.js";
@@ -407,6 +408,7 @@ class Daemon {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
+        requestSync: () => this.#requestSync(),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -446,6 +448,16 @@ class Daemon {
       throw new Error("the daemon is not running a scheduler");
     }
     return requestSlowSuite(this.#loop.scheduler);
+  }
+
+  /** Lessons, defect 30: the revision of every change made before the request, once stored. */
+  async #requestSync(): Promise<RevisionNumber> {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") {
+      throw new Error("the daemon is not running a scheduler");
+    }
+    await this.#loop.reconcile();
+    return this.#loop.scheduler.status().revision;
   }
 
   #note(text: string): void {

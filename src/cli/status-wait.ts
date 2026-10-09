@@ -22,14 +22,16 @@ import type {
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
+import { type DaemonSync, syncDaemon } from "./status-sync.js";
 
 /** How often `status --wait` reads the store. */
 export const STATUS_WAIT_POLL_MS = 250;
 
 /**
- * The shortest wait that may end on quiet. Spec 001 D2 records a revision
- * within 500 ms of quiet, so a wait that starts right after an edit would
- * otherwise read the previous revision as quiet.
+ * The shortest wait that may end without a daemon, which a daemon a hook
+ * just spawned needs to record its heartbeat, and the shortest that may end
+ * on quiet when no daemon can sync (one from before the `sync` request). A
+ * daemon that syncs decides quiet instead (lessons, defect 30).
  */
 export const STATUS_WAIT_SETTLE_MS = 750;
 
@@ -41,6 +43,8 @@ export interface StatusWaitOptions {
   readonly settleMs?: number;
   /** Clock for heartbeat ages in the snapshot. Default `Date.now`. */
   readonly now?: () => EpochMs;
+  /** Default `syncDaemon`; tests replace it. */
+  readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
 }
 
 /**
@@ -79,11 +83,18 @@ export type StatusWait =
 /**
  * Spec 001 D7: "`squeal status --wait <ms>` blocks until nothing is pending
  * at the current revision or a new transition is recorded, then prints the
- * snapshot". Reads the store only, every `pollMs`. Without a validating
- * daemon nothing pending can finish, so once the settle time passed with no
- * daemon alive it returns `no-daemon` instead of `quiet` or a long timeout;
- * a daemon a hook just spawned has the settle time to record its heartbeat.
+ * snapshot". Reads the store every `pollMs`. Without a validating daemon
+ * nothing pending can finish, so once the settle time passed with no daemon
+ * alive it returns `no-daemon` instead of `quiet` or a long timeout; a
+ * daemon a hook just spawned has the settle time to record its heartbeat.
  * Pending includes the runner part of the current revision (D2 as amended).
+ *
+ * Quiet is decided at a revision that holds every edit made before the wait
+ * (lessons, defect 30): the daemon is asked for a reconciliation pass at the
+ * start (`syncDaemon`), and quiet waits until the store's revision reached
+ * the one that pass left. On a loaded host the edit's revision committed up
+ * to 3.1 s after the edit, past any fixed delay. A daemon that cannot sync
+ * falls back to the settle time.
  *
  * A new transition is found the way delivery finds one (D6): the known
  * states at the start of the wait act as a view, and any notable difference
@@ -98,48 +109,68 @@ export async function waitForStatus(
   const now = options.now ?? Date.now;
   const pollMs = options.pollMs ?? STATUS_WAIT_POLL_MS;
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
+  const startSync = options.sync ?? syncDaemon;
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
-  for (;;) {
-    // The read at the deadline decides with what it finds and waits the full busy timeout.
-    const final = elapsed() >= options.timeoutMs;
-    const left = options.timeoutMs - elapsed();
-    const busyTimeoutMs = final
-      ? STATUS_BUSY_TIMEOUT_MS
-      : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
-    const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
-      const id = worktreeIdFor(root);
-      const states = store.knownStates.list(id);
-      const header = readHeader(store, id, states);
-      start ??= states.map(toStartView);
-      const transitions = countNews(start, states, header.revision);
-      const settled = final || elapsed() >= settleMs;
-      const daemon = worktreeLiveness(store.worktrees.get(id), now());
-      const outcome: StatusWaitOutcome | null =
-        transitions > 0
-          ? "news"
-          : settled && daemon.state !== "alive"
-            ? "no-daemon"
-            : settled && !isPending(header)
-              ? "quiet"
-              : final
-                ? "timeout"
-                : null;
-      return outcome === null
-        ? null
-        : { outcome, transitions, result: buildSnapshot(store, root, now()) };
-    });
-    if (read !== null && "available" in read) {
-      if (start === null || final) {
-        return { outcome: "unavailable", waitedMs: elapsed(), result: read };
+  // Started at the first read, which finds the root; a box, since the read is a callback.
+  const syncing: { sync?: DaemonSync } = {};
+  try {
+    for (;;) {
+      // The read at the deadline decides with what it finds and waits the full busy timeout.
+      const final = elapsed() >= options.timeoutMs;
+      const left = options.timeoutMs - elapsed();
+      const busyTimeoutMs = final
+        ? STATUS_BUSY_TIMEOUT_MS
+        : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
+      const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
+        const id = worktreeIdFor(root);
+        const states = store.knownStates.list(id);
+        const header = readHeader(store, id, states);
+        start ??= states.map(toStartView);
+        const transitions = countNews(start, states, header.revision);
+        syncing.sync ??= startSync(root, pollMs);
+        const settled = final || elapsed() >= settleMs;
+        // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
+        const synced = isSynced(syncing.sync, header.revision, settled);
+        const daemon = worktreeLiveness(store.worktrees.get(id), now());
+        const outcome: StatusWaitOutcome | null =
+          transitions > 0
+            ? "news"
+            : settled && daemon.state !== "alive"
+              ? "no-daemon"
+              : synced && !isPending(header)
+                ? "quiet"
+                : final
+                  ? "timeout"
+                  : null;
+        return outcome === null
+          ? null
+          : { outcome, transitions, result: buildSnapshot(store, root, now()) };
+      });
+      if (read !== null && "available" in read) {
+        if (start === null || final) {
+          return { outcome: "unavailable", waitedMs: elapsed(), result: read };
+        }
+      } else if (read !== null) {
+        return { ...read, waitedMs: elapsed() };
       }
-    } else if (read !== null) {
-      return { ...read, waitedMs: elapsed() };
+      const remaining = options.timeoutMs - elapsed();
+      if (remaining > 0) await sleep(Math.min(pollMs, remaining));
     }
-    const remaining = options.timeoutMs - elapsed();
-    if (remaining > 0) await sleep(Math.min(pollMs, remaining));
+  } finally {
+    syncing.sync?.stop();
   }
+}
+
+/**
+ * Quiet may be decided at `revision`: it holds the daemon's pass, or no
+ * daemon can sync and the settle time passed.
+ */
+function isSynced(sync: DaemonSync, revision: RevisionNumber, settled: boolean): boolean {
+  const current = sync.current();
+  if (current.state === "synced") return revision >= current.revision;
+  return current.state === "unsupported" && settled;
 }
 
 function toStartView(state: KnownState): ViewEntry {

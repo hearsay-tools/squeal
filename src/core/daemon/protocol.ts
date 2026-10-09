@@ -21,6 +21,7 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "ping":
     case "nudge":
     case "run-slow":
+    case "sync":
     case "stop":
       return { type: request.type };
     case "run-all":
@@ -37,6 +38,9 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "run-slow-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
+    case "sync-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "sync-status", requestId: request.requestId };
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }

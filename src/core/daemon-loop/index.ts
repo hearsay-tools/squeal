@@ -20,6 +20,11 @@ export interface DaemonLoop {
   readonly scheduler: Scheduler;
   /** Starts the scheduler (baseline), then the change feed. */
   start(): Promise<void>;
+  /**
+   * Queues a reconciliation pass and resolves once its revision, if any, is
+   * stored (`status --wait`, lessons defect 30). Before `start`, resolves at once.
+   */
+  reconcile(): Promise<void>;
   /** Stops the change feed, then the scheduler after its tier in flight. Leaves the runner open. */
   close(): Promise<void>;
 }
@@ -65,6 +70,9 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
         extraFiles: scheduler.extraFiles(),
       });
       await feed.start();
+    },
+    async reconcile() {
+      await feed?.reconcile("interval");
     },
     async close() {
       await feed?.close();

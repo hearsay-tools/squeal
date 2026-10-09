@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
-import type { CheckpointRecord, DaemonPhase } from "../types/index.js";
+import type { CheckpointRecord, DaemonPhase, RevisionNumber } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -27,6 +27,11 @@ const waitingSlow = new Map<
   { resolve: (requested: SlowSuiteRequested) => void; reject: (error: Error) => void }
 >();
 
+const waitingSync = new Map<
+  string,
+  { resolve: (revision: RevisionNumber) => void; reject: (error: Error) => void }
+>();
+
 let server: DaemonServer | null = null;
 
 /** Started before the main thread holds the lock; binds only when told to. */
@@ -48,6 +53,12 @@ function bind(identity: DeskIdentity): void {
         const id = randomUUID();
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
+      }),
+    requestSync: () =>
+      new Promise((resolve, reject) => {
+        const id = randomUUID();
+        waitingSync.set(id, { resolve, reject });
+        post({ type: "sync", id });
       }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
@@ -82,6 +93,13 @@ port.on("message", (message: ToDesk) => {
       waitingSlow.delete(message.id);
       if (message.requested !== null) entry?.resolve(message.requested);
       else entry?.reject(new Error(message.error ?? "run --slow failed"));
+      return;
+    }
+    case "sync-result": {
+      const entry = waitingSync.get(message.id);
+      waitingSync.delete(message.id);
+      if (message.revision !== null) entry?.resolve(message.revision);
+      else entry?.reject(new Error(message.error ?? "sync failed"));
       return;
     }
     case "close":

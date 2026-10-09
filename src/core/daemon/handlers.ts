@@ -6,8 +6,10 @@ import {
   type DaemonResponse,
   type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
+  type RevisionNumber,
   type RunAllResponse,
   type RunSlowResponse,
+  type SyncResponse,
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
@@ -15,7 +17,7 @@ import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
 
-/** `run-all` and `run-slow` requests remembered for their status requests; older ones are dropped. */
+/** `run-all`, `run-slow` and `sync` requests remembered for their status requests; older ones are dropped. */
 const MAX_REQUESTS = 32;
 
 export interface HandlerContext {
@@ -34,6 +36,12 @@ export interface HandlerContext {
    * `requestFullSuite`. Absent: this daemon has no slow tier.
    */
   readonly requestSlowSuite?: () => Promise<SlowSuiteRequested>;
+  /**
+   * Runs a reconciliation pass for `status --wait` (lessons, defect 30) and
+   * resolves with the worktree's revision once the pass is stored, like
+   * `requestFullSuite`. Absent: this daemon answers that it cannot sync.
+   */
+  readonly requestSync?: () => Promise<RevisionNumber>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
@@ -55,6 +63,11 @@ interface RunSlowState {
   error: string | null;
 }
 
+interface SyncState {
+  revision: RevisionNumber | null;
+  error: string | null;
+}
+
 /**
  * Socket request handlers. Every answer comes from memory, so each one fits
  * the hooks' 100 ms socket budget while a tier runs (spec 001 D9). Review
@@ -63,6 +76,7 @@ interface RunSlowState {
 export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
+  const syncRequests = new Map<string, SyncState>();
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -77,6 +91,14 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     type: "run-slow",
     requestId,
     requested: state.requested,
+    error: state.error,
+  });
+  const sync = (requestId: string, state: SyncState): SyncResponse => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "sync",
+    requestId,
+    revision: state.revision,
     error: state.error,
   });
 
@@ -140,6 +162,27 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const state = slowRequests.get(request.requestId);
         if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
         return runSlow(request.requestId, state);
+      }
+      case "sync": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");
+        const requestId = randomUUID();
+        const state: SyncState = { revision: null, error: null };
+        remember(syncRequests, requestId, state);
+        context.requestSync().then(
+          (revision) => {
+            state.revision = revision;
+          },
+          (error: unknown) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          },
+        );
+        return sync(requestId, state);
+      }
+      case "sync-status": {
+        const state = syncRequests.get(request.requestId);
+        if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
+        return sync(request.requestId, state);
       }
       case "stop":
         context.onStop();

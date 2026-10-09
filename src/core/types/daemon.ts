@@ -68,6 +68,23 @@ export interface RunSlowStatusRequest {
   readonly requestId: string;
 }
 
+/**
+ * `squeal status --wait` (lessons, defect 30): a reconciliation pass over
+ * the worktree, so the revision of an edit made before the request is
+ * stored before the wait may end on quiet. Answered at once with a request
+ * id, like `run-all`; ask for the revision with `SyncStatusRequest`. A
+ * daemon from before this request answers "unknown request type".
+ */
+export interface SyncRequest {
+  readonly type: "sync";
+}
+
+/** The revision a `sync` request's pass left, once it was stored. */
+export interface SyncStatusRequest {
+  readonly type: "sync-status";
+  readonly requestId: string;
+}
+
 /** `squeal stop`: answered, then the daemon shuts down (D10 shutdown order). */
 export interface StopRequest {
   readonly type: "stop";
@@ -94,6 +111,8 @@ export type DaemonRequest =
   | RunAllStatusRequest
   | RunSlowRequest
   | RunSlowStatusRequest
+  | SyncRequest
+  | SyncStatusRequest
   | StopRequest
   | StepDownRequest;
 
@@ -146,6 +165,20 @@ export interface RunSlowResponse {
   readonly error: string | null;
 }
 
+/**
+ * State of one `sync` request. `revision` is `null` until the pass was
+ * stored: the worktree's revision then, which holds every change made before
+ * the request. `error` is set when the pass failed.
+ */
+export interface SyncResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "sync";
+  readonly requestId: string;
+  readonly revision: RevisionNumber | null;
+  readonly error: string | null;
+}
+
 export interface StopResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -174,6 +207,7 @@ export type DaemonResponse =
   | NudgeResponse
   | RunAllResponse
   | RunSlowResponse
+  | SyncResponse
   | StopResponse
   | StepDownResponse
   | DaemonErrorResponse;
