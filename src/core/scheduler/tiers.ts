@@ -370,14 +370,17 @@ export function recordTier(
       }
     }
     // Task 003-43: the environments read again moved the keys of every file of their projects.
-    // The moves count as the latest revision's (001-186), so `status --wait` holds for them: never
-    // below a later edit's own move, and inside every window that holds the run's edit.
+    // A file an edit re-keyed keeps that edit's revision (001-186), so a wait that holds for the
+    // edit still holds for it after a later, unrelated revision (task 003-45); `status --wait`
+    // holds for one no edit re-keyed from the latest revision on.
     if (environment !== undefined) {
-      ledger.settle(
-        environment.changes.map((change) => change.testFile),
-        NOTHING_CHANGED,
-        { keyedAt: ledger.revision.number },
-      );
+      const unkeyed: TestFileRef[] = [];
+      const edited: TestFileRef[] = [];
+      for (const { testFile } of environment.changes) {
+        (ledger.file(testFile)?.keyedAt === null ? unkeyed : edited).push(testFile);
+      }
+      ledger.settle(unkeyed, NOTHING_CHANGED, { keyedAt: ledger.revision.number });
+      ledger.settle(edited, NOTHING_CHANGED);
       rerunGrown(ledger, environment, grewEnvironment);
     }
     // The grown files take their new key and, once stored, its results; a re-key reached others.
