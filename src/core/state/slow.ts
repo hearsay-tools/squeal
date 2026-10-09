@@ -9,6 +9,7 @@ import type {
   KnownState,
   Policy,
   RelativePath,
+  Revision,
   RevisionNumber,
   SlowTierActivity,
   SlowTierState,
@@ -203,8 +204,10 @@ function liveActivity(
  * artifact could be built from: a path no artifact glob matches that
  * `isSource` admits, so neither a test file nor a slow directory's fixture
  * (as D6 tells an artifact from them; lessons defect 8a). A worktree's first
- * revision with only adds is its first listing, every file found new against
- * an empty stat cache, not a change (lessons defect 8d).
+ * listing is not a change (lessons defect 8d): the change feed's start pass
+ * finds every file beneath a linked directory new, as git lists the link and
+ * never its files. Only that pass, an `interval` revision 1 of adds, is left
+ * out; an add a watch batch or a daemon's start found counts (review wave 4 B4).
  */
 function sourcesChanged(
   store: Store,
@@ -218,8 +221,17 @@ function sourcesChanged(
   const isArtifact = createInputMatcher(artifact);
   return store.revisions
     .range(worktreeId, since, revision)
-    .filter((r) => !(r.number === 1 && r.changes.every((change) => change.oldHash === null)))
+    .filter((r) => !isFirstListing(r))
     .some((r) => r.changes.some((change) => !isArtifact(change.path) && isSource(change.path)));
+}
+
+/** The change feed's start pass at a fresh worktree: revision 1, `interval`, adds only. */
+function isFirstListing(revision: Revision): boolean {
+  return (
+    revision.number === 1 &&
+    revision.trigger === "interval" &&
+    revision.changes.every((change) => change.oldHash === null)
+  );
 }
 
 /** The listed slow test files not current: pending or not run (`stop.requireSlowSuite`, D7). */
