@@ -363,6 +363,8 @@ export function formatRegistration(
   const head = [
     `SQUEAL · registered at revision ${header.revision}`,
     ...headerLines(header, command),
+    // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
+    ...(header.optimizerOff === undefined ? [] : [header.optimizerOff]),
     `Known failures: ${knownFailures.length}`,
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>

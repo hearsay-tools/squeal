@@ -174,6 +174,13 @@ export interface StatusHeader {
    */
   readonly missingInstalls?: readonly RelativePath[];
   /**
+   * The persisted note saying Squeal runs Vitest without the dependency
+   * optimizer a config turns on (spec 001 D4, task 001-176), for the
+   * registration header. Set by `readHeader` while the note is among the
+   * persisted ones; absent otherwise.
+   */
+  readonly optimizerOff?: string;
+  /**
    * Checks whose current result is inherited from another worktree, a part
    * of `counts.current`. Goal 4: inherited results are reported as
    * inherited; D9's skill reads "the header's pending and inherited counts".

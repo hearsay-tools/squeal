@@ -1,10 +1,14 @@
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { formatRegistration } from "../../src/core/delivery/index.js";
+import { OPTIMIZER_OFF_NOTE, optimizerOffNote } from "../../src/core/state/optimizer-note.js";
+import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { SEPARATE } from "./optimizer-repo.js";
 import {
+  BASE,
   createRepo,
   freshOutcomes,
   NEW,
@@ -134,4 +138,32 @@ describe("an ordinary edit of a source the optimizer bundled (review wave-13f S1
       expect(stored(h)).toEqual([["", "test/optimized.test.ts", "current", "fail"]]);
     },
   );
+});
+
+describe("a config that turns the optimizer on (001-176)", () => {
+  it("is told once, in the registration header and in status", SLOW, async () => {
+    const repo = createRepo(OPTIMIZED);
+    const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    // A recreate starts another instance; the note is not repeated.
+    await h.runner.invalidate([{ path: "vitest.config.ts", kind: "change" }]);
+    const once = (text: string) => text.split(OPTIMIZER_OFF_NOTE).length - 1;
+
+    const { delivery, consumer } = await h.consumer();
+    const registered = formatRegistration(await delivery.register(consumer));
+    expect(registered).toContain(optimizerOffNote([""]));
+    expect(once(registered)).toBe(1);
+    const status = readStatus(h.root);
+    expect(once(formatStatus(status, Date.now()))).toBe(1);
+  });
+
+  it("is not told for a config that leaves it off", SLOW, async () => {
+    const repo = createRepo({ ...OPTIMIZED, "vitest.config.ts": BASE["vitest.config.ts"] ?? "" });
+    const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const { delivery, consumer } = await h.consumer();
+    expect(formatRegistration(await delivery.register(consumer))).not.toContain(OPTIMIZER_OFF_NOTE);
+  });
 });
