@@ -2,6 +2,7 @@ import { listedDirectory, listingPath, testFileId } from "../keys/index.js";
 import type { RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
+import type { EnvironmentGrowth } from "./environment-growth.js";
 import { linkTargets } from "./link-target.js";
 import { changedSince, snapshotInputs } from "./stability.js";
 
@@ -94,6 +95,8 @@ export interface TierObservations {
   readonly changed: ReadonlySet<RelativePath>;
   /** Growth paths written since the stat cache read them, their bytes as they were (task 001-168). */
   readonly touched: ReadonlySet<RelativePath>;
+  /** Environment files the run loaded beyond the keyed environments (task 003-43). */
+  readonly environment?: EnvironmentGrowth;
 }
 
 export const NOTHING_OBSERVED: TierObservations = {
