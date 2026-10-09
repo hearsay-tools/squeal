@@ -1,0 +1,56 @@
+
+### Q1 claude validate + add + install pinned
+✔ Validation passed
+✔ Successfully added marketplace: probe-hub (declared in user settings)
+Installing plugin "tool@probe-hub"...✔ Successfully installed plugin: tool@probe-hub (scope: user)
+0.1.0
+a
+
+### Q2 codex add + install pinned
+Added marketplace `probe-hub` from http://127.0.0.1:8765/hub.git.
+tool@probe-hub  not installed           http://127.0.0.1:8765/tool.git, path `plugins/codex`, ref `tool--v0.1.0`, sha `d195e6318a2e0b48f0e537f14764011f2d8c1d7e`
+Installed plugin root: <scratch>/home/.codex/plugins/cache/probe-hub/tool/0.1.0
+
+### pin moves to 0.1.1 in the hub
+
+### Q1 claude plugin update without marketplace update
+✔ tool is already at the latest version (0.1.0).
+
+### Q1 claude marketplace update, then plugin update
+✔ Successfully updated marketplace: probe-hub
+✔ Plugin "tool" updated from 0.1.0 to 0.1.1 for scope user. Restart to apply changes.
+. .. .claude-plugin .in_use .orphaned_at CONTENT skills 
+
+### Q2 codex plugin list without upgrade
+tool@probe-hub  installed, enabled  0.1.0    http://127.0.0.1:8765/tool.git, path `plugins/codex`, ref `tool--v0.1.0`, sha `d195e6318a2e0b48f0e537f14764011f2d8c1d7e`
+
+### Q2 codex marketplace upgrade
+Upgraded marketplace `probe-hub` to the latest configured revision.
+0.1.1
+
+### tool main moves; hub does not
+✔ Successfully updated marketplace: probe-hub
+✔ tool is already at the latest version (0.1.1).
+Marketplace `probe-hub` is already up to date.
+0.1.1
+
+### Q4 pin moves to new content with the version unchanged (0.1.1)
+✔ Successfully updated marketplace: probe-hub
+✔ tool is already at the latest version (0.1.1).
+claude content: b
+Upgraded marketplace `probe-hub` to the latest configured revision.
+codex content: e
+
+### Q5 migration: per-repo marketplace (like squeal@squeal), then removed
+✔ Successfully added marketplace: tool (declared in user settings)
+Installing plugin "tool@tool"...✔ Successfully installed plugin: tool@tool (scope: user)
+✔ Successfully removed marketplace: tool
+Also uninstalled 1 plugin from this marketplace:
+claude old cache after remove: . .. .claude-plugin .in_use .orphaned_at CONTENT skills 
+Added marketplace `tool` from http://127.0.0.1:8765/tool.git.
+Installed plugin root: <scratch>/home/.codex/plugins/cache/tool/tool/0.1.1
+Removed plugin `tool` from marketplace `tool`.
+codex old cache after remove: []
+
+### Q4 claude plugin tag dry run
+✘ Tag "tool--v0.1.1" already exists locally. Bump the version in plugin.json, or re-run with --force to move the tag.
