@@ -277,6 +277,9 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-169 sixth review of the stale-transform slice | planned, after 001-168 (gpt-6.1-sol) | `/reviewer`: are wave-13e B1 to B3 closed. | `reviews/wave-13f.md` committed. |
 | 001-170 an inherited failure stands only once the receiving worktree confirms it | planned, after 001-168 (both in `ledger.ts`) | Human (2026-10-09, `status.md`): an inherited fail is pending until a local run; a local pass heals every worktree under the key; a flip is a flaky note. | Inherit-confirm scheduler tests; slow fails confirmed by the slow tier. |
 | 001-171 a new failure is re-run once before it is trusted | planned, after 001-170 | Human (2026-10-09): report at once, re-run once in the next tier; a pass is FAIL -> PASS with the flaky note. | One re-run per new failure, never a loop. |
+| 001-172 research: `status --wait` latency for one file on a loaded host | running | Agent feedback (2026-10-09): it re-ran suites itself instead of waiting, partly because results came slowly at load 100 to 170. | A table per case with the dominant stage and a wait to quote in the skill. |
+| 001-173 `squeal why` names the run log holding a check's console output | running | Human (2026-10-09): point to the log; `--include-logs` prints that file's lines. | Log path for own and inherited results; `--include-logs` filters to the file; a pruned log is reported. |
+| 001-174 the skill shows the red/green workflow and waiting on one file | planned, after 001-172 | Human (2026-10-09). | The worked example and the measured wait in the skill. |
 
 ## Feature 002: Codex adapter
 
