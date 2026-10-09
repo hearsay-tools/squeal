@@ -178,3 +178,17 @@ Done when: the reviewer's two-separate-config-project probe is a scheduler regre
 ## 001-155 third review of wave 13's stale-transform slice
 
 Use /reviewer on gpt-6.1-sol, after 001-154 lands. Output `reviews/wave-13c.md`. Range: from `6418a6b` to 001-154's landing (0.1.54); 0.1.53 (001-148, 001-150, which also reworked `sources.ts` and added `gate.ts`) is in the range and under review too. The worker's slow-instance repeat passed with and without the fix (a fresh instance reads disk), so it proves nothing: build a slow-instance probe where the slow instance's own cached transform is the transient one. Question: is `reviews/wave-13b.md` B2 closed, and is there any other way, in any configuration of Vitest projects, servers or instances, for a cached transform's bytes to differ from the bytes a stored result's key names? Also verify the 002/003/004 coordinator's wave-13b S2 fix (`248723c`, `src/core/daemon/escaped.ts` `terminate`) with the two-target controlled table. Decided by the human: blockers from this round go to the human again.
+
+## 001-156 a loaded host never flaps "no daemon is validating" / "validating again"
+
+Use /worker. Shape: fix, reproduce first.
+
+Evidence: the board row (both coordinators' gates since 0.1.45; `test/e2e/worktrees.test.ts`'s second-worktree PostToolBatch prints `SQUEAL · a daemon is validating again at revision 0` where silence is expected; live sessions show "no daemon is validating" then "validating again" headers during builds at load 50 to 160). Possibly the same cause as 001-153 (`test/daemon/step-down.test.ts`'s released-0.1.31 case missed its successor for 60 s once on Node 22): check it.
+
+Read: spec D9 (registration, the turn and its notes), D10 (liveness, heartbeats, pings), D12 (dead-daemon handling: "hooks still serve status and..."); `src/core/delivery/format.ts` (the dead-daemon and validating-again notes), wherever a hook decides a daemon is not validating (ping timeout, heartbeat age in the store), and the daemon's heartbeat writer.
+
+Questions to settle first, with a test that reproduces it (an event-loop-blocked or starved daemon, or a ping/heartbeat deadline shorter than a loaded host's stall): which signal says "not validating" (a ping timeout, a heartbeat older than N), how short its deadline is against a 1 to 3 s stall, and why the next boundary says "validating again" for revision 0 in a worktree that never saw it stop. Fix the cause; a stale-looking heartbeat on a live process should not produce a pair of transitions an agent reads as an outage.
+
+Own: `src/core/delivery/`, `src/core/daemon/` heartbeat and liveness, `src/harness/shared/` liveness checks (ask before `src/harness/codex/`), tests under `test/delivery/`, `test/harness/`, `test/daemon/`, `test/e2e/` helpers, D9/D10/D12. Do not run `npm run build`.
+
+Done when: the cause is named with evidence; a test with a stalled daemon (or a delayed heartbeat) shows no false "not validating"/"validating again" pair within the stall the fix tolerates, and a genuinely dead daemon is still reported within its stated time; `test/e2e/worktrees.test.ts` passes ten runs in a row at load 60 or more; the report says whether 001-153 shares the cause.
