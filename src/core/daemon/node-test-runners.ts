@@ -5,31 +5,19 @@ import {
   type ObservedStore,
 } from "../../runners/node-test/adapter.js";
 import { compare, isRecord } from "../fs/index.js";
-import type {
-  AbsolutePath,
-  NodeTestProject,
-  ProjectName,
-  RelativePath,
-  Store,
+import {
+  type AbsolutePath,
+  type NodeTestProject,
+  nodeTestObservedMetaKey,
+  nodeTestObservedPreloadsMetaKey,
+  type ProjectName,
+  type RelativePath,
+  type Store,
 } from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 
-/**
- * Spec 003 D3 as amended: the observed-only paths of one node:test project,
- * a map from test path to paths, shared by every worktree of the repository.
- */
-export function nodeTestObservedMetaKey(project: ProjectName): string {
-  return `nodeTest.observed.${project}`;
-}
-
-/**
- * Review wave 2, B1: the paths one node:test project's preloads loaded at
- * run time outside their static closure, a sorted array, shared like
- * {@link nodeTestObservedMetaKey}. They are environment inputs of the project.
- */
-export function nodeTestObservedPreloadsMetaKey(project: ProjectName): string {
-  return `nodeTest.observedPreloads.${project}`;
-}
+// The key names live in the types, so the daemon's timers read them without this module (task 003-26).
+export { nodeTestObservedMetaKey, nodeTestObservedPreloadsMetaKey };
 
 /**
  * The adapter's read and write of its project's observed paths. A write
