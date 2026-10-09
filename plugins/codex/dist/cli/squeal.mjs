@@ -21579,9 +21579,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile7 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile7;
-        const readFileSync20 = this._readFileBackend.provideSync;
+        const readFileSync21 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync20;
+        readFileSync21;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -31482,7 +31482,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.61";
+  if (true) return "0.1.62";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -32198,6 +32198,14 @@ function hasManifest(root, dir) {
   }
 }
 
+// src/cli/plugin-id.ts
+var PLUGIN_NAME = "squeal";
+var MARKETPLACE_NAME = "hearsay";
+var MARKETPLACE_REPO = "hearsay-tools/marketplace";
+var PLUGIN_ID = `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
+var PREVIOUS_MARKETPLACE_NAME = "squeal";
+var PREVIOUS_PLUGIN_ID = `${PLUGIN_NAME}@${PREVIOUS_MARKETPLACE_NAME}`;
+
 // src/cli/codex/launcher.ts
 import { existsSync as existsSync4, readFileSync as readFileSync8 } from "node:fs";
 import { dirname as dirname4, join as join14 } from "node:path";
@@ -32205,6 +32213,7 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/cli/codex/hash.ts
 import { createHash as createHash8 } from "node:crypto";
+var PLUGIN_KEY_SOURCE = `${PLUGIN_ID}:hooks/hooks.json`;
 var LAUNCHER_KEY_SOURCE = "/<session-flags>/config.toml";
 var LABELS = {
   PreToolUse: "pre_tool_use",
@@ -32337,7 +32346,22 @@ async function trustCodexHooks(io, root, options) {
       clientInfo: { name: "squeal", title: null, version: "0" }
     });
     server.notify("initialized", {});
-    const hooks = await listHooks(server, root, options.pluginId);
+    const listed = await listHooks(server, root, [
+      options.pluginId,
+      ...options.previous === void 0 ? [] : [options.previous.pluginId]
+    ]);
+    const hooks = listed.filter((h) => h.pluginId === options.pluginId);
+    const old = listed.filter((h) => h.pluginId === options.previous?.pluginId);
+    if (options.previous !== void 0 && old.length > 0) {
+      const trusted = old.filter((h) => h.trustStatus === "trusted").length;
+      io.stdout(
+        [
+          `squeal init: Codex still has the previous ${options.previous.pluginId}, ${trusted} of its ${old.length} hooks trusted; with no Codex session running, remove it:`,
+          ...options.previous.removeCommands.map((c) => `  ${c}`),
+          ""
+        ].join("\n")
+      );
+    }
     if (hooks.length === 0) {
       io.stderr(
         [
@@ -32390,7 +32414,7 @@ async function trustCodexHooks(io, root, options) {
       reloadUserConfig: true
     });
     const filePath = isRecord(written) && typeof written.filePath === "string" ? written.filePath : null;
-    const after = await listHooks(server, root, options.pluginId);
+    const after = await listHooks(server, root, [options.pluginId]);
     io.stdout(
       [
         `squeal init: Codex wrote the trust${filePath === null ? "" : ` to ${filePath}`}; its hooks now:`,
@@ -32429,7 +32453,7 @@ function terminalAsk() {
 function event(hook) {
   return `${hook.eventName.charAt(0).toUpperCase()}${hook.eventName.slice(1)}`;
 }
-async function listHooks(server, root, pluginId) {
+async function listHooks(server, root, pluginIds) {
   const result = await server.request("hooks/list", { cwds: [root] });
   const data2 = isRecord(result) ? result.data : void 0;
   if (!Array.isArray(data2))
@@ -32438,8 +32462,9 @@ async function listHooks(server, root, pluginId) {
   for (const entry2 of data2) {
     const listed = isRecord(entry2) && Array.isArray(entry2.hooks) ? entry2.hooks : [];
     for (const hook of listed) {
-      if (!isRecord(hook) || hook.pluginId !== pluginId) continue;
-      const { key: key2, eventName, command, currentHash, trustStatus } = hook;
+      if (!isRecord(hook) || typeof hook.pluginId !== "string") continue;
+      const { key: key2, eventName, command, currentHash, trustStatus, pluginId } = hook;
+      if (!pluginIds.includes(pluginId)) continue;
       if (typeof key2 !== "string" || typeof eventName !== "string" || typeof command !== "string" || typeof currentHash !== "string" || typeof trustStatus !== "string") {
         throw new AppServerError(
           `codex app-server listed a hook of ${pluginId} in a shape Squeal does not know`
@@ -32574,11 +32599,15 @@ function plain(line) {
 }
 
 // src/cli/codex/init.ts
-var CODEX_MARKETPLACE_SOURCE = "hearsay-tools/squeal";
-var CODEX_PLUGIN_ID = "squeal@squeal";
+var CODEX_MARKETPLACE_SOURCE = MARKETPLACE_REPO;
+var CODEX_PLUGIN_ID = PLUGIN_ID;
 var CODEX_INSTALL_COMMANDS = [
   `codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
   `codex plugin add ${CODEX_PLUGIN_ID}`
+];
+var CODEX_PREVIOUS_REMOVE_COMMANDS = [
+  `codex plugin remove ${PREVIOUS_PLUGIN_ID}`,
+  `codex plugin marketplace remove ${PREVIOUS_MARKETPLACE_NAME}`
 ];
 var CODEX_TRUST_STEP = `open the Codex TUI, run /hooks and trust the hooks of ${CODEX_PLUGIN_ID}`;
 function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
@@ -32620,6 +32649,7 @@ function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
   return trustCodexHooks(io, root, {
     pluginId: CODEX_PLUGIN_ID,
     installCommands: CODEX_INSTALL_COMMANDS,
+    previous: { pluginId: PREVIOUS_PLUGIN_ID, removeCommands: CODEX_PREVIOUS_REMOVE_COMMANDS },
     yes: options.yes,
     ask: deps.ask === void 0 ? terminalAsk() : deps.ask,
     ...deps.timeoutMs === void 0 ? {} : { timeoutMs: deps.timeoutMs }
@@ -34839,10 +34869,8 @@ init_fs();
 init_types();
 import { existsSync as existsSync16, mkdirSync as mkdirSync10, readFileSync as readFileSync19, rmSync as rmSync9, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join51 } from "node:path";
-var MARKETPLACE_NAME = "squeal";
-var PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
 var MARKETPLACE_SOURCE = {
-  source: { source: "github", repo: "hearsay-tools/squeal" }
+  source: { source: "github", repo: MARKETPLACE_REPO }
 };
 function init2(args, io) {
   const parsed = parseInitArgs(args);
@@ -34935,14 +34963,25 @@ function initClaudeCode(io) {
   }
   lines.push(...suggest ? seed.notes.filter((n) => !n.startsWith(SEEDED)) : seed.notes);
   const next = { ...settings.value };
-  const marketplaceEntries = marketplaces;
+  const { [PREVIOUS_MARKETPLACE_NAME]: oldMarketplace, ...marketplaceEntries } = marketplaces;
+  const { [PREVIOUS_PLUGIN_ID]: oldPlugin, ...pluginEntries } = plugins;
+  const migrated = oldMarketplace !== void 0 || oldPlugin !== void 0;
+  if (oldMarketplace !== void 0) {
+    next.extraKnownMarketplaces = marketplaceEntries;
+    lines.push(
+      `removed the previous ${PREVIOUS_MARKETPLACE_NAME} marketplace from .claude/settings.json`
+    );
+  }
+  if (oldPlugin !== void 0) {
+    next.enabledPlugins = pluginEntries;
+    lines.push(`removed the previous ${PREVIOUS_PLUGIN_ID} from .claude/settings.json`);
+  }
   if (MARKETPLACE_NAME in marketplaceEntries) {
-    lines.push("kept the squeal marketplace entry in .claude/settings.json");
+    lines.push(`kept the ${MARKETPLACE_NAME} marketplace entry in .claude/settings.json`);
   } else {
     next.extraKnownMarketplaces = { ...marketplaceEntries, [MARKETPLACE_NAME]: MARKETPLACE_SOURCE };
-    lines.push("added the squeal marketplace to .claude/settings.json");
+    lines.push(`added the ${MARKETPLACE_NAME} marketplace to .claude/settings.json`);
   }
-  const pluginEntries = plugins;
   if (pluginEntries[PLUGIN_ID] === true) {
     lines.push(`.claude/settings.json already enables ${PLUGIN_ID}`);
   } else {
@@ -34983,6 +35022,9 @@ function initClaudeCode(io) {
       ] : [],
       ...seed.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)],
       `Each collaborator installs the plugin once: claude plugin install ${PLUGIN_ID} --scope project`,
+      ...migrated ? [
+        `Each collaborator who installed ${PREVIOUS_PLUGIN_ID} removes it: claude plugin uninstall ${PREVIOUS_PLUGIN_ID} --scope project, then claude plugin marketplace remove ${PREVIOUS_MARKETPLACE_NAME}`
+      ] : [],
       ""
     ].join("\n")
   );
@@ -35023,7 +35065,7 @@ function readSettings(path) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync17, lstatSync as lstatSync5, readdirSync as readdirSync12, rmSync as rmSync10 } from "node:fs";
+import { existsSync as existsSync17, lstatSync as lstatSync5, readdirSync as readdirSync12, readFileSync as readFileSync20, rmSync as rmSync10 } from "node:fs";
 import { basename as basename12, dirname as dirname23, join as join52 } from "node:path";
 import { setTimeout as sleep4 } from "node:timers/promises";
 init_paths3();
@@ -35139,10 +35181,31 @@ ${removed.map((line) => `  ${line}
 `
     );
   }
-  io.stdout(
-    "  The plugin: claude plugin uninstall squeal@squeal --scope project (the scope it was installed with), and the extraKnownMarketplaces and enabledPlugins entries squeal init added to .claude/settings.json.\n"
-  );
+  io.stdout(pluginLine(root));
   return failed2.length === 0 ? 0 : PARTIAL_EXIT;
+}
+function pluginLine(root) {
+  let settings = null;
+  try {
+    settings = JSON.parse(readFileSync20(join52(root, ".claude", "settings.json"), "utf8"));
+  } catch {
+  }
+  const keys = (field, names) => {
+    const value = isRecord(settings) ? settings[field] : void 0;
+    return isRecord(value) ? names.filter((name) => name in value) : [];
+  };
+  const plugins = keys("enabledPlugins", [PLUGIN_ID, PREVIOUS_PLUGIN_ID]);
+  const marketplaces = keys("extraKnownMarketplaces", [
+    MARKETPLACE_NAME,
+    PREVIOUS_MARKETPLACE_NAME
+  ]);
+  const uninstall = (plugins.length === 0 ? [PLUGIN_ID] : plugins).map((id2) => `claude plugin uninstall ${id2} --scope project`).join(", ");
+  const entries2 = [
+    ...marketplaces.map((name) => `extraKnownMarketplaces.${name}`),
+    ...plugins.map((id2) => `enabledPlugins["${id2}"]`)
+  ];
+  return `  The plugin: ${uninstall} (the scope it was installed with)` + (entries2.length === 0 ? ".\n" : `, and the entries squeal init added to .claude/settings.json: ${entries2.join(", ")}.
+`);
 }
 async function isTracked(root, path) {
   const out = await runGit(root, ["ls-files", "-z", "--", path]).catch(() => "");
