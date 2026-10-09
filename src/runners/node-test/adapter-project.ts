@@ -161,10 +161,11 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           : { concurrency: options.concurrency() }),
         ...(env === undefined ? {} : { env }),
       });
-      observed.record(seen, new Set(files));
+      const preloaded = observed.record(seen, new Set(files));
       const named = bareNote(seen, bare);
       if (named !== null) note(named);
-      return report;
+      if (preloaded.length === 0) return report;
+      return { ...report, environmentObserved: [{ project: project.name, paths: preloaded }] };
     },
     close: async () => {},
   };
