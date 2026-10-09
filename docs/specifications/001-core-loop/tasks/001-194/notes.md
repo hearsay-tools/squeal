@@ -15,3 +15,9 @@ Remaining gap: a revision strictly between the earliest and the latest that also
 ## Out of order settles
 
 A revision's refinement can settle after a later revision's content re-key. `noteKeyedAt` takes the minimum, not "set only when null", so the refined revision still becomes the earliest. For 003-45's growth settle, which passes `ledger.revision.number` (never below a recorded revision), the two rules agree.
+
+## Re-review 003-46's completed-sibling case
+
+`test/scheduler/environment-growth-siblings.test.ts`, through `waitForStatus` on the real scheduler and node:test adapter: at 0.1.85 alone the wait at revision 2 ended quiet with 0 files while a and c re-ran; here a's and c's results had cleared their `keyedAt`, so 003-45's growth settle (null takes `ledger.revision.number`) gives them revision 2, and the wait names 2 files and holds until both results. b's own re-run result landed before the wait, so b holds nothing and is not counted. The node:test re-runs after a growth go out as a backlog tier: the test sets `backlogTierSize: 1` and makes a and c slower so b's re-run runs first.
+
+003-45's split in `recordTier` settles a file with a non-null `keyedAt` without `keyedAt`, so a growth does not advance that file's `lastKeyedAt`. A wait covering only the growth's revision then names such a file only through 001-191's told-and-unseen rule (it is pending). Passing `keyedAt` for every moved file would be the same for `keyedAt` (minimum) and would advance `lastKeyedAt`; left alone, as the brief asked.

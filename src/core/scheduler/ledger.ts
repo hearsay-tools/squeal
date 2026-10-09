@@ -253,7 +253,6 @@ export class Ledger {
     const kept = new Set(next.map(checkId));
     this.#retired.push(...file.checks.filter((check) => !kept.has(checkId(check))));
     file.resultKey = key;
-    if (key === file.key) clearKeyedAt(file);
     file.checks = next;
     file.failing = results.some((r) => r.outcome === "fail");
     file.durationMs = durationOf(results) ?? file.durationMs;
@@ -261,6 +260,7 @@ export class Ledger {
     file.discards = 0;
     file.blocked = null;
     file.tierCap = null;
+    if (key === file.key) clearKeyedAt(file);
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
     this.checkpoints.done(file.ref, checkpointId);
