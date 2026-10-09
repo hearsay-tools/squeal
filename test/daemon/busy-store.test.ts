@@ -37,7 +37,17 @@ const START_FAILED = /could not start/;
 function startWriter(database: string, env: NodeJS.ProcessEnv): SpawnedProcess {
   const child = spawn(
     process.execPath,
-    ["--import", TSX, LONG_WRITER, database, String(HOLD_MS), String(REST_MS)],
+    [
+      // Node 22 warns about SQLite and undici's proxy agent; the test asserts a silent writer.
+      "--disable-warning=ExperimentalWarning",
+      "--disable-warning=UNDICI-EHPA",
+      "--import",
+      TSX,
+      LONG_WRITER,
+      database,
+      String(HOLD_MS),
+      String(REST_MS),
+    ],
     { env, stdio: ["ignore", "pipe", "pipe"] },
   );
   let out = "";
