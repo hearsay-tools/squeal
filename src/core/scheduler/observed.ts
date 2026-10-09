@@ -2,6 +2,7 @@ import { listedDirectory, listingPath, testFileId } from "../keys/index.js";
 import type { RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
+import { linkTargets } from "./link-target.js";
 import { changedSince, snapshotInputs } from "./stability.js";
 
 /** What one completed file's run adds to its closure (task 001-132). */
@@ -26,7 +27,8 @@ export interface ObservedGrowth {
  * completed file (by `testFileId`), the paths the runner observed beyond the
  * file's closure, with what other worktrees stored meanwhile (D3, D5 as
  * amended; research observed-runtime-inputs F3, F4), a recursive listing as
- * the listing of each directory below it. A path git ignores is
+ * the listing of each directory below it, and a path read through a directory
+ * link with its target (`linkTargets`). A path git ignores is
  * dropped: the watcher does not track it, so it cannot key (a blind spot,
  * named in status). Every file path is hashed into the stat cache, so the
  * keys `recordTier` computes have no untracked path; a path hashed only now,
@@ -44,17 +46,22 @@ export async function observedGrowth(
   if (!keys.observing || report.observed === undefined || report.observed.length === 0) return out;
   keys.refreshObserved(report.observed.map((o) => o.testFile.project));
   const candidates = new Set<RelativePath>();
-  const seen = report.observed.map((observed) => {
+  const seen = [];
+  for (const observed of report.observed) {
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
     const listed = new Set(observed.directories.map(listingPath));
     // A recursive listing returned names from every directory below it (B5, task 001-134).
     for (const root of observed.recursive ?? []) {
       for (const path of keys.listingsBelow(root)) listed.add(path);
     }
-    const fresh = [...observed.paths, ...listed].filter((path) => !closure.has(path));
+    const read = observed.paths.filter((path) => !closure.has(path));
+    const targets = await linkTargets(context.root, read);
+    const fresh = [...new Set([...read, ...targets, ...listed])].filter(
+      (path) => !closure.has(path),
+    );
     for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
-    return { observed, closure, fresh };
-  });
+    seen.push({ observed, closure, fresh });
+  }
   const ignored = await checkIgnored(
     context.root,
     [...candidates].filter((p) => p !== ""),
