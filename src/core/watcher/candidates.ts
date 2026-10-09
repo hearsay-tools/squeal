@@ -141,14 +141,31 @@ export async function candidatesForReconcile(
     const stat = stats[i];
     if (stat !== undefined) out.set(rel, stat);
   });
-  const links = await topLinks(ctx.root, [...out.keys()]);
-  const linkedDirs = await observedLinks(ctx, links);
-  for (const link of linkedDirs.keys()) {
-    for (const rel of await walkFiles(ctx, nested, link)) {
-      out.set(rel, await statOrNull(ctx.root, rel));
-    }
+  const { links, linkedDirs } = await linksAmong(ctx.root, [...out.keys()]);
+  for (const rel of await filesUnderLinks(ctx, linkedDirs.keys(), nested)) {
+    out.set(rel, await statOrNull(ctx.root, rel));
   }
   return { paths: sortCandidates(out), linkedDirs, links };
+}
+
+/** The symlinked directories among `paths` (`topLinks`), and those observed (`observedLinks`). */
+export async function linksAmong(
+  root: AbsolutePath,
+  paths: readonly RelativePath[],
+): Promise<Pick<ReconcileCandidates, "links" | "linkedDirs">> {
+  const links = await topLinks(root, paths);
+  return { links, linkedDirs: await observedLinks(root, links) };
+}
+
+/** The files a reconciliation pass walks under the observed `linkedDirs`. */
+export async function filesUnderLinks(
+  ctx: CandidateContext,
+  linkedDirs: Iterable<RelativePath>,
+  nested = new NestedRepoProbe(ctx.root),
+): Promise<RelativePath[]> {
+  const files: RelativePath[] = [];
+  for (const link of linkedDirs) files.push(...(await walkFiles(ctx, nested, link)));
+  return files;
 }
 
 /** The symlinked directories among `paths` below the root and beyond no other link, with each target's realpath. */
@@ -174,15 +191,15 @@ async function topLinks(
  * Links inside a target are not followed, so no walk loops.
  */
 async function observedLinks(
-  ctx: CandidateContext,
+  root: AbsolutePath,
   links: ReadonlyMap<RelativePath, AbsolutePath>,
 ): Promise<Map<RelativePath, AbsolutePath>> {
   const observed = new Map<RelativePath, AbsolutePath>();
   for (const [rel, target] of links) {
-    if (holdsRoot(ctx.root, target)) continue;
-    if (!(await inOtherRepository(ctx.root, target))) observed.set(rel, target);
+    if (holdsRoot(root, target)) continue;
+    if (!(await inOtherRepository(root, target))) observed.set(rel, target);
   }
-  for (const link of await ignoredLinks(ctx.root, [...observed.keys()])) observed.delete(link);
+  for (const link of await ignoredLinks(root, [...observed.keys()])) observed.delete(link);
   return observed;
 }
 
