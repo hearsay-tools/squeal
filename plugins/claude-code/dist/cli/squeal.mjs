@@ -5568,7 +5568,8 @@ async function reconcileBatch(context, ledger, batch) {
     }
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
-  return store.transaction(() => {
+  const touched = touchedUnchanged(diff, keys.cache);
+  const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
       head,
@@ -5591,10 +5592,22 @@ async function reconcileBatch(context, ledger, batch) {
     ledger.commit();
     return { revision, content };
   });
+  return { applied, touched };
+}
+function touchedUnchanged(diff, cache) {
+  const changed = new Set(diff.changes.map((change2) => change2.path));
+  const touched = [];
+  for (const update of diff.updates) {
+    if (update.kind !== "set" || changed.has(update.record.path)) continue;
+    const cached = cache.get(update.record.path);
+    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
+  }
+  return touched;
 }
 var init_batch = __esm({
   "src/core/scheduler/batch.ts"() {
     "use strict";
+    init_hash();
     init_keys();
     init_revision();
     init_revision2();
@@ -5753,7 +5766,7 @@ function startWaiting(context, ledger, missing) {
   }
 }
 async function reconcileWaiting(context, ledger, batch, changed) {
-  const applied = await reconcileBatch(context, ledger, batch);
+  const { applied } = await reconcileBatch(context, ledger, batch);
   if (applied !== null) {
     ledger.commit({ refined: applied.revision.number });
     for (const change2 of applied.revision.changes) changed.add(change2.path);
@@ -7716,17 +7729,21 @@ var init_mutex = __esm({
 });
 
 // src/core/scheduler/refinement.ts
-async function fetchRunnerPart(context, ledger, revision, content, carried) {
+async function fetchRunnerPart(context, ledger, revision, content, carried, touched = []) {
   const { keys, runner } = context;
   const changes = revision.changes;
   const paths = changes.map((c) => c.path);
   const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
   const failures = /* @__PURE__ */ new Map();
   const retrying = ledger.broken;
+  const invalidations = [
+    ...changes.map(toInvalidatedPath),
+    ...touched.map((path) => ({ path, kind: "touch" }))
+  ];
   const invalidated = await tryRunner(
     context,
-    `invalidate (${listPaths(paths)})`,
-    () => runner.invalidate(changes.map(toInvalidatedPath)),
+    `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
+    () => runner.invalidate(invalidations),
     (reason2) => failed(failures, null, reason2)
   );
   const recreated = new Set(invalidated?.recreatedProjects ?? []);
@@ -7753,6 +7770,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried) {
   );
   pick(content.rekeyed);
   pick(carried);
+  pick(keys.index.reverse.referencing(touched));
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
   const affected2 = await tryRunner(
@@ -7851,13 +7869,39 @@ var init_runner_work = __esm({
       get refining() {
         return this.#refining;
       }
-      /** Queues the runner part of `revision`. */
-      queueRefine(revision, content) {
+      /** Queues the runner part of `revision`, and of the files its batch touched (`queueTouched`). */
+      queueRefine(revision, content, touched = []) {
         this.#tasks.push({
-          run: () => this.#refine(revision, content, revision.number),
+          run: () => this.#refine(revision, content, revision.number, touched),
           cancel: () => {
           },
           refine: true
+        });
+      }
+      /**
+       * Queues a runner-only refinement for files a batch touched whose bytes
+       * ended as they were (task 001-159): no revision names them, but the
+       * runner may hold what it read of them in between. It invalidates them
+       * as `touch`, and takes what a recreate the runner reports for it re-keys.
+       * One queued and not started yet takes the paths instead: a build that
+       * rewrites its output in several batches costs one recreate.
+       */
+      queueTouched(touched) {
+        const queued = this.#tasks.find((task) => task.touched !== void 0)?.touched;
+        if (queued !== void 0) {
+          for (const path of touched) queued.add(path);
+          return;
+        }
+        const paths = new Set(touched);
+        this.#tasks.push({
+          run: () => {
+            const { context, ledger } = this.host.started();
+            return this.#refine(unchanged(context, ledger), NO_CONTENT, null, [...paths].sort());
+          },
+          cancel: () => {
+          },
+          refine: true,
+          touched: paths
         });
       }
       /**
@@ -7900,14 +7944,14 @@ var init_runner_work = __esm({
        * refined so no wait hangs on it. A runner-only refinement (`refined`
        * `null`) commits no refined revision.
        */
-      async #refine(revision, content, refined) {
+      async #refine(revision, content, refined, touched = []) {
         const { context, ledger } = this.host.started();
         this.#refining = true;
         try {
           ledger.refineChanges = /* @__PURE__ */ new Set();
           const carried = [...this.#carried.values()];
           this.#carried.clear();
-          const part = await fetchRunnerPart(context, ledger, revision, content, carried);
+          const part = await fetchRunnerPart(context, ledger, revision, content, carried, touched);
           await this.host.lock.run(async () => {
             const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
             ledger.refineChanges = null;
@@ -8503,20 +8547,23 @@ var init_scheduler2 = __esm({
             if (!this.#awaitingInstall) await this.#baseline(context, ledger);
             return;
           }
-          const applied = await reconcileBatch(context, ledger, batch);
-          const touched = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
-          if (touched || batch.trigger === "interval") {
+          const { applied, touched } = await reconcileBatch(context, ledger, batch);
+          const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
+          if (install || batch.trigger === "interval") {
             const { missing } = await this.#install.check();
             if (missing !== null) return this.#reinstall(ledger);
           }
-          if (applied === null) return;
+          if (applied === null) {
+            if (touched.length > 0) this.#runnerWork.queueTouched(touched);
+            return;
+          }
           this.#slow.preempt();
           for (const { tier } of this.#inFlight.values()) {
             if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
               tier.cancel.abort();
             }
           }
-          this.#runnerWork.queueRefine(applied.revision, applied.content);
+          this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
         });
         if (this.#reinstalled) this.#tellReinstall();
         else this.#pump();
@@ -12244,11 +12291,18 @@ function reaches(vitest, file, ref2, paths) {
   return false;
 }
 function withoutFiles(report2, dropped, stale, paths) {
+  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
+  const reason2 = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
+  return dropFiles(report2, dropped, reason2);
+}
+function withoutTouched(report2, testFiles, touched) {
+  const reason2 = `vitest adapter: ${touched.join(", ")} was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)`;
+  return dropFiles(report2, testFiles, reason2);
+}
+function dropFiles(report2, dropped, reason2) {
   if (dropped.length === 0) return report2;
   const gone = new Set(dropped.map(refKey));
   const kept2 = (ref2) => !gone.has(refKey(ref2));
-  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
-  const reason2 = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
   const { fileDurations, observed } = report2;
   return {
     ...report2,
@@ -12469,10 +12523,16 @@ var init_observe2 = __esm({
           env.NODE_OPTIONS = `--require ${JSON.stringify(recorder)} ${options}`;
         }
       }
-      /** What the run's completed files were observed to read; `undefined` when not observing. */
+      /**
+       * What the run's completed files were observed to read, and the paths any
+       * file of the run wrote (task 001-159); `undefined` when not observing.
+       */
       take(completed) {
         if (this.#out === null) return void 0;
-        return observedInputs(takeRecorded(this.#out), completed, this.paths);
+        const recorded2 = takeRecorded(this.#out);
+        const written = /* @__PURE__ */ new Set();
+        for (const entry2 of recorded2.values()) for (const path of entry2.written) written.add(path);
+        return { inputs: observedInputs(recorded2, completed, this.paths), written };
       }
       /** Drops the current instance's directory. */
       stop() {
@@ -13430,6 +13490,12 @@ var init_adapter = __esm({
        * next call replaces it; a run under one is not stored.
        */
       #unsure = [];
+      /**
+       * Task 001-159: files touched with their bytes ending as they were, since
+       * the current instance began to start. The next call replaces it; a run
+       * that hears of one before it ends is not stored.
+       */
+      #touched = [];
       /** Installed lockfiles the current instance started with. */
       #lockfiles = /* @__PURE__ */ new Set();
       /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -13455,21 +13521,28 @@ var init_adapter = __esm({
         const generation = ++this.#generation;
         const current2 = () => generation === this.#generation ? this.#collector : null;
         const env = { ...this.#childEnv, ...this.#observer.start().env };
+        const heard = this.#touched.length;
+        const forceOptimizeDeps = heard > 0;
         const sources = new SourceStamps(this.paths);
         const config = await ConfigStamps.take(this.paths, this.#configFiles);
-        const vitest = await this.#node.createVitest("test", {
-          root: this.paths.root,
-          watch: false,
-          reporters: [createSquealReporter(current2)],
-          update: "none",
-          includeTaskLocation: true,
-          // Task 001-157: a transform `fsModuleCache` serves skips the plugin
-          // container, so nothing stamps the bytes it holds (D4). A CLI option,
-          // so it reaches every project.
-          fsModuleCache: false,
-          ...Object.keys(env).length === 0 ? {} : { env },
-          ...this.#maxWorkers === void 0 ? {} : { maxWorkers: this.#maxWorkers }
-        });
+        const vitest = await this.#node.createVitest(
+          "test",
+          {
+            root: this.paths.root,
+            watch: false,
+            reporters: [createSquealReporter(current2)],
+            update: "none",
+            includeTaskLocation: true,
+            // Task 001-157: a transform `fsModuleCache` serves skips the plugin
+            // container, so nothing stamps the bytes it holds (D4). A CLI option,
+            // so it reaches every project.
+            fsModuleCache: false,
+            ...Object.keys(env).length === 0 ? {} : { env },
+            ...this.#maxWorkers === void 0 ? {} : { maxWorkers: this.#maxWorkers }
+          },
+          // Vite's inline option, `optimizeDeps.force` in every environment.
+          forceOptimizeDeps ? { forceOptimizeDeps: true } : {}
+        );
         sources.attach(vitest);
         this.#sources = sources;
         try {
@@ -13480,6 +13553,7 @@ var init_adapter = __esm({
           this.#configFiles = configFiles(vitest);
           this.#config = config;
           this.#unsure = await config.unsure(this.#configFiles);
+          this.#touched = this.#touched.slice(heard);
         } catch (error) {
           await vitest.close();
           throw error;
@@ -13507,7 +13581,7 @@ var init_adapter = __esm({
        */
       async #instance(hold) {
         let replaced = false;
-        const stale = () => this.#observer.stale() || !replaced && this.#unsure.length > 0;
+        const stale = () => this.#observer.stale() || !replaced && this.#unsure.length > 0 || this.#touched.length > 0;
         for (; ; ) {
           if (this.#closed) throw new Error("vitest adapter: closed");
           if (this.#vitest !== null && !stale()) return this.#vitest;
@@ -13544,7 +13618,23 @@ var init_adapter = __esm({
         this.#vitest = await this.#start();
         return this.#vitest;
       }
+      /**
+       * A `touch` (task 001-159) is heard at once, so a run in flight is not
+       * stored, and the instance is replaced before the next call: every
+       * project and environment's transforms and module graph, the global setup
+       * and the optimizer's bundles go with it. No project counts as recreated
+       * for it: the files are the bytes they were, so the environment and the
+       * listing are too, and a listing now could find a file the watcher has
+       * not reconciled yet, which then never makes a revision.
+       */
       invalidate(paths) {
+        const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
+        this.#touched.push(...touched);
+        const changed = paths.filter((p) => p.kind !== "touch");
+        if (changed.length === 0) return Promise.resolve({ recreatedProjects: [] });
+        return this.#invalidate(changed);
+      }
+      #invalidate(paths) {
         return this.#part(async (vitest, hold) => {
           const abs = paths.map((p) => ({ ...p, abs: this.paths.toAbsolute(p.path) }));
           const triggers = await recreateTriggers(vitest);
@@ -13649,6 +13739,7 @@ var init_adapter = __esm({
             const ran = await this.#invalidateStale(vitest, loadedSince);
             const moved = [.../* @__PURE__ */ new Set([...ran, ...unsure])].sort();
             this.#running = false;
+            const heard = [...new Set(this.#touched)];
             const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
             if (execution.hung || broken !== null) {
               const ran2 = execution;
@@ -13661,13 +13752,16 @@ var init_adapter = __esm({
               });
             }
             const built = buildReport(collector, execution, Math.round(performance.now() - started));
-            const observed = this.#observer.take(built.completedFiles);
-            const report2 = withoutFiles(
+            const taken2 = this.#observer.take(built.completedFiles);
+            const observed = taken2?.inputs;
+            const touched = heard.filter((path) => !taken2?.written.has(this.paths.toAbsolute(path))).sort();
+            const kept2 = withoutFiles(
               observed === void 0 ? built : { ...built, observed },
               mayHaveRun(vitest, moved, testFiles, this.paths),
               moved,
               this.paths
             );
+            const report2 = touched.length === 0 ? kept2 : withoutTouched(kept2, testFiles, touched);
             if (broken !== null && report2.failure !== null) this.#note(report2.failure);
             writeRunLog(options, collector, report2);
             return report2;
@@ -31518,7 +31612,12 @@ function withSlowInstance(fast, createSlow) {
     name: fast.name,
     adapterVersion: fast.adapterVersion,
     invalidate(paths) {
-      if (slow !== null) pending.push(...paths);
+      if (slow !== null) {
+        const touched = paths.filter((p) => p.kind === "touch");
+        if (touched.length > 0) void slow.invalidate(touched).catch(() => {
+        });
+        pending.push(...paths.filter((p) => p.kind !== "touch"));
+      }
       return fast.invalidate(paths);
     },
     affected: (changedPaths) => fast.affected(changedPaths),
@@ -31563,7 +31662,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.63";
+  if (true) return "0.1.64";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
