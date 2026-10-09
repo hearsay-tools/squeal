@@ -561,7 +561,15 @@ function toActivity(value) {
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
-    return { kind: "running", path: v.path, since: v.since, lastDurationMs: last };
+    const paths = Array.isArray(v.paths) ? v.paths : [];
+    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
+    return {
+      kind: "running",
+      path: v.path,
+      ...several ? { paths } : {},
+      since: v.since,
+      lastDurationMs: last
+    };
   }
   return null;
 }
@@ -703,18 +711,19 @@ function recordedArtifacts(store) {
 }
 function liveActivity(activity, keys, isSlow) {
   if (activity?.kind !== "running") return activity;
-  const running = keys.some(
-    (row) => row.testFile.path === activity.path && row.pending === "running" && isSlow(row.testFile)
+  const running = new Set(
+    keys.filter((row) => row.pending === "running" && isSlow(row.testFile)).map((row) => row.testFile.path)
   );
-  return running ? activity : null;
+  const [path, ...rest] = (activity.paths ?? [activity.path]).filter((p) => running.has(p));
+  if (path === void 0) return null;
+  const { since, lastDurationMs } = activity;
+  const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
+  return { kind: "running", path, ...paths, since, lastDurationMs };
 }
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions.range(worktreeId, since, revision).filter((r) => !isFirstListing(r)).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
-}
-function isFirstListing(revision) {
-  return revision.number === 1 && revision.trigger === "interval" && revision.changes.every((change2) => change2.oldHash === null);
+  return store.revisions.range(worktreeId, since, revision).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
 }
 
 // src/core/state/header.ts
@@ -3140,7 +3149,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.66";
+  if (true) return "0.1.67";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

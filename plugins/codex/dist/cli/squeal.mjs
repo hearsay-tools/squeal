@@ -1590,16 +1590,45 @@ async function ignoredInputs(root, globs2) {
   );
   const listed = await list2(true);
   const matches = createInputMatcher(globs2);
-  const links = await linkedDirs(root, [
+  const candidates = [
     ...listed,
     // A link git ignores only as a directory (`dist/`) is listed as not ignored.
     ...await list2(false),
+    // A link git tracks, which only a directory rule ignores (reviews/wave-4.5.md B1).
+    ...await trackedLinks(root, pathspecs),
     // A link at or above a glob's literal part, which git refuses to list beyond.
     ...prefixes.flatMap((prefix) => prefix === "" ? [] : [...selfAndAncestors(prefix)])
-  ]);
+  ];
+  const links = await linkedDirs(
+    root,
+    candidates.filter((path) => globs2.some((glob) => reachesBelow(glob, path)))
+  );
   const files = listed.filter((path) => !links.has(path));
   for (const link of links) files.push(...await filesBeyond(root, link));
   return [...new Set(files.filter((path) => matches(path) && !installed(path)))].sort();
+}
+async function trackedLinks(root, pathspecs) {
+  const entries2 = splitNul(
+    await runGit(root, ["ls-files", "-z", "--stage", "--", ...pathspecs, INSTALLED])
+  );
+  return entries2.flatMap((entry2) => {
+    const tab = entry2.indexOf("	");
+    return entry2.startsWith("120000 ") && tab !== -1 ? [entry2.slice(tab + 1)] : [];
+  });
+}
+function reachesBelow(glob, dir) {
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  if (/\{[^}]*\//.test(source)) return true;
+  const pattern2 = source.split("/");
+  const path = dir.split("/");
+  const reach2 = (p, d) => {
+    if (d === path.length) return p < pattern2.length;
+    if (p === pattern2.length) return false;
+    const segment = pattern2[p];
+    if (segment === "**") return reach2(p + 1, d) || reach2(p, d + 1);
+    return globToRegExp(segment).test(path[d]) && reach2(p + 1, d + 1);
+  };
+  return reach2(0, 0);
 }
 function literalPrefix(glob) {
   const segments2 = (glob.startsWith("./") ? glob.slice(2) : glob).split("/");
@@ -2672,7 +2701,15 @@ function toActivity(value) {
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
-    return { kind: "running", path: v.path, since: v.since, lastDurationMs: last };
+    const paths = Array.isArray(v.paths) ? v.paths : [];
+    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
+    return {
+      kind: "running",
+      path: v.path,
+      ...several ? { paths } : {},
+      since: v.since,
+      lastDurationMs: last
+    };
   }
   return null;
 }
@@ -2858,18 +2895,19 @@ function recordedArtifacts(store) {
 }
 function liveActivity(activity, keys, isSlow) {
   if (activity?.kind !== "running") return activity;
-  const running = keys.some(
-    (row) => row.testFile.path === activity.path && row.pending === "running" && isSlow(row.testFile)
+  const running = new Set(
+    keys.filter((row) => row.pending === "running" && isSlow(row.testFile)).map((row) => row.testFile.path)
   );
-  return running ? activity : null;
+  const [path, ...rest] = (activity.paths ?? [activity.path]).filter((p) => running.has(p));
+  if (path === void 0) return null;
+  const { since, lastDurationMs } = activity;
+  const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
+  return { kind: "running", path, ...paths, since, lastDurationMs };
 }
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions.range(worktreeId, since, revision).filter((r) => !isFirstListing(r)).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
-}
-function isFirstListing(revision) {
-  return revision.number === 1 && revision.trigger === "interval" && revision.changes.every((change2) => change2.oldHash === null);
+  return store.revisions.range(worktreeId, since, revision).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
 }
 function slowFilesNotCurrent(states, keys, isSlow) {
   return [...classifySlowFiles(states, keys, isSlow).values()].filter((file) => file.class !== "current").map((file) => file.ref);
@@ -3138,15 +3176,25 @@ function clockText(at2) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+function filesText(paths) {
+  const [a, b] = paths;
+  if (paths.length === 1) return a ?? "";
+  if (paths.length === 2) return `${a} and ${b}`;
+  return `${a}, ${b} and ${paths.length - 2} more`;
+}
 function pendingText(pending, activity, late) {
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
     return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
   }
-  const last = activity.lastDurationMs === null ? "no earlier run" : `last run ${durationText(activity.lastDurationMs)}`;
-  const running = `${reported}running ${activity.path} since ${clockText(activity.since)} (${last})`;
-  return pending === 1 ? running : `${pending} pending, ${running}`;
+  const paths = activity.paths ?? [activity.path];
+  const several = paths.length > 1;
+  const since = clockText(activity.since);
+  const last = activity.lastDurationMs === null ? "no earlier run" : `${several ? "longest " : ""}last run ${durationText(activity.lastDurationMs)}`;
+  const what = several ? `${paths.length} slow files since ${since}: ${filesText(paths)}` : `${activity.path} since ${since}`;
+  const running = `${reported}running ${what} (${last})`;
+  return pending === paths.length ? running : `${pending} pending, ${running}`;
 }
 function currentText(tier) {
   const unknown = tier.artifactUnknown ?? 0;
@@ -7236,15 +7284,31 @@ var init_keying = __esm({
         return this.#projectsReading(path).length > 0;
       }
       /**
-       * Installed lockfiles that are not the ones the environment was last hashed
-       * with: a first install created one, or another package manager's replaced
-       * it. Returns the old and new paths, so a reconciliation of them records
-       * the move as a revision (review N3). Their old paths are watched; a new
-       * one is in an ignored directory no watch batch reports, so reconciliation
-       * passes ask here.
+       * What a reconciliation pass that found no change reconciles too, because
+       * it is in an ignored directory no watch batch reports. Installed lockfiles
+       * that are not the ones the environment was last hashed with: a first
+       * install created one, or another package manager's replaced it; the old
+       * and new paths, so the move becomes a revision (review N3). And the
+       * gitignored declared inputs not watched yet: a file a rebuild only added
+       * joins the key as an add (004-33).
        */
-      lockfileCandidates() {
-        return this.#lockfiles.moved();
+      async lockfileCandidates() {
+        return [...await this.#lockfiles.moved(), ...await this.#unwatchedIgnoredInputs()];
+      }
+      /**
+       * Lists the gitignored declared inputs, within the declared globs' reach,
+       * and watches the ones not watched yet, a path already hashed included.
+       * Returns those.
+       */
+      async #unwatchedIgnoredInputs() {
+        const globs2 = inputGlobs(this.#policy.inputs);
+        if (globs2.length === 0) return [];
+        const listed = await ignoredInputs(this.options.root, globs2);
+        const unwatched = listed.filter((path) => !this.#extra.has(path));
+        if (unwatched.length === 0) return [];
+        for (const path of unwatched) this.#extra.add(path);
+        this.options.onExtraFiles(this.extraFiles());
+        return unwatched;
       }
       /**
        * Sets a test file's closure: the runner's paths plus this worktree's
@@ -8402,9 +8466,16 @@ var init_slow_tier = __esm({
           picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []])
         );
         const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
+        const paths = picked.map(({ file }) => file.ref.path);
         return context.store.transaction(() => {
           const tier = startTier(context, ledger, picked, false);
-          this.#publish({ kind: "running", path: first.file.ref.path, since, lastDurationMs });
+          this.#publish({
+            kind: "running",
+            path: first.file.ref.path,
+            ...paths.length > 1 ? { paths } : {},
+            since,
+            lastDurationMs
+          });
           return { tier, artifacts };
         });
       }
@@ -31727,7 +31798,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.66";
+  if (true) return "0.1.67";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
