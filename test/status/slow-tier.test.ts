@@ -8,6 +8,7 @@ import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type {
   Consumer,
   KnownState,
+  RevisionTrigger,
   SlowTierActivity,
   StatusSnapshot,
   Store,
@@ -81,14 +82,23 @@ function seed(
   return { repo, store };
 }
 
-/** Appends one revision changing `changes`; an add when `added`, as a fresh worktree's first listing is. */
-function revise(store: Store, repo: FakeRepo, changes: string[], added = false) {
+/**
+ * Appends one revision changing `changes`; adds when `added`. The change
+ * feed's start pass is an `interval` revision, an edit an agent makes a
+ * `watch` one.
+ */
+function revise(
+  store: Store,
+  repo: FakeRepo,
+  changes: string[],
+  { added = false, trigger = "watch" as RevisionTrigger } = {},
+) {
   store.revisions.append({
     worktreeId: repo.mainId,
     createdAt: 9,
     head: null,
     dirty: true,
-    trigger: "interval",
+    trigger,
     changes: changes.map((path) => ({ path, oldHash: added ? null : "h0", newHash: "h9" })),
   });
 }
@@ -193,7 +203,9 @@ describe("the slow-tier line (spec 004 D8)", () => {
 
   it("does not count a fresh worktree's first listing as sources changed (lessons defect 8d)", () => {
     const s = seed(SLOW_POLICY, { revisions: 0 });
-    revise(s.store, s.repo, ["src/a.ts", "plugins/a.js", SLOW_A, SLOW_B], true);
+    // The start pass walks linked directories git lists as links only: every file beneath is new.
+    const listing = [".agents/skills/a/SKILL.md", "src/a.ts", "plugins/a.js", SLOW_A, SLOW_B];
+    revise(s.store, s.repo, listing, { added: true, trigger: "interval" });
     const inherited = { kind: "inherited", worktreeId: "other", commit: "c0" } as const;
     states(
       s.store,
@@ -212,6 +224,45 @@ describe("the slow-tier line (spec 004 D8)", () => {
     expect(slowLine(status(s))).toBe(
       "Slow tier: 2 test files; 2 current against plugins/** as of revision 0. Not covered by Stop's wait.",
     );
+  });
+
+  it.each([
+    ["an agent's add in a watch batch", "watch"],
+    ["an add made while no daemon ran", "start"],
+  ] as const)(
+    "counts %s at a worktree's first revision as sources changed (review wave 4 B4)",
+    (_, trigger) => {
+      const s = seed(SLOW_POLICY, { revisions: 0 });
+      states(s.store, s.repo, [{ observedAt: 0 }, { observedAt: 0 }], [SLOW_A, SLOW_B]);
+      ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+      revise(s.store, s.repo, ["src/new.ts"], { added: true, trigger });
+      expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({
+        currentAt: 0,
+        sourcesChangedSince: true,
+      });
+      expect(slowLine(status(s))).toBe(
+        "Slow tier: 2 test files; 2 current against plugins/** as of revision 0, sources changed since. Not covered by Stop's wait.",
+      );
+    },
+  );
+
+  it("still leaves out the start pass's first listing after a revision-0 run (lessons defect 8d)", () => {
+    const s = seed(SLOW_POLICY, { revisions: 0 });
+    states(s.store, s.repo, [{ observedAt: 0 }, { observedAt: 0 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    revise(s.store, s.repo, [".agents/skills/a/SKILL.md", "src/a.ts"], {
+      added: true,
+      trigger: "interval",
+    });
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
+  });
+
+  it("counts adds in a later start pass: only the first revision can be the first listing", () => {
+    const s = seed(SLOW_POLICY, { revisions: 1, changes: ["plugins/a.js"] });
+    states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 1 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    revise(s.store, s.repo, ["src/new.ts"], { added: true, trigger: "interval" });
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(true);
   });
 
   it("says when no artifact is declared", () => {
