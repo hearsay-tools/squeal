@@ -32451,7 +32451,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.78";
+  if (true) return "0.1.79";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -32807,11 +32807,11 @@ init_run_log();
 import { existsSync as existsSync4, readFileSync as readFileSync6 } from "node:fs";
 import { join as join13 } from "node:path";
 var WHY_LOG_LINE_LIMIT = 200;
-function shownResult(worktreeId, knownState2, key2, results2, held2) {
+function shownResult(worktreeId, knownState2, key2, results2, held2, observedSince2) {
   if (knownState2 === null) return held2 ?? null;
   const origin = knownState2.origin;
   if (origin === null) return null;
-  const names = (r) => r.outcome === knownState2.outcome && r.provenance.commit === knownState2.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState2.observedAt);
+  const names = (r) => r.outcome === knownState2.outcome && r.provenance.commit === knownState2.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId && observedSince2 !== null && r.provenance.recordedAt <= observedSince2 : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState2.observedAt);
   if (knownState2.validity === "current" && key2 !== null) {
     const atKey = results2.find((r) => r.key === key2);
     return atKey !== void 0 && names(atKey) ? atKey : null;
@@ -33107,7 +33107,8 @@ function report({ store, root, commonDir }, check, includeLogs) {
   }));
   const key2 = currentKey(store, worktreeId, check);
   const heldFailure2 = heldFor(store, worktreeId, key2, all);
-  const shown = shownResult(worktreeId, knownState2, key2, all, heldFailure2);
+  const since = observedSince(store, worktreeId, knownState2?.observedAt ?? null);
+  const shown = shownResult(worktreeId, knownState2, key2, all, heldFailure2, since);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
@@ -33126,6 +33127,11 @@ function report({ store, root, commonDir }, check, includeLogs) {
     ...heldFailure2 === void 0 ? {} : { heldFailure: heldFailure2 },
     ...flaky === void 0 ? {} : { flaky }
   };
+}
+function observedSince(store, worktreeId, revision) {
+  if (revision === null) return null;
+  if (revision === 0) return store.worktrees.get(worktreeId)?.registeredAt ?? null;
+  return store.revisions.get(worktreeId, revision)?.createdAt ?? null;
 }
 function currentKey(store, worktreeId, check) {
   const file = testFileId(testFileOf(check));
