@@ -45,7 +45,8 @@ export interface RunnerPart {
  * computes the affected test files and recomputes their keys". In detail:
  *
  * - `runner.invalidate` with every change, and as `touch` each path its
- *   batch touched with no change (task 001-159);
+ *   batch touched with no change (task 001-159), whose referencing test
+ *   files' closures are fetched again;
  * - the environment is read again when the runner recreated a project, when
  *   an environment input changed, or while a runner failure is outstanding;
  * - the test file list is re-read after an add, a delete, a recreate, or a
@@ -119,6 +120,8 @@ export async function fetchRunnerPart(
   );
   pick(content.rekeyed);
   pick(carried);
+  // Task 001-159: a closure fetched while a touched file held other bytes may name their imports.
+  pick(keys.index.reverse.referencing(touched));
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
   const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>

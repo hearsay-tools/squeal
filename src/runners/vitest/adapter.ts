@@ -251,18 +251,17 @@ export class VitestAdapter implements RunnerAdapter {
    * A `touch` (task 001-159) is heard at once, so a run in flight is not
    * stored, and the instance is replaced before the next call: every
    * project and environment's transforms and module graph, the global setup
-   * and the optimizer's bundles go with it. Each project counts as recreated.
+   * and the optimizer's bundles go with it. No project counts as recreated
+   * for it: the files are the bytes they were, so the environment and the
+   * listing are too, and a listing now could find a file the watcher has
+   * not reconciled yet, which then never makes a revision.
    */
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
     const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
-    const changed = paths.filter((p) => p.kind !== "touch");
-    if (touched.length === 0) return this.#invalidate(changed);
-    const projects = (this.#vitest?.projects ?? []).map((p) => p.name);
     this.#touched.push(...touched);
-    if (changed.length === 0) return Promise.resolve({ recreatedProjects: [...projects].sort() });
-    return this.#invalidate(changed).then(({ recreatedProjects }) => ({
-      recreatedProjects: [...new Set([...projects, ...recreatedProjects])].sort(),
-    }));
+    const changed = paths.filter((p) => p.kind !== "touch");
+    if (changed.length === 0) return Promise.resolve({ recreatedProjects: [] });
+    return this.#invalidate(changed);
   }
 
   #invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
@@ -395,7 +394,7 @@ export class VitestAdapter implements RunnerAdapter {
         const moved = [...new Set([...ran, ...unsure])].sort();
         this.#running = false;
         // Task 001-159: touched after this run's instance began to start, so heard during the run.
-        const touched = [...new Set(this.#touched)].sort();
+        const heard = [...new Set(this.#touched)];
         const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
         if (execution.hung || broken !== null) {
           // The runner part may be using the instance: it is dropped once that call returns.
@@ -410,7 +409,13 @@ export class VitestAdapter implements RunnerAdapter {
           });
         }
         const built = buildReport(collector, execution, Math.round(performance.now() - started));
-        const observed = this.#observer.take(built.completedFiles);
+        const taken = this.#observer.take(built.completedFiles);
+        const observed = taken?.inputs;
+        // A path the run wrote itself does not count: a fresh run of the same bytes writes it
+        // too, and the instance is replaced all the same.
+        const touched = heard
+          .filter((path) => !taken?.written.has(this.paths.toAbsolute(path)))
+          .sort();
         const kept = withoutFiles(
           observed === undefined ? built : { ...built, observed },
           mayHaveRun(vitest, moved, testFiles, this.paths),
