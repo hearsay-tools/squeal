@@ -180,12 +180,9 @@ class Daemon {
       active: (at) => {
         this.#lastActive = at;
       },
-      // Task 003-26: queued runner work, never activity; before the scheduler runs, asked again.
-      observedChanged: () => {
-        if (this.#loop === null || this.#phase === "stopping") return false;
-        this.#loop.scheduler.refreshObserved();
-        return true;
-      },
+      // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
+      observedChanged: () =>
+        this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
       note: (text) => this.#note(text),
       log: this.#log,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),

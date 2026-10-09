@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { startTimers } from "../../src/core/daemon/lifecycle.js";
 import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -54,11 +55,38 @@ function writeProject(root: string): void {
   );
 }
 
-/** The node:test file's known outcome for its test, as `squeal status` reads it. */
-function outcome(store: Store, root: string): string | undefined {
+/*
+ * Review wave 2.5 (004), B3: a relative `--require` preload loads a helper
+ * by a computed `require`; both test files check the value it sets.
+ */
+const PRELOADED: NodeTestProject = { ...NT, argv: ["--require", "./scripts/setup.cjs"] };
+const CONTROL_TEST = "nt/test/control.test.mjs";
+const PRELOAD_SRC = "nt/src/hidden.cjs";
+
+function writePreloadProject(root: string): void {
+  mkdirSync(join(root, "nt/scripts"), { recursive: true });
+  mkdirSync(join(root, "nt/src"), { recursive: true });
+  mkdirSync(join(root, "nt/test"), { recursive: true });
+  writeFileSync(join(root, "nt/scripts/setup.cjs"), 'require("../src/hidden" + ".cjs");\n');
+  writeFileSync(join(root, PRELOAD_SRC), "globalThis.hiddenValue = 1;\n");
+  for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
+    writeFileSync(
+      join(root, path),
+      [
+        'import assert from "node:assert/strict";',
+        'import { test } from "node:test";',
+        'test("the preload ran", () => assert.equal(globalThis.hiddenValue, 1));',
+        "",
+      ].join("\n"),
+    );
+  }
+}
+
+/** A node:test file's known outcome for its test, as `squeal status` reads it. */
+function outcome(store: Store, root: string, path = HIDDEN_TEST): string | undefined {
   return store.knownStates
     .list(worktreeIdFor(root))
-    .find((s) => s.check.testPath === HIDDEN_TEST && s.check.kind === "test")?.outcome;
+    .find((s) => s.check.testPath === path && s.check.kind === "test")?.outcome;
 }
 
 interface Worktree {
@@ -79,10 +107,11 @@ async function open(
   store: Store,
   commonDir: string,
   hold?: Promise<void>,
+  project: NodeTestProject = NT,
 ): Promise<Worktree> {
-  const adapter = await createNodeTestAdapter(NT, {
+  const adapter = await createNodeTestAdapter(project, {
     root,
-    observed: observedStore(store, NT.name),
+    observed: observedStore(store, project.name),
   });
   const runs: TestFileRef[][] = [];
   let closures = 0;
@@ -118,14 +147,15 @@ async function open(
   return { scheduler, runs, closures: () => closures };
 }
 
-async function twoWorktrees() {
+async function twoWorktrees(preload = false) {
   const repo = createRepo("basic");
-  writeProject(repo.main);
+  (preload ? writePreloadProject : writeProject)(repo.main);
   git(repo.main, ["add", "-A"]);
   git(repo.main, ["commit", "-qm", "nt"]);
   const rootB = addWorktree(repo.main, repo.dir, "b");
   // B's copy differs, beyond what B's static graph sees: its run fails.
-  writeFileSync(join(rootB, HIDDEN_SRC), "export const hidden = 2;\n");
+  if (preload) writeFileSync(join(rootB, PRELOAD_SRC), "globalThis.hiddenValue = 2;\n");
+  else writeFileSync(join(rootB, HIDDEN_SRC), "export const hidden = 2;\n");
   const store = openRepoStore(repo.commonDir);
   return { repo, rootB, store };
 }
@@ -174,5 +204,84 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     await a.scheduler.idle();
     expect(a.runs).toHaveLength(1);
     expect(outcome(store, repo.main)).toBe("pass");
+  });
+
+  /*
+   * Review wave 2.5 (004), B3: the daemon's timer acknowledged growth A
+   * recorded while B's scheduler was still in its baseline, which took
+   * nothing, so no later tick asked again. The timer here is the daemon's,
+   * and its callback answers what the scheduler answers.
+   */
+  it.each([
+    { name: "while B's baseline is held", held: true },
+    { name: "after B started", held: false },
+  ])("the timer re-keys both files on preload growth $name", async ({ held }) => {
+    const { repo, rootB, store } = await twoWorktrees(true);
+    let release = () => {};
+    const hold = held
+      ? new Promise<void>((resolve) => {
+          release = resolve;
+        })
+      : undefined;
+    onTestFinished(() => release());
+    const a = await open(repo.main, store, repo.commonDir, undefined, PRELOADED);
+    const b = await open(rootB, store, repo.commonDir, hold, PRELOADED);
+    // Nothing takes a refinement before the scheduler runs.
+    expect(b.scheduler.refreshObserved()).toBe(false);
+    let calls = 0;
+    const hour = 60 * 60_000;
+    const stop = startTimers({
+      root: rootB,
+      worktreeId: worktreeIdFor(rootB),
+      commonDir: repo.commonDir,
+      store,
+      policy: { ...DEFAULT_POLICY, nodeTest: [PRELOADED] },
+      now: Date.now,
+      linkedDir: null,
+      timings: {
+        checkMs: hour,
+        presenceMs: hour,
+        pruneMs: hour,
+        firstPruneMs: hour,
+        observedMs: 50,
+      },
+      heartbeatMs: hour,
+      presence: { since: Date.now(), lastPresentAt: null },
+      lastActive: Date.now,
+      active: () => {},
+      observedChanged: () => {
+        calls += 1;
+        return b.scheduler.refreshObserved();
+      },
+      note: () => {},
+      log: () => {},
+      shutdown: () => {},
+    });
+    onTestFinished(stop);
+
+    const bStarted = b.scheduler.start();
+    if (held) await expect.poll(() => b.closures()).toBeGreaterThan(0);
+    else await bStarted;
+    const revision = store.revisions.latest(worktreeIdFor(rootB))?.number;
+    await a.scheduler.start();
+    await a.scheduler.idle();
+    expect(outcome(store, repo.main)).toBe("pass");
+    // The timer saw A's growth; while held, the scheduler could not take it.
+    await expect.poll(() => calls).toBeGreaterThan(0);
+    release();
+    await bStarted;
+
+    // With no edit in B and no further metadata write, a later tick re-keys and runs both.
+    await expect.poll(() => b.runs.flat().length, { timeout: 30_000 }).toBe(2);
+    await b.scheduler.idle();
+    expect(
+      b.runs
+        .flat()
+        .map((f) => f.path)
+        .sort(),
+    ).toEqual([CONTROL_TEST, HIDDEN_TEST]);
+    expect(outcome(store, rootB, CONTROL_TEST)).toBe("fail");
+    expect(outcome(store, rootB)).toBe("fail");
+    expect(store.revisions.latest(worktreeIdFor(rootB))?.number).toBe(revision);
   });
 });
