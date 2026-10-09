@@ -10,3 +10,5 @@ Seam map left for whoever continues.
 - Slow failures: `attribute()` sets `TransitionEntry.slowArtifact` from the declared input globs of the file (all of them, fixtures included: what the run was declared to read), and drops `changesInClosure`.
 - Primer: `primer(command, nodeTest, slow)`; Claude Code vs Codex is told by `command === SQUEAL_COMMAND` (Codex always names the CLI by its path). `primerVariants` feeds Codex's `capContext`.
 - Not done: `references/reports.md`, `commands.md` and `policy.md` of the skill do not yet describe the slow-tier line, `run --slow` or `stop.requireSlowSuite`; only both `SKILL.md` do, as the brief scoped.
+
+- 2026-10-09, 004-23: a run's activity is now retired when the run is recorded, discarded or re-queued (review wave 2 B1); the line above about nothing being published at a run's end no longer holds.
