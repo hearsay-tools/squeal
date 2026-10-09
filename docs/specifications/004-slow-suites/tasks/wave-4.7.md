@@ -16,6 +16,6 @@ Use /worker.
 
 ## 004-45 re-review of 004-44
 
-Outcome: `reviews/wave-4.7.md`: is `reviews/wave-4.6.md` B1 closed, and nothing around it broken (lockfile check, touch rule, source and artifact diffs merged). Range pinned at dispatch. Second and last round for 004-33: a remaining blocker goes to the human. Rules as for 004-14.
+Outcome: `reviews/wave-4.7.md`: is `reviews/wave-4.6.md` B1 closed, and nothing around it broken (lockfile check, touch rule, source and artifact diffs merged). Range: `git log --oneline 9848df0..caec2ce` on main, 0.1.68: `c379e6d` (004-44), `8604813` (the slow-lane daemon test waits up to 20 s for the lowered priority) and the bundles; the `9848df0` 005 docs are out of scope. Second and last round for 004-33: a remaining blocker goes to the human. Rules as for 004-14.
 
 Use /reviewer.
