@@ -55,6 +55,8 @@ Started: 2026-10-08
 
 - 2026-10-09, decided by the human after `reviews/wave-4.5.md`: fix both remaining cases and run a fourth review limited to them (004-41 for B1 with 004-33, 004-42 for B2 after 001-166, review 004-43). 0.1.63 is released through the hub only after that review passes or the human accepts.
 
+- 2026-10-09, wave 4.6, 0.1.67 (gate: Node 24 one failure, 001-166's `linked-start.test.ts` trigger race, since fixed on main; Node 22 one failure, 001-161's `busy-store.test.ts` expecting empty stderr where Node 22 prints warnings; neither in this slice): 004-41, a git-tracked build link (mode `120000` in `git ls-files --stage`) is walked whatever the declared glob's shape, the outermost link a glob reaches (`reachesBelow`); 004-33, the interval pass re-lists ignored declared inputs not yet watched, so a file a rebuild only adds joins the key within 30 s; 004-42 (coordinator), 004-39's interval filter dropped since 001-166 makes a worktree's first listing no revision; 004-35, the line names every running slow file (an additive `paths` on the running activity). Fourth review 004-43 dispatched.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
