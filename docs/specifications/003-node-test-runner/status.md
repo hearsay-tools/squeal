@@ -1,6 +1,6 @@
 # 003 node:test runner: status
 
-Stage: approved (2026-10-07, by the human; waves on `docs/board.md`, briefs under `tasks/`)
+Stage: shipped (2026-10-09, 0.1.55, by the human's decision after a review of its last rows: node:test projects run beside Vitest in one daemon with only affected files run and only the delta delivered; the cezarion dogfooding (003-19, `lessons.md`) held its goals with its defects fixed by 003-35 to 003-42; review 004-26 (`../004-slow-suites/reviews/wave-2.6.md`) passed 003-41 and 003-42. Open, not blocking: `new URL(<literal>, import.meta.url)` file reads are not followed statically (003-37 notes); a test that spawns with its own `env` stays unobserved; a worker thread running a project `--require` keeps its loads with the file; the 001 lane's stale-transform repair (001-157) covers both runners' Vitest side only)
 Started: 2026-10-07
 
 ## Decisions so far
@@ -78,6 +78,8 @@ Started: 2026-10-07
 - 2026-10-09, 003-40 (`../004-slow-suites/reviews/wave-1.5.md` S2, S3): D5's preload phase is the project's own startup only. A worker thread marks nothing, and the test file's process sets `SQUEAL_NODE_TEST_STARTED` to the run's graph prefix when its phase ends, so a process the test spawns marks nothing either: an `eval` Worker's `createRequire` load and a spawned child's own `--require` and its loads join that test file's closure and re-run only it. The `node --test` parent resolves no entry and leaves the variable unset; tied to the prefix, a nested run is not taken for a child. Both probes, beside an unrelated file, and a file-backed Worker control are tests in `adapter-attribution.test.ts` on Node 22 and 24. Adapter version 9.
 
 - 2026-10-09, 003-26, 0.1.52: a daemon timer (every 5 s, unref'd, cleared on stop, never activity) reads each node:test project's two shared observed keys and, when either changed, queues a runner-only refinement (`Scheduler.refreshObserved`) over the current revision with no changed paths; the adapters' `affected([])` re-read the keys and report the grown files, which re-key and run. Closes `reviews/wave-2.md` S2's remaining bound. Every row of this spec is done; whether it moves to shipped is the human's decision.
+
+- 2026-10-09, review 004-26 (`../004-slow-suites/reviews/wave-2.6.md`, PASS at `29e2f4e`): 003-41 and 003-42 closed, with independent probes of the production 5 s timer at startup and across a restart on Node 22 and 24. By the human's decision (ship after a review of 003-41), spec 003 moves to shipped.
 
 ## Research
 
