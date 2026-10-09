@@ -79,6 +79,8 @@ Started: 2026-10-08
 
 - 2026-10-09, confirmation dogfood 004-53 (`lessons.md`, "Confirmation at 0.1.85"; this repository with the original broad fixture globs and `test/e2e` slow, load 0.03 to 2.6 per CPU, the guard off): defect 10's loop stays closed (r8 stood 15 minutes through the `.tmp`-writing suites; after a fixture edit r11 held for 10 idle minutes, where 0.1.69 made 50 revisions in 20); a `claude -p` session's 10 pending slow files drained and the daemon exited 11 min 45 s after the session (43.5 min under 0.1.69); an idle tier ran 4, 4 and 2 wide, 10 files in 117.6 s, holding and releasing all 4 permits; defects 11, 12 and 15 hold. Two new slips of the line, should-fix: defect 17 (a restarted daemon reads "(no earlier run)" when the slow files' keys moved since their last run; row 004-54) and 18 ("sources changed since" counts fast tests' fixtures; row 004-55). With no blocker, spec 004 moves to shipped (`docs/process.md` step 7).
 
+- 2026-10-10, decided by the human after shipping: run the three should-fix rows now (004-52, 004-54, 004-55, briefs in `tasks/wave-6.md`, on disjoint seams), then one review (004-56). 004-52's brief is corrected: 004-50's drop lives in `src/core/scheduler/keying.ts`.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
