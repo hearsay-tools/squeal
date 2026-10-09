@@ -106,7 +106,7 @@ export class SourceStamps {
     const file = sourceOf(id, this.paths);
     if (file === null) return;
     const loadedAt = this.now();
-    const read = await this.#read(file);
+    const read = await readStamp(file);
     if (read === null) reads.delete(id);
     else reads.set(id, { file, ...read, hashedAt: loadedAt, loadedAt });
   }
@@ -144,7 +144,7 @@ export class SourceStamps {
     const hashOnce = (file: AbsolutePath) =>
       memo(hashes, file, async () => {
         const hashedAt = this.now();
-        const read = await this.#read(file);
+        const read = await readStamp(file);
         return read && { ...read, hashedAt };
       });
     const moved = await mapConcurrent(checks, async ({ reads, id, file }) => {
@@ -170,23 +170,6 @@ export class SourceStamps {
       this.#moved = [];
     }
     return [...found].sort();
-  }
-
-  /** The stat, then the bytes' hash; `null` when the file is gone. */
-  async #read(file: AbsolutePath): Promise<{ stat: FileStat; hash: string } | null> {
-    const stat = await statOrNull(file);
-    if (stat === null) return null;
-    try {
-      return {
-        stat,
-        hash: createHash("sha1")
-          .update(await readFile(file))
-          .digest("hex"),
-      };
-    } catch (error) {
-      if (isMissing(error)) return null;
-      throw error;
-    }
   }
 }
 
@@ -324,7 +307,26 @@ function memo<K, V>(cache: Map<K, Promise<V>>, key: K, compute: () => Promise<V>
   return value;
 }
 
-async function statOrNull(file: AbsolutePath): Promise<FileStat | null> {
+/** The stat, then the bytes' hash; `null` when the file is gone. */
+export async function readStamp(
+  file: AbsolutePath,
+): Promise<{ stat: FileStat; hash: string } | null> {
+  const stat = await statOrNull(file);
+  if (stat === null) return null;
+  try {
+    return {
+      stat,
+      hash: createHash("sha1")
+        .update(await readFile(file))
+        .digest("hex"),
+    };
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+
+export async function statOrNull(file: AbsolutePath): Promise<FileStat | null> {
   try {
     const s = await lstat(file);
     return { mtimeMs: s.mtimeMs, ctimeMs: s.ctimeMs, size: s.size, inode: s.ino };

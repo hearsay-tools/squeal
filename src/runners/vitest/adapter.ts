@@ -5,6 +5,7 @@ import type {
   AbsolutePath,
   AffectedTestFiles,
   EnumeratedCheck,
+  EpochMs,
   InvalidatedPath,
   InvalidateResult,
   RelativePath,
@@ -17,6 +18,7 @@ import type {
 } from "../../core/types/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
+import { ConfigStamps } from "./config-stamps.js";
 import { projectEnvironment } from "./environment.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
@@ -25,6 +27,7 @@ import { VitestObserver } from "./observe.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
 import {
+  configFiles,
   findProject,
   projectInputs,
   recreateTriggers,
@@ -60,6 +63,16 @@ export class VitestAdapter implements RunnerAdapter {
   #tempDirs: AbsolutePath[] = [];
   /** What the current instance read of each project file (task 001-146). */
   #sources: SourceStamps;
+  /** The current instance's config files, stamped before the next one reads them (task 001-157). */
+  #configFiles = new Set<AbsolutePath>();
+  /** What was on disk of them before the current instance read them. */
+  #config: ConfigStamps | null = null;
+  /**
+   * Task 001-157: inputs the current instance read once (its config, its
+   * global setup) and may have read other bytes of than those on disk. The
+   * next call replaces it; a run under one is not stored.
+   */
+  #unsure: AbsolutePath[] = [];
   /** Installed lockfiles the current instance started with. */
   #lockfiles = new Set<AbsolutePath>();
   /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -115,12 +128,17 @@ export class VitestAdapter implements RunnerAdapter {
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
     const sources = new SourceStamps(this.paths);
+    const config = await ConfigStamps.take(this.paths, this.#configFiles);
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
       watch: false,
       reporters: [createSquealReporter(current)],
       update: "none",
       includeTaskLocation: true,
+      // Task 001-157: a transform `fsModuleCache` serves skips the plugin
+      // container, so nothing stamps the bytes it holds (D4). A CLI option,
+      // so it reaches every project.
+      fsModuleCache: false,
       ...(Object.keys(env).length === 0 ? {} : { env }),
       ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
     });
@@ -132,6 +150,9 @@ export class VitestAdapter implements RunnerAdapter {
       this.#observer.configure(vitest);
       this.#tempDirs = instanceTempDirs(vitest);
       this.#lockfiles = await this.#installedLockfiles(vitest);
+      this.#configFiles = configFiles(vitest);
+      this.#config = config;
+      this.#unsure = await config.unsure(this.#configFiles);
     } catch (error) {
       await vitest.close();
       throw error;
@@ -157,19 +178,44 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#gate.part(async (hold) => fn(await this.#instance(hold), hold));
   }
 
-  /** The instance a call of a lane uses; it is not replaced until the call returns. */
+  /**
+   * The instance a call of a lane uses; it is not replaced until the call
+   * returns. One unsure of its inputs is replaced once per call.
+   */
   async #instance(hold: Hold): Promise<Vitest> {
+    let replaced = false;
+    const stale = () => this.#observer.stale() || (!replaced && this.#unsure.length > 0);
     for (;;) {
       if (this.#closed) throw new Error("vitest adapter: closed");
       // Policy `observe.runtimeInputs` moved: the workers' env is set at creation.
-      if (this.#vitest !== null && !this.#observer.stale()) return this.#vitest;
+      if (this.#vitest !== null && !stale()) return this.#vitest;
       // A failed recreate or a hung run leaves no instance; the next call retries.
       await hold.exclusive(async () => {
         if (this.#closed) return;
         if (this.#vitest === null) this.#vitest = await this.#start();
-        else if (this.#observer.stale()) await this.#recreate(this.#vitest);
+        else if (stale()) {
+          replaced = true;
+          await this.#recreate(this.#vitest);
+        }
       });
     }
+  }
+
+  /**
+   * Task 001-146: invalidates what moved since Vite read it. Task 001-157:
+   * the config and global setup were read once, so one moved since leaves
+   * the instance unsure.
+   */
+  async #invalidateStale(vitest: Vitest, loadedSince?: EpochMs): Promise<AbsolutePath[]> {
+    const moved = await invalidateStale(vitest, this.#sources, loadedSince);
+    if (this.#vitest !== vitest) return moved;
+    const triggers = moved.length === 0 ? new Set() : await recreateTriggers(vitest);
+    const inputs = [
+      ...moved.filter((file) => triggers.has(file)),
+      ...((await this.#config?.unsure(this.#configFiles)) ?? []),
+    ];
+    if (inputs.length > 0) this.#unsure = [...new Set([...this.#unsure, ...inputs])].sort();
+    return moved;
   }
 
   /** Inside `Gate.exclusive`. */
@@ -205,7 +251,7 @@ export class VitestAdapter implements RunnerAdapter {
       for (const p of abs) vitest.invalidateFile(p.abs);
       await invalidateStructural(vitest, abs, this.#note);
       // Task 001-146: a file read between a revert and its restore is named by no revision.
-      await invalidateStale(vitest, this.#sources);
+      await this.#invalidateStale(vitest);
       return { recreatedProjects: [] };
     });
   }
@@ -284,7 +330,9 @@ export class VitestAdapter implements RunnerAdapter {
 
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
     return this.#gate.run(async (hold) => {
+      await this.#invalidateStale(await this.#instance(hold));
       const vitest = await this.#instance(hold);
+      const unsure = this.#unsure;
       const specs = testFiles.map((ref) =>
         findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
       );
@@ -295,7 +343,7 @@ export class VitestAdapter implements RunnerAdapter {
         return empty;
       }
       const exitCode = process.exitCode;
-      await invalidateStale(vitest, this.#sources);
+      await this.#invalidateStale(vitest);
       const loadedSince = Date.now();
       const started = performance.now();
       this.#collector = collector;
@@ -303,7 +351,8 @@ export class VitestAdapter implements RunnerAdapter {
       try {
         let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
         // Task 001-146: bytes the run read that moved since; the files that may have run them.
-        const moved = await invalidateStale(vitest, this.#sources, loadedSince);
+        const ran = await this.#invalidateStale(vitest, loadedSince);
+        const moved = [...new Set([...ran, ...unsure])].sort();
         this.#running = false;
         const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
         if (execution.hung || broken !== null) {
