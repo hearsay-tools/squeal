@@ -1,7 +1,7 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { ignoredInputs, literalPrefix } from "../../src/core/keys/index.js";
+import { ignoredInputs, literalPrefix, reachesBelow } from "../../src/core/keys/index.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 /*
@@ -100,6 +100,22 @@ describe("ignoredInputs through a symlinked directory (reviews/wave-4.md B3)", (
     expect(await ignoredInputs(root, ["out/lib/**"])).toEqual(["out/lib/z.js"]);
   });
 
+  it("follows a link git tracks, whatever the glob's shape (reviews/wave-4.5.md B1)", async () => {
+    const root = linkedRepo("dist/\nreal-build/\n");
+    git(root, ["add", "dist"]);
+    git(root, ["commit", "-qm", "track the build link"]);
+    expect(git(root, ["ls-files", "dist"]).trim()).toBe("dist");
+    const build = ["dist/index.js", "dist/sub/chunk.js"];
+    expect(await ignoredInputs(root, ["dist/**"])).toEqual(build);
+    expect(await ignoredInputs(root, ["**/dist/**"])).toEqual(build);
+    expect(await ignoredInputs(root, ["*/sub/*.js"])).toEqual([
+      "dist/sub/chunk.js",
+      "real-build/sub/chunk.js",
+    ]);
+    // Nothing beyond the link that the globs name.
+    expect(await ignoredInputs(root, ["src/**", "**/*.md"])).toEqual([]);
+  });
+
   it("follows no link git does not ignore: the watcher observes it as a project directory", async () => {
     const root = linkedRepo("real-build/\n");
     expect(await ignoredInputs(root, ["dist/**"])).toEqual([]);
@@ -131,5 +147,24 @@ describe("literalPrefix", () => {
     expect(literalPrefix("fixtures/data.json")).toBe("fixtures/data.json");
     expect(literalPrefix("**/dist/**")).toBe("");
     expect(literalPrefix("[ab]/x")).toBe("");
+  });
+});
+
+describe("reachesBelow", () => {
+  it("is true when the glob can match a path below the directory", () => {
+    expect(reachesBelow("**/dist/**", "dist")).toBe(true);
+    expect(reachesBelow("**/dist/**", "packages/p/dist")).toBe(true);
+    expect(reachesBelow("dist/sub/*.js", "dist")).toBe(true);
+    expect(reachesBelow("./dist/*.js", "dist")).toBe(true);
+    expect(reachesBelow("*/sub/*.js", "out")).toBe(true);
+    expect(reachesBelow("{dist,out}/**", "out")).toBe(true);
+    expect(reachesBelow("{dist/a,out}/x.js", "lib")).toBe(true);
+  });
+
+  it("is false when no path below the directory can match", () => {
+    expect(reachesBelow("dist/**", "out")).toBe(false);
+    expect(reachesBelow("dist/index.js", "dist/index.js")).toBe(false);
+    expect(reachesBelow("src/**", "dist")).toBe(false);
+    expect(reachesBelow("packages/*/dist/**", "packages/p/lib")).toBe(false);
   });
 });

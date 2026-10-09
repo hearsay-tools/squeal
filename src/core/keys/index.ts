@@ -25,7 +25,7 @@ export {
   isInstalledLockfile,
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
-export { ignoredInputs, literalPrefix } from "./ignored-inputs.js";
+export { ignoredInputs, literalPrefix, reachesBelow } from "./ignored-inputs.js";
 export { type ClosureUpdate, type KeyChange, KeyIndex } from "./key-index.js";
 export {
   ancestorListings,
