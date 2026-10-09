@@ -18,7 +18,7 @@ import {
   SCHEMA_VERSION,
   storePaths,
 } from "../../src/core/store/index.js";
-import { inspectConnection } from "../../src/core/store/open.js";
+import { inspectConnection, setBusyTimeout } from "../../src/core/store/open.js";
 import { type Migration, migrate } from "../../src/core/store/schema.js";
 import { fakeCommonDir, open } from "./helpers.js";
 
@@ -86,6 +86,18 @@ describe("openStore", () => {
         synchronous: 1,
         busyTimeoutMs: 1234,
       });
+    } finally {
+      store.close();
+    }
+  });
+
+  it("changes the busy timeout of an open store, as a daemon does once started (task 001-161)", () => {
+    const store = openStore(fakeCommonDir(), { busyTimeoutMs: 120_000 });
+    if (isStoreOpenFailure(store)) throw new Error("open failed");
+    try {
+      setBusyTimeout(store, 5_000);
+      expect(inspectConnection(store).busyTimeoutMs).toBe(5_000);
+      expect(() => setBusyTimeout(store, -1)).toThrow(RangeError);
     } finally {
       store.close();
     }

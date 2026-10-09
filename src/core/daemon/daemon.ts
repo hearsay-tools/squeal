@@ -1,5 +1,6 @@
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
+import { setBusyTimeout } from "../store/index.js";
 import type {
   AbsolutePath,
   CheckpointRecord,
@@ -22,7 +23,14 @@ import {
   stepDownNote,
 } from "./lifecycle.js";
 import { writeNote } from "./notes.js";
-import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
+import {
+  abandon,
+  DAEMON_BUSY_TIMEOUT_MS,
+  exit,
+  message,
+  type OpenedDaemon,
+  openDaemon,
+} from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
@@ -374,6 +382,8 @@ class Daemon {
       // Past the start scan: a registration at a session's start from here on records this
       // daemon as scanned, which "none of the files changed here" needs (D6).
       store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
+      // Started: from here a write waits as long as a serving daemon's (task 001-161).
+      setBusyTimeout(store, DAEMON_BUSY_TIMEOUT_MS);
       // Idle counts from ready: the baseline is work, and the hook that spawned
       // this daemon registers its consumer while it runs.
       this.#lastActive = this.#now();

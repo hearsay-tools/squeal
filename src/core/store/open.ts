@@ -161,6 +161,14 @@ function moveAside(database: string, at: EpochMs): string {
   return movedTo;
 }
 
+/**
+ * Changes the busy timeout of an open store's connection: a daemon waits
+ * longer while it starts than once it serves (task 001-161).
+ */
+export function setBusyTimeout(store: Store, ms: number): void {
+  connectionOf(store).db.exec(`PRAGMA busy_timeout = ${busyTimeout({ busyTimeoutMs: ms })}`);
+}
+
 /** Connection settings of an open store, read back from SQLite. For tests and diagnostics. */
 export function inspectConnection(store: Store) {
   const db = connectionOf(store).db;
