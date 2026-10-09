@@ -544,6 +544,24 @@ function toActivity(value) {
   }
   return null;
 }
+function slowArtifactsMetaKey(worktreeId) {
+  return `slow-artifacts:${worktreeId}`;
+}
+function readSlowArtifacts(store, worktreeId) {
+  const raw = store.meta.get(slowArtifactsMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter(
+        (entry2) => Array.isArray(entry2[1]) && entry2[1].every((glob) => typeof glob === "string")
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
 
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
@@ -583,16 +601,30 @@ function classifySlowFiles(states, keys, isSlow) {
 function readSlowTier(store, worktreeId, revision, states, keys, view) {
   const files = classifySlowFiles(states, keys, view.isSlow);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  const artifact = /* @__PURE__ */ new Set();
-  for (const { ref, class: cls } of files.values()) {
-    counts[cls]++;
-    for (const glob of view.artifactFor(ref.path)) artifact.add(glob);
-  }
+  for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt = null;
+  const ranFrom = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
-    if (files.get(testFileId(testFileOf(state.check)))?.class !== "current") continue;
+    const id = testFileId(testFileOf(state.check));
+    if (files.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
+    const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
+    ranFrom.set(id, origin);
+  }
+  const artifactOf = recordedArtifacts(store);
+  const artifact = /* @__PURE__ */ new Set();
+  const declaredToday = /* @__PURE__ */ new Set();
+  let artifactUnknown = 0;
+  for (const row of keys) {
+    const from = ranFrom.get(testFileId(row.testFile));
+    if (from === void 0) continue;
+    const recorded = row.key === null ? void 0 : artifactOf(from, row.key);
+    if (recorded === void 0) artifactUnknown++;
+    for (const glob of recorded ?? []) artifact.add(glob);
+    for (const glob of recorded === void 0 ? view.artifactFor(row.testFile.path) : []) {
+      declaredToday.add(glob);
+    }
   }
   const globs2 = [...artifact].sort();
   return {
@@ -600,9 +632,28 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
     ...counts,
     currentAt,
     artifact: globs2,
-    sourcesChangedSince: currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, globs2),
-    activity: readSlowActivity(store, worktreeId)
+    ...artifactUnknown > 0 ? { artifactUnknown } : {},
+    sourcesChangedSince: currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, [...globs2, ...declaredToday]),
+    activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow)
   };
+}
+function recordedArtifacts(store) {
+  const records = /* @__PURE__ */ new Map();
+  return (from, key) => {
+    let byKey = records.get(from);
+    if (byKey === void 0) {
+      byKey = readSlowArtifacts(store, from);
+      records.set(from, byKey);
+    }
+    return byKey.get(key);
+  };
+}
+function liveActivity(activity, keys, isSlow) {
+  if (activity?.kind !== "running") return activity;
+  const running = keys.some(
+    (row) => row.testFile.path === activity.path && row.pending === "running" && isSlow(row.testFile)
+  );
+  return running ? activity : null;
 }
 function sourcesChanged(store, worktreeId, since, revision, artifact) {
   if (since >= revision) return false;
@@ -851,6 +902,17 @@ function loadOf(store, worktreeId, entry2) {
   const result = store.results.listForCheck(entry2.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
 }
+function slowRunArtifact(store, worktreeId, slow, entry2) {
+  const { origin } = entry2;
+  const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
+  const result = store.results.listForCheck(entry2.check, LOAD_RESULTS_READ).find(
+    (r) => r.outcome === "fail" && r.provenance.worktreeId === from && (origin.kind === "inherited" ? r.provenance.commit === origin.commit : r.provenance.revision === entry2.observedAt)
+  );
+  const recorded = result === void 0 ? void 0 : readSlowArtifacts(store, from).get(result.key);
+  if (recorded !== void 0) return recorded;
+  const { project, testPath } = entry2.check;
+  return slow?.isSlow({ project, path: testPath }) === true ? null : void 0;
+}
 function closureFor(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
   const keyOf = (id, ref) => {
@@ -881,9 +943,8 @@ function attribute(store, consumer, entries, revision) {
     const { project, testPath } = entry2.check;
     const load = loadOf(store, consumer.worktreeId, entry2);
     const loaded = load === void 0 ? {} : { loadAverage: load };
-    if (slow?.isSlow({ project, path: testPath }) === true) {
-      return { ...entry2, slowArtifact: slow.artifactFor(testPath), ...loaded };
-    }
+    const slowArtifact = slowRunArtifact(store, consumer.worktreeId, slow, entry2);
+    if (slowArtifact !== void 0) return { ...entry2, slowArtifact, ...loaded };
     const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
     const touched = changed === null || closure === void 0 || closure.some((p) => changed.unknown.has(p)) ? void 0 : closure.filter((p) => changed.changed.has(p));
     const told = touched?.length === 0 && !sure ? void 0 : touched;
@@ -2689,8 +2750,8 @@ function daemonLiveness(record, now, lastHeartbeatAt = null) {
 function worktreeLiveness(worktree, now) {
   return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
-function readLiveHeader(store, worktreeId, now, states, since = null) {
-  const header = readHeader(store, worktreeId, states);
+function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
+  const header = readHeader(store, worktreeId, states, keys);
   const changes = changedSince(store, worktreeId, header.revision, since);
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
@@ -2951,13 +3012,14 @@ function createDelivery(store, options) {
       return deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
     startTurn: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
-    endTurn: async (consumer) => {
-      store.transaction(() => {
-        if (store.consumers.get(consumer) === null) return;
-        const states = store.knownStates.list(consumer.worktreeId);
-        endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
-      });
-    },
+    endTurn: async (consumer, { atRevision } = {}) => store.transaction(() => {
+      if (store.consumers.get(consumer) === null) return true;
+      const latest = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
+      if (atRevision !== void 0 && latest !== atRevision) return false;
+      const states = store.knownStates.list(consumer.worktreeId);
+      endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
+      return true;
+    }),
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
       for (; ; ) {
@@ -2991,7 +3053,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.51";
+  if (true) return "0.1.52";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
