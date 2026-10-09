@@ -59,4 +59,25 @@ describe("vitest adapter: inputs an instance reads once (001-157)", SLOW, () => 
     fx.write("test/global-setup.ts", globalSetup("old"));
     expect(outcomes(await fx.adapter.run([file], fx.runOptions()))).toEqual(["fail"]);
   });
+
+  it("stores no run of an instance that stays unsure of its config", async () => {
+    // The config rewrites itself as each instance loads it: no instance is sure of it.
+    const touching = [
+      'import { readFileSync, writeFileSync } from "node:fs";',
+      'import { fileURLToPath } from "node:url";',
+      'import { defineConfig } from "vitest/config";',
+      "const self = fileURLToPath(import.meta.url);",
+      "writeFileSync(self, readFileSync(self));",
+      'export default defineConfig({ test: { include: ["test/*.test.ts"], env: { WHICH: "new" } } });',
+      "",
+    ].join("\n");
+    const fx = await openFixture("basic", {
+      "vitest.config.ts": touching,
+      "test/env.test.ts": envTest,
+    });
+    const report = await fx.adapter.run([ref("test/env.test.ts")], fx.runOptions());
+    expect(report.completedFiles).toEqual([]);
+    expect(report.results).toEqual([]);
+    expect(report.failure).toMatch(/vitest\.config\.ts changed on disk after this run loaded it/);
+  });
 });
