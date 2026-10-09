@@ -13,7 +13,7 @@ import { holdsRoot, inOtherRepository } from "../watcher/candidates.js";
 import { ignoredLinks } from "../watcher/git.js";
 import { isLinkedDir, SymlinkProbe } from "../watcher/links.js";
 import { selfAndAncestors } from "../watcher/paths.js";
-import { createInputMatcher } from "./glob.js";
+import { createInputMatcher, globToRegExp } from "./glob.js";
 
 /** Installed packages enter keys through the environment hash (D3), never as declared inputs. */
 const INSTALLED = ":(exclude,glob)**/node_modules/**";
@@ -28,7 +28,9 @@ const INSTALLED = ":(exclude,glob)**/node_modules/**";
  * Git lists a symlinked directory as one entry and never what is beyond it,
  * so the files beyond an ignored link the globs select are found by walking
  * the link, under the paths the declaration names (`dist -> real-build`
- * gives `dist/index.js`; reviews/wave-4.md B3).
+ * gives `dist/index.js`; reviews/wave-4.md B3). A link git tracks is found
+ * among its index entries, whatever the glob's literal part, and only a link
+ * a glob can reach below is walked (reviews/wave-4.5.md B1).
  */
 export async function ignoredInputs(
   root: AbsolutePath,
@@ -52,16 +54,57 @@ export async function ignoredInputs(
     );
   const listed = await list(true);
   const matches = createInputMatcher(globs);
-  const links = await linkedDirs(root, [
+  const candidates = [
     ...listed,
     // A link git ignores only as a directory (`dist/`) is listed as not ignored.
     ...(await list(false)),
+    // A link git tracks, which only a directory rule ignores (reviews/wave-4.5.md B1).
+    ...(await trackedLinks(root, pathspecs)),
     // A link at or above a glob's literal part, which git refuses to list beyond.
     ...prefixes.flatMap((prefix) => (prefix === "" ? [] : [...selfAndAncestors(prefix)])),
-  ]);
+  ];
+  const links = await linkedDirs(
+    root,
+    candidates.filter((path) => globs.some((glob) => reachesBelow(glob, path))),
+  );
   const files = listed.filter((path) => !links.has(path));
   for (const link of links) files.push(...(await filesBeyond(root, link)));
   return [...new Set(files.filter((path) => matches(path) && !installed(path)))].sort();
+}
+
+/** The symlinks git tracks under `pathspecs`: index entries of mode `120000`. */
+async function trackedLinks(
+  root: AbsolutePath,
+  pathspecs: readonly string[],
+): Promise<RelativePath[]> {
+  const entries = splitNul(
+    await runGit(root, ["ls-files", "-z", "--stage", "--", ...pathspecs, INSTALLED]),
+  );
+  return entries.flatMap((entry) => {
+    const tab = entry.indexOf("\t");
+    return entry.startsWith("120000 ") && tab !== -1 ? [entry.slice(tab + 1)] : [];
+  });
+}
+
+/**
+ * True when `glob` can match a path below the directory `dir`, segment by
+ * segment, `**` standing for any number of them; so a link no glob reaches
+ * is not walked. A brace holding a `/` cannot be split by segment and
+ * counts as reaching.
+ */
+export function reachesBelow(glob: string, dir: RelativePath): boolean {
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  if (/\{[^}]*\//.test(source)) return true;
+  const pattern = source.split("/");
+  const path = dir.split("/");
+  const reach = (p: number, d: number): boolean => {
+    if (d === path.length) return p < pattern.length;
+    if (p === pattern.length) return false;
+    const segment = pattern[p] as string;
+    if (segment === "**") return reach(p + 1, d) || reach(p, d + 1);
+    return globToRegExp(segment).test(path[d] as string) && reach(p + 1, d + 1);
+  };
+  return reach(0, 0);
 }
 
 /** The leading segments of `glob` that hold no wildcard, joined; `""` when the first one does. */
