@@ -102,10 +102,12 @@ export interface RecordedRun {
 export type FailingCall = "invalidate" | "affected" | "closure" | "testFiles" | "environment";
 
 /**
- * A real adapter that records every run. Calls are serialized like the Vitest
- * adapter's, and `beforeRun` runs inside that queue: while it is pending, a
- * tier is in flight and every later runner call waits behind it. With
- * `HarnessOptions.runnerPartBesideRun`, `beforeRun` waits before the queue.
+ * A real adapter that records every run. Calls are serialized as the Vitest
+ * adapter's were before task 001-150, and `beforeRun` runs inside that
+ * queue: while it is pending, a tier is in flight and every later runner
+ * call waits behind it. With `HarnessOptions.runnerPartBesideRun` there is
+ * no queue here: `beforeRun` waits first, and the adapter orders its own
+ * calls (`Gate`).
  */
 export interface RecordingRunner extends RunnerAdapter {
   readonly runs: RecordedRun[];
@@ -122,6 +124,7 @@ function recording(
 ): RecordingRunner {
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(call: () => Promise<T>): Promise<T> => {
+    if (besideRun) return call();
     const next = queue.then(call);
     queue = next.catch(() => {});
     return next;
@@ -209,7 +212,8 @@ export interface HarnessOptions {
   readonly nodeTest?: readonly NodeTestProject[];
   /**
    * `beforeRun` holds a run without holding the Vitest adapter's other
-   * calls: what the remaining slice of task 001-140 asks of the adapter.
+   * calls, and the recorder adds no queue of its own: the adapter's
+   * runner part overlaps its runs (task 001-150).
    */
   readonly runnerPartBesideRun?: boolean;
 }

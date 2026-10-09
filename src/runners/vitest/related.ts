@@ -11,18 +11,25 @@ import type { AbsolutePath } from "../../core/types/index.js";
  * they change, this file changes.
  *
  * Rejects when a test file fails to transform; the caller falls back to its
- * own walk.
+ * own walk. Rejects too when a run ended during the walk (task 001-150: the
+ * walk overlaps a run): each run resets `config.related` as it ends, and a
+ * walk that reads it reset answers every test file.
  */
 export async function relatedSpecifications(
   vitest: Vitest,
   changed: readonly AbsolutePath[],
 ): Promise<TestSpecification[]> {
   if (changed.length === 0) return [];
-  vitest.config.related = [...changed];
+  const related = [...changed];
+  vitest.config.related = related;
   try {
-    return await vitest.getRelevantTestSpecifications();
+    const specs = await vitest.getRelevantTestSpecifications();
+    if (vitest.config.related !== related) {
+      throw new Error("vitest adapter: a run ended during the related walk and reset it");
+    }
+    return specs;
   } finally {
     // Vitest checks `config.related` for presence; exactOptionalPropertyTypes forbids assigning undefined.
-    delete vitest.config.related;
+    if (vitest.config.related === related) delete vitest.config.related;
   }
 }

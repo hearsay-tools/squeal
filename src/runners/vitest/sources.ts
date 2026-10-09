@@ -44,6 +44,13 @@ export class SourceStamps {
   readonly #attached = new WeakSet<object>();
   /** Files cached by a container before it was attached: what it read is not known. */
   readonly #unknown = new Set<AbsolutePath>();
+  /**
+   * Task 001-150: what `stale` found moved since the last run's check, and
+   * when Vite had read it. The runner part checks during a run, and the
+   * caller invalidates what it finds, so the run's own check after it ends
+   * no longer sees those transforms; it reads them here.
+   */
+  #moved: { readonly file: AbsolutePath; readonly loadedAt: EpochMs }[] = [];
 
   constructor(
     private readonly paths: WorktreePaths,
@@ -91,25 +98,45 @@ export class SourceStamps {
    * bytes are unchanged takes its new stat, so a touch is hashed once. A
    * file cached before its server was attached is stale until Vite reads it
    * again.
+   *
+   * With `loadedSince`, a run's check after it ends: it also names what an
+   * earlier call found moved since that run began loading (task 001-150),
+   * and starts the log again.
    */
-  async stale(vitest: Vitest, loadedSince: EpochMs = 0): Promise<AbsolutePath[]> {
+  async stale(vitest: Vitest, loadedSince?: EpochMs): Promise<AbsolutePath[]> {
     this.attach(vitest);
+    const since = loadedSince ?? 0;
+    const unknownAt = Number.POSITIVE_INFINITY as EpochMs;
     const files = [...transformedFiles(vitest)].filter(
-      (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= loadedSince,
+      (file) => this.#unknown.has(file) || (this.#stamps.get(file)?.loadedAt ?? -1) >= since,
     );
-    const moved = await mapConcurrent(files, async (file) => {
-      if (this.#unknown.has(file)) return true;
+    const moved = await mapConcurrent(files, async (file): Promise<EpochMs | null> => {
+      if (this.#unknown.has(file)) return unknownAt;
       const stamp = this.#stamps.get(file);
-      if (!stamp) return false;
+      if (!stamp) return null;
       const stat = await statOrNull(file);
-      if (stat && sameStat(stat, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return false;
+      if (stat && sameStat(stat, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return null;
       const hashedAt = this.now();
       const read = await this.#read(file);
-      if (read === null || read.hash !== stamp.hash) return true;
-      this.#stamps.set(file, { ...read, hashedAt, loadedAt: stamp.loadedAt });
-      return false;
+      if (read === null || read.hash !== stamp.hash) return stamp.loadedAt;
+      // A load meanwhile (a run in flight) stamped what it read; that stamp stays.
+      if (this.#stamps.get(file) === stamp) {
+        this.#stamps.set(file, { ...read, hashedAt, loadedAt: stamp.loadedAt });
+      }
+      return null;
     });
-    return files.filter((_, i) => moved[i]).sort();
+    const found = new Set<AbsolutePath>();
+    files.forEach((file, i) => {
+      const loadedAt = moved[i];
+      if (loadedAt === null || loadedAt === undefined) return;
+      found.add(file);
+      this.#moved.push({ file, loadedAt });
+    });
+    if (loadedSince !== undefined) {
+      for (const m of this.#moved) if (m.loadedAt >= loadedSince) found.add(m.file);
+      this.#moved = [];
+    }
+    return [...found].sort();
   }
 
   /** The stat, then the bytes' hash; `null` when the file is gone. */

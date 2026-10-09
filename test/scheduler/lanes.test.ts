@@ -1,4 +1,5 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import type { NodeTestProject, Store, WorktreeId } from "../../src/core/types/index.js";
@@ -66,10 +67,32 @@ function holdVitest(h: Harness, path: string) {
   return state;
 }
 
-async function openMixed(runnerPartBesideRun: boolean) {
+const HELD = "test/held.test.ts";
+
+/**
+ * A Vitest test file whose worker waits while `hold` exists, after writing
+ * `started`; `version` changes its bytes, so a revision reaches it.
+ */
+function heldTest(hold: string, started: string, version: number): string {
+  return [
+    'import { existsSync, writeFileSync } from "node:fs";',
+    'import { setTimeout as delay } from "node:timers/promises";',
+    'import { it } from "vitest";',
+    `it("waits while held (version ${version})", async () => {`,
+    `  if (!existsSync(${JSON.stringify(hold)})) return;`,
+    `  writeFileSync(${JSON.stringify(started)}, "");`,
+    `  while (existsSync(${JSON.stringify(hold)})) await delay(20);`,
+    "}, 120_000);",
+    "",
+  ].join("\n");
+}
+
+async function openMixed(runnerPartBesideRun: boolean, files: Record<string, string> = {}) {
   const repo = createRepo("basic");
   const store = openRepoStore(repo.commonDir);
   writeProject(repo.main);
+  for (const [path, content] of Object.entries(files))
+    writeFileSync(join(repo.main, path), content);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     nodeTest: [NT],
@@ -105,6 +128,42 @@ describe("scheduler: lanes (001 D5 as amended, task 001-140)", SLOW, () => {
     vitest.release();
     await h.scheduler.idle();
     expect(h.runsOf("test/math.test.ts")).toHaveLength(2);
+    expect(h.header()).toMatchObject({
+      revision: newer,
+      counts: { pending: 0, stale: 0, unknown: 0 },
+    });
+  });
+
+  it("lands a newer revision's runner part and node:test result while a real Vitest worker is mid-run (task 001-150)", async () => {
+    const markers = mkdtempSync(join(tmpdir(), "squeal-001-150-"));
+    const hold = join(markers, "hold");
+    const started = join(markers, "started");
+    // Removing the hold releases the worker, so a failed assertion still lets the scheduler close.
+    onTestFinished(() => rmSync(markers, { recursive: true, force: true }));
+    const { h, store } = await openMixed(true, { [HELD]: heldTest(hold, started, 1) });
+    expect(h.runsOf(HELD)).toHaveLength(1);
+
+    // The older revision's Vitest tier: its worker is inside the test, in the adapter's run.
+    writeFileSync(hold, "");
+    h.write(HELD, heldTest(hold, started, 2));
+    await h.batch(HELD);
+    await expect.poll(() => existsSync(started), { timeout: 60_000 }).toBe(true);
+    const older = store.revisions.latest(h.worktreeId)?.number ?? 0;
+
+    h.write("nt/src/a.mjs", "export const a = 2;\n");
+    await h.batch("nt/src/a.mjs");
+    const newer = older + 1;
+
+    // Through the composite, the Vitest adapter's `invalidate` and `affected`
+    // answered beside its run; the node:test tier ran and stored its result.
+    await expect.poll(() => ntOutcome(store, h.worktreeId), { timeout: 30_000 }).toBe("fail");
+    expect(h.header()).toMatchObject({ refinedRevision: newer, runnerPartPending: false });
+    expect(existsSync(hold)).toBe(true);
+    expect(h.runsOf(HELD)).toHaveLength(1);
+
+    rmSync(hold);
+    await h.scheduler.idle();
+    expect(h.runsOf(HELD)).toHaveLength(2);
     expect(h.header()).toMatchObject({
       revision: newer,
       counts: { pending: 0, stale: 0, unknown: 0 },

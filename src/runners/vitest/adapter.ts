@@ -18,6 +18,7 @@ import type {
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { projectEnvironment } from "./environment.js";
+import { Gate, type Hold } from "./gate.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { VitestObserver } from "./observe.js";
@@ -45,8 +46,10 @@ export const VITEST_ADAPTER_VERSION = "2";
 /**
  * Vitest adapter over one warm `vitest/node` instance per worktree.
  *
- * Every public call is serialized: Vitest serializes runs itself, but
- * `config.related` is reset by each run and a recreate must not race a run.
+ * Runs queue behind runs, the runner part behind the runner part, and the
+ * two overlap (task 001-150, D5 as amended: `Gate`). What replaces or
+ * closes the instance (a start, a recreate, a broken or hung instance
+ * dropped, `close`) waits for both and holds both.
  */
 export class VitestAdapter implements RunnerAdapter {
   readonly name = "vitest";
@@ -65,7 +68,9 @@ export class VitestAdapter implements RunnerAdapter {
   #collector: RunCollector | null = null;
   /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
   #generation = 0;
-  #queue: Promise<unknown> = Promise.resolve();
+  readonly #gate = new Gate();
+  /** A run is between its first load and its last check: what the runner part invalidates is logged for it. */
+  #running = false;
   #closed = false;
   readonly #note: (text: string) => void;
   readonly #observer: VitestObserver;
@@ -148,29 +153,35 @@ export class VitestAdapter implements RunnerAdapter {
     this.#vitest = await this.#start();
   }
 
-  #serial<T>(fn: (vitest: Vitest) => Promise<T>): Promise<T> {
-    const next = this.#queue.then(async () => {
-      if (this.#closed) throw new Error("vitest adapter: closed");
-      // A failed recreate or a hung run leaves no instance; the next call retries.
-      this.#vitest ??= await this.#start();
-      // Policy `observe.runtimeInputs` moved: the workers' env is set at creation.
-      if (this.#observer.stale()) await this.#recreate(this.#vitest);
-      return fn(this.#vitest as Vitest);
-    });
-    // The caller gets the error from `next`; the queue only needs to settle.
-    this.#queue = next.catch(() => {});
-    return next;
+  #part<T>(fn: (vitest: Vitest, hold: Hold) => Promise<T>): Promise<T> {
+    return this.#gate.part(async (hold) => fn(await this.#instance(hold), hold));
   }
 
-  async #recreate(old: Vitest): Promise<Vitest> {
+  /** The instance a call of a lane uses; it is not replaced until the call returns. */
+  async #instance(hold: Hold): Promise<Vitest> {
+    for (;;) {
+      if (this.#closed) throw new Error("vitest adapter: closed");
+      // Policy `observe.runtimeInputs` moved: the workers' env is set at creation.
+      if (this.#vitest !== null && !this.#observer.stale()) return this.#vitest;
+      // A failed recreate or a hung run leaves no instance; the next call retries.
+      await hold.exclusive(async () => {
+        if (this.#closed) return;
+        if (this.#vitest === null) this.#vitest = await this.#start();
+        else if (this.#observer.stale()) await this.#recreate(this.#vitest);
+      });
+    }
+  }
+
+  /** Inside `Gate.exclusive`. */
+  async #recreate(old: Vitest | null): Promise<Vitest> {
     this.#vitest = null;
-    await old.close();
+    await old?.close();
     this.#vitest = await this.#start();
     return this.#vitest;
   }
 
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
-    return this.#serial(async (vitest) => {
+    return this.#part(async (vitest, hold) => {
       const abs = paths.map((p) => ({ ...p, abs: this.paths.toAbsolute(p.path) }));
       const triggers = await recreateTriggers(vitest);
       // Spec 001 D4: an install recreates the instance from the worktree's own
@@ -180,10 +191,17 @@ export class VitestAdapter implements RunnerAdapter {
       if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
       if (abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
-        const fresh = await this.#recreate(vitest);
+        // A run in flight uses the instance: the recreate waits for it, and the next run for the recreate.
+        const fresh = await hold.exclusive(async () => {
+          if (this.#closed) throw new Error("vitest adapter: closed");
+          return this.#recreate(this.#vitest);
+        });
         const names = new Set([...before, ...fresh.projects.map((p) => p.name)]);
         return { recreatedProjects: [...names].sort() };
       }
+      // A run in flight checks the bytes it read only after it ends: what moved
+      // is logged before this drops its transform (`SourceStamps.stale`).
+      if (this.#running) await this.#sources.stale(vitest);
       for (const p of abs) vitest.invalidateFile(p.abs);
       await invalidateStructural(vitest, abs, this.#note);
       // Task 001-146: a file read between a revert and its restore is named by no revision.
@@ -193,7 +211,7 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   affected(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles> {
-    return this.#serial(async (vitest) => {
+    return this.#part(async (vitest) => {
       const specs = await testSpecifications(vitest);
       const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
       const { direct, transitive } = await affectedTestFiles(vitest, specs, changed);
@@ -205,7 +223,7 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   closure(testFile: TestFileRef): Promise<RunnerClosure> {
-    return this.#serial(async (vitest) => {
+    return this.#part(async (vitest) => {
       const project = findProject(vitest, testFile);
       const abs = this.paths.toAbsolute(testFile.path);
       const graph = await importClosure(project, [abs]);
@@ -229,7 +247,7 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   enumerate(testFile: TestFileRef): Promise<readonly EnumeratedCheck[]> {
-    return this.#serial(async (vitest) => {
+    return this.#part(async (vitest) => {
       const project = findProject(vitest, testFile);
       const spec = project.createSpecification(this.paths.toAbsolute(testFile.path));
       const [module] = await vitest.parseSpecifications([spec]);
@@ -239,13 +257,13 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   testFiles(): Promise<readonly TestFileRef[]> {
-    return this.#serial(async (vitest) =>
+    return this.#part(async (vitest) =>
       (await testSpecifications(vitest)).map((s) => this.#ref(s)).sort(compareRefs),
     );
   }
 
   environment(): Promise<readonly RunnerEnvironment[]> {
-    return this.#serial(async (vitest) => {
+    return this.#part(async (vitest) => {
       const context = {
         paths: this.paths,
         runnerVersion: this.#node.version,
@@ -265,7 +283,8 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
-    return this.#serial(async (vitest) => {
+    return this.#gate.run(async (hold) => {
+      const vitest = await this.#instance(hold);
       const specs = testFiles.map((ref) =>
         findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
       );
@@ -280,19 +299,24 @@ export class VitestAdapter implements RunnerAdapter {
       const loadedSince = Date.now();
       const started = performance.now();
       this.#collector = collector;
+      this.#running = true;
       try {
         let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
         // Task 001-146: bytes the run read that moved since; the files that may have run them.
         const moved = await invalidateStale(vitest, this.#sources, loadedSince);
-        if (execution.hung) {
-          // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
-          this.#vitest = null;
-          abandon(vitest, collector);
-        }
+        this.#running = false;
         const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
-        if (broken !== null && this.#vitest === vitest) {
-          this.#vitest = null;
-          execution = await closeBroken(vitest, collector, broken);
+        if (execution.hung || broken !== null) {
+          // The runner part may be using the instance: it is dropped once that call returns.
+          const ran = execution;
+          execution = await hold.exclusive(async () => {
+            if (this.#vitest !== vitest) return ran;
+            this.#vitest = null;
+            // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
+            if (ran.hung) abandon(vitest, collector);
+            else if (broken !== null) return closeBroken(vitest, collector, broken);
+            return ran;
+          });
         }
         const built = buildReport(collector, execution, Math.round(performance.now() - started));
         const observed = this.#observer.take(built.completedFiles);
@@ -307,6 +331,7 @@ export class VitestAdapter implements RunnerAdapter {
         writeRunLog(options, collector, report);
         return report;
       } finally {
+        this.#running = false;
         this.#collector = null;
         // Spec 001 D4: "`process.exitCode` is reset after each run."
         process.exitCode = exitCode;
@@ -315,7 +340,7 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   close(): Promise<void> {
-    const closing = this.#queue.then(async () => {
+    return this.#gate.exclusive(async () => {
       if (this.#closed) return;
       this.#closed = true;
       const vitest = this.#vitest;
@@ -323,8 +348,6 @@ export class VitestAdapter implements RunnerAdapter {
       await vitest?.close();
       this.#observer.stop();
     });
-    this.#queue = closing.catch(() => {});
-    return closing;
   }
 
   #ref(spec: TestSpecification): TestFileRef {
