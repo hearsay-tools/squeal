@@ -22,3 +22,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
   - in real sessions in this repository 210 of 226 editing sessions ran tests themselves, 55% of runs checking the agent's own change while Squeal had not reached at least one covered file in 78% of store-checked runs, and gate runs took 39% of test wall time;
   - `run --all --wait` exits 0 with failing tests; Claude Code checks permission rules against a rewritten command, and Codex rewrites only with `allow`;
   - the agent's own runs caught Squeal wrong 5 times.
+
+## Dogfooding
+
+- 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
