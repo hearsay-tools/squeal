@@ -202,10 +202,10 @@ Whether the agent ran tests itself: sq1 ran `npx vitest run test/status/slow-tie
 | the same | this repository, 15:30:34 to 15:49:43, after sq1 ended and the drain note | no: no consumer was registered. The tier waited for revision 1's fast work (defect 11). |
 | "N pending, running <file> since HH:MM (no earlier run)" and "(last run N s)" | every slow run | yes, except for a restarted daemon (defect 12) |
 | "N pending, running 4 slow files since HH:MM: <a>, <b> and 2 more (no earlier run)" | this repository, 16:11:35 and 16:12:47 | yes: four files ran, on four permits |
-| "N current against ... as of revisions 1 to 51, sources changed since" | this repository from 16:12:47 | yes: the current files ran at revisions 1 and 51 |
+| "N current against ... as of revisions 1 to 51, sources changed since" | this repository from 16:12:47 | the range yes: the current files ran at revisions 1 and 51; the clause no (defect 15) |
 | "N pending, last reported running <file> since HH:MM" | cezarion, 15:27:24 and 15:57:22, once no daemon was validating | yes |
 | "N current against packages/cezar/dist/** as of revision R" | after each tier | yes |
-| "N current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 1, sources changed since" | this repository from 15:52:23 | yes: `lifecycle.test.ts` ran against r1's bundles, and the node-test fixtures changed since |
+| "N current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 1, sources changed since" | this repository from 15:52:23 | the count and revision yes; the clause no: after r1 only gitignored `test/fixtures/node-test/.tmp/` files changed, none of them a source of the bundles (defect 15) |
 | ", sources changed since" | A from r1 (`src/paths.ts` edited, `dist` not rebuilt) | yes |
 | the same | A at r2, after the revert restored revision 0's bytes; C after only `squeal.config.json` changed (15:55:28) | no (defect 15). Defect 8a's case, a change to a slow test file only, was not repeated. |
 | "N pending, waiting for fast test files" | A from 15:38:10, this repository from 15:52:23 | yes |
@@ -226,7 +226,7 @@ Numbered on from the first dogfood's 9. None is fixed here.
     - `.tmp/` is gitignored (`test/fixtures/node-test/.gitignore:1`), but it lies under the declared inputs of `test/runners/node-test/**/*.test.ts` and `test/integration/node-test.test.ts`.
     - Those files write and remove `.tmp` directories while they run. Each run's writes re-key the same files. The four files `adapter-recorders`, `adapter-preload`, `adapter-preload-require` and `integration/node-test` re-ran in tiers at 15:51:58, 15:53:19 and 15:54:07, and on.
     - Some revisions re-keyed far more: at r50, 188 checks went back to queued. The loop then ended on its own after r51; why was not established.
-    - Effect: for those 20 minutes the fast tier was never empty, so the 9 remaining slow files waited "for fast test files" (check 1). The same loop costs CPU in any worktree of this repository whose daemon runs these tests.
+    - Effect: through those 20 minutes fast work was pending, or came back within seconds of draining, so the 9 remaining slow files waited "for fast test files" (check 1). The same loop costs CPU in any worktree of this repository whose daemon runs these tests.
     - Fix direction, for the coordinator: those tests write under a directory no declared input covers (for example the OS temp directory), or the inputs drop `.tmp/`. Or Squeal ignores a test's own writes for re-keying the files that made them (a product decision against 001-168).
 11. **After the last session ends, the slow-tier line still says "waiting for the agent to pause".**
     - Where: status, D8.
@@ -238,7 +238,7 @@ Numbered on from the first dogfood's 9. None is fixed here.
     - The same happened after the third daemon started: from 15:34:30 to 15:34:46 the line showed the second daemon's `since` 15:29:10.
     - The `slow-tier:<worktree>` meta row outlives its daemon. The new daemon serves it until it publishes its own state.
     - The orphaned test process did still run: the first daemon's `events-0.ndjson` was written up to 15:30:02. But no Squeal run owned it, and no result could come from it.
-13. **A 200-file baseline tier that hits `runner.timeoutMs` is re-run whole, so a large repository under load never goes idle.**
+13. **A 200-file baseline tier that hits `runner.timeoutMs` is re-run whole, so a large repository under load may never go idle.**
     - Where: scheduler, 001 (backlog tiers) against 004 D2's idle width.
     - B's tier `5a179cc6` (200 files) ran from 15:40:55.6 to 15:51:00.7 and ended `timed-out`. Its successor `a4e2fec6` started at 15:51:05.0 with 200 files.
     - C showed the same: `9266bc96` ran 15:39:16.7 to 15:49:20.2 and timed out; `10464ea6` started at 15:49:23.5.
@@ -255,6 +255,7 @@ Numbered on from the first dogfood's 9. None is fixed here.
     - Where: status, D8, close to defect 8a.
     - A at r2, after the revert, read "2 current against packages/cezar/dist/** as of revision 0, sources changed since". Every source was byte-identical to revision 0 again.
     - C after only `squeal.config.json` changed read "13 current ... as of revision 0, sources changed since". The config is not a source of the artifact.
+    - This repository from 15:52:23 read "... as of revision 1, sources changed since". After r1 only gitignored `.tmp` files under `test/fixtures/node-test/` changed (defect 10); `src` did not.
     - The clause compares revisions, not content.
 16. **A cezarion daemon started from inside a cezar-managed worktree was SIGKILLed about 18 s into its first tiers, twice in two starts. Three starts from `/tmp` survived.**
     - Where: unknown, not isolated.
