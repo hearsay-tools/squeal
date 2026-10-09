@@ -56,6 +56,15 @@ export interface Presence {
   lastPresentAt: EpochMs | null;
 }
 
+/**
+ * The node:test observed keys as the timer last had them taken; unset until
+ * its first read. Kept by the daemon, so a policy reload that restarts the
+ * timers still notices a change written since the last tick (task 003-42).
+ */
+export interface ObservedSeen {
+  snapshot?: string | null;
+}
+
 export interface TimerContext {
   readonly root: AbsolutePath;
   readonly worktreeId: WorktreeId;
@@ -79,6 +88,8 @@ export interface TimerContext {
    * B3); the timer asks again at its next read.
    */
   readonly observedChanged?: () => boolean;
+  /** Carried across restarts; a fresh one when absent. */
+  readonly observedSeen?: ObservedSeen;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
@@ -184,14 +195,17 @@ export function startTimers(context: TimerContext): () => void {
     nodeTestObservedPreloadsMetaKey(name),
   ]);
   const readObserved = () => JSON.stringify(observedKeys.map((key) => store.meta.get(key)));
-  let observedSeen: string | null = null;
-  attempt("observed read", () => {
-    observedSeen = readObserved();
-  });
+  const seen = context.observedSeen ?? {};
+  if (seen.snapshot === undefined) {
+    seen.snapshot = null;
+    attempt("observed read", () => {
+      seen.snapshot = readObserved();
+    });
+  }
   const observed = () =>
     attempt("observed check", () => {
       const read = readObserved();
-      if (read !== observedSeen && context.observedChanged?.() === true) observedSeen = read;
+      if (read !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read;
     });
   const prune = () =>
     attempt("prune", () => {

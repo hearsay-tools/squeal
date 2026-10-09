@@ -14,7 +14,13 @@ import type {
 import { bootstrappedMetaKey, DEFAULT_POLICY, SLOW_LANE_PREFIX } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
-import { type DaemonTimings, type Presence, startTimers, stepDownNote } from "./lifecycle.js";
+import {
+  type DaemonTimings,
+  type ObservedSeen,
+  type Presence,
+  startTimers,
+  stepDownNote,
+} from "./lifecycle.js";
 import { writeNote } from "./notes.js";
 import { abandon, exit, message, type OpenedDaemon, openDaemon } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
@@ -113,6 +119,8 @@ class Daemon {
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
   readonly #presence: Presence;
+  /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
+  readonly #observedSeen: ObservedSeen = {};
   #exit: Promise<DaemonExit> | null = null;
   #resolveExit: (exit: DaemonExit) => void = () => {};
   readonly #exited = new Promise<DaemonExit>((resolve) => {
@@ -183,6 +191,7 @@ class Daemon {
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () =>
         this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
+      observedSeen: this.#observedSeen,
       note: (text) => this.#note(text),
       log: this.#log,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
