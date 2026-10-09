@@ -307,7 +307,7 @@ Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2
 
 ## Feature 003: node:test runner
 
-Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sections referenced as D1 to D8. Briefs under `specifications/003-node-test-runner/tasks/wave-N.md`. The promise holds: only the needed tests run, only the delta is delivered; one daemon validates Vitest and node:test projects together.
+Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07, shipped 2026-10-09 (0.1.55, after review 004-26). Sections referenced as D1 to D8. Briefs under `specifications/003-node-test-runner/tasks/wave-N.md`. The promise holds: only the needed tests run, only the delta is delivered; one daemon validates Vitest and node:test projects together.
 
 ### Research (done)
 
@@ -412,9 +412,9 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-23 the slow-tier line and the slow Stop gate tell the truth | done (0.1.52) | `reviews/wave-2.md` B1: a finished slow file is shown running while fast work runs; B2: an old slow failure names artifact declarations edited after its run; B3: `stop.requireSlowSuite` lets Stop through on a torn read. | The three probes are tests on Node 22 and 24. |
 | 004-24 re-review of wave 2.5 | done: FAIL; B1, B2 (004-23's last round) to the human; B3 to 003-41 | `/reviewer` on gpt-6.1-sol; second and last round on this slice. | `reviews/wave-2.5.md`. |
 | 004-25 a slow failure names its own run's artifact; Stop's last retry keeps its guard | done (0.1.55) | `reviews/wave-2.5.md` B1, B2, 004-23's remaining gaps; fix and third review decided by the human 2026-10-09. | Both probes are tests on Node 22 and 24. |
-| 004-26 third review: 004-25, 003-41, 003-42 | running | `/reviewer` on gpt-6.1-sol; third and last round for 004-23's gaps, first for 003-41 and 003-42; spec 003 ships on its result (human, 2026-10-09). | `reviews/wave-2.6.md`. |
+| 004-26 third review: 004-25, 003-41, 003-42 | done: PASS at `29e2f4e` | `/reviewer` on gpt-6.1-sol; third and last round for 004-23's gaps, first for 003-41 and 003-42; spec 003 ships on its result (human, 2026-10-09). | `reviews/wave-2.6.md`. |
 | 004-27 the skill's references describe the slow tier | planned | `plugins/*/skills/squeal/references/` (`reports.md`, `commands.md`, `policy.md`) do not yet name the slow-tier line, `run --slow` or `stop.requireSlowSuite` (004-15's note). | Both copies identical; the skill test passes. |
-| 004-16 e2e for both repository shapes | running (brief `tasks/wave-2.6.md`; also the slot follows `XDG_RUNTIME_DIR`) | Testing. | Both plugins, Node 22 and 24. |
+| 004-16 e2e for both repository shapes | done (0.1.56) | Testing. | Both plugins, Node 22 and 24. |
 | 004-17 dogfooding | planned | This repository with `test/e2e` declared slow, and a cezar worktree as 003-19 was. | `lessons.md`. |
 
 ## Later

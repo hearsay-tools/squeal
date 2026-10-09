@@ -1,6 +1,6 @@
 # 003 node:test runner
 
-Stage: approved 2026-10-07. Amendments: `status.md`. Research: `research/node-test-runner-api.md`, `research/node-test-module-graph.md` (Node 22.23.3 and 24.21.0, tsx 4.21 to 4.23, Linux). Spec 001 is the reference: its D3 (fingerprints and keys), D5 (scheduler and validity), D6 (state and delivery), D11 (policy) and D12 (errors) hold unless a section here says otherwise. The runner implements `RunnerAdapter` from `src/core/types/runner.ts`.
+Stage: shipped 2026-10-09 (0.1.55). Amendments: `status.md`. Research: `research/node-test-runner-api.md`, `research/node-test-module-graph.md` (Node 22.23.3 and 24.21.0, tsx 4.21 to 4.23, Linux). Spec 001 is the reference: its D3 (fingerprints and keys), D5 (scheduler and validity), D6 (state and delivery), D11 (policy) and D12 (errors) hold unless a section here says otherwise. The runner implements `RunnerAdapter` from `src/core/types/runner.ts`.
 
 ## Problem
 
