@@ -186,6 +186,9 @@ describe("an inherited failure stands only once the receiving worktree confirms 
     release();
     await b.scheduler.idle();
 
+    // B's fail confirms A's: two runs failed, and B does not re-run it (task 001-171).
+    expect(b.runsOf(FLAKY)).toHaveLength(1);
+    expect(a.runsOf(FLAKY)).toHaveLength(2);
     const key = b.keyOf(FLAKY);
     expect(resultOf(store, key)).toMatchObject({
       outcome: "fail",
