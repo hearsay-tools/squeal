@@ -153,7 +153,8 @@ describe("node:test under a daemon: an install bump re-runs what reaches the pac
         .slice(from)
         .flatMap((r) => r.testFiles)
         .sort(),
-    ).toEqual(REACHING);
+      // Each new fail is re-run once (task 001-171).
+    ).toEqual([...REACHING, ...REACHING].sort());
     expect([...new Set(bumped.knownFailures.map((f) => f.check.testPath))].sort()).toEqual(
       REACHING,
     );

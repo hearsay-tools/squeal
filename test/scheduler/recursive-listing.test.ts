@@ -106,7 +106,8 @@ describe("scheduler: a recursive listing (review wave 12e B5)", SLOW, () => {
     for (const [f, file] of added.entries()) {
       for (const [p, key] of file.entries()) expect(key).not.toBe(listed[f]?.[p]);
     }
-    expect(runs(from)).toEqual(each(2));
+    // Each pool's new fail is re-run once (task 001-171); the removal below fails on, unre-run.
+    expect(runs(from)).toEqual(each(4));
     expect(outcomes(RECURSIVE)).toEqual(each(["fail/current", "fail/current"]));
     expect(keysOf(h, SHALLOW)).toEqual(shallow);
     expect(ran(h, SHALLOW, from)).toBe(0);

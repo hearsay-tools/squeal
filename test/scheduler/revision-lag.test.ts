@@ -131,7 +131,8 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
     expect(reads).toBeGreaterThan(100);
     expect(quietWithoutTheFile).toEqual([]);
     expect(h.header()).toMatchObject({ refinedRevision: added, runnerPartPending: false });
-    expect(h.runsOf("test/zz/new.test.ts")).toHaveLength(1);
+    // Its run and the re-run of its new fail (task 001-171).
+    expect(h.runsOf("test/zz/new.test.ts")).toHaveLength(2);
     const failing = store.knownStates
       .list(h.worktreeId)
       .filter((s) => s.check.testPath === "test/zz/new.test.ts" && s.outcome === "fail");

@@ -40,7 +40,8 @@ describe("scheduler: an edit runs ahead of an environment change's backlog (D5, 
       );
     }
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 4 });
+    // Re-running 199 new failures (task 001-171) is not this test's subject.
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 4, rerunCap: 0 });
     await h.scheduler.start();
     await h.scheduler.idle();
     const baseline = h.runner.runs.length;

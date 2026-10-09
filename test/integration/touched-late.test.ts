@@ -75,7 +75,8 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
         ["", "test/plain.test.ts", "current", "fail"],
         ["", "test/virtual.test.ts", "current", "fail"],
       ]);
-      expect(second.runsOf("test/virtual.test.ts")).toHaveLength(1);
+      // Its run and the re-run of its new fail (task 001-171).
+      expect(second.runsOf("test/virtual.test.ts")).toHaveLength(2);
     },
   );
 });

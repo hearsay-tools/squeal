@@ -157,8 +157,9 @@ describe(
           // A run in the same tier that looked after re-ran too: nothing from before its run held the path.
           const outcomes = runOutcomes(h, ref);
           if (outcomes[0] === "pass") probed += 1;
-          expect(outcomes.length).toBeLessThanOrEqual(2);
-          expect(outcomes.at(-1)).toBe("fail");
+          // Its new fail is re-run once (task 001-171) and fails again.
+          expect(outcomes.length).toBeLessThanOrEqual(3);
+          expect(outcomes.slice(-2)).toEqual(["fail", "fail"]);
         }
         expect(probed).toBeGreaterThanOrEqual(looked);
 
