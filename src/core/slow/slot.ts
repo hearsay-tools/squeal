@@ -20,10 +20,18 @@ export interface SlowSlotRequest {
   readonly signal?: AbortSignal;
   /** The uid the directory must belong to. Default: this process's. */
   readonly uid?: number;
+  /** `slow.maxParallel`: the user's permits, of which `slow.lock` is the first. Default 1. */
+  readonly permits?: number;
+  /** How many permits the tier would use, one per file. Default 1. */
+  readonly want?: number;
 }
 
-/** The slot, held for one slow file. */
+/** The slot: one or more of the user's permits, held for one slow tier. */
 export interface SlowSlot {
+  /** How many permits are held; 0 once released. */
+  readonly permits: number;
+  /** Keeps the first `count` permits, at least one, and frees the others. */
+  shrinkTo(count: number): void;
   /** Idempotent. The OS also releases it when the process dies, however it dies. */
   release(): void;
 }
@@ -44,22 +52,61 @@ export function slowSlotDir(env: NodeJS.ProcessEnv = process.env): AbsolutePath 
 }
 
 /**
- * Takes the per-user slow slot, or returns `null` when another holder has it.
+ * Takes up to `want` of the user's `permits` slow-slot permits, or returns
+ * `null` when every one is held.
  *
- * Spec 004 D2: one slow tier at a time per user on the host, through
- * `slow.lock` in `slowSlotDir()`, held for one slow file and released between
- * files. The lock is SQLite's exclusive locking, as the daemon singleton
- * (001 D10), not an `O_EXCL` pid file: the OS drops it when the holder dies,
- * so a SIGKILLed holder frees the slot at once, and no pid is read back, so
- * pid reuse cannot keep a dead holder's slot taken. Never blocks: a daemon
- * that does not get the slot retries on its next scheduling pass. The
- * directory is checked as 001 D10 checks it: owned by `uid`, mode 0700.
+ * Spec 004 D2 as amended 2026-10-09: `slow.maxParallel` permits per user on
+ * the host, a slow tier of k files holding k, released between tiers. Each
+ * permit is a lock file in `slowSlotDir()`: the first is `slow.lock`, so a
+ * daemon of one permit (`permits` 1, or a version before permits) holds the
+ * same one, the others `slow.<i>.lock`. The lock is SQLite's exclusive
+ * locking, as the daemon singleton (001 D10), not an `O_EXCL` pid file: the
+ * OS drops it when the holder dies, so a SIGKILLed holder frees its permits
+ * at once, and no pid is read back, so pid reuse cannot keep a dead holder's
+ * permit taken. Never blocks: a daemon that gets none retries on its next
+ * scheduling pass. The directory is checked as 001 D10 checks it: owned by
+ * `uid`, mode 0700.
  */
 export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
   const { dir, owner, signal } = request;
   if (signal?.aborted) return null;
   preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
-  const db = new DatabaseSync(join(dir, SLOW_LOCK_FILE));
+  const permits = Math.max(1, request.permits ?? 1);
+  const want = Math.max(1, request.want ?? 1);
+  const held: DatabaseSync[] = [];
+  try {
+    for (let i = 0; i < permits && held.length < want; i++) {
+      const db = takePermit(join(dir, permitFile(i)), owner);
+      if (db !== null) held.push(db);
+    }
+  } catch (error) {
+    for (const db of held) db.close();
+    throw error;
+  }
+  if (held.length === 0) return null;
+  const keep = (count: number): void => {
+    for (const db of held.splice(count)) db.close();
+    if (held.length === 0) signal?.removeEventListener("abort", release);
+  };
+  const release = (): void => keep(0);
+  signal?.addEventListener("abort", release, { once: true });
+  return {
+    get permits() {
+      return held.length;
+    },
+    shrinkTo: (count) => keep(Math.max(1, count)),
+    release,
+  };
+}
+
+/** Permit `i`'s lock file: `slow.lock` first, as the one slot was. */
+function permitFile(i: number): string {
+  return i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`;
+}
+
+/** One permit's exclusive lock, kept by the returned connection until it closes; `null` when held. */
+function takePermit(path: AbsolutePath, owner: SlowSlotOwner): DatabaseSync | null {
+  const db = new DatabaseSync(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
@@ -71,7 +118,7 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
   }
   try {
     // Committed under locking_mode=EXCLUSIVE, the connection keeps its exclusive
-    // lock until it closes, so the slot stays held after the owner is written.
+    // lock until it closes, so the permit stays held after the owner is written.
     db.exec(
       "CREATE TABLE IF NOT EXISTS holder (pid INTEGER NOT NULL, worktree_id TEXT NOT NULL, since INTEGER NOT NULL)",
     );
@@ -86,15 +133,7 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
     db.close();
     throw error;
   }
-  let held = true;
-  const release = (): void => {
-    if (!held) return;
-    held = false;
-    signal?.removeEventListener("abort", release);
-    db.close();
-  };
-  signal?.addEventListener("abort", release, { once: true });
-  return { release };
+  return db;
 }
 
 const WAITER_PREFIX = "slow.wait.";
