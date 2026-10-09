@@ -1,6 +1,7 @@
 import type { TestSpecification, Vitest } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
 import { findInstalledLockfile } from "../../core/keys/index.js";
+import { optimizerOffNote } from "../../core/state/optimizer-note.js";
 import type {
   AbsolutePath,
   AffectedTestFiles,
@@ -25,6 +26,7 @@ import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { VitestObserver } from "./observe.js";
+import { noteOnce, withoutOptimizer } from "./optimizer.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
 import {
@@ -40,9 +42,6 @@ import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
-
-/** `createVitest`'s Vite config, read as Vite's inline config. */
-type ViteOverrides = Parameters<VitestNode["createVitest"]>[2];
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -142,30 +141,26 @@ export class VitestAdapter implements RunnerAdapter {
     const heard = this.#touched.length;
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
-    const vitest = await this.#node.createVitest(
-      "test",
-      {
-        root: this.paths.root,
-        watch: false,
-        reporters: [createSquealReporter(current)],
-        update: "none",
-        includeTaskLocation: true,
-        // Task 001-157: a transform `fsModuleCache` serves skips the plugin
-        // container, so nothing stamps the bytes it holds (D4). A CLI option,
-        // so it reaches every project.
-        fsModuleCache: false,
-        ...(Object.keys(env).length === 0 ? {} : { env }),
-        ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
-      },
-      // Vite's inline option, `optimizeDeps.force` in every environment. Review wave-13e B3: the
-      // optimizer's bundles on disk outlive the instance and the daemon that would have heard a
-      // touch of a file they hold, so every start builds them from the disk (task 001-168, D4).
-      { forceOptimizeDeps: true } as ViteOverrides,
-    );
+    const vitest = await this.#node.createVitest("test", {
+      root: this.paths.root,
+      watch: false,
+      reporters: [createSquealReporter(current)],
+      update: "none",
+      includeTaskLocation: true,
+      // Task 001-157: a transform `fsModuleCache` serves skips the plugin
+      // container, so nothing stamps the bytes it holds (D4). A CLI option,
+      // so it reaches every project.
+      fsModuleCache: false,
+      ...(Object.keys(env).length === 0 ? {} : { env }),
+      ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
+    });
     // Review wave-13 B2: every project server's, not only the root's, before any load.
     sources.attach(vitest);
     this.#sources = sources;
     try {
+      // Task 001-176: no bundle of the optimizer is ever loaded, whatever a config says (D4).
+      const optimized = withoutOptimizer(vitest);
+      if (optimized.length > 0) noteOnce(this.paths.root, optimizerOffNote(optimized), this.#note);
       await vitest.standalone();
       this.#observer.configure(vitest);
       this.#tempDirs = instanceTempDirs(vitest);
@@ -251,11 +246,11 @@ export class VitestAdapter implements RunnerAdapter {
   /**
    * A `touch` (task 001-159) is heard at once, so a run in flight is not
    * stored, and the instance is replaced before the next call: every
-   * project and environment's transforms and module graph, the global setup
-   * and the optimizer's bundles (rebuilt at every start) go with it. No project counts as recreated
-   * for it: the files are the bytes they were, so the environment and the
-   * listing are too, and a listing now could find a file the watcher has
-   * not reconciled yet, which then never makes a revision.
+   * project and environment's transforms and module graph and the global
+   * setup go with it. No project counts as recreated for it: the files are
+   * the bytes they were, so the environment and the listing are too, and a
+   * listing now could find a file the watcher has not reconciled yet, which
+   * then never makes a revision.
    */
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
     const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
