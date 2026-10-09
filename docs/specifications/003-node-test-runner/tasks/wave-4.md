@@ -90,7 +90,7 @@ Use /worker.
 
 ## 003-44 review of 003-43
 
-Outcome: `reviews/wave-4.md` in this spec folder, committed. Range: `git log --oneline 8797c0c^..0f0035c` on main, 0.1.81 (003-43's commits, the keyedAt fix agreed with the 001 lane, the bundles). 001's commits around it are out of scope except 001-187's `keys.environmentFiles` and 001-186's `keyedAt`, which 003-43 relies on: check that reliance only.
+Outcome: `reviews/wave-4.md` in this spec folder, committed. Range: `git log --oneline 4349ca8f^..a7e22772` on main, 0.1.82 (003-43's commits, the keyedAt fix agreed with the 001 lane, the bundles). 001's commits around it are out of scope except 001-187's `keys.environmentFiles` and 001-186's `keyedAt`, which 003-43 relies on: check that reliance only.
 
 Questions: (1) Can a node:test result still be stored, inherited or refreshed under a key lacking an environment file its run loaded, by any route: the composite runner's merge, a forced full suite in another worktree (001 `reviews/wave-13j.md` B2), a cancelled, timed-out or crashed run, a policy reload mid-run? (2) The discard bound: after `MAX_DISCARDS` the file is unknown naming the paths; can it loop, starve other files, or stay unknown after the environment settles? (3) `rekeyEnvironments` under the lock in `#fly`: can a revision or refinement in between move the keys so the re-read is lost or applied twice? (4) Does `status --wait` hold for the regrown files (`keyedAt: ledger.revision.number`), and can that choice end a wait early? (5) The test edits: `preload-heal.test.ts` (approved by the 001 lane) and `test/integration/node-test.test.ts` (a helper edit re-runs only project c).
 
