@@ -32,7 +32,8 @@ export function seedLogin(repo: FakeRepo, store: Store) {
       daemon: null,
     });
   }
-  appendRevisions(store, b.id, 2, { head: COMMIT, dirty: true });
+  // Revision 2, where `b` inherited the pass, follows every result seeded here (review wave-13j B4).
+  appendRevisions(store, b.id, 2, { head: COMMIT, dirty: true, createdAt: at(13) });
   const runsDir = join(repo.commonDir, "squeal", "runs");
   for (const [id, worktreeId, revision] of [
     ["run-b1", b.id, 1],

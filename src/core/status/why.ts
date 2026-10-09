@@ -14,12 +14,15 @@ import {
   type AbsolutePath,
   type CheckId,
   type CheckKey,
+  type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
   type ResultRecord,
+  type RevisionNumber,
   type Store,
   type WhyNoMatch,
   type WhyReport,
   type WhyResult,
+  type WorktreeId,
 } from "../types/index.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { runLogOf, shownResult } from "./run-log.js";
@@ -130,7 +133,8 @@ function report(
   }));
   const key = currentKey(store, worktreeId, check);
   const heldFailure = heldFor(store, worktreeId, key, all);
-  const shown = shownResult(worktreeId, knownState, key, all, heldFailure);
+  const since = observedSince(store, worktreeId, knownState?.observedAt ?? null);
+  const shown = shownResult(worktreeId, knownState, key, all, heldFailure, since);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
@@ -149,6 +153,22 @@ function report(
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
   };
+}
+
+/**
+ * The earliest time a state observed at `revision` could have been applied
+ * (review wave-13j B4): the revision's creation, or for revision 0, the
+ * bootstrap before any change, the worktree's first registration. `null`
+ * when neither is stored.
+ */
+function observedSince(
+  store: Store,
+  worktreeId: WorktreeId,
+  revision: RevisionNumber | null,
+): EpochMs | null {
+  if (revision === null) return null;
+  if (revision === 0) return store.worktrees.get(worktreeId)?.registeredAt ?? null;
+  return store.revisions.get(worktreeId, revision)?.createdAt ?? null;
 }
 
 /** This worktree's current key for the check's test file; `null` when it has none. */

@@ -5,6 +5,7 @@ import type {
   AbsolutePath,
   CheckId,
   CheckKey,
+  EpochMs,
   KnownState,
   ResultRecord,
   WhyConsole,
@@ -24,6 +25,13 @@ export const WHY_LOG_LINE_LIMIT = 200;
  * revision it was observed at. `null` when no stored row is identifiably it:
  * replaced, pruned, or several keys fit. Never a nearby run. With no known
  * state, the held failure `why` shows.
+ *
+ * An inherited state names a row only when the row provably predates it
+ * (review wave-13j B4): recorded no later than `observedSince`, the time the
+ * revision the state was observed at was created. The state was applied at
+ * or after that time from the row then at the key, and a row replaced later
+ * is recorded later. A same-key replacement by a later run, at any commit or
+ * revision, names none. An own state is re-derived from each of its own runs.
  */
 export function shownResult(
   worktreeId: WorktreeId,
@@ -31,6 +39,7 @@ export function shownResult(
   key: CheckKey | null,
   results: readonly ResultRecord[],
   held: ResultRecord | undefined,
+  observedSince: EpochMs | null,
 ): ResultRecord | null {
   if (knownState === null) return held ?? null;
   const origin = knownState.origin;
@@ -39,7 +48,9 @@ export function shownResult(
     r.outcome === knownState.outcome &&
     r.provenance.commit === knownState.commit &&
     (origin.kind === "inherited"
-      ? r.provenance.worktreeId === origin.worktreeId
+      ? r.provenance.worktreeId === origin.worktreeId &&
+        observedSince !== null &&
+        r.provenance.recordedAt <= observedSince
       : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState.observedAt);
   if (knownState.validity === "current" && key !== null) {
     const atKey = results.find((r) => r.key === key);
