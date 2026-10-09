@@ -1,0 +1,21 @@
+# Codex conditions, task 1, two each
+xa1 a codex
+xb1 b2 codex
+xc1 c codex
+xd1 d codex
+xa2 a codex
+xb2 b2 codex
+xc2 c codex
+xd2 d codex
+# Task 2 (add tests, no question about test state), both harnesses
+ta1 a claude - task2.txt
+tb1 b2 claude - task2.txt
+ta2 a claude - task2.txt
+tb2 b2 claude - task2.txt
+txa1 a codex - task2.txt
+txb1 b2 codex - task2.txt
+txa2 a codex - task2.txt
+txb2 b2 codex - task2.txt
+# Block with markers, plugin absent: must say run the tests
+nb-c b2m claude noplugin
+nb-x b2m codex noplugin

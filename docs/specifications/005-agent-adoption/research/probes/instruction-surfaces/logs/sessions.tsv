@@ -1,0 +1,34 @@
+ca1	claude	wall 36.7s	tests []	squeal [status wait 2.9s, status wait 0.6s DENIED, status wait 1.0s]	skill 0	texts 4	$0.098	truth: 11 passed
+ca2	claude	wall 47s	tests []	squeal [status wait 0.1s DENIED, status wait 0.1s DENIED, status wait 3.5s]	skill 0	texts 4	$0.105	truth: 10 passed
+ca3	claude	wall 26s	tests []	squeal [status wait 1.3s, status wait 3.5s]	skill 0	texts 4	$0.100	truth: 11 passed
+cb1-1	claude	wall 20.8s	tests []	squeal [status wait 1.6s]	skill 0	texts 1	$0.064	truth: 10 passed
+cb1-2	claude	wall 30.2s	tests []	squeal [status wait 1.6s]	skill 0	texts 1	$0.062	truth: 10 passed
+cb2-1	claude	wall 24.3s	tests []	squeal [status wait 2.7s, status wait 2.7s]	skill 0	texts 3	$0.079	truth: 10 passed
+cb2-2	claude	wall 18.9s	tests []	squeal [status wait 1.3s]	skill 0	texts 1	$0.071	truth: 10 passed
+cb3-1	claude	wall 31.6s	tests []	squeal [status wait 2.4s, status wait 3.1s]	skill 0	texts 3	$0.081	truth: 10 passed
+cb3-2	claude	wall 17.1s	tests []	squeal [status wait 3.8s]	skill 0	texts 1	$0.062	truth: 10 passed
+cc1	claude	wall 22.6s	tests [full 0.1s DENIED, full 3.6s]	squeal []	skill 0	texts 4	$0.083	truth: 10 passed
+cc2	claude	wall 31s	tests [full 3.7s, full 3.4s]	squeal []	skill 0	texts 3	$0.083	truth: 10 passed
+cc3	claude	wall 31.7s	tests [full 3.7s, full 3.3s]	squeal []	skill 0	texts 3	$0.087	truth: 10 passed
+cd1	claude	wall 26.9s	tests []	squeal [run wait 3.7s]	skill 0	texts 1	$0.065	truth: 10 passed
+cd2	claude	wall 17.4s	tests []	squeal [run wait 3.7s]	skill 0	texts 1	$0.063	truth: 10 passed
+cd3	claude	wall 29.7s	tests []	squeal [run wait 1.9s, run wait 2.8s]	skill 0	texts 3	$0.085	truth: 10 passed
+nb-c	claude	wall 28.7s	tests [full 3.5s]	squeal [status wait 0.0s DENIED]	skill 0	texts 0	$0.097	truth: 10 passed
+nb-x	codex	wall 32.7s	tests []	squeal [status wait 2.7s]	skill 1	texts 1	tok 49111/914	truth: 10 passed
+nb-x2	codex	wall 36.7s	tests [full 3.1s]	squeal []	skill 0	texts 0	tok 56577/811	truth: 10 passed
+ta1	claude	wall 11.6s	tests []	squeal [status wait 1.3s]	skill 0	texts 1	$0.106	truth: 13 passed
+ta2	claude	wall 13.1s	tests []	squeal [status wait 1.2s]	skill 0	texts 1	$0.046	truth: 13 passed
+tb1	claude	wall 20.9s	tests []	squeal [status wait 1.3s]	skill 0	texts 1	$0.046	truth: 13 passed
+tb2	claude	wall 14.5s	tests []	squeal [status wait 1.3s]	skill 0	texts 1	$0.046	truth: 13 passed
+txa1	codex	wall 20.6s	tests []	squeal [status wait 0.7s]	skill 1	texts 1	tok 34793/474	truth: 13 passed
+txa2	codex	wall 22.4s	tests []	squeal [status wait 0.7s]	skill 1	texts 1	tok 34768/453	truth: 13 passed
+txb1	codex	wall 19.7s	tests []	squeal [status wait 0.7s]	skill 1	texts 1	tok 35083/441	truth: 13 passed
+txb2	codex	wall 21.5s	tests []	squeal [status wait 0.7s]	skill 1	texts 1	tok 35047/480	truth: 13 passed
+xa1	codex	wall 34.6s	tests []	squeal [status wait 2.7s]	skill 1	texts 1	tok 49349/954	truth: 10 passed
+xa2	codex	wall 38.6s	tests []	squeal [status wait 0.7s]	skill 1	texts 1	tok 62785/1016	truth: 12 passed
+xb1	codex	wall 48.1s	tests []	squeal [status wait 2.7s, status wait 2.7s]	skill 1	texts 3	tok 80334/1088	truth: 11 passed
+xb2	codex	wall 53.3s	tests []	squeal [status wait 0.7s, status wait 2.7s]	skill 1	texts 3	tok 109362/1113	truth: 10 passed
+xc1	codex	wall 41s	tests [full 3.0s]	squeal [status wait 0.7s]	skill 1	texts 1	tok 62758/969	truth: 10 passed
+xc2	codex	wall 43s	tests [full 3.0s]	squeal [status wait 0.7s]	skill 1	texts 1	tok 63440/1052	truth: 12 passed
+xd1	codex	wall 58.6s	tests []	squeal [run wait 2.6s, run wait 2.6s]	skill 1	texts 3	tok 110204/1326	truth: 10 passed
+xd2	codex	wall 58.5s	tests []	squeal [run wait 2.6s, run wait 2.6s]	skill 1	texts 3	tok 78489/1320	truth: 12 passed

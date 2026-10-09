@@ -1,0 +1,1 @@
+Add tests for applyDiscount in test/invoice.test.js: a 0% discount, a 100% discount, and a fractional percentage such as 12.5%.

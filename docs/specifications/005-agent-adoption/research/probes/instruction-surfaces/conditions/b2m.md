@@ -1,0 +1,5 @@
+<!-- squeal:begin (managed by squeal init; edits inside are replaced) -->
+## Tests
+
+Squeal runs the Vitest tests after each edit. Before you say the work is done, run `squeal status --wait 60000` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running Vitest. If you have seen no SQUEAL message in this session, run `npx vitest run` instead.
+<!-- squeal:end -->

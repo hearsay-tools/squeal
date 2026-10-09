@@ -1,0 +1,16 @@
+# Claude Code conditions, first round
+ca1 a claude
+cb1-1 b1 claude
+cc1 c claude
+cd1 d claude
+cb2-1 b2 claude
+cb3-1 b3 claude
+ca2 a claude
+cb1-2 b1 claude
+cc2 c claude
+cd2 d claude
+cb2-2 b2 claude
+cb3-2 b3 claude
+ca3 a claude
+cc3 c claude
+cd3 d claude

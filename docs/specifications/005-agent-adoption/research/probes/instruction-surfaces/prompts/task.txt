@@ -1,0 +1,1 @@
+Amounts of 1000 or more are hard to read. Change formatMoney so it groups thousands with a comma, so 123456 cents prints as "1,234.56 EUR", and bring the tests in line. When you are done, tell me whether the tests pass.
