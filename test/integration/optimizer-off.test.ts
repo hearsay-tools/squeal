@@ -1,4 +1,4 @@
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatRegistration } from "../../src/core/delivery/index.js";
@@ -53,6 +53,17 @@ async function builtOn(root: string, transient: string, observe: boolean): Promi
 /** Every optimizer cache of the fixture: Vitest keeps a project's under the root's `node_modules`. */
 const cacheOf = (root: string) => join(root, "node_modules/.vite");
 
+/** Whether a bundle in the fixture's optimizer cache holds `NEW`'s value, and `OLD`'s. */
+function bundles(root: string): { new: boolean; old: boolean } {
+  const texts = readdirSync(cacheOf(root), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+    .map((entry) => readFileSync(join(entry.parentPath, entry.name), "utf8"));
+  return {
+    new: texts.some((text) => text.includes('which = "new"')),
+    old: texts.some((text) => text.includes('which = "old"')),
+  };
+}
+
 describe("a separately configured project's optimizer across a restart (review wave-13f B3)", () => {
   it(
     "fails on the bytes on disk under a fresh adapter with no cache (the control)",
@@ -93,7 +104,7 @@ describe("a separately configured project's optimizer across a restart (review w
   );
 
   it.each([true, false])(
-    "runs the disk in a slow instance made from the kept cache (observe %s)",
+    "runs the disk in a slow instance made from a kept cache that bundled NEW (observe %s)",
     SLOW,
     async (observe) => {
       const repo = createRepo(SEPARATE);
@@ -102,7 +113,15 @@ describe("a separately configured project's optimizer across a restart (review w
         ...options,
         observe,
       });
+      // Review wave-13h S2: opening the harness built the cache on OLD and `builtOn`
+      // would keep it, so the slow instance would read OLD whatever it did.
+      rmSync(cacheOf(repo.main), { recursive: true, force: true });
       await builtOn(repo.main, NEW, observe);
+      expect(bundles(repo.main)).toEqual({ new: true, old: false });
+      expect(await freshOutcomes(repo.main, [P_TEST])).toEqual([
+        ["p", "test/optimized.test.ts", "fail"],
+      ]);
+      expect(bundles(repo.main)).toEqual({ new: true, old: false });
       const lanes = withSlowLanes(h, repo.main, slotDir, async () => {});
       await h.scheduler.start();
       await h.scheduler.idle();
