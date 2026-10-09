@@ -275,6 +275,12 @@ class TierScheduler implements Scheduler {
     return request;
   }
 
+  refreshObserved(): void {
+    if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
+    this.#runnerWork.queueObserved();
+    this.#pump();
+  }
+
   status(): SchedulerStatus {
     return { revision: this.#ledger?.revision.number ?? 0 };
   }
