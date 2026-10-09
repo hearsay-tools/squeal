@@ -1,20 +1,27 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
 import { publishSlowActivity, recordSlowArtifacts } from "../../src/core/slow/state.js";
 import { clockText, readHeader } from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type {
-  Consumer,
-  KnownState,
-  RevisionTrigger,
-  SlowTierActivity,
-  StatusSnapshot,
-  Store,
-} from "../../src/core/types/index.js";
+import { readStatus } from "../../src/core/status/index.js";
+import type { Consumer, SlowTierActivity, StatusSnapshot } from "../../src/core/types/index.js";
 import { fixedStatus } from "../delivery/fakes.js";
-import { check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
+import {
+  FAST,
+  inTurn,
+  keys,
+  NOW,
+  ran,
+  revise,
+  SLOW_A,
+  SLOW_B,
+  SLOW_C,
+  SLOW_D,
+  SLOW_POLICY,
+  seed,
+  slowLine,
+  states,
+  status,
+} from "./slow-tier-seed.js";
 
 /*
  * Spec 004 D8: headers and `squeal status` carry one slow-tier line when the
@@ -23,124 +30,6 @@ import { check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
  * time with the last run's duration, pending with the daemon's reason, and
  * not run at this revision.
  */
-
-const NOW = Date.UTC(2026, 9, 9, 12, 0, 0);
-const SLOW_A = "test/e2e/a.test.ts";
-const SLOW_B = "test/e2e/b.test.ts";
-const SLOW_C = "test/e2e/c.test.ts";
-const SLOW_D = "test/e2e/d.test.ts";
-const FAST = "src/a.test.ts";
-const SLOW_POLICY = {
-  slow: { include: ["test/e2e/**/*.test.ts"] },
-  inputs: { "test/e2e/**/*.test.ts": ["plugins/**"] },
-};
-
-interface Seeded {
-  readonly repo: FakeRepo;
-  readonly store: Store;
-}
-
-/**
- * The main worktree with a live daemon, `policy` written, revisions 1 to
- * `revisions` each changing `changes`, and keys for two slow files and a
- * fast one, none pending.
- */
-function seed(
-  policy: object | null = SLOW_POLICY,
-  { revisions = 2, changes = ["src/a.ts"], alive = true } = {},
-): Seeded {
-  const repo = fakeRepo();
-  if (policy !== null) writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));
-  const store = seedStore(repo);
-  store.worktrees.upsert({
-    id: repo.mainId,
-    root: repo.main,
-    commonDir: repo.commonDir,
-    isMain: true,
-    registeredAt: 1,
-    daemon: alive
-      ? {
-          socketPath: "/run/squeal.sock",
-          startedAt: NOW - 60_000,
-          heartbeatAt: NOW - 1_000,
-          heartbeatIntervalMs: 5_000,
-          squealVersion: "0.0.0",
-        }
-      : null,
-  });
-  store.transaction(() => {
-    for (let n = 1; n <= revisions; n++) {
-      store.revisions.append({
-        worktreeId: repo.mainId,
-        createdAt: n,
-        head: null,
-        dirty: true,
-        trigger: "watch",
-        changes: changes.map((path) => ({ path, oldHash: null, newHash: `h${n}` })),
-      });
-    }
-  });
-  keys(store, repo, { [SLOW_A]: null, [SLOW_B]: null, [FAST]: null });
-  return { repo, store };
-}
-
-/**
- * Appends one revision changing `changes`; adds when `added`. The change
- * feed's start pass is an `interval` revision, an edit an agent makes a
- * `watch` one.
- */
-function revise(
-  store: Store,
-  repo: FakeRepo,
-  changes: string[],
-  { added = false, trigger = "watch" as RevisionTrigger } = {},
-) {
-  store.revisions.append({
-    worktreeId: repo.mainId,
-    createdAt: 9,
-    head: null,
-    dirty: true,
-    trigger,
-    changes: changes.map((path) => ({ path, oldHash: added ? null : "h0", newHash: "h9" })),
-  });
-}
-
-function keys(store: Store, repo: FakeRepo, pending: Record<string, "queued" | "running" | null>) {
-  store.testFileKeys.upsertMany(
-    Object.entries(pending).map(([path, phase]) => ({
-      worktreeId: repo.mainId,
-      testFile: { project: "", path },
-      key: `key-${path}`,
-      revision: 1,
-      pending: phase,
-    })),
-  );
-}
-
-function states(
-  store: Store,
-  repo: FakeRepo,
-  list: readonly Partial<KnownState>[],
-  paths: string[],
-) {
-  store.knownStates.upsertMany(
-    paths.map((path, i) => state(repo.mainId, check(path, "works"), list[i] ?? {})),
-  );
-}
-
-/** The slow runs of `paths` at their keys were declared to test `globs` (`recordSlowArtifacts`). */
-function ran(store: Store, repo: FakeRepo, paths: string[], globs: string[] = ["plugins/**"]) {
-  recordSlowArtifacts(store, repo.mainId, new Map(paths.map((path) => [`key-${path}`, globs])));
-}
-
-function status({ repo, store }: Seeded): string {
-  store.close();
-  return formatStatus(readStatus(repo.main, { now: () => NOW }), NOW);
-}
-
-function slowLine(text: string): string | undefined {
-  return text.split("\n").find((line) => line.startsWith("Slow tier:"));
-}
 
 describe("the slow-tier line (spec 004 D8)", () => {
   it("is absent without slow files declared, in the header and in status", () => {
@@ -380,8 +269,9 @@ describe("the slow-tier line (spec 004 D8)", () => {
     [{ kind: "waiting", for: "load" }, "2 pending, waiting for host load to drop"],
     [{ kind: "waiting", for: "fast" }, "2 pending, waiting for fast test files"],
     [null, "2 pending"],
-  ])("says pending with the daemon's reason: %j", (activity, words) => {
+  ])("says pending with the daemon's reason, an agent in a turn: %j", (activity, words) => {
     const s = seed();
+    inTurn(s);
     keys(s.store, s.repo, { [SLOW_A]: "queued", [SLOW_B]: "queued" });
     publishSlowActivity(s.store, s.repo.mainId, activity);
     expect(readHeader(s.store, s.repo.mainId).slowPending).toEqual({
@@ -419,6 +309,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const s = seed();
     keys(s.store, s.repo, { [SLOW_A]: "queued" });
     publishSlowActivity(s.store, s.repo.mainId, { kind: "waiting", for: "idle" });
+    inTurn(s);
     const consumer: Consumer = { worktreeId: s.repo.mainId, sessionId: "s", agentId: "main" };
     const delivery = createDelivery(s.store, { status: fixedStatus(), now: () => NOW });
     const registration = await delivery.register(consumer);

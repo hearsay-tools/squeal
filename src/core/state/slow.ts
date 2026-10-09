@@ -1,4 +1,6 @@
-import { readPolicy } from "../daemon/policy.js";
+import { POLICY_FILE, readPolicy } from "../daemon/policy.js";
+import { readAll, slot } from "../delivery/slots.js";
+import { isRecord } from "../fs/index.js";
 import { createInputMatcher } from "../keys/glob.js";
 import { isInputList, testFileId } from "../keys/index.js";
 import { slowFiles } from "../slow/classify.js";
@@ -6,6 +8,7 @@ import { inheritsAcrossWorktrees, slowGlobs } from "../slow/inherit.js";
 import { readSlowActivity, readSlowArtifacts } from "../slow/state.js";
 import type {
   CheckKey,
+  FileHash,
   KnownState,
   Policy,
   RelativePath,
@@ -105,8 +108,8 @@ export function classifySlowFiles(
  * transaction. A current claim names the artifact the current results' runs
  * were declared to test, from the record their worktree kept with the key
  * (`readSlowArtifacts`), never today's policy; a current file with none
- * counts as `artifactUnknown` (review wave 2, B2). A "running" activity
- * names only the files it names that are still running (B1, 004-35).
+ * counts as `artifactUnknown` (review wave 2, B2). The activity is read as
+ * true now (`liveActivity`).
  */
 export function readSlowTier(
   store: Store,
@@ -167,7 +170,7 @@ export function readSlowTier(
         [...globs, ...declaredToday],
         isSource,
       ),
-    activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow),
+    activity: liveActivity(store, worktreeId, keys, view.isSlow),
   };
 }
 
@@ -185,16 +188,31 @@ function recordedArtifacts(store: Store) {
 }
 
 /**
- * `activity`, naming only the files it names as running that still are: a
- * run ended since it was published (review wave 2, B1), or some files of an
- * idle tier's run did (004-35). `null` when none still is.
+ * The published activity, as true now. A "running" one names only the files
+ * it names that still run: a run ended since it was published (review wave
+ * 2, B1), or some files of an idle tier's run did (004-35); and none when its
+ * run started before the live daemon did, so a dead predecessor's (lessons
+ * defect 12). A wait for the agent to pause, once no registered consumer is
+ * in a turn, is a wait for the fast files pending, or for nothing (lessons
+ * defect 11): the daemon publishes again only when it next looks at its slow
+ * files, which fast tiers can put off for minutes. `null` when nothing is
+ * true of it.
  */
 function liveActivity(
-  activity: SlowTierActivity | null,
+  store: Store,
+  worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
 ): SlowTierActivity | null {
-  if (activity?.kind !== "running") return activity;
+  const activity = readSlowActivity(store, worktreeId);
+  if (activity?.kind === "waiting") {
+    if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
+    const fast = keys.some((row) => row.pending !== null && !isSlow(row.testFile));
+    return fast ? { kind: "waiting", for: "fast" } : null;
+  }
+  if (activity === null) return null;
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
     keys
       .filter((row) => row.pending === "running" && isSlow(row.testFile))
@@ -208,14 +226,32 @@ function liveActivity(
 }
 
 /**
- * Whether a revision after `since` up to `revision` changed a source the
- * artifact could be built from: a path no artifact glob matches that
+ * Whether a registered consumer of the worktree is in a turn (001 D9), from
+ * the turn row `delivery/turn.ts` keeps (`turnMetaKey`), read here by its key
+ * since that module reads the header. Unlike the slow tier's trigger
+ * (`consumersIdle`) it has no clock, so a consumer the daemon has not yet
+ * expired still counts.
+ */
+function consumerInTurn(store: Store, worktreeId: WorktreeId): boolean {
+  const turns = readAll(store, `turn:${worktreeId}`);
+  return store.consumers.list(worktreeId).some((record) => {
+    const turn = turns[slot(record.consumer)];
+    return isRecord(turn) && turn.turn === "in-turn";
+  });
+}
+
+/**
+ * Whether a source the artifact could be built from holds other bytes at
+ * `revision` than at `since`: a path no artifact glob matches that
  * `isSource` admits, so neither a test file nor a slow directory's fixture
- * (as D6 tells an artifact from them; lessons defect 8a). Every revision's
- * adds count, whatever found them (review wave 4 B4, wave 4.5 B2): a
- * worktree's first listing makes no revision, since the start walk seeds the
- * files beneath linked directories as bootstrap seeds git's (task 001-166;
- * lessons defect 8d).
+ * (as D6 tells an artifact from them; lessons defect 8a), nor Squeal's own
+ * policy file. Each path's hash before its first change after `since` is
+ * compared with its hash after its last, so a revert to the tested bytes and
+ * a file made and removed since change nothing (lessons defect 15). Every
+ * revision's adds count, whatever found them (review wave 4 B4, wave 4.5
+ * B2): a worktree's first listing makes no revision, since the start walk
+ * seeds the files beneath linked directories as bootstrap seeds git's (task
+ * 001-166; lessons defect 8d).
  */
 function sourcesChanged(
   store: Store,
@@ -226,10 +262,19 @@ function sourcesChanged(
   isSource: (path: RelativePath) => boolean,
 ): boolean {
   if (since >= revision) return false;
+  const tested = new Map<RelativePath, FileHash | null>();
+  const now = new Map<RelativePath, FileHash | null>();
+  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
+    for (const change of changes) {
+      if (!tested.has(change.path)) tested.set(change.path, change.oldHash);
+      now.set(change.path, change.newHash);
+    }
+  }
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions
-    .range(worktreeId, since, revision)
-    .some((r) => r.changes.some((change) => !isArtifact(change.path) && isSource(change.path)));
+  return [...now].some(
+    ([path, hash]) =>
+      hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path),
+  );
 }
 
 /** The listed slow test files not current: pending or not run (`stop.requireSlowSuite`, D7). */
