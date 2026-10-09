@@ -7,12 +7,12 @@ import {
   type CheckpointRecord,
   type FullSuiteRequest,
   isSlowLane,
+  type RekeyedTestFile,
   type RelativePath,
   type RevisionNumber,
   type Scheduler,
   type SchedulerStatus,
   type SlowSuiteRequest,
-  type TestFileRef,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
@@ -303,13 +303,15 @@ class TierScheduler implements Scheduler {
     await this.#runnerWork.afterTier(() => Promise.resolve());
   }
 
-  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly TestFileRef[] {
-    const refs: TestFileRef[] = [];
+  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly RekeyedTestFile[] {
+    const files: RekeyedTestFile[] = [];
     for (const file of this.#ledger?.files.values() ?? []) {
-      const at = file.keyedAt;
-      if (at !== null && at > after && at <= upTo) refs.push(file.ref);
+      const revision = file.keyedAt;
+      if (revision !== null && revision > after && revision <= upTo) {
+        files.push({ testFile: file.ref, revision });
+      }
     }
-    return refs;
+    return files;
   }
 
   idle(): Promise<void> {

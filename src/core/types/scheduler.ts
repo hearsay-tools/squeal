@@ -3,6 +3,12 @@ import type { TestFileRef } from "./keys.js";
 import type { CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
+/** A test file and the revision whose change last moved its key (`Scheduler.rekeyedSince`). */
+export interface RekeyedTestFile {
+  readonly testFile: TestFileRef;
+  readonly revision: RevisionNumber;
+}
+
 /** Spec 001 D7: status for agents is read from the store; the daemon reads only the revision. */
 export interface SchedulerStatus {
   /** The worktree's current revision; `0` before its first revision. */
@@ -155,7 +161,7 @@ export interface Scheduler {
    * environment, or the file was added (task 001-186, `status --wait`). Not
    * the baseline's, a backlog's or a run's moves. Empty before the start.
    */
-  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly TestFileRef[];
+  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly RekeyedTestFile[];
   /**
    * Resolves once nothing is queued or running and no revision waits for its
    * runner part. Slow files that wait for a trigger or the slot (spec 004

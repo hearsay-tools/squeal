@@ -29,7 +29,7 @@ const latest = (h: Harness): RevisionNumber => h.store.revisions.latest(h.worktr
 const paths = (h: Harness, after: RevisionNumber, upTo: RevisionNumber) =>
   h.scheduler
     .rekeyedSince(after, upTo)
-    .map((file) => file.path)
+    .map((file) => file.testFile.path)
     .sort();
 
 describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
@@ -62,6 +62,10 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
 
     expect(paths(h, before, first)).toEqual(["test/math.test.ts"]);
     expect(paths(h, first, latest(h))).toEqual(["test/plain.test.ts"]);
+    expect(h.scheduler.rekeyedSince(before, latest(h))).toContainEqual({
+      testFile: { project: "", path: "test/math.test.ts" },
+      revision: first,
+    });
   });
 
   it("names every file after an environment change", SLOW, async () => {
