@@ -45,6 +45,10 @@ FAIL  tests/auth.test.ts > login > expired token
 
 A reason like `fixtures/data.txt was written during this run and ended as it was` (or `was written while this run was in flight`) means a file in the worktree was rewritten with the bytes it already held while the run was going: a no-op save, a `git stash` round trip, a build rewriting its output, or the test itself. Squeal cannot tell which bytes its caches served that run, so it keeps none of the run's results, and its test files stay unknown until their keys change. When a test rewrites a file on every run (a fixture writer), every run of it is unknown. Have the test write outside the worktree (a temp directory) or under a path git ignores and no `inputs` entry names; declaring the file in `inputs` does not help, since a declared file is part of the key and its rewrite still counts.
 
+## Vitest without its dependency optimizer
+
+A header or status note that begins `Squeal runs Vitest without its dependency optimizer` means a Vitest config here turns on `deps.optimizer`, and Squeal runs every test without it. The optimizer's bundles hold copies of source files that no result's key names, so a result could have come from bytes other than those on disk. Tests then import those packages from their sources, which is what Vitest does by default. A test that passes only with the optimizer can fail under Squeal and pass in `vitest run`; the repository's own test command is still the one to run before you finish.
+
 ## Many recoveries
 
 Up to five recovered checks are listed one by one. Above five, a report says `31 checks recovered (FAIL -> PASS)` and then the shorter list: either the checks still failing (`still failing: 2` and their names) or the recovered checks, grouped by test file with counts (`16 in tests/a.test.ts`) when that takes fewer lines than their names. Checks no longer reported by the runner are summarized the same way. New failures are always listed in full.
