@@ -81,6 +81,18 @@ function seed(
   return { repo, store };
 }
 
+/** Appends one revision changing `changes`; an add when `added`, as a fresh worktree's first listing is. */
+function revise(store: Store, repo: FakeRepo, changes: string[], added = false) {
+  store.revisions.append({
+    worktreeId: repo.mainId,
+    createdAt: 9,
+    head: null,
+    dirty: true,
+    trigger: "interval",
+    changes: changes.map((path) => ({ path, oldHash: added ? null : "h0", newHash: "h9" })),
+  });
+}
+
 function keys(store: Store, repo: FakeRepo, pending: Record<string, "queued" | "running" | null>) {
   store.testFileKeys.upsertMany(
     Object.entries(pending).map(([path, phase]) => ({
@@ -128,7 +140,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
 
   it("says current against the artifact at a revision, and that sources changed since", () => {
     const s = seed(SLOW_POLICY, { revisions: 3 });
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 3 }, {}], [SLOW_A, SLOW_B, FAST]);
+    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }, {}], [SLOW_A, SLOW_B, FAST]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     const header = readHeader(s.store, s.repo.mainId);
     expect(header.slowTier).toMatchObject({
@@ -152,6 +164,53 @@ describe("the slow-tier line (spec 004 D8)", () => {
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     expect(slowLine(status(s))).toBe(
       "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.",
+    );
+  });
+
+  it("does not say sources changed when only test files changed since (lessons defect 8a)", () => {
+    const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
+    revise(s.store, s.repo, [SLOW_A, FAST, "test/e2e/fixtures/app.json"]);
+    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
+    expect(slowLine(status(s))).toBe(
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.",
+    );
+  });
+
+  it("names every revision the current results ran at (lessons defect 8b)", () => {
+    const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
+    states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({
+      currentAt: 1,
+      currentUpTo: 2,
+    });
+    expect(slowLine(status(s))).toBe(
+      "Slow tier: 2 test files; 2 current against plugins/** as of revisions 1 to 2. Not covered by Stop's wait.",
+    );
+  });
+
+  it("does not count a fresh worktree's first listing as sources changed (lessons defect 8d)", () => {
+    const s = seed(SLOW_POLICY, { revisions: 0 });
+    revise(s.store, s.repo, ["src/a.ts", "plugins/a.js", SLOW_A, SLOW_B], true);
+    const inherited = { kind: "inherited", worktreeId: "other", commit: "c0" } as const;
+    states(
+      s.store,
+      s.repo,
+      [
+        { observedAt: 0, origin: inherited },
+        { observedAt: 0, origin: inherited },
+      ],
+      [SLOW_A, SLOW_B],
+    );
+    recordSlowArtifacts(
+      s.store,
+      "other",
+      new Map([SLOW_A, SLOW_B].map((p) => [`key-${p}`, ["plugins/**"]])),
+    );
+    expect(slowLine(status(s))).toBe(
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 0. Not covered by Stop's wait.",
     );
   });
 
@@ -221,11 +280,17 @@ describe("the slow-tier line (spec 004 D8)", () => {
     );
   });
 
-  it("leaves out the daemon's reason when no daemon is validating", () => {
+  it("keeps the daemon's reason when no daemon is validating, as last reported (lessons defect 8c)", () => {
     const s = seed(SLOW_POLICY, { alive: false });
-    keys(s.store, s.repo, { [SLOW_A]: "queued" });
-    publishSlowActivity(s.store, s.repo.mainId, { kind: "waiting", for: "idle" });
-    expect(slowLine(status(s))).toContain("; 1 pending; 1 not run at revision 2.");
+    keys(s.store, s.repo, { [SLOW_A]: "queued", [SLOW_B]: "queued" });
+    publishSlowActivity(s.store, s.repo.mainId, { kind: "waiting", for: "slot" });
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.activity).toEqual({
+      kind: "waiting",
+      for: "slot",
+    });
+    expect(slowLine(status(s))).toContain(
+      "; 2 pending, last reported waiting for the slow slot another worktree's slow tier holds.",
+    );
   });
 
   it("says not run at this revision for stale and never-run slow files", () => {
