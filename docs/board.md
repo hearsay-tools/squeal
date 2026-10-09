@@ -6,7 +6,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`.
 
 ## Standing models
 
-Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers and researchers: `--backend claude --model opus --effort high`. Reviewers: `--backend codex --model gpt-6.1-sol --effort high` (human, 2026-10-07; earlier reviews ran on Opus). Researchers may also run `--backend codex --model gpt-6-astra --effort high` (human, 2026-10-07). Never Fable for a worker (human rule). A quota or spend refusal preserves the work and asks the human; no silent substitution. The human's newest instruction outranks this section.
+Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers and researchers: `--backend claude --model opus --effort high`. Reviewers: `--backend codex --model gpt-6.1-sol --effort high` (human, 2026-10-07; earlier reviews ran on Opus). Researchers may also run `--backend codex --model gpt-6-astra --effort high` (human, 2026-10-07). Never Fable for a worker (human rule). Dogfooding (human, 2026-10-09): the worker that runs a dogfood stays on Opus; the agent sessions it starts as "users" pick the model by what the check needs: `haiku` where only the daemon is observed (an edit to make, a session to end), `sonnet` where the agent's own reading of Squeal's messages matters in ordinary work, `opus` where that behaviour is the question itself (whether the agent trusts the report or runs suites itself); each dogfood brief names the model per session. A quota or spend refusal preserves the work and asks the human; no silent substitution. The human's newest instruction outranks this section.
 
 ## Feature 001: core validation loop
 
