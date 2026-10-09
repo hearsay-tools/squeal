@@ -31,5 +31,6 @@ export {
   daemonLiveness,
   livenessMetaKey,
   readLiveHeader,
+  toldRevision,
   worktreeLiveness,
 } from "./liveness.js";

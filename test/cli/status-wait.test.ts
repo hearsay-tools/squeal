@@ -313,6 +313,7 @@ function handSync() {
 const synced = (revision: number): SyncState => ({
   state: "synced",
   revision: revision as RevisionNumber,
+  rekeyed: null,
 });
 
 /*
@@ -366,25 +367,5 @@ describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)"
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeLessThan(STATUS_WAIT_SETTLE_MS);
-  });
-
-  it("still returns on news while the pass is not stored", async () => {
-    const { repo, store } = repoWith(pendingPass());
-    later(200, () =>
-      settle(
-        store,
-        repo.mainId,
-        state(repo.mainId, ADDS, { outcome: "fail", observedAt: 3, fingerprint: "Error: x" }),
-      ),
-    );
-
-    const wait = await waitForStatus(repo.main, {
-      timeoutMs: 5_000,
-      pollMs: 20,
-      now: () => NOW,
-      sync: handSync().sync,
-    });
-
-    expect(wait.outcome).toBe("news");
   });
 });

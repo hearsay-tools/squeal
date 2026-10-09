@@ -1,17 +1,16 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { planDelta, readHeader, worktreeLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
-import { isPending, runnerPartText } from "../core/state/index.js";
+import { isPending } from "../core/state/index.js";
 import {
   buildSnapshot,
   formatStatus,
   STATUS_BUSY_TIMEOUT_MS,
   withStatusStore,
 } from "../core/status/index.js";
-import { plural } from "../core/text.js";
 import type {
   AbsolutePath,
-  DaemonLiveness,
+  DeltaEntry,
   EpochMs,
   KnownState,
   RevisionNumber,
@@ -22,7 +21,16 @@ import type {
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
-import { type DaemonSync, syncDaemon } from "./status-sync.js";
+import { type DaemonSync, type SyncState, syncDaemon } from "./status-sync.js";
+import {
+  type EditWindow,
+  editWindow,
+  heldPending,
+  splitNews,
+  windowRefined,
+  windowStart,
+} from "./status-wait-edit.js";
+import { waitLine } from "./status-wait-lines.js";
 
 /** How often `status --wait` reads the store. */
 export const STATUS_WAIT_POLL_MS = 250;
@@ -43,13 +51,20 @@ export interface StatusWaitOptions {
   readonly settleMs?: number;
   /** Clock for heartbeat ages in the snapshot. Default `Date.now`. */
   readonly now?: () => EpochMs;
+  /**
+   * The harness session the wait runs in (`CLAUDE_CODE_SESSION_ID`,
+   * `CODEX_SESSION_ID`): its consumers' told revision starts the window
+   * (`windowStart`). Default none.
+   */
+  readonly session?: string | null;
   /** Default `syncDaemon`; tests replace it. */
-  readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
+  readonly sync?: (root: AbsolutePath, pollMs: number, after: RevisionNumber) => DaemonSync;
 }
 
 /**
- * Why the wait ended: `quiet`, nothing pending at the current revision;
- * `news`, a check changed notably since the wait started; `no-daemon`, no
+ * Why the wait ended: `quiet`, nothing pending at the current revision, or
+ * none of the edit's test files (`StatusWaitEdit`); `news`, a check, or a
+ * check of the edit's test files, changed notably since the wait started; `no-daemon`, no
  * daemon is validating, so nothing pending would ever finish and quiet would
  * say nothing about the files (review wave 4.5, S2); `timeout`, none of these
  * within the given time.
@@ -64,14 +79,33 @@ export interface StatusWaitPayload {
   readonly outcome: StatusWaitOutcome;
   readonly waitedMs: number;
   readonly transitions: number;
+  /** Present when the daemon named the edit's test files (task 001-186). */
+  readonly edit?: StatusWaitEdit;
+}
+
+/**
+ * The wait's window once the daemon named its files (lessons, defect 32):
+ * the revisions from `since` to the sync pass's, the test files they
+ * re-keyed, how many of those are still pending (slow ones aside), and the
+ * transitions of other checks, which did not end the wait.
+ */
+export interface StatusWaitEdit {
+  readonly since: RevisionNumber;
+  readonly testFiles: number;
+  readonly pending: number;
+  readonly otherTransitions: number;
 }
 
 export type StatusWait =
   | {
       readonly outcome: StatusWaitOutcome;
       readonly waitedMs: number;
-      /** Notable differences between the known states at the start and at the end (D6). */
+      /**
+       * Notable differences between the known states at the start and at the
+       * end (D6); with `edit`, those of the edit's test files only.
+       */
       readonly transitions: number;
+      readonly edit?: StatusWaitEdit;
       readonly result: StatusSnapshot;
     }
   | {
@@ -101,6 +135,14 @@ export type StatusWait =
  * from it is news. A check that broke and recovered between two reads is not.
  * A store that cannot be read at the start ends the wait at once; a read that
  * fails later (a busy lock) is skipped.
+ *
+ * Lessons, defect 32 (task 001-186): the pass also names the test files the
+ * revisions from the window's start (`windowStart`) up to its own re-keyed,
+ * once their runner part is applied. Then quiet is none of those files
+ * pending, slow ones aside, whatever else runs, and news is a transition of
+ * one of their checks; until the daemon answers, neither. A daemon that
+ * names no files (one before the task) or cannot sync leaves the wait as
+ * before: nothing pending at all, and any check's news.
  */
 export async function waitForStatus(
   cwd: AbsolutePath,
@@ -110,11 +152,12 @@ export async function waitForStatus(
   const pollMs = options.pollMs ?? STATUS_WAIT_POLL_MS;
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
   const startSync = options.sync ?? syncDaemon;
+  const session = options.session ?? null;
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
   // Started at the first read, which finds the root; a box, since the read is a callback.
-  const syncing: { sync?: DaemonSync } = {};
+  const syncing: { sync?: DaemonSync; since?: RevisionNumber; window?: EditWindow } = {};
   try {
     for (;;) {
       // The read at the deadline decides with what it finds and waits the full busy timeout.
@@ -128,25 +171,53 @@ export async function waitForStatus(
         const states = store.knownStates.list(id);
         const header = readHeader(store, id, states);
         start ??= states.map(toStartView);
-        const transitions = countNews(start, states, header.revision);
-        syncing.sync ??= startSync(root, pollMs);
+        const news = newsOf(start, states, header.revision);
+        syncing.since ??= windowStart(store, id, header.revision, session);
+        syncing.sync ??= startSync(root, pollMs, Math.max(0, syncing.since - 1));
+        const current = syncing.sync.current();
+        if (current.state === "synced" && current.rekeyed !== null) {
+          syncing.window ??= editWindow(store, id, current.revision, current.rekeyed);
+        }
+        const window = syncing.window;
         const settled = final || elapsed() >= settleMs;
-        // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
-        const synced = isSynced(syncing.sync, header.revision, settled);
         const daemon = worktreeLiveness(store.worktrees.get(id), now());
+        // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
+        let transitions: number;
+        let quiet: boolean;
+        let edit: StatusWaitEdit | undefined;
+        if (window !== undefined) {
+          const split = splitNews(window, news);
+          const pending = heldPending(window, store.testFileKeys.list(id));
+          transitions = split.own;
+          quiet =
+            header.revision >= window.revision && windowRefined(window, header) && pending === 0;
+          edit = {
+            since: syncing.since,
+            testFiles: window.ids.size,
+            pending,
+            otherTransitions: split.other,
+          };
+        } else if (current.state === "pending") {
+          // Which files are the edit's is not known yet: no check's news is the edit's.
+          transitions = 0;
+          quiet = false;
+        } else {
+          transitions = news.length;
+          quiet = isSynced(current, header.revision, settled) && !isPending(header);
+        }
         const outcome: StatusWaitOutcome | null =
           transitions > 0
             ? "news"
             : settled && daemon.state !== "alive"
               ? "no-daemon"
-              : synced && !isPending(header)
+              : quiet
                 ? "quiet"
                 : final
                   ? "timeout"
                   : null;
-        return outcome === null
-          ? null
-          : { outcome, transitions, result: buildSnapshot(store, root, now()) };
+        if (outcome === null) return null;
+        const result = buildSnapshot(store, root, now());
+        return { outcome, transitions, ...(edit === undefined ? {} : { edit }), result };
       });
       if (read !== null && "available" in read) {
         if (start === null || final) {
@@ -167,8 +238,7 @@ export async function waitForStatus(
  * Quiet may be decided at `revision`: it holds the daemon's pass, or no
  * daemon can sync and the settle time passed.
  */
-function isSynced(sync: DaemonSync, revision: RevisionNumber, settled: boolean): boolean {
-  const current = sync.current();
+function isSynced(current: SyncState, revision: RevisionNumber, settled: boolean): boolean {
   if (current.state === "synced") return revision >= current.revision;
   return current.state === "unsupported" && settled;
 }
@@ -177,11 +247,11 @@ function toStartView(state: KnownState): ViewEntry {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
 }
 
-function countNews(
+function newsOf(
   start: readonly ViewEntry[],
   states: readonly KnownState[],
   revision: RevisionNumber,
-): number {
+): readonly DeltaEntry[] {
   return planDelta({
     view: start,
     states,
@@ -189,7 +259,7 @@ function countNews(
     toldAt: 0,
     rootOf: () => null,
     revision,
-  }).entries.length;
+  }).entries;
 }
 
 /**
@@ -205,60 +275,26 @@ export async function statusWaitCommand(
   io: CliIo,
 ): Promise<number> {
   const now = io.now ?? Date.now;
-  const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now });
+  const env = io.env ?? process.env;
+  const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
+  const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now, session });
   const result: StatusResult = wait.result;
   if (wait.outcome === "unavailable") {
     io.stdout(json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 1;
   }
-  const line = `${waitLine(wait.outcome, wait.transitions, wait.result, wait.waitedMs)}\n`;
+  const line = `${waitLine(wait)}\n`;
   if (json) {
     const payload: StatusWaitPayload = {
       outcome: wait.outcome,
       waitedMs: Math.round(wait.waitedMs),
       transitions: wait.transitions,
+      ...(wait.edit === undefined ? {} : { edit: wait.edit }),
     };
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);
   } else {
-    io.stdout(`${line}\n${formatStatus(result, now(), statusCommand(io.env ?? process.env))}`);
+    io.stdout(`${line}\n${formatStatus(result, now(), statusCommand(env))}`);
   }
   return 0;
-}
-
-function waitLine(
-  outcome: StatusWaitOutcome,
-  transitions: number,
-  snapshot: StatusSnapshot,
-  waitedMs: number,
-): string {
-  const after = `after ${(waitedMs / 1_000).toFixed(1)} s`;
-  const at = `at revision ${snapshot.revision}`;
-  switch (outcome) {
-    case "quiet":
-      return `Returned on quiet: nothing pending ${at} ${after}`;
-    case "news":
-      return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
-    case "no-daemon":
-      return `Returned without a daemon: ${noDaemonText(snapshot.daemon)}; results are as of revision ${snapshot.revision}`;
-    case "timeout":
-      return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}`;
-  }
-}
-
-/** As delivered headers word it (spec 001 D10: "no daemon running since <time>"). */
-function noDaemonText(daemon: DaemonLiveness): string {
-  if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
-  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
-}
-
-function pendingText(snapshot: StatusSnapshot): string {
-  const checks = snapshot.counts.pending;
-  const files = snapshot.testFilesWithoutChecks.pending;
-  const parts = [plural(checks, "check")];
-  if (files > 0) parts.push(`${plural(files, "test file")} without checks`);
-  if (snapshot.runnerPartPending === true) parts.push(runnerPartText(snapshot.revision));
-  return parts.length === 1
-    ? `${parts[0]} pending`
-    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
 }
