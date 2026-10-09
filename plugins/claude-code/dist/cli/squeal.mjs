@@ -1439,10 +1439,12 @@ async function candidatesForReconcile(ctx, statusPaths) {
   const nested = new NestedRepoProbe(ctx.root);
   const all = /* @__PURE__ */ new Set([...statusPaths, ...ctx.trackedPaths(), ...ctx.extraFiles]);
   const paths = [...all].filter((rel) => !isGitMetadata(rel));
+  const symlinks = /* @__PURE__ */ new Set();
   const stats = await mapConcurrent(paths, async (rel) => {
     const stats2 = await lstatOrNull2(toAbsolute(ctx.root, rel));
     const probe = stats2?.isDirectory() ? rel : parentDir(rel);
     if (probe !== null && await nested.isInside(probe)) return void 0;
+    if (stats2?.isSymbolicLink()) symlinks.add(rel);
     return stats2 && !stats2.isDirectory() ? toFileStat(stats2) : null;
   });
   const out = /* @__PURE__ */ new Map();
@@ -1450,7 +1452,8 @@ async function candidatesForReconcile(ctx, statusPaths) {
     const stat7 = stats[i2];
     if (stat7 !== void 0) out.set(rel, stat7);
   });
-  const { links, linkedDirs: linkedDirs2 } = await linksAmong(ctx.root, [...out.keys()]);
+  const linkCandidates = [...out.keys()].filter((rel) => symlinks.has(rel));
+  const { links, linkedDirs: linkedDirs2 } = await linksAmong(ctx.root, linkCandidates);
   for (const rel of await filesUnderLinks(ctx, linkedDirs2.keys(), nested)) {
     out.set(rel, await statOrNull(ctx.root, rel));
   }
@@ -1468,9 +1471,10 @@ async function filesUnderLinks(ctx, linkedDirs2, nested = new NestedRepoProbe(ct
 async function topLinks(root, paths) {
   const probe = new SymlinkProbe(root);
   const links = /* @__PURE__ */ new Map();
-  for (const rel of paths) {
+  const linked = await mapConcurrent(paths, (rel) => isLinkedDir(toAbsolute(root, rel)));
+  for (const [i2, rel] of paths.entries()) {
     const abs = toAbsolute(root, rel);
-    if (!await isLinkedDir(abs) || await probe.linkAbove(rel) !== null) continue;
+    if (!linked[i2] || await probe.linkAbove(rel) !== null) continue;
     const target = await realpath(abs).catch(() => null);
     if (target !== null) links.set(rel, target);
   }
@@ -2434,6 +2438,32 @@ var init_types = __esm({
   }
 });
 
+// src/core/state/optimizer-note.ts
+function optimizerOffNote(projects) {
+  const named = projects.map((name) => name === "" ? "the root project" : name).join(", ");
+  return `${OPTIMIZER_OFF_NOTE}, which the config of ${named} turns on: its bundles hold source bytes no key names, so a result could come from bytes other than those on disk (spec 001 D4, task 001-176)`;
+}
+function optimizerOffMetaKey(worktreeId) {
+  return `optimizer-off.${worktreeId}`;
+}
+function recordOptimizerOff(store, worktreeId, projects) {
+  store.meta.set(
+    optimizerOffMetaKey(worktreeId),
+    projects.length === 0 ? "" : optimizerOffNote(projects)
+  );
+}
+function readOptimizerOff(store, worktreeId) {
+  const text2 = store.meta.get(optimizerOffMetaKey(worktreeId));
+  return text2 === null || text2 === "" ? void 0 : text2;
+}
+var OPTIMIZER_OFF_NOTE;
+var init_optimizer_note = __esm({
+  "src/core/state/optimizer-note.ts"() {
+    "use strict";
+    OPTIMIZER_OFF_NOTE = "Squeal runs Vitest without its dependency optimizer";
+  }
+});
+
 // src/core/notes.ts
 import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 function appendNote(store, worktreeId, note) {
@@ -2469,19 +2499,6 @@ var init_notes = __esm({
   "src/core/notes.ts"() {
     "use strict";
     init_types();
-  }
-});
-
-// src/core/state/optimizer-note.ts
-function optimizerOffNote(projects) {
-  const named = projects.map((name) => name === "" ? "the root project" : name).join(", ");
-  return `${OPTIMIZER_OFF_NOTE}, which the config of ${named} turns on: its bundles hold source bytes no key names, so a result could come from bytes other than those on disk (spec 001 D4, task 001-176)`;
-}
-var OPTIMIZER_OFF_NOTE;
-var init_optimizer_note = __esm({
-  "src/core/state/optimizer-note.ts"() {
-    "use strict";
-    OPTIMIZER_OFF_NOTE = "Squeal runs Vitest without its dependency optimizer";
   }
 });
 
@@ -3092,9 +3109,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const awaiting = missing !== null;
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
-  const optimizerOff = readDaemonNotes(store, worktreeId).findLast(
-    (note) => note.text.startsWith(OPTIMIZER_OFF_NOTE)
-  )?.text;
+  const optimizerOff = readOptimizerOff(store, worktreeId);
   return {
     revision,
     counts,
@@ -3184,7 +3199,6 @@ var init_header = __esm({
   "src/core/state/header.ts"() {
     "use strict";
     init_keys();
-    init_notes();
     init_types();
     init_derive();
     init_optimizer_note();
@@ -4921,6 +4935,15 @@ function readTransaction(store, fn) {
   if (conn === void 0) throw new Error("squeal store: not opened by openStore");
   return conn.read(fn);
 }
+function changeMarker(store) {
+  const conn = store[CONNECTION];
+  if (conn === void 0) return null;
+  const row = conn.get(
+    "SELECT data_version AS others, total_changes() AS own FROM pragma_data_version"
+  );
+  if (row === null) throw new Error("squeal store: no data_version");
+  return { others: num(row, "others"), own: num(row, "own") };
+}
 function createStore(conn, schemaVersion, paths) {
   const worktrees = createWorktreeRepo(conn);
   const store = {
@@ -5093,6 +5116,7 @@ __export(store_exports, {
   DEFAULT_BUSY_TIMEOUT_MS: () => DEFAULT_BUSY_TIMEOUT_MS,
   META_STORE_RECOVERED: () => META_STORE_RECOVERED,
   SCHEMA_VERSION: () => SCHEMA_VERSION,
+  changeMarker: () => changeMarker,
   isBusy: () => isBusy,
   isStoreOpenFailure: () => isStoreOpenFailure,
   lockFileFor: () => lockFileFor,
@@ -14340,12 +14364,16 @@ var init_adapter = __esm({
        * worker's env beside the recorder's and, like it, stays out of the
        * environment hash (D12, task 001-142). `maxWorkers` overrides the
        * config's (spec 004 D2: the slow tier's instance); not keyed, since the
-       * slow instance's environment is never asked for.
+       * slow instance's environment is never asked for. `optimizer` hears, at
+       * each start, the projects whose config turns the dependency optimizer on,
+       * none included (task 001-181).
        */
       constructor(paths, vitest, note = () => {
-      }, observe = () => false, childEnv2 = {}, maxWorkers) {
+      }, observe = () => false, childEnv2 = {}, maxWorkers, optimizer = () => {
+      }) {
         this.paths = paths;
         this.#node = vitest;
+        this.#optimizer = optimizer;
         this.#sources = new SourceStamps(paths);
         this.#childEnv = childEnv2;
         this.#maxWorkers = maxWorkers;
@@ -14390,6 +14418,7 @@ var init_adapter = __esm({
       #running = false;
       #closed = false;
       #note;
+      #optimizer;
       #observer;
       #childEnv;
       #maxWorkers;
@@ -14422,6 +14451,7 @@ var init_adapter = __esm({
         this.#sources = sources;
         try {
           const optimized = withoutOptimizer(vitest);
+          this.#optimizer(optimized);
           if (optimized.length > 0) noteOnce(this.paths.root, optimizerOffNote(optimized), this.#note);
           await vitest.standalone();
           this.#observer.configure(vitest);
@@ -14727,7 +14757,8 @@ async function createVitestAdapter(options) {
     options.note,
     options.observe,
     options.childEnv,
-    options.maxWorkers
+    options.maxWorkers,
+    options.optimizer
   );
   await adapter.open();
   return adapter;
@@ -32548,7 +32579,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.82";
+  if (true) return "0.1.83";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33959,6 +33990,7 @@ function codexStatusLine(cwd, env) {
 
 // src/core/daemon/daemon.ts
 init_fs();
+init_optimizer_note();
 init_store2();
 init_types();
 
@@ -34757,6 +34789,7 @@ function recordVersion(store, consumer, version2) {
 
 // src/core/delivery/delivery.ts
 init_state3();
+init_store2();
 init_types();
 
 // src/core/delivery/attribution.ts
@@ -35952,6 +35985,7 @@ var Daemon = class {
       const vitestInstance = (lane, maxWorkers) => () => vitest.createVitestAdapter({
         root,
         note: (text2) => this.#note(text2),
+        optimizer: (projects) => this.#optimizerOff(projects),
         observe: () => this.#policy.observe.runtimeInputs,
         childEnv: this.#children.envFor(lane),
         ...maxWorkers === void 0 ? {} : { maxWorkers }
@@ -36088,6 +36122,14 @@ var Daemon = class {
     if (after === null) return { revision, rekeyed: null };
     await scheduler.refined();
     return { revision, rekeyed: scheduler.rekeyedSince(after, revision) };
+  }
+  /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */
+  #optimizerOff(projects) {
+    try {
+      recordOptimizerOff(this.opened.store, this.opened.worktreeId, projects);
+    } catch (error) {
+      this.#log(`could not record the optimizer note: ${String(error)}`);
+    }
   }
   #note(text2) {
     this.#log(text2);
