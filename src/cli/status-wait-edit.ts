@@ -3,11 +3,11 @@ import { testFileId } from "../core/keys/index.js";
 import { testFileOf, worktreeSlowView } from "../core/state/index.js";
 import type {
   DeltaEntry,
+  RekeyedTestFile,
   RevisionNumber,
   StatusHeader,
   Store,
   TestFileKeyRecord,
-  TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
 
@@ -22,13 +22,13 @@ import type {
  */
 
 /**
- * The first revision of the wait's window: the oldest revision a consumer of
- * `session` in this worktree was last told about, so an edit whose revision
- * a header already named is still covered (its result was not told). Without
- * one (no session in the environment, none registered, or none told), the
- * revision current when the wait started.
+ * The revision the wait last heard of: the oldest revision a consumer of
+ * `session` in this worktree was last told about. Without one (no session
+ * in the environment, none registered, or none told), the revision current
+ * when the wait started. The window is the revisions after it, or from it
+ * when nothing after it re-keyed a file (`editWindow`).
  */
-export function windowStart(
+export function lastHeard(
   store: Store,
   worktreeId: WorktreeId,
   revision: RevisionNumber,
@@ -44,6 +44,8 @@ export function windowStart(
 
 /** What the wait knows of its window once the daemon named the files (`SyncState.rekeyed`). */
 export interface EditWindow {
+  /** The window's first revision. */
+  readonly since: RevisionNumber;
   /** The pass's revision: the window's last. */
   readonly revision: RevisionNumber;
   /** `testFileId`s of the files the window's revisions re-keyed. */
@@ -52,17 +54,28 @@ export interface EditWindow {
   readonly slow: ReadonlySet<string>;
 }
 
+/**
+ * The window from the files the daemon named from `heard` on. The revision
+ * last heard of counts only when no revision after it re-keyed a file: a
+ * header may have named the edit's revision before its result (the hook
+ * after the edit read it already), while a revision heard of before a later
+ * edit is often an environment change whose backlog is not the edit's.
+ */
 export function editWindow(
   store: Store,
   worktreeId: WorktreeId,
+  heard: RevisionNumber,
   revision: RevisionNumber,
-  rekeyed: readonly TestFileRef[],
+  rekeyed: readonly RekeyedTestFile[],
 ): EditWindow {
+  const after = rekeyed.some((file) => file.revision > heard);
+  const refs = rekeyed.filter((file) => !after || file.revision > heard).map((f) => f.testFile);
   const isSlow = worktreeSlowView(store, worktreeId)?.isSlow;
   return {
+    since: after ? heard + 1 : heard,
     revision,
-    ids: new Set(rekeyed.map(testFileId)),
-    slow: new Set(rekeyed.filter((ref) => isSlow?.(ref) === true).map(testFileId)),
+    ids: new Set(refs.map(testFileId)),
+    slow: new Set(refs.filter((ref) => isSlow?.(ref) === true).map(testFileId)),
   };
 }
 

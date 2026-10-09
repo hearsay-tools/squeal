@@ -5,7 +5,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
-import type { TestFileRef } from "./keys.js";
+import type { RekeyedTestFile } from "./scheduler.js";
 import type { CheckpointRecord } from "./store-records.js";
 
 /*
@@ -190,13 +190,13 @@ export interface SyncResponse {
    * (`Scheduler.rekeyedSince`), read once the runner part of `revision` was
    * applied. Absent without `after`, and from a daemon before task 001-186.
    */
-  readonly rekeyed?: readonly TestFileRef[];
+  readonly rekeyed?: readonly RekeyedTestFile[];
 }
 
 /** What a daemon's sync pass left: its revision, and the window's files when asked (`SyncRequest.after`). */
 export interface SyncAnswer {
   readonly revision: RevisionNumber;
-  readonly rekeyed: readonly TestFileRef[] | null;
+  readonly rekeyed: readonly RekeyedTestFile[] | null;
 }
 
 export interface StopResponse {

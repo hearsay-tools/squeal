@@ -1,9 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import type {
   AbsolutePath,
+  RekeyedTestFile,
   RevisionNumber,
   SyncResponse,
-  TestFileRef,
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 
@@ -20,7 +20,7 @@ export type SyncState =
   | {
       readonly state: "synced";
       readonly revision: RevisionNumber;
-      readonly rekeyed: readonly TestFileRef[] | null;
+      readonly rekeyed: readonly RekeyedTestFile[] | null;
     }
   | { readonly state: "unsupported" };
 
