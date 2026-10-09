@@ -1,6 +1,6 @@
 # 005 Agent adoption
 
-Stage: draft 2026-10-09, awaiting the human's approval. Amendments: `status.md`. Research: `research/adoption-baseline.md` (Opus, the dogfooding record and 330 Cezar sessions, no new sessions), `research/instruction-surfaces.md` (Opus, 40 controlled sessions), `research/hook-levers.md` (Astra, 40 controlled sessions), all at Claude Code 2.1.295 and Codex 0.160.1. Specs 001 to 004 hold unless a section here says otherwise.
+Stage: approved 2026-10-09 by the human; dispatch waits for the human's go. Amendments: `status.md`. Research: `research/adoption-baseline.md` (Opus, the dogfooding record and 330 Cezar sessions, no new sessions), `research/instruction-surfaces.md` (Opus, 40 controlled sessions), `research/hook-levers.md` (Astra, 40 controlled sessions), all at Claude Code 2.1.295 and Codex 0.160.1. Specs 001 to 004 hold unless a section here says otherwise.
 
 ## Problem
 
@@ -21,7 +21,7 @@ Setting a repository up is a command the user must type, `squeal init`, from a p
 3. A user with only the plugin installed sets a repository up by asking their agent, in Claude Code and in Codex. The agent interviews them, runs `squeal init` with the answers, and shows every change. Nothing is written without a yes, and nothing is committed.
 4. Setup can write a managed instruction block into the file each harness reads, between versioned markers. It replaces the block on upgrade and `squeal remove` takes it out. Two files that resolve to one file get one block.
 5. Setup finds instruction lines that run the test command and offers each a rewording to Squeal's checkpoint, shown as a diff, written only on its own yes.
-6. Adoption is measured. On a cold, slow fixture in both harnesses, controlled sessions under the reworded gate run the full suite through Squeal and not Vitest, and every final claim about the tests is true, also for sessions that end red. In this repository, agent-run Vitest outside a gate falls to at most half the baseline of 9.0 runs per editing session, and workers' full-suite Vitest runs to near zero. The targets are the coordinator's proposal and the human sets them.
+6. Adoption is measured. On a cold, slow fixture in both harnesses, controlled sessions under the reworded gate run the full suite through Squeal and not Vitest, and every final claim about the tests is true, also for sessions that end red. In this repository, agent-run Vitest outside a gate falls to at most half the baseline of 9.0 runs per editing session, and workers' full-suite Vitest runs to near zero. The targets were set by the human, 2026-10-09, as the coordinator proposed.
 
 ## Non-goals
 
@@ -122,8 +122,6 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
 1. How a Codex user invokes a plugin skill, how Codex names it, and whether a skill finds its plugin's CLI in a repository without Squeal, in both harnesses. Also whether Claude Code's question tool is available inside a skill. Owner: wave-0 checks (005-04).
 2. Codex's shell tool timeout, which bounds D5's `<ms>`. Owner: 005-04.
 3. `focus` reorders the scheduler's queue, which is 001's. Owner: the 001 coordinator, asked before wave 1 dispatches.
-4. Goal 6's targets. Owner: the human.
-5. The skill's name, `setup`, against `init`. Owner: the human; the default is `setup`.
 
 ## References
 
