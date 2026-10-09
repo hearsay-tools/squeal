@@ -6444,13 +6444,29 @@ var init_rerun = __esm({
   }
 });
 
+// src/core/scheduler/sharing.ts
+function joinSpan(span, durationMs) {
+  const time = durationMs ?? 0;
+  const fastest = Math.min(span?.fastest ?? time, time);
+  const slowest = Math.max(span?.slowest ?? time, time);
+  return slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest) ? { fastest, slowest } : null;
+}
+var SHARE_FLOOR_MS, SHARE_RATIO;
+var init_sharing = __esm({
+  "src/core/scheduler/sharing.ts"() {
+    "use strict";
+    SHARE_FLOOR_MS = 1e3;
+    SHARE_RATIO = 4;
+  }
+});
+
 // src/core/slow/guard.ts
 import { availableParallelism, loadavg } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 async function waitForCapacity(wait) {
   const load = wait.load ?? loadavg;
   const cpus = wait.cpus ?? availableParallelism;
-  const sleep10 = wait.sleep ?? delay;
+  const sleep11 = wait.sleep ?? delay;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu = () => (load()[0] ?? 0) / Math.max(1, cpus());
@@ -6461,7 +6477,7 @@ async function waitForCapacity(wait) {
     if (current2 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current2 };
-    await sleep10(Math.min(recheckMs, left));
+    await sleep11(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -6651,6 +6667,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known2 = 0;
+  let span = null;
   let tookBacklog = false;
   let lane = null;
   for (const ref2 of ledger.ordered()) {
@@ -6671,6 +6688,11 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
         ledger.applyResults(file, key2, hits, ledger.checkpoints.idFor(ref2));
         continue;
       }
+    }
+    if (!backlog) {
+      const joined = joinSpan(span, file.durationMs);
+      if (joined === null) continue;
+      span = joined;
     }
     known2 += file.durationMs ?? 0;
     if (picked.length > 0 && known2 > budget) break;
@@ -6889,6 +6911,7 @@ var init_tiers = __esm({
     init_records();
     init_rerun();
     init_revision2();
+    init_sharing();
     init_slow3();
     init_stability();
     init_store_results();
@@ -11847,6 +11870,9 @@ function createDaemonLoop(options) {
         extraFiles: scheduler.extraFiles()
       });
       await feed.start();
+    },
+    async reconcile() {
+      await feed?.reconcile("interval");
     },
     async close() {
       await feed?.close();
@@ -32210,7 +32236,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.75";
+  if (true) return "0.1.76";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33570,6 +33596,7 @@ function parseRequest(line) {
     case "ping":
     case "nudge":
     case "run-slow":
+    case "sync":
     case "stop":
       return { type: request.type };
     case "run-all":
@@ -33586,6 +33613,9 @@ function parseRequest(line) {
     case "run-slow-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
+    case "sync-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "sync-status", requestId: request.requestId };
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
@@ -33609,6 +33639,7 @@ var MAX_REQUESTS = 32;
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
+  const syncRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -33623,6 +33654,14 @@ function createHandlers(context) {
     type: "run-slow",
     requestId,
     requested: state.requested,
+    error: state.error
+  });
+  const sync = (requestId, state) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "sync",
+    requestId,
+    revision: state.revision,
     error: state.error
   });
   return (request) => {
@@ -33684,6 +33723,27 @@ function createHandlers(context) {
         const state = slowRequests.get(request.requestId);
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return runSlow(request.requestId, state);
+      }
+      case "sync": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
+        const requestId = randomUUID();
+        const state = { revision: null, error: null };
+        remember(syncRequests, requestId, state);
+        context.requestSync().then(
+          (revision) => {
+            state.revision = revision;
+          },
+          (error) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          }
+        );
+        return sync(requestId, state);
+      }
+      case "sync-status": {
+        const state = syncRequests.get(request.requestId);
+        if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+        return sync(request.requestId, state);
       }
       case "stop":
         context.onStop();
@@ -33872,6 +33932,17 @@ async function inWorker(worker, identity, events) {
             })
           );
           return;
+        case "sync":
+          events.requestSync().then(
+            (revision) => post({ type: "sync-result", id: message2.id, revision, error: null }),
+            (error) => post({
+              type: "sync-result",
+              id: message2.id,
+              revision: null,
+              error: error instanceof Error ? error.message : String(error)
+            })
+          );
+          return;
         case "stop":
           events.onStop();
           return;
@@ -33924,6 +33995,7 @@ async function inThread(identity, events) {
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
+      requestSync: events.requestSync,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown
@@ -35564,6 +35636,7 @@ var Daemon = class {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
+        requestSync: () => this.#requestSync(),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -35596,6 +35669,15 @@ var Daemon = class {
       throw new Error("the daemon is not running a scheduler");
     }
     return requestSlowSuite(this.#loop.scheduler);
+  }
+  /** Lessons, defect 30: the revision of every change made before the request, once stored. */
+  async #requestSync() {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") {
+      throw new Error("the daemon is not running a scheduler");
+    }
+    await this.#loop.reconcile();
+    return this.#loop.scheduler.status().revision;
   }
   #note(text2) {
     this.#log(text2);
@@ -36150,15 +36232,15 @@ function safeList2(dir) {
 
 // src/cli/run.ts
 init_fs();
-import { setTimeout as sleep7 } from "node:timers/promises";
+import { setTimeout as sleep8 } from "node:timers/promises";
 init_store2();
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep6 } from "node:timers/promises";
+import { setTimeout as sleep7 } from "node:timers/promises";
 init_text();
 
 // src/cli/status-wait.ts
-import { setTimeout as sleep5 } from "node:timers/promises";
+import { setTimeout as sleep6 } from "node:timers/promises";
 init_fs();
 init_state3();
 init_text();
@@ -36180,6 +36262,54 @@ function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
   return session === void 0 || session === "" ? SQUEAL_COMMAND : codexCommand(env, cli);
 }
 
+// src/cli/status-sync.ts
+import { setTimeout as sleep5 } from "node:timers/promises";
+var UNSUPPORTED = { state: "unsupported" };
+function syncDaemon(root, pollMs) {
+  let current2 = { state: "pending" };
+  let stopped = false;
+  const isStopped = () => stopped;
+  void (async () => {
+    for (; ; ) {
+      const outcome2 = await syncOnce(root, pollMs, isStopped);
+      if (outcome2 !== "again") return outcome2;
+    }
+  })().then(
+    (outcome2) => {
+      current2 = outcome2;
+    },
+    () => {
+      current2 = UNSUPPORTED;
+    }
+  );
+  return {
+    current: () => current2,
+    stop: () => {
+      stopped = true;
+    }
+  };
+}
+async function syncOnce(root, pollMs, stopped) {
+  const socketPath = await daemonSocket(root).catch(() => null);
+  if (socketPath === null || stopped()) return UNSUPPORTED;
+  const first = await askDaemon(socketPath, { type: "sync" }).catch(() => null);
+  if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
+  let state = first;
+  for (; ; ) {
+    if (state.revision !== null) return { state: "synced", revision: state.revision };
+    if (state.error !== null) return UNSUPPORTED;
+    await sleep5(pollMs, void 0, { ref: false });
+    if (stopped()) return UNSUPPORTED;
+    const next = await askDaemon(socketPath, {
+      type: "sync-status",
+      requestId: first.requestId
+    }).catch(() => void 0);
+    if (next === void 0) continue;
+    if (next === null || !next.ok || next.type !== "sync") return "again";
+    state = next;
+  }
+}
+
 // src/cli/status-wait.ts
 var STATUS_WAIT_POLL_MS = 250;
 var STATUS_WAIT_SETTLE_MS = 750;
@@ -36187,34 +36317,47 @@ async function waitForStatus(cwd, options) {
   const now = options.now ?? Date.now;
   const pollMs = options.pollMs ?? STATUS_WAIT_POLL_MS;
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
+  const startSync = options.sync ?? syncDaemon;
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start = null;
-  for (; ; ) {
-    const final = elapsed() >= options.timeoutMs;
-    const left = options.timeoutMs - elapsed();
-    const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
-    const read4 = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
-      const id2 = worktreeIdFor(root);
-      const states = store.knownStates.list(id2);
-      const header = readHeader(store, id2, states);
-      start ??= states.map(toStartView);
-      const transitions = countNews(start, states, header.revision);
-      const settled = final || elapsed() >= settleMs;
-      const daemon = worktreeLiveness(store.worktrees.get(id2), now());
-      const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : settled && !isPending(header) ? "quiet" : final ? "timeout" : null;
-      return outcome2 === null ? null : { outcome: outcome2, transitions, result: buildSnapshot(store, root, now()) };
-    });
-    if (read4 !== null && "available" in read4) {
-      if (start === null || final) {
-        return { outcome: "unavailable", waitedMs: elapsed(), result: read4 };
+  const syncing = {};
+  try {
+    for (; ; ) {
+      const final = elapsed() >= options.timeoutMs;
+      const left = options.timeoutMs - elapsed();
+      const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
+      const read4 = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
+        const id2 = worktreeIdFor(root);
+        const states = store.knownStates.list(id2);
+        const header = readHeader(store, id2, states);
+        start ??= states.map(toStartView);
+        const transitions = countNews(start, states, header.revision);
+        syncing.sync ??= startSync(root, pollMs);
+        const settled = final || elapsed() >= settleMs;
+        const synced = isSynced(syncing.sync, header.revision, settled);
+        const daemon = worktreeLiveness(store.worktrees.get(id2), now());
+        const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : synced && !isPending(header) ? "quiet" : final ? "timeout" : null;
+        return outcome2 === null ? null : { outcome: outcome2, transitions, result: buildSnapshot(store, root, now()) };
+      });
+      if (read4 !== null && "available" in read4) {
+        if (start === null || final) {
+          return { outcome: "unavailable", waitedMs: elapsed(), result: read4 };
+        }
+      } else if (read4 !== null) {
+        return { ...read4, waitedMs: elapsed() };
       }
-    } else if (read4 !== null) {
-      return { ...read4, waitedMs: elapsed() };
+      const remaining = options.timeoutMs - elapsed();
+      if (remaining > 0) await sleep6(Math.min(pollMs, remaining));
     }
-    const remaining = options.timeoutMs - elapsed();
-    if (remaining > 0) await sleep5(Math.min(pollMs, remaining));
+  } finally {
+    syncing.sync?.stop();
   }
+}
+function isSynced(sync, revision, settled) {
+  const current2 = sync.current();
+  if (current2.state === "synced") return revision >= current2.revision;
+  return current2.state === "unsupported" && settled;
 }
 function toStartView(state) {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
@@ -36356,7 +36499,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    await sleep6(POLL_MS);
+    await sleep7(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -36436,7 +36579,7 @@ async function recorded(socketPath, first, timeoutMs, io) {
       );
       return null;
     }
-    await sleep7(POLL_MS2);
+    await sleep8(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -36462,12 +36605,12 @@ async function ended(root, socketPath, id2) {
     }
     if (end !== null) return end;
     if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) return null;
-    await sleep7(250);
+    await sleep8(250);
   }
 }
 
 // src/cli/start.ts
-import { setTimeout as sleep8 } from "node:timers/promises";
+import { setTimeout as sleep9 } from "node:timers/promises";
 var SPAWN_WAIT_MS = 1e4;
 async function startCommand(args, io) {
   if (args.length > 1 || args[0]?.startsWith("-")) {
@@ -36491,7 +36634,7 @@ async function startCommand(args, io) {
 `);
         return 1;
       }
-      await sleep8(50);
+      await sleep9(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}
@@ -36503,7 +36646,7 @@ async function startCommand(args, io) {
 }
 
 // src/cli/stop.ts
-import { setTimeout as sleep9 } from "node:timers/promises";
+import { setTimeout as sleep10 } from "node:timers/promises";
 var STOP_WAIT_MS2 = 6e4;
 async function stopCommand(args, io) {
   if (args.length > 1 || args[0]?.startsWith("-")) {
@@ -36531,7 +36674,7 @@ async function stopCommand(args, io) {
 `);
       return 0;
     }
-    await sleep9(50);
+    await sleep10(50);
   }
   io.stdout(`Squeal daemon stopped for ${root}
 `);

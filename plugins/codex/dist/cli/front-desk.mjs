@@ -30,6 +30,7 @@ function parseRequest(line) {
     case "ping":
     case "nudge":
     case "run-slow":
+    case "sync":
     case "stop":
       return { type: request.type };
     case "run-all":
@@ -46,6 +47,9 @@ function parseRequest(line) {
     case "run-slow-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
+    case "sync-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "sync-status", requestId: request.requestId };
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
@@ -77,6 +81,7 @@ var MAX_REQUESTS = 32;
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
+  const syncRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -91,6 +96,14 @@ function createHandlers(context) {
     type: "run-slow",
     requestId,
     requested: state.requested,
+    error: state.error
+  });
+  const sync = (requestId, state) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "sync",
+    requestId,
+    revision: state.revision,
     error: state.error
   });
   return (request) => {
@@ -152,6 +165,27 @@ function createHandlers(context) {
         const state = slowRequests.get(request.requestId);
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return runSlow(request.requestId, state);
+      }
+      case "sync": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
+        const requestId = randomUUID();
+        const state = { revision: null, error: null };
+        remember(syncRequests, requestId, state);
+        context.requestSync().then(
+          (revision) => {
+            state.revision = revision;
+          },
+          (error) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          }
+        );
+        return sync(requestId, state);
+      }
+      case "sync-status": {
+        const state = syncRequests.get(request.requestId);
+        if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+        return sync(request.requestId, state);
       }
       case "stop":
         context.onStop();
@@ -277,6 +311,7 @@ var post = (message) => port.postMessage(message);
 var phase = "starting";
 var waiting = /* @__PURE__ */ new Map();
 var waitingSlow = /* @__PURE__ */ new Map();
+var waitingSync = /* @__PURE__ */ new Map();
 var server = null;
 function bind(identity) {
   const handle = createHandlers({
@@ -294,6 +329,11 @@ function bind(identity) {
       const id = randomUUID2();
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
+    }),
+    requestSync: () => new Promise((resolve, reject) => {
+      const id = randomUUID2();
+      waitingSync.set(id, { resolve, reject });
+      post({ type: "sync", id });
     }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
@@ -327,6 +367,13 @@ port.on("message", (message) => {
       waitingSlow.delete(message.id);
       if (message.requested !== null) entry?.resolve(message.requested);
       else entry?.reject(new Error(message.error ?? "run --slow failed"));
+      return;
+    }
+    case "sync-result": {
+      const entry = waitingSync.get(message.id);
+      waitingSync.delete(message.id);
+      if (message.revision !== null) entry?.resolve(message.revision);
+      else entry?.reject(new Error(message.error ?? "sync failed"));
       return;
     }
     case "close":
