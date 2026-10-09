@@ -1738,7 +1738,7 @@ var init_policy = __esm({
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
       nodeTest: [],
-      slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5 },
+      slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null }
     };
@@ -2093,7 +2093,8 @@ var init_policy2 = __esm({
         include: slowInclude,
         maxWorkers: positiveInteger,
         maxLoadPerCpu: aboveZero,
-        maxDeferMs: atLeastZero
+        maxDeferMs: atLeastZero,
+        maxParallel: positiveInteger
       },
       daemon: { idleExitMinutes: aboveZero },
       store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
@@ -5912,7 +5913,38 @@ function acquireSlowSlot(request) {
   const { dir, owner: owner2, signal: signal2 } = request;
   if (signal2?.aborted) return null;
   preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
-  const db = new DatabaseSync5(join26(dir, SLOW_LOCK_FILE));
+  const permits = Math.max(1, request.permits ?? 1);
+  const want = Math.max(1, request.want ?? 1);
+  const held = [];
+  try {
+    for (let i2 = 0; i2 < permits && held.length < want; i2++) {
+      const db = takePermit(join26(dir, permitFile(i2)), owner2);
+      if (db !== null) held.push(db);
+    }
+  } catch (error) {
+    for (const db of held) db.close();
+    throw error;
+  }
+  if (held.length === 0) return null;
+  const keep = (count) => {
+    for (const db of held.splice(count)) db.close();
+    if (held.length === 0) signal2?.removeEventListener("abort", release);
+  };
+  const release = () => keep(0);
+  signal2?.addEventListener("abort", release, { once: true });
+  return {
+    get permits() {
+      return held.length;
+    },
+    shrinkTo: (count) => keep(Math.max(1, count)),
+    release
+  };
+}
+function permitFile(i2) {
+  return i2 === 0 ? SLOW_LOCK_FILE : `slow.${i2}.lock`;
+}
+function takePermit(path, owner2) {
+  const db = new DatabaseSync5(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
@@ -5937,15 +5969,7 @@ function acquireSlowSlot(request) {
     db.close();
     throw error;
   }
-  let held = true;
-  const release = () => {
-    if (!held) return;
-    held = false;
-    signal2?.removeEventListener("abort", release);
-    db.close();
-  };
-  signal2?.addEventListener("abort", release, { once: true });
-  return { release };
+  return db;
 }
 function waiterPath(dir, worktreeId) {
   const name = createHash13("sha256").update(worktreeId).digest("hex").slice(0, 16);
@@ -7700,6 +7724,10 @@ var init_runner_work = __esm({
 
 // src/core/scheduler/slow-tier.ts
 import { setTimeout as delay2 } from "node:timers/promises";
+function longest(durations) {
+  const known2 = durations.filter((ms) => ms !== null);
+  return known2.length === 0 ? null : Math.max(...known2);
+}
 function tierKeys(tier, ledger) {
   const keys = tier.files.flatMap(({ file, key: key2 }) => [key2, ledger.files.get(file.id)?.key ?? null]);
   return [...new Set(keys.filter((key2) => key2 !== null))];
@@ -7798,18 +7826,21 @@ var init_slow_tier = __esm({
        */
       async next() {
         const preemptions = this.#preemptions;
-        const ref2 = await this.host.lock.run(() => this.#candidate());
+        const refs = await this.host.lock.run(() => this.#candidates());
         const { context } = this.host.started();
         const dir = this.options.slotDir ?? slowSlotDir();
-        if (ref2 === null) {
+        if (refs.length === 0) {
           this.#unmark(dir, context.worktreeId);
           return null;
         }
         if (preemptions !== this.#preemptions) return "again";
         const load = await this.#waitForCapacity(context);
         if (load === "preempted" || preemptions !== this.#preemptions) return "again";
+        const { maxParallel } = context.policy.slow;
+        const want = load === null && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
         const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
-        const slot2 = yieldTurn ? null : acquireSlowSlot({ dir, owner: { pid: process.pid, worktreeId: context.worktreeId } });
+        const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
+        const slot2 = yieldTurn ? null : acquireSlowSlot({ dir, owner: owner2, permits: maxParallel, want });
         if (slot2 === null) {
           this.#tookLast = false;
           markSlotWaiter(dir, context.worktreeId);
@@ -7825,7 +7856,7 @@ var init_slow_tier = __esm({
         this.#slotNoted = false;
         let run = null;
         try {
-          const selected = await this.host.lock.run(() => this.#select(ref2, load));
+          const selected = await this.host.lock.run(() => this.#select(refs, load, slot2));
           if (selected === null) return "again";
           run = { ...selected, slot: slot2 };
           return run;
@@ -7838,8 +7869,11 @@ var init_slow_tier = __esm({
         this.#marked = false;
         clearSlotWaiter(dir, worktreeId);
       }
-      /** Under the lock: the first slow file a trigger lets run now, or `null`. */
-      #candidate() {
+      /**
+       * Under the lock: the slow files a trigger lets run now, in order, all of
+       * the first one's lane, since a tier runs in one lane; none when none may.
+       */
+      #candidates() {
         const { context, ledger } = this.host.started();
         this.#noteMissingArtifacts(context, ledger);
         const queued = ledger.orderedSlow();
@@ -7847,15 +7881,21 @@ var init_slow_tier = __esm({
           this.#requested = false;
           this.#budgetMs = null;
           this.#publish(null);
-          return null;
+          return [];
         }
-        if (this.host.fastPending()) return this.#publish({ kind: "waiting", for: "fast" });
-        const triggered = this.#trigger(context, ledger);
-        const ref2 = queued.find(triggered);
-        if (ref2 !== void 0) return ref2;
+        if (this.host.editPending()) {
+          this.#publish({ kind: "waiting", for: "fast" });
+          return [];
+        }
+        const triggered = queued.filter(this.#trigger(context, ledger));
+        const first = triggered[0];
+        if (first !== void 0) {
+          const lane = laneOf(context, first);
+          return triggered.filter((ref2) => laneOf(context, ref2) === lane);
+        }
         this.#publish({ kind: "waiting", for: "idle" });
         this.#arm();
-        return null;
+        return [];
       }
       /**
        * Under the lock: whether a trigger lets a slow file run now. Idle or absent
@@ -7896,16 +7936,51 @@ var init_slow_tier = __esm({
         }
       }
       /**
-       * Under the lock, after the slot and the guard: the one-file tier, unless
-       * fast work arrived meanwhile, the file left the queue or class, its
-       * trigger is gone (a consumer entered a turn during the wait; the file
-       * stays queued and the pass keeps its budget), or the store now holds a
-       * result that may stand for it (`Ledger.lookup`).
+       * Under the lock, after the guard and the slot: the tier, of `refs` in
+       * order, as many as `slot` has permits while the machine is still idle,
+       * else one; the permits it does not use go. Nothing when an edit's fast
+       * work arrived meanwhile. A file is passed over when it left the queue or
+       * class, its trigger is gone (a consumer entered a turn during the wait;
+       * the file stays queued and the pass keeps its budget), or the store now
+       * holds a result that may stand for it (`Ledger.lookup`).
        */
-      #select(ref2, ranUnderLoad) {
+      #select(refs, ranUnderLoad, slot2) {
         const { context, ledger } = this.host.started();
-        if (this.host.fastPending() || !ledger.queue.has(ref2) || !ledger.queue.isSlow(ref2)) return null;
-        if (!this.#trigger(context, ledger)(ref2)) return null;
+        if (this.host.editPending()) return null;
+        const width = this.host.fastIdle() ? slot2.permits : 1;
+        const triggered = this.#trigger(context, ledger);
+        const picked = [];
+        for (const ref2 of refs) {
+          if (picked.length >= width) break;
+          if (!ledger.queue.has(ref2) || !ledger.queue.isSlow(ref2) || !triggered(ref2)) continue;
+          const tierFile = this.#pick(ref2, context, ledger);
+          if (tierFile !== null) picked.push(tierFile);
+        }
+        const first = picked[0];
+        if (first === void 0) return null;
+        slot2.shrinkTo(picked.length);
+        for (const { file } of picked) {
+          ledger.queue.remove(file.ref);
+          if (ranUnderLoad === null) continue;
+          context.note(
+            `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)`
+          );
+        }
+        const since = context.now();
+        const artifact = slowPolicyView(context.policy)?.artifactFor(first.file.ref.path) ?? [];
+        const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
+        return context.store.transaction(() => {
+          const tier = startTier(context, ledger, picked, false);
+          this.#publish({ kind: "running", path: first.file.ref.path, since, lastDurationMs });
+          return { tier, artifact };
+        });
+      }
+      /**
+       * Under the lock: `ref` as a file of the tier, or `null` when it has no key
+       * or is blocked (it leaves the queue), or when another worktree's result
+       * stands for it (applied).
+       */
+      #pick(ref2, context, ledger) {
         const file = ledger.file(ref2);
         const key2 = file?.key ?? null;
         const checkpointId = ledger.checkpoints.idFor(ref2);
@@ -7922,45 +7997,31 @@ var init_slow_tier = __esm({
           ledger.commit();
           return null;
         }
-        ledger.queue.remove(ref2);
-        if (ranUnderLoad !== null) {
-          context.note(
-            `slow file ${ref2.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)`
-          );
-        }
-        const inputs2 = context.keys.stabilityPaths(ref2);
-        const since = context.now();
-        const artifact = slowPolicyView(context.policy)?.artifactFor(ref2.path) ?? [];
-        return context.store.transaction(() => {
-          const tier = startTier(context, ledger, [{ file, key: key2, inputs: inputs2, checkpointId, forced }], false);
-          this.#publish({ kind: "running", path: ref2.path, since, lastDurationMs: file.durationMs });
-          return { tier, artifact };
-        });
+        return { file, key: key2, inputs: context.keys.stabilityPaths(ref2), checkpointId, forced };
       }
       /**
        * Under the lock, in the transaction that records `run` (D5, D8, review
        * wave 2 B1 and B2): the keys it ran under were declared to test its
        * artifact, and its activity goes with it (`ended`).
        */
-      recorded(run, ledger, othersInFlight) {
+      recorded(run, ledger) {
         const { context } = this.host.started();
         const runs = new Map(tierKeys(run.tier, ledger).map((key2) => [key2, run.artifact]));
         recordSlowArtifacts(context.store, context.worktreeId, runs);
-        this.ended(othersInFlight);
+        this.ended();
       }
       /**
        * Under the lock, as a slow run ends, recorded, discarded or put back: its
        * "running" activity goes in favour of what the remaining slow files wait
-       * for, without starting one (review wave 2, B1). Fast work in flight or
-       * pending, or the agent not pausing; when a trigger already holds, nothing
-       * until `next` decides. `othersInFlight`: a tier of another lane runs.
+       * for, without starting one (review wave 2, B1). An edit's fast work in
+       * flight or pending, or the agent not pausing; when a trigger already
+       * holds, nothing until `next` decides.
        */
-      ended(othersInFlight) {
+      ended() {
         const { context, ledger } = this.host.started();
         const queued = ledger.orderedSlow();
         if (queued.length === 0) this.#publish(null);
-        else if (othersInFlight || this.host.fastPending())
-          this.#publish({ kind: "waiting", for: "fast" });
+        else if (this.host.editPending()) this.#publish({ kind: "waiting", for: "fast" });
         else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
         else this.#publish({ kind: "waiting", for: "idle" });
       }
@@ -8040,6 +8101,7 @@ var init_scheduler2 = __esm({
     init_notes();
     init_revision();
     init_state3();
+    init_types();
     init_backlog();
     init_batch();
     init_bootstrap();
@@ -8065,7 +8127,8 @@ var init_scheduler2 = __esm({
             started: () => this.#started(),
             closed: () => this.#closed,
             pump: () => this.#pump(),
-            fastPending: () => this.#fastPending()
+            editPending: () => this.#editPending(),
+            fastIdle: () => this.#fastIdle()
           },
           options.slow
         );
@@ -8270,6 +8333,11 @@ var init_scheduler2 = __esm({
         if (this.#isIdle()) return Promise.resolve();
         return new Promise((resolve11) => this.#idle.push(resolve11));
       }
+      slowPending() {
+        if (this.#closed || !this.#ledger) return false;
+        if ([...this.#inFlight.keys()].some(isSlowLane)) return true;
+        return this.#ledger.orderedSlow().length > 0;
+      }
       trackedPaths() {
         return this.#context?.keys.cache.paths() ?? [];
       }
@@ -8306,10 +8374,12 @@ var init_scheduler2 = __esm({
        * behind its own run (Vitest's adapter) still holds the runner work for
        * as long as its tier runs.
        *
-       * A slow file (spec 004 D2) is selected only when no tier is in flight,
-       * so the slow tier's start rules stand as they were with one tier at a
-       * time; it runs in a lane of its own (`laneOf`, task 004-18), so an edit's
-       * fast tier starts beside it.
+       * A slow tier (spec 004 D2) is selected when no slow tier and no edit's
+       * tier is in flight (`#slowMayStart`): a backlog tier may run beside it
+       * (D2 as amended 2026-10-09, task 004-34). It runs in a lane of its own
+       * (`laneOf`, task 004-18), so an edit's fast tier starts beside it. A fast
+       * tier that ends gives way at once from the slow tier's load guard, so the
+       * backlog's next tier is not held behind the wait.
        *
        * An error of a tier stops the pump with a note; the tier's files go back
        * to the queue, the tiers still in flight are recorded, and the next batch
@@ -8334,7 +8404,7 @@ var init_scheduler2 = __esm({
                 continue;
               }
               if (this.#awaitingInstall || this.#reinstalled) break;
-              if (this.#inFlight.size > 0 && !this.#freeLaneQueued()) {
+              if (this.#inFlight.size > 0 && !this.#freeLaneQueued() && !this.#slowMayStart()) {
                 await this.#nextEvent();
                 continue;
               }
@@ -8362,15 +8432,15 @@ var init_scheduler2 = __esm({
                 continue;
               }
               if (this.#reinstalled) break;
-              if (this.#inFlight.size === 0) {
+              if (this.#slowMayStart()) {
                 const after = await this.#slow.next();
                 if (after === "again") continue;
                 if (after !== null) {
                   this.#fly(after.tier, install.stamp, after);
                   continue;
                 }
-                if (!this.#woken) break;
               }
+              if (this.#inFlight.size === 0 && !this.#woken) break;
               await this.#nextEvent();
             }
           } catch (error) {
@@ -8412,7 +8482,7 @@ var init_scheduler2 = __esm({
                   observed
                 );
                 if (slow === null) forgetSlowRuns(context, ledger, tier);
-                else this.#slow.recorded(slow, ledger, this.#othersInFlight(tier.lane));
+                else this.#slow.recorded(slow, ledger);
                 return result;
               });
             });
@@ -8426,6 +8496,7 @@ var init_scheduler2 = __esm({
           } finally {
             slow?.slot.release();
             this.#inFlight.delete(tier.lane);
+            if (slow === null) this.#slow.preempt();
             this.#notify();
           }
         })();
@@ -8488,10 +8559,34 @@ var init_scheduler2 = __esm({
         if (this.#awaitingInstall || this.#reinstalled) return false;
         return this.#runnerWork.size > 0 || (this.#ledger?.queue.fastSize ?? 0) > 0;
       }
-      /** Fast work goes before a slow file (spec 004 D2), a refinement in flight included. */
-      #fastPending() {
+      /**
+       * An edit's fast work goes before a slow file (spec 004 D2 as amended):
+       * runner work, a refinement in flight included, a recent fast file queued,
+       * or an edit's tier in flight. A backlog tier carries its `cancel`.
+       */
+      #editPending() {
         const work = this.#runnerWork;
-        return work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0;
+        if (work.size > 0 || work.refining || this.#ledger?.queue.hasRecent()) return true;
+        return [...this.#inFlight.values()].some(
+          ({ tier }) => tier.cancel === null && !isSlowLane(tier.lane)
+        );
+      }
+      /** No fast work pending or running: an idle slow tier may take several files (D2). */
+      #fastIdle() {
+        const work = this.#runnerWork;
+        if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
+        return [...this.#inFlight.keys()].every(isSlowLane);
+      }
+      /**
+       * The pump may ask the slow tier: nothing is in flight (it then also ends
+       * a drained pass), or slow files are queued and neither a slow tier nor an
+       * edit's tier is in flight.
+       */
+      #slowMayStart() {
+        if (this.#inFlight.size === 0) return true;
+        if ((this.#ledger?.queue.slowSize ?? 0) === 0) return false;
+        if ([...this.#inFlight.keys()].some(isSlowLane)) return false;
+        return !this.#editPending();
       }
       #retireSlow() {
         try {
@@ -8499,10 +8594,6 @@ var init_scheduler2 = __esm({
         } catch (error) {
           this.#note(`could not clear the slow tier's activity: ${String(error)}`);
         }
-      }
-      /** A tier of a lane other than `lane` is in flight. */
-      #othersInFlight(lane) {
-        return [...this.#inFlight.keys()].some((other) => other !== lane);
       }
       /** Puts the files of a tier that never got recorded back into the queue; a slow one's activity goes. */
       async #requeue(tier, slow) {
@@ -8517,7 +8608,7 @@ var init_scheduler2 = __esm({
           }
           try {
             ledger.commit();
-            if (slow) this.#slow.ended(this.#othersInFlight(tier.lane));
+            if (slow) this.#slow.ended();
           } catch (error) {
             this.#note(`could not record the re-queued tier: ${String(error)}`);
           }
@@ -31391,7 +31482,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.60";
+  if (true) return "0.1.61";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33729,6 +33820,7 @@ function startTimers(context) {
   const countPresence = (at2) => {
     if (store.consumers.list(worktreeId).length > 0) {
       presence.lastPresentAt = at2;
+      presence.draining = false;
       context.active(at2);
       return false;
     }
@@ -33741,10 +33833,22 @@ function startTimers(context) {
   const departure = () => attempt("departure check", () => {
     const at2 = now();
     if (!countPresence(at2) || presence.lastPresentAt === null) return;
-    if (at2 - presence.lastPresentAt >= graceMs) {
+    const gone = at2 - presence.lastPresentAt;
+    if (gone < graceMs) return;
+    if (context.slowPending?.() !== true) {
       context.shutdown(
         "sessions-gone",
-        `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`
+        presence.draining === true ? "daemon stopped: the slow files pending when its last session ended have run" : `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`
+      );
+    } else if (gone >= idleMs) {
+      context.shutdown(
+        "sessions-gone",
+        `daemon stopped: slow files were still pending ${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`
+      );
+    } else if (presence.draining !== true) {
+      presence.draining = true;
+      context.note(
+        `the last session ended with slow files pending; this daemon runs them before it exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`
       );
     }
   });
@@ -34402,6 +34506,8 @@ var Daemon = class {
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
       observedSeen: this.#observedSeen,
+      // Task 004-29: the last session's departure drains these before the exit.
+      slowPending: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.slowPending(),
       note: (text2) => this.#note(text2),
       log: this.#log,
       shutdown: (reason2, text2) => void this.#shutdown(reason2, 0, text2)
@@ -34503,10 +34609,11 @@ var Daemon = class {
         onRecovered: () => this.#note("Vitest started after the config changed"),
         around
       }) : null;
+      const slowWorkers = () => Math.max(this.#policy.slow.maxWorkers, this.#policy.slow.maxParallel);
       const slowVitest = () => runnerModule.createRecoveringRunner({
         name: "vitest",
         adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-        create: vitestInstance(`${SLOW_LANE_PREFIX}vitest`, this.#policy.slow.maxWorkers),
+        create: vitestInstance(`${SLOW_LANE_PREFIX}vitest`, slowWorkers()),
         onFailure: (text2) => this.#note(`the slow tier's ${text2}`),
         around
       });

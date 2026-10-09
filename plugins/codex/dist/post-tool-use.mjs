@@ -271,7 +271,7 @@ var DEFAULT_POLICY = {
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
-  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5 },
+  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null }
 };
@@ -454,7 +454,8 @@ var SHAPE = {
     include: slowInclude,
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
-    maxDeferMs: atLeastZero
+    maxDeferMs: atLeastZero,
+    maxParallel: positiveInteger
   },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
@@ -3656,7 +3657,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.60";
+  if (true) return "0.1.61";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
