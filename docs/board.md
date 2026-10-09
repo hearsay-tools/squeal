@@ -513,6 +513,8 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 ## Later
 
+- After the first hub release that carries 004-47 (0.1.74 or later) is installed everywhere: restore `test/fixtures/node-test/**` and `test/fixtures/vitest/**` in this repository's `squeal.config.json`. `b70fcc2` (the 001 coordinator, 2026-10-09) listed their tracked subdirectories instead, to stop installed 0.1.62 daemons keying the gitignored `.tmp` scratch (`lessons.md` defect 10); a fixture directory added later is not declared until then. 002/003/004 coordinator.
+
 - 001: a SubagentStop report restarts the subagent in Claude Code, so the parent receives the subagent's reply to the report instead of its answer to the task (005 `research/instruction-surfaces.md` 1, session `can-c`; 2.1.295). Probe first.
 
 - 001: `squeal` is not on a user's PATH after a plugin install (the CLI is `<plugin>/dist/cli/squeal.mjs`), so the READMEs' and the migration's `squeal init` fails with "command not found" (the human, 2026-10-09). Print the absolute command from `squeal init` and the hooks (the primer already does), and make the READMEs say `node ~/.claude/plugins/cache/hearsay/squeal/<version>/dist/cli/squeal.mjs` or offer a one-line shim.
