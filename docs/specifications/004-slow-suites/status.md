@@ -69,6 +69,8 @@ Started: 2026-10-08
 
 - 2026-10-09, wave 5.5, 0.1.74 (gate: Node 22 all 2265 passed; Node 24 one `revision-lag` timing failure that passes alone): 004-47, ignored files are listed only for `inputs` entries whose test-file glob selects a slow file, minus test files and paths under a slow glob's directory (D5, D6), so a run that writes scratch into a declared ignored directory settles (`lessons.md` defect 10); the installed 0.1.62 already keyed `.tmp` in this repository (since 004-28, 0.1.60), so the 001 coordinator narrowed this repository's fixture globs in `b70fcc2` until a release carries 004-47 (a Later row restores them). 004-48, read-time fixes of the line (defects 11, 12, 15): "waiting for the agent to pause" only with a consumer in a turn, a predecessor daemon's running file hidden (`since` before the live daemon's start), "sources changed since" by content, `squeal.config.json` never a source. Review 004-49 dispatched.
 
+- 2026-10-09, review 004-49 (`reviews/wave-5.5.md`, FAIL at `be9765e`, executable `2554be0`, gpt-6.1-sol): 004-47 settles a fresh store, and this repository's real node:test and Vitest tests with the original broad fixture globs settle once at revision 0 on both Nodes; 004-48's three cases hold (N1: the copied `turn:` key, a nit). One blocker, B1: on a store a pre-fix daemon wrote, bootstrap re-adds the cached ignored scratch as extras and declared inputs, so the loop returns on every upgraded store. Repair 004-50, re-review 004-51.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
