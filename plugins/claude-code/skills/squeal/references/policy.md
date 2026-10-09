@@ -32,6 +32,7 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | `slow.maxWorkers` | `2` | Workers of one slow run. |
 | `slow.maxLoadPerCpu` | `1.0` | The slow tier waits while the one-minute load average per CPU is above this. |
 | `slow.maxDeferMs` | `600000` | How long the slow tier waits for the load to drop before it runs a slow file anyway, with a note. |
+| `slow.maxParallel` | `4` | The most slow files run at once when the machine is idle (nothing of the edits' or the backlog's running or queued, load below `slow.maxLoadPerCpu`); otherwise one at a time. Also how many slow files all of one user's daemons run at once. |
 | `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
 | `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
 | `store.maxSizeMb` | `null` | Size cap of the store; `null` for none. |

@@ -105,6 +105,11 @@ export interface SlowPolicy {
   readonly maxLoadPerCpu: number;
   /** How long the load guard defers a slow file before it runs anyway (D3). Default `600000`. */
   readonly maxDeferMs: number;
+  /**
+   * The most slow files one slow tier runs at once when the machine is idle,
+   * and the slot's permits per user (D2 as amended 2026-10-09). Default `4`.
+   */
+  readonly maxParallel: number;
 }
 
 /**
@@ -161,7 +166,7 @@ export const DEFAULT_POLICY: Policy = {
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
-  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000 },
+  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };
