@@ -85,10 +85,14 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       observed: observedStore(store, project.name),
     });
     const runs: TestFileRef[][] = [];
+    // What a wait at the latest revision is told while each run starts.
+    const named: unknown[] = [];
     const runner: RunnerAdapter = {
       ...adapter,
       run(files, options) {
         runs.push([...files]);
+        const { revision } = scheduler.status();
+        named.push(scheduler.rekeyedSince(revision - 1, revision));
         return adapter.run(files, options);
       },
     };
@@ -113,11 +117,12 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
     await scheduler.start();
     await scheduler.idle();
     expect(runs.flat().map((f) => f.path)).toEqual([TEST, TEST, TEST]);
-    // Each growth's move counts as the latest revision's, so `status --wait` holds for the file.
+    // Each growth's move counts as the latest revision's, so `status --wait` holds for the file
+    // while it re-runs; its `unknown` is its result and ends that (task 001-194).
     const { revision } = scheduler.status();
-    expect(scheduler.rekeyedSince(revision - 1, revision)).toEqual([
-      { testFile: { project: "nt", path: TEST }, revision },
-    ]);
+    const held = [{ testFile: { project: "nt", path: TEST }, revision }];
+    expect(named).toEqual([[], held, held]);
+    expect(scheduler.rekeyedSince(revision - 1, revision)).toEqual([]);
     // It never ran to a result, so the file itself is what is unknown.
     expect(sink.calls.filter((call) => call.method === "markUnknown")).toEqual([
       expect.objectContaining({
