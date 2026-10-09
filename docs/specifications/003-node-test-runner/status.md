@@ -89,6 +89,8 @@ Started: 2026-10-07
 
 - 2026-10-09, 003-45, 0.1.84 (gate fully green on Node 24 and 22, 2335 tests): the growth settle leaves an existing `keyedAt` alone and gives a file with none the latest revision, so a wait that captured an edit's revision keeps the file through a later unrelated revision until its re-run's result; the review's case and its no-growth control run through `waitForStatus` (`test/scheduler/environment-growth-wait.test.ts`), red before the fix on both Nodes. The 001 lane makes the rule general in 001-194 (`keyedAt` the earliest re-key without a result). Re-review 003-46 dispatched, second and last round.
 
+- 2026-10-09, re-review 003-46 (`reviews/wave-4.5.md`, FAIL at `adcd9916`, gpt-6.1-sol, second and last round): `reviews/wave-4.md` B1 closed on Node 22 and 24, and the independent gate green. One remaining blocker on both Nodes: 003-45 keeps every non-null `keyedAt`, including one whose re-key already has its result, so a growth during another file's run leaves its siblings in windows they have discharged, and a wait at the current revision ends quiet before their re-runs (the pre-003-45 control holds 3 files, 2 pending). The 001 lane's 001-194 (`keyedAt` the earliest re-key without a result, cleared by the next result or unknown) is the remedy, and its review 001-195 asks the combined rule over both cases on the integrated candidate. Disposition to the human.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
