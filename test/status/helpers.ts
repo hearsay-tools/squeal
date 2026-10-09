@@ -65,18 +65,18 @@ export function state(
   };
 }
 
-/** Appends `count` revisions to a worktree; the last one gets `head` and `dirty`. */
+/** Appends `count` revisions to a worktree; the last one gets `head`, `dirty` and `createdAt`. */
 export function appendRevisions(
   store: Store,
   worktreeId: string,
   count: number,
-  last: { head: string | null; dirty: boolean },
+  last: { head: string | null; dirty: boolean; createdAt?: number },
 ): void {
   store.transaction(() => {
     for (let n = 1; n <= count; n++) {
       store.revisions.append({
         worktreeId,
-        createdAt: n,
+        createdAt: n === count ? (last.createdAt ?? n) : n,
         head: n === count ? last.head : "0000000000000000000000000000000000000000",
         dirty: n === count ? last.dirty : false,
         trigger: "watch",
