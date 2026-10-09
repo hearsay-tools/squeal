@@ -23,11 +23,11 @@ Which files: any candidate, so any file under the worktree that git does not ign
 
 ## The discard (`src/runners/vitest/adapter.ts`)
 
-`invalidate` records the touched paths synchronously, before the Gate, so a run in flight hears them. A touch-only call returns at once with every current project as recreated. The next call of either lane replaces the instance (`#instance`'s stale rule): transforms and module graphs of every project and environment, the global setup, `#sources`, `#config`. The start that follows a touch passes Vite's inline `forceOptimizeDeps: true`, so the optimizer rebuilds its bundles from the disk; other starts reuse them.
+`invalidate` records the touched paths synchronously, before the Gate, so a run in flight hears them. A touch-only call returns at once with no project recreated. The next call of either lane replaces the instance (`#instance`'s stale rule): transforms and module graphs of every project and environment, the global setup, `#sources`, `#config`. The start that follows a touch passes Vite's inline `forceOptimizeDeps: true`, so the optimizer rebuilds its bundles from the disk; other starts reuse them.
 
-A run whose instance heard a touch before the run ended (after `#instance` returned it) returns none of its files completed, with `vitest adapter: <paths> was written during this run and ended as it was; ... (task 001-159)` (`withoutTouched` in `moved.ts`). The scheduler records them unknown, as for 001-146.
+A run whose instance heard a touch before the run ended (after `#instance` returned it) returns none of its files completed, with `vitest adapter: <paths> was written during this run and ended as it was; ... (task 001-159)` (`withoutTouched` in `moved.ts`). The scheduler records them unknown, as for 001-146. A touched path the run wrote itself does not count (the recorder's written set, so only while `observe.runtimeInputs` holds): a fresh run of the same bytes writes it too. Unobserved, such a run is withheld.
 
-Recreating, rather than invalidating in place, is the only way found to drop the global setup's state and the optimizer's in-memory metadata. Reporting the projects as recreated makes the refinement fetch every closure again, from the new instance: a closure fetched during the transient window (001-146's open item) is replaced too.
+Recreating, rather than invalidating in place, is the only way found to drop the global setup's state and the optimizer's in-memory metadata. The refinement fetches again the closures that name a touched path (`index.reverse.referencing`), from the new instance: a closure fetched during the transient window (001-146's open item) is replaced too. A closure only reaches a touched file's other imports through that file, so these are the ones.
 
 ## Regressions
 
@@ -76,13 +76,22 @@ Cost, measured on this repository (276 test files, a clone at this row's base) w
 
 - **A run that ended before the touch was heard is stored.** The brief covers a run in flight when the event arrives. A run that read transient bytes through a cache the stamps do not check and ended between the restore and the touch reaching the runner (the debounce plus reconciliation, under a second) is stored as it ran. Closing it needs the scheduler to hold a tier's recording until the watcher's batch covering the tier's end is reconciled, or to re-queue the files of tiers recorded within that window; both are beyond passing the signal.
 - **Withheld files stay unknown until their key moves** (`Ledger.markUnknown`, as 001-146 left it). A touch during a backlog tier leaves its files unknown; re-queueing them would be better and is scheduler work.
-- **A touch reports every project recreated**, so every closure is fetched again. Cheaper would be to recreate lazily and keep the closures; chosen because a closure fetched in the window may miss an import, and the event is rare.
+- **A run's own write does not withhold it** (observed only). A test that reverts a file, reads it through a cache the stamps do not check and restores it, gets the result a warm instance gives, which a fresh run may not. The stamps still withhold the plain-module case (`revert-restore.test.ts` asserts it). And an agent rewriting the same path during that run is not told apart. Chosen because otherwise a fixture writer is withheld on every run that hears its own touch.
+- **A listing that hashes a new file ahead of its batch** (below) is not fixed in general: any refinement that lists, after a config change or an add, can still do it to a test file written within the debounce window. Only the touch's listing is gone. Fixing it belongs to the keying (`Keys.track`), not this row.
 - **The optimizer cache on disk outlives a daemon.** A bundle built on transient bytes by an instance that never heard the touch (a daemon that stopped first) is reused by the next daemon's first instance. Not covered; the next daemon's start has no touch to act on.
 - `slow-instance.ts` is outside this row's files; changed by agreement (above).
 
-## Gate
+## The revert-restore timeout (gate on `7206a5f`)
 
-The full gate on `7206a5f` failed 3 of 2,117: the two bundle checks (expected, not rebuilt) and `test/integration/revert-restore.test.ts`, whose daemon never settled in 180 s after `test/reads.test.ts` was added (`revert-restore.test.ts:199`). It normally passes in 4 to 11 s. It passed in this worktree's daemon after the change, 4 times alone, and once among `test/integration` and `test/scheduler` with 4 workers. Not reproduced and not explained; the touch path recreates the instance and fetches every closure again in that test, so it is the first suspect. 001-160 should look at it.
+The full gate failed `test/integration/revert-restore.test.ts` (180 s waiting for the daemon to settle); the coordinator saw it 1 in 4 alone, never on main. Not a livelock. Reproduced with status and store dumps (1 of 1 at a 45 s limit):
+
+- Revision 4 (the reverting test's new bytes) ran it; its revert and restore of `src/mod.ts` folded into one batch, a touch heard during the run: the run was withheld (unknown 2, as expected).
+- The touch reported every project recreated, so its runner-only refinement listed the test files. The test had just written `test/reads.test.ts`; the listing found it and `Keys.track` hashed it into the stat cache. Its watch batch, about 100 ms later, matched that stat: no change, no revision.
+- `reads.test.ts` ran once, passed and was stored (current 2, pending 0). The store's runs table held one run per revision. The daemon was quiet; the test waits for a revision after 4, which never came.
+
+Fix (`1639e02`): a touch reports no project recreated; the refinement re-fetches the closures naming a touched path. Regression: `test/scheduler/touched.test.ts` "lists no test file, so one added meanwhile still makes its revision", which fails when a touch reports the projects recreated. Afterwards `revert-restore.test.ts` passed 10 of 10 alone (3.9 to 10.5 s).
+
+The livelock the coordinator suspected cannot occur here: a withheld file is unknown and is not queued again until its key moves. But a fixture writer was withheld every time its run heard its own touch; that is the written-set rule above. `test/integration/touched-in-flight.test.ts` covers it: observed, a test that rewrites `fixtures/data.txt` with its own bytes is stored and runs once per key over three keys; unobserved, it is unknown with the reason, and settles. Removing the written-set filter fails the observed case.
 
 ## For the next worker
 
