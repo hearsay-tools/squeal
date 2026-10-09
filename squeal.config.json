@@ -14,7 +14,13 @@
       "test/harness/recorded/**"
     ],
     "test/policy/repository-inputs.test.ts": ["squeal.config.json", "**/.gitignore"],
-    "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"],
+    "test/runners/vitest/**/*.test.ts": [
+      "test/fixtures/vitest/basic/**",
+      "test/fixtures/vitest/escapes/**",
+      "test/fixtures/vitest/observed/**",
+      "test/fixtures/vitest/packages/**",
+      "test/fixtures/vitest/projects/**"
+    ],
     "test/harness/codex/**/*.test.ts": [
       "plugins/codex/**",
       "src/**/*.ts",
@@ -22,7 +28,14 @@
     ],
     "test/plugins/codex/**/*.test.ts": ["plugins/codex/**"],
     "test/runners/node-test/**/*.test.ts": [
-      "test/fixtures/node-test/**",
+      "test/fixtures/node-test/*.mjs",
+      "test/fixtures/node-test/README.md",
+      "test/fixtures/node-test/edge/**",
+      "test/fixtures/node-test/monorepo/**",
+      "test/fixtures/node-test/packages/**",
+      "test/fixtures/node-test/reference/**",
+      "test/fixtures/node-test/spawn-cli/**",
+      "test/fixtures/node-test/streams/**",
       "src/runners/node-test/runtime/**"
     ],
     "test/runners/node-test/graph-memory.test.ts": ["src/runners/node-test/graph/**"],
@@ -30,6 +43,16 @@
       "src/runners/node-test/graph/**",
       "src/harness/build.ts"
     ],
-    "test/integration/node-test.test.ts": ["src/**/*.ts", "test/fixtures/node-test/**"]
+    "test/integration/node-test.test.ts": [
+      "src/**/*.ts",
+      "test/fixtures/node-test/*.mjs",
+      "test/fixtures/node-test/README.md",
+      "test/fixtures/node-test/edge/**",
+      "test/fixtures/node-test/monorepo/**",
+      "test/fixtures/node-test/packages/**",
+      "test/fixtures/node-test/reference/**",
+      "test/fixtures/node-test/spawn-cli/**",
+      "test/fixtures/node-test/streams/**"
+    ]
   }
 }
