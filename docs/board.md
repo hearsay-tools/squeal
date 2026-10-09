@@ -280,7 +280,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-172 research: `status --wait` latency for one file on a loaded host | running | Agent feedback (2026-10-09): it re-ran suites itself instead of waiting, partly because results came slowly at load 100 to 170. | A table per case with the dominant stage and a wait to quote in the skill. |
 | 001-173 `squeal why` names the run log holding a check's console output | running | Human (2026-10-09): point to the log; `--include-logs` prints that file's lines. | Log path for own and inherited results; `--include-logs` filters to the file; a pruned log is reported. |
 | 001-174 the skill shows the red/green workflow and waiting on one file | planned, after 001-172 | Human (2026-10-09). | The worked example and the measured wait in the skill. |
-| 001-175 review of the unreviewed 001 rows since 0.1.54 | running (gpt-6.1-sol) | 001-153, 001-156, 001-161, 001-164, 001-166, 001-167, so the next hub release carries only reviewed work (the human's rule, `docs/process.md` 6a). | `reviews/wave-13g.md` committed. |
+| 001-175 review of the unreviewed 001 rows since 0.1.54 | done, PASS (`reviews/wave-13g.md`): 001-153, 001-156, 001-161, 001-164, 001-166, 001-167 reviewed; 0 blockers, 0 should-fix | 001-153, 001-156, 001-161, 001-164, 001-166, 001-167, so the next hub release carries only reviewed work (the human's rule, `docs/process.md` 6a). | `reviews/wave-13g.md` committed. |
 
 ## Feature 002: Codex adapter
 
