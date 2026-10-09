@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { acquireDaemonLock, awaitDaemonLock } from "../../src/core/daemon/lock.js";
 import { tempDir } from "../store/helpers.js";
@@ -43,6 +44,33 @@ describe("awaitDaemonLock", () => {
     expect(performance.now() - at).toBeGreaterThanOrEqual(190);
     expect(acquireDaemonLock(path)).toBeNull();
     holder?.release();
+    acquireDaemonLock(path)?.release();
+  });
+
+  it("two waiters never block each other: one takes the lock, the other once it is released (001-153)", async () => {
+    // Both waiters reach SHARED while a writer holds RESERVED. A waiter that
+    // keeps its locks between attempts then takes PENDING and waits for the
+    // other's SHARED, which waits for RESERVED: neither ever gets the lock.
+    const path = lockPath();
+    acquireDaemonLock(path)?.release();
+    const writer = new DatabaseSync(path);
+    writer.exec("PRAGMA locking_mode = EXCLUSIVE");
+    writer.exec("BEGIN IMMEDIATE");
+    const wait = { timeoutMs: 3_000, giveUp: () => false };
+    const waiters = [awaitDaemonLock(path, wait), awaitDaemonLock(path, wait)];
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    writer.exec("ROLLBACK");
+    writer.close();
+    const at = performance.now();
+    const first = await Promise.race(waiters);
+    expect(first).not.toBeTypeOf("string");
+    expect(performance.now() - at).toBeLessThan(1_000);
+    if (typeof first !== "string") first.release();
+    const both = await Promise.all(waiters);
+    expect(performance.now() - at).toBeLessThan(2_000);
+    const second = both.find((lock) => lock !== first);
+    expect(second).not.toBeTypeOf("string");
+    if (second !== undefined && typeof second !== "string") second.release();
     acquireDaemonLock(path)?.release();
   });
 });
