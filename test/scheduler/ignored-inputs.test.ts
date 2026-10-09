@@ -4,11 +4,15 @@ import {
   mkdtempSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createFsHasher } from "../../src/core/hash/index.js";
+import { statCandidates } from "../../src/core/revision/index.js";
+import type { InvalidatedPath } from "../../src/core/types/index.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { addWorktree, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
@@ -209,6 +213,76 @@ describe("a gitignored declared input (lessons defect 7)", SLOW, () => {
       await h.scheduler.idle();
     },
   );
+
+  it.each([
+    { where: "an ignored directory", linked: false },
+    { where: "a tracked build link", linked: true },
+  ])(
+    "joins a file a rebuild adds in $where at an interval that also finds a source edit (reviews/wave-4.6.md B1)",
+    async ({ linked }) => {
+      const { repo } = linked ? linkedBuilds(true) : { repo: repoWithIgnoredDist() };
+      const store = openRepoStore(repo.commonDir);
+      const glob = linked ? "**/dist/**" : "dist/**";
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        ...options(),
+        policy: { ...policy, inputs: { [STRINGS]: [glob] } },
+      });
+      const build = linked ? "real-build" : "dist";
+      h.write(`${build}/index.js`, "export const build = 'a';\n");
+      await h.scheduler.start();
+      await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
+      await h.scheduler.idle();
+      const before = h.keyOf(STRINGS);
+      const math = h.keyOf(MATH);
+
+      // No watch batch reports the addition; the interval pass hands over a tracked source edit.
+      h.write(`${build}/late.js`, "export const late = 1;\n");
+      h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
+      const hasher = createFsHasher(repo.main, "sha1");
+      const paths = await statCandidates(["src/math.ts"], hasher);
+      await h.scheduler.handleBatch({ trigger: "interval", paths });
+
+      expect(h.scheduler.extraFiles()).toContain("dist/late.js");
+      expect(h.keyOf(STRINGS)).not.toBe(before);
+      // The source edit stays in the same revision.
+      expect(h.keyOf(MATH)).not.toBe(math);
+      const changed = store.revisions.latest(h.worktreeId)?.changes.map((c) => c.path);
+      expect(changed).toEqual(["dist/late.js", "src/math.ts"]);
+      await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(2);
+      await h.scheduler.idle();
+    },
+  );
+
+  it("does not touch the runner for an ignored input an interval lists with its bytes unchanged", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, options());
+    // Seen by git at start, so hashed and not watched; ignored from here on.
+    h.write("dist/index.js", "export const build = 'a';\n");
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    expect(h.scheduler.extraFiles()).not.toContain("dist/index.js");
+    appendFileSync(join(repo.main, ".gitignore"), "dist/\n");
+    // Rewritten with the same bytes: its stat moves, its content does not.
+    h.write("dist/index.js", "export const build = 'a';\n");
+    const later = new Date(Date.now() + 5_000);
+    utimesSync(join(repo.main, "dist/index.js"), later, later);
+    const invalidated: InvalidatedPath[] = [];
+    const invalidate = h.runner.invalidate;
+    Object.assign(h.runner, {
+      invalidate: (paths: readonly InvalidatedPath[]) => {
+        invalidated.push(...paths);
+        return invalidate(paths);
+      },
+    });
+
+    const key = h.keyOf(STRINGS);
+    await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await h.scheduler.idle();
+    expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+    expect(h.keyOf(STRINGS)).toBe(key);
+    expect(invalidated).toEqual([]);
+  });
 
   it("lists them again when a policy reload declares them", async () => {
     const repo = repoWithIgnoredDist();

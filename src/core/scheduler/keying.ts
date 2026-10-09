@@ -290,23 +290,23 @@ export class WorktreeKeys {
 
   /**
    * What a reconciliation pass that found no change reconciles too, because
-   * it is in an ignored directory no watch batch reports. Installed lockfiles
-   * that are not the ones the environment was last hashed with: a first
+   * it is in an ignored directory no watch batch reports: installed lockfiles
+   * that are not the ones the environment was last hashed with. A first
    * install created one, or another package manager's replaced it; the old
-   * and new paths, so the move becomes a revision (review N3). And the
-   * gitignored declared inputs not watched yet: a file a rebuild only added
-   * joins the key as an add (004-33).
+   * and new paths, so the move becomes a revision (review N3).
    */
   async lockfileCandidates(): Promise<RelativePath[]> {
-    return [...(await this.#lockfiles.moved()), ...(await this.#unwatchedIgnoredInputs())];
+    return this.#lockfiles.moved();
   }
 
   /**
-   * Lists the gitignored declared inputs, within the declared globs' reach,
-   * and watches the ones not watched yet, a path already hashed included.
-   * Returns those.
+   * What every reconciliation pass reconciles too, whatever else it found:
+   * the gitignored declared inputs, within the declared globs' reach, not
+   * watched yet, a path already hashed included. A file a rebuild only added
+   * joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches them
+   * from here on.
    */
-  async #unwatchedIgnoredInputs(): Promise<RelativePath[]> {
+  async ignoredCandidates(): Promise<RelativePath[]> {
     const globs = inputGlobs(this.#policy.inputs);
     if (globs.length === 0) return [];
     const listed = await ignoredInputs(this.options.root, globs);
