@@ -455,15 +455,45 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 ## Feature 005: agent adoption
 
-Status and brief: `specifications/005-agent-adoption/status.md`, `research/README.md`. No spec yet (human, 2026-10-09: "The tool will have no value if agents ignore it").
+Spec: `specifications/005-agent-adoption/spec.md`, draft 2026-10-09, awaiting the human's approval; sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
-### Research (done; the human decides whether a spec follows)
+### Research (done)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 005-01 research: adoption-baseline | done (`2b342d3`, Opus, `research/adoption-baseline.md`; 0 subject sessions) | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
 | 005-02 research: instruction-surfaces | done (`88f34a1`, Opus, `research/instruction-surfaces.md`; 40 sessions, $2.45 Claude Code plus Codex tokens; host proxy URL redacted at landing) | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
 | 005-03 research: hook-levers | done (`e01e691`, Astra, `research/hook-levers.md`; 40 sessions, $0.35 Claude Code plus Codex tokens) | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
+
+### Wave 0: checks (after approval)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 005-04 wave-0 checks | planned | Open questions 1 and 2: how a Codex user invokes a plugin skill and how it is named; whether a skill finds its plugin's CLI in a repository without Squeal, in both harnesses; Claude Code's question tool inside a skill; Codex's shell tool timeout. | `research/wave-0-checks.md`. |
+
+### Wave 1: the verdict, the wait, the engine (parallel; the 001 coordinator agrees `focus` first)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 005-10 the checkpoint's verdict | planned | D1: `run --all --wait [<ms>]`, exit codes 0, 1, 3, the verdict line, tests and file-level checks counted apart in checkpoint, status and header counts; a shared verdict module 005-11 imports. | Every exit code a test, a revision during the checkpoint included; a real-daemon failing checkpoint exits 1. |
+| 005-11 a wait for the agent's own files | planned | D2: `status --wait <ms> <path>...`, selection by test or source path, the `focus` request and its queue order. | Selection and ordering tests; a per-file wait returns before a running backlog ends. |
+| 005-12 the setup engine | planned | D3's `init --plan --json` and per-choice flags, D4's block, D5's gate detection and rewording; `squeal remove` takes the block out. | Plan JSON, block and gate tests, the symlinked-file case included. |
+| 005-13 review of wave 1 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
+
+### Wave 2: the skill and the texts
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 005-14 the setup skill | planned | D3: `skills/setup/SKILL.md` in both plugins, its references, the READMEs. | Both copies identical; a `-p` session with answers in the prompt sets a fixture up. |
+| 005-15 texts | planned | D6: the primer's per-file wait, `skills/squeal` steps and references; this repository's gate drops its exit-code caveat (coordinator). | Primer and skill tests; the 10,000-character cap holds. |
+| 005-16 review of wave 2 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-2.md`. |
+
+### Wave 3: proof
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 005-17 e2e for setup | planned | Testing: the skill in both harnesses on fixtures shaped like this repository and like cezarion. | Node 22 and 24. |
+| 005-18 dogfooding | planned | Goal 6: controlled sessions on a cold, slow fixture in both harnesses (at most 40), and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
 
 ## Later
 
