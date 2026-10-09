@@ -201,11 +201,9 @@ describe("the slow-tier line (spec 004 D8)", () => {
     );
   });
 
-  it("does not count a fresh worktree's first listing as sources changed (lessons defect 8d)", () => {
+  it("says no sources changed for inherited results in a fresh worktree (lessons defect 8d)", () => {
+    // Its first listing makes no revision: the start walk seeds the files beneath linked directories (001-166).
     const s = seed(SLOW_POLICY, { revisions: 0 });
-    // The start pass walks linked directories git lists as links only: every file beneath is new.
-    const listing = [".agents/skills/a/SKILL.md", "src/a.ts", "plugins/a.js", SLOW_A, SLOW_B];
-    revise(s.store, s.repo, listing, { added: true, trigger: "interval" });
     const inherited = { kind: "inherited", worktreeId: "other", commit: "c0" } as const;
     states(
       s.store,
@@ -229,8 +227,9 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it.each([
     ["an agent's add in a watch batch", "watch"],
     ["an add made while no daemon ran", "start"],
+    ["an add only interval reconciliation found", "interval"],
   ] as const)(
-    "counts %s at a worktree's first revision as sources changed (review wave 4 B4)",
+    "counts %s at a worktree's first revision as sources changed (review wave 4 B4, wave 4.5 B2)",
     (_, trigger) => {
       const s = seed(SLOW_POLICY, { revisions: 0 });
       states(s.store, s.repo, [{ observedAt: 0 }, { observedAt: 0 }], [SLOW_A, SLOW_B]);
@@ -246,18 +245,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     },
   );
 
-  it("still leaves out the start pass's first listing after a revision-0 run (lessons defect 8d)", () => {
-    const s = seed(SLOW_POLICY, { revisions: 0 });
-    states(s.store, s.repo, [{ observedAt: 0 }, { observedAt: 0 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    revise(s.store, s.repo, [".agents/skills/a/SKILL.md", "src/a.ts"], {
-      added: true,
-      trigger: "interval",
-    });
-    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
-  });
-
-  it("counts adds in a later start pass: only the first revision can be the first listing", () => {
+  it("counts adds in a later interval pass", () => {
     const s = seed(SLOW_POLICY, { revisions: 1, changes: ["plugins/a.js"] });
     states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 1 }], [SLOW_A, SLOW_B]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
