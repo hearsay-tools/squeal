@@ -66,6 +66,12 @@ export interface FileState {
    * until the runner recovers; `null` otherwise.
    */
   blocked: string | null;
+  /**
+   * The most files a tier that takes this file may hold, after a timed-out
+   * tier left it incomplete (task 001-179): half the files it left so, down
+   * to one; `null` when no timeout split it. Cleared when its results land.
+   */
+  tierCap: number | null;
 }
 
 export function newFileState(ref: TestFileRef): FileState {
@@ -85,6 +91,7 @@ export function newFileState(ref: TestFileRef): FileState {
     rerunKey: null,
     rerunPending: false,
     blocked: null,
+    tierCap: null,
   };
 }
 

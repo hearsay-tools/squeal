@@ -250,6 +250,7 @@ export class Ledger {
     file.unknownKey = null;
     file.discards = 0;
     file.blocked = null;
+    file.tierCap = null;
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
     this.checkpoints.done(file.ref, checkpointId);
