@@ -1,6 +1,6 @@
 # 005 Agent adoption: status
 
-Stage: draft (research round; no spec yet)
+Stage: draft (spec written 2026-10-09 from the research round; awaiting the human's approval)
 Started: 2026-10-09
 
 ## Decisions so far
@@ -22,6 +22,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
   - in real sessions in this repository 210 of 226 editing sessions ran tests themselves, 55% of runs checking the agent's own change while Squeal had not reached at least one covered file in 78% of store-checked runs, and gate runs took 39% of test wall time;
   - `run --all --wait` exits 0 with failing tests; Claude Code checks permission rules against a rewritten command, and Codex rewrites only with `allow`;
   - the agent's own runs caught Squeal wrong 5 times.
+
+- 2026-10-09, the human: write the spec and reword this repository's gate in parallel; setup is a skill shipped with the plugin that interviews the user and runs `squeal init` for them, not a command the user types (spec D3).
 
 ## Dogfooding
 
