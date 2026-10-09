@@ -124,3 +124,15 @@ Added 2026-10-09 from 004-17 dogfooding defect 4 and the human's decision: insta
 5. Migration: what the human does once on each machine to re-point Claude Code and Codex at the hub, and whether a session in flight survives it.
 
 Recommendation: the hub's layout (repository name, manifest per harness, entry format), the release procedure as a short checklist, what changes in `docs/process.md`, and whether the Squeal version can then stay in the environment hash.
+
+## Topic: shared-runs
+
+Added 2026-10-10 from the human: after the 0.1.86 hub release every worktree's daemon re-ran its full suite at once (cezar's main: 15,468 checks), each storing the same results, because inheritance only covers results already stored. Decided direction: cross-worktree claims, where a daemon skips a file whose key another worktree has claimed (moving it to the back), inherits its result when stored, and takes over an expired claim; worktrees on the same code split a baseline.
+
+1. The claim: where it lives (a store table, a meta row per key, rows on the run), what it holds (key, worktree, daemon pid and start, claimed-at, expiry), and the cost of writing and checking claims per tier on cezar's store under load (001-161's short write transactions; 001-178's change marker for noticing results). Measure on a copy of cezar's store.
+2. Expiry and takeover: from the heartbeat (D10), the run timeout (`runner.timeoutMs`) and 001-179's split tiers; what a crashed or stepped-down daemon leaves; no file left unrun forever, no file run twice by design.
+3. Tier composition (D5, 001-184, 001-179): how skipping claimed files interacts with the backlog tiers, the lanes (001-140), the slow lane and spec 004's inheritance rules (`src/core/slow/inherit.ts`), forced runs (`run --all --force`, 001-171's re-run), first-observation re-runs (001-134), and 003-43's environment-growth discards.
+4. What must not change: an edit's own files never wait behind another worktree's claim; 001-170's inherited failures are still confirmed locally; the completion barrier (001-168) and per-key validity; `--wait`'s window (001-186 to 001-196).
+5. Measure the gain: four worktrees of cezar on one commit starting together, today against a prototype, wall time to every check current in all four, total CPU.
+
+Recommendation: the claim's storage and rules, D5/D6 amendments, a slice's done-when with tests, and what to defer.
