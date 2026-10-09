@@ -18,6 +18,7 @@ import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
+import { holdsNewFailure, queueRerun } from "./rerun.js";
 import { storeClosures } from "./revision.js";
 import { slowView } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
@@ -324,9 +325,11 @@ export function recordTier(
         provenance,
         describe: context.describe,
       });
-      storeResults(context, records);
+      const prior = storeResults(context, records);
       if (growth === undefined && file.key === key) {
+        const failedAnew = holdsNewFailure(context, prior, records);
         ledger.applyResults(file, key, records, checkpointId);
+        if (failedAnew) queueRerun(ledger, file, key, forced);
       }
     }
     // The grown files take their new key and, once stored, its results; a re-key reached others.
