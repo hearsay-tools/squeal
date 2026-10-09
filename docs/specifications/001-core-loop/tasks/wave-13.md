@@ -192,3 +192,23 @@ Questions to settle first, with a test that reproduces it (an event-loop-blocked
 Own: `src/core/delivery/`, `src/core/daemon/` heartbeat and liveness, `src/harness/shared/` liveness checks (ask before `src/harness/codex/`), tests under `test/delivery/`, `test/harness/`, `test/daemon/`, `test/e2e/` helpers, D9/D10/D12. Do not run `npm run build`.
 
 Done when: the cause is named with evidence; a test with a stalled daemon (or a delayed heartbeat) shows no false "not validating"/"validating again" pair within the stall the fix tolerates, and a genuinely dead daemon is still reported within its stated time; `test/e2e/worktrees.test.ts` passes ten runs in a row at load 60 or more; the report says whether 001-153 shares the cause.
+
+## 001-157 every cached transform of a project file, query variants included, is checked against its own evidence
+
+Use /worker. Shape: repair. From `reviews/wave-13c.md` B1 and S1 (001-155). Decided by the human (2026-10-09): fix, then a fourth review (001-158).
+
+The defect (proven, observation on and off, fast and slow instance): `import "../src/mod.ts?variant"` caches a transform under its own module ID. `SourceStamps.#stamp` skips every ID with `?`, and `cachedFiles` collapses variants to the physical file, so a variant warmed on transient bytes is compared with no stamp, or with the plain variant's, and a false current PASS is stored. The reviewer's steps are in the report.
+
+Outcome: within each container, source evidence is kept per cached module ID, query variants of physical project files included, each associated with its physical path; every executable cached variant is compared with its own evidence; a mismatch invalidates every variant of that path in every container; an uninstrumentable transform of a project file is invalidated before the run or makes its result unknown. Do not strip the query and keep one stamp per path (that recreates the overwrite within one container).
+
+Also, so this slice stops yielding one escape per round: inventory in `tasks/001-157/notes.md` every way Vite 8 and Vitest 5 can hold a transform or module of a project file (module graph IDs with queries, `?raw`/`?url`/`?inline`, virtual and `\0` IDs that map to a file, `fsModuleCache`, the SSR and client environments, `import.meta.glob`, `vi.mock` factories, dependency optimizer output, workers), and for each say whether it is now checked, invalidated before every run, or makes results unknown, with a test for each class that can hold project bytes.
+
+S1: replace `test/integration/project-config-stamps.test.ts`'s slow regression with the reviewer's discriminating probe (the slow adapter's own `closure` plants A's transient transform, disk is restored, B's restored transform is warmed through the same adapter, then the real slow run): it must fail on `bc4ceb1` (before 001-154) and pass now.
+
+Own: `src/runners/vitest/sources.ts`, the stamp wiring in `src/runners/vitest/adapter.ts` only if needed, tests under `test/runners/vitest/` and `test/integration/`, D4. Keep 001-150's mid-run movement log and 001-154's per-container controls. Do not run `npm run build`.
+
+Done when: the reviewer's B1 probe is a scheduler regression with observation on and off plus a fresh-adapter control, a plain/query pair in one container, and the same planted in the slow instance itself, each failing without the fix; S1's regression discriminates; every inventoried class is covered.
+
+## 001-158 fourth review of the stale-transform slice
+
+Use /reviewer on gpt-6.1-sol, after 001-157 lands. Output `reviews/wave-13d.md`. Range: from 0.1.54's landing to 001-157's. Is `reviews/wave-13c.md` B1 closed and S1 addressed; is 001-157's inventory complete and true (probe each class it lists, and look for classes it misses); can any cached module of a project file still execute bytes other than those its stored result's key names. Decided by the human: blockers go to the human.
