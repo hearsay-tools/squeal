@@ -730,7 +730,10 @@ function liveActivity(activity, keys, isSlow) {
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions.range(worktreeId, since, revision).filter((r) => !(r.number === 1 && r.changes.every((change2) => change2.oldHash === null))).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
+  return store.revisions.range(worktreeId, since, revision).filter((r) => !isFirstListing(r)).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
+}
+function isFirstListing(revision) {
+  return revision.number === 1 && revision.trigger === "interval" && revision.changes.every((change2) => change2.oldHash === null);
 }
 function slowFilesNotCurrent(states, keys, isSlow) {
   return [...classifySlowFiles(states, keys, isSlow).values()].filter((file) => file.class !== "current").map((file) => file.ref);
@@ -3692,7 +3695,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.62";
+  if (true) return "0.1.63";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
