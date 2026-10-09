@@ -115,9 +115,39 @@ Known noise: Squeal sessions started before 0.1.41 report false observe-test FAI
 
 ## 001-150 the Vitest adapter's runner part never queues behind its own run
 
-Use /worker. After 001-149's review.
+Use /worker. Shape: slice. After 001-149 and 004-18 (on main from 0.1.51, `6418a6b`).
 
-001-140's remaining slice (c), in `tasks/001-140/notes.md`: `VitestAdapter.#serial` (`src/runners/vitest/adapter.ts`) puts `invalidate` without a recreate, `affected`, `closure` and enumeration behind any `run()` in flight, so while a Vitest tier runs every revision's runner part waits, a node:test-only one included (003 lessons defect 2, cezar r4). Brief to be written after the review, with 001-140's findings on `config.related` and on what `run()` and a recreate must exclude, and 001-146's `sources.ts`.
+Outcome: while a Vitest tier runs, a newer revision's runner part (invalidate without a recreate, `affected`, `closure`, `environment`, enumeration) completes without waiting for that run; so a node:test-only revision's tier starts and stores its result beside the running Vitest tier, with the real adapter (003 lessons defect 2, cezar r4).
+
+Read: `tasks/001-140/notes.md` (the remaining slice (c): `VitestAdapter.#serial`, the `config.related` window, what `run()` and a recreate must exclude); `reviews/wave-13.md` "Inputs for the next wave" item 3 (the existing lane test bypasses the adapter's gate with `runnerPartBesideRun`; add a real held-worker test; protect recreates and `config.related`; keep 001-146/001-151's stamps effective); 004-18's slow Vitest instance (built through `createRecoveringRunner` → `createVitestAdapter` → `#start`, its own `#serial`); D5, D11 as amended.
+
+Decide and record in D5 or D11: which calls may overlap a run, which must still exclude it (a recreate; anything writing `config.related` or the project list), and how a call that would need a recreate during a run waits.
+
+Own: `src/runners/vitest/` (`adapter.ts`, `sources.ts` only as needed), `src/core/daemon/composite-runner.ts` only if the fan-out must change (ask first, it is the 002/003 coordinator's), tests under `test/runners/vitest/` and `test/scheduler/`, D5/D11 in `spec.md`. Do not run `npm run build`.
+
+Done when: a test with the real Vitest adapter holds a Vitest worker mid-run while a newer revision changes only a node:test module (or a file of another Vitest-less lane), and that revision's runner part lands and its tier's result is stored before the held Vitest run ends; a recreate during a run still waits for it; 001-146/001-151's stamp tests pass.
+
+## 001-148 a path first observed through a directory link re-runs its file at most once
+
+Use /worker. Shape: fix. After 004-18 (0.1.51).
+
+Read: the board row's evidence; `test/scheduler/first-observation.test.ts:146` ("read through a directory link": 3 runs where at most 2 are allowed; fails about half its runs alone at load 36 to 63, on 0.1.42 and 0.1.45 alike); 001-134's first-observation rule in D4 and `src/core/scheduler/observed.ts`; 001-135 (a link is recorded with its in-scope target); `tasks/001-146/notes.md` (its first-observation timing evidence).
+
+Name the cause first with evidence (which runs happen and why the third: the link spelling and the target each first observed in a different run, a watch batch for the target, or a timing race in the test). Then fix the product if the third run is avoidable without weakening "never stores the run's pass under the key with the present file"; if the bound in the test is wrong for links, say why and change the bound and D4's wording.
+
+Own: `src/core/scheduler/observed.ts` and what it needs in `src/core/scheduler/`, `test/scheduler/first-observation.test.ts`, D4. Do not run `npm run build`.
+
+Done when: the cause is named; the case passes ten runs in a row alone at load 40 or more; its stored result stays `fail/current` under the key with the file; a second worktree still inherits only the re-run.
+
+## 001-152 re-review of wave 13
+
+Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13b.md`. Range `e55ccd6..6418a6b`. Second round: are `reviews/wave-13.md` B1 (closed by 004-18's per-lane mark in `src/core/daemon/escaped.ts`, 0.1.51) and B2 (001-151, 0.1.50) closed, and S1 (001-151) and S2 (004-18) addressed? Re-run the first round's B1 barrier probe and B2 probe (a project with its own config file) against `6418a6b`; check that 004-18's slow Vitest instance is stamped (it is built through `createRecoveringRunner` → `createVitestAdapter` → `#start`, which calls `sources.attach(vitest)`) with a transient-transform probe on a slow file; probe a pid reused between the scan and the first SIGTERM with a controlled process table. Last round on this slice: blockers go to the human. Spec 004's other rows in the range (004-15, 003-40) are not under review. Same rules as 001-149.
+
+## 001-153 the released-bundles step-down never misses its successor at low load
+
+Use /worker. Shape: fix. Planned.
+
+Reported 2026-10-09 by the 002/003/004 coordinator's 0.1.51 gate on Node 22: `test/daemon/step-down.test.ts` "a released 0.1.31 daemon, from before the request, is sent stop and exits after its tier" failed with "the successor serving not met in 60000 ms", once alone, then passed four times alone at load 6 to 24. 001-145 fixed the sibling case in `handover.test.ts` by waiting for the successor at the lock; a 60 s miss at low load is not that race. Name the cause (log the successor's spawn, its lock attempts and its notes) before changing anything.
 
 ## 001-151 every Vitest project's server is stamped, so no transient transform is stored as current
 
