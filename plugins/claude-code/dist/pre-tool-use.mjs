@@ -155,6 +155,11 @@ function globToRegExp(glob) {
   const source = glob.startsWith("./") ? glob.slice(2) : glob;
   return new RegExp(`^${compile(source, glob)}$`, "s");
 }
+function createInputMatcher(globs2) {
+  if (globs2.length === 0) return () => false;
+  const patterns = globs2.map(globToRegExp);
+  return (path) => patterns.some((pattern) => pattern.test(path));
+}
 function compile(glob, original) {
   let out = "";
   let i = 0;
@@ -410,6 +415,9 @@ function isNumber(value) {
 
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
+function isInputList(inputs2) {
+  return Array.isArray(inputs2);
+}
 
 // src/core/keys/hidden-lockfile.ts
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
@@ -509,6 +517,119 @@ function formatCheck(check) {
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 
+// src/core/slow/classify.ts
+function slowFiles(policy, projects) {
+  const matches = createInputMatcher(policy.slow.include);
+  const slowProjects = new Set(
+    projects.filter((project) => project.slow === true).map((project) => project.name)
+  );
+  return (testFile) => slowProjects.has(testFile.project) || matches(testFile.path);
+}
+
+// src/core/slow/inherit.ts
+import { posix as posix2 } from "node:path";
+function slowGlobs(policy, projects) {
+  const globs2 = [...policy.slow.include];
+  for (const project of projects) {
+    if (project.slow !== true) continue;
+    const cwd = project.cwd ?? ".";
+    for (const glob of project.include) globs2.push(posix2.join(cwd, glob));
+  }
+  return globs2;
+}
+
+// src/core/slow/state.ts
+function slowTierMetaKey(worktreeId) {
+  return `slow-tier:${worktreeId}`;
+}
+function readSlowActivity(store, worktreeId) {
+  const raw = store.meta.get(slowTierMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    return toActivity(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+function toActivity(value) {
+  if (typeof value !== "object" || value === null) return null;
+  const v = value;
+  if (v.kind === "waiting" && WAITS.has(v.for)) {
+    return { kind: "waiting", for: v.for };
+  }
+  if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
+    const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
+    return { kind: "running", path: v.path, since: v.since, lastDurationMs: last };
+  }
+  return null;
+}
+
+// src/core/state/slow.ts
+function slowPolicyView(policy) {
+  if (slowGlobs(policy, policy.nodeTest).length === 0) return null;
+  const { inputs: inputs2 } = policy;
+  const rules = isInputList(inputs2) ? [{ applies: () => true, globs: inputs2 }] : Object.entries(inputs2).map(([testGlob, globs2]) => ({
+    applies: createInputMatcher([testGlob]),
+    globs: globs2
+  }));
+  return {
+    isSlow: slowFiles(policy, policy.nodeTest),
+    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort()
+  };
+}
+function worktreeSlowView(store, worktreeId) {
+  const root = store.worktrees.get(worktreeId)?.root;
+  return root === void 0 ? null : slowPolicyView(readPolicy(root));
+}
+function classifySlowFiles(states, keys, isSlow) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const ref = testFileOf(state.check);
+    if (!isSlow(ref)) continue;
+    const id = testFileId(ref);
+    checks.set(id, [...checks.get(id) ?? [], state]);
+  }
+  const files = /* @__PURE__ */ new Map();
+  for (const row of keys) {
+    if (!isSlow(row.testFile)) continue;
+    const id = testFileId(row.testFile);
+    const own = checks.get(id) ?? [];
+    const cls = own.length === 0 ? row.key !== null && row.pending !== null ? "pending" : "notRun" : own.some((s) => s.validity === "pending") ? "pending" : own.every((s) => s.validity === "current") ? "current" : "notRun";
+    files.set(id, { ref: row.testFile, class: cls });
+  }
+  return files;
+}
+function readSlowTier(store, worktreeId, revision, states, keys, view) {
+  const files = classifySlowFiles(states, keys, view.isSlow);
+  const counts = { current: 0, pending: 0, notRun: 0 };
+  const artifact = /* @__PURE__ */ new Set();
+  for (const { ref, class: cls } of files.values()) {
+    counts[cls]++;
+    for (const glob of view.artifactFor(ref.path)) artifact.add(glob);
+  }
+  let currentAt = null;
+  for (const state of states) {
+    if (state.validity !== "current" || state.observedAt === null) continue;
+    if (files.get(testFileId(testFileOf(state.check)))?.class !== "current") continue;
+    currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
+  }
+  const globs2 = [...artifact].sort();
+  return {
+    testFiles: files.size,
+    ...counts,
+    currentAt,
+    artifact: globs2,
+    sourcesChangedSince: currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, globs2),
+    activity: readSlowActivity(store, worktreeId)
+  };
+}
+function sourcesChanged(store, worktreeId, since, revision, artifact) {
+  if (since >= revision) return false;
+  const isArtifact = createInputMatcher(artifact);
+  return store.revisions.range(worktreeId, since, revision).some((r) => r.changes.some((change2) => !isArtifact(change2.path)));
+}
+
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -522,6 +643,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting = missing !== null;
+  const view = worktreeSlowView(store, worktreeId);
+  const slow = isSlow ?? view?.isSlow;
   return {
     revision,
     counts,
@@ -534,7 +657,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
-    ...isSlow === void 0 ? {} : { slowPending: countSlowPending(states, keys, isSlow) },
+    ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
+    ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
   };
@@ -612,6 +736,55 @@ function transitionKind(from, to) {
     case "skip":
       return null;
   }
+}
+
+// src/core/state/slow-text.ts
+var WAITING_FOR = {
+  fast: "fast test files",
+  idle: "the agent to pause",
+  slot: "the slow slot another worktree's slow tier holds",
+  load: "host load to drop"
+};
+function durationText(ms) {
+  const seconds = Math.max(0, Math.round(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+function clockText(at2) {
+  const date = new Date(at2);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function pendingText(pending, activity) {
+  if (activity === null) return `${pending} pending`;
+  if (activity.kind === "waiting") {
+    return `${pending} pending, waiting for ${WAITING_FOR[activity.for]}`;
+  }
+  const last = activity.lastDurationMs === null ? "no earlier run" : `last run ${durationText(activity.lastDurationMs)}`;
+  const running = `running ${activity.path} since ${clockText(activity.since)} (${last})`;
+  return pending === 1 ? running : `${pending} pending, ${running}`;
+}
+function slowTierText(header, command) {
+  const tier = header.slowTier;
+  if (tier === void 0) return null;
+  if (tier.testFiles === 0) {
+    return "Slow tier: no slow test files listed yet; not covered by Stop's wait.";
+  }
+  const parts = [];
+  if (tier.current > 0) {
+    const against = tier.artifact.length === 0 ? `current at revision ${tier.currentAt}, against no declared artifact` : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
+    parts.push(
+      `${tier.current} ${against}${tier.sourcesChangedSince ? ", sources changed since" : ""}`
+    );
+  }
+  if (tier.pending > 0) {
+    const activity = header.daemon?.state === "down" ? null : tier.activity;
+    parts.push(pendingText(tier.pending, activity));
+  }
+  if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
+  const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
+  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. Not covered by Stop's wait${runs}.`;
 }
 
 // src/core/delivery/slots.ts
@@ -779,18 +952,19 @@ function attribute(store, consumer, entries, revision) {
   const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
   const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
   const closureOf = closureFor(store, consumer.worktreeId);
+  const slow = worktreeSlowView(store, consumer.worktreeId);
   return entries.map((entry2) => {
     if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
     const { project, testPath } = entry2.check;
+    const load = loadOf(store, consumer.worktreeId, entry2);
+    const loaded = load === void 0 ? {} : { loadAverage: load };
+    if (slow?.isSlow({ project, path: testPath }) === true) {
+      return { ...entry2, slowArtifact: slow.artifactFor(testPath), ...loaded };
+    }
     const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
     const touched = changed === null || closure === void 0 || closure.some((p) => changed.unknown.has(p)) ? void 0 : closure.filter((p) => changed.changed.has(p));
     const told = touched?.length === 0 && !sure ? void 0 : touched;
-    const load = loadOf(store, consumer.worktreeId, entry2);
-    return {
-      ...entry2,
-      ...told === void 0 ? {} : { changesInClosure: told },
-      ...load === void 0 ? {} : { loadAverage: load }
-    };
+    return { ...entry2, ...told === void 0 ? {} : { changesInClosure: told }, ...loaded };
   });
 }
 function dependenciesInstalled(store, worktreeId) {
@@ -2920,6 +3094,17 @@ function seenLine(entry2, revision) {
   ];
   return parts.filter((p) => p !== null).join(", ");
 }
+function slowSeenLine(entry2, revision) {
+  const artifact = entry2.slowArtifact ?? [];
+  const from = inheritedFrom(entry2);
+  const parts = [
+    change(entry2),
+    from === null ? `slow tier, Squeal's run saw it at revision ${entry2.observedAt}` : `slow tier, Squeal's run in ${from} saw it, inherited at revision ${entry2.observedAt}`,
+    artifact.length === 0 ? "against no declared artifact" : `against ${artifact.join(", ")} as of revision ${entry2.observedAt}`,
+    validityText(entry2, revision)
+  ];
+  return parts.filter((p) => p !== null).join(", ");
+}
 function recoveryProvenance(entry2, revision) {
   const parts = [];
   if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
@@ -2992,6 +3177,10 @@ function headerLine(header, command) {
   const awaiting = awaitingInstallSentence(header);
   return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
+function headerLines(header, command) {
+  const slow = slowTierText(header, command);
+  return slow === null ? [headerLine(header, command)] : [headerLine(header, command), slow];
+}
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
@@ -3003,13 +3192,14 @@ function block(head, lines, outcomes) {
 }
 function entryBlock(entry2, revision) {
   const failed = entry2.to === "fail";
+  const slow = failed && entry2.slowArtifact !== void 0;
   return block(
     `${upper2(entry2.to)}  ${checkName(entry2.check)}`,
     [
-      failed ? seenLine(entry2, revision) : change(entry2),
+      slow ? slowSeenLine(entry2, revision) : failed ? seenLine(entry2, revision) : change(entry2),
       entry2.summary === null ? null : cap(entry2.summary, SUMMARY_MAX_CHARS),
       entry2.location === null ? null : at(entry2.location),
-      ...failed ? [touchesLine(entry2), loadLine(entry2)] : [recoveryProvenance(entry2, revision)]
+      ...failed ? [slow ? null : touchesLine(entry2), loadLine(entry2)] : [recoveryProvenance(entry2, revision)]
     ],
     [entry2.to]
   );
@@ -3110,8 +3300,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND) {
   };
   const tail = failed === void 0 ? null : whyLine(failed.check, command);
   return assemble(
-    `${title}
-${headerLine(header, command)}`,
+    [title, ...headerLines(header, command)].join("\n"),
     blocks,
     overflow,
     tail,
@@ -3148,7 +3337,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.50";
+  if (true) return "0.1.51";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
