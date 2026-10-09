@@ -58,6 +58,42 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     ]);
   });
 
+  it("waits as one call while the runner work before it waits", SLOW, async () => {
+    const { h, calls } = await open();
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let started: () => void = () => {};
+    const running = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    // The recorder queues the runner part behind this run, as a serializing runner does.
+    h.runner.beforeRun = async () => {
+      started();
+      await held;
+    };
+    h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase() + '';\n");
+    await h.batch("src/strings.ts");
+    await running;
+    for (const path of ["src/math.ts", "src/strings.ts", "src/math.ts"]) {
+      rewrite(h, path);
+      await h.batch(path);
+    }
+    release();
+    await h.scheduler.idle();
+
+    // The first touch is the runner work under way; the next two wait behind it as one.
+    expect(calls).toEqual([
+      [{ path: "src/strings.ts", kind: "change" }],
+      [{ path: "src/math.ts", kind: "touch" }],
+      [
+        { path: "src/math.ts", kind: "touch" },
+        { path: "src/strings.ts", kind: "touch" },
+      ],
+    ]);
+  });
+
   it("is not an editor's temp file that came and went", SLOW, async () => {
     const { h, calls } = await open();
     h.write("src/math.ts.tmp.1234.abcd", "export const x = 1;\n");

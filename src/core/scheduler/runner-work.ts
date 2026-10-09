@@ -21,6 +21,8 @@ interface RunnerTask {
   cancel(): void;
   /** The runner part of a revision, which a reinstall drops (`dropRefinements`). */
   readonly refine?: true;
+  /** A runner-only refinement of touched paths (`queueTouched`), until it starts. */
+  readonly touched?: Set<RelativePath>;
 }
 
 /** A runner-only refinement re-keys no content. */
@@ -83,15 +85,24 @@ export class RunnerWork {
    * ended as they were (task 001-159): no revision names them, but the
    * runner may hold what it read of them in between. It invalidates them
    * as `touch`, and takes what a recreate the runner reports for it re-keys.
+   * One queued and not started yet takes the paths instead: a build that
+   * rewrites its output in several batches costs one recreate.
    */
   queueTouched(touched: readonly RelativePath[]): void {
+    const queued = this.#tasks.find((task) => task.touched !== undefined)?.touched;
+    if (queued !== undefined) {
+      for (const path of touched) queued.add(path);
+      return;
+    }
+    const paths = new Set(touched);
     this.#tasks.push({
       run: () => {
         const { context, ledger } = this.host.started();
-        return this.#refine(unchanged(context, ledger), NO_CONTENT, null, touched);
+        return this.#refine(unchanged(context, ledger), NO_CONTENT, null, [...paths].sort());
       },
       cancel: () => {},
       refine: true,
+      touched: paths,
     });
   }
 
