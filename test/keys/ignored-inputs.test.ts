@@ -1,6 +1,8 @@
+import { mkdirSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ignoredInputs, literalPrefix } from "../../src/core/keys/index.js";
-import { initRepo, tempDir, writeFile } from "../hash/git-repo.js";
+import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 /*
  * Spec 004 D6, lessons defect 7: the gitignored files a declaration selects,
@@ -58,6 +60,66 @@ describe("ignoredInputs", () => {
     const root = repo();
     expect(await ignoredInputs(root, [])).toEqual([]);
     expect(await ignoredInputs(root, ["missing/**"])).toEqual([]);
+  });
+});
+
+/** A worktree whose ignored `dist` links to an ignored build beside it (reviews/wave-4.md B3). */
+function linkedRepo(gitignore = "dist\nreal-build/\nnode_modules/\n"): string {
+  const dir = tempDir("squeal-ignored-links-");
+  cleanups.push(dir.cleanup);
+  const root = join(dir.path, "repo");
+  initRepo(root, { ".gitignore": gitignore, "src/a.ts": "" });
+  writeFile(root, "real-build/index.js", "a\n");
+  writeFile(root, "real-build/sub/chunk.js", "b\n");
+  symlinkSync("real-build", join(root, "dist"));
+  return root;
+}
+
+describe("ignoredInputs through a symlinked directory (reviews/wave-4.md B3)", () => {
+  it("returns the files beyond an ignored link under the declared paths", async () => {
+    const root = linkedRepo();
+    expect(await ignoredInputs(root, ["dist/**"])).toEqual(["dist/index.js", "dist/sub/chunk.js"]);
+    expect(await ignoredInputs(root, ["dist/sub/*.js"])).toEqual(["dist/sub/chunk.js"]);
+    expect(await ignoredInputs(root, ["**/index.js"])).toEqual([
+      "dist/index.js",
+      "real-build/index.js",
+    ]);
+  });
+
+  it("follows a link git ignores only as a directory, and one above the glob's literal part", async () => {
+    const root = linkedRepo("dist/\nreal-build/\nout/\n");
+    writeFile(root, "real-out/lib/z.js", "z\n");
+    git(root, ["add", "real-out"]);
+    git(root, ["commit", "-qm", "real-out"]);
+    symlinkSync("real-out", join(root, "out"));
+    expect(await ignoredInputs(root, ["dist/**"])).toEqual(["dist/index.js", "dist/sub/chunk.js"]);
+    expect(await ignoredInputs(root, ["**/dist/**"])).toEqual([
+      "dist/index.js",
+      "dist/sub/chunk.js",
+    ]);
+    expect(await ignoredInputs(root, ["out/lib/**"])).toEqual(["out/lib/z.js"]);
+  });
+
+  it("follows no link git does not ignore: the watcher observes it as a project directory", async () => {
+    const root = linkedRepo("real-build/\n");
+    expect(await ignoredInputs(root, ["dist/**"])).toEqual([]);
+  });
+
+  it("keeps the watcher's limits: no loop, no other repository, no installed package, no nested link", async () => {
+    const root = linkedRepo("dist\nreal-build/\nloop\nother\nnode_modules/\n");
+    symlinkSync(".", join(root, "loop"));
+    initRepo(join(root, "..", "elsewhere"), { "x.js": "" });
+    symlinkSync(join(root, "..", "elsewhere"), join(root, "other"));
+    writeFile(root, "real-pkg/index.js", "p\n");
+    mkdirSync(join(root, "node_modules"));
+    symlinkSync(join(root, "real-pkg"), join(root, "node_modules/pkg"));
+    symlinkSync("..", join(root, "real-build/up"));
+    expect(await ignoredInputs(root, ["**/*.js"])).toEqual([
+      "dist/index.js",
+      "dist/sub/chunk.js",
+      "real-build/index.js",
+      "real-build/sub/chunk.js",
+    ]);
   });
 });
 
