@@ -161,7 +161,7 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
     expect(readDaemonNotes(store, h.worktreeId).map((n) => n.text)).toContainEqual(
       expect.stringContaining(
-        "1 test file failed anew in one tier, above the re-run cap of 0 per tier",
+        "1 test file failed anew in one tier, more than the 0 Squeal re-runs: a mass break is not re-run",
       ),
     );
   });
