@@ -18,7 +18,13 @@ import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
-import { holdsNewFailure, type NewFailure, queueReruns } from "./rerun.js";
+import {
+  endRerun,
+  holdsNewFailure,
+  type NewFailure,
+  queueReruns,
+  rememberReruns,
+} from "./rerun.js";
 import { storeClosures } from "./revision.js";
 import { joinSpan, type TierSpan } from "./sharing.js";
 import { slowView } from "./slow.js";
@@ -321,7 +327,7 @@ export function recordTier(
         storeKey = ranUnderCurrent ? context.keys.index.key(file.ref) : null;
       }
       if (inputs.some(unstable) || growth?.growth.some(unstable)) {
-        ledger.discard(file, key);
+        ledger.discard(file, key, forced);
         continue;
       }
       if (growth !== undefined && growth.firstSeen.length > 0) {
@@ -339,6 +345,7 @@ export function recordTier(
         describe: context.describe,
       });
       const prior = storeResults(context, records);
+      if (forced && file.rerunKey === key) endRerun(context, file);
       // A grown file's results become current at `storeKey` through `settle` below; its new
       // failure is judged here, before the sink applies them (review wave 13i, B3).
       if (growth !== undefined || file.key === key) {
@@ -356,7 +363,7 @@ export function recordTier(
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
     ledger.rerunFirstSeen(firstSeen);
-    queueReruns(context, ledger, failedAnew);
+    rememberReruns(context, queueReruns(context, ledger, failedAnew));
     storeClosures(
       context,
       grown.map((g) => g.ref),
