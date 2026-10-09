@@ -5622,16 +5622,14 @@ var init_revision2 = __esm({
 async function reconcileBatch(context, ledger, batch) {
   const { keys, hasher, store, worktreeId } = context;
   let diff = await diffBatch(batch, keys.cache, hasher);
-  if (diff.changes.length === 0 && batch.trigger !== "watch") {
-    const moved = await keys.lockfileCandidates();
-    if (moved.length > 0) {
-      const paths = await statCandidates(moved, hasher);
-      const lockfiles = await diffBatch({ trigger: batch.trigger, paths }, keys.cache, hasher);
-      diff = { ...lockfiles, updates: [...diff.updates, ...lockfiles.updates] };
-    }
+  const ignored = /* @__PURE__ */ new Set();
+  if (batch.trigger !== "watch") {
+    for (const path of await keys.ignoredCandidates()) ignored.add(path);
+    const moved = diff.changes.length === 0 ? await keys.lockfileCandidates() : [];
+    diff = await diffBeside(context, diff, batch, [...moved, ...ignored]);
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
-  const touched = touchedUnchanged(diff, keys.cache);
+  const touched = touchedUnchanged(diff, keys.cache).filter((path) => !ignored.has(path));
   const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
@@ -5657,6 +5655,19 @@ async function reconcileBatch(context, ledger, batch) {
   });
   return { applied, touched };
 }
+async function diffBeside(context, diff, batch, paths) {
+  const own = new Set(batch.paths.map((candidate) => candidate.path));
+  const beside = paths.filter((path) => !own.has(path));
+  if (beside.length === 0) return diff;
+  const { keys, hasher } = context;
+  const candidates = await statCandidates(beside, hasher);
+  const more = await diffBatch({ trigger: batch.trigger, paths: candidates }, keys.cache, hasher);
+  return {
+    trigger: diff.trigger,
+    changes: [...diff.changes, ...more.changes].sort((a, b) => compare(a.path, b.path)),
+    updates: [...diff.updates, ...more.updates]
+  };
+}
 function touchedUnchanged(diff, cache) {
   const changed = new Set(diff.changes.map((change2) => change2.path));
   const touched = [];
@@ -5670,6 +5681,7 @@ function touchedUnchanged(diff, cache) {
 var init_batch = __esm({
   "src/core/scheduler/batch.ts"() {
     "use strict";
+    init_fs();
     init_hash();
     init_keys();
     init_revision();
@@ -7285,22 +7297,22 @@ var init_keying = __esm({
       }
       /**
        * What a reconciliation pass that found no change reconciles too, because
-       * it is in an ignored directory no watch batch reports. Installed lockfiles
-       * that are not the ones the environment was last hashed with: a first
+       * it is in an ignored directory no watch batch reports: installed lockfiles
+       * that are not the ones the environment was last hashed with. A first
        * install created one, or another package manager's replaced it; the old
-       * and new paths, so the move becomes a revision (review N3). And the
-       * gitignored declared inputs not watched yet: a file a rebuild only added
-       * joins the key as an add (004-33).
+       * and new paths, so the move becomes a revision (review N3).
        */
       async lockfileCandidates() {
-        return [...await this.#lockfiles.moved(), ...await this.#unwatchedIgnoredInputs()];
+        return this.#lockfiles.moved();
       }
       /**
-       * Lists the gitignored declared inputs, within the declared globs' reach,
-       * and watches the ones not watched yet, a path already hashed included.
-       * Returns those.
+       * What every reconciliation pass reconciles too, whatever else it found:
+       * the gitignored declared inputs, within the declared globs' reach, not
+       * watched yet, a path already hashed included. A file a rebuild only added
+       * joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches them
+       * from here on.
        */
-      async #unwatchedIgnoredInputs() {
+      async ignoredCandidates() {
         const globs2 = inputGlobs(this.#policy.inputs);
         if (globs2.length === 0) return [];
         const listed = await ignoredInputs(this.options.root, globs2);
@@ -31798,7 +31810,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.67";
+  if (true) return "0.1.68";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
