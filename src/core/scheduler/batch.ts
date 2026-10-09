@@ -1,3 +1,4 @@
+import { compare } from "../fs/index.js";
 import { type StatCache, sameStat } from "../hash/index.js";
 import { ancestorListings } from "../keys/index.js";
 import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/index.js";
@@ -19,7 +20,8 @@ import { type ContentRekey, rekeyContent } from "./revision.js";
  *
  * A reconciliation pass that finds no change also asks whether an
  * installed lockfile appeared, vanished or moved; that becomes a revision
- * of its own (review S8, N3).
+ * of its own (review S8, N3). Every reconciliation pass lists the ignored
+ * declared inputs no watch reports yet beside its own changes (004-44).
  *
  * `touched` is what no revision names (task 001-159): the paths written
  * since they were hashed whose bytes ended as they were, a revert and its
@@ -35,16 +37,15 @@ export async function reconcileBatch(
 }> {
   const { keys, hasher, store, worktreeId } = context;
   let diff = await diffBatch(batch, keys.cache, hasher);
-  if (diff.changes.length === 0 && batch.trigger !== "watch") {
-    const moved = await keys.lockfileCandidates();
-    if (moved.length > 0) {
-      const paths = await statCandidates(moved, hasher);
-      const lockfiles = await diffBatch({ trigger: batch.trigger, paths }, keys.cache, hasher);
-      diff = { ...lockfiles, updates: [...diff.updates, ...lockfiles.updates] };
-    }
+  const ignored = new Set<RelativePath>();
+  if (batch.trigger !== "watch") {
+    for (const path of await keys.ignoredCandidates()) ignored.add(path);
+    const moved = diff.changes.length === 0 ? await keys.lockfileCandidates() : [];
+    diff = await diffBeside(context, diff, batch, [...moved, ...ignored]);
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
-  const touched = touchedUnchanged(diff, keys.cache);
+  // The ignored inputs key slow results, not transforms: no touch of the runner (004-44).
+  const touched = touchedUnchanged(diff, keys.cache).filter((path) => !ignored.has(path));
   const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
@@ -70,6 +71,30 @@ export async function reconcileBatch(
     return { revision, content };
   });
   return { applied, touched };
+}
+
+/**
+ * `diff` with the content changes and cache updates of `paths` beyond the
+ * batch's own, both kept: a pass that found a source change still lists what
+ * no watch reports (reviews/wave-4.6.md B1).
+ */
+async function diffBeside(
+  context: SchedulerContext,
+  diff: BatchDiff,
+  batch: CandidateBatch,
+  paths: readonly RelativePath[],
+): Promise<BatchDiff> {
+  const own = new Set(batch.paths.map((candidate) => candidate.path));
+  const beside = paths.filter((path) => !own.has(path));
+  if (beside.length === 0) return diff;
+  const { keys, hasher } = context;
+  const candidates = await statCandidates(beside, hasher);
+  const more = await diffBatch({ trigger: batch.trigger, paths: candidates }, keys.cache, hasher);
+  return {
+    trigger: diff.trigger,
+    changes: [...diff.changes, ...more.changes].sort((a, b) => compare(a.path, b.path)),
+    updates: [...diff.updates, ...more.updates],
+  };
 }
 
 /**
