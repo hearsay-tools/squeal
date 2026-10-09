@@ -413,7 +413,8 @@ export interface WhyReport {
   /**
    * The log of the run that produced the result the known state shows: this
    * worktree's own, or the producing worktree's when inherited. `null` when
-   * no stored result is behind it. Task 001-173.
+   * no stored result is identifiably behind it: replaced, pruned, or one of
+   * several that fit (review wave-13i B4). Task 001-173.
    */
   readonly runLog: WhyRunLog | null;
   /**
@@ -440,14 +441,19 @@ export interface WhyRunLog {
   /**
    * `present`: the file is on disk. `pruned`: neither it nor its run
    * directory is (D1 pruning, or a run that never wrote one). `not-vitest`:
-   * the run directory exists without a `vitest.log`, as a run of only
-   * `node:test` files leaves it.
+   * the run directory exists without a `vitest.log` or a node:test log of
+   * the check's file, so no console of it was captured. `node-test`: the
+   * check's file ran under node:test, whose output is its own: `path` is
+   * its stdout log and `stderrPath` its stderr log (task 001-188).
    */
-  readonly state: "present" | "pruned" | "not-vitest";
+  readonly state: "present" | "pruned" | "not-vitest" | "node-test";
+  /** With `node-test`: the file's stderr log. */
+  readonly stderrPath?: AbsolutePath;
   /**
    * With `--include-logs`: the file's console lines the reporter tagged with
-   * the check's test file, at most `WHY_LOG_LINE_LIMIT`; `null` otherwise or
-   * when the file is not `present`.
+   * the check's test file, at most `WHY_LOG_LINE_LIMIT`, and none for
+   * `not-vitest`, which captured no console of it; `null` without the flag
+   * or when `pruned`.
    */
   readonly console: WhyConsole | null;
 }

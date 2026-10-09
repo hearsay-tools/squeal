@@ -46,7 +46,9 @@ describe("squeal why: the run log", () => {
   it("names this worktree's own log for an own result", () => {
     const { store, b, runDir, writeLog } = seeded();
     writeLog("run-b1", ["squeal vitest run run-b1"]);
-    store.knownStates.upsertMany([state(b.id, LOGIN, { outcome: "fail", observedAt: 1 })]);
+    store.knownStates.upsertMany([
+      state(b.id, LOGIN, { outcome: "fail", observedAt: 1, commit: "abc123" }),
+    ]);
 
     const why = reportOf(readWhy(b.root, NAME));
 
@@ -121,7 +123,9 @@ describe("squeal why: the run log", () => {
       runId: "run-gone",
     });
     store.results.putMany([own]);
-    store.knownStates.upsertMany([state(b.id, LOGIN, { outcome: "fail" })]);
+    store.knownStates.upsertMany([
+      state(b.id, LOGIN, { outcome: "fail", observedAt: 4, commit: "abc123" }),
+    ]);
     const gone = reportOf(readWhy(b.root, NAME));
     expect(gone.runLog).toMatchObject({
       runId: "run-gone",
@@ -130,14 +134,23 @@ describe("squeal why: the run log", () => {
     });
   });
 
-  it("says when the run wrote no vitest.log", () => {
+  it("says when the run wrote no vitest.log, and with --include-logs that no console was captured", () => {
     const { b, runDir } = seeded();
     mkdirSync(join(runDir("run-a1"), "node-test"), { recursive: true });
 
-    const why = reportOf(readWhy(b.root, NAME, { includeLogs: true }));
+    const plain = reportOf(readWhy(b.root, NAME));
+    expect(plain.runLog).toMatchObject({ state: "not-vitest", console: null });
+    expect(formatWhy(plain)).toContain(`Its runner's output is under ${runDir("run-a1")}\n`);
+    expect(formatWhy(plain)).not.toContain("No console");
 
-    expect(why.runLog).toMatchObject({ state: "not-vitest", console: null });
-    expect(formatWhy(why)).toContain(`Its runner's output is under ${runDir("run-a1")}\n`);
+    const why = reportOf(readWhy(b.root, NAME, { includeLogs: true }));
+    expect(why.runLog).toMatchObject({
+      state: "not-vitest",
+      console: { lines: [], total: 0, limit: WHY_LOG_LINE_LIMIT },
+    });
+    expect(formatWhy(why)).toContain(
+      "  No console of src/auth.test.ts was captured in this run.\n",
+    );
   });
 
   it("says when no stored result is behind the known state", () => {
@@ -148,6 +161,8 @@ describe("squeal why: the run log", () => {
     const why = reportOf(readWhy(c.root, NAME));
 
     expect(why.runLog).toBeNull();
-    expect(formatWhy(why)).toContain("Run log: none, no stored result is behind the known state\n");
+    expect(formatWhy(why)).toContain(
+      "Run log: unknown, no stored result is identifiably the one behind the known state",
+    );
   });
 });
