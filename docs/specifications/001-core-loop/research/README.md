@@ -112,3 +112,15 @@ Added 2026-10-08 from `lessons.md` defect 28's cause (cezar S26 to S28: a test s
 5. Cost per test file and per run on `cezar`, and the number of test files whose closure grows.
 
 Recommendation: the mechanism, the D3 and D4 sentences it changes, and a board row's done-when (including cezar S26 to S28 re-running when the mock changes, with no `inputs`).
+
+## Topic: release-hub
+
+Added 2026-10-09 from 004-17 dogfooding defect 4 and the human's decision: installed plugins follow this repository's `main` through the Claude Code and Codex marketplaces, so every landing ships within minutes and re-keys every check (the daemon's Squeal version is in the environment hash). The human chose one hub marketplace repository for all their tools, pinning each tool to a release tag, over a `develop` branch; `main` stays the working branch.
+
+1. Claude Code: can a marketplace entry point at another repository at a pinned ref (tag or commit), and how is it written (`source` forms, `ref`, `sha`)? How does an installed plugin update when the pin moves (`claude plugin update`, auto-update), and what happens to running sessions? Verify with a scratch marketplace repo and a scratch plugin, never the real `hearsay-tools` repos.
+2. Codex: the same questions for `~/.codex` marketplaces (git sources, refs, `.agents/plugins/marketplace.json`'s format), Codex 0.160.1. If Codex cannot pin an external ref, what is the least-cost alternative (a hub that holds built plugin copies, filled by a release script), and its update behavior.
+3. The human's other tools: which of `/home/agent/projects/*` publish a plugin today, through which marketplace files (for example `toolkit-dev` has `.claude-plugin/` and `.agents/plugins/marketplace.json`), and what each needs to be listed in a hub. Read only; never change those repositories.
+4. Squeal's own release step: what a release is (a tag on a `main` commit whose wave review passed, the committed `plugins/*/dist`), whether `check:version` and the per-landing version bump still matter, and what the plugins' `version` field must be for each marketplace to see an update.
+5. Migration: what the human does once on each machine to re-point Claude Code and Codex at the hub, and whether a session in flight survives it.
+
+Recommendation: the hub's layout (repository name, manifest per harness, entry format), the release procedure as a short checklist, what changes in `docs/process.md`, and whether the Squeal version can then stay in the environment hash.
