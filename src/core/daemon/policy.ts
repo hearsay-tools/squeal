@@ -88,6 +88,7 @@ const SHAPE: Shape = {
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
+    maxParallel: positiveInteger,
   },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
