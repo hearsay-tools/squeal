@@ -16,6 +16,7 @@ import { takeHeldFiles } from "./held.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { priorityOf } from "./queue.js";
+import { restoreReruns } from "./rerun.js";
 import { readEnvironments, resolveClosures } from "./revision.js";
 
 /**
@@ -167,6 +168,7 @@ export async function baseline(
       ledger.enqueue(file, priorityOf(file, changed), false, recent.has(file.id));
     }
   }
+  restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });

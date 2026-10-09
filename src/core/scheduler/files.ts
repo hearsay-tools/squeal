@@ -48,6 +48,12 @@ export interface FileState {
    */
   rerunKey: CheckKey | null;
   /**
+   * The re-run queued at `rerunKey` has not landed yet (review wave 13i,
+   * S1): kept in `meta` with it (`writeReruns`), so a restarted daemon
+   * queues it again, and dropped when the file's key moves first.
+   */
+  rerunPending: boolean;
+  /**
    * Why the file is `unknown` because a runner call it needs failed (spec 001
    * D5: "A runner call that fails is a state, never a skip"). It is not run
    * until the runner recovers; `null` otherwise.
@@ -69,6 +75,7 @@ export function newFileState(ref: TestFileRef): FileState {
     unknownKey: null,
     discards: 0,
     rerunKey: null,
+    rerunPending: false,
     blocked: null,
   };
 }

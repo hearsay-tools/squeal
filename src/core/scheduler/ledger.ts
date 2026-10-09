@@ -17,6 +17,7 @@ import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, durationOf, type FileState, newFileState } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
+import { endRerun } from "./rerun.js";
 import { slowView } from "./slow.js";
 
 /** Results `applyResults` made current, owed to the sink at the next commit. */
@@ -148,6 +149,11 @@ export class Ledger {
       if (key !== file.key) {
         file.key = key;
         this.#dirty.add(file.id);
+      }
+      // A re-run queued for another key is no re-run here: the new key runs as any miss (S1).
+      if (file.rerunPending && key !== file.rerunKey) {
+        endRerun(this.context, file);
+        this.queue.remove(ref);
       }
       if (this.queue.isForced(ref)) continue;
       if (
@@ -298,12 +304,13 @@ export class Ledger {
    * during every run. A discard whose key moved is an edit the agent made
    * while the file ran; it is not counted (review S5).
    */
-  discard(file: FileState, key: CheckKey): void {
+  discard(file: FileState, key: CheckKey, forced = false): void {
     file.discards = file.key === key ? file.discards + 1 : 0;
     if (file.discards >= MAX_DISCARDS) {
       this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
     } else if (file.key !== null && file.blocked === null) {
-      this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+      // A forced run, a re-run among them (task 001-171), stays forced: its lookup would take its own fail.
+      this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key);
     }
   }
 

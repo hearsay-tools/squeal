@@ -4,6 +4,7 @@ import { checkId, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 import { priorityOf } from "./queue.js";
+import { pruneReruns, type RerunMemory, readReruns, writeReruns } from "./rerun-memory.js";
 
 /*
  * Spec 001 D6 as amended (task 001-171, decided by the human 2026-10-09): a
@@ -57,17 +58,18 @@ export const RERUN_CAP = 8;
  * already re-run, or its file is slow (a limit: a slow run can cost minutes
  * to an hour; the slow tier runs it again when spec 004 D2's triggers say).
  * When more than `rerunCap` are left, none is re-run and one note says how
- * many failed anew and that a mass break is not re-run.
+ * many failed anew and that a mass break is not re-run. Returns the
+ * failures queued, for `writeReruns` (review wave 13i, S1).
  */
 export function queueReruns(
   context: Pick<SchedulerContext, "note" | "rerunCap">,
   ledger: Ledger,
   failures: readonly NewFailure[],
-): void {
+): NewFailure[] {
   const due = failures.filter(
     ({ file, key, forced }) => !forced && file.rerunKey !== key && !ledger.queue.isSlow(file.ref),
   );
-  if (due.length === 0) return;
+  if (due.length === 0) return [];
   if (due.length > context.rerunCap) {
     const files = due.length === 1 ? "test file" : "test files";
     context.note(
@@ -75,10 +77,57 @@ export function queueReruns(
         "Squeal re-runs: a mass break is not re-run " +
         `(${listPaths(due.map(({ file }) => file.ref.path))})`,
     );
-    return;
+    return [];
   }
   for (const { file, key } of due) {
     file.rerunKey = key;
+    file.rerunPending = true;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
   }
+  return due;
+}
+
+/** Remembers the re-runs `queueReruns` queued, pending, in `meta` (S1). */
+export function rememberReruns(context: SchedulerContext, queued: readonly NewFailure[]): void {
+  const entries = queued.map(({ file, key }) => ({ testFile: file.ref, key, pending: true }));
+  writeReruns(context.store, context.worktreeId, entries);
+}
+
+/**
+ * The pending re-run of `file` is over: it ran forced at `key` and stored
+ * (`landed`), or the file's key moved before it ran, when the run at the
+ * new key is an ordinary one (`Ledger.settle`). The key stays remembered.
+ */
+export function endRerun(context: SchedulerContext, file: FileState): void {
+  if (!file.rerunPending || file.rerunKey === null) return;
+  file.rerunPending = false;
+  writeReruns(context.store, context.worktreeId, [
+    { testFile: file.ref, key: file.rerunKey, pending: false },
+  ]);
+}
+
+/**
+ * At the baseline (review wave 13i, S1): each listed file takes the key its
+ * new failure was re-run at, and a re-run a daemon queued and never ran is
+ * queued forced again while the file is still at that key. Under a
+ * lookup-only baseline (`queue` false) it stays pending for a later daemon.
+ * A file no longer listed is forgotten.
+ */
+export function restoreReruns(context: SchedulerContext, ledger: Ledger, queue: boolean): void {
+  const { store, worktreeId } = context;
+  const ended: RerunMemory[] = [];
+  for (const [id, memory] of readReruns(store, worktreeId)) {
+    const file = ledger.files.get(id);
+    if (!file) continue;
+    file.rerunKey = memory.key;
+    if (!memory.pending) continue;
+    if (file.key !== memory.key || ledger.queue.isSlow(file.ref)) {
+      ended.push({ ...memory, pending: false });
+    } else if (queue) {
+      file.rerunPending = true;
+      ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    }
+  }
+  writeReruns(store, worktreeId, ended);
+  pruneReruns(store, worktreeId, new Set(ledger.files.keys()));
 }
