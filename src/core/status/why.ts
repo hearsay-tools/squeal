@@ -103,7 +103,12 @@ function report(
   }));
   const shown = shownResult(worktreeId, knownState, results);
   const runsDir = storePaths(commonDir).runsDir;
-  const held = heldFor(store, worktreeId, check, results.map(({ result }) => result));
+  const held = heldFor(
+    store,
+    worktreeId,
+    check,
+    results.map(({ result }) => result),
+  );
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,

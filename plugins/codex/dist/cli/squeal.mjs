@@ -2209,6 +2209,70 @@ var init_check_name = __esm({
   }
 });
 
+// src/core/state/flaky.ts
+function readFlakyNotes(store) {
+  const raw = store.meta.get(FLAKY_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((entry2) => isNote(entry2[1]))
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function recordFlips(store, prior, next, at2) {
+  const before = new Map(prior.map((r) => [`${checkIdentity(r.check)}\0${r.key}`, r]));
+  const flips = [];
+  for (const r of next) {
+    const replaced = before.get(`${checkIdentity(r.check)}\0${r.key}`);
+    if (replaced === void 0 || !flipped(replaced.outcome, r.outcome)) continue;
+    flips.push([
+      checkIdentity(r.check),
+      {
+        key: r.key,
+        from: replaced.outcome,
+        to: r.outcome,
+        fromWorktreeId: replaced.provenance.worktreeId,
+        toWorktreeId: r.provenance.worktreeId,
+        at: at2
+      }
+    ]);
+  }
+  if (flips.length === 0) return [];
+  const kept2 = new Map(readFlakyNotes(store));
+  for (const [id2, note] of flips) {
+    kept2.delete(id2);
+    kept2.set(id2, note);
+  }
+  const newest = [...kept2].slice(-FLAKY_KEPT);
+  store.meta.set(FLAKY_META_KEY, JSON.stringify(Object.fromEntries(newest)));
+  return flips.map(([, note]) => note);
+}
+function flipped(from, to) {
+  return from === "fail" && to === "pass" || from === "pass" && to === "fail";
+}
+function isNote(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number";
+}
+function flakyText(note) {
+  return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same inputs`;
+}
+var FLAKY_META_KEY, FLAKY_KEPT, OUTCOMES;
+var init_flaky = __esm({
+  "src/core/state/flaky.ts"() {
+    "use strict";
+    init_derive();
+    FLAKY_META_KEY = "flaky-checks";
+    FLAKY_KEPT = 1024;
+    OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail"]);
+  }
+});
+
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION;
 var init_common = __esm({
@@ -3034,6 +3098,30 @@ var init_header = __esm({
   }
 });
 
+// src/core/state/inherited.ts
+function heldFailure(store, worktreeId, results2, failureKeys2 = () => readFailureKeys(store, worktreeId)) {
+  const foreign = results2.filter(
+    (r) => r.outcome === "fail" && r.provenance.worktreeId !== worktreeId
+  );
+  if (foreign.length === 0) return void 0;
+  const confirmed = failureKeys2();
+  return foreign.find((r) => confirmed.get(checkIdentity(r.check)) !== r.key);
+}
+function failureKeysOnce(store, worktreeId) {
+  let keys = null;
+  return () => {
+    keys ??= readFailureKeys(store, worktreeId);
+    return keys;
+  };
+}
+var init_inherited = __esm({
+  "src/core/state/inherited.ts"() {
+    "use strict";
+    init_state2();
+    init_derive();
+  }
+});
+
 // src/core/state/transitions.ts
 function transitionKind(from, to) {
   const before = from?.outcome ?? null;
@@ -3124,9 +3212,12 @@ function createStateSink(store, options = {}) {
       const at2 = now();
       const next = /* @__PURE__ */ new Map();
       const hits = [];
+      const confirmed = failureKeysOnce(store, worktreeId);
       for (const [file, key2] of keys) {
         if (!included(file)) continue;
-        for (const r of store.results.byKey(key2.key, at2)) {
+        const results2 = store.results.byKey(key2.key, at2);
+        if (heldFailure(store, worktreeId, results2, confirmed) !== void 0) continue;
+        for (const r of results2) {
           hits.push(r);
           next.set(
             checkIdentity(r.check),
@@ -3160,6 +3251,7 @@ var init_sink = __esm({
     init_state2();
     init_baseline();
     init_derive();
+    init_inherited();
     init_transitions();
   }
 });
@@ -3239,6 +3331,8 @@ var init_slow_text = __esm({
 // src/core/state/index.ts
 var state_exports = {};
 __export(state_exports, {
+  FLAKY_KEPT: () => FLAKY_KEPT,
+  FLAKY_META_KEY: () => FLAKY_META_KEY,
   SUMMARY_MAX_CHARS: () => SUMMARY_MAX_CHARS,
   baselineFindings: () => baselineFindings,
   checkIdentity: () => checkIdentity,
@@ -3248,13 +3342,18 @@ __export(state_exports, {
   createStateSink: () => createStateSink,
   describeFailure: () => describeFailure,
   durationText: () => durationText,
+  failureKeysOnce: () => failureKeysOnce,
+  flakyText: () => flakyText,
   formatCheck: () => formatCheck,
   fullSuiteText: () => fullSuiteText,
+  heldFailure: () => heldFailure,
   isFastPending: () => isFastPending,
   isPending: () => isPending,
   parseCheck: () => parseCheck,
+  readFlakyNotes: () => readFlakyNotes,
   readHeader: () => readHeader,
   readSlowTier: () => readSlowTier,
+  recordFlips: () => recordFlips,
   runnerPartText: () => runnerPartText,
   slowFilesNotCurrent: () => slowFilesNotCurrent,
   slowPolicyView: () => slowPolicyView,
@@ -3272,7 +3371,9 @@ var init_state3 = __esm({
     init_check_name();
     init_derive();
     init_fingerprint();
+    init_flaky();
     init_header();
+    init_inherited();
     init_sink();
     init_slow();
     init_slow_text();
@@ -3977,17 +4078,17 @@ function createViewRepo(conn) {
 function toView(row) {
   return {
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES),
+    outcome: oneOf2(row, "outcome", OUTCOMES2),
     fingerprint: strOrNull(row, "fingerprint"),
     toldAt: num(row, "told_at")
   };
 }
-var OUTCOMES, WHERE_CONSUMER;
+var OUTCOMES2, WHERE_CONSUMER;
 var init_consumers = __esm({
   "src/core/store/repos/consumers.ts"() {
     "use strict";
     init_codec();
-    OUTCOMES = ["pass", "fail", "skip", "unknown"];
+    OUTCOMES2 = ["pass", "fail", "skip", "unknown"];
     WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
   }
 });
@@ -4075,7 +4176,7 @@ function toResult(row) {
   return {
     check: checkFrom(row),
     key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES2),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
     durationMs: num(row, "duration_ms"),
     location: location(row),
     fingerprint: strOrNull(row, "fingerprint"),
@@ -4091,12 +4192,12 @@ function toResult(row) {
     }
   };
 }
-var OUTCOMES2, SELECT_RESULTS;
+var OUTCOMES3, SELECT_RESULTS;
 var init_results = __esm({
   "src/core/store/repos/results.ts"() {
     "use strict";
     init_codec();
-    OUTCOMES2 = ["pass", "fail", "skip"];
+    OUTCOMES3 = ["pass", "fail", "skip"];
     SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -4271,7 +4372,7 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    outcome: oneOf2(row, "outcome", OUTCOMES4),
     validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
@@ -4320,20 +4421,20 @@ function toTransition(row) {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
     kind: oneOf2(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES3),
-    to: oneOf2(row, "to_outcome", OUTCOMES3),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
+    to: oneOf2(row, "to_outcome", OUTCOMES4),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
     at: num(row, "at")
   };
 }
-var OUTCOMES3, VALIDITIES, PENDING, KINDS, SELECT_STATES;
+var OUTCOMES4, VALIDITIES, PENDING, KINDS, SELECT_STATES;
 var init_states = __esm({
   "src/core/store/repos/states.ts"() {
     "use strict";
     init_codec();
-    OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
+    OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
     VALIDITIES = ["current", "pending", "stale", "unknown"];
     PENDING = ["queued", "running"];
     KINDS = [
@@ -4402,6 +4503,7 @@ function createTestFileKeyRepo(conn) {
       "SELECT * FROM test_file_keys WHERE worktree_id = ? ORDER BY project, path",
       worktreeId
     ).map(toTestFileKey),
+    withKey: (key2) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key2).map(toTestFileKey),
     upsertMany: (records) => conn.transaction(() => {
       for (const r of records) {
         conn.run(
@@ -6411,6 +6513,33 @@ var init_slow3 = __esm({
   }
 });
 
+// src/core/scheduler/store-results.ts
+function storeResults(context, records) {
+  const [first] = records;
+  if (first === void 0) return;
+  const { store, worktreeId, now } = context;
+  store.transaction(() => {
+    const prior = store.results.byKey(first.key, 0);
+    store.results.putMany(records);
+    const flips = recordFlips(store, prior, records, now());
+    if (!flips.some((note) => note.to === "pass")) return;
+    const { project, testPath } = first.check;
+    const sink = createStateSink(store, { now });
+    for (const row of store.testFileKeys.withKey(first.key)) {
+      if (row.worktreeId === worktreeId) continue;
+      if (row.testFile.project !== project || row.testFile.path !== testPath) continue;
+      const revision = store.revisions.latest(row.worktreeId)?.number ?? row.revision;
+      sink.refresh(row.worktreeId, revision, { checkpointId: null }, [row.testFile]);
+    }
+  });
+}
+var init_store_results = __esm({
+  "src/core/scheduler/store-results.ts"() {
+    "use strict";
+    init_state3();
+  }
+});
+
 // src/core/scheduler/tiers.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
 import { join as join28 } from "node:path";
@@ -6590,7 +6719,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         provenance,
         describe: context.describe
       });
-      if (records.length > 0) store.results.putMany(records);
+      storeResults(context, records);
       if (growth === void 0 && file.key === key2) {
         ledger.applyResults(file, key2, records, checkpointId);
       }
@@ -6661,6 +6790,7 @@ var init_tiers = __esm({
     init_revision2();
     init_slow3();
     init_stability();
+    init_store_results();
   }
 });
 
@@ -6755,7 +6885,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     if (previous === null) continue;
     const results2 = store.results.byKey(previous, 0);
     if (results2.length === 0) continue;
-    file.resultKey = previous;
+    if (previous !== file.key) file.resultKey = previous;
     file.durationMs = durationOf(results2);
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
@@ -7661,6 +7791,7 @@ var init_ledger = __esm({
     "use strict";
     init_keys();
     init_slow2();
+    init_state3();
     init_types();
     init_checkpoints();
     init_context();
@@ -7778,14 +7909,18 @@ var init_ledger = __esm({
       /**
        * The stored results of `key` that may stand for `file`: every hit, unless
        * one comes from another worktree and the file may not inherit (spec 004
-       * D6, `inherits`), when there is none. The store holds one result per
-       * check and key, so a mixed set is never partly this worktree's own.
+       * D6, `inherits`), or one is another worktree's fail this worktree has not
+       * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
+       * there is none: the file is a miss and runs here, and its local result
+       * replaces the shared row. The store holds one result per check and key,
+       * so a mixed set is never partly this worktree's own.
        */
       lookup(file, key2) {
         const { store, worktreeId, now } = this.context;
         const hits = store.results.byKey(key2, now());
         if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
-        return this.inherits(file.ref) ? hits : [];
+        if (!this.inherits(file.ref)) return [];
+        return heldFailure(store, worktreeId, hits) === void 0 ? hits : [];
       }
       /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
       inherits(ref2) {
@@ -11982,7 +12117,7 @@ function enumeratedChecks(module, testFile) {
 }
 function toCheckRunResult(testCase, testFile, paths, fullName) {
   const result = testCase.result();
-  const outcome2 = OUTCOMES4[result.state];
+  const outcome2 = OUTCOMES5[result.state];
   if (!outcome2) return null;
   const location2 = testCase.location;
   return {
@@ -12001,12 +12136,12 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
 function compareRefs(a, b) {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
-var OUTCOMES4, TIMEOUT, currentLoad, refKey;
+var OUTCOMES5, TIMEOUT, currentLoad, refKey;
 var init_results2 = __esm({
   "src/runners/vitest/results.ts"() {
     "use strict";
     init_fs();
-    OUTCOMES4 = {
+    OUTCOMES5 = {
       passed: "pass",
       failed: "fail",
       skipped: "skip"
@@ -31860,7 +31995,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.70";
+  if (true) return "0.1.71";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -32031,6 +32166,23 @@ function formatWhy(why2) {
 `;
 }
 function knownState(why2, s) {
+  return [...stateLines(why2, s), ...heldLine(why2), ...flakyLine(why2)];
+}
+function heldLine(why2) {
+  const held = why2.heldFailure;
+  if (held === void 0) return [];
+  const { worktreeId, commit } = held.provenance;
+  const source = why2.worktreeRoots[worktreeId] ?? `removed worktree ${worktreeId}`;
+  return [`  Inherited FAIL from ${source} at ${shortCommit(commit)}, being confirmed`];
+}
+function flakyLine(why2) {
+  const note = why2.flaky;
+  if (note === void 0) return [];
+  return [
+    `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`
+  ];
+}
+function stateLines(why2, s) {
   if (s === null) return ["Known state: none in this worktree"];
   const head = [
     upper(s.outcome),
@@ -32118,6 +32270,9 @@ function producer(why2, log) {
   if (log.worktreeId === why2.worktreeId) return `${root ?? why2.worktreeRoot} (this worktree)`;
   const other = root ?? `removed worktree ${log.worktreeId}`;
   return why2.knownState?.origin?.kind === "inherited" ? `${other} (inherited)` : other;
+}
+function capitalize(text2) {
+  return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 }
 function upper(outcome2) {
   return outcome2.toUpperCase();
@@ -32369,6 +32524,7 @@ function recoveryNote(raw) {
 
 // src/core/status/why.ts
 init_fs();
+init_keys();
 init_state3();
 init_store2();
 init_types();
@@ -32423,6 +32579,13 @@ function report({ store, root, commonDir }, check, includeLogs) {
   }));
   const shown = shownResult(worktreeId, knownState2, results2);
   const runsDir = storePaths(commonDir).runsDir;
+  const held = heldFor(
+    store,
+    worktreeId,
+    check,
+    results2.map(({ result }) => result)
+  );
+  const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -32435,8 +32598,17 @@ function report({ store, root, commonDir }, check, includeLogs) {
     knownState: knownState2,
     history: store.transitions.history(worktreeId, check),
     results: results2,
-    runLog: shown === null ? null : runLogOf(shown, check, runsDir, includeLogs)
+    runLog: shown === null ? null : runLogOf(shown, check, runsDir, includeLogs),
+    ...held === void 0 ? {} : { heldFailure: held },
+    ...flaky === void 0 ? {} : { flaky }
   };
+}
+function heldFor(store, worktreeId, check, results2) {
+  const file = testFileId(testFileOf(check));
+  const key2 = store.testFileKeys.list(worktreeId).find((row) => testFileId(row.testFile) === file)?.key;
+  if (key2 === void 0 || key2 === null) return void 0;
+  const current2 = results2.filter((r) => r.key === key2);
+  return heldFailure(store, worktreeId, current2);
 }
 
 // src/cli/codex/status.ts

@@ -244,6 +244,28 @@ function formatCheck(check) {
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 
+// src/core/state/flaky.ts
+var FLAKY_META_KEY = "flaky-checks";
+function readFlakyNotes(store) {
+  const raw = store.meta.get(FLAKY_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((entry2) => isNote(entry2[1]))
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail"]);
+function isNote(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number";
+}
+
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
@@ -1133,7 +1155,11 @@ function dependenciesInstalled(store, worktreeId) {
 }
 function annotate(store, consumer, entries, header, states) {
   return {
-    entries: attribute(store, consumer, entries, header.revision),
+    entries: withFlaky(
+      store,
+      consumer.worktreeId,
+      attribute(store, consumer, entries, header.revision)
+    ),
     header: withDependencies(
       store,
       consumer.worktreeId,
@@ -1142,6 +1168,20 @@ function annotate(store, consumer, entries, header, states) {
     ),
     stillFailing: states.filter((s) => s.outcome === "fail").map((s) => s.check)
   };
+}
+function withFlaky(store, worktreeId, entries) {
+  if (!entries.some((e) => e.kind !== "fail-retired")) return entries;
+  const notes = readFlakyNotes(store);
+  if (notes.size === 0) return entries;
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId).map((r) => [testFileId(r.testFile), r.key])
+  );
+  return entries.map((entry2) => {
+    if (entry2.kind === "fail-retired") return entry2;
+    const note = notes.get(checkIdentity(entry2.check));
+    const key = keys.get(testFileId(testFileOf(entry2.check)));
+    return note === void 0 || note.key !== key ? entry2 : { ...entry2, flaky: note };
+  });
 }
 function withDependencies(store, worktreeId, header, failing) {
   const installed = failing ? dependenciesInstalled(store, worktreeId) : void 0;
@@ -1839,7 +1879,7 @@ function removeRunLog(paths, logDir) {
 }
 
 // src/core/store/repos/consumers.ts
-var OUTCOMES = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES2 = ["pass", "fail", "skip", "unknown"];
 var WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 function consumerParams(c) {
   return [c.worktreeId, c.sessionId, c.agentId];
@@ -1954,7 +1994,7 @@ function createViewRepo(conn) {
 function toView2(row) {
   return {
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES),
+    outcome: oneOf2(row, "outcome", OUTCOMES2),
     fingerprint: strOrNull(row, "fingerprint"),
     toldAt: num(row, "told_at")
   };
@@ -1962,7 +2002,7 @@ function toView2(row) {
 
 // src/core/store/repos/results.ts
 import { createHash as createHash3 } from "node:crypto";
-var OUTCOMES2 = ["pass", "fail", "skip"];
+var OUTCOMES3 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -2049,7 +2089,7 @@ function toResult(row) {
   return {
     check: checkFrom(row),
     key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES2),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
     durationMs: num(row, "duration_ms"),
     location: location(row),
     fingerprint: strOrNull(row, "fingerprint"),
@@ -2154,7 +2194,7 @@ function toCheckpoint(row) {
 }
 
 // src/core/store/repos/states.ts
-var OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
 var VALIDITIES = ["current", "pending", "stale", "unknown"];
 var PENDING = ["queued", "running"];
 var KINDS = [
@@ -2236,7 +2276,7 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    outcome: oneOf2(row, "outcome", OUTCOMES4),
     validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
@@ -2285,8 +2325,8 @@ function toTransition(row) {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
     kind: oneOf2(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES3),
-    to: oneOf2(row, "to_outcome", OUTCOMES3),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
+    to: oneOf2(row, "to_outcome", OUTCOMES4),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -2351,6 +2391,7 @@ function createTestFileKeyRepo(conn) {
       "SELECT * FROM test_file_keys WHERE worktree_id = ? ORDER BY project, path",
       worktreeId
     ).map(toTestFileKey),
+    withKey: (key) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key).map(toTestFileKey),
     upsertMany: (records) => conn.transaction(() => {
       for (const r of records) {
         conn.run(
@@ -3519,7 +3560,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.70";
+  if (true) return "0.1.71";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
