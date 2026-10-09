@@ -1,0 +1,8 @@
+  tarball 576904 bytes
+  which: /tmp/cli-dist/q2b/prefix/bin/squeal -> /tmp/cli-dist/q2b/prefix/lib/node_modules/squeal-probe/bin/squeal.mjs
+  version: 0.1.72
+Squeal daemon spawned for /tmp/cli-dist/q2b/F
+Checkpoint a8195ea4-2510-4f08-b88b-1b9cdcfce237 completed
+Known failures: 0
+  daemon: 721830 /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/cli-dist/q2b/prefix/bin/squeal daemon /tmp/cli-dist/q2b/F
+Squeal daemon stopped for /tmp/cli-dist/q2b/F

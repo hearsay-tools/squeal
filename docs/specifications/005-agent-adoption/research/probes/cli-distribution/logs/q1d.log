@@ -1,0 +1,10 @@
+✔ Successfully updated marketplace: hearsay
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: project)
+--- claude plugin list --json in proj2
+   squeal@hearsay user 0.1.72 true /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.72
+   squeal@hearsay project 0.1.72 true /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.72
+   squeal@hearsay project 0.1.73 true /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.73
+--- claude plugin list --json in other
+   squeal@hearsay user 0.1.72 true /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.72
+   squeal@hearsay project 0.1.72 true /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.72
+   squeal@hearsay project 0.1.73 true /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.73

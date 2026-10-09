@@ -1,0 +1,10 @@
+  [before (store is shared)] schema 1; daemon none started - heartbeat 225s ago; runs 1 (4 file runs); results 14
+Squeal daemon spawned for /tmp/cli-dist/q3/F-wt
+Revision: 0
+Known failures: 0
+Inherited from other worktrees: 14 current results
+  start + status --wait: 1234 ms, load 53.41
+Affected checks: 14 passed, 0 running, 0 queued
+Inherited from other worktrees: 14 current results
+  [after (runs count covers every worktree)] schema 1; daemon none started - heartbeat 229s ago; runs 1 (4 file runs); results 14
+Squeal daemon stopped for /tmp/cli-dist/q3/F-wt

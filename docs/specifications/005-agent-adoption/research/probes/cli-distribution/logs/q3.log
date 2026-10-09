@@ -1,0 +1,37 @@
+
+### warm-up on a fresh fixture: init, start, run --all --wait (daemon.idleExitMinutes 0.1 = 6 s)
+Squeal daemon spawned for /tmp/cli-dist/q3/F
+  start: 592 ms
+Checkpoint 6579760b-905f-4928-8048-500cb0acc032 started at revision 0: 4 test files
+Checkpoint 6579760b-905f-4928-8048-500cb0acc032 completed
+Known failures: 0
+  start + run --all --wait: 4626 ms
+  daemon pid 639883 cpu 2.22 s
+  [warm load 46.38] schema 1; daemon 0.1.72 started 17:17:09.063 heartbeat 4s ago; runs 1 (4 file runs); results 14
+
+### the daemon's idle exit, then the first session
+  daemon gone after 8162 ms
+Daemon: no daemon running since 2026-10-09T17:17:14.073Z
+  2026-10-09T17:17:16.287Z, revision 0: daemon stopped: idle for 6 s with no registered consumers
+SQUEAL · registered at revision 0\nRevision 0: 14 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.
+Revision: 0
+Known failures: 0
+Full-suite checkpoint: completed at revision 0
+  [after the session's daemon settled (runs unchanged = lookup hits) load 48.77] schema 1; daemon 0.1.72 started 17:17:17.204 heartbeat 0s ago; runs 1 (4 file runs); results 14
+
+### Codex trust without a terminal (scratch HOME of q1, plugin 0.1.72 installed there)
+  no --yes, stdin not a terminal:
+      Interrupt         untrusted  sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31
+        node --disable-warning=ExperimentalWarning "/tmp/cli-dist/q1/home/.codex/plugins/cache/hearsay/squeal/0.1.72/dist/interrupt.mjs"
+    squeal init: no terminal to ask on; rerun with --yes to trust them, or use /hooks in the Codex TUI; nothing changed
+    exit 0
+  --yes:
+      SubagentStart     trusted
+      SubagentStop      trusted
+      Stop              trusted
+      Interrupt         trusted
+    1122 ms
+  hooks.state keys now in the scratch config.toml: 9
+  again (idempotent):
+    Then trust its hooks once: open the Codex TUI, run /hooks and trust the hooks of squeal@hearsay. Codex skips untrusted hooks silently.
+    squeal init: every hook of squeal@hearsay is trusted in Codex; nothing to do

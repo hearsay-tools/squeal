@@ -1,0 +1,4 @@
+Upgraded marketplace `hearsay` to the latest configured revision.
+0.1.73
+Then trust its hooks once: open the Codex TUI, run /hooks and trust the hooks of squeal@hearsay. Codex skips untrusted hooks silently.
+squeal init: every hook of squeal@hearsay is trusted in Codex; nothing to do

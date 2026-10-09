@@ -1,0 +1,14 @@
+{
+  "session_id": "6248afa0-bd5b-459c-83da-3a7cc9d9f9a0",
+  "transcript_path": "/home/dev/.claude/projects/-repo/6248afa0-bd5b-459c-83da-3a7cc9d9f9a0.jsonl",
+  "cwd": "/repo",
+  "hook_event_name": "Stop",
+  "permission_mode": "default",
+  "effort": "high",
+  "prompt_id": "c1f0a7d2-5b7e-4b0a-9d55-0a1e2f3b4c5d",
+  "stop_hook_active": false,
+  "last_assistant_message": "The change is in place.",
+  "background_tasks": [],
+  "session_crons": [],
+  "scratchpad_dir": "/tmp/claude-scratchpad-6248afa0"
+}

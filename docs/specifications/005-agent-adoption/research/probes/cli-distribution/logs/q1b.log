@@ -1,0 +1,26 @@
+
+### add the CLI's own marketplace; install
+Adding marketplace…✔ Successfully added marketplace: hearsay (declared in user settings)
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: user)
+   user 0.1.62 /tmp/cli-dist/q1b/home/.claude/plugins/cache/hearsay/squeal/0.1.62
+hearsay
+Added marketplace `hearsay` from /tmp/cli-dist/q1b/prefix/lib/node_modules/squeal.
+Installed plugin root: /tmp/cli-dist/q1b/home/.codex/plugins/cache/hearsay/squeal/0.1.62
+
+### the CLI install is replaced by 0.1.72 in place
+  ❯ squeal@hearsay
+    Version: 0.1.72
+    Read from: /tmp/cli-dist/q1b/prefix/lib/node_modules/squeal/plugins/claude-code
+    Scope: user
+   user 0.1.62 /tmp/cli-dist/q1b/home/.claude/plugins/cache/hearsay/squeal/0.1.62
+  hook file Claude Code would run now: "version": "0.1.72"
+✔ Plugin "squeal" updated from 0.1.62 to 0.1.72 for scope user. Restart to apply changes.
+   user 0.1.72 /tmp/cli-dist/q1b/home/.claude/plugins/cache/hearsay/squeal/0.1.72
+
+### Codex: cache before and after plugin list (which schedules an if-version-changed refresh)
+0.1.62
+squeal@hearsay  installed, enabled  0.1.62   /tmp/cli-dist/q1b/prefix/lib/node_modules/squeal/plugins/codex
+0.1.62
+Error: marketplace `hearsay` is not configured as a Git marketplace
+Installed plugin root: /tmp/cli-dist/q1b/home/.codex/plugins/cache/hearsay/squeal/0.1.72
+0.1.72
