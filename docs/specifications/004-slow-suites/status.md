@@ -63,6 +63,8 @@ Started: 2026-10-08
 
 - 2026-10-09, re-review 004-45 (`reviews/wave-4.7.md`, PASS at `7c9109a`, executable `caec2ce`, gpt-6.1-sol): `reviews/wave-4.6.md` B1 closed on Node 22 and 24 through real-feed probes (a negative control reproduces the old bug); merged source and artifact diffs, quiet passes, tracked links, the touch rule and the lockfile check hold. With it every review of this spec's waves has passed: wave 1.5 (004-21), wave 2.6 (004-26), 4.5's remaining cases (004-43) and 004-33 (004-45). Every planned row is done. The dogfooding (`lessons.md`) ran before waves 4 to 4.7; its defects 1, 2, 3, 7, 8 are fixed in this spec (004-29, 004-30, 004-34, 004-28/38/41, 004-31/39/42), 5 and 9 in 001 (001-153, 001-161), 4 is held by the human (D4), 6 is mitigated by hub releases between sessions. Open question 3 (macOS) is unrun; the rest are answered.
 
+- 2026-10-09, decided by the human after `reviews/wave-4.7.md`: spec 004 ships after a short re-dogfood of the fixed slow lane (004-46, a `lessons.md` addendum); the hub release of 0.1.68 waits for the 001 lane's sixth review (001-169), since it carries 001 slices not yet passed by review (001-159, 001-161, 001-166, 001-167).
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
