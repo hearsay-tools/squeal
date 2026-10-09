@@ -172,7 +172,8 @@ export async function waitForStatus(
         const header = readHeader(store, id, states);
         start ??= states.map(toStartView);
         const news = newsOf(start, states, header.revision);
-        const heard = (syncing.heard ??= lastHeard(store, id, header.revision, session));
+        syncing.heard ??= lastHeard(store, id, header.revision, session);
+        const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs, Math.max(0, heard - 1));
         const current = syncing.sync.current();
         if (current.state === "synced" && current.rekeyed !== null) {
