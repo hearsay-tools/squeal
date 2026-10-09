@@ -6392,6 +6392,39 @@ var init_checkpoints = __esm({
   }
 });
 
+// src/core/scheduler/discharges.ts
+var Discharges;
+var init_discharges = __esm({
+  "src/core/scheduler/discharges.ts"() {
+    "use strict";
+    Discharges = class {
+      #last = /* @__PURE__ */ new Map();
+      /** `file`'s attribution is discharged at `at`; nothing when it had none. */
+      note(file, at2) {
+        if (file.keyedAt === null || file.lastKeyedAt === null) return;
+        const revisions = [.../* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])];
+        this.#last.set(file.id, { ref: file.ref, revisions, at: at2 });
+      }
+      forget(id2) {
+        this.#last.delete(id2);
+      }
+      /** Files discharged at or after `since`, at their revisions after `after` up to `upTo`. */
+      since(since, after, upTo) {
+        const files = [];
+        for (const { ref: ref2, revisions, at: at2 } of this.#last.values()) {
+          if (at2 < since) continue;
+          for (const revision of revisions) {
+            if (revision > after && revision <= upTo) {
+              files.push({ testFile: ref2, revision, resolved: true });
+            }
+          }
+        }
+        return files;
+      }
+    };
+  }
+});
+
 // src/core/scheduler/held.ts
 function heldFilesMetaKey(worktreeId) {
   return `held-files:${worktreeId}`;
@@ -6726,6 +6759,7 @@ var init_ledger = __esm({
     init_types();
     init_checkpoints();
     init_context();
+    init_discharges();
     init_files();
     init_held();
     init_queue();
@@ -6742,6 +6776,8 @@ var init_ledger = __esm({
       files = /* @__PURE__ */ new Map();
       queue = new RunQueue();
       checkpoints;
+      /** Attributions results discharged, for a wait's sync answer (task 001-196). */
+      discharges = new Discharges();
       revision = { number: 0, head: null, dirty: false };
       /**
        * One set per tier in flight (`Tier.changes`): each collects the paths
@@ -6785,6 +6821,7 @@ var init_ledger = __esm({
         this.context.keys.removeTestFile(file.ref);
         this.queue.remove(file.ref);
         this.files.delete(file.id);
+        this.discharges.forget(file.id);
         this.#retired.push(...file.checks);
         this.#removed.push(file.ref);
         this.checkpoints.done(file.ref, this.checkpoints.idFor(file.ref));
@@ -6824,7 +6861,8 @@ var init_ledger = __esm({
           }
           if (this.queue.isForced(ref2)) continue;
           if (key2 === null || key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey) {
-            if (key2 !== null && (key2 === file.resultKey || key2 === file.unknownKey)) clearKeyedAt(file);
+            if (key2 !== null && (key2 === file.resultKey || key2 === file.unknownKey))
+              this.#discharge(file);
             this.queue.remove(ref2);
             this.#syncPhase(file);
             continue;
@@ -6897,7 +6935,7 @@ var init_ledger = __esm({
         file.discards = 0;
         file.blocked = null;
         file.tierCap = null;
-        if (key2 === file.key) clearKeyedAt(file);
+        if (key2 === file.key) this.#discharge(file);
         if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
         this.#syncPhase(file);
         this.checkpoints.done(file.ref, checkpointId);
@@ -6940,7 +6978,7 @@ var init_ledger = __esm({
         if (entries2.length === 0) return;
         for (const { file, key: key2 } of entries2) {
           file.unknownKey = key2;
-          if (key2 === file.key) clearKeyedAt(file);
+          if (key2 === file.key) this.#discharge(file);
           if (file.key === key2 && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
           this.#syncPhase(file);
           this.checkpoints.failed(file.ref);
@@ -7032,6 +7070,11 @@ var init_ledger = __esm({
           else groups.set(id2, [testFile]);
         }
         return groups;
+      }
+      /** The file has a result, or is `unknown`, at its key: its attribution is discharged (task 001-194). */
+      #discharge(file) {
+        this.discharges.note(file, this.context.now());
+        clearKeyedAt(file);
       }
       /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
       #syncPhase(file) {
@@ -9582,7 +9625,7 @@ var init_scheduler2 = __esm({
       async refined() {
         await this.#runnerWork.afterTier(() => Promise.resolve());
       }
-      rekeyedSince(after, upTo) {
+      rekeyedSince(after, upTo, resolvedSince) {
         const files = [];
         for (const file of this.#ledger?.files.values() ?? []) {
           for (const revision of /* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])) {
@@ -9591,7 +9634,8 @@ var init_scheduler2 = __esm({
             }
           }
         }
-        return files;
+        if (resolvedSince === void 0 || this.#ledger === null) return files;
+        return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
@@ -32628,7 +32672,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.86";
+  if (true) return "0.1.87";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34070,12 +34114,16 @@ function parseRequest(line) {
     case "run-slow":
     case "stop":
       return { type: request.type };
-    case "sync":
+    case "sync": {
       if (request.after === void 0) return { type: "sync" };
       if (!Number.isInteger(request.after) || request.after < 0) {
         return '"after" must be a revision number';
       }
-      return { type: "sync", after: request.after };
+      const after = request.after;
+      if (request.resolvedSince === void 0) return { type: "sync", after };
+      if (!Number.isFinite(request.resolvedSince)) return '"resolvedSince" must be a time';
+      return { type: "sync", after, resolvedSince: request.resolvedSince };
+    }
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -34208,7 +34256,7 @@ function createHandlers(context) {
         const requestId = randomUUID();
         const state = { revision: null, error: null, rekeyed: null };
         remember(syncRequests, requestId, state);
-        context.requestSync(request.after ?? null).then(
+        context.requestSync(request.after ?? null, request.resolvedSince ?? null).then(
           (answer2) => {
             state.revision = answer2.revision;
             state.rekeyed = answer2.rekeyed;
@@ -34412,7 +34460,7 @@ async function inWorker(worker, identity, events) {
           );
           return;
         case "sync":
-          events.requestSync(message2.after).then(
+          events.requestSync(message2.after, message2.resolvedSince).then(
             (answer2) => post({ type: "sync-result", id: message2.id, answer: answer2, error: null }),
             (error) => post({
               type: "sync-result",
@@ -36121,7 +36169,7 @@ var Daemon = class {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: (after) => this.#requestSync(after),
+        requestSync: (after, resolvedSince) => this.#requestSync(after, resolvedSince),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -36159,8 +36207,11 @@ var Daemon = class {
    * Lessons, defect 30: the revision of every change made before the
    * request, once stored. With `after` (task 001-186), once its runner part
    * is applied too, with the test files the revisions after `after` re-keyed.
+   * With `resolvedSince` (task 001-196), also those whose move had its result
+   * since that time: a result before the answer does not take its file out
+   * of the wait's window.
    */
-  async #requestSync(after) {
+  async #requestSync(after, resolvedSince) {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
@@ -36170,7 +36221,10 @@ var Daemon = class {
     const revision = scheduler.status().revision;
     if (after === null) return { revision, rekeyed: null };
     await scheduler.refined();
-    return { revision, rekeyed: scheduler.rekeyedSince(after, revision) };
+    return {
+      revision,
+      rekeyed: scheduler.rekeyedSince(after, revision, resolvedSince ?? void 0)
+    };
   }
   /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */
   #optimizerOff(projects) {
@@ -36765,13 +36819,13 @@ function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
 // src/cli/status-sync.ts
 import { setTimeout as sleep5 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
-function syncDaemon(root, pollMs, after = null) {
+function syncDaemon(root, pollMs, after = null, resolvedSince = null) {
   let current2 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   void (async () => {
     for (; ; ) {
-      const outcome2 = await syncOnce(root, pollMs, after, isStopped);
+      const outcome2 = await syncOnce(root, pollMs, { after, resolvedSince }, isStopped);
       if (outcome2 !== "again") return outcome2;
     }
   })().then(
@@ -36789,10 +36843,10 @@ function syncDaemon(root, pollMs, after = null) {
     }
   };
 }
-async function syncOnce(root, pollMs, after, stopped) {
+async function syncOnce(root, pollMs, { after, resolvedSince }, stopped) {
   const socketPath = await daemonSocket(root).catch(() => null);
   if (socketPath === null || stopped()) return UNSUPPORTED;
-  const request = after === null ? { type: "sync" } : { type: "sync", after };
+  const request = after === null ? { type: "sync" } : { type: "sync", after, ...resolvedSince === null ? {} : { resolvedSince } };
   const first = await askDaemon(socketPath, request).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state = first;
@@ -36821,47 +36875,30 @@ function lastHeard(store, worktreeId, revision, session) {
   const told = store.consumers.list(worktreeId).filter((record) => record.consumer.sessionId === session).flatMap((record) => toldRevision(store, record.consumer) ?? []);
   return Math.min(revision, ...told);
 }
-function editWindow(store, worktreeId, heard, revision, rekeyed, reads) {
+function editWindow(store, worktreeId, heard, revision, rekeyed) {
   const isSlow = worktreeSlowView(store, worktreeId)?.isSlow;
-  const told = rekeyed.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true);
-  const unseen = unseenRevisions(told, reads);
+  const unseen = new Set(
+    rekeyed.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true).map((file) => file.revision)
+  );
   const kept2 = rekeyed.filter((file) => file.revision > heard || unseen.has(file.revision));
   const first = kept2.reduce((least, file) => Math.min(least, file.revision), heard + 1);
   const refs = kept2.map((file) => file.testFile);
+  const owed = new Set(
+    kept2.filter((file) => file.resolved !== true).map((file) => testFileId(file.testFile))
+  );
+  const ids = new Set(refs.map(testFileId));
   return {
     since: kept2.length === 0 ? heard : first,
     revision,
-    ids: new Set(refs.map(testFileId)),
-    slow: new Set(refs.filter((ref2) => isSlow?.(ref2) === true).map(testFileId))
+    ids,
+    slow: new Set(refs.filter((ref2) => isSlow?.(ref2) === true).map(testFileId)),
+    resolved: new Set([...ids].filter((id2) => !owed.has(id2)))
   };
-}
-function unseenRevisions(files, reads) {
-  const before = lastObserved(reads.start);
-  const now = lastObserved(reads.states);
-  const pending = new Set(
-    reads.keys.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile))
-  );
-  const unseen = /* @__PURE__ */ new Set();
-  for (const file of files) {
-    const id2 = testFileId(file.testFile);
-    if ((before.get(id2) ?? -1) >= file.revision) continue;
-    if (pending.has(id2) || (now.get(id2) ?? -1) >= file.revision) unseen.add(file.revision);
-  }
-  return unseen;
-}
-function lastObserved(states) {
-  const observed = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    if (state.observedAt === null) continue;
-    const id2 = testFileId(testFileOf(state.check));
-    observed.set(id2, Math.max(observed.get(id2) ?? state.observedAt, state.observedAt));
-  }
-  return observed;
 }
 function heldPending(window, keys) {
   return keys.filter((row) => {
     const id2 = testFileId(row.testFile);
-    return row.pending !== null && window.ids.has(id2) && !window.slow.has(id2);
+    return row.pending !== null && window.ids.has(id2) && !window.slow.has(id2) && !window.resolved.has(id2);
   }).length;
 }
 function windowRefined(window, header) {
@@ -36934,7 +36971,7 @@ async function waitForStatus(cwd, options) {
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start = null;
-  let startStates = [];
+  let startedAt = now();
   const syncing = {};
   try {
     for (; ; ) {
@@ -36947,18 +36984,17 @@ async function waitForStatus(cwd, options) {
         const header = readHeader(store, id2, states);
         if (start === null) {
           start = states.map(toStartView);
-          startStates = states;
+          startedAt = now();
         }
         const news = newsOf(start, states, header.revision);
         syncing.heard ??= lastHeard(store, id2, header.revision, session);
         const heard = syncing.heard;
-        syncing.sync ??= startSync(root, pollMs, 0);
+        syncing.sync ??= startSync(root, pollMs, 0, startedAt);
         const current2 = syncing.sync.current();
         const named = current2.state === "synced" && current2.rekeyed !== null;
         const keys = named ? store.testFileKeys.list(id2) : [];
         if (named) {
-          const reads = { start: startStates, states, keys };
-          syncing.window ??= editWindow(store, id2, heard, current2.revision, current2.rekeyed, reads);
+          syncing.window ??= editWindow(store, id2, heard, current2.revision, current2.rekeyed);
         }
         const window = syncing.window;
         const settled = final || elapsed() >= settleMs;
