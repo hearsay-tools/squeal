@@ -1,5 +1,10 @@
 import { plural } from "../text.js";
-import type { SlowTierActivity, SlowTierWait, StatusHeader } from "../types/index.js";
+import type {
+  SlowTierActivity,
+  SlowTierState,
+  SlowTierWait,
+  StatusHeader,
+} from "../types/index.js";
 
 /*
  * Spec 004 D8: the one slow-tier line delivered headers and `squeal status`
@@ -44,6 +49,22 @@ function pendingText(pending: number, activity: SlowTierActivity | null): string
 }
 
 /**
+ * What the current slow files ran against: the artifact their runs were
+ * declared to test, or "unknown" for those whose record is missing (review
+ * wave 2, B2), never the declaration on disk today.
+ */
+function currentText(tier: SlowTierState): string {
+  const unknown = tier.artifactUnknown ?? 0;
+  if (unknown >= tier.current)
+    return `current at revision ${tier.currentAt}, declared artifact unknown`;
+  const against =
+    tier.artifact.length === 0
+      ? `current at revision ${tier.currentAt}, against no declared artifact`
+      : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
+  return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
+}
+
+/**
  * The slow-tier line, or `null` when the header has no slow tier. The
  * daemon's activity is left out when no daemon is validating: it would be
  * old news (the header's liveness sentence says so). `command` is how the
@@ -57,12 +78,8 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
   }
   const parts: string[] = [];
   if (tier.current > 0) {
-    const against =
-      tier.artifact.length === 0
-        ? `current at revision ${tier.currentAt}, against no declared artifact`
-        : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
     parts.push(
-      `${tier.current} ${against}${tier.sourcesChangedSince ? ", sources changed since" : ""}`,
+      `${tier.current} ${currentText(tier)}${tier.sourcesChangedSince ? ", sources changed since" : ""}`,
     );
   }
   if (tier.pending > 0) {

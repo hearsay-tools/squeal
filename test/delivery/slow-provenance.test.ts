@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
+import { recordSlowArtifacts } from "../../src/core/slow/state.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import type {
   Consumer,
@@ -94,7 +95,7 @@ describe("a slow failure's provenance line (spec 004 D8)", () => {
   });
 });
 
-describe("attribution of a slow failure from the worktree's policy (spec 004 D8)", () => {
+describe("attribution of a slow failure from its run's record (spec 004 D8)", () => {
   let root: string;
   let store: Store;
   let sink: StateSink;
@@ -144,11 +145,12 @@ describe("attribution of a slow failure from the worktree's policy (spec 004 D8)
     return formatDelta(d);
   }
 
-  it("carries the declared artifact of a slow file", async () => {
+  it("carries the artifact the slow run was declared to test", async () => {
     policy({
       slow: { include: ["src/a.test.ts"] },
       inputs: { "src/*.test.ts": ["plugins/**", "dist/**"] },
     });
+    recordSlowArtifacts(store, WT, new Map([["k1", ["dist/**", "plugins/**"]]]));
     const text = await failingText();
     expect(text).toContain(
       "PASS -> FAIL, slow tier, Squeal's run saw it at revision 1, against dist/**, plugins/** as of revision 1",

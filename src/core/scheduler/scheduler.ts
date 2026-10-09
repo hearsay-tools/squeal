@@ -33,7 +33,7 @@ import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
-import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
+import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import {
   abandonFullSuite,
   endTier,
@@ -307,6 +307,8 @@ class TierScheduler implements Scheduler {
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
       this.#ledger?.checkpoints.finish("abandoned");
+      // Spec 004 D8: a daemon that is gone runs no slow file (review wave 2, B1).
+      if (this.#context) this.#retireSlow();
       // A daemon that is gone waits for nothing; the next one decides again.
       if (this.#awaitingInstall) stopWaiting(this.options);
     });
@@ -431,7 +433,21 @@ class TierScheduler implements Scheduler {
           const observed = installMoved
             ? undefined
             : await prepareObserved(context, report, tier.run);
-          return recordTier(context, ledger, tier, report, changed, installMoved, observed);
+          // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
+          return context.store.transaction(() => {
+            const result = recordTier(
+              context,
+              ledger,
+              tier,
+              report,
+              changed,
+              installMoved,
+              observed,
+            );
+            if (slow === null) forgetSlowRuns(context, ledger, tier);
+            else this.#slow.recorded(slow, ledger, this.#othersInFlight(tier.lane));
+            return result;
+          });
         });
         recorded = true;
         slow?.slot.release();
@@ -440,7 +456,7 @@ class TierScheduler implements Scheduler {
         if (slow !== null) await this.#releaseIfDrained(tier.lane);
       } catch (error) {
         this.#stall(error);
-        if (!recorded) await this.#requeue(tier);
+        if (!recorded) await this.#requeue(tier, slow !== null);
       } finally {
         slow?.slot.release();
         this.#inFlight.delete(tier.lane);
@@ -524,8 +540,21 @@ class TierScheduler implements Scheduler {
     return work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0;
   }
 
-  /** Puts the files of a tier that never got recorded back into the queue. */
-  async #requeue(tier: Tier): Promise<void> {
+  #retireSlow(): void {
+    try {
+      this.#slow.retire();
+    } catch (error) {
+      this.#note(`could not clear the slow tier's activity: ${String(error)}`);
+    }
+  }
+
+  /** A tier of a lane other than `lane` is in flight. */
+  #othersInFlight(lane: string): boolean {
+    return [...this.#inFlight.keys()].some((other) => other !== lane);
+  }
+
+  /** Puts the files of a tier that never got recorded back into the queue; a slow one's activity goes. */
+  async #requeue(tier: Tier, slow: boolean): Promise<void> {
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       endTier(context, ledger, tier);
@@ -537,6 +566,7 @@ class TierScheduler implements Scheduler {
       }
       try {
         ledger.commit();
+        if (slow) this.#slow.ended(this.#othersInFlight(tier.lane));
       } catch (error) {
         this.#note(`could not record the re-queued tier: ${String(error)}`);
       }

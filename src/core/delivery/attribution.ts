@@ -1,5 +1,6 @@
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
-import { worktreeSlowView } from "../state/index.js";
+import { readSlowArtifacts } from "../slow/state.js";
+import { type SlowPolicyView, worktreeSlowView } from "../state/index.js";
 import type {
   CheckId,
   CheckKey,
@@ -46,6 +47,40 @@ function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): n
 }
 
 /**
+ * Spec 004 D8, review wave 2 B2: the declared artifact of the slow run that
+ * stored `entry`'s failure, as its worktree recorded it with the result's
+ * key; `null` when the run is a slow file's by today's policy but none is
+ * recorded (a result stored before the records), `undefined` when the
+ * failure is no slow run's. The result is the newest failing one of its
+ * worktree at its revision (own) or commit (inherited). A run recorded slow
+ * stays slow when the policy no longer marks its file.
+ */
+function slowRunArtifact(
+  store: Store,
+  worktreeId: WorktreeId,
+  slow: SlowPolicyView | null,
+  entry: TransitionEntry,
+): readonly string[] | null | undefined {
+  const { origin } = entry;
+  const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
+  const result = store.results
+    .listForCheck(entry.check, LOAD_RESULTS_READ)
+    .find(
+      (r) =>
+        r.outcome === "fail" &&
+        r.provenance.worktreeId === from &&
+        (origin.kind === "inherited"
+          ? r.provenance.commit === origin.commit
+          : r.provenance.revision === entry.observedAt),
+    );
+  const recorded =
+    result === undefined ? undefined : readSlowArtifacts(store, from).get(result.key);
+  if (recorded !== undefined) return recorded;
+  const { project, testPath } = entry.check;
+  return slow?.isSlow({ project, path: testPath }) === true ? null : undefined;
+}
+
+/**
  * The stored closure of `ref` when it is `worktreeId`'s: written by it, or by
  * a worktree whose current key for the file is its own, since a key covers
  * every closure path and its content. `undefined` otherwise: the store keeps
@@ -78,9 +113,10 @@ function closureFor(store: Store, worktreeId: WorktreeId) {
  * worktree's changes, the ones the agent made. A closure that holds a path a
  * `start` revision changed gets neither line: those changes may or may not
  * be the agent's (`changedAfter`, task 001-96). "None of the files changed here" also
- * needs `seesEveryChange`. A failure of a slow test file (spec 004 D8) gets
- * the artifact it ran against (`slowArtifact`) instead: its closure holds few
- * sources, so the changes line would be true and misleading.
+ * needs `seesEveryChange`. A failure of a slow run (spec 004 D8) gets the
+ * artifact that run was declared to test (`slowArtifact`, `slowRunArtifact`)
+ * instead: its closure holds few sources, so the changes line would be true
+ * and misleading.
  */
 export function attribute(
   store: Store,
@@ -99,9 +135,8 @@ export function attribute(
     const { project, testPath } = entry.check;
     const load = loadOf(store, consumer.worktreeId, entry);
     const loaded = load === undefined ? {} : { loadAverage: load };
-    if (slow?.isSlow({ project, path: testPath }) === true) {
-      return { ...entry, slowArtifact: slow.artifactFor(testPath), ...loaded };
-    }
+    const slowArtifact = slowRunArtifact(store, consumer.worktreeId, slow, entry);
+    if (slowArtifact !== undefined) return { ...entry, slowArtifact, ...loaded };
     const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
       changed === null || closure === undefined || closure.some((p) => changed.unknown.has(p))

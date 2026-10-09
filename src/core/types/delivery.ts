@@ -98,10 +98,12 @@ export interface TransitionEntry {
   readonly loadAverage?: number;
   /**
    * For a failure of a slow test file (spec 004 D8): the declared artifact
-   * globs it ran against, empty when none is declared. Its provenance line
-   * replaces the attribution line (`changesInClosure` is then absent).
+   * globs its run was declared to test, recorded with the run's key; empty
+   * when none was declared, `null` when none is recorded (review wave 2, B2).
+   * Its provenance line replaces the attribution line (`changesInClosure` is
+   * then absent).
    */
-  readonly slowArtifact?: readonly string[];
+  readonly slowArtifact?: readonly string[] | null;
 }
 
 /**
