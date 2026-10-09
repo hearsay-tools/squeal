@@ -65,6 +65,8 @@ Started: 2026-10-08
 
 - 2026-10-09, decided by the human after `reviews/wave-4.7.md`: spec 004 ships after a short re-dogfood of the fixed slow lane (004-46, a `lessons.md` addendum); the hub release of 0.1.68 waits for the 001 lane's sixth review (001-169), since it carries 001 slices not yet passed by review (001-159, 001-161, 001-166, 001-167).
 
+- 2026-10-09, re-dogfood 004-46 (`lessons.md`, "Re-dogfood at 0.1.68"; daemons ran 0.1.69, load 2 to 7.6 per CPU, the guard off): the first dogfood's defects 1 (drain after a `claude -p` session), 2 (shared permits), 3 (slow starts within 2 s of the default baseline) and 7 (keys over a gitignored build) hold in real use, and an idle tier ran 4 files at once (9 files in 151 s against 261 s). New: defect 10, a self-feeding revision loop in this repository (node:test tests write gitignored `.tmp` under their declared inputs; since 004-28/41/44 those files key, and 001-168's barrier withholds each run), a ship and release blocker (004-47, ignored files only for a slow file's declared artifact, D5); 11, 12, 15, slow-tier line slips (004-48); 13 (a timed-out 200-file baseline tier re-runs whole) and 16 (a cezarion daemon SIGKILLed when started inside a cezar-managed worktree) to the 001 lane; 14, cezar's build is not reproducible (`.d.ts` union order), a cezarion matter. No hub release from either lane until 004-47 lands.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
