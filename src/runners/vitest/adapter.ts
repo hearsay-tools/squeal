@@ -138,10 +138,8 @@ export class VitestAdapter implements RunnerAdapter {
     const generation = ++this.#generation;
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
-    // Task 001-159: the optimizer's bundles on disk may hold a touched file's other bytes.
     // Touches heard from here on are after this start read the disk; a failed start keeps all.
     const heard = this.#touched.length;
-    const forceOptimizeDeps = heard > 0;
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
     const vitest = await this.#node.createVitest(
@@ -159,8 +157,10 @@ export class VitestAdapter implements RunnerAdapter {
         ...(Object.keys(env).length === 0 ? {} : { env }),
         ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
       },
-      // Vite's inline option, `optimizeDeps.force` in every environment.
-      forceOptimizeDeps ? ({ forceOptimizeDeps: true } as ViteOverrides) : {},
+      // Vite's inline option, `optimizeDeps.force` in every environment. Review wave-13e B3: the
+      // optimizer's bundles on disk outlive the instance and the daemon that would have heard a
+      // touch of a file they hold, so every start builds them from the disk (task 001-168, D4).
+      { forceOptimizeDeps: true } as ViteOverrides,
     );
     // Review wave-13 B2: every project server's, not only the root's, before any load.
     sources.attach(vitest);
@@ -252,7 +252,7 @@ export class VitestAdapter implements RunnerAdapter {
    * A `touch` (task 001-159) is heard at once, so a run in flight is not
    * stored, and the instance is replaced before the next call: every
    * project and environment's transforms and module graph, the global setup
-   * and the optimizer's bundles go with it. No project counts as recreated
+   * and the optimizer's bundles (rebuilt at every start) go with it. No project counts as recreated
    * for it: the files are the bytes they were, so the environment and the
    * listing are too, and a listing now could find a file the watcher has
    * not reconciled yet, which then never makes a revision.
