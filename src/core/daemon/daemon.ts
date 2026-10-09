@@ -192,6 +192,9 @@ class Daemon {
       observedChanged: () =>
         this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
       observedSeen: this.#observedSeen,
+      // Task 004-29: the last session's departure drains these before the exit.
+      slowPending: () =>
+        this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.slowPending(),
       note: (text) => this.#note(text),
       log: this.#log,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
