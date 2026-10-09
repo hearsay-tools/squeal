@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import type { CheckpointRecord, DaemonPhase } from "../types/index.js";
+import type { CheckpointRecord, DaemonPhase, RevisionNumber } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -19,6 +19,8 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
+  /** A `status --wait` reconciliation pass (lessons, defect 30). */
+  readonly requestSync: () => Promise<RevisionNumber>;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
@@ -129,6 +131,18 @@ async function inWorker(
               }),
           );
           return;
+        case "sync":
+          events.requestSync().then(
+            (revision) => post({ type: "sync-result", id: message.id, revision, error: null }),
+            (error: unknown) =>
+              post({
+                type: "sync-result",
+                id: message.id,
+                revision: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
         case "stop":
           events.onStop();
           return;
@@ -181,6 +195,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
+      requestSync: events.requestSync,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown,

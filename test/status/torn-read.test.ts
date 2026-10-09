@@ -136,7 +136,14 @@ describe("status reads see one committed state (lessons defect 23)", () => {
     const { repo, edit } = calmRepo();
     hooks.atPoll = edit;
 
-    const wait = await waitForStatus(repo.main, { timeoutMs: 2_000, settleMs: 0, now: () => NOW });
+    // No daemon can sync, so the first poll may decide quiet (lessons, defect 30).
+    const sync = () => ({ current: () => ({ state: "unsupported" }) as const, stop: () => {} });
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: 2_000,
+      settleMs: 0,
+      now: () => NOW,
+      sync,
+    });
 
     expect(hooks.atPoll).toBeNull();
     expect(hooks.afterRead).toBeNull();

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { waitForStatus } from "../../src/cli/status-wait.js";
+import type { SyncState } from "../../src/cli/status-sync.js";
+import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
 import { readStatus } from "../../src/core/status/index.js";
 import {
   type DaemonRecord,
   type KnownState,
+  type RevisionNumber,
   refinedMetaKey,
   type Store,
 } from "../../src/core/types/index.js";
@@ -139,13 +141,13 @@ describe("squeal status --wait <ms>", () => {
     expect(elapsed).toBeLessThan(1_500);
   });
 
-  it("does not read a quiet store as quiet before a revision could have been recorded", async () => {
+  it("waits the settle time before quiet when no daemon answers a sync", async () => {
     const { repo } = repoWith(currentPass());
 
     const { stdout, elapsed } = await run(["status", "--wait", "5000"], repo.main);
 
     expect(stdout.split("\n")[0]).toMatch(/^Returned on quiet/);
-    // Spec 001 D2: a revision within 500 ms of quiet; an edit just before the call is not lost.
+    // No daemon listens at the recorded socket: the fallback for one from before `sync`.
     expect(elapsed).toBeGreaterThanOrEqual(700);
   });
 
@@ -294,5 +296,95 @@ describe("waitForStatus", () => {
     expect(wait.outcome).toBe("quiet");
     expect(wait.result).toMatchObject({ available: true, revision: 3 });
     expect(wait.waitedMs).toBeLessThan(200);
+  });
+});
+
+/** A daemon sync the test moves by hand. */
+function handSync() {
+  let current: SyncState = { state: "pending" };
+  return {
+    set: (next: SyncState) => {
+      current = next;
+    },
+    sync: () => ({ current: () => current, stop: () => {} }),
+  };
+}
+
+const synced = (revision: number): SyncState => ({
+  state: "synced",
+  revision: revision as RevisionNumber,
+});
+
+/*
+ * Lessons, defect 30: a wait started right after an edit returned "nothing
+ * pending at revision N-1", since it settled 750 ms after its start and the
+ * edit's revision committed 0.9 to 3.1 s after the edit on a loaded host.
+ */
+describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)", () => {
+  it("is not quiet at the revision before the pass, only at the one it stored", async () => {
+    const { repo, store } = repoWith(currentPass());
+    const hand = handSync();
+    later(300, () => hand.set(synced(4)));
+    later(1_200, () => appendRevisions(store, repo.mainId, 1, { head: null, dirty: false }));
+
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: 5_000,
+      pollMs: 20,
+      now: () => NOW,
+      sync: hand.sync,
+    });
+
+    expect(wait.outcome).toBe("quiet");
+    expect(wait.result).toMatchObject({ revision: 4 });
+    expect(wait.waitedMs).toBeGreaterThanOrEqual(1_150);
+  });
+
+  it("times out rather than say quiet while the pass is not stored", async () => {
+    const { repo } = repoWith(currentPass());
+
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: 1_000,
+      pollMs: 20,
+      now: () => NOW,
+      sync: handSync().sync,
+    });
+
+    expect(wait.outcome).toBe("timeout");
+    expect(wait.result).toMatchObject({ revision: 3 });
+  });
+
+  it("returns before the settle time when the pass found no edit", async () => {
+    const { repo } = repoWith(currentPass());
+    const hand = handSync();
+    hand.set(synced(3));
+
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: 5_000,
+      now: () => NOW,
+      sync: hand.sync,
+    });
+
+    expect(wait.outcome).toBe("quiet");
+    expect(wait.waitedMs).toBeLessThan(STATUS_WAIT_SETTLE_MS);
+  });
+
+  it("still returns on news while the pass is not stored", async () => {
+    const { repo, store } = repoWith(pendingPass());
+    later(200, () =>
+      settle(
+        store,
+        repo.mainId,
+        state(repo.mainId, ADDS, { outcome: "fail", observedAt: 3, fingerprint: "Error: x" }),
+      ),
+    );
+
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: 5_000,
+      pollMs: 20,
+      now: () => NOW,
+      sync: handSync().sync,
+    });
+
+    expect(wait.outcome).toBe("news");
   });
 });
