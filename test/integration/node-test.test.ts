@@ -247,17 +247,14 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
       await settle(main, "the edit of hidden.ts", () => true, at);
       expect(ranSince(main, main, from)).toEqual(["packages/a/test/hidden.test.ts"]);
 
-      // An edit of the preload's helper re-runs project c's file. The scheduler reads every
-      // project's environment when one is recreated, so project d's, which now carries the
-      // helper its baseline observed, re-keys with it once: no other file runs.
+      // An edit of the preload's helper re-runs project c's file, and only it: project d's
+      // baseline run, which loaded what its key lacked, already ran again under the key with
+      // it (task 003-43).
       from = runs(main, main).length;
       at = status(main).revision;
       writeFileSync(join(main, HELPER), "// edited\nglobalThis.helperValue = 1;\n");
       await settle(main, "the edit of the helper", () => true, at);
-      expect(ranSince(main, main, from).sort()).toEqual([
-        "packages/c/test/c.test.ts",
-        "packages/d/test/d.test.ts",
-      ]);
+      expect(ranSince(main, main, from)).toEqual(["packages/c/test/c.test.ts"]);
 
       // An edit of what the --require preload required re-runs project d's file, and only it.
       from = runs(main, main).length;
