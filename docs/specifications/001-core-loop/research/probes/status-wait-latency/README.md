@@ -1,0 +1,11 @@
+# status-wait-latency probes (THROWAWAY)
+
+Throwaway experiments for row 001-172, written up in `../../../lessons.md`, section "`status --wait` on a loaded host". Not product code. Do not import from here.
+
+- Squeal 0.1.68, the committed bundle `plugins/claude-code/dist/cli/squeal.mjs` at `dbf1a69`, copied to `/tmp/sq172/plugin`. Node 24.21.0, Linux, 24 CPUs.
+- Two scratch clones, each with its own store under its own `.git/squeal/`: `/tmp/sq172/squeal` (`git clone` of this repository at `dbf1a69`, `npm ci`) and `/tmp/sq172/cezar` (`git clone` of `/home/agent/projects/cezar` at `c07b0bfc`, `npm ci`, Vitest 4.1.10). Every command in a clone ran through `clean.sh`: `env -i` with `HOME`, `PATH`, `USER`, `LANG`, so no `CEZ_*`, `CLAUDE*`, `CODEX*` or `SQUEAL*` variable reached it, cwd in the clone.
+- `daemon.sh <clone>`: starts `squeal daemon <clone>` detached and writes its pid. Both daemons were stopped with `squeal stop` at the end.
+- `measure.mjs`: one sample. Edits one test file (`red`: appends a top-level `throw` with a unique message; `green`: restores the saved original; `neutral`: appends a unique comment), starts `squeal status --json --wait` at once, and polls the clone's store read-only every 20 ms. Stages: watcher (edit to `revisions.created_at`), runner part (to the `refined.<worktree>` meta reaching that revision, as polled), queue wait (to `runs.started_at` of the first tier holding the file), tier start (to the run's start inside the adapter: `report.json` mtime minus its `durationMs`), run (`durationMs`), record (to the file's first `results.recorded_at`), delivery (to `status --wait` exiting). Appends one JSON line.
+- `rounds.sh`: rounds of modes through `measure.mjs`. `burn.sh <n> <s> <cmd>`: at most 8 single-thread busy loops under `timeout`, killed by pid when the command ends, then counted (0 left after every use).
+- `summary.mjs <jsonl>...`: medians per repository, case and kind of sample. `condensed.mjs <repo>...`: the table in `lessons.md` (reads `/tmp/sq172/<repo>.jsonl`). `runs.mjs <store> <since-ms>`: the tier table with each tier's report. `drained.mjs <clone>`: exits 0 when nothing is pending. `slowest.mjs <store>`: longest file durations.
+- `squeal.jsonl`, `cezar.jsonl`: the raw samples. `results.md`: `summary.mjs`'s output.
