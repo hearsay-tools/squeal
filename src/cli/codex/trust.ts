@@ -25,10 +25,12 @@ export interface CodexHook {
 }
 
 export interface TrustOptions {
-  /** The plugin whose hooks to trust, `squeal@squeal`. */
+  /** The plugin whose hooks to trust, `squeal@hearsay`. */
   readonly pluginId: string;
   /** The commands that install the plugin, named when Codex has none of its hooks. */
   readonly installCommands: readonly string[];
+  /** Row 001-164: the plugin's previous id, named with these commands while Codex lists its hooks. */
+  readonly previous?: { readonly pluginId: string; readonly removeCommands: readonly string[] };
   /** `--yes`: trust without asking. */
   readonly yes: boolean;
   /** Asks one question on the terminal, resolving with the answer line; null without a terminal. */
@@ -62,7 +64,22 @@ export async function trustCodexHooks(
       clientInfo: { name: "squeal", title: null, version: "0" },
     });
     server.notify("initialized", {});
-    const hooks = await listHooks(server, root, options.pluginId);
+    const listed = await listHooks(server, root, [
+      options.pluginId,
+      ...(options.previous === undefined ? [] : [options.previous.pluginId]),
+    ]);
+    const hooks = listed.filter((h) => h.pluginId === options.pluginId);
+    const old = listed.filter((h) => h.pluginId === options.previous?.pluginId);
+    if (options.previous !== undefined && old.length > 0) {
+      const trusted = old.filter((h) => h.trustStatus === "trusted").length;
+      io.stdout(
+        [
+          `squeal init: Codex still has the previous ${options.previous.pluginId}, ${trusted} of its ${old.length} hooks trusted; with no Codex session running, remove it:`,
+          ...options.previous.removeCommands.map((c) => `  ${c}`),
+          "",
+        ].join("\n"),
+      );
+    }
     if (hooks.length === 0) {
       io.stderr(
         [
@@ -115,7 +132,7 @@ export async function trustCodexHooks(
     });
     const filePath =
       isRecord(written) && typeof written.filePath === "string" ? written.filePath : null;
-    const after = await listHooks(server, root, options.pluginId);
+    const after = await listHooks(server, root, [options.pluginId]);
     io.stdout(
       [
         `squeal init: Codex wrote the trust${filePath === null ? "" : ` to ${filePath}`}; its hooks now:`,
@@ -161,7 +178,12 @@ function event(hook: CodexHook): string {
   return `${hook.eventName.charAt(0).toUpperCase()}${hook.eventName.slice(1)}`;
 }
 
-async function listHooks(server: AppServer, root: string, pluginId: string): Promise<CodexHook[]> {
+/** The hooks of the plugins `pluginIds` names, as Codex lists them for `root`. */
+async function listHooks(
+  server: AppServer,
+  root: string,
+  pluginIds: readonly string[],
+): Promise<CodexHook[]> {
   const result = await server.request("hooks/list", { cwds: [root] });
   const data = isRecord(result) ? result.data : undefined;
   if (!Array.isArray(data))
@@ -170,8 +192,9 @@ async function listHooks(server: AppServer, root: string, pluginId: string): Pro
   for (const entry of data) {
     const listed: unknown[] = isRecord(entry) && Array.isArray(entry.hooks) ? entry.hooks : [];
     for (const hook of listed) {
-      if (!isRecord(hook) || hook.pluginId !== pluginId) continue;
-      const { key, eventName, command, currentHash, trustStatus } = hook;
+      if (!isRecord(hook) || typeof hook.pluginId !== "string") continue;
+      const { key, eventName, command, currentHash, trustStatus, pluginId } = hook;
+      if (!pluginIds.includes(pluginId)) continue;
       if (
         typeof key !== "string" ||
         typeof eventName !== "string" ||

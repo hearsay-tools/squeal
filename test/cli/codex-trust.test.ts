@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -21,7 +22,8 @@ import { fakeRepo } from "../status/helpers.js";
  * A `codex` that answers `app-server` the way Codex 0.160.1 does
  * (`research/wave-0-checks.md` 3): `hooks/list` lists three Squeal hooks (one trusted, one
  * untrusted, one modified) and one of another plugin; `config/batchWrite` trusts the keys it
- * is given. `STUB_MODE` bends it; every message it reads goes to `STUB_LOG`.
+ * is given. `STUB_MODE` bends it (`previous` adds two hooks of the previous id
+ * `squeal@squeal`, one trusted; `previous-only` lists only those); every message it reads goes to `STUB_LOG`.
  */
 const STUB = `#!${process.execPath}
 const { appendFileSync } = require("node:fs");
@@ -32,11 +34,15 @@ if (mode === "crash") { process.stderr.write("boom: no config\\n"); process.exit
 const hook = (key, eventName, pluginId, trustStatus) => ({ key, eventName, handlerType: "command",
   command: "node /cache/dist/" + eventName + ".mjs", pluginId, source: "plugin", enabled: true,
   currentHash: "sha256:" + key.length + eventName, trustStatus });
+const previous = [hook("squeal@squeal:hooks/hooks.json:session_start:0:0", "sessionStart", "squeal@squeal", "trusted"),
+  hook("squeal@squeal:hooks/hooks.json:stop:0:0", "stop", "squeal@squeal", "untrusted")];
 const hooks = mode === "missing" ? [hook("other@x:hooks/hooks.json:stop:0:0", "stop", "other@x", "untrusted")]
-  : [hook("squeal@squeal:hooks/hooks.json:session_start:0:0", "sessionStart", "squeal@squeal", mode === "trusted" ? "trusted" : "untrusted"),
-     hook("squeal@squeal:hooks/hooks.json:stop:0:0", "stop", "squeal@squeal", "trusted"),
-     hook("squeal@squeal:hooks/hooks.json:pre_tool_use:0:0", "preToolUse", "squeal@squeal", mode === "trusted" ? "trusted" : "modified"),
-     hook("other@x:hooks/hooks.json:stop:0:0", "stop", "other@x", "untrusted")];
+  : mode === "previous-only" ? [...previous]
+  : [hook("squeal@hearsay:hooks/hooks.json:session_start:0:0", "sessionStart", "squeal@hearsay", mode === "trusted" ? "trusted" : "untrusted"),
+     hook("squeal@hearsay:hooks/hooks.json:stop:0:0", "stop", "squeal@hearsay", "trusted"),
+     hook("squeal@hearsay:hooks/hooks.json:pre_tool_use:0:0", "preToolUse", "squeal@hearsay", mode === "trusted" ? "trusted" : "modified"),
+     hook("other@x:hooks/hooks.json:stop:0:0", "stop", "other@x", "untrusted"),
+     ...(mode === "previous" ? previous : [])];
 const answer = (id, result) => process.stdout.write(JSON.stringify({ id, result }) + "\\n");
 let buf = "";
 process.stdin.on("data", (d) => {
@@ -140,7 +146,7 @@ describe("squeal init --harness codex --trust", () => {
     const s = stub();
     const r = await trust(s, async () => "y\n");
     expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
-    expect(r.stdout).toContain("Codex has not trusted 2 hooks of squeal@squeal");
+    expect(r.stdout).toContain("Codex has not trusted 2 hooks of squeal@hearsay");
     expect(r.stdout).toMatch(/SessionStart\s+untrusted/);
     expect(r.stdout).toMatch(/PreToolUse\s+modified/);
     expect(r.stdout).toContain("node /cache/dist/preToolUse.mjs");
@@ -156,13 +162,13 @@ describe("squeal init --harness codex --trust", () => {
     expect(edits(s)).toEqual({
       edits: [
         {
-          keyPath: 'hooks.state."squeal@squeal:hooks/hooks.json:session_start:0:0".trusted_hash',
-          value: "sha256:48sessionStart",
+          keyPath: 'hooks.state."squeal@hearsay:hooks/hooks.json:session_start:0:0".trusted_hash',
+          value: "sha256:49sessionStart",
           mergeStrategy: "replace",
         },
         {
-          keyPath: 'hooks.state."squeal@squeal:hooks/hooks.json:pre_tool_use:0:0".trusted_hash',
-          value: "sha256:47preToolUse",
+          keyPath: 'hooks.state."squeal@hearsay:hooks/hooks.json:pre_tool_use:0:0".trusted_hash',
+          value: "sha256:48preToolUse",
           mergeStrategy: "replace",
         },
       ],
@@ -171,7 +177,40 @@ describe("squeal init --harness codex --trust", () => {
     expect(r.stdout).toMatch(/SessionStart\s+trusted/);
     expect(r.stdout).toMatch(/PreToolUse\s+trusted/);
     expect(r.stdout).not.toContain("other@x");
+    expect(r.stdout).not.toContain("squeal@squeal");
     expectStubGone(s, r.root);
+  });
+
+  it("says when Codex still has the previous squeal@squeal, and trusts only squeal@hearsay", async () => {
+    const s = stub("previous");
+    const r = await trust(s, async () => "y\n");
+    expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
+    expect(r.stdout).toContain(
+      [
+        "squeal init: Codex still has the previous squeal@squeal, 1 of its 2 hooks trusted; with no Codex session running, remove it:",
+        "  codex plugin remove squeal@squeal",
+        "  codex plugin marketplace remove squeal",
+        "",
+      ].join("\n"),
+    );
+    expect(edits(s)?.edits.map((e) => (e as { keyPath: string }).keyPath)).toEqual([
+      'hooks.state."squeal@hearsay:hooks/hooks.json:session_start:0:0".trusted_hash',
+      'hooks.state."squeal@hearsay:hooks/hooks.json:pre_tool_use:0:0".trusted_hash',
+    ]);
+    expectStubGone(s);
+  });
+
+  it("names the previous id and the install commands when only squeal@squeal is installed", async () => {
+    const s = stub("previous-only");
+    const r = await trust(s, async () => "y\n");
+    expect(r.code).toBe(1);
+    expect(r.stdout).toContain(
+      "Codex still has the previous squeal@squeal, 1 of its 2 hooks trusted",
+    );
+    expect(r.stderr).toContain("Codex lists no hooks of squeal@hearsay; install the plugin first:");
+    expect(r.stderr).toContain("codex plugin add squeal@hearsay\n");
+    expect(methods(s)).not.toContain("config/batchWrite");
+    expectStubGone(s);
   });
 
   it("changes nothing when the answer is no, or empty (the default)", async () => {
@@ -211,7 +250,7 @@ describe("squeal init --harness codex --trust", () => {
     const s = stub("trusted");
     const r = await trust(s, async () => "y\n");
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain("every hook of squeal@squeal is trusted");
+    expect(r.stdout).toContain("every hook of squeal@hearsay is trusted");
     expect(r.questions).toEqual([]);
     expect(methods(s)).not.toContain("config/batchWrite");
     expectStubGone(s);
@@ -221,8 +260,8 @@ describe("squeal init --harness codex --trust", () => {
     const s = stub("missing");
     const r = await trust(s, async () => "y\n");
     expect(r.code).toBe(1);
-    expect(r.stderr).toContain("codex plugin marketplace add hearsay-tools/squeal\n");
-    expect(r.stderr).toContain("codex plugin add squeal@squeal\n");
+    expect(r.stderr).toContain("codex plugin marketplace add hearsay-tools/marketplace\n");
+    expect(r.stderr).toContain("codex plugin add squeal@hearsay\n");
     expect(methods(s)).not.toContain("config/batchWrite");
     expectStubGone(s);
   });
@@ -279,7 +318,7 @@ function snapshot(dir: string): Record<string, string> {
 }
 
 describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against Codex", () => {
-  it("installs the plugin from this checkout, trusts every Squeal hook, and only Codex writes", async () => {
+  it("installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes", async () => {
     const scratch = runtimeDir();
     const home = join(scratch, "home");
     const codexHome = join(scratch, "codex-home");
@@ -292,8 +331,16 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
       const r = spawnSync("codex", args, { env, encoding: "utf8", timeout: 60_000 });
       expect(r.status, `codex ${args.join(" ")}: ${r.stderr}`).toBe(0);
     };
-    codex("plugin", "marketplace", "add", REPO_ROOT);
-    codex("plugin", "add", "squeal@squeal");
+    // The hub's name over this checkout's Codex plugin, so the id is the released one.
+    const hub = join(scratch, "hub");
+    mkdirSync(join(hub, ".agents", "plugins"), { recursive: true });
+    cpSync(join(REPO_ROOT, "plugins", "codex"), join(hub, "plugins", "codex"), { recursive: true });
+    writeFileSync(
+      join(hub, ".agents", "plugins", "marketplace.json"),
+      JSON.stringify({ name: "hearsay", plugins: [{ name: "squeal", source: "./plugins/codex" }] }),
+    );
+    codex("plugin", "marketplace", "add", hub);
+    codex("plugin", "add", "squeal@hearsay");
     const configBefore = readFileSync(join(codexHome, "config.toml"), "utf8");
 
     const repo = fakeRepo();
@@ -308,7 +355,7 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
     const added = configAfter.replace(configBefore, "");
     expect(configAfter.startsWith(configBefore)).toBe(true);
     expect(
-      added.match(/^\[hooks\.state\."squeal@squeal:hooks\/hooks\.json:[a-z_]+:\d+:\d+"\]$/gm),
+      added.match(/^\[hooks\.state\."squeal@hearsay:hooks\/hooks\.json:[a-z_]+:\d+:\d+"\]$/gm),
     ).toHaveLength(9);
     expect(
       added.replace(/^(\[hooks\.state\.[^\n]+\]|trusted_hash = "sha256:[0-9a-f]{64}"|)$/gm, ""),
@@ -318,7 +365,7 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
     // A fresh app-server reads the trust back from Codex's own config.
     const again = capture(repo.main, env);
     expect(await main(["init", "--harness", "codex", "--trust"], again.io)).toBe(0);
-    expect(again.out.stdout).toContain("every hook of squeal@squeal is trusted");
+    expect(again.out.stdout).toContain("every hook of squeal@hearsay is trusted");
 
     // No bypass flag anywhere in the command's source.
     const bypass = ["--dangerously", "bypass", "hook", "trust"].join("-");
