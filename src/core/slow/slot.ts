@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
@@ -93,4 +95,55 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
   };
   signal?.addEventListener("abort", release, { once: true });
   return { release };
+}
+
+const WAITER_PREFIX = "slow.wait.";
+
+/**
+ * How long a waiter's mark counts: twice the slow tier's 15 s recheck, so a
+ * daemon still retrying keeps it fresh and one that stopped wanting the slot
+ * (it died, its load guard waits, its trigger went) is soon ignored.
+ */
+export const SLOT_WAITER_FRESH_MS = 30_000;
+
+function waiterPath(dir: AbsolutePath, worktreeId: WorktreeId): AbsolutePath {
+  const name = createHash("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  return join(dir, `${WAITER_PREFIX}${name}`);
+}
+
+/**
+ * Spec 004 D2, lessons defect 2: a daemon that wants the slot and did not
+ * take it leaves its worktree's mark in the slot's directory, refreshed on
+ * each retry. A holder between files that finds another worktree's fresh
+ * mark skips one turn (`othersWaitingForSlot`), so the slot is handed over
+ * file by file: the holder takes it on its next pass only if the waiter did not.
+ */
+export function markSlotWaiter(dir: AbsolutePath, worktreeId: WorktreeId): void {
+  writeFileSync(waiterPath(dir, worktreeId), `${worktreeId}\n`, { mode: 0o600 });
+}
+
+/** The worktree no longer waits: it took the slot, or wants it no more. */
+export function clearSlotWaiter(dir: AbsolutePath, worktreeId: WorktreeId): void {
+  rmSync(waiterPath(dir, worktreeId), { force: true });
+}
+
+/** Another worktree's mark younger than `SLOT_WAITER_FRESH_MS` is in `dir`. */
+export function othersWaitingForSlot(
+  dir: AbsolutePath,
+  worktreeId: WorktreeId,
+  now: number = Date.now(),
+): boolean {
+  const own = waiterPath(dir, worktreeId);
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return false;
+  }
+  return names.some((name) => {
+    const path = join(dir, name);
+    if (!name.startsWith(WAITER_PREFIX) || path === own) return false;
+    const stat = statSync(path, { throwIfNoEntry: false });
+    return stat !== undefined && now - stat.mtimeMs < SLOT_WAITER_FRESH_MS;
+  });
 }

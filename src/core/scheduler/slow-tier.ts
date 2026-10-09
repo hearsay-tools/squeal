@@ -3,7 +3,10 @@ import { POLICY_FILE } from "../daemon/policy.js";
 import { readTurn } from "../delivery/turn.js";
 import {
   acquireSlowSlot,
+  clearSlotWaiter,
   inheritsAcrossWorktrees,
+  markSlotWaiter,
+  othersWaitingForSlot,
   SLOW_LOCK_FILE,
   type SlowSlot,
   slowSlotDir,
@@ -17,6 +20,7 @@ import {
 } from "../slow/state.js";
 import { slowPolicyView } from "../state/index.js";
 import {
+  type AbsolutePath,
   type CheckKey,
   CONSUMER_EXPIRY_MS,
   type EpochMs,
@@ -81,6 +85,10 @@ export class SlowTier {
   /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
   #budgetMs: number | null = null;
   #slotMissedSince: EpochMs | null = null;
+  /** This worktree's waiter's mark is in the slot's directory. */
+  #marked = false;
+  /** The last pass took the slot: its next skips one turn for another worktree's mark. */
+  #tookLast = false;
   #slotNoted = false;
   #timer: NodeJS.Timeout | null = null;
   /** The load guard's wait in progress; `preempt` aborts it. */
@@ -114,30 +122,42 @@ export class SlowTier {
     this.preempt();
   }
 
-  /** Called by the pump when no fast tier is left to select. */
+  /**
+   * Called by the pump when no fast tier is left to select. The load guard
+   * waits before the slot is taken, so a wait never holds it, and the slot is
+   * handed over between files (D2, lessons defect 2): a worktree that misses
+   * it leaves a waiter's mark, and one that finds another's mark skips one turn.
+   */
   async next(): Promise<SlowNext> {
     const preemptions = this.#preemptions;
     const ref = await this.host.lock.run(() => this.#candidate());
-    if (ref === null) return null;
     const { context } = this.host.started();
     const dir = this.options.slotDir ?? slowSlotDir();
-    const slot = acquireSlowSlot({
-      dir,
-      owner: { pid: process.pid, worktreeId: context.worktreeId },
-    });
+    if (ref === null) {
+      this.#unmark(dir, context.worktreeId);
+      return null;
+    }
+    const load = await this.#waitForCapacity(context);
+    if (load === "preempted" || preemptions !== this.#preemptions) return "again";
+    const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
+    const slot = yieldTurn
+      ? null
+      : acquireSlowSlot({ dir, owner: { pid: process.pid, worktreeId: context.worktreeId } });
     if (slot === null) {
+      this.#tookLast = false;
+      markSlotWaiter(dir, context.worktreeId);
+      this.#marked = true;
       this.#publish({ kind: "waiting", for: "slot" });
-      this.#slotMissed(context, dir);
+      if (!yieldTurn) this.#slotMissed(context, dir);
       this.#arm();
       return null;
     }
+    this.#tookLast = true;
+    this.#unmark(dir, context.worktreeId);
     this.#slotMissedSince = null;
     this.#slotNoted = false;
     let run: SlowRun | null = null;
     try {
-      if (preemptions !== this.#preemptions) return "again";
-      const load = await this.#waitForCapacity(context);
-      if (load === "preempted") return "again";
       const selected = await this.host.lock.run(() => this.#select(ref, load));
       if (selected === null) return "again";
       run = { ...selected, slot };
@@ -145,6 +165,12 @@ export class SlowTier {
     } finally {
       if (run === null) slot.release();
     }
+  }
+
+  #unmark(dir: AbsolutePath, worktreeId: WorktreeId): void {
+    if (!this.#marked) return;
+    this.#marked = false;
+    clearSlotWaiter(dir, worktreeId);
   }
 
   /** Under the lock: the first slow file a trigger lets run now, or `null`. */
@@ -285,9 +311,10 @@ export class SlowTier {
     else this.#publish({ kind: "waiting", for: "idle" });
   }
 
-  /** At close: clears the activity unless another daemon published since (a handover). */
+  /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
   retire(): void {
     const { context } = this.host.started();
+    this.#unmark(this.options.slotDir ?? slowSlotDir(), context.worktreeId);
     const now = readSlowActivity(context.store, context.worktreeId);
     if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
   }
