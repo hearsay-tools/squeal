@@ -51,3 +51,23 @@ Owns: `src/core/scheduler/keying.ts`, `src/core/keys/**` if the glob expansion l
 Done when: the probe's finding is in your report; the tests on Node 24 and 22; lint, typecheck, full suite.
 
 Use /worker.
+
+## 004-29 a daemon drains pending slow files before it exits (defect 1)
+
+Outcome: slow files pending when the last session leaves (the end of every `codex exec` and `claude -p` session) run before the daemon exits.
+
+Read: `lessons.md` defect 1; `docs/board.md` row 001-162 (the human's rules, 2026-10-09); 001 D10 (when a daemon exits); spec 004 D2 (idle trigger: "every registered consumer is idle or none is registered").
+
+Rules, decided by the human: when the last consumer is gone and slow files are pending, the daemon drains them before exiting, bounded by `daemon.idleExitMinutes`; a session registering in that worktree during the drain (after `/clear`, `/new`, a reset, or a reopened Codex or Claude) cancels the exit, and the daemon stays fully operational after the drain ends; that session's fast work keeps priority over the drain (a fast tier is never queued behind pending slow files).
+
+Shape: slice. Test first. Seam: the last-session exit in `src/core/daemon/lifecycle.ts` (the 3 s grace) and its caller in `src/core/daemon/daemon.ts`: with slow files pending (the scheduler can say so; `SlowTier` already knows its queue), the grace leads to a drain instead of an exit, and the daemon exits when the slow queue is empty or the bound passes, with one note for each. The drain is no activity for the idle timer; a new registration cancels the pending exit.
+
+Owns: `src/core/daemon/lifecycle.ts`, the exit path of `src/core/daemon/daemon.ts`, an additive method on `Scheduler` (`src/core/types/scheduler.ts`, `src/core/scheduler/scheduler.ts` or `slow-tier.ts`) to ask whether slow files are pending, 001 D10's amendment with a dated line in 001's `status.md` (by agreement), spec 004 D2 and D9's sentences on `exec` sessions, their tests. Leave alone: the store, the runners, the harness.
+
+Done when: tests for a drain with no session, a SessionStart mid-drain still served afterwards with its fast work first, and the bound; lint, typecheck, full suite on Node 24 and 22.
+
+Use /worker.
+
+## 004-33 a new file in an ignored declared directory joins the key (from 004-28)
+
+Planned after 001-159. Today a file that appears in a gitignored declared directory, with no existing declared file changing, is picked up only at the next policy reload or daemon start: the watcher does not report additions under ignored directories. Brief when 001-159 lands.
