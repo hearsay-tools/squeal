@@ -23,12 +23,16 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "run-slow":
     case "stop":
       return { type: request.type };
-    case "sync":
+    case "sync": {
       if (request.after === undefined) return { type: "sync" };
       if (!Number.isInteger(request.after) || (request.after as number) < 0) {
         return '"after" must be a revision number';
       }
-      return { type: "sync", after: request.after as number };
+      const after = request.after as number;
+      if (request.resolvedSince === undefined) return { type: "sync", after };
+      if (!Number.isFinite(request.resolvedSince)) return '"resolvedSince" must be a time';
+      return { type: "sync", after, resolvedSince: request.resolvedSince as number };
+    }
     case "run-all":
       if (request.force !== undefined && typeof request.force !== "boolean") {
         return '"force" must be true or false';

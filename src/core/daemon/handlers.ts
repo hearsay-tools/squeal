@@ -44,7 +44,10 @@ export interface HandlerContext {
    * `requestFullSuite`; with `after`, also with the files the revisions after
    * it re-keyed (task 001-186). Absent: this daemon answers that it cannot sync.
    */
-  readonly requestSync?: (after: RevisionNumber | null) => Promise<SyncAnswer>;
+  readonly requestSync?: (
+    after: RevisionNumber | null,
+    resolvedSince: EpochMs | null,
+  ) => Promise<SyncAnswer>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
@@ -174,7 +177,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const requestId = randomUUID();
         const state: SyncState = { revision: null, error: null, rekeyed: null };
         remember(syncRequests, requestId, state);
-        context.requestSync(request.after ?? null).then(
+        context.requestSync(request.after ?? null, request.resolvedSince ?? null).then(
           (answer) => {
             state.revision = answer.revision;
             state.rekeyed = answer.rekeyed;

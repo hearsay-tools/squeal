@@ -1,8 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import type {
   AbsolutePath,
+  EpochMs,
   RekeyedTestFile,
   RevisionNumber,
+  SyncRequest,
   SyncResponse,
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
@@ -40,19 +42,21 @@ const UNSUPPORTED: SyncState = { state: "unsupported" };
  * `pollMs` until the pass is stored. A daemon that went away meanwhile is
  * asked again where `daemonSocket` finds one now, a successor included.
  * With `after` the answer also names the files the revisions after it
- * re-keyed (defect 32, task 001-186).
+ * re-keyed (defect 32, task 001-186), and with `resolvedSince` those whose
+ * move had its result since then (task 001-196).
  */
 export function syncDaemon(
   root: AbsolutePath,
   pollMs: number,
   after: RevisionNumber | null = null,
+  resolvedSince: EpochMs | null = null,
 ): DaemonSync {
   let current: SyncState = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   void (async () => {
     for (;;) {
-      const outcome = await syncOnce(root, pollMs, after, isStopped);
+      const outcome = await syncOnce(root, pollMs, { after, resolvedSince }, isStopped);
       if (outcome !== "again") return outcome;
     }
   })().then(
@@ -74,12 +78,15 @@ export function syncDaemon(
 async function syncOnce(
   root: AbsolutePath,
   pollMs: number,
-  after: RevisionNumber | null,
+  { after, resolvedSince }: { after: RevisionNumber | null; resolvedSince: EpochMs | null },
   stopped: () => boolean,
 ): Promise<SyncState | "again"> {
   const socketPath = await daemonSocket(root).catch(() => null);
   if (socketPath === null || stopped()) return UNSUPPORTED;
-  const request = after === null ? { type: "sync" as const } : { type: "sync" as const, after };
+  const request: SyncRequest =
+    after === null
+      ? { type: "sync" }
+      : { type: "sync", after, ...(resolvedSince === null ? {} : { resolvedSince }) };
   const first = await askDaemon(socketPath, request).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state: SyncResponse = first;

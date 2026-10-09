@@ -58,7 +58,12 @@ export interface StatusWaitOptions {
    */
   readonly session?: string | null;
   /** Default `syncDaemon`; tests replace it. */
-  readonly sync?: (root: AbsolutePath, pollMs: number, after: RevisionNumber) => DaemonSync;
+  readonly sync?: (
+    root: AbsolutePath,
+    pollMs: number,
+    after: RevisionNumber,
+    resolvedSince: EpochMs,
+  ) => DaemonSync;
 }
 
 /**
@@ -157,7 +162,8 @@ export async function waitForStatus(
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
-  let startStates: readonly KnownState[] = [];
+  // When the start was read: a result since then is news the daemon still attributes (001-196).
+  let startedAt: EpochMs = now();
   // Started at the first read, which finds the root; a box, since the read is a callback.
   const syncing: { sync?: DaemonSync; heard?: RevisionNumber; window?: EditWindow } = {};
   try {
@@ -174,19 +180,18 @@ export async function waitForStatus(
         const header = readHeader(store, id, states);
         if (start === null) {
           start = states.map(toStartView);
-          startStates = states;
+          startedAt = now();
         }
         const news = newsOf(start, states, header.revision);
         syncing.heard ??= lastHeard(store, id, header.revision, session);
         const heard = syncing.heard;
         // Every revision's files: a told one counts while its files are not seen through (001-191).
-        syncing.sync ??= startSync(root, pollMs, 0);
+        syncing.sync ??= startSync(root, pollMs, 0, startedAt);
         const current = syncing.sync.current();
         const named = current.state === "synced" && current.rekeyed !== null;
         const keys = named ? store.testFileKeys.list(id) : [];
         if (named) {
-          const reads = { start: startStates, states, keys };
-          syncing.window ??= editWindow(store, id, heard, current.revision, current.rekeyed, reads);
+          syncing.window ??= editWindow(store, id, heard, current.revision, current.rekeyed);
         }
         const window = syncing.window;
         const settled = final || elapsed() >= settleMs;

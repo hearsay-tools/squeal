@@ -14,6 +14,7 @@ import {
 } from "../types/index.js";
 import { Checkpoints } from "./checkpoints.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
+import { Discharges } from "./discharges.js";
 import {
   checkId,
   clearKeyedAt,
@@ -71,6 +72,8 @@ export class Ledger {
   readonly files = new Map<string, FileState>();
   readonly queue = new RunQueue();
   readonly checkpoints: Checkpoints;
+  /** Attributions results discharged, for a wait's sync answer (task 001-196). */
+  readonly discharges = new Discharges();
   revision: RevisionState = { number: 0, head: null, dirty: false };
   /**
    * One set per tier in flight (`Tier.changes`): each collects the paths
@@ -126,6 +129,7 @@ export class Ledger {
     this.context.keys.removeTestFile(file.ref);
     this.queue.remove(file.ref);
     this.files.delete(file.id);
+    this.discharges.forget(file.id);
     this.#retired.push(...file.checks);
     this.#removed.push(file.ref);
     // Nothing is left to run for it.
@@ -177,7 +181,8 @@ export class Ledger {
         key === file.unknownKey ||
         key === file.resultKey
       ) {
-        if (key !== null && (key === file.resultKey || key === file.unknownKey)) clearKeyedAt(file);
+        if (key !== null && (key === file.resultKey || key === file.unknownKey))
+          this.#discharge(file);
         this.queue.remove(ref);
         this.#syncPhase(file);
         continue;
@@ -260,7 +265,7 @@ export class Ledger {
     file.discards = 0;
     file.blocked = null;
     file.tierCap = null;
-    if (key === file.key) clearKeyedAt(file);
+    if (key === file.key) this.#discharge(file);
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
     this.checkpoints.done(file.ref, checkpointId);
@@ -307,7 +312,7 @@ export class Ledger {
     if (entries.length === 0) return;
     for (const { file, key } of entries) {
       file.unknownKey = key;
-      if (key === file.key) clearKeyedAt(file);
+      if (key === file.key) this.#discharge(file);
       // A file queued again for a newer key during the run still needs that run.
       if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
       this.#syncPhase(file);
@@ -409,6 +414,12 @@ export class Ledger {
       else groups.set(id, [testFile]);
     }
     return groups;
+  }
+
+  /** The file has a result, or is `unknown`, at its key: its attribution is discharged (task 001-194). */
+  #discharge(file: FileState): void {
+    this.discharges.note(file, this.context.now());
+    clearKeyedAt(file);
   }
 
   /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */

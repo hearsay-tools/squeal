@@ -3,7 +3,6 @@ import { testFileId } from "../core/keys/index.js";
 import { testFileOf, worktreeSlowView } from "../core/state/index.js";
 import type {
   DeltaEntry,
-  KnownState,
   RekeyedTestFile,
   RevisionNumber,
   StatusHeader,
@@ -15,12 +14,13 @@ import type {
 /*
  * Lessons, defect 32, decided by the human (2026-10-09, task 001-186): a
  * wait covers the revisions since the consumer last heard, and earlier ones
- * whose files it has not seen a result for (001-191), up to the one the
- * daemon's sync pass stored (001-185). It holds for the runner part of those
- * revisions and for every test file whose key they moved, until each has a
- * result under its new key; not for slow files, the baseline, a backlog,
- * `run --all`, other worktrees or edits made after the wait started. Only a
- * transition of those files ends it early.
+ * whose files had no result under their new key when it started (001-191,
+ * 001-196), up to the one the daemon's sync pass stored (001-185). It holds
+ * for the runner part of those revisions and for every test file whose key
+ * they moved, until each has a result under its new key; not for slow files,
+ * the baseline, a backlog, `run --all`, other worktrees or edits made after
+ * the wait started. Only a transition of those files, a result that landed
+ * before the daemon answered included, ends it early.
  */
 
 /**
@@ -54,23 +54,25 @@ export interface EditWindow {
   readonly ids: ReadonlySet<string>;
   /** Of those, the ones the wait does not hold for: slow files (spec 004 D9, as Stop). */
   readonly slow: ReadonlySet<string>;
-}
-
-/** The store as the wait read it at its start and when the daemon named the files. */
-export interface WindowReads {
-  readonly start: readonly KnownState[];
-  readonly states: readonly KnownState[];
-  readonly keys: readonly TestFileKeyRecord[];
+  /**
+   * Of those, the ones whose move had its result after the wait started and
+   * owe no later move: named for their news, held for nothing, not even a
+   * re-run at the same key (task 001-196).
+   */
+  readonly resolved: ReadonlySet<string>;
 }
 
 /**
- * The window from the files the daemon named (`rekeyed`, every revision's).
- * Every revision after the one last heard of counts. One heard of or before
- * it counts while one of its files had no result since its re-key when the
- * wait started, slow files aside (task 001-191): a header may name an
- * edit's revision before its result, and two edits in separate tool calls
- * leave the first told; a revision whose files all had their results is
- * done, whatever ran later.
+ * The window from the files the daemon named (`rekeyed`, every revision's):
+ * each with no result under its current key, or whose move had its result
+ * since the wait started (`resolved`). Every revision after the one last
+ * heard of counts. One heard of or before it counts while the daemon names
+ * one of its files, slow files aside (tasks 001-191, 001-196): a header may
+ * name an edit's revision before its result, and two edits in separate tool
+ * calls leave the first told; a revision whose files all had their results
+ * before the wait is done, whatever ran later. Whether a file is seen
+ * through is the daemon's to say, by key: a result at the same revision
+ * under the file's previous key is no result (review wave 13k, B1).
  */
 export function editWindow(
   store: Store,
@@ -78,62 +80,36 @@ export function editWindow(
   heard: RevisionNumber,
   revision: RevisionNumber,
   rekeyed: readonly RekeyedTestFile[],
-  reads: WindowReads,
 ): EditWindow {
   const isSlow = worktreeSlowView(store, worktreeId)?.isSlow;
-  const told = rekeyed.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true);
-  const unseen = unseenRevisions(told, reads);
+  const unseen = new Set(
+    rekeyed
+      .filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true)
+      .map((file) => file.revision),
+  );
   const kept = rekeyed.filter((file) => file.revision > heard || unseen.has(file.revision));
   const first = kept.reduce((least, file) => Math.min(least, file.revision), heard + 1);
   const refs = kept.map((file) => file.testFile);
+  const owed = new Set(
+    kept.filter((file) => file.resolved !== true).map((file) => testFileId(file.testFile)),
+  );
+  const ids = new Set(refs.map(testFileId));
   return {
     since: kept.length === 0 ? heard : first,
     revision,
-    ids: new Set(refs.map(testFileId)),
+    ids,
     slow: new Set(refs.filter((ref) => isSlow?.(ref) === true).map(testFileId)),
+    resolved: new Set([...ids].filter((id) => !owed.has(id))),
   };
 }
 
-/**
- * The revisions of `files` the wait has not seen through: a file with no
- * result observed at or after its re-key at the wait's start, still pending
- * or with that result since. A file re-keyed back to a key that has a result
- * is not pending and has none since: it holds nothing.
- */
-function unseenRevisions(
-  files: readonly RekeyedTestFile[],
-  reads: WindowReads,
-): ReadonlySet<RevisionNumber> {
-  const before = lastObserved(reads.start);
-  const now = lastObserved(reads.states);
-  const pending = new Set(
-    reads.keys.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile)),
-  );
-  const unseen = new Set<RevisionNumber>();
-  for (const file of files) {
-    const id = testFileId(file.testFile);
-    if ((before.get(id) ?? -1) >= file.revision) continue;
-    if (pending.has(id) || (now.get(id) ?? -1) >= file.revision) unseen.add(file.revision);
-  }
-  return unseen;
-}
-
-/** Each test file's newest observed revision across its checks. */
-function lastObserved(states: readonly KnownState[]): ReadonlyMap<string, RevisionNumber> {
-  const observed = new Map<string, RevisionNumber>();
-  for (const state of states) {
-    if (state.observedAt === null) continue;
-    const id = testFileId(testFileOf(state.check));
-    observed.set(id, Math.max(observed.get(id) ?? state.observedAt, state.observedAt));
-  }
-  return observed;
-}
-
-/** The window's files still queued or running, slow ones aside. */
+/** The window's files still queued or running, slow and resolved ones aside. */
 export function heldPending(window: EditWindow, keys: readonly TestFileKeyRecord[]): number {
   return keys.filter((row) => {
     const id = testFileId(row.testFile);
-    return row.pending !== null && window.ids.has(id) && !window.slow.has(id);
+    return (
+      row.pending !== null && window.ids.has(id) && !window.slow.has(id) && !window.resolved.has(id)
+    );
   }).length;
 }
 

@@ -103,20 +103,22 @@ export function later(ms: number, fn: () => void) {
   setTimeout(fn, ms);
 }
 
+/** A path re-keyed at revision 4, or a path and its revision, and whether its move had its result since the wait started. */
+type Named = string | [string, number] | [string, number, "resolved"];
+
 /**
  * A daemon that answers the pass at revision 4 `answerMs` after it is asked,
- * naming `rekeyed` (a path re-keyed at revision 4, or a path and its
- * revision); records the asked window.
+ * naming `rekeyed`; records the asked window.
  */
-export function answering(
-  rekeyed: readonly (string | [string, number])[] | null,
-  current?: SyncState,
-  answerMs = 0,
-) {
+export function answering(rekeyed: readonly Named[] | null, current?: SyncState, answerMs = 0) {
   const asked: RevisionNumber[] = [];
-  const named = (file: string | [string, number]) => {
-    const [path, revision] = typeof file === "string" ? [file, 4] : file;
-    return { testFile: ref(path), revision: revision as RevisionNumber };
+  const named = (file: Named) => {
+    const [path, revision, resolved] = typeof file === "string" ? [file, 4] : file;
+    return {
+      testFile: ref(path),
+      revision: revision as RevisionNumber,
+      ...(resolved === undefined ? {} : { resolved: true as const }),
+    };
   };
   const state: SyncState = current ?? {
     state: "synced",

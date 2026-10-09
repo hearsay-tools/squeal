@@ -5,6 +5,7 @@ import { describeFailure } from "../state/index.js";
 import {
   type CandidateBatch,
   type CheckpointRecord,
+  type EpochMs,
   type FullSuiteRequest,
   isSlowLane,
   type RekeyedTestFile,
@@ -304,7 +305,11 @@ class TierScheduler implements Scheduler {
     await this.#runnerWork.afterTier(() => Promise.resolve());
   }
 
-  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly RekeyedTestFile[] {
+  rekeyedSince(
+    after: RevisionNumber,
+    upTo: RevisionNumber,
+    resolvedSince?: EpochMs,
+  ): readonly RekeyedTestFile[] {
     const files: RekeyedTestFile[] = [];
     for (const file of this.#ledger?.files.values() ?? []) {
       // The earliest move still owed, and the latest for a window after it (task 001-194).
@@ -314,7 +319,8 @@ class TierScheduler implements Scheduler {
         }
       }
     }
-    return files;
+    if (resolvedSince === undefined || this.#ledger === null) return files;
+    return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
   }
 
   idle(): Promise<void> {

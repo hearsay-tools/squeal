@@ -20,12 +20,11 @@ import {
 } from "./status-wait-fixture.js";
 
 /*
- * Lessons, defect 32 (tasks 001-186, 001-191): the wait's window is every
- * revision after the one its session was last told about, and every revision
- * up to it whose re-keyed files had no result since when the wait started.
+ * Lessons, defect 32 (tasks 001-186, 001-191, 001-196): the wait's window is
+ * every revision after the one its session was last told about, and every
+ * revision up to it of which the daemon still names a file: one with no
+ * result under its new key, or whose result landed after the wait started.
  */
-
-const D = "src/d.test.ts";
 
 function told(store: Store, worktreeId: string, revision: number, agentId = MAIN_AGENT) {
   const consumer = { worktreeId, sessionId: "s1", agentId };
@@ -44,7 +43,8 @@ describe("the wait's window starts where the session was last told (task 001-186
 
     const mine = answering([A]);
     const wait = await waitForStatus(repo.main, { ...options(mine.sync), session: "s1" });
-    const unknown = answering([A]);
+    // A had its result before the wait: the daemon names it no more (task 001-196).
+    const unknown = answering([]);
     const fresh = await waitForStatus(repo.main, { ...options(unknown.sync), session: "nobody" });
 
     expect(mine.asked).toEqual([0]);
@@ -86,8 +86,9 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     expect(wait).toMatchObject({ edit: { since: 3, testFiles: 2, pending: 0 } });
   });
 
+  // A's checks were observed at revision 2 under its previous key (review wave 13k, B1).
   it("keeps a revision before the one last told whose files have no result", async () => {
-    const { repo, store } = repoWith([A, B], [], { [A]: 1 });
+    const { repo, store } = repoWith([A, B], [], { [A]: 2 });
     told(store, repo.mainId, 3);
     later(300, () => finish(store, repo.mainId, A));
 
@@ -117,18 +118,18 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
   });
 
-  // C had its result after its re-key and runs again (`run --all`); D went back to a key with a result.
-  it("does not hold for a told revision whose files had their results", async () => {
-    const { repo, store } = repoWith([B, C], [A, D], { [D]: 1 });
+  // C had its result after the wait started and runs again at the same key (task 001-171's re-run).
+  it("does not hold for a file whose move had its result", async () => {
+    const { repo, store } = repoWith([B, C], [A], { [C]: 3 });
     told(store, repo.mainId, 3);
     later(200, () => finish(store, repo.mainId, B));
 
-    const daemon = answering([[A, 3], [C, 3], [D, 3], B]);
+    const daemon = answering([[C, 3, "resolved"], B]);
     const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeLessThan(2_000);
-    expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
+    expect(wait).toMatchObject({ edit: { since: 3, testFiles: 2, pending: 0 } });
   });
 
   // The told edit's result lands before the daemon named the files: still the edit's news.
@@ -140,7 +141,7 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
       fail(store, repo.mainId, ADDS);
     });
 
-    const daemon = answering([[A, 3], B], undefined, 300);
+    const daemon = answering([[A, 3, "resolved"], B], undefined, 300);
     const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
 
     expect(wait.outcome).toBe("news");
