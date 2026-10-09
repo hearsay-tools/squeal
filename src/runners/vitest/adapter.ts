@@ -96,6 +96,7 @@ export class VitestAdapter implements RunnerAdapter {
   #running = false;
   #closed = false;
   readonly #note: (text: string) => void;
+  readonly #optimizer: (projects: readonly string[]) => void;
   readonly #observer: VitestObserver;
   readonly #childEnv: Readonly<Record<string, string>>;
   readonly #maxWorkers: number | undefined;
@@ -109,7 +110,9 @@ export class VitestAdapter implements RunnerAdapter {
    * worker's env beside the recorder's and, like it, stays out of the
    * environment hash (D12, task 001-142). `maxWorkers` overrides the
    * config's (spec 004 D2: the slow tier's instance); not keyed, since the
-   * slow instance's environment is never asked for.
+   * slow instance's environment is never asked for. `optimizer` hears, at
+   * each start, the projects whose config turns the dependency optimizer on,
+   * none included (task 001-181).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -118,8 +121,10 @@ export class VitestAdapter implements RunnerAdapter {
     observe: () => boolean = () => false,
     childEnv: Readonly<Record<string, string>> = {},
     maxWorkers?: number,
+    optimizer: (projects: readonly string[]) => void = () => {},
   ) {
     this.#node = vitest;
+    this.#optimizer = optimizer;
     this.#sources = new SourceStamps(paths);
     this.#childEnv = childEnv;
     this.#maxWorkers = maxWorkers;
@@ -160,6 +165,7 @@ export class VitestAdapter implements RunnerAdapter {
     try {
       // Task 001-176: no bundle of the optimizer is ever loaded, whatever a config says (D4).
       const optimized = withoutOptimizer(vitest);
+      this.#optimizer(optimized);
       if (optimized.length > 0) noteOnce(this.paths.root, optimizerOffNote(optimized), this.#note);
       await vitest.standalone();
       this.#observer.configure(vitest);

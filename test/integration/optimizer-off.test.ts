@@ -158,6 +158,45 @@ describe("a config that turns the optimizer on (001-176)", () => {
     expect(once(formatStatus(status, Date.now()))).toBe(1);
   });
 
+  it(
+    "is no longer told in the header once the config turns it off (review wave-13h S1)",
+    SLOW,
+    async () => {
+      const repo = createRepo(OPTIMIZED);
+      const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
+      await h.scheduler.start();
+      await h.scheduler.idle();
+      const first = await h.consumer("first");
+      expect(formatRegistration(await first.delivery.register(first.consumer))).toContain(
+        optimizerOffNote([""]),
+      );
+
+      const before = h.runsOf("test/optimized.test.ts").length;
+      const config = OPTIMIZED["vitest.config.ts"] ?? "";
+      h.write("vitest.config.ts", config.replaceAll("enabled: true", "enabled: false"));
+      await h.batch("vitest.config.ts");
+      await h.scheduler.idle();
+      // The recreated instance ran the test under the new config.
+      expect(h.runsOf("test/optimized.test.ts").length).toBeGreaterThan(before);
+
+      const { delivery, consumer } = await h.consumer("second");
+      expect(formatRegistration(await delivery.register(consumer))).not.toContain(
+        OPTIMIZER_OFF_NOTE,
+      );
+      // Status keeps it among the dated notes: what an earlier config did.
+      expect(formatStatus(readStatus(h.root), Date.now())).toContain(OPTIMIZER_OFF_NOTE);
+
+      // Turned on again, the header tells it again.
+      h.write("vitest.config.ts", config);
+      await h.batch("vitest.config.ts");
+      await h.scheduler.idle();
+      const again = await h.consumer("again");
+      expect(formatRegistration(await again.delivery.register(again.consumer))).toContain(
+        optimizerOffNote([""]),
+      );
+    },
+  );
+
   it("is not told for a config that leaves it off", SLOW, async () => {
     const repo = createRepo({ ...OPTIMIZED, "vitest.config.ts": BASE["vitest.config.ts"] ?? "" });
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);

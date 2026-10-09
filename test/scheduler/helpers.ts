@@ -11,6 +11,7 @@ import { testFileId } from "../../src/core/keys/index.js";
 import { appendNote } from "../../src/core/notes.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
+import { recordOptimizerOff } from "../../src/core/state/optimizer-note.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
   type CheckKey,
@@ -242,7 +243,14 @@ export async function openHarness(
   let current: Policy | null = null;
   const observe =
     options.observe === true ? () => current?.observe.runtimeInputs ?? false : undefined;
-  const adapter = await createVitestAdapter({ root, note, ...(observe ? { observe } : {}) });
+  const optimizer = (projects: readonly string[]) =>
+    recordOptimizerOff(store, worktreeId, projects);
+  const adapter = await createVitestAdapter({
+    root,
+    note,
+    optimizer,
+    ...(observe ? { observe } : {}),
+  });
   const runner = recording(adapter, options.environmentRoot, options.runnerPartBesideRun);
   for (const call of options.failing ?? []) runner.failing.add(call);
   const nodeTest = await Promise.all(
