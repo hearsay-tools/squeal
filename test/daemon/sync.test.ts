@@ -9,6 +9,7 @@ import type {
   AbsolutePath,
   DaemonPhase,
   DaemonResponse,
+  EpochMs,
   RekeyedTestFile,
   RevisionNumber,
   SyncAnswer,
@@ -62,6 +63,14 @@ describe("the sync request (lessons, defect 30)", () => {
     expect(parseRequest('{"type":"sync","after":4}')).toEqual({ type: "sync", after: 4 });
     expect(parseRequest('{"type":"sync","after":-1}')).toBe('"after" must be a revision number');
     expect(parseRequest('{"type":"sync","after":"4"}')).toBe('"after" must be a revision number');
+    expect(parseRequest('{"type":"sync","after":4,"resolvedSince":1700}')).toEqual({
+      type: "sync",
+      after: 4,
+      resolvedSince: 1700,
+    });
+    expect(parseRequest('{"type":"sync","after":4,"resolvedSince":"x"}')).toBe(
+      '"resolvedSince" must be a time',
+    );
     expect(parseRequest('{"type":"sync-status","requestId":"r1"}')).toEqual({
       type: "sync-status",
       requestId: "r1",
@@ -85,18 +94,22 @@ describe("the sync request (lessons, defect 30)", () => {
     expect(answer).not.toHaveProperty("rekeyed");
   });
 
-  // Task 001-186: the files the window's revisions re-keyed, which `status --wait` holds for.
+  // Tasks 001-186, 001-196: the files the window's revisions re-keyed, which `status --wait` holds for.
   it("passes the window's start and answers with the files it re-keyed", async () => {
-    const asked: (RevisionNumber | null)[] = [];
-    const handle = handler((after) => {
-      asked.push(after);
+    const asked: [RevisionNumber | null, EpochMs | null][] = [];
+    const handle = handler((after, resolvedSince) => {
+      asked.push([after, resolvedSince]);
       return Promise.resolve({ revision: 9 as RevisionNumber, rekeyed: [MATH] });
     });
 
-    const id = requestId(handle({ type: "sync", after: 6 as RevisionNumber }));
+    const id = requestId(handle({ type: "sync", after: 6 as RevisionNumber, resolvedSince: 1700 }));
+    requestId(handle({ type: "sync", after: 6 as RevisionNumber }));
     await settle();
 
-    expect(asked).toEqual([6]);
+    expect(asked).toEqual([
+      [6, 1700],
+      [6, null],
+    ]);
     expect(handle({ type: "sync-status", requestId: id })).toMatchObject({
       revision: 9,
       rekeyed: [MATH],
@@ -136,6 +149,7 @@ describe("sync through the front desk", () => {
     cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
     const socketPath = join(dir, "d.sock") as AbsolutePath;
     let calls = 0;
+    let since: EpochMs | null = null;
     const desk = await prepareFrontDesk().open(
       {
         socketPath,
@@ -148,8 +162,9 @@ describe("sync through the front desk", () => {
         onActivity: () => {},
         requestFullSuite: () => new Promise(() => {}),
         requestSlowSuite: () => new Promise(() => {}),
-        requestSync: (after) => {
+        requestSync: (after, resolvedSince) => {
           calls++;
+          since = resolvedSince;
           return Promise.resolve({
             revision: 5 as RevisionNumber,
             rekeyed: after === null ? null : [MATH],
@@ -163,10 +178,11 @@ describe("sync through the front desk", () => {
     cleanups.push(() => desk.close());
     desk.setPhase("ready");
 
-    const ask = { type: "sync", after: 3 as RevisionNumber } as const;
+    const ask = { type: "sync", after: 3 as RevisionNumber, resolvedSince: 1700 } as const;
     const id = requestId(await requestDaemon(socketPath, ask, 2_000));
     await settle();
     expect(calls).toBe(1);
+    expect(since).toBe(1700);
     expect(
       await requestDaemon(socketPath, { type: "sync-status", requestId: id }, 2_000),
     ).toMatchObject({ type: "sync", revision: 5, error: null, rekeyed: [MATH] });

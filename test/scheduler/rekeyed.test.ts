@@ -115,4 +115,35 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
       expect(h.scheduler.rekeyedSince(0 as RevisionNumber, latest(h))).toEqual([]);
     },
   );
+
+  // Review wave 13k, S1: a wait whose answer comes after the result still names the file.
+  it(
+    "names a file whose move had its result since the time asked (task 001-196)",
+    SLOW,
+    async () => {
+      const h = await open();
+      const asked = Date.now();
+      h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
+      await h.batch("src/math.ts");
+      const edited = latest(h);
+      await h.scheduler.idle();
+      const math = { project: "", path: "test/math.test.ts" };
+
+      expect(h.scheduler.rekeyedSince(0 as RevisionNumber, edited)).toEqual([]);
+      expect(h.scheduler.rekeyedSince(0 as RevisionNumber, edited, asked)).toEqual([
+        { testFile: math, revision: edited, resolved: true },
+      ]);
+      expect(h.scheduler.rekeyedSince(edited, latest(h), asked)).toEqual([]);
+      expect(h.scheduler.rekeyedSince(0 as RevisionNumber, edited, Date.now() + 1)).toEqual([]);
+
+      // A later move owes its result again, whatever was resolved before it.
+      h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // again\n");
+      await h.batch("src/math.ts");
+      await h.scheduler.refined();
+      expect(h.scheduler.rekeyedSince(edited, latest(h), asked)).toContainEqual({
+        testFile: math,
+        revision: latest(h),
+      });
+    },
+  );
 });
