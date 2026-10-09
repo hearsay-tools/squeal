@@ -5618,6 +5618,55 @@ var init_revision2 = __esm({
   }
 });
 
+// src/core/scheduler/stability.ts
+function snapshotInputs(cache, paths) {
+  const snapshot3 = new StatCache();
+  for (const path of paths) {
+    const record = cache.get(path);
+    if (record) snapshot3.set(record, { racy: cache.isRacy(path) });
+    else if (cache.hashOf(path) === null) snapshot3.delete(path);
+  }
+  return snapshot3;
+}
+async function changedSince(snapshot3, paths, hasher) {
+  const candidates = await statCandidates(paths, hasher);
+  const diff = await diffCandidates(candidates, snapshot3, hasher);
+  return {
+    changed: new Set(diff.changes.map((change2) => change2.path)),
+    touched: new Set(touchedUnchanged(diff, snapshot3))
+  };
+}
+function touchedUnchanged(diff, cache) {
+  const changed = new Set(diff.changes.map((change2) => change2.path));
+  const touched = [];
+  for (const update of diff.updates) {
+    if (update.kind !== "set" || changed.has(update.record.path)) continue;
+    const cached = cache.get(update.record.path);
+    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
+  }
+  return touched;
+}
+function withheldForTouch(report2, touched) {
+  if (touched.length === 0) return report2;
+  const reason2 = `squeal: ${touched.join(", ")} was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)`;
+  const { fileDurations, observed, ...rest } = report2;
+  return {
+    ...rest,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: report2.failure === null ? reason2 : `${report2.failure}
+${reason2}`
+  };
+}
+var init_stability = __esm({
+  "src/core/scheduler/stability.ts"() {
+    "use strict";
+    init_hash();
+    init_revision();
+  }
+});
+
 // src/core/scheduler/batch.ts
 async function reconcileBatch(context, ledger, batch) {
   const { keys, hasher, store, worktreeId } = context;
@@ -5668,24 +5717,14 @@ async function diffBeside(context, diff, batch, paths) {
     updates: [...diff.updates, ...more.updates]
   };
 }
-function touchedUnchanged(diff, cache) {
-  const changed = new Set(diff.changes.map((change2) => change2.path));
-  const touched = [];
-  for (const update of diff.updates) {
-    if (update.kind !== "set" || changed.has(update.record.path)) continue;
-    const cached = cache.get(update.record.path);
-    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
-  }
-  return touched;
-}
 var init_batch = __esm({
   "src/core/scheduler/batch.ts"() {
     "use strict";
     init_fs();
-    init_hash();
     init_keys();
     init_revision();
     init_revision2();
+    init_stability();
   }
 });
 
@@ -5915,29 +5954,6 @@ var init_link_target = __esm({
   }
 });
 
-// src/core/scheduler/stability.ts
-function snapshotInputs(cache, paths) {
-  const snapshot3 = new StatCache();
-  for (const path of paths) {
-    const record = cache.get(path);
-    if (record) snapshot3.set(record, { racy: cache.isRacy(path) });
-    else if (cache.hashOf(path) === null) snapshot3.delete(path);
-  }
-  return snapshot3;
-}
-async function changedSince(snapshot3, paths, hasher) {
-  const candidates = await statCandidates(paths, hasher);
-  const { changes } = await diffCandidates(candidates, snapshot3, hasher);
-  return new Set(changes.map((change2) => change2.path));
-}
-var init_stability = __esm({
-  "src/core/scheduler/stability.ts"() {
-    "use strict";
-    init_hash();
-    init_revision();
-  }
-});
-
 // src/core/scheduler/observed.ts
 async function observedGrowth(context, report2, run) {
   const out = /* @__PURE__ */ new Map();
@@ -5991,7 +6007,7 @@ async function prepareObserved(context, report2, run) {
     for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
   }
   const snapshot3 = snapshotInputs(context.keys.cache, paths);
-  return { growth, changed: await changedSince(snapshot3, paths, context.hasher) };
+  return { growth, ...await changedSince(snapshot3, paths, context.hasher) };
 }
 var NOTHING_OBSERVED;
 var init_observed2 = __esm({
@@ -6001,7 +6017,11 @@ var init_observed2 = __esm({
     init_git2();
     init_link_target();
     init_stability();
-    NOTHING_OBSERVED = { growth: /* @__PURE__ */ new Map(), changed: /* @__PURE__ */ new Set() };
+    NOTHING_OBSERVED = {
+      growth: /* @__PURE__ */ new Map(),
+      changed: /* @__PURE__ */ new Set(),
+      touched: /* @__PURE__ */ new Set()
+    };
   }
 });
 
@@ -8637,6 +8657,7 @@ var init_scheduler2 = __esm({
     init_revision2();
     init_runner_work();
     init_slow_tier();
+    init_stability();
     init_tiers();
     TierScheduler = class {
       constructor(options) {
@@ -8990,24 +9011,26 @@ var init_scheduler2 = __esm({
         const done = (async () => {
           let recorded2 = false;
           try {
-            const report2 = await executeTier(context, tier);
-            const changed = await unstableInputs(context, tier);
+            const ran = await executeTier(context, tier);
+            const inputs2 = await unstableInputs(context, tier);
             const installMoved = this.#reinstalled || await this.#install.stamp() !== installStamp;
             const moved = await this.#lock.run(async () => {
-              const observed = installMoved ? void 0 : await prepareObserved(context, report2, tier.run);
+              const observed = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
+              const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
+              const report2 = withheldForTouch(ran, touched);
               return context.store.transaction(() => {
                 const result = recordTier(
                   context,
                   ledger,
                   tier,
                   report2,
-                  changed,
+                  inputs2.changed,
                   installMoved,
                   observed
                 );
                 if (slow === null) forgetSlowRuns(context, ledger, tier);
                 else this.#slow.recorded(slow, ledger);
-                return result;
+                return [.../* @__PURE__ */ new Set([...result, ...touched])];
               });
             });
             recorded2 = true;
@@ -12671,16 +12694,10 @@ var init_observe2 = __esm({
           env.NODE_OPTIONS = `--require ${JSON.stringify(recorder)} ${options}`;
         }
       }
-      /**
-       * What the run's completed files were observed to read, and the paths any
-       * file of the run wrote (task 001-159); `undefined` when not observing.
-       */
+      /** What the run's completed files were observed to read; `undefined` when not observing. */
       take(completed) {
         if (this.#out === null) return void 0;
-        const recorded2 = takeRecorded(this.#out);
-        const written = /* @__PURE__ */ new Set();
-        for (const entry2 of recorded2.values()) for (const path of entry2.written) written.add(path);
-        return { inputs: observedInputs(recorded2, completed, this.paths), written };
+        return observedInputs(takeRecorded(this.#out), completed, this.paths);
       }
       /** Drops the current instance's directory. */
       stop() {
@@ -13641,7 +13658,8 @@ var init_adapter = __esm({
       /**
        * Task 001-159: files touched with their bytes ending as they were, since
        * the current instance began to start. The next call replaces it; a run
-       * that hears of one before it ends is not stored.
+       * that hears of one before it ends is not stored, whoever wrote it (task
+       * 001-168).
        */
       #touched = [];
       /** Installed lockfiles the current instance started with. */
@@ -13670,7 +13688,6 @@ var init_adapter = __esm({
         const current2 = () => generation === this.#generation ? this.#collector : null;
         const env = { ...this.#childEnv, ...this.#observer.start().env };
         const heard = this.#touched.length;
-        const forceOptimizeDeps = heard > 0;
         const sources = new SourceStamps(this.paths);
         const config = await ConfigStamps.take(this.paths, this.#configFiles);
         const vitest = await this.#node.createVitest(
@@ -13688,8 +13705,10 @@ var init_adapter = __esm({
             ...Object.keys(env).length === 0 ? {} : { env },
             ...this.#maxWorkers === void 0 ? {} : { maxWorkers: this.#maxWorkers }
           },
-          // Vite's inline option, `optimizeDeps.force` in every environment.
-          forceOptimizeDeps ? { forceOptimizeDeps: true } : {}
+          // Vite's inline option, `optimizeDeps.force` in every environment. Review wave-13e B3: the
+          // optimizer's bundles on disk outlive the instance and the daemon that would have heard a
+          // touch of a file they hold, so every start builds them from the disk (task 001-168, D4).
+          { forceOptimizeDeps: true }
         );
         sources.attach(vitest);
         this.#sources = sources;
@@ -13770,7 +13789,7 @@ var init_adapter = __esm({
        * A `touch` (task 001-159) is heard at once, so a run in flight is not
        * stored, and the instance is replaced before the next call: every
        * project and environment's transforms and module graph, the global setup
-       * and the optimizer's bundles go with it. No project counts as recreated
+       * and the optimizer's bundles (rebuilt at every start) go with it. No project counts as recreated
        * for it: the files are the bytes they were, so the environment and the
        * listing are too, and a listing now could find a file the watcher has
        * not reconciled yet, which then never makes a revision.
@@ -13900,9 +13919,8 @@ var init_adapter = __esm({
               });
             }
             const built = buildReport(collector, execution, Math.round(performance.now() - started));
-            const taken2 = this.#observer.take(built.completedFiles);
-            const observed = taken2?.inputs;
-            const touched = heard.filter((path) => !taken2?.written.has(this.paths.toAbsolute(path))).sort();
+            const observed = this.#observer.take(built.completedFiles);
+            const touched = heard.sort();
             const kept2 = withoutFiles(
               observed === void 0 ? built : { ...built, observed },
               mayHaveRun(vitest, moved, testFiles, this.paths),
@@ -31810,7 +31828,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.68";
+  if (true) return "0.1.69";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
