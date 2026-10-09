@@ -495,7 +495,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08, shipped 202
 
 ## Feature 005: agent adoption
 
-Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until 001-169 to 001-174 and 004-46 are done and the human says go (the host's load is this project's own work); D2 and D6 are reconciled with 001-172 and 001-174 first; sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
+Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until 001-169 to 001-174 and 004-46 are done and the human says go (the host's load is this project's own work); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
 ### Research (done)
 
@@ -512,12 +512,12 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 |---|---|---|---|
 | 005-04 wave-0 checks | planned | Open questions 1, 2, 4, 5 and 7: how a Codex user invokes a plugin skill and how it is named; whether a skill finds its plugin's CLI in a repository without Squeal, in both harnesses; Claude Code's question tool inside a skill; Codex's shell tool timeout; where `install.sh` is hosted and how it behaves under `curl \| sh`; whether a user-scope install satisfies a project-scope enablement; which version a session and the launcher pick when installs differ.; the static slow-input rules (D3) against this repository and a cezarion copy, with no test run: do they propose the inputs declared by hand? | `research/wave-0-checks.md`. |
 
-### Wave 1: the verdict, the wait, the engine (parallel; the 001 coordinator agrees `focus` first)
+### Wave 1: the verdict, the wait, the engine (parallel)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 005-10 the checkpoint's verdict | planned | D1: `run --all --wait [<ms>]`, exit codes 0, 1, 3, the verdict line, tests and file-level checks counted apart in checkpoint, status and header counts; a shared verdict module 005-11 imports. | Every exit code a test, a revision during the checkpoint included; a real-daemon failing checkpoint exits 1. |
-| 005-11 a wait for the agent's own files | planned | D2: `status --wait <ms> <path>...`, selection by test or source path, the `focus` request and its queue order. | Selection and ordering tests; a per-file wait returns before a running backlog ends. |
+| 005-11 a wait on named files | planned | D2: `status --wait <ms> <path>...` restricts the wait to the test files the paths select, by test or source path; no new priority (001 coordinator, 2026-10-10). | Selection tests; a wait on a pending named file returns when that file's result lands. |
 | 005-12 the setup engine | planned | D3's `squeal setup --plan [--json]`, `--check` and `init`'s per-choice flags (no new flag behaves as today), slow and artifact candidates with their evidence and `--slow`/`--input`, D4's block, D5's gate detection and rewording; `squeal remove` takes the block out. | Plan JSON, block and gate tests, the symlinked-file case included. |
 | 005-13 review of wave 1 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
