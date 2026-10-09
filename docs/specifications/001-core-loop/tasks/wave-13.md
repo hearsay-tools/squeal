@@ -427,3 +427,17 @@ Use /worker. Shape: repair. From `reviews/wave-13k.md` (001-195) B1, S1, N1. Dec
 ## 001-197 re-review of 001-196
 
 Use /reviewer on gpt-6.1-sol, after 001-196 lands. Output `reviews/wave-13l.md`. Second round on `reviews/wave-13k.md`: are B1 and S1 closed, the skill correct, N1 done, on Node 22 and 24; re-run both 003 B1 regressions. Decided by the human: blockers go to the human.
+
+## 001-199 a check's key names its key format, not the Squeal release
+
+Use /worker. Shape: slice. Decided by the human (2026-10-10): every hub release re-ran every worktree's full suite (cezar: 15,468 checks pending at once), because `src/core/keys/environment.ts` puts the daemon's Squeal version into every environment hash (spec 001 D3; 004-17 dogfooding defect 4).
+
+Outcome: the environment hash carries a `KEY_FORMAT_VERSION` constant (a small integer in `src/core/keys/`) in place of the Squeal version; each runner adapter's `adapterVersion` stays in it as today. A test fails whenever the code that builds keys or results changes without a bump: a hash of the key-relevant sources (`src/core/keys/**`, `src/core/hash/**`, the runners' result and closure code, chosen and listed in the test) pinned beside `KEY_FORMAT_VERSION`, so a change to them makes the test say "bump KEY_FORMAT_VERSION and update this hash". The first value keeps today's keys valid only if that is provably safe; otherwise the switch itself re-keys once. The daemon version still decides step-down (D10) and stays in status. D3 and D4 say what the key now names and when to bump.
+
+Read: D3, D4, D10, `src/core/keys/environment.ts`, `src/core/daemon/version.ts`, each adapter's `adapterVersion`, `research/release-hub.md` (the environment-hash note). Own: `src/core/keys/`, the adapters' version constants only, tests under `test/keys/`, D3, D4, `docs/process.md` only to add one line to step 6a (the release checklist: bump `KEY_FORMAT_VERSION` when the guard test asks; the human owns the file, so put the line in your report for the coordinator to propose). Do not run `npm run build`.
+
+Done when: two builds that differ only in `package.json` version give the same key for every check; changing a key-relevant source without a bump fails the guard test; an adapter version bump still re-keys that runner's checks.
+
+## 001-200 review of 001-199
+
+Use /reviewer on gpt-6.1-sol, after 001-199 lands. Output `reviews/wave-13m.md`. Can a release now keep a result whose meaning changed: list every input to a result's outcome that is not in the key (Squeal's own code paths: transforms, stamps, the recorder, reporters) and check the guard test covers it; is the step-down unaffected. Decided by the human: blockers go to the human.
