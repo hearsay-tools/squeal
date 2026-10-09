@@ -16,6 +16,8 @@ import { cachedTransform } from "./stale.js";
 
 /** What was on disk when Vite read one project file: the stat taken before the read, and the bytes' hash. */
 interface Stamp {
+  /** The project file the module ID names, its query and any `\0` aside. */
+  readonly file: AbsolutePath;
   readonly stat: FileStat;
   readonly hash: string;
   /** When the bytes were hashed: a stat this close to it may hide a same-size rewrite. */
@@ -31,12 +33,12 @@ interface Hashed {
   readonly hashedAt: EpochMs;
 }
 
-/** One plugin container's reads: its stamps, and the files it cached before it was attached. */
-interface Reads {
-  readonly stamps: Map<AbsolutePath, Stamp>;
-  /** Cached before the container was attached: what it read is not known. */
-  readonly unknown: Set<AbsolutePath>;
-}
+/**
+ * One plugin container's reads, per module ID. Review wave-13c B1: query
+ * variants of one file (`mod.ts?variant`, `mod.ts?raw`) are cached as
+ * modules of their own, each from its own read, so each keeps its own stamp.
+ */
+type Reads = Map<string, Stamp>;
 
 /**
  * Task 001-146: a cached transform holds the bytes on disk when Vite read
@@ -46,11 +48,13 @@ interface Reads {
  * between: every later run executed the reverted bytes under a key naming
  * the restored ones.
  *
- * One per Vitest instance. `attach` stamps each project file a Vite server
- * of the instance reads; `stale` names the cached files whose bytes on disk
- * are no longer the ones read, comparing stats as the stat cache does (D3)
- * and hashing only when the stat moved or is racy. A file loaded some other
- * way (Vitest's `fsModuleCache`) has no stamp and is not checked.
+ * One per Vitest instance. `attach` stamps each module of a project file a
+ * Vite server of the instance loads; `stale` names the project files with a
+ * cached module whose bytes on disk are no longer the ones read, comparing
+ * stats as the stat cache does (D3) and hashing only when the stat moved or
+ * is racy. A cached module of a project file with no stamp was not loaded
+ * through a stamped container (cached before `attach`, or by Vitest's
+ * `fsModuleCache`): what it holds is not known, so it is stale.
  */
 export class SourceStamps {
   /**
@@ -69,7 +73,7 @@ export class SourceStamps {
   #moved: { readonly file: AbsolutePath; readonly loadedAt: EpochMs }[] = [];
 
   constructor(
-    private readonly paths: WorktreePaths,
+    readonly paths: WorktreePaths,
     private readonly now: () => EpochMs = Date.now,
   ) {}
 
@@ -82,13 +86,13 @@ export class SourceStamps {
    * this read and this read before Vite's, so a write after the stat moves
    * the stat, and the check sees it. Idempotent; `stale` attaches first, so
    * a project server added later is stamped from its next load, and what it
-   * cached before is stale.
+   * cached before has no stamp, so it is stale.
    */
   attach(vitest: Vitest): void {
     for (const environment of environments(vitest)) {
       const container = environment.pluginContainer;
       if (this.#containers.has(container)) continue;
-      const reads: Reads = { stamps: new Map(), unknown: new Set(cachedFiles(environment)) };
+      const reads: Reads = new Map();
       this.#containers.set(container, reads);
       const load = container.load.bind(container);
       container.load = async (id) => {
@@ -99,23 +103,22 @@ export class SourceStamps {
   }
 
   async #stamp(reads: Reads, id: string): Promise<void> {
-    const file = id as AbsolutePath;
-    if (id.includes("?") || id.startsWith("\0") || !this.paths.isProjectFile(file)) return;
+    const file = sourceOf(id, this.paths);
+    if (file === null) return;
     const loadedAt = this.now();
     const read = await this.#read(file);
-    reads.unknown.delete(file);
-    if (read === null) reads.stamps.delete(file);
-    else reads.stamps.set(file, { ...read, hashedAt: loadedAt, loadedAt });
+    if (read === null) reads.delete(id);
+    else reads.set(id, { file, ...read, hashedAt: loadedAt, loadedAt });
   }
 
   /**
-   * The cached files, among those Vite read at or after `loadedSince`, whose
-   * bytes on disk differ from the ones read, or which are gone. Each
-   * environment's transform is checked against what its own container read,
-   * and a file stale in one is named once, for every project. A file whose
+   * The project files with a cached module, among those Vite read at or
+   * after `loadedSince`, whose bytes on disk differ from the ones read, or
+   * which are gone. Each cached module, query variants included, is checked
+   * against what its own container read for that module ID, and a file
+   * stale in one is named once, for every project and variant. A file whose
    * bytes are unchanged takes its new stat, so a touch is hashed once. A
-   * file cached before its server was attached is stale until Vite reads it
-   * again.
+   * cached module with no stamp is stale, whenever it was read.
    *
    * With `loadedSince`, a run's check after it ends: it also names what an
    * earlier call found moved since that run began loading (task 001-150),
@@ -125,17 +128,16 @@ export class SourceStamps {
     this.attach(vitest);
     const since = loadedSince ?? 0;
     const unknownAt = Number.POSITIVE_INFINITY as EpochMs;
-    const checks: { readonly reads: Reads; readonly file: AbsolutePath }[] = [];
+    const checks: { readonly reads: Reads; readonly id: string; readonly file: AbsolutePath }[] =
+      [];
     for (const environment of environments(vitest)) {
       const reads = this.#containers.get(environment.pluginContainer);
       if (!reads) continue;
-      for (const file of cachedFiles(environment)) {
-        if (reads.unknown.has(file) || (reads.stamps.get(file)?.loadedAt ?? -1) >= since) {
-          checks.push({ reads, file });
-        }
+      for (const [id, file] of cachedModules(environment, this.paths)) {
+        if ((reads.get(id)?.loadedAt ?? unknownAt) >= since) checks.push({ reads, id, file });
       }
     }
-    // One stat and at most one hash per file, however many containers read it.
+    // One stat and at most one hash per file, however many modules read it.
     const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
     const hashes = new Map<AbsolutePath, Promise<Hashed | null>>();
     const statOnce = (file: AbsolutePath) => memo(stats, file, () => statOrNull(file));
@@ -145,18 +147,15 @@ export class SourceStamps {
         const read = await this.#read(file);
         return read && { ...read, hashedAt };
       });
-    const moved = await mapConcurrent(checks, async ({ reads, file }): Promise<EpochMs | null> => {
-      if (reads.unknown.has(file)) return unknownAt;
-      const stamp = reads.stamps.get(file);
-      if (!stamp) return null;
+    const moved = await mapConcurrent(checks, async ({ reads, id, file }) => {
+      const stamp = reads.get(id);
+      if (!stamp) return unknownAt;
       const stat = await statOnce(file);
       if (stat && sameStat(stat, stamp.stat) && !isRacy(stamp.stat, stamp.hashedAt)) return null;
       const read = await hashOnce(file);
       if (read === null || read.hash !== stamp.hash) return stamp.loadedAt;
       // A load meanwhile (a run in flight) stamped what it read; that stamp stays.
-      if (reads.stamps.get(file) === stamp) {
-        reads.stamps.set(file, { ...read, loadedAt: stamp.loadedAt });
-      }
+      if (reads.get(id) === stamp) reads.set(id, { ...stamp, ...read, loadedAt: stamp.loadedAt });
       return null;
     });
     const found = new Set<AbsolutePath>();
@@ -191,14 +190,26 @@ export class SourceStamps {
   }
 }
 
-/** Invalidates the stale files of `stamps` in `vitest`; returns them. */
+/**
+ * Invalidates the stale files of `stamps` in `vitest`, every module that
+ * names one included (a `\0` ID is not among its file's modules); returns
+ * them.
+ */
 export async function invalidateStale(
   vitest: Vitest,
   stamps: SourceStamps,
   loadedSince?: EpochMs,
 ): Promise<AbsolutePath[]> {
   const stale = await stamps.stale(vitest, loadedSince);
+  if (stale.length === 0) return stale;
   for (const file of stale) vitest.invalidateFile(file);
+  const files = new Set<AbsolutePath>(stale);
+  for (const environment of environments(vitest)) {
+    for (const [id, file] of cachedModules(environment, stamps.paths)) {
+      const module = environment.moduleGraph.getModuleById(id);
+      if (files.has(file) && module) environment.moduleGraph.invalidateModule(module);
+    }
+  }
   return stale;
 }
 
@@ -284,13 +295,24 @@ function environments(vitest: Vitest): Set<Environment> {
   return new Set(vitest.projects.flatMap((p) => Object.values(p.vite.environments)));
 }
 
-/** The files with a cached transform in `environment`. */
-function cachedFiles(environment: Environment): AbsolutePath[] {
-  const files: AbsolutePath[] = [];
-  for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
-    if ([...modules].some((m) => cachedTransform(m) !== null)) files.push(file as AbsolutePath);
+/** Each module ID with a cached transform in `environment` that names a project file, and that file. */
+function cachedModules(environment: Environment, paths: WorktreePaths): Map<string, AbsolutePath> {
+  const modules = new Map<string, AbsolutePath>();
+  for (const [id, module] of environment.moduleGraph.idToModuleMap) {
+    const file = cachedTransform(module) === null ? null : sourceOf(id, paths);
+    if (file !== null) modules.set(id, file);
   }
-  return files;
+  return modules;
+}
+
+/**
+ * The project file a module ID names: without its query or hash, as Vite's
+ * `cleanUrl`, and without the `\0` a plugin marks a virtual ID with. `null`
+ * when it names none.
+ */
+function sourceOf(id: string, paths: WorktreePaths): AbsolutePath | null {
+  const file = id.replace(/^\0/, "").replace(/[?#].*$/s, "") as AbsolutePath;
+  return file.startsWith("/") && paths.isProjectFile(file) ? file : null;
 }
 
 function memo<K, V>(cache: Map<K, Promise<V>>, key: K, compute: () => Promise<V>): Promise<V> {
