@@ -68,7 +68,8 @@ async function syncOnce(
   for (;;) {
     if (state.revision !== null) return { state: "synced", revision: state.revision };
     if (state.error !== null) return UNSUPPORTED;
-    await sleep(pollMs);
+    // Unref'd: a wait that ended does not keep the CLI alive for its sync.
+    await sleep(pollMs, undefined, { ref: false });
     if (stopped()) return UNSUPPORTED;
     // A timeout is asked again; a daemon gone or replaced, which forgot the id, is synced anew.
     const next = await askDaemon(socketPath, {
