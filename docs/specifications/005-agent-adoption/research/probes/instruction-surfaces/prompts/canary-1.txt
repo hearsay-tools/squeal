@@ -1,0 +1,7 @@
+This is a probe of what context you were given. Answer from your context only; do not guess.
+
+1. Quote verbatim every text you received from a CLAUDE.md file, from an AGENTS.md file, and from any session-start hook, system reminder or developer message that mentions Squeal. For each, say where it appeared. Write "none" where you received nothing.
+2. List the skills you could invoke whose name or description mentions Squeal, with the description verbatim. Do not invoke or read any skill.
+3. Do not run `squeal --help`. Say yes or no: do you know what it prints?
+4. Edit src/money.js so that formatMoney puts the currency before the amount ("EUR 12.34"). Then run `ls` once. Quote verbatim any SQUEAL message you received after either tool call, or write "none".
+5. Start one subagent and give it exactly this task text, nothing added: "Answer from your context only. Quote verbatim every text you received from a CLAUDE.md file, an AGENTS.md file, or any session-start hook, system reminder or developer message that mentions Squeal, and say where each appeared; write none where you received nothing. List the skills you could invoke whose description mentions Squeal. Use no tools." Include its answer verbatim.

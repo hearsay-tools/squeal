@@ -1,0 +1,7 @@
+414	hook	SessionStart:startup	{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: 14 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.\nKnown failures: 0\n\nSqueal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to l
+562	init	2.1.295 claude-sonnet-5-5 plugins=squeal,cc-plugin-agents-md,cc-plugin-telemetry,cc-plugin-plugin-authoring
+3912	tool	Read	{"file_path":"/tmp/r52/runs/ta2/src/invoice.js"}
+4259	tool	Read	{"file_path":"/tmp/r52/runs/ta2/test/invoice.test.js"}
+8281	tool	Edit	{"replace_all":false,"file_path":"/tmp/r52/runs/ta2/test/invoice.test.js","old_string":"  expect(applyDiscount(2749, 10)).toBe(2474);\n});","new_string":"  expect(applyDiscount(2749, 10)).toBe(2474);\n});\ntest(\"applyDiscount with 0% leaves the amount unchanged\", () => {\n  expect(applyDiscount(27
+8543	tool	Bash	{"command":"squeal status --wait 60000","description":"Wait for Squeal test results","timeout":70000}
+12712	result	cost=0.0458794 turns=5	I added three `applyDiscount` tests to `test/invoice.test.js`, and Squeal reports 17 affected checks passed with no known failures. I didn't request a full-suite run, so Squeal's counts cover the tests affected by this edit.⏎⏎- **0%:** 2749 cents comes back as 2749.⏎- **100%:** 2749 cents comes back as 0.⏎- **12.5%:** 1000 cents gives 875. I also checked 1999 cents, which is 1749.125 before rounding and comes out as 1749.

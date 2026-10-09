@@ -1,0 +1,4 @@
+This is a probe of what is in your context now. Answer from your context only; do not guess, and use no tools.
+
+1. Quote verbatim every text you can still see from a CLAUDE.md file, from an AGENTS.md file, and from any session-start hook, system reminder or developer message that mentions Squeal. For each, say whether you see it verbatim or only as a summary of earlier conversation. Write "none" where you see nothing.
+2. List the skills you could invoke whose description mentions Squeal, with the description verbatim.

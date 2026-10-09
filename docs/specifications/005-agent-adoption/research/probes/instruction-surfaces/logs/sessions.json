@@ -1,0 +1,617 @@
+[
+  {
+    "label": "ca1",
+    "harness": "claude",
+    "wallS": 36.7,
+    "tests": [],
+    "squeal": [
+      "status wait 2.9s",
+      "status wait 0.6s DENIED",
+      "status wait 1.0s"
+    ],
+    "skill": 0,
+    "squealTexts": 4,
+    "cost": 0.0981138,
+    "usage": null,
+    "truth": "11 passed",
+    "final": "Yes, the tests pass. Squeal reports 15 of 15 passing with no known failures.\n\n`formatMoney` in `src/money.js` now groups thousands with a comma, so 123456 cents prints as \"1,234.56 EUR\".\n\nI updated the old expectations in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to the grouped format. I also added a test in `test/money.test.js` for a negative amount in the millions, which gives \"-1,234,567.89 EUR\".\n\nSqueal has not run a full-suite checkpoint since the start, so the 15 passes are the per-file results it reran after each edit, not a single full run."
+  },
+  {
+    "label": "ca2",
+    "harness": "claude",
+    "wallS": 47,
+    "tests": [],
+    "squeal": [
+      "status wait 0.1s DENIED",
+      "status wait 0.1s DENIED",
+      "status wait 3.5s"
+    ],
+    "skill": 0,
+    "squealTexts": 4,
+    "cost": 0.1050497,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so `123456` prints as `1,234.56 EUR`. The tests pass: Squeal reports all 14 checks passing with no known failures.\n\nSqueal has not run a full-suite checkpoint since the start, so that figure comes from its per-edit runs, not a full run.\n\n- **Code:** in `src/money.js`, the unit part of the amount is grouped with a regex before the decimals are added. I also updated the doc comment's example to `\"1,234.56 EUR\"`.\n- **Tests:** I changed the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to include the commas, for example `1,299.00` and `2,411.10 PLN`."
+  },
+  {
+    "label": "ca3",
+    "harness": "claude",
+    "wallS": 26,
+    "tests": [],
+    "squeal": [
+      "status wait 1.3s",
+      "status wait 3.5s"
+    ],
+    "skill": 0,
+    "squealTexts": 4,
+    "cost": 0.09978980000000001,
+    "usage": null,
+    "truth": "11 passed",
+    "final": "Yes, the tests pass. Squeal reports 15 checks passed and 0 known failures at revision 5, which includes the slow integration test. It hasn't completed a full-suite checkpoint since revision 0, so I'm going by its per-check results, not a full-suite run.\n\n- **`src/money.js`:** `formatMoney` now inserts commas between thousands groups in the whole-units part, so 123456 cents prints as `1,234.56 EUR`. I also updated the doc comment to match.\n- **Tests:** I changed the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to the comma format. I also added a test in `test/money.test.js` for a negative amount in the millions (`-1,234,567.89 EUR`)."
+  },
+  {
+    "label": "cb1-1",
+    "harness": "claude",
+    "wallS": 20.8,
+    "tests": [],
+    "squeal": [
+      "status wait 1.6s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.0639219,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as `1,234.56 EUR`. The tests pass: Squeal reports all 14 checks passed with 0 failures at the revision that includes my edits. I didn't run Vitest myself, and Squeal hasn't run a full-suite checkpoint since before the edits.\n\n- **Code:** in `src/money.js`, the whole-unit part gets commas before it's joined to the cents. Negative amounts and amounts under 1000 are unaffected. I also updated the doc comment.\n- **Tests:** I updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to the comma-grouped form. The integration test had several amounts of 1000 or more in PLN.\n\nI didn't add a new test for amounts of a million or more or for negative amounts."
+  },
+  {
+    "label": "cb1-2",
+    "harness": "claude",
+    "wallS": 30.2,
+    "tests": [],
+    "squeal": [
+      "status wait 1.6s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.062124399999999996,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as \"1,234.56 EUR\". The tests pass: Squeal reports all 14 checks passed at revision 6, with 0 known failures. I didn't run a full-suite checkpoint, so that result comes from Squeal's affected-checks run, which covered all 14.\n\n- **Code:** `src/money.js` adds a regex that inserts commas into the whole-unit part. Negative amounts still get their sign in front, so -123456 gives \"-1,234.56 EUR\". I also updated the doc comment to match.\n- **Tests:** I changed the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to use the comma format."
+  },
+  {
+    "label": "cb2-1",
+    "harness": "claude",
+    "wallS": 24.3,
+    "tests": [],
+    "squeal": [
+      "status wait 2.7s",
+      "status wait 2.7s"
+    ],
+    "skill": 0,
+    "squealTexts": 3,
+    "cost": 0.0790314,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as \"1,234.56 EUR\". The tests pass: Squeal reports all 14 checks passing at revision 5, with no known failures.\n\nI didn't run a full-suite checkpoint, so the 14 passes are Squeal's per-edit results, not a fresh full run. `squeal run --all` would request one if you want it.\n\n- **Code:** in `src/money.js`, I added a regex that inserts a comma between every three digits of the whole-unit part. Negative amounts and the cents part are unaffected.\n- **Tests:** I updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to the comma format.\n- **Integration test:** it failed once at revision 4 because I had only updated its `formatMoney` line and missed the `renderInvoice` strings. Fixing those cleared it."
+  },
+  {
+    "label": "cb2-2",
+    "harness": "claude",
+    "wallS": 18.9,
+    "tests": [],
+    "squeal": [
+      "status wait 1.3s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.0713021,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as \"1,234.56 EUR\". The tests pass: Squeal reports 14 of 14 checks passed at revision 6 with no known failures.\n\nSqueal has not run a full-suite checkpoint since revision 0. The 14 passing checks are the ones it ran for the affected tests, not a separate full run. I didn't run `squeal run --all` to get one.\n\n- **Code:** `src/money.js` inserts a comma between every three digits of the whole-units part. The negative sign and the cents are untouched. I also updated the doc comment.\n- **Tests:** I changed the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to the comma form. The affected amounts were 1,234.56, 1,299.00, 1,390.00, 1,350.00, 1,188.00, 2,538.00 and 2,411.10."
+  },
+  {
+    "label": "cb3-1",
+    "harness": "claude",
+    "wallS": 31.6,
+    "tests": [],
+    "squeal": [
+      "status wait 2.4s",
+      "status wait 3.1s"
+    ],
+    "skill": 0,
+    "squealTexts": 3,
+    "cost": 0.0813788,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as \"1,234.56 EUR\". The tests pass: Squeal shows all 14 checks passing at revision 6, with no known failures.\n\nI didn't request a full-suite run (`squeal run --all`), so the result comes from Squeal's per-edit runs.\n\n- **Code:** the change is in `src/money.js`, and I updated its doc comment to match.\n- **Tests:** I updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js`. The integration test failed at first because I had missed its multi-line rendered-invoice expectation. That's fixed now."
+  },
+  {
+    "label": "cb3-2",
+    "harness": "claude",
+    "wallS": 17.1,
+    "tests": [],
+    "squeal": [
+      "status wait 3.8s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.061882700000000006,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so `formatMoney(123456)` returns `\"1,234.56 EUR\"`. Squeal reports all 14 affected checks passing at revision 6, with no known failures. It hasn't completed a full-suite run since the start, so that result covers only the checks it flagged as affected by these edits.\n\nThe change is in `src/money.js`: the whole-unit part is grouped with a regex before the decimals are added. Negative amounts keep their sign. I also updated the doc comment to show the new format.\n\nTests whose expected strings contained amounts of 1000 or more needed updating:\n- `test/money.test.js`\n- `test/format.test.js`\n- `test/integration.test.js`"
+  },
+  {
+    "label": "cc1",
+    "harness": "claude",
+    "wallS": 22.6,
+    "tests": [
+      "full 0.1s DENIED",
+      "full 3.6s"
+    ],
+    "squeal": [],
+    "skill": 0,
+    "squealTexts": 4,
+    "cost": 0.0825727,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "The tests pass: all 4 test files and 10 tests.\n\n`formatMoney` in `src/money.js` now groups thousands with a comma, so 123456 cents prints as `1,234.56 EUR`. I updated the old expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to match. In `test/integration.test.js` that covers the line items, the total and the discounted amount.\n\nOutput of `npx vitest run`:\n\n```\n RUN  v5.0.3 /tmp/r52/runs/cc1\n\n\n Test Files  4 passed (4)\n      Tests  10 passed (10)\n   Start at  16:36:31\n   Duration  2.66s (tests 96%, transform 2%, import 2%, worker 1%)\n```"
+  },
+  {
+    "label": "cc2",
+    "harness": "claude",
+    "wallS": 31,
+    "tests": [
+      "full 3.7s",
+      "full 3.4s"
+    ],
+    "squeal": [],
+    "skill": 0,
+    "squealTexts": 3,
+    "cost": 0.08305630000000001,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "Yes, the tests pass: all 10 tests in 4 files pass.\n\n`formatMoney` in `src/money.js` now groups the whole-unit part with commas, so 123456 cents prints as \"1,234.56 EUR\". I also updated the doc comment.\n\nI updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js`. My first run had one failure. The integration test had a second expected string with ungrouped amounts that I'd missed. I fixed it and ran again.\n\nFinal `npx vitest run` output:\n\n```\n RUN  v5.0.3 /tmp/r52/runs/cc2\n\n\n Test Files  4 passed (4)\n      Tests  10 passed (10)\n   Start at  16:40:22\n   Duration  2.66s (tests 95%, transform 3%, import 2%, worker 1%)\n```"
+  },
+  {
+    "label": "cc3",
+    "harness": "claude",
+    "wallS": 31.7,
+    "tests": [
+      "full 3.7s",
+      "full 3.3s"
+    ],
+    "squeal": [],
+    "skill": 0,
+    "squealTexts": 3,
+    "cost": 0.0873959,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as \"1,234.56 EUR\". All tests pass: 4 files, 10 tests.\n\nThe change is one line in `src/money.js:5`. I updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js`.\n\nMy first run failed because `test/integration.test.js` had a second expected string with unformatted amounts (1350.00, 1188.00, 2538.00). I updated it and re-ran.\n\nOutput of the final `npx vitest run`:\n\n```\n RUN  v5.0.3 /tmp/r52/runs/cc3\n\n\n Test Files  4 passed (4)\n      Tests  10 passed (10)\n   Start at  16:42:51\n   Duration  2.67s (tests 94%, transform 3%, import 2%, worker 1%)\n```"
+  },
+  {
+    "label": "cd1",
+    "harness": "claude",
+    "wallS": 26.9,
+    "tests": [],
+    "squeal": [
+      "run wait 3.7s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.0648232,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, and the tests pass: 14 passed, 0 failures, with the full-suite checkpoint completed at revision 6.\n\nI changed the units part in `src/money.js` to insert commas, so 123456 cents prints as \"1,234.56 EUR\". I also updated the doc comment.\n\nI updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js` to the comma form.\n\nOutput of `squeal run --all --wait`:\n\n```\nCheckpoint 20aa9fc5-8ebf-40bc-9a0a-8738070c8788 started at revision 6: 3 test files\nCheckpoint 20aa9fc5-8ebf-40bc-9a0a-8738070c8788 completed\n\nRevision: 6\nKnown failures: 0\nAffected checks: 14 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 6\n\nWorktree: /tmp/r52/runs/cd1 (HEAD f1aa8f6, dirty at revision 6)\nDaemon: running, last heartbeat 0 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\n```"
+  },
+  {
+    "label": "cd2",
+    "harness": "claude",
+    "wallS": 17.4,
+    "tests": [],
+    "squeal": [
+      "run wait 3.7s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.06257170000000001,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as \"1,234.56 EUR\". The tests pass: the full-suite checkpoint completed with 14 passed and 0 known failures.\n\nI changed the units part in `src/money.js` and updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js`.\n\nOutput of `squeal run --all --wait`:\n\n```\nCheckpoint 51defbd3-b1e8-4c35-bee7-c09f71ba14c3 started at revision 5: 3 test files\nCheckpoint 51defbd3-b1e8-4c35-bee7-c09f71ba14c3 completed\n\nRevision: 5\nKnown failures: 0\nAffected checks: 14 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 5\n\nWorktree: /tmp/r52/runs/cd2 (HEAD db6555b, dirty at revision 5)\nDaemon: running, last heartbeat 1 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\n```"
+  },
+  {
+    "label": "cd3",
+    "harness": "claude",
+    "wallS": 29.7,
+    "tests": [],
+    "squeal": [
+      "run wait 1.9s",
+      "run wait 2.8s"
+    ],
+    "skill": 0,
+    "squealTexts": 3,
+    "cost": 0.0847465,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "`formatMoney` now groups thousands with commas, so 123456 cents prints as `1,234.56 EUR`. All 14 tests pass.\n\n- **Code:** in `src/money.js` the units part now gets a comma between each group of three digits. I updated the doc comment to match.\n- **Tests:** I updated the expected strings in `test/money.test.js`, `test/format.test.js` and `test/integration.test.js`.\n- **Integration test:** it first failed because I had missed the line-item strings in it. After I fixed those, it passed.\n\nOutput of `squeal run --all --wait` after the last edit:\n\n```\nCheckpoint 9594802e-a619-4f89-93bf-b342ba77249e started at revision 6: 1 test files\nCheckpoint 9594802e-a619-4f89-93bf-b342ba77249e completed\n\nRevision: 6\nKnown failures: 0\nAffected checks: 14 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 6\n\nWorktree: /tmp/r52/runs/cd3 (HEAD dcaaa2c, dirty at revision 6)\nDaemon: running, last heartbeat 3 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\n```\n\nThat run only executed the one file changed since the previous checkpoint. The earlier full run at revision 5 had 13 passing and the one integration failure above."
+  },
+  {
+    "label": "nb-c",
+    "harness": "claude",
+    "wallS": 28.7,
+    "tests": [
+      "full 3.5s"
+    ],
+    "squeal": [
+      "status wait 0.0s DENIED"
+    ],
+    "skill": 0,
+    "squealTexts": 0,
+    "cost": 0.0966997,
+    "usage": null,
+    "truth": "10 passed",
+    "final": "Yes, the tests pass. Vitest ran 4 files and 10 tests, and all passed. I ran `npx vitest run` directly because no SQUEAL messages appeared this session, which is the fallback `CLAUDE.md` gives.\n\n`formatMoney` in `src/money.js` now groups the whole-unit part with commas, so 123456 cents prints as \"1,234.56 EUR\". I also updated the doc comment.\n\nI changed the expected strings in three test files to include the commas:\n- `test/money.test.js`: the large-amount case.\n- `test/format.test.js`: the rendered invoice lines and total.\n- `test/integration.test.js`: the PLN invoice lines, total and discounted amount."
+  },
+  {
+    "label": "nb-x",
+    "harness": "codex",
+    "wallS": 32.7,
+    "tests": [],
+    "squeal": [
+      "status wait 2.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 49111,
+      "cached_input_tokens": 42880,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 914,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "10 passed",
+    "final": "Updated `formatMoney` to use comma thousands separators: `123456` cents now prints `\"1,234.56 EUR\"`. Updated invoice expectations and added coverage for boundaries, millions, and negative amounts.\n\nSqueal reports all 14 affected tests passed, with no failures or pending checks. No new full-suite checkpoint was run."
+  },
+  {
+    "label": "nb-x2",
+    "harness": "codex",
+    "wallS": 36.7,
+    "tests": [
+      "full 3.1s"
+    ],
+    "squeal": [],
+    "skill": 0,
+    "squealTexts": 0,
+    "cost": null,
+    "usage": {
+      "input_tokens": 56577,
+      "cached_input_tokens": 48896,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 811,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "10 passed",
+    "final": "Updated `formatMoney` to group thousands with commas: `123456` cents now prints `\"1,234.56 EUR\"`.\n\nUpdated unit and invoice tests, including boundary, negative, and million-sized amounts. All 10 tests across 4 files pass (`npx vitest run`)."
+  },
+  {
+    "label": "ta1",
+    "harness": "claude",
+    "wallS": 11.6,
+    "tests": [],
+    "squeal": [
+      "status wait 1.3s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.1057832,
+    "usage": null,
+    "truth": "13 passed",
+    "final": "I added three tests for `applyDiscount` to `test/invoice.test.js`:\n- **0%:** `applyDiscount(2749, 0)` returns 2749.\n- **100%:** `applyDiscount(2749, 100)` returns 0.\n- **12.5%:** `applyDiscount(1000, 12.5)` returns 875, and `applyDiscount(2749, 12.5)` returns 2405. The second case checks rounding, since the exact result is 2405.375.\n\nSqueal's run after the edit shows 17 checks passed and 0 known failures. It hasn't run a full-suite checkpoint since the edit."
+  },
+  {
+    "label": "ta2",
+    "harness": "claude",
+    "wallS": 13.1,
+    "tests": [],
+    "squeal": [
+      "status wait 1.2s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.0458794,
+    "usage": null,
+    "truth": "13 passed",
+    "final": "I added three `applyDiscount` tests to `test/invoice.test.js`, and Squeal reports 17 affected checks passed with no known failures. I didn't request a full-suite run, so Squeal's counts cover the tests affected by this edit.\n\n- **0%:** 2749 cents comes back as 2749.\n- **100%:** 2749 cents comes back as 0.\n- **12.5%:** 1000 cents gives 875. I also checked 1999 cents, which is 1749.125 before rounding and comes out as 1749."
+  },
+  {
+    "label": "tb1",
+    "harness": "claude",
+    "wallS": 20.9,
+    "tests": [],
+    "squeal": [
+      "status wait 1.3s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.045732800000000004,
+    "usage": null,
+    "truth": "13 passed",
+    "final": "I added three tests for `applyDiscount` to `test/invoice.test.js`. Squeal reports 17 checks passed, 0 known failures and nothing pending at revision 1. That run was not a full-suite checkpoint, because none has completed since revision 0.\n\nEach new test uses 2749 cents, the same amount as the existing 10% test:\n- **0%:** the amount comes back unchanged, 2749.\n- **100%:** the result is 0.\n- **12.5%:** the result is 2405. The exact value is 2405.375, which rounds down to 2405."
+  },
+  {
+    "label": "tb2",
+    "harness": "claude",
+    "wallS": 14.5,
+    "tests": [],
+    "squeal": [
+      "status wait 1.3s"
+    ],
+    "skill": 0,
+    "squealTexts": 1,
+    "cost": 0.0461186,
+    "usage": null,
+    "truth": "13 passed",
+    "final": "I added three tests for `applyDiscount` to `test/invoice.test.js`. Squeal reports 17 affected checks passed, 0 known failures and nothing pending at revision 1.\n\n- **0%:** `applyDiscount(2749, 0)` returns `2749`.\n- **100%:** `applyDiscount(2749, 100)` returns `0`.\n- **12.5%:** `applyDiscount(2749, 12.5)` returns `2405`. The exact result is 2405.375, which rounds to 2405.\n\nSqueal hasn't completed a full-suite run since revision 0. The 17 passes cover only the checks affected by this edit."
+  },
+  {
+    "label": "txa1",
+    "harness": "codex",
+    "wallS": 20.6,
+    "tests": [],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 34793,
+      "cached_input_tokens": 30336,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 474,
+      "reasoning_output_tokens": 9
+    },
+    "truth": "13 passed",
+    "final": "Added tests in [test/invoice.test.js](/tmp/r52/runs/txa1/test/invoice.test.js) for 0%, 100%, and 12.5% discounts, including fractional-result rounding.\n\nSqueal reports 17 affected checks passed, with no failures or pending checks."
+  },
+  {
+    "label": "txa2",
+    "harness": "codex",
+    "wallS": 22.4,
+    "tests": [],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 34768,
+      "cached_input_tokens": 30336,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 453,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "13 passed",
+    "final": "Added tests in [test/invoice.test.js](/tmp/r52/runs/txa2/test/invoice.test.js) for 0%, 100%, and 12.5% discounts, including fractional rounding.\n\nSqueal reports all 17 affected checks passed, with no pending checks or known failures."
+  },
+  {
+    "label": "txb1",
+    "harness": "codex",
+    "wallS": 19.7,
+    "tests": [],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 35083,
+      "cached_input_tokens": 30592,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 441,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "13 passed",
+    "final": "Added tests in [test/invoice.test.js](/tmp/r52/runs/txb1/test/invoice.test.js) for 0%, 100%, and 12.5% discounts.\n\nSqueal reports 17 affected checks passed, zero known failures, and nothing pending. The latest full-suite checkpoint remains revision 0."
+  },
+  {
+    "label": "txb2",
+    "harness": "codex",
+    "wallS": 21.5,
+    "tests": [],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 35047,
+      "cached_input_tokens": 30464,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 480,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "13 passed",
+    "final": "Added tests in [test/invoice.test.js](/tmp/r52/runs/txb2/test/invoice.test.js) for 0%, 100%, and 12.5% discounts.\n\nSqueal reports 17 affected checks passed, zero known failures, and nothing pending. The last full-suite checkpoint was revision 0."
+  },
+  {
+    "label": "xa1",
+    "harness": "codex",
+    "wallS": 34.6,
+    "tests": [],
+    "squeal": [
+      "status wait 2.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 49349,
+      "cached_input_tokens": 43136,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 954,
+      "reasoning_output_tokens": 7
+    },
+    "truth": "10 passed",
+    "final": "Updated `formatMoney` to use comma thousands separators: `123456` cents now prints `\"1,234.56 EUR\"`.\n\nUpdated invoice expectations and added coverage for the 1,000 boundary and negative million-sized amounts. Squeal reports all 14 affected checks passed, with no failures or pending checks."
+  },
+  {
+    "label": "xa2",
+    "harness": "codex",
+    "wallS": 38.6,
+    "tests": [],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 62785,
+      "cached_input_tokens": 56192,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1016,
+      "reasoning_output_tokens": 7
+    },
+    "truth": "12 passed",
+    "final": "Updated `formatMoney` to group thousands with commas: `123456` cents now prints `\"1,234.56 EUR\"`.\n\nUpdated invoice expectations and added boundary, negative, and million-amount coverage. Squeal reports all 16 affected checks passed, with no failures or pending checks."
+  },
+  {
+    "label": "xb1",
+    "harness": "codex",
+    "wallS": 48.1,
+    "tests": [],
+    "squeal": [
+      "status wait 2.7s",
+      "status wait 2.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 3,
+    "cost": null,
+    "usage": {
+      "input_tokens": 80334,
+      "cached_input_tokens": 67584,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1088,
+      "reasoning_output_tokens": 6
+    },
+    "truth": "11 passed",
+    "final": "Updated `formatMoney` to group thousands with commas: `123456` cents now prints `\"1,234.56 EUR\"`. Updated unit and invoice tests, including boundary, negative, and million-sized amounts.\n\nSqueal reports **15 checks passed, 0 failures, and 0 pending checks**. No new full-suite checkpoint was run."
+  },
+  {
+    "label": "xb2",
+    "harness": "codex",
+    "wallS": 53.3,
+    "tests": [],
+    "squeal": [
+      "status wait 0.7s",
+      "status wait 2.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 3,
+    "cost": null,
+    "usage": {
+      "input_tokens": 109362,
+      "cached_input_tokens": 90496,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1113,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "10 passed",
+    "final": "Updated `formatMoney` to add comma separators: `123456` cents now prints `\"1,234.56 EUR\"`. Updated unit and invoice tests, including boundary and negative amounts.\n\nSqueal reports all 14 checks passing, with 0 failures and 0 pending checks. No new full-suite checkpoint was run."
+  },
+  {
+    "label": "xc1",
+    "harness": "codex",
+    "wallS": 41,
+    "tests": [
+      "full 3.0s"
+    ],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 62758,
+      "cached_input_tokens": 56320,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 969,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "10 passed",
+    "final": "Updated `formatMoney` to use comma thousands separators, including negative amounts. Updated money and invoice tests.\n\nAll 10 tests pass. `npx vitest run` output:\n\n```text\n RUN  v5.0.3 /tmp/r52/runs/xc1\n\n Test Files  4 passed (4)\n      Tests  10 passed (10)\n   Start at  16:45:57\n   Duration  2.66s (tests 95%, transform 3%, import 2%, worker 1%)\n```"
+  },
+  {
+    "label": "xc2",
+    "harness": "codex",
+    "wallS": 43,
+    "tests": [
+      "full 3.0s"
+    ],
+    "squeal": [
+      "status wait 0.7s"
+    ],
+    "skill": 1,
+    "squealTexts": 1,
+    "cost": null,
+    "usage": {
+      "input_tokens": 63440,
+      "cached_input_tokens": 41216,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1052,
+      "reasoning_output_tokens": 0
+    },
+    "truth": "12 passed",
+    "final": "Updated `formatMoney` to group thousands with commas, including negative amounts. Updated invoice expectations and added boundary and multi-comma tests.\n\nAll tests pass. `npx vitest run` output:\n\n```text\n RUN  v5.0.3 /tmp/r52/runs/xc2\n\n\n Test Files  4 passed (4)\n      Tests  12 passed (12)\n   Start at  16:49:39\n   Duration  2.68s (tests 96%, transform 2%, import 2%, worker 1%)\n```"
+  },
+  {
+    "label": "xd1",
+    "harness": "codex",
+    "wallS": 58.6,
+    "tests": [],
+    "squeal": [
+      "run wait 2.6s",
+      "run wait 2.6s"
+    ],
+    "skill": 1,
+    "squealTexts": 3,
+    "cost": null,
+    "usage": {
+      "input_tokens": 110204,
+      "cached_input_tokens": 98432,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1326,
+      "reasoning_output_tokens": 6
+    },
+    "truth": "10 passed",
+    "final": "Updated `formatMoney` to group thousands with commas: `123456` cents now prints `\"1,234.56 EUR\"`. Updated unit and invoice tests, including boundary, negative, and million-sized amounts.\n\nAll 14 tests pass. Full-suite checkpoint output:\n\n```text\nCheckpoint 1ad5a577-bc4c-4ecb-9df8-0aea5cc5a1f8 completed\n\nRevision: 2\nKnown failures: 0\nAffected checks: 14 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 2\n\nWorktree: /tmp/r52/runs/xd1 (HEAD 9955aed, dirty at revision 2)\nDaemon: running, last heartbeat 2 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\n```"
+  },
+  {
+    "label": "xd2",
+    "harness": "codex",
+    "wallS": 58.5,
+    "tests": [],
+    "squeal": [
+      "run wait 2.6s",
+      "run wait 2.6s"
+    ],
+    "skill": 1,
+    "squealTexts": 3,
+    "cost": null,
+    "usage": {
+      "input_tokens": 78489,
+      "cached_input_tokens": 70912,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1320,
+      "reasoning_output_tokens": 11
+    },
+    "truth": "12 passed",
+    "final": "Updated `formatMoney` to group thousands with commas: `123456` cents now prints `\"1,234.56 EUR\"`. Updated unit and invoice tests, including boundary, negative, and million-sized amounts.\n\nAll 16 tests pass. Required Squeal checkpoint output:\n\n```text\nCheckpoint d708fa80-4b25-4893-80b0-e0f8013bb1aa started at revision 2: 1 test files\nCheckpoint d708fa80-4b25-4893-80b0-e0f8013bb1aa completed\n\nRevision: 2\nKnown failures: 0\nAffected checks: 16 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 2\n\nWorktree: /tmp/r52/runs/xd2 (HEAD 169ec25, dirty at revision 2)\nDaemon: running, last heartbeat 2 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\n```"
+  }
+]

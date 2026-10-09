@@ -1,0 +1,108 @@
+# Claude Code transcripts: attachment types in order (what reached the model)
+## can-c decbbde2-c323-4cf0-a577-9e8c95450e92.jsonl
+2026-10-09T14:28:15.652Z hook_success SessionStart:startup  PRIMER
+2026-10-09T14:28:15.663Z hook_additional_context SessionStart  PRIMER
+2026-10-09T14:28:15.903Z environment   
+2026-10-09T14:28:15.904Z model   
+2026-10-09T14:28:15.904Z agent_listing_delta   
+2026-10-09T14:28:15.904Z skill_listing   SKILL-LISTED
+2026-10-09T14:28:16.476Z instructions  /tmp/r52/runs/can-c/CLAUDE.md CORMORANT
+2026-10-09T14:28:16.476Z session_context   
+2026-10-09T14:28:16.477Z date   
+2026-10-09T14:28:16.484Z remote_session_change   
+2026-10-09T14:28:16.487Z prompt_snapshot   
+2026-10-09T14:28:19.596Z prompt_snapshot   HTML-COMMENT
+2026-10-09T14:28:40.489Z hook_success PostToolBatch  
+2026-10-09T14:28:40.491Z hook_additional_context PostToolBatch  
+2026-10-09T14:28:51.579Z deferred_tools_record   
+2026-10-09T14:29:42.422Z hook_success SessionStart:resume  PRIMER
+2026-10-09T14:29:42.427Z hook_additional_context SessionStart  PRIMER
+2026-10-09T14:29:58.873Z file   
+2026-10-09T14:29:58.884Z agent_listing_delta   
+2026-10-09T14:29:58.885Z environment   
+2026-10-09T14:29:58.885Z model   
+2026-10-09T14:29:59.015Z hook_success SessionStart:compact  PRIMER
+2026-10-09T14:29:59.019Z hook_additional_context SessionStart  PRIMER
+2026-10-09T14:30:00.874Z hook_success SessionStart:resume  PRIMER
+2026-10-09T14:30:00.882Z hook_additional_context SessionStart  PRIMER
+2026-10-09T14:30:01.038Z environment   
+2026-10-09T14:30:01.038Z skill_listing   SKILL-LISTED
+2026-10-09T14:30:01.370Z instructions  /tmp/r52/runs/can-c/CLAUDE.md CORMORANT
+2026-10-09T14:30:01.382Z session_context   
+2026-10-09T14:30:01.384Z date   
+2026-10-09T14:30:01.392Z remote_session_change   
+2026-10-09T14:30:01.395Z prompt_snapshot   
+2026-10-09T14:30:24.281Z prompt_snapshot   HTML-COMMENT
+## can-c agent-abc453007d19ffec1.jsonl
+2026-10-09T14:28:23.774Z hook_success SubagentStart:general-purpose  PRIMER
+2026-10-09T14:28:23.777Z hook_additional_context SubagentStart  PRIMER
+2026-10-09T14:28:23.782Z environment   
+2026-10-09T14:28:23.782Z model   
+2026-10-09T14:28:23.784Z skill_listing   SKILL-LISTED
+2026-10-09T14:28:23.803Z instructions  /tmp/r52/runs/can-c/CLAUDE.md CORMORANT
+2026-10-09T14:28:23.803Z session_context   
+2026-10-09T14:28:23.803Z date   
+2026-10-09T14:28:23.808Z remote_session_change   
+2026-10-09T14:28:23.809Z prompt_snapshot   
+2026-10-09T14:28:31.464Z prompt_snapshot   HTML-COMMENT
+2026-10-09T14:28:31.930Z hook_success SubagentStop  
+2026-10-09T14:28:31.939Z hook_additional_context SubagentStop  
+## can-c4 974f4805-2343-410f-aaac-a2a3d7b45f55.jsonl
+2026-10-09T14:30:40.935Z hook_success SessionStart:startup  PRIMER
+2026-10-09T14:30:40.937Z hook_additional_context SessionStart  PRIMER
+2026-10-09T14:30:40.983Z environment   
+2026-10-09T14:30:40.983Z model   
+2026-10-09T14:30:40.983Z agent_listing_delta   
+2026-10-09T14:30:40.983Z skill_listing   SKILL-LISTED
+2026-10-09T14:30:41.078Z instructions  /tmp/r52/runs/can-c4/AGENTS.md HERON
+2026-10-09T14:30:41.078Z session_context   
+2026-10-09T14:30:41.078Z date   
+2026-10-09T14:30:41.080Z remote_session_change   
+2026-10-09T14:30:41.081Z prompt_snapshot   
+2026-10-09T14:30:49.091Z prompt_snapshot   HTML-COMMENT
+## nb-c e07c0b3f-49e3-41be-bca9-d53eedcce3a7.jsonl
+2026-10-09T14:54:20.936Z environment   
+2026-10-09T14:54:20.937Z model   
+2026-10-09T14:54:20.937Z agent_listing_delta   
+2026-10-09T14:54:20.937Z skill_listing   
+2026-10-09T14:54:21.000Z instructions  /tmp/r52/runs/nb-c/CLAUDE.md 
+2026-10-09T14:54:21.000Z session_context   
+2026-10-09T14:54:21.011Z date   
+2026-10-09T14:54:21.014Z remote_session_change   
+2026-10-09T14:54:21.015Z prompt_snapshot   
+2026-10-09T14:54:22.910Z prompt_snapshot   HTML-COMMENT
+2026-10-09T14:54:29.732Z deferred_tools_record   
+2026-10-09T14:54:31.473Z deferred_tools_record   
+2026-10-09T14:54:37.145Z silent_turn_reminder   
+2026-10-09T14:54:39.274Z deferred_tools_record   
+2026-10-09T14:54:48.909Z deferred_tools_record   
+
+# Codex rollouts: messages carrying the canaries, Squeal texts and the skill list
+## rollout-2026-10-09T16-31-39-01a12113-a9fe-7403-b543-b328593cc090.jsonl
+1 meta cwd /tmp/r52/runs/can-x source "exec"
+3 14:31:39.335 developer SKILL-LISTED | <skills_instructions> ## Skills A skill is a set of local instructions to follow
+6 14:31:39.335 user HERON | # AGENTS.md instructions for /tmp/r52/runs/can-x  <INSTRUCTIONS> # invoice-kit  
+9 14:31:39.416 developer SQUEAL-TEXT PRIMER | SQUEAL · registered at revision 1 Revision 1 (changed AGENTS.md): 14 current, 0 
+27 14:31:52.352 developer SQUEAL-TEXT | SQUEAL · 6 checks changed at revision 2 Revision 2 (changed src/money.js): 14 cu
+67 14:33:05.339 assistant HERON SKILL-LISTED | I can quote the user-provided context and list available skills, but I can’t rep
+74 14:33:56.482 assistant HERON SKILL-LISTED | ## Task and status  User requested a context probe, a small code edit, one `ls` 
+77 COMPACTED
+81 14:33:56.554 developer SKILL-LISTED | <skills_instructions> ## Skills A skill is a set of local instructions to follow
+84 14:33:56.554 user HERON | # AGENTS.md instructions for /tmp/r52/runs/can-x  <INSTRUCTIONS> # invoice-kit  
+87 14:33:56.957 developer SQUEAL-TEXT PRIMER | SQUEAL · registered at revision 2 Revision 2 (changed src/money.js): 14 current,
+88 14:33:57.038 developer PRIMER | Squeal runs this repository's Vitest tests in the background after each edit, an
+94 14:34:11.003 assistant HERON SKILL-LISTED | 1. **CLAUDE.md:** none. The earlier-conversation summary says it was not read; I
+## rollout-2026-10-09T16-31-56-01a12113-ee09-7163-b1dc-058ab911d8ac.jsonl
+1 meta cwd /tmp/r52/runs/can-x source {"subagent":{"thread_spawn":{"parent_thread_id":"01a12113-a9fe-7403-b543-b328593cc090","depth":1,"agent_path":"/root/con
+2 meta cwd /tmp/r52/runs/can-x source "exec"
+4 14:31:56.693 developer SKILL-LISTED | <skills_instructions> ## Skills A skill is a set of local instructions to follow
+5 14:31:56.693 user HERON | # AGENTS.md instructions for /tmp/r52/runs/can-x  <INSTRUCTIONS> # invoice-kit  
+8 14:31:56.693 developer SQUEAL-TEXT PRIMER | SQUEAL · registered at revision 1 Revision 1 (changed AGENTS.md): 14 current, 0 
+10 14:31:56.693 developer SQUEAL-TEXT | SQUEAL · 6 checks changed at revision 2 Revision 2 (changed src/money.js): 14 cu
+17 14:31:56.812 developer SQUEAL-TEXT PRIMER | SQUEAL · registered at revision 2 Revision 2 (changed src/money.js): 14 current,
+23 14:32:47.483 assistant HERON SQUEAL-TEXT PRIMER SKILL-LISTED | CLAUDE.md: none.  AGENTS.md: I received this text in a user message headed “AGEN
+## rollout-2026-10-09T16-54-52-01a12128-ed4d-7f23-9a4b-13108e9d59ae.jsonl
+1 meta cwd /tmp/r52/runs/nb-x source "exec"
+3 14:54:52.843 developer SKILL-LISTED | <skills_instructions> ## Skills A skill is a set of local instructions to follow
+6 14:54:52.843 user HTML-COMMENT | # AGENTS.md instructions for /tmp/r52/runs/nb-x  <INSTRUCTIONS> # invoice-kit  S
+16 14:54:59.809 developer SQUEAL-TEXT PRIMER | SQUEAL · registered at revision 0 Revision 0: 14 current, 0 pending, 0 stale, 0 
