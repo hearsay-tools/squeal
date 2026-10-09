@@ -11,4 +11,4 @@ export {
 } from "./open.js";
 export { lockFileFor, type StorePaths, storePaths } from "./paths.js";
 export { SCHEMA_VERSION } from "./schema.js";
-export { readTransaction } from "./store.js";
+export { type ChangeMarker, changeMarker, readTransaction } from "./store.js";
