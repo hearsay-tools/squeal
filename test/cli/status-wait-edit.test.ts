@@ -106,13 +106,21 @@ function later(ms: number, fn: () => void) {
   setTimeout(fn, ms);
 }
 
-/** A daemon that answers the pass at once, naming `rekeyed`; records the asked window. */
-function answering(rekeyed: readonly string[] | null, current?: SyncState) {
+/**
+ * A daemon that answers the pass at revision 4 at once, naming `rekeyed`
+ * (a path re-keyed at revision 4, or a path and its revision); records the
+ * asked window.
+ */
+function answering(rekeyed: readonly (string | [string, number])[] | null, current?: SyncState) {
   const asked: RevisionNumber[] = [];
+  const named = (file: string | [string, number]) => {
+    const [path, revision] = typeof file === "string" ? [file, 4] : file;
+    return { testFile: ref(path), revision: revision as RevisionNumber };
+  };
   const state: SyncState = current ?? {
     state: "synced",
     revision: 4 as RevisionNumber,
-    rekeyed: rekeyed === null ? null : rekeyed.map(ref),
+    rekeyed: rekeyed === null ? null : rekeyed.map(named),
   };
   const sync = (_root: unknown, _pollMs: number, after: RevisionNumber): DaemonSync => {
     asked.push(after);
@@ -254,8 +262,42 @@ describe("the wait's window starts where the session was last told (task 001-186
     await waitForStatus(repo.main, { ...options(unknown.sync), session: "nobody" });
 
     expect(mine.asked).toEqual([1]);
-    expect(wait).toMatchObject({ edit: { since: 2 } });
+    // Revision 4 re-keyed a file, so the window starts after the one last heard of.
+    expect(wait).toMatchObject({ edit: { since: 3 } });
     // No consumer of the session: the window starts at the revision current when the wait did.
     expect(unknown.asked).toEqual([3]);
+  });
+
+  // A config edit at revision 3 the session heard of, then the edit at 4: its backlog is not the edit's.
+  it("does not count the revision last heard of when a later one re-keyed a file", async () => {
+    const { repo, store } = repoWith([A, B, C]);
+    const consumer = { worktreeId: repo.mainId, sessionId: "s1", agentId: MAIN_AGENT };
+    store.consumers.register(consumer, NOW);
+    tellRevision(store, consumer, 3 as RevisionNumber);
+    later(200, () => finish(store, repo.mainId, A));
+
+    const daemon = answering([[B, 3], [C, 3], A]);
+    const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
+
+    expect(daemon.asked).toEqual([2]);
+    expect(wait.outcome).toBe("quiet");
+    expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
+  });
+
+  // The hook after the edit already told revision 4, the edit's, before its result.
+  it("counts the revision last heard of when nothing after it re-keyed a file", async () => {
+    const { repo, store } = repoWith([A, B]);
+    const consumer = { worktreeId: repo.mainId, sessionId: "s1", agentId: MAIN_AGENT };
+    store.consumers.register(consumer, NOW);
+    tellRevision(store, consumer, 4 as RevisionNumber);
+    later(300, () => finish(store, repo.mainId, A));
+
+    const daemon = answering([A]);
+    const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
+
+    expect(daemon.asked).toEqual([3]);
+    expect(wait.outcome).toBe("quiet");
+    expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
+    expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
   });
 });

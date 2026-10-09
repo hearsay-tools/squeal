@@ -26,9 +26,9 @@ import {
   type EditWindow,
   editWindow,
   heldPending,
+  lastHeard,
   splitNews,
   windowRefined,
-  windowStart,
 } from "./status-wait-edit.js";
 import { waitLine } from "./status-wait-lines.js";
 
@@ -137,7 +137,7 @@ export type StatusWait =
  * fails later (a busy lock) is skipped.
  *
  * Lessons, defect 32 (task 001-186): the pass also names the test files the
- * revisions from the window's start (`windowStart`) up to its own re-keyed,
+ * revisions since the wait last heard (`lastHeard`, `editWindow`) up to its own re-keyed,
  * once their runner part is applied. Then quiet is none of those files
  * pending, slow ones aside, whatever else runs, and news is a transition of
  * one of their checks; until the daemon answers, neither. A daemon that
@@ -157,7 +157,7 @@ export async function waitForStatus(
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
   // Started at the first read, which finds the root; a box, since the read is a callback.
-  const syncing: { sync?: DaemonSync; since?: RevisionNumber; window?: EditWindow } = {};
+  const syncing: { sync?: DaemonSync; heard?: RevisionNumber; window?: EditWindow } = {};
   try {
     for (;;) {
       // The read at the deadline decides with what it finds and waits the full busy timeout.
@@ -172,11 +172,11 @@ export async function waitForStatus(
         const header = readHeader(store, id, states);
         start ??= states.map(toStartView);
         const news = newsOf(start, states, header.revision);
-        syncing.since ??= windowStart(store, id, header.revision, session);
-        syncing.sync ??= startSync(root, pollMs, Math.max(0, syncing.since - 1));
+        const heard = (syncing.heard ??= lastHeard(store, id, header.revision, session));
+        syncing.sync ??= startSync(root, pollMs, Math.max(0, heard - 1));
         const current = syncing.sync.current();
         if (current.state === "synced" && current.rekeyed !== null) {
-          syncing.window ??= editWindow(store, id, current.revision, current.rekeyed);
+          syncing.window ??= editWindow(store, id, heard, current.revision, current.rekeyed);
         }
         const window = syncing.window;
         const settled = final || elapsed() >= settleMs;
@@ -192,7 +192,7 @@ export async function waitForStatus(
           quiet =
             header.revision >= window.revision && windowRefined(window, header) && pending === 0;
           edit = {
-            since: syncing.since,
+            since: window.since,
             testFiles: window.ids.size,
             pending,
             otherTransitions: split.other,

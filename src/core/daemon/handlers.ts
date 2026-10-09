@@ -6,12 +6,12 @@ import {
   type DaemonResponse,
   type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
+  type RekeyedTestFile,
   type RevisionNumber,
   type RunAllResponse,
   type RunSlowResponse,
   type SyncAnswer,
   type SyncResponse,
-  type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
@@ -69,7 +69,7 @@ interface RunSlowState {
 interface SyncState {
   revision: RevisionNumber | null;
   error: string | null;
-  rekeyed: readonly TestFileRef[] | null;
+  rekeyed: readonly RekeyedTestFile[] | null;
 }
 
 /**

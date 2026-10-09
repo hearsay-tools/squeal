@@ -9,9 +9,9 @@ import type {
   AbsolutePath,
   DaemonPhase,
   DaemonResponse,
+  RekeyedTestFile,
   RevisionNumber,
   SyncAnswer,
-  TestFileRef,
 } from "../../src/core/types/index.js";
 
 /*
@@ -20,7 +20,10 @@ import type {
  * answered at once, like `run-all`, and its revision is asked for after.
  */
 
-const MATH: TestFileRef = { project: "", path: "test/math.test.ts" as never };
+const MATH: RekeyedTestFile = {
+  testFile: { project: "", path: "test/math.test.ts" as never },
+  revision: 8 as RevisionNumber,
+};
 
 const cleanups: (() => unknown)[] = [];
 afterEach(async () => {
