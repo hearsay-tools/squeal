@@ -1,32 +1,34 @@
 # Squeal plugin for Claude Code
 
-Spec 001 D9, ADR 0003. The marketplace is the repository root: `.claude-plugin/marketplace.json` there lists this plugin with source `./plugins/claude-code`. Claude Code (verified with 2.1.288) resolves plugin sources of a `github` or `git` marketplace against the clone root, so the manifest cannot live in this directory.
+Spec 001 D9, ADR 0003. Released Squeal installs from the hub marketplace `hearsay` (the private repository `hearsay-tools/marketplace`), which pins this directory at a release tag (`squeal--v<version>`), so the plugin id is `squeal@hearsay` (row 001-164, `research/release-hub.md`). This repository's root `.claude-plugin/marketplace.json`, named `squeal`, lists this plugin with source `./plugins/claude-code` for installs from a checkout; Claude Code (verified with 2.1.288) resolves plugin sources of a `github` or `git` marketplace against the clone root, so that manifest cannot live in this directory.
 
 ## Install in a project
 
-Nothing needs to be installed globally. The marketplace repository is private, so `claude plugin marketplace add` clones it with your git credentials: run `gh auth login` first (it sets up git's credential helper), or configure another git credential helper or SSH keys for GitHub. Claude Code does not pass `GH_TOKEN` to git and has no token option; without credentials the clone fails with `HTTPS authentication failed` and then `Permission denied (publickey)` (lessons, surprise 9). From the project's root:
+Nothing needs to be installed globally. The hub repository is private, so `claude plugin marketplace add` clones it with your git credentials: run `gh auth login` first (it sets up git's credential helper), or configure another git credential helper or SSH keys for GitHub. Claude Code does not pass `GH_TOKEN` to git and has no token option; without credentials the clone fails with `HTTPS authentication failed` and then `Permission denied (publickey)` (lessons, surprise 9). From the project's root:
 
 ```sh
-claude plugin marketplace add hearsay-tools/squeal
-claude plugin install squeal@squeal --scope project
+claude plugin marketplace add hearsay-tools/marketplace
+claude plugin install squeal@hearsay --scope project
 ```
 
 Then run `squeal init` once through Claude Code's Bash tool, for example by asking the agent to run it: the plugin puts its `bin/squeal` on that tool's `PATH`. From a clone of this repository, `<clone>/plugins/claude-code/bin/squeal init` does the same with no `npm install`: the CLI is bundled and loads Vitest from the project only when the daemon runs.
 
-`squeal init` writes `squeal.config.json` with every default policy key if the file is absent, and adds two keys to `.claude/settings.json`: the `squeal` marketplace (`github` `hearsay-tools/squeal`) under `extraKnownMarketplaces`, and `squeal@squeal: true` under `enabledPlugins`. It keeps every other key and never writes hook commands. Settings are written first and restored if the config cannot be written. Each collaborator installs the plugin once: `claude plugin install squeal@squeal --scope project`.
+`squeal init` writes `squeal.config.json` with every default policy key if the file is absent, and adds two keys to `.claude/settings.json`: the `hearsay` marketplace (`github` `hearsay-tools/marketplace`) under `extraKnownMarketplaces`, and `squeal@hearsay: true` under `enabledPlugins`. It keeps every other key and never writes hook commands. Settings are written first and restored if the config cannot be written. Each collaborator installs the plugin once: `claude plugin install squeal@hearsay --scope project`.
+
+A project set up before the hub has the previous id: the `squeal` marketplace and `squeal@squeal` in `enabledPlugins`. `squeal init` removes both entries, writes the two above, and prints the commands each collaborator runs once to drop the old install: `claude plugin uninstall squeal@squeal --scope project`, then `claude plugin marketplace remove squeal`.
 
 The project needs its own Vitest (`npm install -D vitest`): the daemon resolves `vitest/node` from the project root. A project without it gets a runner failure note in `squeal status`, not a crash.
 
 ## Update an installed plugin
 
-Claude Code compares the `version` in `.claude-plugin/plugin.json` with the one it installed, and changes nothing while they match, however many commits land (Claude Code docs, [Plugin loading reference, Versions and updates](https://code.claude.com/docs/en/plugins/loading#versions-and-updates): the manifest's version comes first and "keeps every user on the cached copy until its author changes the string"). Every landing that changes `dist/` raises the version, so after one:
+Claude Code compares the `version` in `.claude-plugin/plugin.json` with the one it installed, and changes nothing while they match, however many commits land (Claude Code docs, [Plugin loading reference, Versions and updates](https://code.claude.com/docs/en/plugins/loading#versions-and-updates): the manifest's version comes first and "keeps every user on the cached copy until its author changes the string"). A landing on `main` ships nothing: a release moves the hub's pin to a new tag, whose version differs from the last release's, so after one:
 
 ```sh
-claude plugin marketplace update squeal
-claude plugin update squeal@squeal --scope project
+claude plugin marketplace update hearsay
+claude plugin update squeal@hearsay --scope project
 ```
 
-The first refreshes Claude Code's clone of this repository; the second installs the new version when it differs from the installed one, and otherwise prints that the plugin is already at the latest version. Then run `/reload-plugins` in a running session, or start a new one: a running session keeps the hooks it loaded. Use the `--scope` you installed with. `claude plugin list` shows the installed version; `bin/squeal --version` prints the version of the bundles it runs.
+The first refreshes Claude Code's clone of the hub; the second installs the new version when it differs from the installed one, and otherwise prints that the plugin is already at the latest version. Then run `/reload-plugins` in a running session, or start a new one: a running session keeps the hooks it loaded. Use the `--scope` you installed with. `claude plugin list` shows the installed version; `bin/squeal --version` prints the version of the bundles it runs.
 
 The marketplace does not auto-update unless you turn it on, under `/plugin` **Marketplaces** or with `autoUpdate` on its `extraKnownMarketplaces` entry; then Claude Code updates the plugin in the background and asks for `/reload-plugins`.
 
@@ -36,14 +38,14 @@ From any worktree of the repository:
 
 ```sh
 squeal remove            # or: squeal remove --config
-claude plugin uninstall squeal@squeal --scope project
+claude plugin uninstall squeal@hearsay --scope project
 ```
 
-`squeal remove` asks the daemon of every worktree to stop and waits until each has let go of its lock, then deletes `<git-common-dir>/squeal/` (the store, locks, run logs and repository id) and the daemons' temp directories under `/tmp/squeal-<uid>/tmp/`. A daemon that does not stop within 5 seconds, usually one finishing a test run, makes it exit 1 with nothing deleted; run it again. `squeal.config.json` stays unless `--config` is given, and while it is there the next session starts Squeal again; it is committed, so other worktrees and clones keep their copy. Run it again on a repository with nothing left and it says so. Uninstall the plugin with the scope you installed it with, and delete the `squeal` entries under `extraKnownMarketplaces` and `enabledPlugins` in `.claude/settings.json` if they remain.
+`squeal remove` asks the daemon of every worktree to stop and waits until each has let go of its lock, then deletes `<git-common-dir>/squeal/` (the store, locks, run logs and repository id) and the daemons' temp directories under `/tmp/squeal-<uid>/tmp/`. A daemon that does not stop within 5 seconds, usually one finishing a test run, makes it exit 1 with nothing deleted; run it again. `squeal.config.json` stays unless `--config` is given, and while it is there the next session starts Squeal again; it is committed, so other worktrees and clones keep their copy. Run it again on a repository with nothing left and it says so. `squeal remove` never edits `.claude/settings.json`: under "Still there" it prints the uninstall command of each Squeal id the settings enable, `squeal@hearsay` or the previous `squeal@squeal`, and the `extraKnownMarketplaces` and `enabledPlugins` entries still there, to delete by hand. Uninstall the plugin with the scope you installed it with.
 
 ## Develop
 
-For development, load this directory for one session: `claude --plugin-dir plugins/claude-code`. Claude Code ignores a `--plugin-dir` that does not exist without any message, and a relative path resolves against the current directory, so pass an absolute path when in doubt. The `init` event of `--output-format stream-json` lists the loaded plugins under `plugins`; Squeal is loaded when `squeal` is there (lessons, surprise 10).
+For development, load this directory for one session: `claude --plugin-dir plugins/claude-code`. An install from a checkout (`claude plugin marketplace add <checkout>`) is `squeal@squeal` while this repository's manifest keeps the name `squeal`: install it at user or local scope, since `squeal init` replaces `squeal@squeal` in project settings with `squeal@hearsay`, and set `"squeal@hearsay": false` under `enabledPlugins` in the project's `.claude/settings.local.json` so the two do not both run. Renaming the in-repo manifests to a dev name waits until every machine has moved to the hub: Codex refuses to upgrade a marketplace whose name changed (`research/probes/dev-marketplace`). Claude Code ignores a `--plugin-dir` that does not exist without any message, and a relative path resolves against the current directory, so pass an absolute path when in doubt. The `init` event of `--output-format stream-json` lists the loaded plugins under `plugins`; Squeal is loaded when `squeal` is there (lessons, surprise 10).
 
 ## Contents
 
@@ -57,7 +59,7 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 | `.claude-plugin/plugin.json` | The manifest. `npm run build` writes its `version` from the root `package.json`, the one version source; the marketplace entry carries none. |
 | `package.json` | Marks the bundles as ES modules; the build writes its version too. The bundles carry the version from the build. |
 
-`dist/` is committed: a marketplace install copies this directory as it is in git. `npm run build` regenerates it; `test/harness/plugin.test.ts` fails when the committed bundles differ from a fresh build, and CI runs `git diff --exit-code -- plugins/claude-code/dist` after its build. A change to `dist/` must raise the root `package.json` version, or installed plugins never see it: CI runs `scripts/check-version-bump.ts` on pull requests and pushes to `main`, and `npm run check:version -- <base> [head]` runs it locally. `test/e2e/shipped-plugin.test.ts` runs a `git archive` copy of this directory with no `node_modules` above it against a project with its own Vitest.
+`dist/` is committed: a marketplace install copies this directory as it is in git. `npm run build` regenerates it; `test/harness/plugin.test.ts` fails when the committed bundles differ from a fresh build, and CI runs `git diff --exit-code -- plugins/claude-code/dist` after its build. A change to `dist/` must raise the root `package.json` version, or a release that pins it never reaches installed plugins: CI runs `scripts/check-version-bump.ts` on pull requests and pushes to `main`, and `npm run check:version -- <base> [head]` runs it locally. `test/e2e/shipped-plugin.test.ts` runs a `git archive` copy of this directory with no `node_modules` above it against a project with its own Vitest.
 
 ## Behaviour
 
