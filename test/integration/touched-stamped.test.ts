@@ -9,6 +9,7 @@ import {
   readsNew,
   slowOptions,
   stored,
+  withheldByBarrier,
   withSlowLanes,
 } from "./stamps-repo.js";
 import { probeTouched, touchHeard, warmOn } from "./touched-repo.js";
@@ -120,10 +121,10 @@ describe.each([true, false])("a touched restore after a stamped probe (observe %
     await h.scheduler.start();
     await h.scheduler.idle();
 
+    // The slow instance is made, and planted, after its tier was selected: the touch is over the
+    // run's interval, so the completion barrier withholds it (task 001-168).
     expect(lanes.made()).toBeGreaterThan(0);
-    expect(stored(h)).toEqual([
-      ["", "test/plain.test.ts", "current", "fail"],
-      ["", "test/variant.test.ts", "current", "fail"],
-    ]);
+    expect(stored(h)).toEqual([]);
+    withheldByBarrier(h, "test/variant.test.ts");
   });
 });

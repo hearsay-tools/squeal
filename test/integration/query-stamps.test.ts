@@ -11,6 +11,7 @@ import {
   slowOptions,
   stored,
   warmOptions,
+  withheldByBarrier,
   withSlowLanes,
 } from "./stamps-repo.js";
 
@@ -20,7 +21,9 @@ import {
  * its own read. At the first run boundary the same adapter runs the test
  * while `src/mod.ts` holds bytes it passes on; the file is restored before
  * the scheduler's run, and nothing hashes it in between. The keys name the
- * restored bytes, so what is stored as current must be what they give.
+ * restored bytes, so what is stored as current must be what they give. No
+ * batch reports the restore before the run ends, so the completion barrier
+ * withholds the run (task 001-168).
  */
 
 const VARIANT = { project: "", path: "test/variant.test.ts" };
@@ -86,7 +89,8 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
         observe,
       });
       await probe(h);
-      expect(stored(h)).toEqual([["", "test/variant.test.ts", "current", "fail"]]);
+      expect(stored(h)).toEqual([]);
+      withheldByBarrier(h, "test/variant.test.ts");
     },
   );
 
@@ -99,10 +103,8 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
         observe,
       });
       await probe(h, [PLAIN]);
-      expect(stored(h)).toEqual([
-        ["", "test/plain.test.ts", "current", "fail"],
-        ["", "test/variant.test.ts", "current", "fail"],
-      ]);
+      expect(stored(h)).toEqual([]);
+      withheldByBarrier(h, "test/variant.test.ts");
     },
   );
 
@@ -123,10 +125,8 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       await h.scheduler.idle();
 
       expect(lanes.made()).toBeGreaterThan(0);
-      expect(stored(h)).toEqual([
-        ["", "test/plain.test.ts", "current", "fail"],
-        ["", "test/variant.test.ts", "current", "fail"],
-      ]);
+      expect(stored(h)).toEqual([]);
+      withheldByBarrier(h, "test/variant.test.ts");
     },
   );
 });

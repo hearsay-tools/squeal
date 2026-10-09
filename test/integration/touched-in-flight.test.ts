@@ -11,8 +11,8 @@ import { touchHeard } from "./touched-repo.js";
  * wrote the file, the run may have read its other bytes from any cache, so
  * none of its files is stored; they are unknown with a reason that names
  * the file, as task 001-146 does for a file that moved during a run. An
- * unknown file has no stored state. When the run wrote the file itself, a
- * fresh run of the same bytes writes it too: observed, the run is stored.
+ * unknown file has no stored state. A file the run wrote itself counts too
+ * (review wave-13e B1, task 001-168).
  *
  * `test/holds.test.ts` writes `flags/started` (git-ignored) and waits for
  * `flags/heard`; with `SELF` it first rewrites `fixtures/data.txt` with the
@@ -116,62 +116,25 @@ describe("a touch heard during a run (task 001-159)", () => {
   });
 });
 
-describe("a test file that rewrites a worktree file with its own bytes on every run (task 001-159)", () => {
-  /** Edits the test file, so its key moves and it runs again, until idle. */
-  async function runAgain(h: Harness, edit: number): Promise<void> {
-    const heard = touchHeard(h);
-    writeFileSync(join(h.root, "flags/heard"), "");
-    h.write("test/holds.test.ts", `${holds(true)}// edit ${edit}\n`);
-    await h.batch("test/holds.test.ts");
-    await h.scheduler.idle();
-    // The run's write reaches the runner after the run, as a touch with no revision.
-    await h.batch("fixtures/data.txt");
-    await heard;
-    await h.scheduler.idle();
-  }
-
-  it("is stored as it ran, when observed, and settles", SLOW, async () => {
-    const repo = createRepo(files(true));
-    const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
-      tierSize: 4,
-      runnerPartBesideRun: true,
-      observe: true,
-    });
-    await touchDuringRun(h, "fixtures/data.txt", false);
-    expect(stored(h)).toEqual([
-      ["", "test/holds.test.ts", "current", "pass"],
-      ["", "test/other.test.ts", "current", "pass"],
-    ]);
-
-    await runAgain(h, 1);
-    await runAgain(h, 2);
-    // Once per key: the touch its own run makes queues no run of it.
-    expect(h.runsOf("test/holds.test.ts")).toHaveLength(3);
-    expect(stored(h)).toEqual([
-      ["", "test/holds.test.ts", "current", "pass"],
-      ["", "test/other.test.ts", "current", "pass"],
-    ]);
-  });
-
-  it(
-    "is unknown with the reason when not observed and heard during its run, and settles",
+describe("a test file that rewrites a worktree file with its own bytes on every run", () => {
+  // Review wave-13e B1: writing the bytes proves nothing about what a cache served the run, so
+  // its own touch withholds it like any other (task 001-168). The skill's reports reference
+  // names the remedy: write outside the worktree or under an ignored path, or declare the file.
+  it.each([true, false])(
+    "is unknown with a reason naming the file when its touch is heard during its run (observe %s)",
     SLOW,
-    async () => {
+    async (observe) => {
       const repo = createRepo(files(true));
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         tierSize: 4,
         runnerPartBesideRun: true,
+        observe,
       });
       await touchDuringRun(h, "fixtures/data.txt", false);
       expect(stored(h)).toEqual([]);
       expect(reasons(h, "test/holds.test.ts")).toEqual([
         expect.stringMatching(reason("fixtures/data.txt")),
       ]);
-
-      // A run that ended before its own touch was heard is stored.
-      await runAgain(h, 1);
-      expect(h.runsOf("test/holds.test.ts")).toHaveLength(2);
-      expect(stored(h)).toEqual([["", "test/holds.test.ts", "current", "pass"]]);
     },
   );
 });

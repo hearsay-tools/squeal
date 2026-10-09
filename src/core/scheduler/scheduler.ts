@@ -35,6 +35,7 @@ import { priorityOf } from "./queue.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
+import { withheldForTouch } from "./stability.js";
 import {
   abandonFullSuite,
   endTier,
@@ -440,14 +441,15 @@ class TierScheduler implements Scheduler {
     const done = (async () => {
       let recorded = false;
       try {
-        const report = await executeTier(context, tier);
-        const changed = await unstableInputs(context, tier);
+        const ran = await executeTier(context, tier);
+        // The completion barrier (task 001-168): a touch since selection withholds the run.
+        const inputs = await unstableInputs(context, tier);
         const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
         const moved = await this.#lock.run(async () => {
           // Task 001-132: what the run read beyond its closures, hashed under the lock.
-          const observed = installMoved
-            ? undefined
-            : await prepareObserved(context, report, tier.run);
+          const observed = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
+          const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
+          const report = withheldForTouch(ran, touched);
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
             const result = recordTier(
@@ -455,13 +457,14 @@ class TierScheduler implements Scheduler {
               ledger,
               tier,
               report,
-              changed,
+              inputs.changed,
               installMoved,
               observed,
             );
             if (slow === null) forgetSlowRuns(context, ledger, tier);
             else this.#slow.recorded(slow, ledger);
-            return result;
+            // The runner hears the touches too, so its next run reads the disk again.
+            return [...new Set([...result, ...touched])];
           });
         });
         recorded = true;

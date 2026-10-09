@@ -9,6 +9,7 @@ import {
   readsNew,
   slowOptions,
   stored,
+  withheldByBarrier,
   withSlowLanes,
 } from "./stamps-repo.js";
 
@@ -18,8 +19,10 @@ import {
  * Vite server of its own. While the first closure walk runs, `src/mod.ts`
  * holds bytes the test passes on, and is restored to bytes it fails on
  * before anything hashes it again. The scheduler's keys name the restored
- * bytes, so what it stores as current must be what they give: the file
- * loads, and its test fails.
+ * bytes, so what it stores as current must be what they give. No batch
+ * reports the restore before the run ends, so the completion barrier
+ * withholds the run and nothing is stored (task 001-168); the per-module
+ * stamps still drop the transform before it runs.
  */
 
 const config = (body: string) =>
@@ -83,11 +86,8 @@ describe("a project with its own config file (review wave-13 B2)", () => {
         observe,
       });
       await probe(h);
-      const states = h.sink.states().filter((s) => s.check.testPath === "test/mod.test.ts");
-      expect(states.map((s) => [s.check.kind, s.validity, s.outcome])).toEqual([
-        ["file", "current", "pass"],
-        ["test", "current", "fail"],
-      ]);
+      expect(h.sink.states().filter((s) => s.check.testPath === "test/mod.test.ts")).toEqual([]);
+      withheldByBarrier(h, "test/mod.test.ts");
     },
   );
 });
@@ -110,10 +110,8 @@ describe("two projects with config files of their own (review wave-13b B2)", () 
         observe,
       });
       await probe(h);
-      expect(stored(h)).toEqual([
-        ["a", "test/mod.test.ts", "current", "fail"],
-        ["b", "test/mod.test.ts", "current", "fail"],
-      ]);
+      expect(stored(h)).toEqual([]);
+      withheldByBarrier(h, "test/mod.test.ts");
     },
   );
 
@@ -145,10 +143,8 @@ describe("two projects with config files of their own (review wave-13b B2)", () 
       await h.scheduler.idle();
 
       expect(lanes.made()).toBeGreaterThan(0);
-      expect(stored(h)).toEqual([
-        ["a", "test/mod.test.ts", "current", "fail"],
-        ["b", "test/mod.test.ts", "current", "fail"],
-      ]);
+      expect(stored(h)).toEqual([]);
+      withheldByBarrier(h, "test/mod.test.ts");
     },
   );
 });

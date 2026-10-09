@@ -20,7 +20,7 @@ import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
 import { storeClosures } from "./revision.js";
 import { slowView } from "./slow.js";
-import { changedSince, snapshotInputs } from "./stability.js";
+import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 
 /** One test file of a tier and the key it runs under. */
 export interface TierFile {
@@ -215,11 +215,11 @@ export function endTier(context: SchedulerContext, ledger: Ledger, tier: Tier): 
 }
 
 /**
- * The tier's inputs whose content now differs from the snapshot. Outside the
- * lock: it only reads. A listing is no file; the revisions during the run
- * cover it (`Tier.changes`).
+ * The tier's inputs whose content now differs from the snapshot, and those
+ * touched since it (task 001-168). Outside the lock: it only reads. A
+ * listing is no file; the revisions during the run cover it (`Tier.changes`).
  */
-export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Set<RelativePath>> {
+export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Moved> {
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
   for (const path of inputs) if (listedDirectory(path) !== null) inputs.delete(path);
   return changedSince(tier.snapshot, inputs, context.hasher);

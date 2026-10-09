@@ -1,11 +1,11 @@
 import { compare } from "../fs/index.js";
-import { type StatCache, sameStat } from "../hash/index.js";
 import { ancestorListings } from "../keys/index.js";
 import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/index.js";
 import type { CandidateBatch, RelativePath, Revision } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { type ContentRekey, rekeyContent } from "./revision.js";
+import { touchedUnchanged } from "./stability.js";
 
 /**
  * Reconciles a batch. A new revision is stored in one transaction with the
@@ -95,20 +95,4 @@ async function diffBeside(
     changes: [...diff.changes, ...more.changes].sort((a, b) => compare(a.path, b.path)),
     updates: [...diff.updates, ...more.updates],
   };
-}
-
-/**
- * Paths of `diff` hashed because their stat moved, with the hash they had.
- * Read before `commitBatch` updates `cache`. A racy entry re-hashed on an
- * equal stat was not written since, so it is not among them.
- */
-function touchedUnchanged(diff: BatchDiff, cache: StatCache): RelativePath[] {
-  const changed = new Set(diff.changes.map((change) => change.path));
-  const touched: RelativePath[] = [];
-  for (const update of diff.updates) {
-    if (update.kind !== "set" || changed.has(update.record.path)) continue;
-    const cached = cache.get(update.record.path);
-    if (cached !== undefined && !sameStat(cached, update.record)) touched.push(cached.path);
-  }
-  return touched;
 }
