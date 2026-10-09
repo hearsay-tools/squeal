@@ -10,7 +10,7 @@ import { slowFiles } from "../../core/slow/index.js";
 import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
-import type { KnownFailure, TestFileRef } from "../../core/types/index.js";
+import type { KnownFailure, Policy, StatusHeader, TestFileRef } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale } from "./ensure.js";
@@ -100,37 +100,82 @@ export function stopTurn(
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
       }
 
-      const { store, consumer } = context;
+      const { consumer } = context;
       const news = await newsText(context, deps.command);
-      const states = store.knownStates.list(consumer.worktreeId);
-      const header = readLiveHeader(store, consumer.worktreeId, (deps.now ?? Date.now)(), states);
-      const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-      const current = failures.filter((f) => f.validity === "current");
-
-      const reasons: string[] = [];
-      if (!input.stopHookActive) {
-        if (policy.blockOnKnownFailures && current.length > 0) {
-          reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
+      const now = deps.now ?? Date.now;
+      const blocking =
+        !input.stopHookActive &&
+        (policy.blockOnKnownFailures || policy.requireFullSuite || policy.requireSlowSuite);
+      for (let decision = 1; ; decision++) {
+        const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
+          stopHookActive: input.stopHookActive,
+          command: deps.command,
+        });
+        if (reasons.length > 0) {
+          const text = news ?? statusText(header, failures.length, deps.command);
+          return { block: `${reasons.join("\n")}\n\n${text}` };
         }
-        if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
-          reasons.push(fullSuiteReason(header, deps.command));
+        if (input.agent_id !== undefined) await finishSubagent(context);
+        else if (news === null) {
+          // The turn ends at the revision decided on; a newer one is decided again.
+          const at = blocking && decision < STOP_DECISIONS ? { atRevision: header.revision } : {};
+          const ended = await context.delivery.endTurn(consumer, at);
+          if (!ended) continue;
         }
-        if (policy.requireSlowSuite) {
-          const keys = store.testFileKeys.list(consumer.worktreeId);
-          const open = slowFilesNotCurrent(states, keys, isSlow);
-          if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, deps.command));
-        }
+        return news === null ? null : { news };
       }
-      if (reasons.length > 0) {
-        const text = news ?? statusText(header, failures.length, deps.command);
-        return { block: `${reasons.join("\n")}\n\n${text}` };
-      }
-      if (input.agent_id !== undefined) await finishSubagent(context);
-      else if (news === null) await context.delivery.endTurn(consumer);
-      return news === null ? null : { news };
     },
     { busyTimeoutMs: stopBusyTimeoutMs(wait) },
   );
+}
+
+/** How many times Stop decides when a new revision keeps coming between its decision and `endTurn`. */
+export const STOP_DECISIONS = 3;
+
+/** What a Stop decision read: the header, every known failure and the reasons to block. */
+interface Decision {
+  readonly header: StatusHeader;
+  readonly failures: readonly KnownFailure[];
+  readonly reasons: readonly string[];
+}
+
+/**
+ * The block decision of `stop.blockOnKnownFailures`, `stop.requireFullSuite`
+ * and `stop.requireSlowSuite` from one read transaction: states, keys and
+ * header of one revision, so a slow file queued by a revision the states do
+ * not show yet is never read as current (spec 004 D7, review wave 2 B3).
+ */
+function decide(
+  context: HookContext,
+  policy: Policy["stop"],
+  isSlow: (testFile: TestFileRef) => boolean,
+  now: number,
+  {
+    stopHookActive,
+    command,
+  }: { readonly stopHookActive: boolean; readonly command: string | undefined },
+): Decision {
+  const { store, consumer } = context;
+  return readTransaction(store, () => {
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+    const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
+    const current = failures.filter((f) => f.validity === "current");
+    const reasons: string[] = [];
+    if (stopHookActive) return { header, failures, reasons };
+    if (policy.blockOnKnownFailures && current.length > 0) {
+      reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
+    }
+    if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
+      reasons.push(fullSuiteReason(header, command));
+    }
+    if (policy.requireSlowSuite) {
+      const open = slowFilesNotCurrent(states, keys, isSlow);
+      if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
+    }
+    return { header, failures, reasons };
+  });
 }
 
 /**

@@ -12,6 +12,7 @@ import type {
   RevisionNumber,
   StatusHeader,
   Store,
+  TestFileKeyRecord,
   WorktreeId,
   WorktreeRecord,
 } from "../types/index.js";
@@ -54,8 +55,9 @@ export function readLiveHeader(
   now: EpochMs,
   states?: readonly KnownState[],
   since: RevisionNumber | null = null,
+  keys?: readonly TestFileKeyRecord[],
 ): StatusHeader {
-  const header = readHeader(store, worktreeId, states);
+  const header = readHeader(store, worktreeId, states, keys);
   const changes = changedSince(store, worktreeId, header.revision, since);
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path),
