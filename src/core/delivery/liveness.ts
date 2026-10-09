@@ -1,3 +1,4 @@
+import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
@@ -93,8 +94,22 @@ export function changedSince(
 
 /*
  * What each consumer was last told about liveness, the liveness part of its
- * view (`slots.ts`): `"alive" | "down"`.
+ * view (`slots.ts`): `"alive" | "down"`, or `{ startingSince }` after a
+ * registration that said a daemon is starting (task 001-156). A hook from
+ * before that task reads the object as `alive`.
  */
+
+/** What a consumer was last told about the daemon. */
+export type ToldLiveness = DaemonLiveness["state"] | { readonly startingSince: EpochMs };
+
+/**
+ * Task 001-156: how long a daemon a hook spawned before a registration may
+ * go without a first heartbeat while its consumer, told it was starting,
+ * hears nothing: two of the daemon's default 5 s heartbeat intervals, the
+ * deadline a running daemon's heartbeat has (D10). On a host at load 127 a
+ * spawned daemon's first heartbeat came 1.5 s after the spawn.
+ */
+export const DAEMON_START_GRACE_MS = 10_000;
 
 /** `meta` key of a worktree's told liveness. */
 export function livenessMetaKey(worktreeId: WorktreeId): string {
@@ -105,19 +120,53 @@ export function livenessMetaKey(worktreeId: WorktreeId): string {
  * Liveness last told to `consumer`. A consumer registered before liveness
  * was tracked was told nothing, which read as a validating daemon: `alive`.
  */
-export function toldLiveness(store: Store, consumer: Consumer): DaemonLiveness["state"] {
-  return readSlot(store, livenessMetaKey(consumer.worktreeId), consumer) === "down"
-    ? "down"
-    : "alive";
+export function toldLiveness(store: Store, consumer: Consumer): ToldLiveness {
+  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
+  if (told === "down") return "down";
+  const since = isRecord(told) ? told.startingSince : undefined;
+  return typeof since === "number" ? { startingSince: since as EpochMs } : "alive";
 }
 
 /** Records what `consumer` was told; `null` forgets it. Call inside a transaction. */
-export function tellLiveness(
+export function tellLiveness(store: Store, consumer: Consumer, told: ToldLiveness | null): void {
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
+}
+
+/**
+ * `live` as a consumer told `told` reads it (task 001-156): after "a daemon
+ * is starting" at `startingSince`, a down daemon that has not heartbeat since
+ * is still starting, `startingSince` set, until `DAEMON_START_GRACE_MS`
+ * passed. A heartbeat after the spawn ends the start: a daemon that came up
+ * and stopped is down.
+ */
+export function asTold(live: DaemonLiveness, told: ToldLiveness, at: EpochMs): DaemonLiveness {
+  if (live.state === "alive" || typeof told !== "object") return live;
+  const { startingSince } = told;
+  const heartbeatSince = live.since !== null && live.since >= startingSince;
+  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
+  return { ...live, startingSince };
+}
+
+/** `header` with its daemon's liveness `asTold`. */
+export function withTold(header: StatusHeader, told: ToldLiveness, at: EpochMs): StatusHeader {
+  return header.daemon === undefined
+    ? header
+    : { ...header, daemon: asTold(header.daemon, told, at) };
+}
+
+/**
+ * The daemon's liveness when it differs from what `consumer` was told, else
+ * `null`. A daemon still starting is no news, nor is its first heartbeat.
+ */
+export function livenessChange(
   store: Store,
   consumer: Consumer,
-  state: DaemonLiveness["state"] | null,
-): void {
-  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, state);
+  at: EpochMs,
+): DaemonLiveness | null {
+  const told = toldLiveness(store, consumer);
+  const live = asTold(worktreeLiveness(store.worktrees.get(consumer.worktreeId), at), told, at);
+  if (live.state === "down" && live.startingSince !== undefined) return null;
+  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
 
 /*

@@ -237,6 +237,14 @@ export interface RegisterOptions {
    * UserPromptSubmit, Stop) may already hold their edits.
    */
   readonly atStart?: boolean;
+  /**
+   * Task 001-156: the hook spawned a daemon at this time and its heartbeat
+   * has not come. Its header says a daemon is starting, not that none is
+   * running, and the consumer hears nothing of the first heartbeat; with no
+   * heartbeat within `DAEMON_START_GRACE_MS` a tool boundary says no daemon
+   * is validating. Ignored while a daemon heartbeats.
+   */
+  readonly startingSince?: EpochMs;
 }
 
 export interface WaitOptions {

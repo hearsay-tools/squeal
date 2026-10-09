@@ -1,6 +1,6 @@
 import { formatDelta, notValidatedLine, worktreeLiveness } from "../../core/delivery/index.js";
 import type { HookContext } from "./context.js";
-import { ensureIfStale } from "./ensure.js";
+import { ensureIfStale, startingAfter } from "./ensure.js";
 import { type HookDeps, isRegistered } from "./hook.js";
 import { coversNodeTest, coversSlowSuites, withPrimer } from "./primer.js";
 
@@ -52,9 +52,13 @@ export async function deliver(
   deps: HookDeps,
   edited = true,
 ): Promise<string | null> {
+  const at = (deps.now ?? Date.now)();
   const ensured = await ensureIfStale(context, deps);
   if (!isRegistered(context)) {
-    const registration = await context.delivery.register(context.consumer, { inTurn: true });
+    const registration = await context.delivery.register(context.consumer, {
+      inTurn: true,
+      ...startingAfter(ensured, at),
+    });
     return withPrimer(
       registration,
       deps.command,

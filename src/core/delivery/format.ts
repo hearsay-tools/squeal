@@ -145,6 +145,10 @@ export function headerLines(header: StatusHeader, command: string): string[] {
  */
 function livenessSentence(daemon: DaemonLiveness | undefined, revision: number): string {
   if (daemon === undefined || daemon.state === "alive") return "";
+  // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
+  if (daemon.startingSince !== undefined) {
+    return ` A daemon is starting; results are as of revision ${revision}.`;
+  }
   const since =
     daemon.since === null
       ? "No daemon is running"
