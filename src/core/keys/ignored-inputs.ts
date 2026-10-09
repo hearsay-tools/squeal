@@ -94,7 +94,7 @@ export async function ignoredInputs(
   );
   const files = listed.filter((path) => !links.has(path));
   for (const link of links) files.push(...(await filesBeyond(root, link)));
-  return [...new Set(files.filter((path) => matches(path) && !installed(path)))].sort();
+  return [...new Set(files.filter((path) => matches(path) && !isInstalledPath(path)))].sort();
 }
 
 /** The symlinks git tracks under `pathspecs`: index entries of mode `120000`. */
@@ -151,7 +151,7 @@ async function linkedDirs(
 ): Promise<Set<RelativePath>> {
   const resolvedRoot = await realpath(root);
   const probe = new SymlinkProbe(root);
-  const candidates = [...new Set(paths)].filter((path) => !installed(path));
+  const candidates = [...new Set(paths)].filter((path) => !isInstalledPath(path));
   const kept = await mapConcurrent(candidates, async (path) => {
     const abs = toAbsolute(root, path);
     if (!(await isLinkedDir(abs)) || (await probe.linkAbove(path)) !== null) return null;
@@ -194,6 +194,7 @@ async function filesBeyond(root: AbsolutePath, link: RelativePath): Promise<Rela
   return files;
 }
 
-function installed(path: RelativePath): boolean {
+/** True for a path under a `node_modules` directory: never a declared input (D3). */
+export function isInstalledPath(path: RelativePath): boolean {
   return path.split("/").includes("node_modules");
 }

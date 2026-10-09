@@ -12,6 +12,7 @@ import {
   environmentHash,
   ignoredInputs,
   inputGlobs,
+  isInstalledPath,
   type KeyChange,
   KeyIndex,
   Listings,
@@ -84,6 +85,13 @@ export class WorktreeKeys {
   readonly #environmentFiles = new Set<RelativePath>();
   readonly #extra = new Set<RelativePath>();
   readonly #untracked = new Set<RelativePath>();
+  /**
+   * Gitignored paths bootstrap dropped from the cache: a predecessor hashed
+   * them as declared inputs that are no slow file's artifact (004-50). They
+   * count as untracked, so a closure, an environment or a lockfile naming
+   * one hashes it again and watches it.
+   */
+  readonly #dropped = new Set<RelativePath>();
   readonly #lockfiles: Lockfiles;
   /** How each project's installed dependencies enter its keys (D3, task 001-105). */
   #dependencies = new Map<ProjectName, DependencyKeys>();
@@ -124,7 +132,8 @@ export class WorktreeKeys {
     this.#observed = new ObservedSets(options.store);
     this.index = new KeyIndex((path) => {
       const directory = listedDirectory(path);
-      return directory === null ? this.cache.hashOf(path) : this.#listings.hashOf(directory);
+      if (directory !== null) return this.#listings.hashOf(directory);
+      return this.#dropped.has(path) ? undefined : this.cache.hashOf(path);
     });
   }
 
@@ -136,14 +145,14 @@ export class WorktreeKeys {
    * are the files under a symlinked directory git lists, which the change
    * feed walks (task 001-166).
    * Cached paths git ignores entered the cache because a closure or an
-   * environment named them, so they are watched again as extra files.
+   * environment named them, so they are watched again as extra files. A
+   * daemon from 0.1.60 to 0.1.73 also hashed gitignored scratch under any
+   * declared input: those a slow file's artifact does not admit are dropped
+   * before reconciling, so they neither make a revision nor key a test
+   * (004-50, reviews/wave-5.5.md B1). A closure that still names one tracks
+   * it again.
    */
   async bootstrap(head: () => Promise<HeadState>): Promise<Revision | null> {
-    let revision: Revision | null = null;
-    if (this.cache.size > 0) {
-      const paths = await statCandidates(this.cache.paths(), this.options.hasher);
-      revision = await this.reconcile({ trigger: "start", paths }, head);
-    }
     const listed = splitNul(
       await runGit(this.options.root, [
         "ls-files",
@@ -155,14 +164,25 @@ export class WorktreeKeys {
     );
     const known = new Set(listed);
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
-    for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
+    const admits = this.#artifactRule([...this.#knownFiles(), ...listed])?.admits ?? (() => false);
+    const scratch: RelativePath[] = [];
+    for (const path of await checkIgnored(this.options.root, unlisted)) {
+      if (this.#isDeclared(path) && !admits(path)) scratch.push(path);
+      else this.#extra.add(path);
+    }
+    this.#drop(scratch);
+    let revision: Revision | null = null;
+    if (this.cache.size > 0) {
+      const paths = await statCandidates(this.cache.paths(), this.options.hasher);
+      revision = await this.reconcile({ trigger: "start", paths }, head);
+    }
     // Task 001-166: the files the change feed walks under a symlinked directory git lists.
     const linked = await linkedFiles(this.options.root, listed, this.extraFiles());
     await this.#seed(
       [...listed, ...linked].filter((path) => this.cache.hashOf(path) === undefined),
     );
     await this.#trackIgnoredInputs();
-    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
     return revision;
   }
 
@@ -255,7 +275,7 @@ export class WorktreeKeys {
     const changes: KeyChange[] = [];
     if (!sameInputs(previous.inputs, policy.inputs)) {
       this.#isDeclared = createInputMatcher(inputGlobs(policy.inputs));
-      this.#declared = createDeclaredInputs(policy.inputs, this.#knownFiles());
+      this.#declared = createDeclaredInputs(policy.inputs, this.#declarable());
       this.#ignoredStale = true;
       changes.push(
         ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
@@ -404,7 +424,7 @@ export class WorktreeKeys {
       (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path),
     );
     if (!structural) return null;
-    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
     return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
   }
 
@@ -427,7 +447,7 @@ export class WorktreeKeys {
     const before = this.#extra.size;
     await this.#trackIgnoredInputs();
     if (this.#extra.size === before) return [];
-    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
     return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
   }
 
@@ -449,23 +469,63 @@ export class WorktreeKeys {
    * it, so no run feeds its own inputs (lessons defect 10).
    */
   async #ignoredArtifacts(): Promise<RelativePath[]> {
+    const rule = this.#artifactRule();
+    if (rule === null) return [];
+    return (await ignoredInputs(this.options.root, rule.globs)).filter(rule.admits);
+  }
+
+  /**
+   * Which gitignored paths may be declared inputs (`#ignoredArtifacts`): the
+   * globs naming a slow file's artifact, and a predicate admitting a path
+   * they select that is no test file and under no slow glob's directory.
+   * `null` when no gitignored path may. Slow files are found among `files`.
+   */
+  #artifactRule(
+    files: Iterable<RelativePath> = this.#knownFiles(),
+  ): { globs: string[]; admits: (path: RelativePath) => boolean } | null {
     const view = slowView(this.#policy);
-    if (!view.declared) return [];
+    if (!view.declared) return null;
     const isSlow = createInputMatcher(view.globs);
-    const globs = artifactGlobs(this.#policy.inputs, this.#knownFiles(), isSlow);
-    if (globs.length === 0) return [];
+    const globs = artifactGlobs(this.#policy.inputs, files, isSlow);
+    if (globs.length === 0) return null;
+    const selects = createInputMatcher(globs);
     const testFiles = new Set([...this.#runnerClosures.values()].map((r) => r.testFile.path));
-    const listed = await ignoredInputs(this.options.root, globs);
-    return listed.filter((path) =>
-      inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs),
-    );
+    const admits = (path: RelativePath) =>
+      selects(path) &&
+      !isInstalledPath(path) &&
+      inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs);
+    return { globs, admits };
+  }
+
+  /**
+   * The files declared inputs are selected from: those git sees, and the
+   * gitignored ones a slow file's artifact admits. A gitignored file a
+   * closure or an environment named, or a predecessor's cache held, keys
+   * only the tests that name it (004-50).
+   */
+  #declarable(): RelativePath[] {
+    const admits = this.#artifactRule()?.admits ?? (() => false);
+    const seen = [...this.cache.paths()].filter((path) => !this.#extra.has(path));
+    return [...seen, ...[...this.#extra].filter(admits)];
+  }
+
+  /** Drops `paths` from the cache and the store; they count as untracked until tracked again. */
+  #drop(paths: readonly RelativePath[]): void {
+    if (paths.length === 0) return;
+    const { store, worktreeId } = this.options;
+    const updates = paths.map((path) => ({ kind: "delete", path }) as const);
+    store.transaction(() => this.cache.flush(store.fileHashes, worktreeId, updates));
+    for (const path of paths) this.#dropped.add(path);
   }
 
   /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
   async track(paths: readonly RelativePath[]): Promise<void> {
-    const untracked = [...new Set(paths)].filter((path) => this.cache.hashOf(path) === undefined);
+    const untracked = [...new Set(paths)].filter(
+      (path) => this.cache.hashOf(path) === undefined || this.#dropped.has(path),
+    );
     if (untracked.length === 0) return;
     await this.#seed(untracked);
+    for (const path of untracked) this.#dropped.delete(path);
     const ignored = await checkIgnored(this.options.root, untracked);
     const before = this.#extra.size;
     for (const path of ignored) this.#extra.add(path);
