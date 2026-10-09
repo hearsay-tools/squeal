@@ -25,6 +25,8 @@ export interface StatusStoreOptions {
 export interface StatusContext {
   readonly store: Store;
   readonly root: AbsolutePath;
+  /** The git common dir, which holds the store. */
+  readonly commonDir: AbsolutePath;
 }
 
 export function unavailable(
@@ -77,7 +79,7 @@ export function withStatusStore<T>(
       }
     }
     store = opened;
-    const context = { store, root };
+    const context = { store, root, commonDir };
     return readTransaction(store, () => fn(context));
   } catch (error) {
     if (isBusy(error)) {

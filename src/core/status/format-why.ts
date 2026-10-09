@@ -1,3 +1,5 @@
+import { basename, dirname } from "node:path";
+import { testFileLabel } from "../run-log.js";
 import { formatCheck } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
@@ -7,6 +9,7 @@ import type {
   WhyReport,
   WhyResult,
   WhyResultEntry,
+  WhyRunLog,
 } from "../types/index.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
 
@@ -33,7 +36,7 @@ export function formatWhy(why: WhyResult): string {
     "",
     ...results(why),
     "",
-    `Last run log: ${why.results[0]?.logDir ?? "none"}`,
+    ...runLog(why),
   ];
   return `${lines.join("\n")}\n`;
 }
@@ -104,6 +107,42 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
     for (const line of text.split("\n")) lines.push(`${INDENT}${line}`);
   }
   return lines;
+}
+
+/** Task 001-173: where the shown result's console output is, and with `--include-logs` its lines. */
+function runLog(why: WhyReport): string[] {
+  const log = why.runLog;
+  if (log === null) return ["Run log: none, no stored result is behind the known state"];
+  const where = producer(why, log);
+  if (log.state === "pruned") {
+    return [`Run log: ${log.path} was pruned; run ${log.runId} in ${where} left no output`];
+  }
+  if (log.state === "not-vitest") {
+    return [
+      `Run log: none, run ${log.runId} in ${where} wrote no ${basename(log.path)}`,
+      `  Its runner's output is under ${dirname(log.path)}`,
+    ];
+  }
+  const file = testFileLabel(why.check.project, why.check.testPath);
+  const lines = [
+    `Run log: ${log.path}`,
+    `  Run ${log.runId} in ${where} produced the result shown. The log covers that whole run, every test file in it, not only this check.`,
+  ];
+  if (log.console === null) {
+    lines.push(`  --include-logs prints the console lines of ${file} from it.`);
+    return lines;
+  }
+  const { lines: kept, total, limit } = log.console;
+  if (total === 0) return [...lines, "", `Console of ${file} in this log: none`];
+  const shown = total > kept.length ? `first ${limit} of ${total} lines` : plural(total, "line");
+  return [...lines, "", `Console of ${file} in this log (${shown}):`, ...kept.map((l) => `  ${l}`)];
+}
+
+function producer(why: WhyReport, log: WhyRunLog): string {
+  const root = why.worktreeRoots[log.worktreeId];
+  if (log.worktreeId === why.worktreeId) return `${root ?? why.worktreeRoot} (this worktree)`;
+  const other = root ?? `removed worktree ${log.worktreeId}`;
+  return why.knownState?.origin?.kind === "inherited" ? `${other} (inherited)` : other;
 }
 
 function upper(outcome: KnownOutcome): string {

@@ -19,7 +19,10 @@ Usage:
   squeal status --wait <ms> [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status
-  squeal why <check> [--json]   History and provenance of one check
+  squeal why <check> [--include-logs] [--json]
+                                History and provenance of one check, and the run log
+                                holding its console output; --include-logs also prints
+                                that log's lines from the check's test file
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
   squeal init --harness codex [--print-launcher-config | --trust [--yes]]
@@ -113,13 +116,18 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
 }
 
 function why(args: readonly string[], io: CliIo): number {
-  const parsed = parseArgs("why", args, io);
+  const includeLogs = args.includes("--include-logs");
+  const parsed = parseArgs(
+    "why",
+    args.filter((arg) => arg !== "--include-logs"),
+    io,
+  );
   if (parsed === null) return 2;
   const [name] = parsed.positional;
   if (name === undefined || parsed.positional.length > 1) {
     return usage("why", "expected one check name", io);
   }
-  const result = readWhy(io.cwd ?? process.cwd(), name);
+  const result = readWhy(io.cwd ?? process.cwd(), name, { includeLogs });
   io.stdout(parsed.json ? json(result) : formatWhy(result));
   return result.available && result.found ? 0 : 1;
 }
