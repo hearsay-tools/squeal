@@ -91,6 +91,8 @@ Started: 2026-10-07
 
 - 2026-10-09, re-review 003-46 (`reviews/wave-4.5.md`, FAIL at `adcd9916`, gpt-6.1-sol, second and last round): `reviews/wave-4.md` B1 closed on Node 22 and 24, and the independent gate green. One remaining blocker on both Nodes: 003-45 keeps every non-null `keyedAt`, including one whose re-key already has its result, so a growth during another file's run leaves its siblings in windows they have discharged, and a wait at the current revision ends quiet before their re-runs (the pre-003-45 control holds 3 files, 2 pending). The 001 lane's 001-194 (`keyedAt` the earliest re-key without a result, cleared by the next result or unknown) is the remedy, and its review 001-195 asks the combined rule over both cases on the integrated candidate. Disposition to the human.
 
+- 2026-10-09, decided by the human after `reviews/wave-4.5.md`: no third 003 round. The remaining case is verified in the 001 lane's review 001-195, over 0.1.83 to 001-194, which carries the three-file probe and asks the combined `keyedAt` rule over both cases on the integrated candidate. The joint hub release follows 001-195.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
