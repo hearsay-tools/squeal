@@ -6,6 +6,7 @@ import {
   type HooksFile,
   hookHashes,
   LAUNCHER_KEY_SOURCE,
+  PLUGIN_KEY_SOURCE,
 } from "../../src/cli/codex/hash.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 
@@ -98,6 +99,15 @@ describe(`the trust hash port (Codex ${CODEX_HASH_VERSION})`, () => {
 
   it("names keys by event label, group and handler position", () => {
     expect([...computed(probe("PostToolUse")).keys()]).toContain(`${KEY_SOURCE}:pre_tool_use:1:0`);
+  });
+
+  it("keys Squeal's hooks by the hub id, squeal@hearsay, with the same hashes as before (001-164)", () => {
+    expect(PLUGIN_KEY_SOURCE).toBe("squeal@hearsay:hooks/hooks.json");
+    const file = probe("PostToolUse");
+    const now = hookHashes(file, PLUGIN_KEY_SOURCE);
+    const before = hookHashes(file, "squeal@squeal:hooks/hooks.json");
+    expect(now[0]?.key).toBe("squeal@hearsay:hooks/hooks.json:session_start:0:0");
+    expect(now.map((h) => h.hash)).toEqual(before.map((h) => h.hash));
   });
 });
 

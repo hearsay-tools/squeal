@@ -4,6 +4,12 @@ import { findWorktreeRoot } from "../../core/fs/index.js";
 import { DEFAULT_POLICY } from "../../core/types/index.js";
 import type { CliIo } from "../main.js";
 import { type NodeTestSeed, seedNodeTest } from "../node-test-seed.js";
+import {
+  MARKETPLACE_REPO,
+  PLUGIN_ID,
+  PREVIOUS_MARKETPLACE_NAME,
+  PREVIOUS_PLUGIN_ID,
+} from "../plugin-id.js";
 import { findCodexPlugin, launcherConfig, readPluginHooks } from "./launcher.js";
 import { type TrustOptions, terminalAsk, trustCodexHooks } from "./trust.js";
 
@@ -14,12 +20,17 @@ import { type TrustOptions, terminalAsk, trustCodexHooks } from "./trust.js";
  * and the trust step.
  */
 
-/** This repository as a Codex marketplace source; its `.agents/plugins/marketplace.json`. */
-export const CODEX_MARKETPLACE_SOURCE = "hearsay-tools/squeal";
-export const CODEX_PLUGIN_ID = "squeal@squeal";
+/** The hub as a Codex marketplace source; its `.agents/plugins/marketplace.json`. */
+export const CODEX_MARKETPLACE_SOURCE = MARKETPLACE_REPO;
+export const CODEX_PLUGIN_ID = PLUGIN_ID;
 const CODEX_INSTALL_COMMANDS = [
   `codex plugin marketplace add ${CODEX_MARKETPLACE_SOURCE}`,
   `codex plugin add ${CODEX_PLUGIN_ID}`,
+];
+/** Row 001-164: what takes the previous id out of Codex, with no Codex session running. */
+const CODEX_PREVIOUS_REMOVE_COMMANDS = [
+  `codex plugin remove ${PREVIOUS_PLUGIN_ID}`,
+  `codex plugin marketplace remove ${PREVIOUS_MARKETPLACE_NAME}`,
 ];
 
 /** The trust step, also named by `squeal status` (spec 002 D6). */
@@ -79,6 +90,7 @@ export function initCodex(
   return trustCodexHooks(io, root, {
     pluginId: CODEX_PLUGIN_ID,
     installCommands: CODEX_INSTALL_COMMANDS,
+    previous: { pluginId: PREVIOUS_PLUGIN_ID, removeCommands: CODEX_PREVIOUS_REMOVE_COMMANDS },
     yes: options.yes,
     ask: deps.ask === undefined ? terminalAsk() : deps.ask,
     ...(deps.timeoutMs === undefined ? {} : { timeoutMs: deps.timeoutMs }),

@@ -7,12 +7,10 @@ import { fakeRepo } from "../status/helpers.js";
 import { outsideGit } from "./bundle-helpers.js";
 
 /*
- * Review wave 3, S4: for a `github` or `git` source, Claude Code 2.1.288
- * resolves plugin sources against the clone root, so the marketplace lives at
- * the repository root (`.claude-plugin/marketplace.json`, the default `path`)
- * and lists the plugin as `./plugins/claude-code`.
+ * Row 001-164: the plugin installs from the hub marketplace `hearsay`
+ * (`hearsay-tools/marketplace`), so its id is `squeal@hearsay`.
  */
-const MARKETPLACE = { source: { source: "github", repo: "hearsay-tools/squeal" } };
+const MARKETPLACE = { source: { source: "github", repo: "hearsay-tools/marketplace" } };
 
 function run(cwd: string) {
   let stdout = "";
@@ -49,15 +47,15 @@ describe("squeal init", () => {
     expect(JSON.parse(config)).toEqual(DEFAULT_POLICY);
     expect(config).toBe(`${JSON.stringify(DEFAULT_POLICY, null, 2)}\n`);
     expect(readSettings(root)).toEqual({
-      extraKnownMarketplaces: { squeal: MARKETPLACE },
-      enabledPlugins: { "squeal@squeal": true },
+      extraKnownMarketplaces: { hearsay: MARKETPLACE },
+      enabledPlugins: { "squeal@hearsay": true },
     });
     expect(out.stdout).toBe(
       [
         "squeal init: wrote squeal.config.json with every default policy key",
-        "squeal init: added the squeal marketplace to .claude/settings.json",
-        "squeal init: enabled squeal@squeal in .claude/settings.json",
-        "Each collaborator installs the plugin once: claude plugin install squeal@squeal --scope project",
+        "squeal init: added the hearsay marketplace to .claude/settings.json",
+        "squeal init: enabled squeal@hearsay in .claude/settings.json",
+        "Each collaborator installs the plugin once: claude plugin install squeal@hearsay --scope project",
         "",
       ].join("\n"),
     );
@@ -76,7 +74,7 @@ describe("squeal init", () => {
     expect(readFileSync(settingsPath(root), "utf8")).toBe(settings);
     expect(out.stdout).toContain("squeal init: kept squeal.config.json\n");
     expect(out.stdout).toContain(
-      "squeal init: .claude/settings.json already enables squeal@squeal\n",
+      "squeal init: .claude/settings.json already enables squeal@hearsay\n",
     );
   });
 
@@ -86,7 +84,7 @@ describe("squeal init", () => {
       permissions: { allow: ["Bash(npm test:*)"] },
       hooks: { Stop: [{ hooks: [{ type: "command", command: "./own-hook.sh" }] }] },
       env: { FOO: "1" },
-      enabledPlugins: { "formatter@team": true, "squeal@squeal": false },
+      enabledPlugins: { "formatter@team": true, "squeal@hearsay": false },
       extraKnownMarketplaces: { team: { source: { source: "github", repo: "acme/tools" } } },
     };
     writeSettings(root, JSON.stringify(own, null, 4));
@@ -95,8 +93,8 @@ describe("squeal init", () => {
 
     expect(readSettings(root)).toEqual({
       ...own,
-      enabledPlugins: { "formatter@team": true, "squeal@squeal": true },
-      extraKnownMarketplaces: { ...own.extraKnownMarketplaces, squeal: MARKETPLACE },
+      enabledPlugins: { "formatter@team": true, "squeal@hearsay": true },
+      extraKnownMarketplaces: { ...own.extraKnownMarketplaces, hearsay: MARKETPLACE },
     });
   });
 
@@ -106,11 +104,11 @@ describe("squeal init", () => {
     expect(readFileSync(settingsPath(root), "utf8")).not.toContain('"hooks"');
   });
 
-  it("keeps an existing squeal.config.json and an existing squeal marketplace entry", () => {
+  it("keeps an existing squeal.config.json and an existing hearsay marketplace entry", () => {
     const { main: root } = fakeRepo();
     writeFileSync(join(root, "squeal.config.json"), '{ "stop": { "waitMs": 500 } }\n');
-    const local = { source: { source: "directory", path: "/src/squeal/plugins/claude-code" } };
-    writeSettings(root, JSON.stringify({ extraKnownMarketplaces: { squeal: local } }));
+    const local = { source: { source: "directory", path: "/src/marketplace" } };
+    writeSettings(root, JSON.stringify({ extraKnownMarketplaces: { hearsay: local } }));
 
     const out = run(root);
 
@@ -118,10 +116,50 @@ describe("squeal init", () => {
       '{ "stop": { "waitMs": 500 } }\n',
     );
     expect(readSettings(root)).toEqual({
-      extraKnownMarketplaces: { squeal: local },
-      enabledPlugins: { "squeal@squeal": true },
+      extraKnownMarketplaces: { hearsay: local },
+      enabledPlugins: { "squeal@hearsay": true },
     });
-    expect(out.stdout).toContain("kept the squeal marketplace entry in .claude/settings.json");
+    expect(out.stdout).toContain("kept the hearsay marketplace entry in .claude/settings.json");
+  });
+
+  it("migrates a repository set up under squeal@squeal to squeal@hearsay", () => {
+    const { main: root } = fakeRepo();
+    writeFileSync(join(root, "squeal.config.json"), "{}\n");
+    const team = { source: { source: "github", repo: "acme/tools" } };
+    writeSettings(
+      root,
+      JSON.stringify({
+        extraKnownMarketplaces: {
+          team,
+          squeal: { source: { source: "github", repo: "hearsay-tools/squeal" } },
+        },
+        enabledPlugins: { "formatter@team": true, "squeal@squeal": true },
+      }),
+    );
+
+    const out = run(root);
+
+    expect(out).toMatchObject({ code: 0, stderr: "" });
+    expect(readSettings(root)).toEqual({
+      extraKnownMarketplaces: { team, hearsay: MARKETPLACE },
+      enabledPlugins: { "formatter@team": true, "squeal@hearsay": true },
+    });
+    expect(out.stdout).toBe(
+      [
+        "squeal init: kept squeal.config.json",
+        "squeal init: removed the previous squeal marketplace from .claude/settings.json",
+        "squeal init: removed the previous squeal@squeal from .claude/settings.json",
+        "squeal init: added the hearsay marketplace to .claude/settings.json",
+        "squeal init: enabled squeal@hearsay in .claude/settings.json",
+        "Each collaborator installs the plugin once: claude plugin install squeal@hearsay --scope project",
+        "Each collaborator who installed squeal@squeal removes it: claude plugin uninstall squeal@squeal --scope project, then claude plugin marketplace remove squeal",
+        "",
+      ].join("\n"),
+    );
+
+    const again = run(root);
+    expect(again.stdout).not.toContain("squeal@squeal");
+    expect(again.stdout).toContain("already enables squeal@hearsay");
   });
 
   it("changes nothing when settings.json is not a JSON object", () => {

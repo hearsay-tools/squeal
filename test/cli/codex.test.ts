@@ -70,8 +70,9 @@ describe("squeal init --harness codex", () => {
     );
     expect(existsSync(join(repo.main, ".claude"))).toBe(false);
     expect(stdout).toContain("wrote squeal.config.json");
-    expect(stdout).toContain("codex plugin marketplace add hearsay-tools/squeal\n");
-    expect(stdout).toContain("codex plugin add squeal@squeal\n");
+    expect(stdout).toContain("codex plugin marketplace add hearsay-tools/marketplace\n");
+    expect(stdout).toContain("codex plugin add squeal@hearsay\n");
+    expect(stdout).toContain("trust the hooks of squeal@hearsay");
     expect(stdout).toContain("/hooks");
   });
 

@@ -5,6 +5,13 @@ import { DEFAULT_POLICY } from "../core/types/index.js";
 import { initCodex, printLauncherConfig } from "./codex/init.js";
 import type { CliIo } from "./main.js";
 import { type NodeTestSeed, seedNodeTest } from "./node-test-seed.js";
+import {
+  MARKETPLACE_NAME,
+  MARKETPLACE_REPO,
+  PLUGIN_ID,
+  PREVIOUS_MARKETPLACE_NAME,
+  PREVIOUS_PLUGIN_ID,
+} from "./plugin-id.js";
 
 /*
  * `squeal init`, spec 001 D9: "adds the marketplace and the `enabledPlugins`
@@ -12,19 +19,13 @@ import { type NodeTestSeed, seedNodeTest } from "./node-test-seed.js";
  * never writes raw hook commands into user-owned settings."
  */
 
-/** Marketplace and plugin name; the plugin id is `squeal@squeal`. */
-export const MARKETPLACE_NAME = "squeal";
-export const PLUGIN_ID = `squeal@${MARKETPLACE_NAME}`;
-
 /**
- * This repository. Its `.claude-plugin/marketplace.json` is at the root, the
- * default `path`, and lists the plugin as `./plugins/claude-code`: Claude
- * Code 2.1.288 resolves plugin sources of a `github` marketplace against the
- * clone root, not against the directory holding the manifest (review wave 3,
- * S4).
+ * The hub. Its `.claude-plugin/marketplace.json` is at the root, the default
+ * `path`, and pins the plugin by `git-subdir` at a release tag
+ * (`research/release-hub.md`).
  */
 export const MARKETPLACE_SOURCE = {
-  source: { source: "github", repo: "hearsay-tools/squeal" },
+  source: { source: "github", repo: MARKETPLACE_REPO },
 } as const;
 
 type JsonObject = Record<string, unknown>;
@@ -141,14 +142,27 @@ function initClaudeCode(io: CliIo): number {
   lines.push(...(suggest ? seed.notes.filter((n) => !n.startsWith(SEEDED)) : seed.notes));
 
   const next: JsonObject = { ...settings.value };
-  const marketplaceEntries = marketplaces as JsonObject;
+  // Row 001-164: the previous id's two entries give way to the hub's.
+  const { [PREVIOUS_MARKETPLACE_NAME]: oldMarketplace, ...marketplaceEntries } =
+    marketplaces as JsonObject;
+  const { [PREVIOUS_PLUGIN_ID]: oldPlugin, ...pluginEntries } = plugins as JsonObject;
+  const migrated = oldMarketplace !== undefined || oldPlugin !== undefined;
+  if (oldMarketplace !== undefined) {
+    next.extraKnownMarketplaces = marketplaceEntries;
+    lines.push(
+      `removed the previous ${PREVIOUS_MARKETPLACE_NAME} marketplace from .claude/settings.json`,
+    );
+  }
+  if (oldPlugin !== undefined) {
+    next.enabledPlugins = pluginEntries;
+    lines.push(`removed the previous ${PREVIOUS_PLUGIN_ID} from .claude/settings.json`);
+  }
   if (MARKETPLACE_NAME in marketplaceEntries) {
-    lines.push("kept the squeal marketplace entry in .claude/settings.json");
+    lines.push(`kept the ${MARKETPLACE_NAME} marketplace entry in .claude/settings.json`);
   } else {
     next.extraKnownMarketplaces = { ...marketplaceEntries, [MARKETPLACE_NAME]: MARKETPLACE_SOURCE };
-    lines.push("added the squeal marketplace to .claude/settings.json");
+    lines.push(`added the ${MARKETPLACE_NAME} marketplace to .claude/settings.json`);
   }
-  const pluginEntries = plugins as JsonObject;
   if (pluginEntries[PLUGIN_ID] === true) {
     lines.push(`.claude/settings.json already enables ${PLUGIN_ID}`);
   } else {
@@ -189,6 +203,11 @@ function initClaudeCode(io: CliIo): number {
         ? []
         : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)]),
       `Each collaborator installs the plugin once: claude plugin install ${PLUGIN_ID} --scope project`,
+      ...(migrated
+        ? [
+            `Each collaborator who installed ${PREVIOUS_PLUGIN_ID} removes it: claude plugin uninstall ${PREVIOUS_PLUGIN_ID} --scope project, then claude plugin marketplace remove ${PREVIOUS_MARKETPLACE_NAME}`,
+          ]
+        : []),
       "",
     ].join("\n"),
   );

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { PLUGIN_ID } from "../plugin-id.js";
 
 /*
  * Spec 002 D1: Codex runs a plugin or config hook only once the user trusted
@@ -13,7 +14,7 @@ import { createHash } from "node:crypto";
 export const CODEX_HASH_VERSION = "0.160.1";
 
 /** Key source of this plugin's hooks: `<plugin>@<marketplace>:hooks/hooks.json`. */
-export const PLUGIN_KEY_SOURCE = "squeal@squeal:hooks/hooks.json";
+export const PLUGIN_KEY_SOURCE = `${PLUGIN_ID}:hooks/hooks.json`;
 
 /** Key source of hooks declared through `-c` or `thread/start` `config`. */
 export const LAUNCHER_KEY_SOURCE = "/<session-flags>/config.toml";
