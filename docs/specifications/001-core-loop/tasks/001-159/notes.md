@@ -50,7 +50,7 @@ The optimizer probe plants by removing the fixture's `node_modules/.vite` and re
 
 A script ran the real change feed (`createChangeFeed`) over this worktree for this whole session, with an in-memory copy of the stat cache, and logged each batch's changed, touched-unchanged and transient paths (script kept outside the repository, not committed).
 
-- This agent session (Claude Code Edit and Write, `sed -i`, Python rewrites, `biome check --write`, `cp` restores of counterfactual edits, `git commit`, `npm ci`, Vitest runs): FILLED_SESSION.
+- This agent session (Claude Code Edit and Write, `sed -i`, Python rewrites, `biome check --write`, `cp` restores of counterfactual edits, `git commit`, `npm ci`, Vitest runs, among them the full gate): 07:47 to 08:16 UTC, 83 batches (51 watch, 32 reconciliation passes), 40 with a change, 3 with a transient path, **0 with a touched-unchanged path**. A first window from 07:41 had a classification bug in the script (a transient path counted twice) and is left out; its log showed the same edits.
 - Scripted operations in a scratch clone, each its own batch:
 
 | Operation | Batches with a touch |
@@ -79,6 +79,10 @@ Cost, measured on this repository (276 test files, a clone at this row's base) w
 - **A touch reports every project recreated**, so every closure is fetched again. Cheaper would be to recreate lazily and keep the closures; chosen because a closure fetched in the window may miss an import, and the event is rare.
 - **The optimizer cache on disk outlives a daemon.** A bundle built on transient bytes by an instance that never heard the touch (a daemon that stopped first) is reused by the next daemon's first instance. Not covered; the next daemon's start has no touch to act on.
 - `slow-instance.ts` is outside this row's files; changed by agreement (above).
+
+## Gate
+
+The full gate on `7206a5f` failed 3 of 2,117: the two bundle checks (expected, not rebuilt) and `test/integration/revert-restore.test.ts`, whose daemon never settled in 180 s after `test/reads.test.ts` was added (`revert-restore.test.ts:199`). It normally passes in 4 to 11 s. It passed in this worktree's daemon after the change, 4 times alone, and once among `test/integration` and `test/scheduler` with 4 workers. Not reproduced and not explained; the touch path recreates the instance and fetches every closure again in that test, so it is the first suspect. 001-160 should look at it.
 
 ## For the next worker
 
