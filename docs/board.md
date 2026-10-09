@@ -456,9 +456,9 @@ Status and brief: `specifications/005-agent-adoption/status.md`, `research/READM
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 005-01 research: adoption-baseline | planned | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
-| 005-02 research: instruction-surfaces | planned | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
-| 005-03 research: hook-levers | planned | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
+| 005-01 research: adoption-baseline | running (`699bf271`, Opus) | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
+| 005-02 research: instruction-surfaces | running (`2413fd40`, Opus) | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
+| 005-03 research: hook-levers | running (`4f3e9ac9`, Astra) | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
 
 ## Later
 
