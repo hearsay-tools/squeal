@@ -289,15 +289,32 @@ export class WorktreeKeys {
   }
 
   /**
-   * Installed lockfiles that are not the ones the environment was last hashed
-   * with: a first install created one, or another package manager's replaced
-   * it. Returns the old and new paths, so a reconciliation of them records
-   * the move as a revision (review N3). Their old paths are watched; a new
-   * one is in an ignored directory no watch batch reports, so reconciliation
-   * passes ask here.
+   * What a reconciliation pass that found no change reconciles too, because
+   * it is in an ignored directory no watch batch reports. Installed lockfiles
+   * that are not the ones the environment was last hashed with: a first
+   * install created one, or another package manager's replaced it; the old
+   * and new paths, so the move becomes a revision (review N3). And the
+   * gitignored declared inputs not watched yet: a file a rebuild only added
+   * joins the key as an add (004-33).
    */
-  lockfileCandidates(): Promise<RelativePath[]> {
-    return this.#lockfiles.moved();
+  async lockfileCandidates(): Promise<RelativePath[]> {
+    return [...(await this.#lockfiles.moved()), ...(await this.#unwatchedIgnoredInputs())];
+  }
+
+  /**
+   * Lists the gitignored declared inputs, within the declared globs' reach,
+   * and watches the ones not watched yet, a path already hashed included.
+   * Returns those.
+   */
+  async #unwatchedIgnoredInputs(): Promise<RelativePath[]> {
+    const globs = inputGlobs(this.#policy.inputs);
+    if (globs.length === 0) return [];
+    const listed = await ignoredInputs(this.options.root, globs);
+    const unwatched = listed.filter((path) => !this.#extra.has(path));
+    if (unwatched.length === 0) return [];
+    for (const path of unwatched) this.#extra.add(path);
+    this.options.onExtraFiles(this.extraFiles());
+    return unwatched;
   }
 
   /**
