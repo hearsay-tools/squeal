@@ -242,13 +242,12 @@ describe("bundled hooks with a dead daemon", () => {
 
     expect(start).toMatchObject({ stderr: "", code: 0 });
     expect(start.stdout).toContain("registered at revision 1");
-    expect(start.stdout).toContain(
-      "No daemon has validated since 1970-01-01T00:00:00.001Z; results are as of revision 1.",
-    );
+    // The hook just spawned one: it is starting, not news yet (001-156).
+    expect(start.stdout).toContain("A daemon is starting; results are as of revision 1.");
     expect(start.ms).toBeLessThan(1_500);
     expect(batch).toMatchObject({ stderr: "", code: 0 });
     expect(batch.stdout).toContain("PASS -> FAIL");
-    expect(batch.stdout).toContain("No daemon has validated since");
+    expect(batch.stdout).toContain("A daemon is starting; results are as of revision 2.");
     await sleep(200);
     expect(() => readFileSync(ran)).not.toThrow();
     // Review wave 3, S2: PostToolBatch restarts a daemon whose heartbeat is stale.
