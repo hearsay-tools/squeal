@@ -34,6 +34,8 @@ Started: 2026-10-08
 
 - 2026-10-09, re-review 004-24 (`reviews/wave-2.5.md`, FAIL at `068f6de`, gpt-6.1-sol): wave-2 B1 closed; the original B2 and B3 cases fixed. Remaining, proven on Node 22 and 24: B1, an inherited slow failure names the artifact of a later result of the source worktree at the same commit (the selector picks by commit, not by the delivered key); B2, Stop's third retry passes no revision guard and can end the turn with a slow file queued. This was 004-23's second and last round: both go to the human. B3, in 003-26's first round: the observed timer acknowledges growth the starting scheduler dropped; row 003-41.
 
+- 2026-10-09, decided by the human after `reviews/wave-2.5.md`: 004-23's remaining B1 and B2 get a fix (004-25) and a third review (004-26); spec 003 moves to shipped after a review of 003-41 (in 004-26); the quality pass runs once spec 001's coordinator finishes and these fixes land. Wave 2.6 also starts the e2e (004-16), which makes the slow slot follow the daemon's `XDG_RUNTIME_DIR` so a slow e2e file run under an outer daemon does not wait on its own slot.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
