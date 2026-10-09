@@ -8,6 +8,7 @@ export {
   type StatusStoreOptions,
   withStatusStore,
 } from "./open.js";
+export { WHY_LOG_LINE_LIMIT } from "./run-log.js";
 export {
   buildSnapshot,
   createStatusBuilder,
@@ -16,4 +17,9 @@ export {
   type StatusBuilderOptions,
   type StatusOptions,
 } from "./snapshot.js";
-export { readWhy, WHY_CANDIDATE_LIMIT, WHY_RESULT_LIMIT } from "./why.js";
+export {
+  readWhy,
+  WHY_CANDIDATE_LIMIT,
+  WHY_RESULT_LIMIT,
+  type WhyOptions,
+} from "./why.js";

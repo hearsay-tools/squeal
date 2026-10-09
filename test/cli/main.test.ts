@@ -1,8 +1,11 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readStatus } from "../../src/core/status/index.js";
 import { rootVersion } from "../../src/harness/claude-code/build.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
+import { seedLogin as seedWhyLogin } from "../status/why-seed.js";
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);
 
@@ -23,6 +26,19 @@ function run(argv: string[], cwd: string, env: CliIo["env"] = {}) {
   };
   const code = main(argv, io);
   return { code, stdout, stderr };
+}
+
+/** Worktree `b` inherited `auth > login` from run `run-a1`, whose log is written. */
+function seedLogin() {
+  const repo = fakeRepo();
+  const b = seedWhyLogin(repo, seedStore(repo));
+  const runDir = join(repo.commonDir, "squeal", "runs", "run-a1");
+  mkdirSync(runDir, { recursive: true });
+  writeFileSync(
+    join(runDir, "vitest.log"),
+    "[stdout] src/auth.test.ts: logging in\n[stdout] src/other.test.ts: other file\n",
+  );
+  return { ...repo, b };
 }
 
 function seededRepo() {
@@ -129,6 +145,21 @@ describe("squeal why", () => {
     expect(before.stdout).toBe(after.stdout);
   });
 
+  it("prints the check's console lines from its run log with --include-logs", () => {
+    const repo = seedLogin();
+
+    const plain = run(["why", "auth > login"], repo.b.root);
+    const logs = run(["why", "--include-logs", "auth > login"], repo.b.root);
+
+    expect(plain.stdout).toContain("--include-logs prints the console lines of src/auth.test.ts");
+    expect(plain.stdout).not.toContain("logging in");
+    expect(logs.code).toBe(0);
+    expect(logs.stdout).toContain(
+      "Console of src/auth.test.ts in this log (1 line):\n  [stdout] src/auth.test.ts: logging in\n",
+    );
+    expect(logs.stdout).not.toContain("other file");
+  });
+
   it("exits 1 when no check matches", () => {
     const repo = seededRepo();
 
@@ -154,7 +185,7 @@ describe("squeal", () => {
 
     expect(code).toBe(0);
     expect(stdout).toContain("squeal status [--json]");
-    expect(stdout).toContain("squeal why <check> [--json]");
+    expect(stdout).toContain("squeal why <check> [--include-logs] [--json]");
   });
 
   it("still prints the version", () => {

@@ -402,6 +402,46 @@ export interface WhyReport {
    * `WHY_RESULT_LIMIT`. The first entry's `logDir` is the last run log.
    */
   readonly results: readonly WhyResultEntry[];
+  /**
+   * The log of the run that produced the result the known state shows: this
+   * worktree's own, or the producing worktree's when inherited. `null` when
+   * no stored result is behind it. Task 001-173.
+   */
+  readonly runLog: WhyRunLog | null;
+}
+
+/**
+ * Where a check's console output is: the `vitest.log` of one run, which
+ * covers every test file of that run, not only the check. Task 001-173.
+ */
+export interface WhyRunLog {
+  readonly runId: string;
+  /** Worktree of the producing run. */
+  readonly worktreeId: WorktreeId;
+  /** `<common-dir>/squeal/runs/<run-id>/vitest.log`. */
+  readonly path: AbsolutePath;
+  /**
+   * `present`: the file is on disk. `pruned`: neither it nor its run
+   * directory is (D1 pruning, or a run that never wrote one). `not-vitest`:
+   * the run directory exists without a `vitest.log`, as a run of only
+   * `node:test` files leaves it.
+   */
+  readonly state: "present" | "pruned" | "not-vitest";
+  /**
+   * With `--include-logs`: the file's console lines the reporter tagged with
+   * the check's test file, at most `WHY_LOG_LINE_LIMIT`; `null` otherwise or
+   * when the file is not `present`.
+   */
+  readonly console: WhyConsole | null;
+}
+
+/** A check's test file's console lines from one run log, capped. */
+export interface WhyConsole {
+  /** The lines kept, each as the log wrote it (`[stdout] <file>: <text>`). */
+  readonly lines: readonly string[];
+  /** Lines tagged with the file in the log; more than `lines.length` when capped. */
+  readonly total: number;
+  readonly limit: number;
 }
 
 /** No check, or more than one, matched the name given to `squeal why`. */

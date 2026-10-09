@@ -1,5 +1,6 @@
 import { worktreeIdFor } from "../fs/index.js";
 import { formatCheck, parseCheck } from "../state/index.js";
+import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckId,
@@ -9,13 +10,19 @@ import {
   type WhyReport,
   type WhyResult,
 } from "../types/index.js";
-import { type StatusStoreOptions, withStatusStore } from "./open.js";
+import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
+import { runLogOf, shownResult } from "./run-log.js";
 
 /** Most results `squeal why` lists for one check. */
 export const WHY_RESULT_LIMIT = 20;
 
 /** Most candidates listed when a name matches several checks. */
 export const WHY_CANDIDATE_LIMIT = 20;
+
+export interface WhyOptions extends StatusStoreOptions {
+  /** Also read the check's test file's console lines from its run log (`--include-logs`). */
+  readonly includeLogs?: boolean;
+}
 
 /**
  * `squeal why <check>` for the worktree containing `cwd`. Spec 001 D7:
@@ -27,17 +34,14 @@ export const WHY_CANDIDATE_LIMIT = 20;
  * if it is the only one, or the only one whose name ends with it. A name
  * ending in `...`, as a delta prints a capped one, matches by the part before.
  */
-export function readWhy(
-  cwd: AbsolutePath,
-  query: string,
-  options: StatusStoreOptions = {},
-): WhyResult {
-  return withStatusStore(cwd, options, ({ store, root }) => {
-    const worktreeId = worktreeIdFor(root);
+export function readWhy(cwd: AbsolutePath, query: string, options: WhyOptions = {}): WhyResult {
+  const includeLogs = options.includeLogs ?? false;
+  return withStatusStore(cwd, options, (context) => {
+    const worktreeId = worktreeIdFor(context.root);
     const exact = parseCheck(query);
-    if (exact !== null && known(store, worktreeId, exact)) return report(store, root, exact);
-    const match = resolve(store, worktreeId, query.trim());
-    return "found" in match ? match : report(store, root, match);
+    const check = exact !== null && known(context.store, worktreeId, exact) ? exact : null;
+    const match = check ?? resolve(context.store, worktreeId, query.trim());
+    return "found" in match ? match : report(context, match, includeLogs);
   });
 }
 
@@ -75,9 +79,21 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
   };
 }
 
-function report(store: Store, root: AbsolutePath, check: CheckId): WhyReport {
+function report(
+  { store, root, commonDir }: StatusContext,
+  check: CheckId,
+  includeLogs: boolean,
+): WhyReport {
   const worktreeId = worktreeIdFor(root);
   const worktreeRoots = Object.fromEntries(store.worktrees.list().map((w) => [w.id, w.root]));
+  const knownState = store.knownStates.get(worktreeId, check);
+  const results = store.results.listForCheck(check, WHY_RESULT_LIMIT).map((result) => ({
+    result,
+    worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
+    logDir: store.runs.get(result.provenance.runId)?.logDir ?? null,
+  }));
+  const shown = shownResult(worktreeId, knownState, results);
+  const runsDir = storePaths(commonDir).runsDir;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -87,12 +103,9 @@ function report(store: Store, root: AbsolutePath, check: CheckId): WhyReport {
     revision: store.revisions.latest(worktreeId)?.number ?? null,
     check,
     worktreeRoots,
-    knownState: store.knownStates.get(worktreeId, check),
+    knownState,
     history: store.transitions.history(worktreeId, check),
-    results: store.results.listForCheck(check, WHY_RESULT_LIMIT).map((result) => ({
-      result,
-      worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
-      logDir: store.runs.get(result.provenance.runId)?.logDir ?? null,
-    })),
+    results,
+    runLog: shown === null ? null : runLogOf(shown, check, runsDir, includeLogs),
   };
 }
