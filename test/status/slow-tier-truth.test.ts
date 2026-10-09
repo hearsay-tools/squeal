@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
 import { clockText, readHeader } from "../../src/core/state/index.js";
-import type { FileHash } from "../../src/core/types/index.js";
+import type { FileHash, Store } from "../../src/core/types/index.js";
 import {
   FAST,
   inTurn,
@@ -21,7 +21,8 @@ import {
 /*
  * Spec 004 D8, task 004-48: the slow-tier line after the session ends, after
  * a daemon restart and after a revert (lessons, "Re-dogfood at 0.1.68",
- * defects 11, 12 and 15).
+ * defects 11, 12 and 15), and task 004-55: which changed paths are sources
+ * (lessons, "Confirmation at 0.1.85", defect 18).
  */
 
 const RUN_SLOW = "Not covered by Stop's wait; `squeal run --slow` runs them now.";
@@ -36,6 +37,18 @@ function change(s: Seeded, path: string, from: FileHash | null, to: FileHash | n
     trigger: "watch",
     changes: [{ path, oldHash: from, newHash: to }],
   });
+}
+
+/** The stored closure of `testFile` names `paths`, as its last keying found it. */
+function closes(store: Store, testFile: string, paths: string[]): void {
+  const ref = { project: "", path: testFile };
+  const closure = {
+    testFile: ref,
+    paths,
+    complete: false,
+    method: "static imports plus declared inputs",
+  } as const;
+  store.testFiles.put({ testFile: ref, closure, updatedAt: 1, updatedBy: "test" });
 }
 
 describe("the slow-tier line after the session ends (lessons defect 11)", () => {
@@ -112,6 +125,7 @@ describe("sources changed since, by content (lessons defect 15)", () => {
     const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    closes(s.store, FAST, [FAST, "src/paths.ts"]);
     return s;
   }
   const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.`;
@@ -144,5 +158,56 @@ describe("sources changed since, by content (lessons defect 15)", () => {
     expect(slowLine(status(s))).toBe(
       `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.`,
     );
+  });
+});
+
+describe("which changed paths are sources (lessons defect 18)", () => {
+  const FIXTURE = "test/fixtures/node-test/README.md";
+  // This repository's shape: fast tests declare their fixtures, the e2e its build output.
+  const policy = {
+    ...SLOW_POLICY,
+    inputs: { ...SLOW_POLICY.inputs, "src/**/*.test.ts": ["test/fixtures/**"] },
+  };
+
+  /** Both slow files current at revision 2 against `plugins/**`; the e2e reads only it. */
+  function current(): Seeded {
+    const s = seed(policy, { revisions: 2, changes: ["plugins/a.js"] });
+    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    closes(s.store, FAST, [FAST, "src/a.ts", FIXTURE]);
+    closes(s.store, SLOW_A, [SLOW_A, "test/e2e/helpers.ts", "src/harness.ts", "plugins/a.js"]);
+    closes(s.store, SLOW_B, [SLOW_B, "plugins/a.js"]);
+    return s;
+  }
+  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.`;
+
+  it.each([
+    ["a fast test's declared fixture", FIXTURE],
+    ["a fixture no closure names yet", "test/fixtures/vitest/dogfood3.md"],
+    ["a doc", "docs/board.md"],
+  ])("leaves the clause off for %s", (_, path) => {
+    const s = current();
+    change(s, path, "h-tested", "h-edited");
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
+    expect(slowLine(status(s))).toBe(clean);
+  });
+
+  it.each([
+    ["only a fast test's closure names, as for an e2e that reads only the build", "src/a.ts"],
+    ["a slow file's closure names", "src/harness.ts"],
+  ])("says sources changed for a path %s", (_, path) => {
+    const s = current();
+    change(s, path, "h-tested", "h-edited");
+    expect(slowLine(status(s))).toBe(
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.`,
+    );
+  });
+
+  it("leaves the clause off when a closure's source reverted and only a fixture still differs", () => {
+    const s = current();
+    change(s, "src/a.ts", "h-tested", "h-edited");
+    change(s, FIXTURE, "h-tested", "h-edited");
+    change(s, "src/a.ts", "h-edited", "h-tested");
+    expect(slowLine(status(s))).toBe(clean);
   });
 });
