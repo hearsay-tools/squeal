@@ -1,0 +1,171 @@
+# Cezar sessions in this repository with Squeal registered (store: copy of .git/squeal/store.sqlite, 2026-10-09 16:25 local): 237 sessions
+{
+ "sessions": 237,
+ "withEdits": 226,
+ "withOwnRuns": 213,
+ "editSessionsWithOwnRuns": 210,
+ "runs": 2440,
+ "byScope": {
+  "files": 1804,
+  "full": 412,
+  "pattern": 224
+ },
+ "byOutcome": {
+  "pass": 591,
+  "unknown": 1106,
+  "fail": 743
+ },
+ "byRunner": {
+  "vitest": 2414,
+  "node:test": 23,
+  "npm-script": 3
+ },
+ "byReason": {
+  "own-change": 1348,
+  "gate": 405,
+  "re-run": 440,
+  "investigation": 224,
+  "no-daemon": 23
+ },
+ "byStated": {
+  "confirm-change": 356,
+  "gate": 715,
+  "flake-isolation": 79,
+  "probe": 389,
+  "none-stated": 385,
+  "red-step": 369,
+  "investigation": 121,
+  "no-daemon": 23,
+  "squeal-not-reached": 1,
+  "distrust": 2
+ },
+ "byEvident": {
+  "squeal-pending": 421,
+  "edits-since-last-squeal-state": 1418,
+  "squeal-current": 283,
+  "no-daemon": 77,
+  "no-squeal-text": 241
+ },
+ "byStore": {
+  "no-files": 5,
+  "not-covered": 77,
+  "redundant": 58,
+  "redundant-if-lookup": 3,
+  "partly-current": 139,
+  "files-unlisted": 6
+ },
+ "byCrossCheck": {
+  "squeal-not-reached": 216,
+  "outcome-unknown": 35,
+  "agent-fail-squeal-pass": 7,
+  "agrees": 14,
+  "agent-pass-squeal-fail": 2
+ },
+ "byRole": {
+  "worker": {
+   "sessions": 153,
+   "editSessions": 145,
+   "editSessionsWithOwnRuns": 141,
+   "runs": 1799,
+   "full": 212,
+   "files": 1408,
+   "pattern": 179,
+   "pulls": 174,
+   "waits": 50
+  },
+  "reviewer": {
+   "sessions": 62,
+   "editSessions": 61,
+   "editSessionsWithOwnRuns": 60,
+   "runs": 473,
+   "full": 135,
+   "files": 301,
+   "pattern": 37,
+   "pulls": 58,
+   "waits": 13
+  },
+  "researcher": {
+   "sessions": 15,
+   "editSessions": 15,
+   "editSessionsWithOwnRuns": 8,
+   "runs": 22,
+   "full": 6,
+   "files": 15,
+   "pattern": 1,
+   "pulls": 1,
+   "waits": 1
+  },
+  "other": {
+   "sessions": 5,
+   "editSessions": 3,
+   "editSessionsWithOwnRuns": 1,
+   "runs": 146,
+   "full": 59,
+   "files": 80,
+   "pattern": 7,
+   "pulls": 22,
+   "waits": 8
+  },
+  "quality": {
+   "sessions": 1,
+   "editSessions": 1,
+   "editSessionsWithOwnRuns": 0,
+   "runs": 0,
+   "full": 0,
+   "files": 0,
+   "pattern": 0,
+   "pulls": 0,
+   "waits": 0
+  },
+  "coordinator": {
+   "sessions": 1,
+   "editSessions": 1,
+   "editSessionsWithOwnRuns": 0,
+   "runs": 0,
+   "full": 0,
+   "files": 0,
+   "pattern": 0,
+   "pulls": 0,
+   "waits": 0
+  }
+ },
+ "byHarness": {
+  "claude-code": {
+   "sessions": 206,
+   "editSessions": 196,
+   "editSessionsWithOwnRuns": 181,
+   "runs": 2347,
+   "full": 379,
+   "files": 1760,
+   "pattern": 208,
+   "pulls": 230,
+   "waits": 68
+  },
+  "codex": {
+   "sessions": 31,
+   "editSessions": 30,
+   "editSessionsWithOwnRuns": 29,
+   "runs": 93,
+   "full": 33,
+   "files": 44,
+   "pattern": 16,
+   "pulls": 25,
+   "waits": 4
+  }
+ },
+ "pulls": {
+  "status --wait": 72,
+  "run --all": 7,
+  "status": 133,
+  "why": 38,
+  "run --slow": 4,
+  "run": 1
+ },
+ "waits": 72,
+ "sessionsPulling": 76,
+ "skillLoads": 43,
+ "flags": {
+  "pass-claim-without-evidence": 37
+ },
+ "runWallMin": 1506.1
+}
