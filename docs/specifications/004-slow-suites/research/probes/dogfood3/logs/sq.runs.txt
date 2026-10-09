@@ -1,0 +1,96 @@
+21:21:59.545 21:22:18.975 completed 53d14c82 200 files
+21:22:18.983 21:22:59.270 completed 487f5a99 test/status/slow-tier.test.ts test/scheduler/backlog-tiers.test.ts test/scheduler/backlog.test.ts test/scheduler/checkpoints.test.ts
+21:23:03.415 21:23:06.972 completed 484969c4 test/status/slow-tier.test.ts test/scheduler/commit-transaction.test.ts test/scheduler/daemon-loop.test.ts test/scheduler/declared-inputs.test.ts
+21:23:06.982 21:23:31.680 completed 264a714f test/scheduler/discards.test.ts test/scheduler/environment-growth-wait.test.ts test/scheduler/environment-growth.test.ts test/scheduler/first-observation.test.ts
+21:23:31.686 21:23:43.224 completed 797ae74b test/scheduler/held-heal.test.ts test/scheduler/ignored-inputs.test.ts test/scheduler/inherited-failure.test.ts test/scheduler/install-wait.test.ts
+21:23:43.231 21:23:44.791 completed 50c61a2b test/runners/vitest/gate.test.ts test/runners/vitest/inspect.test.ts test/runners/vitest/instance-inputs.test.ts test/runners/vitest/invalidation.test.ts
+21:23:44.798 21:23:51.306 completed 704a630f test/scheduler/integration.test.ts test/scheduler/lanes.test.ts test/scheduler/linked-start.test.ts test/scheduler/observed-growth.test.ts
+21:23:51.313 21:24:23.147 completed 4bbc4b38 test/scheduler/observed-inputs.test.ts test/scheduler/ordering.test.ts test/scheduler/policy-reload.test.ts test/scheduler/preload-heal.test.ts
+21:24:23.155 21:24:42.229 completed c0c8775d test/scheduler/records.test.ts test/scheduler/recursive-listing.test.ts test/scheduler/refinement-lock.test.ts test/scheduler/reinstall.test.ts
+21:24:42.242 21:24:46.695 completed 8784588d test/scheduler/rekeyed.test.ts test/scheduler/rerun-failure.test.ts test/scheduler/rerun-grown.test.ts test/scheduler/rerun-restart.test.ts
+21:24:46.702 21:24:49.701 completed 396fda08 test/runners/vitest/load.test.ts test/runners/vitest/observe.test.ts test/runners/vitest/optimizer.test.ts test/runners/vitest/overlap.test.ts
+21:24:49.710 21:25:27.780 completed 07f00fcd test/scheduler/rerun.test.ts test/scheduler/revision-lag.test.ts test/scheduler/runner-failure.test.ts test/scheduler/runner-work.test.ts
+21:25:27.789 21:25:33.899 completed af405963 test/scheduler/runs.test.ts test/scheduler/scratch-inputs.test.ts test/scheduler/slow-activity.test.ts test/scheduler/slow-artifact.test.ts
+21:25:33.908 21:25:42.278 completed 1d328c62 test/scheduler/slow-lane.test.ts test/scheduler/slow-node-test.test.ts test/scheduler/slow-parallel.test.ts test/scheduler/slow-pending.test.ts
+21:25:42.289 21:26:20.305 completed c64f6400 test/scheduler/slow-tier.test.ts test/scheduler/slow-trigger.test.ts test/scheduler/tier-sharing.test.ts test/scheduler/timed-out-tier.test.ts
+21:26:20.338 21:26:28.487 completed ec15d99d test/runners/vitest/packages.test.ts test/runners/vitest/report.test.ts test/runners/vitest/reresolution.test.ts test/runners/vitest/run.test.ts
+21:26:28.498 21:26:33.635 completed 4ed21481 test/scheduler/touched.test.ts test/scheduler/validity.test.ts test/state/fingerprint.test.ts test/state/flaky.test.ts
+21:26:33.644 21:26:34.505 completed 5dca19c8 test/state/sink.test.ts test/state/transitions.test.ts test/status/builder.test.ts test/status/head.test.ts
+21:26:34.514 21:26:35.428 completed 309cafae test/status/header.test.ts test/status/runner-part.test.ts test/status/slow-tier-truth.test.ts test/status/status.test.ts
+21:26:35.438 21:26:37.263 completed a47fd015 test/status/torn-read.test.ts test/status/why-producer.test.ts test/status/why-replaced.test.ts test/status/why-revert.test.ts
+21:26:37.273 21:26:41.738 completed ed952fa9 test/runners/vitest/sources.test.ts test/runners/vitest/structural-cost.test.ts test/runners/vitest/structural-fallback.test.ts test/runners/vitest/structural-resolution.test.ts
+21:26:41.752 21:26:44.940 completed 32e0ded4 test/status/why-run-log.test.ts test/status/why.test.ts test/store/contention.test.ts test/cli/codex-trust.test.ts
+21:26:44.953 21:26:45.898 completed f7fcec23 test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/init-node-test.test.ts
+21:26:45.945 21:26:48.683 completed 1e1302b0 test/cli/main.test.ts test/cli/remove.test.ts test/cli/round-trip.test.ts test/cli/run-slow.test.ts
+21:26:48.697 21:27:00.239 completed 3954356c test/cli/status-wait-edit.test.ts test/cli/status-wait-window.test.ts test/cli/status-wait.test.ts test/daemon/departure-timers.test.ts
+21:27:00.251 21:27:04.949 completed f9b3dba3 test/runners/vitest/structural.test.ts test/runners/vitest/variants.test.ts test/scheduler/checkpoint-tracker.test.ts test/scheduler/link-target.test.ts
+21:27:04.960 21:28:22.463 completed 544d421e test/daemon/departure.test.ts test/daemon/drain-timers.test.ts test/daemon/drain.test.ts test/daemon/expiry.test.ts
+21:28:22.476 21:29:15.234 completed ab5c6851 test/daemon/handover.test.ts test/daemon/hardening.test.ts test/daemon/install-wait.test.ts test/daemon/lifecycle.test.ts
+21:29:15.250 21:29:23.536 completed 85554057 test/daemon/observed-timer.test.ts test/daemon/open.test.ts test/daemon/reinstall.test.ts test/daemon/scratch.test.ts
+21:29:23.554 21:29:47.302 completed 51543b7f test/daemon/serving.test.ts test/daemon/shared-store.test.ts test/daemon/step-down.test.ts test/daemon/symlinked-install.test.ts
+21:29:47.315 21:29:47.533 completed e0d7da90 test/scheduler/queue.test.ts test/scheduler/unmatched-notes.test.ts test/slow/classify.test.ts test/slow/guard.test.ts
+21:29:47.546 21:29:50.868 completed e7d8c1d9 test/daemon/symlinked-source.test.ts test/delivery/attribution.test.ts test/delivery/changed.test.ts test/delivery/collapse.test.ts
+21:29:50.890 21:29:53.425 completed ee920289 test/delivery/consumer-version.test.ts test/delivery/delivery.test.ts test/delivery/expiry.test.ts test/delivery/format.test.ts
+21:29:53.444 21:29:55.854 completed 88d2a1a5 test/delivery/harness-process.test.ts test/delivery/idle-cost.test.ts test/delivery/liveness.test.ts test/delivery/provenance.test.ts
+21:29:55.867 21:29:57.497 completed f5b4fe49 test/delivery/registered.test.ts test/delivery/slow-provenance.test.ts test/delivery/slow-represented-run.test.ts test/delivery/slow-run-artifact.test.ts
+21:29:57.512 21:30:01.794 completed 11bd056b test/slow/inherit.test.ts test/slow/permits.test.ts test/slow/slot.test.ts test/store/concurrency.test.ts
+21:30:01.813 21:30:08.438 completed 0ef2b725 test/delivery/turn.test.ts test/harness/attribution.test.ts test/harness/bundles.test.ts test/harness/codex/bundles.test.ts
+21:30:08.460 21:30:13.308 completed 9bfcf976 test/harness/codex/command.test.ts test/harness/codex/hooks.test.ts test/harness/codex/input.test.ts test/harness/codex/latency.test.ts
+21:30:13.349 21:30:15.206 completed 42061cb5 test/harness/codex/output.test.ts test/harness/codex/plugin.test.ts test/harness/codex/review.test.ts test/harness/codex/turns.test.ts
+21:30:15.232 21:30:16.981 completed 8a255b2d test/harness/ensure.test.ts test/harness/forks.test.ts test/harness/harness-process.test.ts test/harness/hooks.test.ts
+21:30:16.999 21:30:19.464 completed 6ce27919 test/store/crash.test.ts test/store/open.test.ts test/store/paths.test.ts test/store/prune.test.ts
+21:30:19.483 21:30:23.707 completed 756a11db test/harness/hung-daemon.test.ts test/harness/init.test.ts test/harness/latency.test.ts test/harness/liveness.test.ts
+21:30:23.730 21:30:25.020 completed e8987889 test/harness/plugin.test.ts test/harness/pre-tool-use.test.ts test/harness/primer-slow.test.ts test/harness/register-race.test.ts
+21:30:25.040 21:30:29.595 completed fd9c7863 test/harness/session-lifecycle.test.ts test/harness/session-start.test.ts test/harness/skill.test.ts test/harness/starting-daemon.test.ts
+21:30:29.615 21:30:30.416 completed 538d6afa test/harness/step-down.test.ts test/harness/stop-require-slow-snapshot.test.ts test/harness/stop-require-slow.test.ts test/harness/stop-retry-bound.test.ts
+21:30:30.438 21:30:31.600 completed 55810c14 test/store/repos.test.ts test/store/unkeyed.test.ts test/text.test.ts test/types.test.ts
+21:30:31.638 21:30:37.662 completed a57457e1 test/harness/stop-slow.test.ts test/harness/stop.test.ts test/harness/turn.test.ts test/harness/user-prompt-submit.test.ts
+21:30:37.678 21:30:46.960 completed fc80e5f0 test/harness/waiter.test.ts test/integration/node-test-packages.test.ts test/integration/node-test.test.ts test/integration/optimizer-off.test.ts
+21:30:46.978 21:30:51.707 completed 0b211a1a test/integration/optimizer-start.test.ts test/integration/project-config-stamps.test.ts test/integration/query-stamps.test.ts test/integration/revert-restore.test.ts
+21:30:51.728 21:31:24.390 completed 24d439ab test/integration/slow-spawn.test.ts test/integration/slow-tier.test.ts test/integration/status-wait-edit.test.ts test/integration/status-wait-sync.test.ts
+21:31:24.428 21:31:28.505 completed bf194fa5 test/watcher/backend.test.ts test/watcher/change-feed.test.ts test/watcher/debounce.test.ts test/watcher/foreign-links.test.ts
+21:31:28.523 21:31:35.702 completed 87c5f150 test/integration/touched-caches.test.ts test/integration/touched-in-flight.test.ts test/integration/touched-late.test.ts test/integration/touched-own-write.test.ts
+21:31:35.723 21:31:41.960 completed 939a4d07 test/integration/touched-restart.test.ts test/integration/touched-stamped.test.ts test/keys/install-inheritance.test.ts test/keys/install-refresh.test.ts
+21:31:41.978 21:31:46.707 completed 192749fe test/keys/require-helper.test.ts test/runners/vitest/broken.test.ts test/harness/cli-pipe.test.ts test/plugins/codex/fast-path.test.ts
+21:31:46.727 21:32:30.735 completed 28bf1874 test/plugins/codex/hooks-json.test.ts test/scheduler/backlog-tiers.test.ts test/scheduler/backlog.test.ts test/scheduler/checkpoints.test.ts
+21:32:30.771 21:34:15.916 completed 35d1c2f9 100 files
+21:32:30.789 21:33:19.300 completed abaca7bc test/e2e/lifecycle.test.ts
+21:33:19.323 21:33:34.878 completed 3d8bc7f0 test/e2e/node-test.test.ts
+21:33:34.896 21:33:35.158 completed 3553ec53 test/e2e/plugin-copy.test.ts
+21:33:35.205 21:34:31.642 completed 7c306889 test/e2e/policy.test.ts
+21:34:16.084 21:34:18.121 completed 36b30e18 test/runners/node-test/graph-cost.test.ts
+21:34:31.675 21:35:15.523 completed cdef8e1d test/e2e/shipped-plugin.test.ts test/e2e/slow-node-test.test.ts test/e2e/slow-vitest.test.ts test/e2e/torn-status.test.ts
+21:35:15.553 21:35:37.317 completed 5cd3ff88 test/e2e/transitions.test.ts test/e2e/worktrees.test.ts
+21:38:59.180 21:39:02.140 completed dbe3c236 test/scheduler/records.test.ts test/state/transitions.test.ts test/harness/skill.test.ts test/state/fingerprint.test.ts
+21:39:02.382 21:39:03.434 completed abbff534 test/harness/codex/output.test.ts test/delivery/collapse.test.ts test/harness/codex/input.test.ts test/delivery/provenance.test.ts
+21:39:03.639 21:39:05.916 completed 4fa24fb5 test/cli/daemon-commands.test.ts test/delivery/format.test.ts test/cli/init-node-test.test.ts test/status/builder.test.ts
+21:39:06.061 21:39:09.019 completed 11667775 test/status/header.test.ts test/scheduler/rerun.test.ts test/harness/init.test.ts test/cli/round-trip.test.ts
+21:39:09.368 21:39:12.335 completed 5a7467d4 test/harness/register-race.test.ts test/cli/daemon-socket.test.ts test/harness/step-down.test.ts test/state/flaky.test.ts
+21:39:12.475 21:39:14.752 completed dfbb3ffd test/delivery/slow-provenance.test.ts test/daemon/expiry.test.ts test/status/head.test.ts test/delivery/consumer-version.test.ts
+21:39:14.959 21:39:17.293 completed 3393eee9 test/harness/harness-process.test.ts test/status/why.test.ts test/status/runner-part.test.ts test/delivery/harness-process.test.ts
+21:39:17.427 21:39:19.831 completed 87461558 test/delivery/changed.test.ts test/status/torn-read.test.ts test/harness/primer-slow.test.ts test/status/why-run-log.test.ts
+21:39:19.940 21:39:23.644 completed c50308b4 test/daemon/open.test.ts test/status/why-producer.test.ts test/cli/main.test.ts test/delivery/turn.test.ts
+21:39:23.723 21:39:26.809 completed f9b64311 test/status/slow-tier-truth.test.ts test/delivery/slow-represented-run.test.ts test/delivery/liveness.test.ts test/daemon/drain-timers.test.ts
+21:39:26.909 21:39:30.632 completed 34523a16 test/delivery/expiry.test.ts test/harness/stop-require-slow.test.ts test/harness/stop-retry-bound.test.ts test/harness/stop-require-slow-snapshot.test.ts
+21:39:30.778 21:39:34.760 completed ed1da713 test/harness/plugin.test.ts test/state/sink.test.ts test/harness/session-start.test.ts test/harness/forks.test.ts
+21:39:34.931 21:39:40.580 completed 09d9fe50 test/cli/codex.test.ts test/status/status.test.ts test/scheduler/commit-transaction.test.ts test/delivery/slow-run-artifact.test.ts
+21:39:40.698 21:39:45.156 completed 5c812d77 test/harness/user-prompt-submit.test.ts test/daemon/departure-timers.test.ts test/scheduler/slow-pending.test.ts test/harness/codex/review.test.ts
+21:40:17.343 21:40:17.912 completed 081f579c test/runners/vitest/gate.test.ts test/runners/node-test/recorders.test.ts test/runners/vitest/report.test.ts test/runners/node-test/identity.test.ts
+21:40:17.980 21:40:18.414 completed e1617fe4 test/runners/node-test/node-options.test.ts test/runners/node-test/graph-parse.test.ts test/runners/node-test/run-runtime.test.ts test/runners/vitest/closure-packages.test.ts
+21:40:18.498 21:40:19.265 completed ad96d0f9 test/runners/node-test/run-streams.test.ts test/runners/vitest/load.test.ts test/runners/node-test/graph-tsconfig.test.ts test/runners/node-test/graph-packages.test.ts
+21:40:19.318 21:40:21.660 completed 8548c051 test/runners/vitest/inspect.test.ts test/runners/node-test/graph-bundle.test.ts test/runners/vitest/packages.test.ts test/runners/vitest/structural-fallback.test.ts
+21:40:21.695 21:40:23.499 completed d87851a1 test/runners/node-test/run-preload.test.ts test/runners/node-test/adapter-recorders.test.ts test/runners/node-test/adapter-degraded.test.ts test/runners/node-test/adapter-observed.test.ts
+21:40:23.564 21:40:26.751 completed 8620ac11 test/runners/vitest/instance-inputs.test.ts test/runners/vitest/invalidation.test.ts test/runners/node-test/packages.test.ts test/runners/vitest/structural.test.ts
+21:40:26.818 21:40:30.601 completed 7556807c test/runners/vitest/optimizer.test.ts test/runners/node-test/graph.test.ts test/runners/node-test/graph-cost.test.ts test/runners/vitest/overlap.test.ts
+21:40:30.643 21:40:33.993 completed b058d7ee test/runners/node-test/adapter-preload.test.ts test/runners/vitest/sources.test.ts test/runners/node-test/adapter-plugin-root.test.ts test/runners/node-test/adapter-shared.test.ts
+21:40:34.040 21:40:38.440 completed 0612a3f0 test/runners/vitest/observe.test.ts test/runners/vitest/affected.test.ts test/runners/node-test/adapter-preload-quoted.test.ts test/runners/node-test/graph-memory.test.ts
+21:40:38.500 21:40:40.888 completed 5382e4a0 test/runners/node-test/graph-probes.test.ts test/runners/vitest/edge-cases.test.ts test/runners/node-test/adapter.test.ts test/runners/vitest/escapes.test.ts
+21:40:40.922 21:40:47.945 completed cdad4ef6 test/runners/vitest/structural-cost.test.ts test/runners/vitest/child-env.test.ts test/runners/vitest/structural-resolution.test.ts test/runners/vitest/variants.test.ts
+21:40:47.982 21:40:54.397 completed eab14ee3 test/runners/vitest/broken.test.ts test/runners/vitest/reresolution.test.ts test/runners/node-test/enumerate.test.ts test/runners/node-test/adapter-preload-require.test.ts
+21:40:54.463 21:41:03.389 completed 302051b7 test/runners/node-test/adapter-attribution.test.ts test/runners/node-test/graph-structural.test.ts test/runners/node-test/packages-resolved.test.ts test/runners/vitest/run.test.ts
+21:41:03.422 21:41:16.647 completed ff66c0be test/runners/node-test/adapter-loader.test.ts test/integration/node-test.test.ts test/runners/node-test/fixtures.test.ts test/runners/node-test/run.test.ts
+21:52:14.392 21:52:15.081 completed 4acd6a3f test/harness/plugin.test.ts
+21:52:15.105 - null 0cce330c test/e2e/torn-status.test.ts test/e2e/plugin-copy.test.ts test/e2e/shipped-plugin.test.ts test/e2e/transitions.test.ts
+21:52:25.336 21:53:21.898 completed 32543db9 test/e2e/lifecycle.test.ts test/e2e/node-test.test.ts test/e2e/plugin-copy.test.ts test/e2e/policy.test.ts
+21:53:21.941 21:54:04.599 completed bc8894f4 test/e2e/shipped-plugin.test.ts test/e2e/slow-node-test.test.ts test/e2e/slow-vitest.test.ts test/e2e/torn-status.test.ts
+21:54:04.632 21:54:22.925 completed b7be2ff3 test/e2e/transitions.test.ts test/e2e/worktrees.test.ts

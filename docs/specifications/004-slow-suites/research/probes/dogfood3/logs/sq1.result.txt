@@ -1,0 +1,17 @@
+I added hours to `durationText`, added a unit test for it, and rebuilt the plugin bundles. The new test passes, according to Squeal at revision 8 (the current state of the files); I didn't run any tests myself.
+
+**Changes**
+- `src/core/state/slow-text.ts:23`: durations of an hour or more now include hours, and parts that are zero are left out. So `3_600_000` gives `1 h`, `3_725_000` gives `1 h 2 min 5 s` and `7_260_000` gives `2 h 1 min`. Times under an hour print as before.
+- `test/status/slow-tier.test.ts:173`: a new test, "prints a duration of an hour or more with hours". It checks the three cases above plus `1 min 12 s` and `12 s`. There were no direct tests for `durationText` before, only the "last run 1 min 12 s" lines in other tests in this file, so I put it next to those.
+- `npm run build` finished without errors and updated the bundles under `plugins/claude-code/dist/` and `plugins/codex/dist/`.
+- `npx biome check` on the two edited files reports no problems.
+
+At one point I ran Prettier by mistake, and it reformatted unrelated code in the test file. I restored that file from git and applied only my change, so the diff is 18 lines added and 3 removed. `squeal.config.json` was already modified before I started, and I didn't touch it.
+
+**Test feedback I received, in order**
+1. **At session start:** a Squeal message at revision 0 with no results yet and 0 known failures.
+2. **After each edit:** no Squeal messages arrived after any of my tool calls.
+3. **`squeal status --wait 60000`, after the build:** it hit the 60-second limit. At revision 8 it showed 0 known failures and 53 affected checks passed. Other test files hadn't run yet: 314 were pending, plus 10 slow ones waiting for me to pause.
+4. **`squeal why` on the new test:** PASS at revision 8, run in this worktree against the uncommitted changes.
+
+I didn't run Vitest myself because the Squeal daemon was running and had a current result for the new test. You asked for no full run, so I didn't request a full-suite checkpoint, and most of the other test files hadn't run yet when I stopped. I also skipped `npm run typecheck`.

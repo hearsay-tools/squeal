@@ -1,0 +1,65 @@
+## meta (this worktree)
+revision-registered:fbaec2656c9b0535 = {}
+revision-registered-left:fbaec2656c9b0535 = {"7845e4d8-53cb-4f89-9857-c2cd7e6c644d\nmain":{"since":0,"gaps":[],"leftAt":8,"leftTime":1791581032587}}
+liveness-told:fbaec2656c9b0535 = {}
+revision-told:fbaec2656c9b0535 = {}
+turn:fbaec2656c9b0535 = {}
+harness-process:fbaec2656c9b0535 = {}
+consumer-version:fbaec2656c9b0535 = {}
+departed:fbaec2656c9b0535 = 1791581032587
+reruns:fbaec2656c9b0535 = [{"testFile":{"project":"","path":"test/runners/node-test/graph-cost.test.ts"},"key":"1fe57d17b54ac4145549009fa3ff140e701c2896c3436d2c0df41447333727dd","pending":false}]
+failure-keys:fbaec2656c9b0535 = {}
+state.baseline-findings.fbaec2656c9b0535 = {"checkpointId":"80cdf096-d937-4611-beaf-6fd970c2dded","entries":[]}
+awaiting-install.fbaec2656c9b0535 = false
+optimizer-off.fbaec2656c9b0535 = 
+daemon-bootstrapped:fbaec2656c9b0535 = 1791582744227
+slow-artifacts:fbaec2656c9b0535 = {"064cca53f84b4d7a8a7a97e402041fcf05e21df11816eeba0341fed01a75f0f8":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"f3c94db858d10a2f8a620b689e5e5df585449d48bb3e07a5b8934043aba7a7f3":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"b17b6d986b01804395a5309ff5e1e75be2b70427762310460247e9ee106fa4f1":["plugins/claude-code/**","plugins/codex/**","test/fixtures/codex-hooks/**","test/fixtures/e2e/**","test/harness/recorded/**"],"5e1e0752d1203a81
+slow-tier:fbaec2656c9b0535 = null
+refined.fbaec2656c9b0535 = 14
+notes.fbaec2656c9b0535 = [{"at":1791580938942,"revision":2,"text":"stopped 9 processes a test left running after its tier: 2838515 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --disable-warning=UNDICI-EHPA ...; 2838516 /home/agent/.nvm/versions/node/v24.21.0/bin/node --disable-warning=ExperimentalWarning --disable-warning=UNDICI-EHPA ...; 2838717 /tmp/squeal-dogfood3-378b91af/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping; 2838749 /tmp/squeal-dogfood3-378b91af/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping; 2845805 /home/agent/.nvm/ver
+
+## revisions
+r1 21:22:16.708 +22.7s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"6fdcade220e39bf6550d43c50468267cef31ad0e","newHash":"cb14bd9ab46eef8d8e53c7830966553fbd94a4b4"},{"path":"test/status/slow-tier.test.ts","oldHash":"c9c40ca0e09c7cc3429743eaa2d9992474605cb9","newHash":"99d7e778c2f2e234cd783df6576c9417c85e4d37"}]
+r2 21:22:17.897 +23.9s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"cb14bd9ab46eef8d8e53c7830966553fbd94a4b4","newHash":"938dfb6bcf4847a34dd87f3a69fc7cf02aced810"},{"path":"test/status/slow-tier.test.ts","oldHash":"99d7e778c2f2e234cd783df6576c9417c85e4d37","newHash":"81501ef255bfce6e2d53718dd1284414fcc76c44"}]
+r3 21:22:23.044 +29.0s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"938dfb6bcf4847a34dd87f3a69fc7cf02aced810","newHash":"200a790c9fa43923451c04aa836054b9180bfc03"},{"path":"test/status/slow-tier.test.ts","oldHash":"81501ef255bfce6e2d53718dd1284414fcc76c44","newHash":"539ce9da72d602b506b8021be2be986dc60e67fd"}]
+r4 21:22:29.033 +35.0s watch dirty=1 [{"path":"test/status/slow-tier.test.ts","oldHash":"539ce9da72d602b506b8021be2be986dc60e67fd","newHash":"99d7e778c2f2e234cd783df6576c9417c85e4d37"}]
+r5 21:22:31.371 +37.4s watch dirty=1 [{"path":"plugins/claude-code/dist/cli/squeal.mjs","oldHash":"5920960bfe1dddd29680037bcf485fcd3b768ecb","newHash":"4c42ba39bd6aa17528640f46e2a04dea2354c2d3"},{"path":"plugins/claude-code/dist/post-tool-batch.mjs","oldHash":"d534b18f0076800bd577c3ed0ef5ad264d746043","newHash":"d24bbfa62632a72fc7f461c
+r6 21:22:31.580 +37.6s watch dirty=1 [{"path":"plugins/codex/skills/squeal/SKILL.md","oldHash":"9fe7f3d671b9651160cb185eb101c449f00380e5","newHash":"f1cd6ba93ffccec58cb65662ad14272f4c46e56d"}]
+r7 21:22:31.954 +38.0s watch dirty=1 [{"path":"plugins/codex/dist/cli/squeal.mjs","oldHash":"5920960bfe1dddd29680037bcf485fcd3b768ecb","newHash":"4c42ba39bd6aa17528640f46e2a04dea2354c2d3"},{"path":"plugins/codex/dist/post-tool-use.mjs","oldHash":"e5208df0866284a519c1542fbecaf8a3e6bed489","newHash":"ba29934bbc90f69c6f3c0346a5dbf19ed9002
+r8 21:23:02.669 +68.7s interval dirty=1 [{"path":"plugins/codex/skills/squeal/SKILL.md","oldHash":"f1cd6ba93ffccec58cb65662ad14272f4c46e56d","newHash":"9fe7f3d671b9651160cb185eb101c449f00380e5"}]
+r9 21:38:50.460 +1016.5s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"200a790c9fa43923451c04aa836054b9180bfc03","newHash":"b054fc683da23fdbb4d482bdf8fb0d36bb7fa51a"}]
+r10 21:39:43.421 +1069.4s watch dirty=1 [{"path":"src/core/state/slow-text.ts","oldHash":"b054fc683da23fdbb4d482bdf8fb0d36bb7fa51a","newHash":"200a790c9fa43923451c04aa836054b9180bfc03"}]
+r11 21:40:16.889 +1102.9s watch dirty=1 [{"path":"test/fixtures/node-test/README.md","oldHash":"d36eca081bd03be5a9938de91c084ccad2ec057d","newHash":"a5a9469fb48f433fc836bdc7eb54f49ff2f304ce"},{"path":"test/fixtures/vitest/dogfood3.md","oldHash":null,"newHash":"78c691305349e1b9b95eeea08df15127b7523f6c"}]
+r12 21:52:14.318 +1820.3s watch dirty=1 [{"path":"plugins/claude-code/README.md","oldHash":"88875c955e142f83800de451af63bd436b2f6e10","newHash":"5f2551441df8b0b809dd73502ef57fa0dfbcba8f"}]
+r13 21:55:07.141 +1993.1s watch dirty=1 [{"path":"plugins/claude-code/README.md","oldHash":"5f2551441df8b0b809dd73502ef57fa0dfbcba8f","newHash":"88875c955e142f83800de451af63bd436b2f6e10"}]
+r14 21:55:19.276 +2005.3s watch dirty=1 [{"path":"test/fixtures/node-test/README.md","oldHash":"a5a9469fb48f433fc836bdc7eb54f49ff2f304ce","newHash":"d36eca081bd03be5a9938de91c084ccad2ec057d"},{"path":"test/fixtures/vitest/dogfood3.md","oldHash":"78c691305349e1b9b95eeea08df15127b7523f6c","newHash":null}]
+
+## runs (S = holds slow files)
+S r8 21:32:30.789 +636.8s -> 21:33:19.300 +685.3s (48.5s) completed checkpoint lifecycle.test.ts
+S r8 21:33:19.323 +685.3s -> 21:33:34.878 +700.9s (15.6s) completed checkpoint node-test.test.ts
+S r8 21:33:34.896 +700.9s -> 21:33:35.158 +701.2s (0.3s) completed checkpoint plugin-copy.test.ts
+S r8 21:33:35.205 +701.2s -> 21:34:31.642 +757.6s (56.4s) completed checkpoint policy.test.ts
+S r8 21:34:31.675 +757.7s -> 21:35:15.523 +801.5s (43.8s) completed checkpoint shipped-plugin.test.ts slow-node-test.test.ts slow-vitest.test.ts torn-status.test.ts
+S r8 21:35:15.553 +801.6s -> 21:35:37.317 +823.3s (21.8s) completed checkpoint transitions.test.ts worktrees.test.ts
+S r12 21:52:15.105 +1821.1s -> - (?s) null torn-status.test.ts plugin-copy.test.ts shipped-plugin.test.ts transitions.test.ts
+S r12 21:52:25.336 +1831.3s -> 21:53:21.898 +1887.9s (56.6s) completed checkpoint lifecycle.test.ts node-test.test.ts plugin-copy.test.ts policy.test.ts
+S r12 21:53:21.941 +1887.9s -> 21:54:04.599 +1930.6s (42.7s) completed checkpoint shipped-plugin.test.ts slow-node-test.test.ts slow-vitest.test.ts torn-status.test.ts
+S r12 21:54:04.632 +1930.6s -> 21:54:22.925 +1948.9s (18.3s) completed checkpoint transitions.test.ts worktrees.test.ts
+
+## transitions
+
+## known_states of slow files by outcome, validity, origin
+test/e2e/lifecycle.test.ts pass current own  7
+test/e2e/node-test.test.ts pass current own  5
+test/e2e/plugin-copy.test.ts pass current own  2
+test/e2e/policy.test.ts pass current own  7
+test/e2e/shipped-plugin.test.ts pass current own  8
+test/e2e/shipped-plugin.test.ts skip current own  1
+test/e2e/slow-node-test.test.ts pass current own  5
+test/e2e/slow-vitest.test.ts pass current own  5
+test/e2e/torn-status.test.ts pass current own  1
+test/e2e/torn-status.test.ts skip current own  2
+test/e2e/transitions.test.ts pass current own  5
+test/e2e/worktrees.test.ts pass current own  9
+
+## consumers
