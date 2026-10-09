@@ -9,6 +9,7 @@ import {
   type DeclaredInputs,
   type DependencyKeys,
   environmentHash,
+  ignoredInputs,
   inputGlobs,
   type KeyChange,
   KeyIndex,
@@ -85,6 +86,12 @@ export class WorktreeKeys {
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
   #declared: DeclaredInputs = createDeclaredInputs([], []);
+  /**
+   * True when the gitignored files policy `inputs` selects are to be listed
+   * again at the next `trackUntracked`: the policy changed, or a rebuild
+   * changed one and may have added others no watch reports (lessons defect 7).
+   */
+  #ignoredStale = false;
   /** What runs observed beyond static closures, shared per project (D3, task 001-132). */
   readonly #observed: ObservedSets;
   /** Entry names of listed directories, from the tracked files. */
@@ -144,6 +151,7 @@ export class WorktreeKeys {
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
     for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
     await this.#seed(listed.filter((path) => this.cache.hashOf(path) === undefined));
+    await this.#trackIgnoredInputs();
     this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
     return revision;
   }
@@ -238,6 +246,7 @@ export class WorktreeKeys {
     if (!sameInputs(previous.inputs, policy.inputs)) {
       this.#isDeclared = createInputMatcher(inputGlobs(policy.inputs));
       this.#declared = createDeclaredInputs(policy.inputs, this.#knownFiles());
+      this.#ignoredStale = true;
       changes.push(
         ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
       );
@@ -363,6 +372,9 @@ export class WorktreeKeys {
    * declared input was added or deleted.
    */
   updateDeclaredInputs(changes: readonly FileChange[]): KeyChange[] | null {
+    if (changes.some((c) => this.#extra.has(c.path) && this.isDeclaredInput(c.path))) {
+      this.#ignoredStale = true;
+    }
     const structural = changes.some(
       (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path),
     );
@@ -371,13 +383,37 @@ export class WorktreeKeys {
     return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
   }
 
-  /** Hashes the closure paths the stat cache did not track, then re-keys with them. */
+  /**
+   * Hashes the closure paths the stat cache did not track, then re-keys with
+   * them. Lists the gitignored declared inputs again first when they may
+   * have moved (`#ignoredStale`), and re-keys with any new ones.
+   */
   async trackUntracked(): Promise<KeyChange[]> {
+    const declared = this.#ignoredStale ? await this.#relistIgnoredInputs() : [];
     const paths = [...this.#untracked];
     this.#untracked.clear();
-    if (paths.length === 0) return [];
+    if (paths.length === 0) return declared;
     await this.track(paths);
-    return this.index.rekey(paths);
+    return [...declared, ...this.index.rekey(paths)];
+  }
+
+  /** Lists and tracks the gitignored declared inputs; re-keys every closure when one is new. */
+  async #relistIgnoredInputs(): Promise<KeyChange[]> {
+    const before = this.#extra.size;
+    await this.#trackIgnoredInputs();
+    if (this.#extra.size === before) return [];
+    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+    return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
+  }
+
+  /**
+   * Spec 004 D6, lessons defect 7: a declared input git ignores, such as a
+   * build output, is hashed and watched like a gitignored closure path, so
+   * it keys the test files that declare it.
+   */
+  async #trackIgnoredInputs(): Promise<void> {
+    this.#ignoredStale = false;
+    await this.track(await ignoredInputs(this.options.root, inputGlobs(this.#policy.inputs)));
   }
 
   /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
