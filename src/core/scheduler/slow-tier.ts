@@ -63,12 +63,13 @@ export interface SlowHost {
 
 /**
  * A slow tier, selected, with the slot permits it holds until it is recorded
- * (one per file) and the artifact globs its files were declared to test (D5).
+ * (one per file) and, by test file id, the artifact globs each file was
+ * declared to test when it was selected (D5; review wave 4, B1).
  */
 export interface SlowRun {
   readonly tier: Tier;
   readonly slot: SlowSlot;
-  readonly artifact: readonly string[];
+  readonly artifacts: ReadonlyMap<string, readonly string[]>;
 }
 
 /** `next`: a slow run, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
@@ -267,7 +268,7 @@ export class SlowTier {
     refs: readonly TestFileRef[],
     ranUnderLoad: number | null,
     slot: SlowSlot,
-  ): { tier: Tier; artifact: readonly string[] } | null {
+  ): { tier: Tier; artifacts: ReadonlyMap<string, readonly string[]> } | null {
     const { context, ledger } = this.host.started();
     if (this.host.editPending()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;
@@ -292,13 +293,16 @@ export class SlowTier {
       );
     }
     const since = context.now();
-    const artifact = slowPolicyView(context.policy)?.artifactFor(first.file.ref.path) ?? [];
+    const view = slowPolicyView(context.policy);
+    const artifacts = new Map(
+      picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
+    );
     const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
     // The activity names the file in the transaction that marks it running (review wave 2, B1).
     return context.store.transaction(() => {
       const tier = startTier(context, ledger, picked, false);
       this.#publish({ kind: "running", path: first.file.ref.path, since, lastDurationMs });
-      return { tier, artifact };
+      return { tier, artifacts };
     });
   }
 
@@ -329,12 +333,17 @@ export class SlowTier {
 
   /**
    * Under the lock, in the transaction that records `run` (D5, D8, review
-   * wave 2 B1 and B2): the keys it ran under were declared to test its
-   * artifact, and its activity goes with it (`ended`).
+   * wave 2 B1 and B2): the keys each file ran under were declared to test
+   * that file's artifact (review wave 4, B1), and its activity goes with it
+   * (`ended`).
    */
   recorded(run: SlowRun, ledger: Ledger): void {
     const { context } = this.host.started();
-    const runs = new Map(tierKeys(run.tier, ledger).map((key) => [key, run.artifact]));
+    const runs = new Map<CheckKey, readonly string[]>();
+    for (const tierFile of run.tier.files) {
+      const artifact = run.artifacts.get(tierFile.file.id) ?? [];
+      for (const key of fileKeys(tierFile, ledger)) runs.set(key, artifact);
+    }
     recordSlowArtifacts(context.store, context.worktreeId, runs);
     this.ended();
   }
@@ -435,8 +444,13 @@ function longest(durations: readonly (number | null)[]): number | null {
  * file stores under that).
  */
 export function tierKeys(tier: Tier, ledger: Ledger): CheckKey[] {
-  const keys = tier.files.flatMap(({ file, key }) => [key, ledger.files.get(file.id)?.key ?? null]);
-  return [...new Set(keys.filter((key): key is CheckKey => key !== null))];
+  return [...new Set(tier.files.flatMap((tierFile) => fileKeys(tierFile, ledger)))];
+}
+
+/** `tierKeys` of one file of a tier. */
+function fileKeys({ file, key }: TierFile, ledger: Ledger): CheckKey[] {
+  const current = ledger.files.get(file.id)?.key ?? null;
+  return current === null || current === key ? [key] : [key, current];
 }
 
 /** A fast run of `tier`: the records of its keys' slow runs go (D8, review wave 2 B2). */
