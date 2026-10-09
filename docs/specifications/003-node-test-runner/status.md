@@ -77,6 +77,8 @@ Started: 2026-10-07
 
 - 2026-10-09, 003-40 (`../004-slow-suites/reviews/wave-1.5.md` S2, S3): D5's preload phase is the project's own startup only. A worker thread marks nothing, and the test file's process sets `SQUEAL_NODE_TEST_STARTED` to the run's graph prefix when its phase ends, so a process the test spawns marks nothing either: an `eval` Worker's `createRequire` load and a spawned child's own `--require` and its loads join that test file's closure and re-run only it. The `node --test` parent resolves no entry and leaves the variable unset; tied to the prefix, a nested run is not taken for a child. Both probes, beside an unrelated file, and a file-backed Worker control are tests in `adapter-attribution.test.ts` on Node 22 and 24. Adapter version 9.
 
+- 2026-10-09, 003-26, 0.1.52: a daemon timer (every 5 s, unref'd, cleared on stop, never activity) reads each node:test project's two shared observed keys and, when either changed, queues a runner-only refinement (`Scheduler.refreshObserved`) over the current revision with no changed paths; the adapters' `affected([])` re-read the keys and report the grown files, which re-key and run. Closes `reviews/wave-2.md` S2's remaining bound. Every row of this spec is done; whether it moves to shipped is the human's decision.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
