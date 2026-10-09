@@ -1,5 +1,5 @@
 import { appendFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import type { RevisionNumber } from "../../src/core/types/index.js";
 import {
   ALL_TEST_FILES,
@@ -13,8 +13,9 @@ import {
 /*
  * Lessons, defect 32 (task 001-186): `status --wait` holds for the test files
  * whose key the edits of its window moved, and not for the baseline, a
- * backlog or another window's edits. The scheduler records the revision
- * whose change last moved each file's key (`FileState.keyedAt`).
+ * backlog or another window's edits. The scheduler records the earliest
+ * revision whose move of each file's key has no result yet
+ * (`FileState.keyedAt`, task 001-194).
  */
 
 async function open(): Promise<Harness> {
@@ -77,4 +78,41 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
 
     expect(paths(h, before, latest(h))).toEqual(ALL_TEST_FILES);
   });
+
+  it(
+    "keeps an earlier edit's file while a later edit re-keys it, until its result (task 001-194)",
+    SLOW,
+    async () => {
+      const h = await open();
+      const before = latest(h);
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      h.runner.beforeRun = () => held;
+      onTestFinished(release);
+      h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // first\n");
+      await h.batch("src/math.ts");
+      const first = latest(h);
+      // A wait that captured `first` asks for its files only after these land.
+      h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase(); // other\n");
+      await h.batch("src/strings.ts");
+      h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // third\n");
+      await h.batch("src/math.ts");
+      await h.scheduler.refined();
+
+      expect(latest(h)).toBe(first + 2);
+      expect(h.scheduler.rekeyedSince(before, first)).toContainEqual({
+        testFile: { project: "", path: "test/math.test.ts" },
+        revision: first,
+      });
+      // A window holding only the later edit names it too.
+      expect(paths(h, (first + 1) as RevisionNumber, latest(h))).toEqual(["test/math.test.ts"]);
+
+      release();
+      await h.scheduler.idle();
+      // Every result landed: no file holds any wait.
+      expect(h.scheduler.rekeyedSince(0 as RevisionNumber, latest(h))).toEqual([]);
+    },
+  );
 });

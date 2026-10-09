@@ -14,7 +14,14 @@ import {
 } from "../types/index.js";
 import { Checkpoints } from "./checkpoints.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
-import { checkId, durationOf, type FileState, newFileState } from "./files.js";
+import {
+  checkId,
+  clearKeyedAt,
+  durationOf,
+  type FileState,
+  newFileState,
+  noteKeyedAt,
+} from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { endRerun } from "./rerun.js";
@@ -44,8 +51,9 @@ export interface SettleOptions {
   readonly direct?: ReadonlySet<string>;
   /**
    * The revision whose change these key moves belong to, recorded on each
-   * file whose key moves (`FileState.keyedAt`, task 001-186). Absent: the
-   * move is the baseline's, a backlog's or a run's, and records nothing.
+   * file whose key moves (`FileState.keyedAt`, task 001-186) unless an
+   * earlier one still has no result there (task 001-194). Absent: the move
+   * is the baseline's, a backlog's or a run's, and records nothing.
    */
   readonly keyedAt?: RevisionNumber;
 }
@@ -154,7 +162,7 @@ export class Ledger {
       const key = this.context.keys.index.key(ref);
       if (key !== file.key) {
         file.key = key;
-        if (options.keyedAt !== undefined) file.keyedAt = options.keyedAt;
+        if (options.keyedAt !== undefined) noteKeyedAt(file, options.keyedAt);
         this.#dirty.add(file.id);
       }
       // A re-run queued for another key is no re-run here: the new key runs as any miss (S1).
@@ -169,6 +177,7 @@ export class Ledger {
         key === file.unknownKey ||
         key === file.resultKey
       ) {
+        if (key !== null && (key === file.resultKey || key === file.unknownKey)) clearKeyedAt(file);
         this.queue.remove(ref);
         this.#syncPhase(file);
         continue;
@@ -244,6 +253,7 @@ export class Ledger {
     const kept = new Set(next.map(checkId));
     this.#retired.push(...file.checks.filter((check) => !kept.has(checkId(check))));
     file.resultKey = key;
+    if (key === file.key) clearKeyedAt(file);
     file.checks = next;
     file.failing = results.some((r) => r.outcome === "fail");
     file.durationMs = durationOf(results) ?? file.durationMs;
@@ -297,6 +307,7 @@ export class Ledger {
     if (entries.length === 0) return;
     for (const { file, key } of entries) {
       file.unknownKey = key;
+      if (key === file.key) clearKeyedAt(file);
       // A file queued again for a newer key during the run still needs that run.
       if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
       this.#syncPhase(file);
