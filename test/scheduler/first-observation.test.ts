@@ -117,7 +117,7 @@ describe(
   SLOW,
   () => {
     it.each(CASES)(
-      "$name: never stores the run's pass under the key with the present file, and a second worktree inherits only the re-run",
+      "$name: never stores the run's pass under the key with the present file, and a second worktree keys and confirms only the re-run",
       async ({ read, link, watched, looked }) => {
         const repo = createRepo("observed");
         const store = openRepoStore(repo.commonDir);
@@ -171,7 +171,8 @@ describe(
         for (const [i, pool] of POOLS.entries()) {
           const ref = at(APPEAR, pool);
           expect(keyOf(second, ref)).toBe(keys[i]);
-          expect(runOutcomes(second, ref)).toEqual([]);
+          // The re-run's fail is held until one run here confirms it (task 001-170).
+          expect(runOutcomes(second, ref)).toEqual(["fail"]);
           expect(statesOf(second, ref)).toEqual(["fail/current"]);
         }
       },
