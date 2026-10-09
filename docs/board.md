@@ -365,6 +365,7 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 | 003-38 node:test children marked for the daemon's sweep | done (0.1.45, coordinator) | From the 001 coordinator, 2026-10-08: 001-142 marks Vitest workers with `SQUEAL_DAEMON_CHILD=<token>` and stops marked processes after each tier and at exit; node:test files run in their own process groups (003 D5), so their leftovers die only at the deadline (gap recorded in 001 D12). Pass the same entry into the node:test runner's env through `createNodeTestRunners` options beside `tempDir`. | A node:test file's escaped child is stopped after its tier, as a Vitest one is. |
 | 003-39 a preload's createRequire load stays with the preloads | done (0.1.48, adapter version 8) | 004 `reviews/wave-1.md` S1: a helper a `--require`/`--import` preload loads through `createRequire(package.json)` lands in every test file's observed closure, not the environment. | Both preload probes are tests on Node 22 and 24. |
 | 003-40 a preload phase belongs to the project only at its own startup | done (0.1.51, adapter version 9) | 004 `reviews/wave-1.5.md` S2, S3: an `eval` Worker's loads, and a test-spawned child's own `--require` preload, are tagged preload and enter the project environment, re-running unrelated files (over-run, never stale). | Both probes are tests on Node 22 and 24, each beside an unaffected second file. |
+| 003-41 the observed timer's news is never lost at startup | running | 004 `reviews/wave-2.5.md` B3: during the scheduler's baseline `refreshObserved` drops the refinement while the daemon callback says it was taken, so the timer never asks again and an inherited pass stands with zero runs. | The review's probe is a test on Node 22 and 24. |
 
 ## Feature 004: slow suites by policy
 
@@ -403,7 +404,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-15 slow-tier line, failure line, primer, `stop.requireSlowSuite` | done (0.1.51) | D8, D9. | Status and delivery tests for each state; Claude Code and Codex texts. |
 | 004-22 review of wave 2 | done: FAIL, B1 to B3 to 004-23 | `/reviewer` on gpt-6.1-sol: 004-15, 004-18, 003-40 at 0.1.51. | `reviews/wave-2.md`. |
 | 004-23 the slow-tier line and the slow Stop gate tell the truth | done (0.1.52) | `reviews/wave-2.md` B1: a finished slow file is shown running while fast work runs; B2: an old slow failure names artifact declarations edited after its run; B3: `stop.requireSlowSuite` lets Stop through on a torn read. | The three probes are tests on Node 22 and 24. |
-| 004-24 re-review of wave 2.5 | running | `/reviewer` on gpt-6.1-sol; second and last round on this slice. | `reviews/wave-2.5.md`. |
+| 004-24 re-review of wave 2.5 | done: FAIL; B1, B2 (004-23's last round) to the human; B3 to 003-41 | `/reviewer` on gpt-6.1-sol; second and last round on this slice. | `reviews/wave-2.5.md`. |
 | 004-16 e2e for both repository shapes | planned | Testing. | Both plugins, Node 22 and 24. |
 | 004-17 dogfooding | planned | This repository with `test/e2e` declared slow, and a cezar worktree as 003-19 was. | `lessons.md`. |
 
