@@ -106,9 +106,9 @@ export const NOTHING_OBSERVED: TierObservations = {
  * `observedGrowth`, and which of its file paths changed on disk since the
  * stat cache read them, or were written and ended as they were: the
  * stability check of D5 and the completion barrier (task 001-168) for paths
- * the tier's snapshot did not hold. A listing is checked against the revisions during
- * the run (`Tier.changes`). Under the scheduler lock: it hashes paths
- * into the stat cache.
+ * the tier's snapshot did not hold. A listing is checked against the
+ * revisions during the run (`Tier.changes`). Under the scheduler lock: it
+ * hashes paths into the stat cache.
  */
 export async function prepareObserved(
   context: SchedulerContext,

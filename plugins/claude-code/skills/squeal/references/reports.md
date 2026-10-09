@@ -16,7 +16,7 @@ Every SQUEAL message and `squeal status` carry a header like `Revision 12: 40 cu
 - **current**: the result was produced from exactly the files as they are now.
 - **pending**: a run for the current files is queued or running. The outcome shown is the last one known.
 - **stale**: a result exists, but for older file contents. Nothing is queued for it yet.
-- **unknown**: no trusted result: never run, or the runner crashed or timed out (the reason is in the message).
+- **unknown**: no trusted result: never run, the runner crashed or timed out, or a file was written while it ran (the reason is in the message; see below).
 - **Test files without checks**: test files that have not produced any check yet, counted as pending or unknown.
 - **The daemon has not listed this worktree's test files yet**: nothing has been looked at, so zero counts are not complete. `squeal status` prints `Affected checks: none counted` until the listing is done.
 - **The runner part of revision N is pending**: the daemon has not yet listed the test files for the latest edit, so a test file you just added is not counted yet.
@@ -40,6 +40,10 @@ FAIL  tests/auth.test.ts > login > expired token
 - **touches files changed here since this session started: ...**: files changed in this worktree since your session registered that the failing test imports (at most three, then a count). They are changes made here by anyone, you or another session or a person sharing the worktree, not yours alone. **none of the files changed here since this session started are in its imports** means no such file is in its imports; the failure may still be an effect of the environment or of a change outside its imports. Without either line, Squeal does not know which files changed here or what the test imports here: a file the test imports changed while no daemon ran, or before a daemon that started during your session first read it, so it may or may not be your edit; your session registered under Squeal 0.1.9 or older; or the stored imports were collected in another worktree whose version of the test file differs. **none of the files changed here** is also left out when the daemon had not finished starting when your session registered, or another daemon started since, because files it had not seen before are hashed without being recorded as changes; and when your session registered after its first tool calls (the first session of a new store, a registration that expired), because their edits may predate the registration. Changes made while your session was not registered (after it ended, before a resume) are not counted.
 - **slow tier, Squeal's run saw it at revision N, against dist/** as of revision N**: a slow file's failure names the build output it ran against instead of the files changed in this session, which its closure rarely holds. Rebuild and run `squeal run --slow` to see whether your change fixed it.
 - **load average N when it ran**: on a test that timed out, the machine's one-minute load when it did. A timeout under a high load can pass when the test runs alone.
+
+## A test file that stays unknown after a write
+
+A reason like `fixtures/data.txt was written during this run and ended as it was` (or `was written while this run was in flight`) means a file in the worktree was rewritten with the bytes it already held while the run was going: a no-op save, a `git stash` round trip, a build rewriting its output, or the test itself. Squeal cannot tell which bytes its caches served that run, so it keeps none of the run's results, and its test files stay unknown until their keys change. When a test rewrites a file on every run (a fixture writer), every run of it is unknown. Have the test write outside the worktree (a temp directory) or under a path git ignores and no `inputs` entry names; declaring the file in `inputs` does not help, since a declared file is part of the key and its rewrite still counts.
 
 ## Many recoveries
 
