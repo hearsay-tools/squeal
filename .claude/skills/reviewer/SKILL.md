@@ -7,7 +7,7 @@ You review the candidate range against its spec and the repository as it exists.
 
 ## 1. Verify
 
-Confirm `git rev-parse HEAD` is the candidate you were given; a mismatch is a finding. `npm ci` from the lockfile, `npm run lint`, `npm run typecheck`, `npm run build` (the tree must stay clean), `npx vitest run`. Record the output; it opens the findings file. A check that cannot run is **unverified**: never blocking, never a finding against the wave. Evidence recorded at a different commit or on a dirty tree is unverified too, and saying so is not a finding.
+Confirm `git rev-parse HEAD` is the candidate you were given; a mismatch is a finding. `npm ci` from the lockfile, `npm run lint`, `npm run typecheck`, `npm run build` (the tree must stay clean), `npx vitest run`, never Squeal's checkpoint in its place: yours is the independent run *(Squeal, 005)*. Record the output; it opens the findings file. A check that cannot run is **unverified**: never blocking, never a finding against the wave. Evidence recorded at a different commit or on a dirty tree is unverified too, and saying so is not a finding.
 
 ## 2. Prosecute
 
