@@ -97,6 +97,12 @@ export interface SlowTierState {
    */
   readonly currentAt: RevisionNumber | null;
   /**
+   * The newest revision a current slow result was observed at, when it is not
+   * `currentAt`: the results ran at revisions `currentAt` to this one (lessons
+   * defect 8b). Absent otherwise.
+   */
+  readonly currentUpTo?: RevisionNumber;
+  /**
    * The artifact globs the runs of the current slow results were declared to
    * test (D5), sorted; empty when none is declared or recorded. Recorded
    * with each run's key, never read from today's policy (review wave 2, B2).
@@ -109,9 +115,10 @@ export interface SlowTierState {
    */
   readonly artifactUnknown?: number;
   /**
-   * A path other than the artifact changed in a revision after `currentAt`:
-   * the sources behind the artifact are newer than the build the results ran
-   * against (D5, D8). `false` with nothing current.
+   * A source changed in a revision after `currentAt` (not the artifact, a
+   * test file, a slow directory's fixture or a fresh worktree's first
+   * listing): the sources behind the artifact are newer than the build the
+   * results ran against (D5, D8). `false` with nothing current.
    */
   readonly sourcesChangedSince: boolean;
   /** What the daemon last published; `null` when it published nothing. */
