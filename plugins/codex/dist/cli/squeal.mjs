@@ -2460,6 +2460,19 @@ var init_notes = __esm({
   }
 });
 
+// src/core/state/optimizer-note.ts
+function optimizerOffNote(projects) {
+  const named = projects.map((name) => name === "" ? "the root project" : name).join(", ");
+  return `${OPTIMIZER_OFF_NOTE}, which the config of ${named} turns on: its bundles hold source bytes no key names, so a result could come from bytes other than those on disk (spec 001 D4, task 001-176)`;
+}
+var OPTIMIZER_OFF_NOTE;
+var init_optimizer_note = __esm({
+  "src/core/state/optimizer-note.ts"() {
+    "use strict";
+    OPTIMIZER_OFF_NOTE = "Squeal runs Vitest without its dependency optimizer";
+  }
+});
+
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute4, posix as posix5 } from "node:path";
 function compiles(globs2) {
@@ -3004,6 +3017,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const awaiting = missing !== null;
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
+  const optimizerOff = readDaemonNotes(store, worktreeId).findLast(
+    (note) => note.text.startsWith(OPTIMIZER_OFF_NOTE)
+  )?.text;
   return {
     revision,
     counts,
@@ -3019,7 +3035,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
-    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
+    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
+    ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
 function readRefined(store, worktreeId) {
@@ -3092,8 +3109,10 @@ var init_header = __esm({
   "src/core/state/header.ts"() {
     "use strict";
     init_keys();
+    init_notes();
     init_types();
     init_derive();
+    init_optimizer_note();
     init_slow();
   }
 });
@@ -12889,6 +12908,51 @@ var init_observe2 = __esm({
   }
 });
 
+// src/runners/vitest/optimizer.ts
+function servers(vitest) {
+  return /* @__PURE__ */ new Set([vitest.vite, ...vitest.projects.map((p) => p.vite)]);
+}
+function withoutOptimizer(vitest) {
+  const enabled = /* @__PURE__ */ new Set();
+  for (const project of vitest.projects) {
+    for (const option of Object.values(project.config.deps?.optimizer ?? {})) {
+      if (option?.enabled !== true) continue;
+      enabled.add(project.name);
+      option.enabled = false;
+    }
+  }
+  for (const server of servers(vitest)) {
+    for (const environment of Object.values(server.environments)) {
+      const optimizer = environment.depsOptimizer;
+      if (optimizer === void 0) continue;
+      const { metadata } = optimizer;
+      optimizer.metadata = {
+        ...metadata,
+        optimized: {},
+        chunks: {},
+        discovered: {},
+        depInfoList: []
+      };
+      for (const project of vitest.projects) if (project.vite === server) enabled.add(project.name);
+    }
+  }
+  return [...enabled].sort();
+}
+function noteOnce(root, text2, note) {
+  const texts = noted.get(root) ?? /* @__PURE__ */ new Set();
+  noted.set(root, texts);
+  if (texts.has(text2)) return;
+  texts.add(text2);
+  note(text2);
+}
+var noted;
+var init_optimizer = __esm({
+  "src/runners/vitest/optimizer.ts"() {
+    "use strict";
+    noted = /* @__PURE__ */ new Map();
+  }
+});
+
 // node_modules/es-module-lexer/dist/lexer.js
 function C(A2, Q2, B2) {
   if (B2 < 1 || Q2 + B2 > A2.length) throw new SyntaxError();
@@ -13765,6 +13829,7 @@ var init_adapter = __esm({
     "use strict";
     init_fs();
     init_keys();
+    init_optimizer_note();
     init_affected();
     init_broken();
     init_config_stamps();
@@ -13774,6 +13839,7 @@ var init_adapter = __esm({
     init_load();
     init_moved();
     init_observe2();
+    init_optimizer();
     init_packages2();
     init_project();
     init_reporter();
@@ -13857,29 +13923,24 @@ var init_adapter = __esm({
         const heard = this.#touched.length;
         const sources = new SourceStamps(this.paths);
         const config = await ConfigStamps.take(this.paths, this.#configFiles);
-        const vitest = await this.#node.createVitest(
-          "test",
-          {
-            root: this.paths.root,
-            watch: false,
-            reporters: [createSquealReporter(current2)],
-            update: "none",
-            includeTaskLocation: true,
-            // Task 001-157: a transform `fsModuleCache` serves skips the plugin
-            // container, so nothing stamps the bytes it holds (D4). A CLI option,
-            // so it reaches every project.
-            fsModuleCache: false,
-            ...Object.keys(env).length === 0 ? {} : { env },
-            ...this.#maxWorkers === void 0 ? {} : { maxWorkers: this.#maxWorkers }
-          },
-          // Vite's inline option, `optimizeDeps.force` in every environment. Review wave-13e B3: the
-          // optimizer's bundles on disk outlive the instance and the daemon that would have heard a
-          // touch of a file they hold, so every start builds them from the disk (task 001-168, D4).
-          { forceOptimizeDeps: true }
-        );
+        const vitest = await this.#node.createVitest("test", {
+          root: this.paths.root,
+          watch: false,
+          reporters: [createSquealReporter(current2)],
+          update: "none",
+          includeTaskLocation: true,
+          // Task 001-157: a transform `fsModuleCache` serves skips the plugin
+          // container, so nothing stamps the bytes it holds (D4). A CLI option,
+          // so it reaches every project.
+          fsModuleCache: false,
+          ...Object.keys(env).length === 0 ? {} : { env },
+          ...this.#maxWorkers === void 0 ? {} : { maxWorkers: this.#maxWorkers }
+        });
         sources.attach(vitest);
         this.#sources = sources;
         try {
+          const optimized = withoutOptimizer(vitest);
+          if (optimized.length > 0) noteOnce(this.paths.root, optimizerOffNote(optimized), this.#note);
           await vitest.standalone();
           this.#observer.configure(vitest);
           this.#tempDirs = instanceTempDirs(vitest);
@@ -13955,11 +14016,11 @@ var init_adapter = __esm({
       /**
        * A `touch` (task 001-159) is heard at once, so a run in flight is not
        * stored, and the instance is replaced before the next call: every
-       * project and environment's transforms and module graph, the global setup
-       * and the optimizer's bundles (rebuilt at every start) go with it. No project counts as recreated
-       * for it: the files are the bytes they were, so the environment and the
-       * listing are too, and a listing now could find a file the watcher has
-       * not reconciled yet, which then never makes a revision.
+       * project and environment's transforms and module graph and the global
+       * setup go with it. No project counts as recreated for it: the files are
+       * the bytes they were, so the environment and the listing are too, and a
+       * listing now could find a file the watcher has not reconciled yet, which
+       * then never makes a revision.
        */
       invalidate(paths) {
         const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
@@ -31304,10 +31365,10 @@ async function openProject(context) {
   let probe = firstProbe;
   if (!probe.ok) note(`${probe.error}; every check of the project is unknown until it runs`);
   const observed = new Observed(graph, options.observed, note);
-  const noted = /* @__PURE__ */ new Set();
+  const noted2 = /* @__PURE__ */ new Set();
   const once = (text2) => {
-    if (noted.has(text2)) return;
-    noted.add(text2);
+    if (noted2.has(text2)) return;
+    noted2.add(text2);
     note(text2);
   };
   const notes2 = () => {
@@ -31995,7 +32056,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.71";
+  if (true) return "0.1.72";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
