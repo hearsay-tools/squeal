@@ -3480,7 +3480,34 @@ function testFileLabel(project, path) {
   return project ? `[${project}] ${path}` : path;
 }
 function consolePrefix(type, label2) {
-  return label2 === null ? `[${type}] ` : `[${type}] ${label2}: `;
+  if (label2 === null) return `[${type}]: `;
+  return `[${type}] ${quoted(label2) ? JSON.stringify(label2) : label2}: `;
+}
+function parseConsoleLine(line) {
+  const head = /^\[(stdout|stderr)\](: | )/.exec(line);
+  if (head === null) return null;
+  const [prefix, type = "", separator] = head;
+  const rest = line.slice(prefix.length);
+  if (separator === ": ") return { type, label: null, text: rest };
+  const label2 = rest.startsWith('"') ? jsonLabel(rest) : plainLabel(rest);
+  return label2 === null ? null : { type, label: label2.label, text: label2.text };
+}
+function quoted(label2) {
+  return label2 === "" || label2.includes(": ") || JSON.stringify(label2) !== `"${label2}"`;
+}
+function plainLabel(rest) {
+  const end = rest.indexOf(": ");
+  return end <= 0 ? null : { label: rest.slice(0, end), text: rest.slice(end + 2) };
+}
+function jsonLabel(rest) {
+  const end = /^"(?:[^"\\]|\\.)*": /.exec(rest);
+  if (end === null) return null;
+  try {
+    const label2 = JSON.parse(end[0].slice(0, -2));
+    return typeof label2 === "string" ? { label: label2, text: rest.slice(end[0].length) } : null;
+  } catch {
+    return null;
+  }
 }
 var VITEST_LOG;
 var init_run_log = __esm({
@@ -6501,26 +6528,26 @@ function acquireSlowSlot(request) {
   preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
   const permits = Math.max(1, request.permits ?? 1);
   const want = Math.max(1, request.want ?? 1);
-  const held = [];
+  const held2 = [];
   try {
-    for (let i2 = 0; i2 < permits && held.length < want; i2++) {
+    for (let i2 = 0; i2 < permits && held2.length < want; i2++) {
       const db = takePermit(join27(dir, permitFile(i2)), owner2);
-      if (db !== null) held.push(db);
+      if (db !== null) held2.push(db);
     }
   } catch (error) {
-    for (const db of held) db.close();
+    for (const db of held2) db.close();
     throw error;
   }
-  if (held.length === 0) return null;
+  if (held2.length === 0) return null;
   const keep = (count) => {
-    for (const db of held.splice(count)) db.close();
-    if (held.length === 0) signal2?.removeEventListener("abort", release);
+    for (const db of held2.splice(count)) db.close();
+    if (held2.length === 0) signal2?.removeEventListener("abort", release);
   };
   const release = () => keep(0);
   signal2?.addEventListener("abort", release, { once: true });
   return {
     get permits() {
-      return held.length;
+      return held2.length;
     },
     shrinkTo: (count) => keep(Math.max(1, count)),
     release
@@ -14503,25 +14530,25 @@ var init_adapter_files = __esm({
 // src/runners/node-test/run/node-options.ts
 function tokenizeNodeOptions(value) {
   const tokens = [];
-  let quoted = false;
+  let quoted2 = false;
   let fresh = true;
   for (let i2 = 0; i2 < value.length; i2++) {
     let c = value[i2];
-    if (c === "\\" && quoted) {
+    if (c === "\\" && quoted2) {
       if (i2 + 1 === value.length) return null;
       c = value[++i2];
-    } else if (c === " " && !quoted) {
+    } else if (c === " " && !quoted2) {
       fresh = true;
       continue;
     } else if (c === '"') {
-      quoted = !quoted;
+      quoted2 = !quoted2;
       continue;
     }
     if (fresh) tokens.push(c);
     else tokens[tokens.length - 1] += c;
     fresh = false;
   }
-  return quoted ? null : tokens;
+  return quoted2 ? null : tokens;
 }
 function quoteNodeOption(value) {
   return `"${value.replace(/["\\]/g, "\\$&")}"`;
@@ -32236,7 +32263,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.76";
+  if (true) return "0.1.77";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -32410,9 +32437,9 @@ function knownState(why2, s) {
   return [...stateLines(why2, s), ...heldLine(why2), ...flakyLine(why2)];
 }
 function heldLine(why2) {
-  const held = why2.heldFailure;
-  if (held === void 0) return [];
-  const { worktreeId, commit } = held.provenance;
+  const held2 = why2.heldFailure;
+  if (held2 === void 0) return [];
+  const { worktreeId, commit } = held2.provenance;
   const source = why2.worktreeRoots[worktreeId] ?? `removed worktree ${worktreeId}`;
   return [`  Inherited FAIL from ${source} at ${shortCommit(commit)}, being confirmed`];
 }
@@ -32481,30 +32508,46 @@ function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
 }
 function runLog(why2) {
   const log = why2.runLog;
-  if (log === null) return ["Run log: none, no stored result is behind the known state"];
+  if (log === null) {
+    return [
+      "Run log: unknown, no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)"
+    ];
+  }
   const where2 = producer(why2, log);
+  const file = testFileLabel(why2.check.project, why2.check.testPath);
   if (log.state === "pruned") {
     return [`Run log: ${log.path} was pruned; run ${log.runId} in ${where2} left no output`];
   }
   if (log.state === "not-vitest") {
     return [
       `Run log: none, run ${log.runId} in ${where2} wrote no ${basename(log.path)}`,
-      `  Its runner's output is under ${dirname5(log.path)}`
+      `  Its runner's output is under ${dirname5(log.path)}`,
+      ...log.console === null ? [] : [`  No console of ${file} was captured in this run.`]
     ];
   }
-  const file = testFileLabel(why2.check.project, why2.check.testPath);
-  const lines = [
+  const lines = log.state === "node-test" ? [
+    `Run log: ${log.path}`,
+    `  Run ${log.runId} in ${where2} produced the result shown. Under node:test ${file} has its own logs: stdout above, stderr ${log.stderrPath ?? "not recorded"}.`
+  ] : [
     `Run log: ${log.path}`,
     `  Run ${log.runId} in ${where2} produced the result shown. The log covers that whole run, every test file in it, not only this check.`
   ];
+  const source = log.state === "node-test" ? "these logs" : "this log";
   if (log.console === null) {
-    lines.push(`  --include-logs prints the console lines of ${file} from it.`);
+    lines.push(
+      `  --include-logs prints the console lines of ${file} from ${source === "this log" ? "it" : "them"}.`
+    );
     return lines;
   }
   const { lines: kept2, total, limit } = log.console;
-  if (total === 0) return [...lines, "", `Console of ${file} in this log: none`];
+  if (total === 0) return [...lines, "", `Console of ${file} in ${source}: none`];
   const shown = total > kept2.length ? `first ${limit} of ${total} lines` : plural(total, "line");
-  return [...lines, "", `Console of ${file} in this log (${shown}):`, ...kept2.map((l) => `  ${l}`)];
+  return [
+    ...lines,
+    "",
+    `Console of ${file} in ${source} (${shown}):`,
+    ...kept2.map((l) => `  ${l}`)
+  ];
 }
 function producer(why2, log) {
   const root = why2.worktreeRoots[log.worktreeId];
@@ -32576,25 +32619,65 @@ init_run_log();
 import { existsSync as existsSync4, readFileSync as readFileSync6 } from "node:fs";
 import { join as join13 } from "node:path";
 var WHY_LOG_LINE_LIMIT = 200;
-function shownResult(worktreeId, knownState2, results2) {
-  if (knownState2 === null) return results2[0] ?? null;
+function shownResult(worktreeId, knownState2, key2, results2, held2) {
+  if (knownState2 === null) return held2 ?? null;
   const origin = knownState2.origin;
-  const producer2 = origin?.kind === "inherited" ? origin.worktreeId : worktreeId;
-  const candidates = results2.filter((e) => e.result.provenance.worktreeId === producer2);
-  const sameCommit = (e) => origin?.kind !== "inherited" || e.result.provenance.commit === origin.commit;
-  const sameOutcome = (e) => e.result.outcome === knownState2.outcome;
-  return candidates.find((e) => sameCommit(e) && sameOutcome(e)) ?? candidates.find(sameOutcome) ?? candidates[0] ?? null;
+  if (origin === null) return null;
+  const names = (r) => r.outcome === knownState2.outcome && r.provenance.commit === knownState2.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState2.observedAt);
+  if (knownState2.validity === "current" && key2 !== null) {
+    const atKey = results2.find((r) => r.key === key2);
+    return atKey !== void 0 && names(atKey) ? atKey : null;
+  }
+  const named = results2.filter(names);
+  return named.length === 1 ? named[0] ?? null : null;
 }
-function runLogOf(entry2, check, runsDir, includeLogs) {
-  const { runId, worktreeId } = entry2.result.provenance;
-  const dir = entry2.logDir ?? join13(runsDir, runId);
+function runLogOf(result, logDir, check, runsDir, includeLogs) {
+  const { runId, worktreeId } = result.provenance;
+  const dir = logDir ?? join13(runsDir, runId);
+  const nodeTest = nodeTestLogs(dir, check);
+  if (nodeTest !== null) {
+    const base = { runId, worktreeId, path: nodeTest.stdout, stderrPath: nodeTest.stderr };
+    if (!existsSync4(nodeTest.stdout) && !existsSync4(nodeTest.stderr)) {
+      return { ...base, state: "pruned", console: null };
+    }
+    if (!includeLogs) return { ...base, state: "node-test", console: null };
+    const stdout = read2(nodeTest.stdout);
+    const stderr = read2(nodeTest.stderr);
+    const label2 = testFileLabel(check.project, check.testPath);
+    const lines = [
+      ...linesOf(stdout).map((line) => `${consolePrefix("stdout", label2)}${line}`),
+      ...linesOf(stderr).map((line) => `${consolePrefix("stderr", label2)}${line}`)
+    ];
+    return { ...base, state: "node-test", console: capped(lines) };
+  }
   const path = join13(dir, VITEST_LOG);
   const state = existsSync4(path) ? "present" : existsSync4(dir) ? "not-vitest" : "pruned";
   const text2 = includeLogs && state === "present" ? read2(path) : null;
   if (includeLogs && state === "present" && text2 === null) {
     return { runId, worktreeId, path, state: "pruned", console: null };
   }
-  return { runId, worktreeId, path, state, console: text2 === null ? null : consoleOf(text2, check) };
+  const none = includeLogs && state === "not-vitest" ? capped([]) : null;
+  return { runId, worktreeId, path, state, console: text2 === null ? none : consoleOf(text2, check) };
+}
+function nodeTestLogs(dir, check) {
+  const project = join13(dir, "node-test", encodeURIComponent(check.project));
+  const text2 = read2(join13(project, "run.json"));
+  if (text2 === null) return null;
+  let files;
+  try {
+    files = JSON.parse(text2).files;
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(files)) return null;
+  const index = files.findIndex(
+    (f) => f?.testFile === check.testPath
+  );
+  if (index < 0) return null;
+  return {
+    stdout: join13(project, `stdout-${index}.log`),
+    stderr: join13(project, `stderr-${index}.log`)
+  };
 }
 function read2(path) {
   try {
@@ -32604,13 +32687,18 @@ function read2(path) {
     throw error;
   }
 }
+function linesOf(text2) {
+  if (text2 === null || text2 === "") return [];
+  return text2.replace(/\n$/, "").split("\n");
+}
 function consoleOf(text2, check) {
   const label2 = testFileLabel(check.project, check.testPath);
-  const prefixes = ["stdout", "stderr"].map((type) => consolePrefix(type, label2));
-  const tagged = text2.split("\n").filter((line) => prefixes.some((prefix) => line.startsWith(prefix)));
+  return capped(text2.split("\n").filter((line) => parseConsoleLine(line)?.label === label2));
+}
+function capped(lines) {
   return {
-    lines: tagged.slice(0, WHY_LOG_LINE_LIMIT),
-    total: tagged.length,
+    lines: lines.slice(0, WHY_LOG_LINE_LIMIT),
+    total: lines.length,
     limit: WHY_LOG_LINE_LIMIT
   };
 }
@@ -32785,10 +32873,10 @@ function known(store, worktreeId, check) {
   return store.knownStates.get(worktreeId, check) !== null || store.transitions.history(worktreeId, check).length > 0 || store.results.listForCheck(check, 1).length > 0;
 }
 function resolve4(store, worktreeId, query) {
-  const named = store.knownStates.list(worktreeId).map((s) => ({
-    check: s.check,
-    name: formatCheck(s.check)
-  }));
+  const named = [
+    ...store.knownStates.list(worktreeId).map((s) => s.check),
+    ...held(store, worktreeId)
+  ].filter((check, i2, all) => all.findIndex((c) => sameCheck(c, check)) === i2).map((check) => ({ check, name: formatCheck(check) }));
   const stem = query.endsWith("...") ? query.slice(0, -3) : null;
   let matches = named.filter(
     (n) => n.name.includes(query) || stem !== null && n.name.startsWith(stem)
@@ -32809,23 +32897,30 @@ function resolve4(store, worktreeId, query) {
     candidates: matches.slice(0, WHY_CANDIDATE_LIMIT).map((n) => n.check)
   };
 }
+function held(store, worktreeId) {
+  const failureKeys2 = failureKeysOnce(store, worktreeId);
+  return store.testFileKeys.list(worktreeId).flatMap(
+    ({ key: key2 }) => store.results.byKey(key2, 0).filter((r) => heldFailure(store, worktreeId, [r], failureKeys2) !== void 0).map((r) => r.check)
+  );
+}
+function sameCheck(a, b) {
+  return checkIdentity(a) === checkIdentity(b);
+}
 function report({ store, root, commonDir }, check, includeLogs) {
   const worktreeId = worktreeIdFor(root);
   const worktreeRoots = Object.fromEntries(store.worktrees.list().map((w2) => [w2.id, w2.root]));
   const knownState2 = store.knownStates.get(worktreeId, check);
-  const results2 = store.results.listForCheck(check, WHY_RESULT_LIMIT).map((result) => ({
+  const all = store.results.listForCheck(check, Number.MAX_SAFE_INTEGER);
+  const logDirOf = (result) => store.runs.get(result.provenance.runId)?.logDir ?? null;
+  const results2 = all.slice(0, WHY_RESULT_LIMIT).map((result) => ({
     result,
     worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
-    logDir: store.runs.get(result.provenance.runId)?.logDir ?? null
+    logDir: logDirOf(result)
   }));
-  const shown = shownResult(worktreeId, knownState2, results2);
+  const key2 = currentKey(store, worktreeId, check);
+  const heldFailure2 = heldFor(store, worktreeId, key2, all);
+  const shown = shownResult(worktreeId, knownState2, key2, all, heldFailure2);
   const runsDir = storePaths(commonDir).runsDir;
-  const held = heldFor(
-    store,
-    worktreeId,
-    check,
-    results2.map(({ result }) => result)
-  );
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -32839,17 +32934,22 @@ function report({ store, root, commonDir }, check, includeLogs) {
     knownState: knownState2,
     history: store.transitions.history(worktreeId, check),
     results: results2,
-    runLog: shown === null ? null : runLogOf(shown, check, runsDir, includeLogs),
-    ...held === void 0 ? {} : { heldFailure: held },
+    runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
+    ...heldFailure2 === void 0 ? {} : { heldFailure: heldFailure2 },
     ...flaky === void 0 ? {} : { flaky }
   };
 }
-function heldFor(store, worktreeId, check, results2) {
+function currentKey(store, worktreeId, check) {
   const file = testFileId(testFileOf(check));
-  const key2 = store.testFileKeys.list(worktreeId).find((row) => testFileId(row.testFile) === file)?.key;
-  if (key2 === void 0 || key2 === null) return void 0;
-  const current2 = results2.filter((r) => r.key === key2);
-  return heldFailure(store, worktreeId, current2);
+  return store.testFileKeys.list(worktreeId).find((row) => testFileId(row.testFile) === file)?.key ?? null;
+}
+function heldFor(store, worktreeId, key2, results2) {
+  if (key2 === null) return void 0;
+  return heldFailure(
+    store,
+    worktreeId,
+    results2.filter((r) => r.key === key2)
+  );
 }
 
 // src/cli/codex/status.ts
@@ -32975,9 +33075,9 @@ function shellWords(text2) {
     } else if (char === "'" || char === '"') {
       const end = text2.indexOf(char, i2 + 1);
       if (end === -1) return "an unclosed quote";
-      const quoted = text2.slice(i2 + 1, end);
-      if (char === '"' && /[$`\\]/.test(quoted)) return "a shell expansion";
-      word = (word ?? "") + quoted;
+      const quoted2 = text2.slice(i2 + 1, end);
+      if (char === '"' && /[$`\\]/.test(quoted2)) return "a shell expansion";
+      word = (word ?? "") + quoted2;
       i2 = end;
     } else {
       const special = SPECIAL[char];
@@ -35086,11 +35186,11 @@ function tryLock(db) {
     if (isBusy(error)) return null;
     throw error;
   }
-  let held = true;
+  let held2 = true;
   return {
     release() {
-      if (!held) return;
-      held = false;
+      if (!held2) return;
+      held2 = false;
       try {
         db.exec("ROLLBACK");
       } finally {
@@ -36170,24 +36270,24 @@ async function holdDaemonLocks(commonDir, waitMs) {
   const names = safeList2(locksDir).filter(
     (name) => name.endsWith(".sqlite") && !name.startsWith("waiter-")
   );
-  const held = [];
+  const held2 = [];
   const deadline = Date.now() + waitMs;
   for (const name of names) {
     const lockPath = join54(locksDir, name);
     for (; ; ) {
       const lock2 = acquireDaemonLock(lockPath);
       if (lock2 !== null) {
-        held.push(lock2);
+        held2.push(lock2);
         break;
       }
       if (Date.now() > deadline) {
-        for (const lock3 of held) lock3.release();
+        for (const lock3 of held2) lock3.release();
         return { held: name.slice(0, -".sqlite".length), lockPath };
       }
       await sleep4(50);
     }
   }
-  return held;
+  return held2;
 }
 function tempDirs(commonDir, worktrees) {
   if (!existsSync18(join54(storePaths(commonDir).dir, "repository-id"))) return [];
