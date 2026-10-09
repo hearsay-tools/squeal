@@ -1,0 +1,7 @@
+
+> squeal@0.1.67 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+
+> squeal@0.1.67 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts

@@ -1,0 +1,98 @@
+
+ RUN  v5.0.3 /tmp/squeal-hook-levers-4f3e9ac9/repo
+
+squeal tests: killing 1 process(es) an earlier run left: 3029919
+ ❯ test/harness/step-down.test.ts (15 tests | 1 failed) 1112ms
+   ❯ stepDownIfOlder (hook side) (8)
+     × uses the hook's own version by default 319ms
+ ❯ test/runners/node-test/fixtures.test.ts (10 tests | 1 failed) 37758ms
+   ❯ node:test fixtures under the current Node (10)
+     ❯ gen-big.mjs (2)
+       × writes 1,000 modules and 200 test files, deterministically, under 10 s 32591ms
+repair: gitdir incorrect: /tmp/squeal-hook-levers-4f3e9ac9/repo/test/fixtures/scheduler/.tmp/d6e57bc0-6b2d-4963-9831-0dabd08dda9b/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /tmp/squeal-hook-levers-4f3e9ac9/repo/test/fixtures/scheduler/.tmp/afc8d7d3-7a71-4324-8b6a-91ac06592557/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 3152741
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/harness/step-down.test.ts > stepDownIfOlder (hook side) > uses the hook's own version by default
+AssertionError: expected [] to deeply equal [ { type: 'step-down', …(1) } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "type": "step-down",
+-     "version": "0.1.67",
+-   },
+- ]
++ []
+
+ ❯ test/harness/step-down.test.ts:87:21
+     85|     const d = await daemonAt(current);
+     86|     await stepDownIfOlder(record(d.socketPath, "0.0.1"), Date.now());
+     87|     expect(d.asked).toEqual([{ type: "step-down", version: squealVersi…
+       |                     ^
+     88|   });
+     89|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/runners/node-test/fixtures.test.ts > node:test fixtures under the current Node > gen-big.mjs > writes 1,000 modules and 200 test files, deterministically, under 10 s
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ test/runners/node-test/fixtures.test.ts:265:24
+    263|         ["test/unit/t000.test.ts", "test/unit/t199.test.ts"],
+    264|       );
+    265|       expect(run.code).toBe(0);
+       |                        ^
+    266|       expect(named(run, "test:fail")).toEqual([]);
+    267|       expect(named(run, "test:pass").length).toBeGreaterThan(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: write EPIPE
+ ❯ afterWriteDispatched node:internal/stream_base_commons:159:15
+ ❯ writeGeneric node:internal/stream_base_commons:150:3
+ ❯ Socket._writeGeneric node:net:1262:11
+ ❯ Socket._write node:net:1274:8
+ ❯ writeOrBuffer node:internal/streams/writable:574:12
+ ❯ _write node:internal/streams/writable:503:10
+ ❯ Socket.Writable.end node:internal/streams/writable:825:17
+ ❯ Socket.end node:net:1026:31
+ ❯ Socket.<anonymous> test/harness/step-down.test.ts:39:14
+     37|       const request = JSON.parse(chunk.toString("utf8")) as DaemonRequ…
+     38|       asked.push(request);
+     39|       socket.end(`${JSON.stringify({ schemaVersion: 1, ...answer(reque…
+       |              ^
+     40|     });
+     41|   });
+ ❯ Socket.wrapper node:events:639:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { errno: -32, code: 'EPIPE', syscall: 'write' }
+This error originated in "test/harness/step-down.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "asks nothing while another session registered with an older version, or with none". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  2 failed | 288 passed | 1 skipped (291)
+      Tests  2 failed | 2188 passed | 13 skipped (2203)
+     Errors  1 error
+   Start at  16:27:45
+   Duration  217.82s (tests 95%, transform 4%, import 1%)

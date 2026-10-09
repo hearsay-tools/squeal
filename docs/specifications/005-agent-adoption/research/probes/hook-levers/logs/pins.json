@@ -1,0 +1,9 @@
+{
+  "/tmp/squeal-hook-levers-4f3e9ac9/claude": "4503bfe11a6c7fcc1e0b39b5e0d347c04248f750b03b0977b3ad6b531fe6f358",
+  "/tmp/squeal-hook-levers-4f3e9ac9/codex": "f34a4d2301892ae96c90097786bfe5dc269f187b6f69faf42a7b357b8c081e35",
+  "/tmp/squeal-hook-levers-4f3e9ac9/codex-code-mode-host": "b33e8a5283f3c65c2a0aca6d43a59cfe850f624d8fa16992e3cad4fcc27c14e1",
+  "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs": "1cf63a7410b9eeae41911fa4df2a3318ff0423b192023b39c76f8c962b309a1a",
+  "/tmp/squeal-hook-levers-4f3e9ac9/plugins/codex/dist/cli/squeal.mjs": "1cf63a7410b9eeae41911fa4df2a3318ff0423b192023b39c76f8c962b309a1a",
+  "/tmp/squeal-hook-levers-4f3e9ac9/plugins/codex/skills/squeal/SKILL.md": "49f46c5728461af7e2b98eabd64f8d04abac0a389d62ea4f394c85977fdcdcfa",
+  "/home/agent/.codex/plugins/cache/hearsay/squeal/0.1.62/skills/squeal/SKILL.md": "49f46c5728461af7e2b98eabd64f8d04abac0a389d62ea4f394c85977fdcdcfa"
+}

@@ -1,0 +1,116 @@
+[
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "start"
+    ],
+    "exit": 0,
+    "seconds": 0.679,
+    "executionsAdded": 0,
+    "stdout": "Squeal daemon spawned for /tmp/squeal-hook-levers-4f3e9ac9/substitute\n\nRevision: 0\nKnown failures: 0\nAffected checks: none counted; the daemon has not listed this worktree's test files yet\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `node --disable-warning=ExperimentalWarning \"/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs\" run --all` requests one)\n\nWorktree: /tmp/squeal-hook-levers-4f3e9ac9/substitute (HEAD b3d19f0, dirty state not known: no revision recorded yet)\nDaemon: running, last heartbeat 0 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  no revision recorded for this worktree yet\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "run",
+      "--all",
+      "--wait"
+    ],
+    "exit": 0,
+    "seconds": 0.959,
+    "executionsAdded": 1,
+    "stdout": "Checkpoint 0915039a-bc78-4aee-95c4-84dd203f7aa9 started at revision 0: 1 test files\nCheckpoint 0915039a-bc78-4aee-95c4-84dd203f7aa9 completed\n\nRevision: 0\nKnown failures: 1\n  FAIL  probe.test.js > deliberate failure\n        expected 1 to be 2 // Object.is equality\n        at probe.test.js:1:263, observed at revision 0, current\nAffected checks: 1 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\n\nWorktree: /tmp/squeal-hook-levers-4f3e9ac9/substitute (HEAD b3d19f0, dirty state not known: no revision recorded yet)\nDaemon: running, last heartbeat 1 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  no revision recorded for this worktree yet\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "run",
+      "--all",
+      "--wait"
+    ],
+    "exit": 0,
+    "seconds": 0.19,
+    "executionsAdded": 0,
+    "stdout": "Checkpoint 873d3284-7f94-4314-930f-af1da328f2b8 started at revision 0: 0 test files\nCheckpoint 873d3284-7f94-4314-930f-af1da328f2b8 completed\n\nRevision: 0\nKnown failures: 1\n  FAIL  probe.test.js > deliberate failure\n        expected 1 to be 2 // Object.is equality\n        at probe.test.js:1:263, observed at revision 0, current\nAffected checks: 1 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\n\nWorktree: /tmp/squeal-hook-levers-4f3e9ac9/substitute (HEAD b3d19f0, dirty state not known: no revision recorded yet)\nDaemon: running, last heartbeat 1 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  no revision recorded for this worktree yet\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "run",
+      "--all",
+      "--force",
+      "--wait"
+    ],
+    "exit": 0,
+    "seconds": 0.462,
+    "executionsAdded": 1,
+    "stdout": "Checkpoint 972b64d6-39b1-4c1c-ad78-90f9270ad92f started at revision 0: 1 test files\nCheckpoint 972b64d6-39b1-4c1c-ad78-90f9270ad92f completed\n\nRevision: 0\nKnown failures: 1\n  FAIL  probe.test.js > deliberate failure\n        expected 1 to be 2 // Object.is equality\n        at probe.test.js:1:263, observed at revision 0, current\nAffected checks: 1 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\n\nWorktree: /tmp/squeal-hook-levers-4f3e9ac9/substitute (HEAD b3d19f0, dirty state not known: no revision recorded yet)\nDaemon: running, last heartbeat 2 s ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  no revision recorded for this worktree yet\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "npx",
+      "vitest",
+      "run"
+    ],
+    "exit": 1,
+    "seconds": 0.893,
+    "executionsAdded": 1,
+    "stdout": "\n RUN  v5.0.3 /tmp/squeal-hook-levers-4f3e9ac9/substitute\n\n \u276f probe.test.js (1 test | 1 failed) 8ms\n   \u00d7 deliberate failure 6ms\n\n Test Files  1 failed (1)\n      Tests  1 failed (1)\n   Start at  16:24:49\n   Duration  169ms (transform 42%, import 26%, tests 20%, worker 12%, environment 1%)\n\n",
+    "stderr": "\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af Failed Tests 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  probe.test.js > deliberate failure\nAssertionError: expected 1 to be 2 // Object.is equality\n\n- Expected\n+ Received\n\n- 2\n+ 1\n\n \u276f probe.test.js:1:263\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n\n"
+  },
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "run",
+      "probe.test.js",
+      "--wait"
+    ],
+    "exit": 2,
+    "seconds": 0.079,
+    "executionsAdded": 0,
+    "stdout": "",
+    "stderr": "squeal run: unknown argument \"probe.test.js\"\nusage: squeal run --all [--force] [--wait]\n       squeal run --slow [--wait <ms>]\n"
+  },
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "stop"
+    ],
+    "exit": 0,
+    "seconds": 0.133,
+    "executionsAdded": 0,
+    "stdout": "Squeal daemon stopped for /tmp/squeal-hook-levers-4f3e9ac9/substitute\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "node",
+      "--disable-warning=ExperimentalWarning",
+      "/tmp/squeal-hook-levers-4f3e9ac9/plugins/claude-code/dist/cli/squeal.mjs",
+      "run",
+      "--all",
+      "--wait"
+    ],
+    "exit": 1,
+    "seconds": 0.134,
+    "executionsAdded": 0,
+    "stdout": "",
+    "stderr": "squeal: no daemon running for /tmp/squeal-hook-levers-4f3e9ac9/substitute; start one with squeal start\n"
+  }
+]

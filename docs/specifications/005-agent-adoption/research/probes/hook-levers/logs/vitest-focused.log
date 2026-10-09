@@ -1,0 +1,8 @@
+
+ RUN  v5.0.3 /tmp/squeal-hook-levers-4f3e9ac9/repo
+
+
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+   Start at  16:32:53
+   Duration  12.39s (tests 80%, transform 17%, import 3%)
