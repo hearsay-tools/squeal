@@ -29,7 +29,7 @@ Setting a repository up is a command the user must type, `squeal init`, from a p
 - **Removing the independent run.** The agent's own runs caught Squeal wrong 5 times, each through an input outside the key. Reviewers, the coordinator's landing check and CI keep `npx vitest run`, and every text keeps "when you doubt a Squeal result".
 - **Editing an instruction file, a gate or a skill without the human's yes**, and committing anything.
 - **An unprompted offer to set Squeal up.** In a repository without Squeal every hook is silent (001 D9), and stays so.
-- **`squeal why` with a test's console output.** It would cover investigation runs (9%) and red steps, but it is a product gap of 001's, not an adoption text (board, Later).
+- **`squeal why` with a test's console output.** It would cover investigation runs (9%) and red steps; it is 001-173's (`squeal why` names the run log holding a check's console output).
 
 ## Design
 
@@ -46,7 +46,7 @@ The first line is the verdict, factual as 001 D6 asks: `Checkpoint 12 completed 
 
 ### D2. A wait for the agent's own files
 
-Amends 001 D5 and D7. `squeal status --wait <ms> <path>...`. A test-file path selects itself. Any other path selects the test files whose closure holds it, using the stored closure only when it is valid for the file's current key (001 D6's rule). A path that selects nothing exits 3 with `no test file's closure holds <path>`. The wait sends the daemon a `focus` request: the selected files' pending work goes to the front of the next fast tier, behind the tier in flight, which is never cancelled (001 D5). A selected slow file goes to the front of the slow lane, under its slot and guard (004 D2, D3). The wait returns when every selected file has a result for its current key at the current revision, or at the deadline. It prints the selected files' failures in full, then their counts in D1's units, then the snapshot header, and exits as D1 for those files only. Without paths, `status --wait` keeps 001 D7's contract and exit codes.
+Amends 001 D5 and D7. `squeal status --wait <ms> <path>...`. A test-file path selects itself. Any other path selects the test files whose closure holds it, using the stored closure only when it is valid for the file's current key (001 D6's rule). A path that selects nothing exits 3 with `no test file's closure holds <path>`. The wait sends the daemon a `focus` request: the selected files' pending work goes to the front of the next fast tier, behind the tier in flight, which is never cancelled (001 D5). A selected slow file goes to the front of the slow lane, under its slot and guard (004 D2, D3). The wait returns when every selected file has a result for its current key at the current revision, or at the deadline. It prints the selected files' failures in full, then their counts in D1's units, then the snapshot header, and exits as D1 for those files only. Without paths, `status --wait` keeps 001 D7's contract and exit codes. Before wave 1 this section is reconciled with 001-172's latency measurements and 001-174's skill text (`status.md`, 2026-10-09).
 
 ### D3. The setup skill
 
@@ -113,7 +113,7 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
   - Both plugins' skill copies identical, as the existing skill test does.
 - **Integration**: a real daemon on a Vitest fixture. A failing checkpoint exits 1. A deadline exits 3 and names the pending count. A per-file wait returns before a running backlog finishes.
 - **End to end**: the setup skill in `claude -p` and `codex exec` on fresh fixtures shaped like this repository and like cezarion, with the answers given in the prompt. The files written match the plan, and a second run reports nothing outdated.
-- **Proof**: dogfooding, `lessons.md`.
+- **Proof**: dogfooding, `lessons.md`, at calm load: no other coordinator's waves running, with the load average recorded per session.
   - Controlled sessions on a cold, slow fixture, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone, the reworded gate, and the per-file wait in the primer.
   - The metric over this repository's sessions since `97144d9` and since the release.
 

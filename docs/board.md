@@ -455,7 +455,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 ## Feature 005: agent adoption
 
-Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held: no wave starts until the human's go; sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
+Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until 001-169 to 001-174 and 004-46 are done and the human says go (the host's load is this project's own work); D2 and D6 are reconciled with 001-172 and 001-174 first; sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
 ### Research (done)
 
