@@ -470,8 +470,8 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-47 ignored files enter only a slow file's declared artifact | done (0.1.74) | `lessons.md` defect 10: this repository's node:test tests write gitignored `.tmp` under their declared inputs, so every run re-keys itself (004-28/41/44 with 001-168's barrier): a revision loop. | A run writing into a declared ignored scratch directory settles; the loop's case. |
 | 004-48 the slow-tier line after a session ends, after a restart, after a revert | done (0.1.74) | `lessons.md` defects 11, 12, 15. | One test per case. |
 | 004-49 review of wave 5.5 | done: FAIL, B1 (warm store) to 004-50; 004-48 holds; N1 nit | `/reviewer` on gpt-6.1-sol; first round. | `reviews/wave-5.5.md`. |
-| 004-50 cached ignored scratch never becomes a declared input after an upgrade | running (`tasks/wave-5.6.md`) | `reviews/wave-5.5.md` B1: a store a pre-fix daemon wrote keeps ignored fast scratch in the cache; bootstrap re-adds it as an extra and a declared input, so 004-47's loop returns on every upgraded store. | The warm-store probe and its cold control on both Nodes. |
-| 004-51 re-review of 004-50 | planned | `/reviewer` on gpt-6.1-sol; second and last round for 004-47's slice. | `reviews/wave-5.6.md`. |
+| 004-50 cached ignored scratch never becomes a declared input after an upgrade | done (0.1.75) | `reviews/wave-5.5.md` B1: a store a pre-fix daemon wrote keeps ignored fast scratch in the cache; bootstrap re-adds it as an extra and a declared input, so 004-47's loop returns on every upgraded store. | The warm-store probe and its cold control on both Nodes. |
+| 004-51 re-review of 004-50 | running | `/reviewer` on gpt-6.1-sol; second and last round for 004-47's slice. | `reviews/wave-5.6.md`. |
 
 ## Feature 005: agent adoption
 
