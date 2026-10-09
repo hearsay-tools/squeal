@@ -72,6 +72,8 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
     await h.batch("test/hang.test.ts");
     await h.scheduler.idle();
     expect(h.runsOf("test/hang.test.ts").map((r) => r.report.end)).toEqual(["timed-out"]);
+    // Alone in its tier, it is `unknown` and not run again (task 001-179).
+    expect(h.sink.callsOf("markUnknown").map((c) => c.reason)).toEqual(["timed out after 2 s"]);
 
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");

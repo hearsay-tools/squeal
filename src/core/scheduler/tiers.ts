@@ -31,6 +31,7 @@ import { joinSpan, type TierSpan } from "./sharing.js";
 import { slowView } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 import { storeResults } from "./store-results.js";
+import { requeueSplit, timedOutReason, timeoutCap } from "./timeout-split.js";
 
 /** One test file of a tier and the key it runs under. */
 export interface TierFile {
@@ -42,6 +43,8 @@ export interface TierFile {
   readonly checkpointId: string | null;
   /** Queued by `run --all --force`: a re-queue keeps it forced (task 001-107). */
   readonly forced: boolean;
+  /** Queued as work an edit caused (D5 step 4): a re-queue after a timeout keeps it so (task 001-179). */
+  readonly recent?: boolean;
 }
 
 export interface Tier {
@@ -101,6 +104,10 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * time (`joinSpan`, task 001-184): a tier stores its results when it ends,
  * so a file far slower than one already taken waits for the next tier
  * instead of holding the faster file's result (lessons, defect 31).
+ *
+ * A file a timed-out tier left incomplete joins a tier of at most its
+ * `tierCap` files; one that does not fit stays queued and leads a later tier
+ * (task 001-179).
  */
 export function selectTier(
   context: SchedulerContext,
@@ -110,7 +117,7 @@ export function selectTier(
   const { keys, policy } = context;
   const picked: TierFile[] = [];
   const backlog = !ledger.queue.hasRecent((ref) => !busy.has(laneOf(context, ref)));
-  const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+  let size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known = 0;
   let span: TierSpan | null = null;
@@ -135,6 +142,8 @@ export function selectTier(
         continue;
       }
     }
+    const cap = Math.min(size, file.tierCap ?? size);
+    if (picked.length >= cap) continue;
     if (!backlog) {
       const joined = joinSpan(span, file.durationMs);
       if (joined === null) continue;
@@ -142,11 +151,13 @@ export function selectTier(
     }
     known += file.durationMs ?? 0;
     if (picked.length > 0 && known > budget) break;
-    tookBacklog ||= !ledger.queue.isRecent(ref);
+    const recent = ledger.queue.isRecent(ref);
+    tookBacklog ||= !recent;
     lane = at;
+    size = cap;
     ledger.queue.remove(ref);
     const checkpointId = ledger.checkpoints.idFor(ref);
-    picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId, forced });
+    picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId, forced, recent });
   }
   if (picked.length === 0) {
     ledger.commit();
@@ -251,7 +262,9 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  *
  * - Crashed, or not completed before a timeout: nothing stored under a key,
  *   the file's checks become `unknown` (D12; files whose module ended before
- *   the cancel keep their results, review N6).
+ *   the cancel keep their results, review N6). A fast tier of several files
+ *   that timed out queues its incomplete files again in tiers of half as
+ *   many instead (`timeoutCap`, task 001-179); alone, a file is `unknown`.
  * - Not completed in a backlog tier an edit cancelled, a run that otherwise
  *   ended `completed`: queued again, uncounted (task 001-124).
  * - Any input changed on disk since selection, or in a revision during the
@@ -292,6 +305,8 @@ export function recordTier(
   endTier(context, ledger, tier);
   const completed = new Set(report.completedFiles.map(testFileId));
   const cancelled = tier.cancel?.signal.aborted === true && report.end === "completed";
+  const files = tier.files.map((f) => f.file);
+  const splitCap = timeoutCap(report, tier.lane, files, completed);
 
   const provenance: Provenance = {
     worktreeId,
@@ -312,7 +327,7 @@ export function recordTier(
     changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report.end, context.now());
-    for (const { file, key, inputs, checkpointId, forced } of tier.files) {
+    for (const { file, key, inputs, checkpointId, forced, recent } of tier.files) {
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
       if (installMoved || (cancelled && !completed.has(file.id))) {
@@ -322,7 +337,8 @@ export function recordTier(
         continue;
       }
       if (!completed.has(file.id)) {
-        unknown.push({ file, key });
+        if (splitCap === null) unknown.push({ file, key });
+        else requeueSplit(ledger, file, splitCap, forced, recent === true);
         continue;
       }
       const growth = observed.growth.get(file.id);
@@ -394,7 +410,9 @@ export function recordTier(
       context,
       grown.map((g) => g.ref),
     );
-    const reason = report.failure ?? `run ${report.end}`;
+    const timedOut =
+      report.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
+    const reason = timedOut ?? report.failure ?? `run ${report.end}`;
     ledger.markUnknown(unknown, reason);
     ledger.commit();
   });
