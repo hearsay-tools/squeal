@@ -2936,6 +2936,55 @@ var init_state2 = __esm({
   }
 });
 
+// src/core/state/slow-sources.ts
+function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
+  if (since >= revision) return false;
+  const tested = /* @__PURE__ */ new Map();
+  const now = /* @__PURE__ */ new Map();
+  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
+    for (const change2 of changes) {
+      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
+      now.set(change2.path, change2.newHash);
+    }
+  }
+  const isArtifact = createInputMatcher(artifact);
+  return [...now].some(
+    ([path, hash2]) => hash2 !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
+  );
+}
+function artifactSources(store, keys, view) {
+  const testFiles = new Set(keys.map((row) => row.testFile.path));
+  let closures;
+  const isFastInput = createInputMatcher([
+    ...new Set(
+      keys.filter((row) => !view.isSlow(row.testFile)).flatMap((row) => view.artifactFor(row.testFile.path))
+    )
+  ]);
+  return (path) => {
+    if (isFastInput(path)) return false;
+    if (!inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs)) {
+      return false;
+    }
+    closures ??= listedClosures(store, keys);
+    return closures.has(path);
+  };
+}
+function listedClosures(store, keys) {
+  const listed = new Set(keys.map((row) => testFileId(row.testFile)));
+  return new Set(
+    store.testFiles.list().filter((record) => listed.has(testFileId(record.testFile))).flatMap((record) => record.closure.paths)
+  );
+}
+var init_slow_sources = __esm({
+  "src/core/state/slow-sources.ts"() {
+    "use strict";
+    init_policy2();
+    init_glob();
+    init_keys();
+    init_inherit();
+  }
+});
+
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
   const globs2 = slowGlobs(policy, policy.nodeTest);
@@ -3004,8 +3053,7 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
     }
   }
   const globs2 = [...artifact].sort();
-  const testFiles = new Set(keys.map((row) => row.testFile.path));
-  const isSource = (path) => inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs);
+  const isSource = artifactSources(store, keys, view);
   return {
     testFiles: files.size,
     ...counts,
@@ -3061,21 +3109,6 @@ function consumerInTurn(store, worktreeId) {
     return isRecord(turn) && turn.turn === "in-turn";
   });
 }
-function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
-  if (since >= revision) return false;
-  const tested = /* @__PURE__ */ new Map();
-  const now = /* @__PURE__ */ new Map();
-  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
-    for (const change2 of changes) {
-      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
-      now.set(change2.path, change2.newHash);
-    }
-  }
-  const isArtifact = createInputMatcher(artifact);
-  return [...now].some(
-    ([path, hash2]) => hash2 !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
-  );
-}
 function slowFilesNotCurrent(states, keys, isSlow) {
   return [...classifySlowFiles(states, keys, isSlow).values()].filter((file) => file.class !== "current").map((file) => file.ref);
 }
@@ -3091,6 +3124,7 @@ var init_slow = __esm({
     init_inherit();
     init_state2();
     init_derive();
+    init_slow_sources();
   }
 });
 
@@ -7799,7 +7833,10 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     const previous = previousKeys.get(file.id)?.key ?? null;
     if (previous === null) continue;
     const results2 = store.results.byKey(previous, 0);
-    if (results2.length === 0) continue;
+    if (results2.length === 0) {
+      file.durationMs = durationOf(newestResults(store, file.ref));
+      continue;
+    }
     if (previous !== file.key) file.resultKey = previous;
     file.durationMs = durationOf(results2);
   }
@@ -7827,6 +7864,17 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   for (const text2 of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
     if (!persisted.has(text2)) context.note(text2);
   }
+}
+function newestResults(store, ref2) {
+  let newest = null;
+  for (const { check } of store.checks.listByTestFile(ref2)) {
+    const result = store.results.latestForCheck(check);
+    if (result !== null && (newest === null || result.provenance.recordedAt > newest.provenance.recordedAt)) {
+      newest = result;
+    }
+  }
+  if (newest === null) return [];
+  return store.results.byKey(newest.key, 0).filter(({ check }) => check.project === ref2.project && check.testPath === ref2.path);
 }
 function testFilePaths(ledger) {
   return [...ledger.files.values()].map((file) => file.ref.path);
@@ -8212,6 +8260,13 @@ var init_keying = __esm({
        * one hashes it again and watches it.
        */
       #dropped = /* @__PURE__ */ new Set();
+      /**
+       * Dropped paths a closure tracked again. A predecessor's saved closure
+       * names its declaration-only scratch too, so each is dropped once more
+       * when no closure, environment, lockfile or observed read names it
+       * (reviews/wave-5.6.md S1).
+       */
+      #revived = /* @__PURE__ */ new Set();
       #lockfiles;
       /** How each project's installed dependencies enter its keys (D3, task 001-105). */
       #dependencies = /* @__PURE__ */ new Map();
@@ -8512,9 +8567,33 @@ var init_keying = __esm({
         const declared = this.#ignoredStale ? await this.#relistIgnoredInputs() : [];
         const paths = [...this.#untracked];
         this.#untracked.clear();
-        if (paths.length === 0) return declared;
-        await this.track(paths);
-        return [...declared, ...this.index.rekey(paths)];
+        for (const path of paths) if (this.#dropped.has(path)) this.#revived.add(path);
+        if (paths.length > 0) await this.track(paths);
+        this.#release();
+        return paths.length === 0 ? declared : [...declared, ...this.index.rekey(paths)];
+      }
+      /**
+       * Drops again the revived paths nothing names now: the closures that named
+       * them were saved ones, since replaced by the runner's (`#revived`). An
+       * artifact a slow file's declaration admits stays.
+       */
+      #release() {
+        if (this.#revived.size === 0) return;
+        const admits = this.#artifactRule()?.admits ?? (() => false);
+        const named = /* @__PURE__ */ new Set([...this.#environmentFiles, ...this.#lockfiles.paths()]);
+        for (const runner of this.#runnerClosures.values()) {
+          for (const path of this.#observed.of(runner.testFile)) named.add(path);
+        }
+        const unnamed = [...this.#revived].filter(
+          (path) => !named.has(path) && !admits(path) && this.index.reverse.referencing([path]).length === 0
+        );
+        if (unnamed.length === 0) return;
+        for (const path of unnamed) {
+          this.#revived.delete(path);
+          this.#extra.delete(path);
+        }
+        this.#drop(unnamed);
+        this.options.onExtraFiles(this.extraFiles());
       }
       /** Lists and tracks the gitignored declared inputs; re-keys every closure when one is new. */
       async #relistIgnoredInputs() {
@@ -32672,7 +32751,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.87";
+  if (true) return "0.1.88";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
