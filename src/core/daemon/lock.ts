@@ -49,38 +49,33 @@ export interface LockWait {
 
 /**
  * Task 001-130: the successor a step-down spawns retries the lock every
- * `pollMs` on one connection until it holds it, `giveUp` says so, or
- * `timeoutMs` passed. SQLite has no blocking lock, so a daemon spawned in
- * the moment between the holder's release and the next retry can still win.
+ * `pollMs` until it holds it, `giveUp` says so, or `timeoutMs` passed.
+ * SQLite has no blocking lock, so a daemon spawned in the moment between the
+ * holder's release and the next retry can still win.
+ *
+ * Task 001-153: each attempt is `acquireDaemonLock`, a connection of its own
+ * closed when it fails. In exclusive locking mode a failed `BEGIN EXCLUSIVE`
+ * keeps the SHARED lock it reached, and PENDING and RESERVED when it got that
+ * far, until its connection closes; two successors retrying on kept
+ * connections could each hold what the other needs until one timed out.
  */
 export async function awaitDaemonLock(
   path: AbsolutePath,
   wait: LockWait,
 ): Promise<DaemonLock | LockWaitEnd> {
-  const db = lockDatabase(path);
   const deadline = performance.now() + wait.timeoutMs;
   let checkAt = 0;
-  try {
-    for (;;) {
-      const lock = tryLock(db);
-      if (lock !== null) return lock;
-      const at = performance.now();
-      if (at >= checkAt) {
-        if (wait.giveUp()) break;
-        checkAt = at + (wait.checkMs ?? 250);
-      }
-      if (at >= deadline) {
-        db.close();
-        return "timed-out";
-      }
-      await sleep(Math.min(wait.pollMs ?? 10, deadline - at));
+  for (;;) {
+    const lock = acquireDaemonLock(path);
+    if (lock !== null) return lock;
+    const at = performance.now();
+    if (at >= checkAt) {
+      if (wait.giveUp()) return "gave-up";
+      checkAt = at + (wait.checkMs ?? 250);
     }
-  } catch (error) {
-    db.close();
-    throw error;
+    if (at >= deadline) return "timed-out";
+    await sleep(Math.min(wait.pollMs ?? 10, deadline - at));
   }
-  db.close();
-  return "gave-up";
 }
 
 function lockDatabase(path: AbsolutePath): DatabaseSync {
