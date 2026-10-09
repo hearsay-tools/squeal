@@ -282,16 +282,15 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     release();
     await bStarted;
 
-    // With no edit in B and no further metadata write, a later tick re-keys and runs both.
-    // Each new fail is re-run once (task 001-171) and fails again.
-    await expect.poll(() => b.runs.flat().length, { timeout: 30_000 }).toBe(4);
+    // With no edit in B and no further metadata write, B ends under keys with the path A's run
+    // observed, where each new fail is re-run once (task 001-171) and fails again. When B's first
+    // run went under keys lacking it, that run loaded it and stored nothing (task 003-43): one
+    // run more of each file, by when the tick landed.
+    await expect.poll(() => b.runs.flat().length, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);
     await b.scheduler.idle();
-    expect(
-      b.runs
-        .flat()
-        .map((f) => f.path)
-        .sort(),
-    ).toEqual([CONTROL_TEST, CONTROL_TEST, HIDDEN_TEST, HIDDEN_TEST]);
+    const ran = b.runs.flat().map((f) => f.path);
+    expect([4, 6]).toContain(ran.length);
+    expect(ran.filter((path) => path === HIDDEN_TEST)).toHaveLength(ran.length / 2);
     expect(outcome(store, rootB, CONTROL_TEST)).toBe("fail");
     expect(outcome(store, rootB)).toBe("fail");
     expect(store.revisions.latest(worktreeIdFor(rootB))?.number).toBe(revision);
@@ -300,8 +299,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
   it("the timer re-keys both files on preload growth while B's baseline is held", () =>
     preloadGrowth(true));
 
-  it.skip("the timer re-keys both files on preload growth after B started", () =>
-    preloadGrowth(false));
+  it("the timer re-keys both files on preload growth after B started", () => preloadGrowth(false));
 
   /*
    * Row 003-43, 001 review wave 13i B2: a run that first observes a preload
@@ -309,8 +307,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
    * path. A keys both files before B's run observes `nt/src/hidden.cjs`, where
    * the worktrees differ; A's pass under those keys must not stand for B.
    */
-  // Red until 003-43's scheduler seam lands (`it.fails` passes while the probe still fails).
-  it.fails("a held worktree's pass never heals the fail of one that differs in an observed preload path", async () => {
+  it("a held worktree's pass never heals the fail of one that differs in an observed preload path", async () => {
     const { repo, rootB, store } = await twoWorktrees(true);
     let release = () => {};
     const held = new Promise<void>((resolve) => {
@@ -336,7 +333,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     expect(keyOf(store, repo.main)).not.toBe(keyOf(store, rootB));
   });
 
-  it.fails("stores a run's result only under the key whose environment holds the preload path it observed", async () => {
+  it("stores a run's result only under the key whose environment holds the preload path it observed", async () => {
     const { repo, rootB, store } = await twoWorktrees(true);
     const b = await open(rootB, store, repo.commonDir, undefined, PRELOADED);
     await b.scheduler.start();

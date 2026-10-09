@@ -13,6 +13,7 @@ import type {
 import { SLOW_LANE_PREFIX } from "../types/index.js";
 import { backlogBudget } from "./backlog.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
+import { rerunGrown } from "./environment-growth.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
@@ -271,6 +272,10 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  *   When one of those paths was first seen during the run (`firstSeen`),
  *   nothing from before the run proves it held still: nothing is stored, and
  *   the file re-runs under the key with it (review wave 12d, B1; task 001-134).
+ * - A file whose run loaded environment files the key it ran under lacked
+ *   (`observed.environment`, task 003-43) stores nothing: the environments
+ *   were read again, and it runs again under the key that holds them
+ *   (`rerunGrown`), at most `MAX_DISCARDS` times in a row.
  * - The report's notes become status notes (D7), after the transaction.
  */
 export function recordTier(
@@ -300,7 +305,9 @@ export function recordTier(
   const rekeyed: TestFileRef[] = [];
   const grown: { ref: TestFileRef; checkpointId: string | null }[] = [];
   const firstSeen: FileState[] = [];
+  const grewEnvironment: FileState[] = [];
   const failedAnew: NewFailure[] = [];
+  const { environment } = observed;
   const unstable = (path: RelativePath) =>
     changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
@@ -334,6 +341,11 @@ export function recordTier(
         if (file.key === key) firstSeen.push(file);
         continue;
       }
+      if (environment?.files.has(file.id)) {
+        // Task 003-43: the key it ran under lacks what the run loaded; it runs again at the key with it.
+        grewEnvironment.push(file);
+        continue;
+      }
       if (storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
@@ -356,6 +368,14 @@ export function recordTier(
       if (growth === undefined && file.key === key) {
         ledger.applyResults(file, key, records, checkpointId);
       }
+    }
+    // Task 003-43: the environments read again moved the keys of every file of their projects.
+    if (environment !== undefined) {
+      ledger.settle(
+        environment.changes.map((change) => change.testFile),
+        NOTHING_CHANGED,
+      );
+      rerunGrown(ledger, environment, grewEnvironment);
     }
     // The grown files take their new key and, once stored, its results; a re-key reached others.
     for (const { ref, checkpointId } of grown) {

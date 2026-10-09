@@ -19,6 +19,7 @@ import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
+import { rekeyEnvironments } from "./environment-growth.js";
 import {
   missingInstall,
   REINSTALL_NOTE,
@@ -467,8 +468,14 @@ class TierScheduler implements Scheduler {
         const inputs = await unstableInputs(context, tier);
         const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
         const moved = await this.#lock.run(async () => {
+          // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
+          const environment = installMoved
+            ? undefined
+            : await rekeyEnvironments(context, ran, tier);
           // Task 001-132: what the run read beyond its closures, hashed under the lock.
-          const observed = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
+          const read = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
+          const observed =
+            environment === undefined || read === undefined ? read : { ...read, environment };
           const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
           const report = withheldForTouch(ran, touched);
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
