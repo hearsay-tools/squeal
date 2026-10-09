@@ -32475,7 +32475,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.80";
+  if (true) return "0.1.81";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -36657,16 +36657,42 @@ function lastHeard(store, worktreeId, revision, session) {
   const told = store.consumers.list(worktreeId).filter((record) => record.consumer.sessionId === session).flatMap((record) => toldRevision(store, record.consumer) ?? []);
   return Math.min(revision, ...told);
 }
-function editWindow(store, worktreeId, heard, revision, rekeyed) {
-  const after = rekeyed.some((file) => file.revision > heard);
-  const refs = rekeyed.filter((file) => !after || file.revision > heard).map((f) => f.testFile);
+function editWindow(store, worktreeId, heard, revision, rekeyed, reads) {
   const isSlow = worktreeSlowView(store, worktreeId)?.isSlow;
+  const told = rekeyed.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true);
+  const unseen = unseenRevisions(told, reads);
+  const kept2 = rekeyed.filter((file) => file.revision > heard || unseen.has(file.revision));
+  const first = kept2.reduce((least, file) => Math.min(least, file.revision), heard + 1);
+  const refs = kept2.map((file) => file.testFile);
   return {
-    since: after ? heard + 1 : heard,
+    since: kept2.length === 0 ? heard : first,
     revision,
     ids: new Set(refs.map(testFileId)),
     slow: new Set(refs.filter((ref2) => isSlow?.(ref2) === true).map(testFileId))
   };
+}
+function unseenRevisions(files, reads) {
+  const before = lastObserved(reads.start);
+  const now = lastObserved(reads.states);
+  const pending = new Set(
+    reads.keys.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile))
+  );
+  const unseen = /* @__PURE__ */ new Set();
+  for (const file of files) {
+    const id2 = testFileId(file.testFile);
+    if ((before.get(id2) ?? -1) >= file.revision) continue;
+    if (pending.has(id2) || (now.get(id2) ?? -1) >= file.revision) unseen.add(file.revision);
+  }
+  return unseen;
+}
+function lastObserved(states) {
+  const observed = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    if (state.observedAt === null) continue;
+    const id2 = testFileId(testFileOf(state.check));
+    observed.set(id2, Math.max(observed.get(id2) ?? state.observedAt, state.observedAt));
+  }
+  return observed;
 }
 function heldPending(window, keys) {
   return keys.filter((row) => {
@@ -36744,6 +36770,7 @@ async function waitForStatus(cwd, options) {
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start = null;
+  let startStates = [];
   const syncing = {};
   try {
     for (; ; ) {
@@ -36754,14 +36781,20 @@ async function waitForStatus(cwd, options) {
         const id2 = worktreeIdFor(root);
         const states = store.knownStates.list(id2);
         const header = readHeader(store, id2, states);
-        start ??= states.map(toStartView);
+        if (start === null) {
+          start = states.map(toStartView);
+          startStates = states;
+        }
         const news = newsOf(start, states, header.revision);
         syncing.heard ??= lastHeard(store, id2, header.revision, session);
         const heard = syncing.heard;
-        syncing.sync ??= startSync(root, pollMs, Math.max(0, heard - 1));
+        syncing.sync ??= startSync(root, pollMs, 0);
         const current2 = syncing.sync.current();
-        if (current2.state === "synced" && current2.rekeyed !== null) {
-          syncing.window ??= editWindow(store, id2, heard, current2.revision, current2.rekeyed);
+        const named = current2.state === "synced" && current2.rekeyed !== null;
+        const keys = named ? store.testFileKeys.list(id2) : [];
+        if (named) {
+          const reads = { start: startStates, states, keys };
+          syncing.window ??= editWindow(store, id2, heard, current2.revision, current2.rekeyed, reads);
         }
         const window = syncing.window;
         const settled = final || elapsed() >= settleMs;
@@ -36771,7 +36804,7 @@ async function waitForStatus(cwd, options) {
         let edit;
         if (window !== void 0) {
           const split = splitNews(window, news);
-          const pending = heldPending(window, store.testFileKeys.list(id2));
+          const pending = heldPending(window, keys);
           transitions = split.own;
           quiet = header.revision >= window.revision && windowRefined(window, header) && pending === 0;
           edit = {
