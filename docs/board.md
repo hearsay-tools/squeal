@@ -448,6 +448,8 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 ## Later
 
+- 001: `squeal` is not on a user's PATH after a plugin install (the CLI is `<plugin>/dist/cli/squeal.mjs`), so the READMEs' and the migration's `squeal init` fails with "command not found" (the human, 2026-10-09). Print the absolute command from `squeal init` and the hooks (the primer already does), and make the READMEs say `node ~/.claude/plugins/cache/hearsay/squeal/<version>/dist/cli/squeal.mjs` or offer a one-line shim.
+
 - Quality pass over specs 002 to 004 and 001's recent waves: one `/quality` scan once the 001 coordinator finishes spec 001 and 004-25 to 004-26 land (human, 2026-10-09).
 
 - 001: `store.prune` removes a removed worktree's results but not its per-worktree `meta` rows (`slow-tier:<worktreeId>` from 004-15, `slow-artifacts:<worktreeId>` from 004-23, and `failure-keys:<worktreeId>` from 004-25 (newest 1,024 failing checks' keys, written by `src/core/state/sink.ts`), all built in `src/core/slow/state.ts`). Prune them with the worktree by those known prefixes (a registry of per-worktree prefixes), never by a `:<worktreeId>` suffix match: the shared `nodeTest.observed.<project>` and `nodeTest.observedPreloads.<project>` keys must survive, in the same short batches as 001-141. Reported by the 002/003/004 coordinator, 2026-10-09.

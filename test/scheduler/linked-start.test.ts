@@ -107,7 +107,9 @@ describe("a worktree with a linked directory starts at revision 0", SLOW, () => 
     };
     await withLoop(repo, { backend }, async () => {
       const all = revisions(repo.store, repo.worktreeId);
-      expect(all.map((r) => [r.trigger, changed(r)])).toEqual([["interval", ["src/added.ts"]]]);
+      // The watcher or the interval pass may see the add first under load; one revision holds it.
+      expect(all.map(changed)).toEqual([["src/added.ts"]]);
+      expect(["interval", "watch"]).toContain(all[0]?.trigger);
     });
   });
 
