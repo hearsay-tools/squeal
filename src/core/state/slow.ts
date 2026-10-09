@@ -106,7 +106,7 @@ export function classifySlowFiles(
  * were declared to test, from the record their worktree kept with the key
  * (`readSlowArtifacts`), never today's policy; a current file with none
  * counts as `artifactUnknown` (review wave 2, B2). A "running" activity
- * stands only while the file it names is running (B1).
+ * names only the files it names that are still running (B1, 004-35).
  */
 export function readSlowTier(
   store: Store,
@@ -184,18 +184,27 @@ function recordedArtifacts(store: Store) {
   };
 }
 
-/** `activity`, unless it names a file as running that is not: a run ended since it was published. */
+/**
+ * `activity`, naming only the files it names as running that still are: a
+ * run ended since it was published (review wave 2, B1), or some files of an
+ * idle tier's run did (004-35). `null` when none still is.
+ */
 function liveActivity(
   activity: SlowTierActivity | null,
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
 ): SlowTierActivity | null {
   if (activity?.kind !== "running") return activity;
-  const running = keys.some(
-    (row) =>
-      row.testFile.path === activity.path && row.pending === "running" && isSlow(row.testFile),
+  const running = new Set(
+    keys
+      .filter((row) => row.pending === "running" && isSlow(row.testFile))
+      .map((row) => row.testFile.path),
   );
-  return running ? activity : null;
+  const [path, ...rest] = (activity.paths ?? [activity.path]).filter((p) => running.has(p));
+  if (path === undefined) return null;
+  const { since, lastDurationMs } = activity;
+  const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
+  return { kind: "running", path, ...paths, since, lastDurationMs };
 }
 
 /**

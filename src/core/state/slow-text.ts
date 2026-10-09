@@ -34,10 +34,19 @@ export function clockText(at: number): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** `a`, `a and b`, `a, b and 2 more`: at most two names, as a line stays short. */
+function filesText(paths: readonly string[]): string {
+  const [a, b] = paths;
+  if (paths.length === 1) return a ?? "";
+  if (paths.length === 2) return `${a} and ${b}`;
+  return `${a}, ${b} and ${paths.length - 2} more`;
+}
+
 /**
  * What the pending slow files are doing, from the daemon's published
  * activity: "last reported" when no daemon is validating, since it may be
- * old news (the header's liveness sentence says why).
+ * old news (the header's liveness sentence says why). Every running file
+ * counts, an idle tier's several by name or number (004-35).
  */
 function pendingText(pending: number, activity: SlowTierActivity | null, late: boolean): string {
   if (activity === null) return `${pending} pending`;
@@ -45,12 +54,18 @@ function pendingText(pending: number, activity: SlowTierActivity | null, late: b
   if (activity.kind === "waiting") {
     return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
   }
+  const paths = activity.paths ?? [activity.path];
+  const several = paths.length > 1;
+  const since = clockText(activity.since);
   const last =
     activity.lastDurationMs === null
       ? "no earlier run"
-      : `last run ${durationText(activity.lastDurationMs)}`;
-  const running = `${reported}running ${activity.path} since ${clockText(activity.since)} (${last})`;
-  return pending === 1 ? running : `${pending} pending, ${running}`;
+      : `${several ? "longest " : ""}last run ${durationText(activity.lastDurationMs)}`;
+  const what = several
+    ? `${paths.length} slow files since ${since}: ${filesText(paths)}`
+    : `${activity.path} since ${since}`;
+  const running = `${reported}running ${what} (${last})`;
+  return pending === paths.length ? running : `${pending} pending, ${running}`;
 }
 
 /**

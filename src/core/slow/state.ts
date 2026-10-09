@@ -51,7 +51,15 @@ function toActivity(value: unknown): SlowTierActivity | null {
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
-    return { kind: "running", path: v.path, since: v.since, lastDurationMs: last };
+    const paths: unknown[] = Array.isArray(v.paths) ? v.paths : [];
+    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
+    return {
+      kind: "running",
+      path: v.path,
+      ...(several ? { paths: paths as string[] } : {}),
+      since: v.since,
+      lastDurationMs: last,
+    };
   }
   return null;
 }
