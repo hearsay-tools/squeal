@@ -210,7 +210,8 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
         .callsOf("applyResults")
         .filter((c) => c.results.some((r) => r.check.testPath === path))
         .map((c) => c.checkpointId);
-    expect(attributed("test/new.test.ts")).toEqual([null]);
+    // Its new fail and that fail's re-run (task 001-171), both the edit's.
+    expect(attributed("test/new.test.ts")).toEqual([null, null]);
     expect(attributed("test/plain.test.ts")).toEqual([baseline]);
     for (const call of h.sink.callsOf("refresh")) {
       const paths = call.testFiles?.map((f) => f.path) ?? [];

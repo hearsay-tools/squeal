@@ -188,7 +188,8 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     const revision = store.revisions.latest(worktreeIdFor(rootB))?.number;
     b.scheduler.refreshObserved();
     await b.scheduler.idle();
-    expect(b.runs.map((files) => files.map((f) => f.path))).toEqual([[HIDDEN_TEST]]);
+    // Its new fail is re-run once (task 001-171) and fails again.
+    expect(b.runs.map((files) => files.map((f) => f.path))).toEqual([[HIDDEN_TEST], [HIDDEN_TEST]]);
     expect(outcome(store, rootB)).toBe("fail");
     // The revision is untouched: a runner-only refinement stores no revision.
     expect(store.revisions.latest(worktreeIdFor(rootB))?.number).toBe(revision);
@@ -269,14 +270,15 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     await bStarted;
 
     // With no edit in B and no further metadata write, a later tick re-keys and runs both.
-    await expect.poll(() => b.runs.flat().length, { timeout: 30_000 }).toBe(2);
+    // Each new fail is re-run once (task 001-171) and fails again.
+    await expect.poll(() => b.runs.flat().length, { timeout: 30_000 }).toBe(4);
     await b.scheduler.idle();
     expect(
       b.runs
         .flat()
         .map((f) => f.path)
         .sort(),
-    ).toEqual([CONTROL_TEST, HIDDEN_TEST]);
+    ).toEqual([CONTROL_TEST, CONTROL_TEST, HIDDEN_TEST, HIDDEN_TEST]);
     expect(outcome(store, rootB, CONTROL_TEST)).toBe("fail");
     expect(outcome(store, rootB)).toBe("fail");
     expect(store.revisions.latest(worktreeIdFor(rootB))?.number).toBe(revision);

@@ -127,7 +127,8 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     touch(third, "scripts/grandchild.mjs");
     await third.scheduler.start();
     await third.scheduler.idle();
-    expect(ranProjects(third, RUNTIME, 0)).toEqual(["forks", "threads"]);
+    // Its gitignored build output is absent here: the new fail is re-run once (task 001-171).
+    expect(ranProjects(third, RUNTIME, 0)).toEqual(["forks", "forks", "threads", "threads"]);
     expect(ranProjects(third, PLAIN, 0)).toEqual([]);
   });
 

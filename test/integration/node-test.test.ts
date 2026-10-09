@@ -227,7 +227,8 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
         "packages/c/test/c.test.ts",
         "packages/d/test/d.test.ts",
       ];
-      expect(ranFiles(main, wt3).sort()).toEqual(missed);
+      // Each new fail is re-run once (task 001-171).
+      expect(ranFiles(main, wt3).sort()).toEqual([...missed, ...missed].sort());
       expect(third.knownFailures.map((f) => f.check.testPath).sort()).toEqual(missed);
 
       // An edit of the observed-only path re-runs its test file, and only it, here.
@@ -266,7 +267,11 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
       at = status(main).revision;
       writeFileSync(join(main, "packages/a/src/one.ts"), "export const one = () => 0;\n");
       await settle(main, "the edit of one.ts", (s) => s.knownFailures.length === 1, at);
-      expect(ranSince(main, main, from)).toEqual(["packages/a/test/one.test.ts"]);
+      // Its new fail is re-run once (task 001-171).
+      expect(ranSince(main, main, from)).toEqual([
+        "packages/a/test/one.test.ts",
+        "packages/a/test/one.test.ts",
+      ]);
       const delivered = await hookText("post-tool-batch", main);
       expect(delivered).toContain("PASS -> FAIL");
       expect(delivered).toContain("one is 1");
