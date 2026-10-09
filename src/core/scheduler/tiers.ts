@@ -21,6 +21,7 @@ import { recordsForFile } from "./records.js";
 import { storeClosures } from "./revision.js";
 import { slowView } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
+import { storeResults } from "./store-results.js";
 
 /** One test file of a tier and the key it runs under. */
 export interface TierFile {
@@ -323,7 +324,7 @@ export function recordTier(
         provenance,
         describe: context.describe,
       });
-      if (records.length > 0) store.results.putMany(records);
+      storeResults(context, records);
       if (growth === undefined && file.key === key) {
         ledger.applyResults(file, key, records, checkpointId);
       }

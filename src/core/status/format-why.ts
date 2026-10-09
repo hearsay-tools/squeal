@@ -1,6 +1,6 @@
 import { basename, dirname } from "node:path";
 import { testFileLabel } from "../run-log.js";
-import { formatCheck } from "../state/index.js";
+import { flakyText, formatCheck } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   KnownOutcome,
@@ -42,6 +42,28 @@ export function formatWhy(why: WhyResult): string {
 }
 
 function knownState(why: WhyReport, s: KnownState | null): string[] {
+  return [...stateLines(why, s), ...heldLine(why), ...flakyLine(why)];
+}
+
+/** Task 001-170: another worktree's fail this worktree has not confirmed yet. */
+function heldLine(why: WhyReport): string[] {
+  const held = why.heldFailure;
+  if (held === undefined) return [];
+  const { worktreeId, commit } = held.provenance;
+  const source = why.worktreeRoots[worktreeId] ?? `removed worktree ${worktreeId}`;
+  return [`  Inherited FAIL from ${source} at ${shortCommit(commit)}, being confirmed`];
+}
+
+/** Task 001-170: the check's stored outcome flipped under one key. */
+function flakyLine(why: WhyReport): string[] {
+  const note = why.flaky;
+  if (note === undefined) return [];
+  return [
+    `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
+  ];
+}
+
+function stateLines(why: WhyReport, s: KnownState | null): string[] {
   if (s === null) return ["Known state: none in this worktree"];
   const head = [
     upper(s.outcome),
@@ -143,6 +165,10 @@ function producer(why: WhyReport, log: WhyRunLog): string {
   if (log.worktreeId === why.worktreeId) return `${root ?? why.worktreeRoot} (this worktree)`;
   const other = root ?? `removed worktree ${log.worktreeId}`;
   return why.knownState?.origin?.kind === "inherited" ? `${other} (inherited)` : other;
+}
+
+function capitalize(text: string): string {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 function upper(outcome: KnownOutcome): string {

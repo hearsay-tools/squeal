@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFailureKeys } from "../../src/core/slow/state.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import type { StateSink, Store } from "../../src/core/types/index.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "./helpers.js";
@@ -184,11 +185,10 @@ describe("refresh", () => {
     const [a, b] = [check("a"), check("b")];
     store.results.putMany([
       result(a, "pass", { key: "k1", worktreeId: OTHER }),
-      result(b, "fail", { key: "k1", worktreeId: OTHER }),
+      result(b, "pass", { key: "k1", worktreeId: OTHER }),
     ]);
 
-    const recorded = sink.refresh(WT, 3, NONE);
-    expect(recorded.map((t) => [t.check, t.kind])).toEqual([[b, "first-seen-fail"]]);
+    expect(sink.refresh(WT, 3, NONE)).toEqual([]);
     expect(store.knownStates.get(WT, a)).toMatchObject({
       outcome: "pass",
       validity: "current",
@@ -197,9 +197,43 @@ describe("refresh", () => {
     });
   });
 
+  it("holds every result of a key with another worktree's fail this worktree has not confirmed (task 001-170)", () => {
+    const [a, b] = [check("a"), check("b")];
+    sink.applyResults(WT, 1, [result(a, "pass"), result(b, "pass")], NONE);
+    setKey(store, "k2", { pending: "queued" });
+    store.results.putMany([
+      result(a, "pass", { key: "k2", worktreeId: OTHER }),
+      result(b, "fail", { key: "k2", worktreeId: OTHER }),
+    ]);
+
+    expect(sink.refresh(WT, 3, NONE)).toEqual([]);
+    for (const c of [a, b]) {
+      expect(store.knownStates.get(WT, c)).toMatchObject({
+        outcome: "pass",
+        validity: "pending",
+        origin: { kind: "own" },
+      });
+    }
+    expect(readFailureKeys(store, WT).size).toBe(0);
+  });
+
+  it("takes another worktree's fail once this worktree's state holds a fail under that key", () => {
+    const a = check("a");
+    sink.applyResults(WT, 1, [result(a, "fail", { key: "k1" })], NONE);
+    // Another worktree ran the key too and failed again, replacing the row.
+    store.results.putMany([result(a, "fail", { key: "k1", worktreeId: OTHER })]);
+
+    expect(sink.refresh(WT, 2, NONE)).toEqual([]);
+    expect(store.knownStates.get(WT, a)).toMatchObject({
+      outcome: "fail",
+      validity: "current",
+      origin: { kind: "inherited", worktreeId: OTHER },
+    });
+  });
+
   it("is idempotent and keeps the revision an inherited result was first seen at", () => {
     const a = check("a");
-    store.results.putMany([result(a, "fail", { key: "k1", worktreeId: OTHER })]);
+    store.results.putMany([result(a, "pass", { key: "k1", worktreeId: OTHER })]);
     sink.refresh(WT, 3, NONE);
     expect(sink.refresh(WT, 4, NONE)).toEqual([]);
     expect(store.knownStates.get(WT, a)?.observedAt).toBe(3);

@@ -1,4 +1,10 @@
-import { fullSuiteText, runnerPartText, SUMMARY_MAX_CHARS, slowTierText } from "../state/index.js";
+import {
+  flakyText,
+  fullSuiteText,
+  runnerPartText,
+  SUMMARY_MAX_CHARS,
+  slowTierText,
+} from "../state/index.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -197,6 +203,7 @@ function entryBlock(entry: TransitionEntry, revision: number): Block {
       ...(failed
         ? [slow ? null : touchesLine(entry), loadLine(entry)]
         : [recoveryProvenance(entry, revision)]),
+      entry.flaky === undefined ? null : capitalize(flakyText(entry.flaky)),
     ],
     [entry.to],
   );

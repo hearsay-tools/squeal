@@ -4,6 +4,7 @@ export { baselineFindings } from "./baseline.js";
 export { formatCheck, parseCheck } from "./check-name.js";
 export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js";
 export { describeFailure, SUMMARY_MAX_CHARS } from "./fingerprint.js";
+export { FLAKY_META_KEY, flakyText, readFlakyNotes, recordFlips } from "./flaky.js";
 export {
   fullSuiteText,
   isFastPending,
@@ -12,6 +13,7 @@ export {
   runnerPartText,
   toKnownFailure,
 } from "./header.js";
+export { failureKeysOnce, heldFailure } from "./inherited.js";
 export { createStateSink, type StateSinkOptions } from "./sink.js";
 export {
   classifySlowFiles,

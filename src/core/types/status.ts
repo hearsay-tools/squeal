@@ -13,6 +13,7 @@ import type { ClosureMethod } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
 import type {
   DiagnosticFingerprint,
+  FlakyNote,
   KnownOutcome,
   KnownState,
   PendingPhase,
@@ -408,6 +409,15 @@ export interface WhyReport {
    * no stored result is behind it. Task 001-173.
    */
   readonly runLog: WhyRunLog | null;
+  /**
+   * Another worktree's `fail` of the check under this worktree's current key
+   * that this worktree has not confirmed: held, no known state or delivery
+   * comes from it until the file runs here (spec 001 D6 as amended, task
+   * 001-170). Absent when there is none.
+   */
+  readonly heldFailure?: ResultRecord;
+  /** The check's flaky note: its stored outcome flipped under one key (task 001-170). Absent when none. */
+  readonly flaky?: FlakyNote;
 }
 
 /**
