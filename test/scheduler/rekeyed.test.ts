@@ -137,6 +137,12 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
       expect(h.scheduler.rekeyedSince(0 as RevisionNumber, edited, Date.now() + 1)).toEqual([]);
 
       // A later move owes its result again, whatever was resolved before it.
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      h.runner.beforeRun = () => held;
+      onTestFinished(release);
       h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // again\n");
       await h.batch("src/math.ts");
       await h.scheduler.refined();
