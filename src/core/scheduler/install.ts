@@ -178,7 +178,7 @@ export async function reconcileWaiting(
   batch: CandidateBatch,
   changed: Set<RelativePath>,
 ): Promise<boolean> {
-  const applied = await reconcileBatch(context, ledger, batch);
+  const { applied } = await reconcileBatch(context, ledger, batch);
   if (applied !== null) {
     ledger.commit({ refined: applied.revision.number });
     for (const change of applied.revision.changes) changed.add(change.path);

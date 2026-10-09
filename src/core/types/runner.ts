@@ -10,10 +10,14 @@ import type { TestFileRef } from "./keys.js";
  * path. An add or delete also invalidates the cached transforms it can make
  * wrong, and only those [...]. Calls `clearSpecificationsCache()` when a path
  * matching a test glob was added or removed".
+ *
+ * `touch` (task 001-159): the file was written and its bytes ended as they
+ * were, so no revision names it. A runner may have read other bytes in
+ * between: D4, "a touched-unchanged file discards every cached transform".
  */
 export interface InvalidatedPath {
   readonly path: RelativePath;
-  readonly kind: "add" | "change" | "delete";
+  readonly kind: "add" | "change" | "delete" | "touch";
 }
 
 /** What `invalidate` did. A recreate re-keys every check of the project through the environment hash (D12). */

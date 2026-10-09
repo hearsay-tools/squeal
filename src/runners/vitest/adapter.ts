@@ -23,7 +23,7 @@ import { projectEnvironment } from "./environment.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
-import { mayHaveRun, withoutFiles } from "./moved.js";
+import { mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { VitestObserver } from "./observe.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
@@ -40,6 +40,9 @@ import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
+
+/** `createVitest`'s Vite config, read as Vite's inline config. */
+type ViteOverrides = Parameters<VitestNode["createVitest"]>[2];
 
 /**
  * Bumped when the adapter changes what a result, closure or environment means,
@@ -74,6 +77,12 @@ export class VitestAdapter implements RunnerAdapter {
    * next call replaces it; a run under one is not stored.
    */
   #unsure: AbsolutePath[] = [];
+  /**
+   * Task 001-159: files touched with their bytes ending as they were, since
+   * the current instance began to start. The next call replaces it; a run
+   * that hears of one before it ends is not stored.
+   */
+  #touched: RelativePath[] = [];
   /** Installed lockfiles the current instance started with. */
   #lockfiles = new Set<AbsolutePath>();
   /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -128,21 +137,29 @@ export class VitestAdapter implements RunnerAdapter {
     const generation = ++this.#generation;
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
+    // Task 001-159: the optimizer's bundles on disk may hold a touched file's other bytes.
+    const forceOptimizeDeps = this.#touched.length > 0;
+    this.#touched = [];
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
-    const vitest = await this.#node.createVitest("test", {
-      root: this.paths.root,
-      watch: false,
-      reporters: [createSquealReporter(current)],
-      update: "none",
-      includeTaskLocation: true,
-      // Task 001-157: a transform `fsModuleCache` serves skips the plugin
-      // container, so nothing stamps the bytes it holds (D4). A CLI option,
-      // so it reaches every project.
-      fsModuleCache: false,
-      ...(Object.keys(env).length === 0 ? {} : { env }),
-      ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
-    });
+    const vitest = await this.#node.createVitest(
+      "test",
+      {
+        root: this.paths.root,
+        watch: false,
+        reporters: [createSquealReporter(current)],
+        update: "none",
+        includeTaskLocation: true,
+        // Task 001-157: a transform `fsModuleCache` serves skips the plugin
+        // container, so nothing stamps the bytes it holds (D4). A CLI option,
+        // so it reaches every project.
+        fsModuleCache: false,
+        ...(Object.keys(env).length === 0 ? {} : { env }),
+        ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
+      },
+      // Vite's inline option, `optimizeDeps.force` in every environment.
+      forceOptimizeDeps ? ({ forceOptimizeDeps: true } as ViteOverrides) : {},
+    );
     // Review wave-13 B2: every project server's, not only the root's, before any load.
     sources.attach(vitest);
     this.#sources = sources;
@@ -185,7 +202,8 @@ export class VitestAdapter implements RunnerAdapter {
    */
   async #instance(hold: Hold): Promise<Vitest> {
     let replaced = false;
-    const stale = () => this.#observer.stale() || (!replaced && this.#unsure.length > 0);
+    const stale = () =>
+      this.#observer.stale() || (!replaced && this.#unsure.length > 0) || this.#touched.length > 0;
     for (;;) {
       if (this.#closed) throw new Error("vitest adapter: closed");
       // Policy `observe.runtimeInputs` moved: the workers' env is set at creation.
@@ -227,7 +245,25 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#vitest;
   }
 
+  /**
+   * A `touch` (task 001-159) is heard at once, so a run in flight is not
+   * stored, and the instance is replaced before the next call: every
+   * project and environment's transforms and module graph, the global setup
+   * and the optimizer's bundles go with it. Each project counts as recreated.
+   */
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
+    const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
+    const changed = paths.filter((p) => p.kind !== "touch");
+    if (touched.length === 0) return this.#invalidate(changed);
+    const projects = (this.#vitest?.projects ?? []).map((p) => p.name);
+    this.#touched.push(...touched);
+    if (changed.length === 0) return Promise.resolve({ recreatedProjects: [...projects].sort() });
+    return this.#invalidate(changed).then(({ recreatedProjects }) => ({
+      recreatedProjects: [...new Set([...projects, ...recreatedProjects])].sort(),
+    }));
+  }
+
+  #invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
     return this.#part(async (vitest, hold) => {
       const abs = paths.map((p) => ({ ...p, abs: this.paths.toAbsolute(p.path) }));
       const triggers = await recreateTriggers(vitest);
@@ -356,6 +392,8 @@ export class VitestAdapter implements RunnerAdapter {
         const ran = await this.#invalidateStale(vitest, loadedSince);
         const moved = [...new Set([...ran, ...unsure])].sort();
         this.#running = false;
+        // Task 001-159: touched after this run's instance began to start, so heard during the run.
+        const touched = [...new Set(this.#touched)].sort();
         const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
         if (execution.hung || broken !== null) {
           // The runner part may be using the instance: it is dropped once that call returns.
@@ -371,12 +409,13 @@ export class VitestAdapter implements RunnerAdapter {
         }
         const built = buildReport(collector, execution, Math.round(performance.now() - started));
         const observed = this.#observer.take(built.completedFiles);
-        const report = withoutFiles(
+        const kept = withoutFiles(
           observed === undefined ? built : { ...built, observed },
           mayHaveRun(vitest, moved, testFiles, this.paths),
           moved,
           this.paths,
         );
+        const report = touched.length === 0 ? kept : withoutTouched(kept, testFiles, touched);
         // One persisted note for status, besides the crash's delivered line (D5).
         if (broken !== null && report.failure !== null) this.#note(report.failure);
         writeRunLog(options, collector, report);
