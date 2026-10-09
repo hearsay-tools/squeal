@@ -523,6 +523,35 @@ function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// src/core/delivery/slots.ts
+var slot = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+function readAll(store, key) {
+  const raw = store.meta.get(key);
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function readSlot(store, key, consumer) {
+  return readAll(store, key)[slot(consumer)];
+}
+function writeSlot(store, key, consumer, value) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
+  );
+  const all = readAll(store, key);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key, JSON.stringify(next));
+}
+
 // src/core/slow/classify.ts
 function slowFiles(policy, projects) {
   const matches = createInputMatcher(policy.slow.include);
@@ -720,7 +749,7 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       [...globs2, ...declaredToday],
       isSource
     ),
-    activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow)
+    activity: liveActivity(store, worktreeId, keys, view.isSlow)
   };
 }
 function recordedArtifacts(store) {
@@ -734,8 +763,16 @@ function recordedArtifacts(store) {
     return byKey.get(key);
   };
 }
-function liveActivity(activity, keys, isSlow) {
-  if (activity?.kind !== "running") return activity;
+function liveActivity(store, worktreeId, keys, isSlow) {
+  const activity = readSlowActivity(store, worktreeId);
+  if (activity?.kind === "waiting") {
+    if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
+    const fast = keys.some((row) => row.pending !== null && !isSlow(row.testFile));
+    return fast ? { kind: "waiting", for: "fast" } : null;
+  }
+  if (activity === null) return null;
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
     keys.filter((row) => row.pending === "running" && isSlow(row.testFile)).map((row) => row.testFile.path)
   );
@@ -745,10 +782,27 @@ function liveActivity(activity, keys, isSlow) {
   const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
   return { kind: "running", path, ...paths, since, lastDurationMs };
 }
+function consumerInTurn(store, worktreeId) {
+  const turns = readAll(store, `turn:${worktreeId}`);
+  return store.consumers.list(worktreeId).some((record) => {
+    const turn = turns[slot(record.consumer)];
+    return isRecord(turn) && turn.turn === "in-turn";
+  });
+}
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
+  const tested = /* @__PURE__ */ new Map();
+  const now = /* @__PURE__ */ new Map();
+  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
+    for (const change2 of changes) {
+      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
+      now.set(change2.path, change2.newHash);
+    }
+  }
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions.range(worktreeId, since, revision).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
+  return [...now].some(
+    ([path, hash]) => hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
+  );
 }
 
 // src/core/state/header.ts
@@ -853,35 +907,6 @@ function transitionKind(from, to) {
     case "skip":
       return null;
   }
-}
-
-// src/core/delivery/slots.ts
-var slot = (consumer) => `${consumer.sessionId}
-${consumer.agentId}`;
-function readAll(store, key) {
-  const raw = store.meta.get(key);
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
-function readSlot(store, key, consumer) {
-  return readAll(store, key)[slot(consumer)];
-}
-function writeSlot(store, key, consumer, value) {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
-  );
-  const all = readAll(store, key);
-  const next = {};
-  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
-  if (value === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = value;
-  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
-  store.meta.set(key, JSON.stringify(next));
 }
 
 // src/core/delivery/consumer-version.ts
@@ -3167,7 +3192,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.73";
+  if (true) return "0.1.74";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

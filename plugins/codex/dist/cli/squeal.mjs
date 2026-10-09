@@ -1572,6 +1572,17 @@ var init_candidates = __esm({
 
 // src/core/keys/ignored-inputs.ts
 import { readdir as readdir3, realpath as realpath2 } from "node:fs/promises";
+function artifactGlobs(inputs2, files, isSlow) {
+  const slow = [];
+  for (const file of files) if (isSlow(file)) slow.push(file);
+  if (slow.length === 0) return [];
+  if (isInputList(inputs2)) return [...inputs2];
+  const globs2 = Object.entries(inputs2).flatMap(([testGlob, globs3]) => {
+    const applies = createInputMatcher([testGlob]);
+    return slow.some(applies) ? globs3 : [];
+  });
+  return [...new Set(globs2)];
+}
 async function ignoredInputs(root, globs2) {
   if (globs2.length === 0) return [];
   const prefixes = [...new Set(globs2.map(literalPrefix))];
@@ -1685,6 +1696,7 @@ var init_ignored_inputs = __esm({
     init_git2();
     init_links();
     init_paths2();
+    init_closure();
     init_glob();
     INSTALLED = ":(exclude,glob)**/node_modules/**";
   }
@@ -2697,6 +2709,42 @@ var init_policy2 = __esm({
   }
 });
 
+// src/core/delivery/slots.ts
+function readAll(store, key2) {
+  const raw = store.meta.get(key2);
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function readSlot(store, key2, consumer) {
+  return readAll(store, key2)[slot(consumer)];
+}
+function writeSlot(store, key2, consumer, value) {
+  const registered = new Set(
+    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
+  );
+  const all = readAll(store, key2);
+  const next = {};
+  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
+  if (value === null) delete next[slot(consumer)];
+  else next[slot(consumer)] = value;
+  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
+  store.meta.set(key2, JSON.stringify(next));
+}
+var slot;
+var init_slots = __esm({
+  "src/core/delivery/slots.ts"() {
+    "use strict";
+    init_fs();
+    slot = (consumer) => `${consumer.sessionId}
+${consumer.agentId}`;
+  }
+});
+
 // src/core/slow/classify.ts
 function slowFiles(policy, projects) {
   const matches = createInputMatcher(policy.slow.include);
@@ -2956,7 +3004,7 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       [...globs2, ...declaredToday],
       isSource
     ),
-    activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow)
+    activity: liveActivity(store, worktreeId, keys, view.isSlow)
   };
 }
 function recordedArtifacts(store) {
@@ -2970,8 +3018,16 @@ function recordedArtifacts(store) {
     return byKey.get(key2);
   };
 }
-function liveActivity(activity, keys, isSlow) {
-  if (activity?.kind !== "running") return activity;
+function liveActivity(store, worktreeId, keys, isSlow) {
+  const activity = readSlowActivity(store, worktreeId);
+  if (activity?.kind === "waiting") {
+    if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
+    const fast = keys.some((row) => row.pending !== null && !isSlow(row.testFile));
+    return fast ? { kind: "waiting", for: "fast" } : null;
+  }
+  if (activity === null) return null;
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
     keys.filter((row) => row.pending === "running" && isSlow(row.testFile)).map((row) => row.testFile.path)
   );
@@ -2981,10 +3037,27 @@ function liveActivity(activity, keys, isSlow) {
   const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
   return { kind: "running", path, ...paths, since, lastDurationMs };
 }
+function consumerInTurn(store, worktreeId) {
+  const turns = readAll(store, `turn:${worktreeId}`);
+  return store.consumers.list(worktreeId).some((record) => {
+    const turn = turns[slot(record.consumer)];
+    return isRecord(turn) && turn.turn === "in-turn";
+  });
+}
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
+  const tested = /* @__PURE__ */ new Map();
+  const now = /* @__PURE__ */ new Map();
+  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
+    for (const change2 of changes) {
+      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
+      now.set(change2.path, change2.newHash);
+    }
+  }
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions.range(worktreeId, since, revision).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
+  return [...now].some(
+    ([path, hash2]) => hash2 !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
+  );
 }
 function slowFilesNotCurrent(states, keys, isSlow) {
   return [...classifySlowFiles(states, keys, isSlow).values()].filter((file) => file.class !== "current").map((file) => file.ref);
@@ -2993,6 +3066,8 @@ var init_slow = __esm({
   "src/core/state/slow.ts"() {
     "use strict";
     init_policy2();
+    init_slots();
+    init_fs();
     init_glob();
     init_keys();
     init_classify();
@@ -5007,42 +5082,6 @@ var init_store2 = __esm({
     init_paths3();
     init_schema();
     init_store();
-  }
-});
-
-// src/core/delivery/slots.ts
-function readAll(store, key2) {
-  const raw = store.meta.get(key2);
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
-function readSlot(store, key2, consumer) {
-  return readAll(store, key2)[slot(consumer)];
-}
-function writeSlot(store, key2, consumer, value) {
-  const registered = new Set(
-    store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
-  );
-  const all = readAll(store, key2);
-  const next = {};
-  for (const [k, v] of Object.entries(all)) if (registered.has(k)) next[k] = v;
-  if (value === null) delete next[slot(consumer)];
-  else next[slot(consumer)] = value;
-  if (Object.keys(next).length === 0 && Object.keys(all).length === 0) return;
-  store.meta.set(key2, JSON.stringify(next));
-}
-var slot;
-var init_slots = __esm({
-  "src/core/delivery/slots.ts"() {
-    "use strict";
-    init_fs();
-    slot = (consumer) => `${consumer.sessionId}
-${consumer.agentId}`;
   }
 });
 
@@ -7315,10 +7354,12 @@ var init_keying = __esm({
     init_hash();
     init_keys();
     init_revision();
+    init_slow2();
     init_git2();
     init_linked_files();
     init_lockfiles();
     init_notes2();
+    init_slow3();
     PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
     WorktreeKeys = class {
       constructor(options) {
@@ -7534,15 +7575,13 @@ var init_keying = __esm({
       }
       /**
        * What every reconciliation pass reconciles too, whatever else it found:
-       * the gitignored declared inputs, within the declared globs' reach, not
-       * watched yet, a path already hashed included. A file a rebuild only added
-       * joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches them
-       * from here on.
+       * the gitignored files of slow files' declared artifacts (`#ignoredArtifacts`),
+       * not watched yet, a path already hashed included. A file a rebuild only
+       * added joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches
+       * them from here on.
        */
       async ignoredCandidates() {
-        const globs2 = inputGlobs(this.#policy.inputs);
-        if (globs2.length === 0) return [];
-        const listed = await ignoredInputs(this.options.root, globs2);
+        const listed = await this.#ignoredArtifacts();
         const unwatched = listed.filter((path) => !this.#extra.has(path));
         if (unwatched.length === 0) return [];
         for (const path of unwatched) this.#extra.add(path);
@@ -7656,7 +7695,26 @@ var init_keying = __esm({
        */
       async #trackIgnoredInputs() {
         this.#ignoredStale = false;
-        await this.track(await ignoredInputs(this.options.root, inputGlobs(this.#policy.inputs)));
+        await this.track(await this.#ignoredArtifacts());
+      }
+      /**
+       * The gitignored files a slow file's declared artifact selects (spec 004
+       * D5): only entries of policy `inputs` whose test-file glob selects a slow
+       * file list them, and none is a test file or under a directory a slow
+       * glob covers (D6's rule). A test's own gitignored scratch files never key
+       * it, so no run feeds its own inputs (lessons defect 10).
+       */
+      async #ignoredArtifacts() {
+        const view = slowView(this.#policy);
+        if (!view.declared) return [];
+        const isSlow = createInputMatcher(view.globs);
+        const globs2 = artifactGlobs(this.#policy.inputs, this.#knownFiles(), isSlow);
+        if (globs2.length === 0) return [];
+        const testFiles = new Set([...this.#runnerClosures.values()].map((r) => r.testFile.path));
+        const listed = await ignoredInputs(this.options.root, globs2);
+        return listed.filter(
+          (path) => inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs)
+        );
       }
       /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
       async track(paths) {
@@ -32101,7 +32159,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.73";
+  if (true) return "0.1.74";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
