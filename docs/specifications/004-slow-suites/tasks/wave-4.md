@@ -85,3 +85,15 @@ Owns: `src/core/scheduler/slow-tier.ts`, `#pump`'s slow gate and the backlog/rec
 Done when: scheduler tests: a slow file runs beside a held backlog tier and not beside a held edit tier; an idle tier takes up to `slow.maxParallel` files and one file when fast work or load is present; two schedulers share `slow.maxParallel` permits; lint, typecheck, full suite on Node 24 and 22. Report every type change.
 
 Use /worker.
+
+## 004-36 review of wave 4
+
+Outcome: `reviews/wave-4.md` in this spec folder, committed.
+
+Range: `git log --oneline 4c7e1eb^..21cd841` on main, 0.1.60 and 0.1.61: 004-28, 004-30, 004-31, 004-32, 004-29 and 004-34 with their bundles (001 docs commits in it are out of scope).
+
+Questions: (1) 004-28: can a gitignored declared artifact still be missing from a slow key (a glob starting with a wildcard, a symlinked build directory, an artifact deleted and rebuilt, a policy reload); what does listing ignored files cost at the start of a large repository? (2) 004-30 and 004-34 together: with `slow.maxParallel` permits per user, can two worktrees starve each other, can a mark or a permit leak after a crash, can one user run more than `slow.maxParallel` slow files at once? Does a fast tier ending really release a guard wait, and can that loop? (3) D2 as amended: can a slow file start while an edit's fast work is pending or running (including a new session's first edit during a 004-29 drain), and does an idle tier's width drop back to one as soon as fast work arrives? Does node:test's slow concurrency follow `slow.maxParallel` or only `runner.tierSize`? (4) 004-29: can a drain outlive its bound by more than one slow file, keep a daemon alive with no slow work, count as activity, or lose a session that registers at the instant of exit? (5) 004-31: is every new line wording true against the store, including "as of revisions N to M" and "last reported waiting for"?
+
+Rules as for 004-14. First review round on this slice.
+
+Use /reviewer.
