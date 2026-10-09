@@ -6,7 +6,7 @@ Stage: approved 2026-10-09 by the human; dispatch waits for the human's go. Amen
 
 Squeal has no value if agents ignore it (the human, 2026-10-09). They mostly do. In this repository 210 of 226 editing sessions ran tests themselves: 2,440 runs, 1,506 minutes. In cezar it was 37 of 61. The research says why, ranked by test runs explained:
 
-- **Checking their own change** (55% of runs). The agent runs the file about 10 s after its edit (p50). In 78% of the store-checked runs Squeal had not yet finished a run of at least one file the agent's run covered: under load its result takes minutes. `status --wait` waits for everything pending, not for the agent's files, and timed out at 60 s in 002-19 and 003-19. The one agent asked said it did not trust the timing.
+- **Checking their own change** (55% of runs). The agent runs the file about 10 s after its edit (p50). In 78% of the store-checked runs Squeal had not yet finished a run of at least one file the agent's run covered: under load its result takes minutes. `status --wait` waits for everything pending, not for the agent's files, and timed out at 60 s in 002-19 and 003-19. Since then 001-186, 001-191 and 001-196 (0.1.87) end the wait once the files the agent's edits re-keyed are current, and 001-184 keeps an edit's tier to files of comparable speed. The one agent asked said it did not trust the timing.
 - **A repository gate** (17% of runs, 39% of test wall time). This repository's `CLAUDE.md`, `AGENTS.md` and worker, reviewer and coordinator skills demanded pasted `npx vitest run` output. A gate decides. In controlled sessions a gate demanding Vitest gave a full run in 5 of 5. The same gate reworded to `squeal run --all --wait` gave none in 5 of 5, and the agents pasted Squeal's output instead.
 - **Squeal's checkpoint is not a verdict yet.** `run --all --wait` exits 0 with failing tests, whether it reused results or ran them, and has no deadline. Its output says "1 test files" for queued work. "Affected checks: 14 passed" was read as "14 tests" in 3 of 5 gate sessions.
 
@@ -17,7 +17,7 @@ Setting a repository up is a command the user must type, `squeal init`, from a p
 ## Goals
 
 1. `squeal run --all --wait` gives a verdict a gate can use. It exits 0 only when the checkpoint completed with every test file current and no known failures at a revision the worktree is still at, and 1 with known failures. It exits 3 when Squeal cannot say: no daemon, abandoned, deadline reached, unknown results, or the worktree changed during the checkpoint. Its first line names the outcome and the revision, and how many test files it reused and how many it ran. Every count it prints names tests and file-level checks apart.
-2. An agent can wait for its own files. `squeal status --wait <ms> <path>...` returns when every test file the paths select has a result for its current key, and exits as in goal 1 for those files. The selected files run in the next fast tier.
+2. An agent can wait on files it names, such as a test it suspects is flaky. `squeal status --wait <ms> <path>...` returns when every test file the paths select has a result for its current key, and exits as in goal 1 for those files. It adds no priority: an edit's files already run first (001 D5), and the wait already covers them (001-186).
 3. A user sets Squeal up from the terminal before starting an agent: one install command per machine, then `squeal setup` per repository. Setup inits each harness, trusts Codex's hooks, proposes which tests are slow and what build output each slow group tests (D3, "Slow tests and their inputs"), and offers a warm-up whose results the first session finds current. `squeal update` keeps every harness's plugin at one version. A user who installed the plugin inside a harness gets the same setup by asking their agent (`/squeal:setup`). Nothing is written without a yes, nothing is committed, and no second copy of the CLI is installed.
 4. Setup can write a managed instruction block into the file each harness reads, between versioned markers. It replaces the block on upgrade and `squeal remove` takes it out. Two files that resolve to one file get one block.
 5. Setup finds instruction lines that run the test command and offers each a rewording to Squeal's checkpoint, shown as a diff, written only on its own yes.
@@ -46,9 +46,11 @@ Amends 001 D5 and D7. `squeal run --all --wait [<ms>]`, where `<ms>` bounds the 
 
 The first line is the verdict, factual as 001 D6 asks: `Checkpoint 12 completed at revision 9: no known failures; 290 test files, 284 with a current result, 6 run now`, or `Checkpoint 12 has no verdict: the deadline passed with 3 test files pending at revision 9`. The status snapshot follows as today. Every count of checks a checkpoint, `status` or a header prints names its tests and file-level checks apart (001 D4: one file-level check per test file), for example `14 checks: 10 tests, 4 test files loaded`. The checkpoint's start line counts files to run and files already current, never queued work alone. `run --all` without `--wait` keeps its exit codes. A slow file the checkpoint covers counts like any other (004 D2 (c)).
 
-### D2. A wait for the agent's own files
+### D2. A wait on named files
 
-Amends 001 D5 and D7. `squeal status --wait <ms> <path>...`. A test-file path selects itself. Any other path selects the test files whose closure holds it, using the stored closure only when it is valid for the file's current key (001 D6's rule). A path that selects nothing exits 3 with `no test file's closure holds <path>`. The wait sends the daemon a `focus` request: the selected files' pending work goes to the front of the next fast tier, behind the tier in flight, which is never cancelled (001 D5). A selected slow file goes to the front of the slow lane, under its slot and guard (004 D2, D3). The wait returns when every selected file has a result for its current key at the current revision, or at the deadline. It prints the selected files' failures in full, then their counts in D1's units, then the snapshot header, and exits as D1 for those files only. Without paths, `status --wait` keeps 001 D7's contract and exit codes. Before wave 1 this section is reconciled with 001-172's latency measurements and 001-174's skill text (`status.md`, 2026-10-09).
+Reconciled 2026-10-10 with the 001 coordinator (`status.md`). 001-186, 001-191 and 001-196 (0.1.87) end `status --wait` once the files the agent's own edits re-keyed have results under their new keys, 001-184 keeps an edit's tier to files of comparable speed, and an edit's files already go first (001 D5). What is left is waiting on a file the agent did not edit.
+
+Amends 001 D7. `squeal status --wait <ms> <path>...` restricts the wait's file set. A test-file path selects itself. Any other path selects the test files whose closure holds it, using the stored closure only when it is valid for the file's current key (001 D6's rule). A path that selects nothing exits 3 with `no test file's closure holds <path>`. There is no daemon request and no new priority: a reordering request would fight the edit-first rule and 001-201's cross-worktree claims. If reordering is ever wanted, 001 owns it in the scheduler and 005 adds only the CLI over a 001 request. The wait returns when every selected file has a result for its current key at the current revision, or at the deadline. It prints the selected files' failures in full, then their counts in D1's units, then the snapshot header, and exits as D1 for those files only. Without paths, `status --wait` keeps 001 D7's contract as 001-186 to 001-196 amended it.
 
 ### D3. Install and setup
 
@@ -78,7 +80,7 @@ For scripts: `--yes` and one flag per choice. Without a terminal and without `--
 **Slow tests and their inputs.** Added 2026-10-10 (`status.md`). Slow suites test a build output (`plugins/*/dist` here, `packages/cezar/dist` in cezarion, 004 D5), and 001 D4 leaves ignored paths and paths outside the worktree to `inputs`: Squeal's observation never sees the artifact. Without a declared input, a rebuild or an edit to the tested code leaves the slow result current, the result is never inherited by another worktree (004 D6), and the only warning is 004 D5's note in `squeal status`, which no human reads. This repository's own `squeal.config.json` declares e2e inputs but no `slow` key. So setup finds both from evidence and asks:
 
 1. Slow candidates: test files under a directory named `e2e`, files named `*.e2e.*`, the files an npm script named `test:e2e`, `e2e`, `test:integration` or `test:package` runs, and node:test projects (`src/cli/node-test-seed.ts`), grouped by directory. After the warm-up, fast files whose run exceeded 30 s (004 D1's note) join them.
-2. Artifact candidates for each group, each with its evidence: a directory named by the nearest `package.json`'s `bin`, `main`, `module`, `exports` or `files`; the output directory of a build script (`tsc` with its tsconfig's `outDir`, `--outDir`, `--outdir`, `-o`); and a gitignored directory that exists and that the group's test files name in a string. Once 001 agrees (open question 6), the warm-up also reports the ignored project paths each slow file read or spawned, without keying them.
+2. Artifact candidates for each group, each with its evidence: a directory named by the nearest `package.json`'s `bin`, `main`, `module`, `exports` or `files`; the output directory of a build script (`tsc` with its tsconfig's `outDir`, `--outDir`, `--outdir`, `-o`); and a gitignored directory that exists and that the group's test files name in a string. The setup warm-up also reports the ignored project paths each slow file read or spawned, through a 001 row in `src/runners/observe` (open question 6): never keyed and never a reason to re-run, a separate list per test file with `node_modules`, `.git` and Squeal's temp directories left out and the count capped, stored only for an explicit setup warm-up. Setup shows them as suggestions with the path read, and says they are unkeyed until the human declares them, so a candidate never looks like coverage.
 3. One question per group, showing the evidence: `test/e2e/** spawns plugins/claude-code/dist/cli/squeal.mjs (3 files). Re-run these tests when plugins/** changes?` The default is the broader directory, because an input too narrow leaves a result current after a change it misses, the costliest failure. The choices are that directory, a narrower one the evidence names, or none. The question states the trade-off: with the input, each rebuild re-runs the group and its results can be shared across worktrees; without it, the group stays current after a rebuild until its own files change, and every worktree runs it itself. It also says that Squeal never builds (004 goal 8), so keeping the artifact built stays the user's or the agent's job.
 4. Apply writes `slow.include` and the `inputs` map (001 D11, 004 D1, D5). When the warm-up finds a candidate the static evidence missed, setup asks once more after it. A changed `squeal.config.json` reloads the policy and re-keys only what the new inputs touch (001 D11), so those slow files run once more.
 
@@ -123,7 +125,7 @@ A gate line is a line of a committed instruction file that runs the test command
 
 ### D6. Texts
 
-- The primer (001 D9, 004 D8) gains the per-file wait: to check specific files now, `squeal status --wait 60000 <file>`. The `skills/squeal` steps and references follow.
+- The `skills/squeal` references name D2's path form, for a test the agent did not edit. The primer does not change for it: the wait already covers the edit's own files (001-186), and 001-174 put the red/green workflow in the skill.
 - The checkpoint and status units follow D1.
 - The primer stays the main surface: it reached main agents and subagents in both harnesses and came back after compaction (005-02).
 - Every text change keeps the 10,000-character cap and is measured in the proof sessions, not assumed.
@@ -144,14 +146,14 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
 
 - **Unit**:
   - D1: every exit code, including a revision recorded during the checkpoint and the deadline; the unit wording.
-  - D2: selection by test path, by source path, and by a path that selects nothing; `focus` ordering behind a tier in flight.
+  - D2: selection by test path, by source path, and by a path that selects nothing; the queue order unchanged by a wait.
   - The plan's JSON, `--check`, and `init` with no new flag behaving as today.
   - Slow detection: candidates by directory, file name, npm script and duration; artifact candidates from `package.json`, build scripts and gitignored directories named by tests; the default is the broader directory; `--check` on a slow group with no artifact.
   - The launcher's resolution: a project-scope entry first, Codex only, a version skew line, no plugin found.
   - D4: block insert, upgrade, removal, symlinked files and broken markers.
   - D5: gate detection and rewording.
   - Both plugins' skill copies identical, as the existing skill test does.
-- **Integration**: a real daemon on a Vitest fixture. A failing checkpoint exits 1. A deadline exits 3 and names the pending count. A per-file wait returns before a running backlog finishes.
+- **Integration**: a real daemon on a Vitest fixture. A failing checkpoint exits 1. A deadline exits 3 and names the pending count. A wait on a named file that is current returns at once, and one on a pending file returns when that file's result lands, not when the rest of a running backlog ends.
 - **End to end**, on fresh fixtures shaped like this repository and like cezarion:
   - `install.sh` in a scratch `HOME` and `CODEX_HOME` with both harnesses and with each alone: plugins installed, the launcher on the PATH, a second run changing nothing, `--uninstall` leaving nothing.
   - The launcher across a plugin update in both harnesses, and `squeal update` bringing two different versions to one.
@@ -159,17 +161,17 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
   - `squeal setup --yes` with every choice: the files written match the plan, the warm-up leaves every test file current, a first session runs nothing more, and a second setup reports nothing outdated.
   - The setup skill in `claude -p` and `codex exec` with the answers given in the prompt.
 - **Proof**: dogfooding, `lessons.md`, at calm load: no other coordinator's waves running, with the load average recorded per session.
-  - Controlled sessions on a cold, slow fixture, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone, the reworded gate, and the per-file wait in the primer.
+  - Controlled sessions on a cold, slow fixture, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone and the reworded gate.
   - The metric over this repository's sessions since `97144d9` and since the release.
 
 ## Open questions
 
 1. How a Codex user invokes a plugin skill, how Codex names it, and whether a skill finds its plugin's CLI in a repository without Squeal, in both harnesses. Also whether Claude Code's question tool is available inside a skill. Owner: wave-0 checks (005-04).
 2. Codex's shell tool timeout, which bounds D5's `<ms>`. Owner: 005-04.
-3. `focus` reorders the scheduler's queue, which is 001's. Owner: the 001 coordinator, asked before wave 1 dispatches.
+3. Resolved 2026-10-10 by the 001 coordinator: no reordering request; D2 restricts the wait's file set only.
 4. `install.sh`: where it is hosted (this repository at a release tag, or the hub; the human, 2026-10-09: decide in 005-04), and how it behaves under `curl | sh`. Owner: 005-04.
 5. Whether a user-scope install satisfies a repository that enables Squeal in its project settings; which version a Claude Code session loads when user and project scope differ (005-05 open question 1); which version the launcher should run when the harnesses differ. Owner: 005-04.
-6. Whether 001's recorder may report the ignored project paths a test file read or spawned without keying them, for setup's slow-input candidates. Owner: the 001 coordinator, asked 2026-10-10.
+6. Resolved 2026-10-10 by the 001 coordinator: the recorder may report ignored paths under D3's conditions, owned by 001. The 001 coordinator files the row when 005 resumes, and 005-12 consumes it.
 7. How precise the static slow-input rules are: run against this repository and a cezarion copy, do they propose what was declared by hand (this repository's `test/e2e` inputs; `packages/cezar/dist/**` in 004's dogfooding)? Owner: 005-04.
 
 ## References
