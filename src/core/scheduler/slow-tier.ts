@@ -137,6 +137,7 @@ export class SlowTier {
       this.#unmark(dir, context.worktreeId);
       return null;
     }
+    if (preemptions !== this.#preemptions) return "again";
     const load = await this.#waitForCapacity(context);
     if (load === "preempted" || preemptions !== this.#preemptions) return "again";
     const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
