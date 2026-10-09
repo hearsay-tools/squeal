@@ -1,0 +1,38 @@
+revision start end seconds end_state load/cpu daemon file
+r1 06:20:10 06:20:49 38.4 completed 0.94 (not logged) test/e2e/lifecycle.test.ts
+r1 06:20:49 06:21:05 16.6 completed 0.76 (not logged) test/e2e/node-test.test.ts
+r1 06:21:05 06:21:06 0.3 completed 0.71 (not logged) test/e2e/plugin-copy.test.ts
+r1 06:21:06 06:22:06 60.3 completed 0.71 (not logged) test/e2e/policy.test.ts
+r1 06:22:06 06:22:14 8.1 completed 0.42 (not logged) test/e2e/shipped-plugin.test.ts
+r1 06:22:14 06:22:40 25.6 completed 0.42 (not logged) test/e2e/slow-node-test.test.ts
+r1 06:22:40 06:24:07 86.8 completed 0.37 (not logged) test/e2e/slow-vitest.test.ts
+r12 06:41:18 06:41:59 41.1 completed 0.80 1855325@0.1.56 test/e2e/lifecycle.test.ts
+r12 06:41:59 06:42:15 16.5 completed 0.80 1855325@0.1.56 test/e2e/node-test.test.ts
+r12 06:42:15 06:42:16 0.3 completed 0.80 1855325@0.1.56 test/e2e/plugin-copy.test.ts
+r12 06:42:16 06:43:13 57.2 completed 0.80 1855325@0.1.56 test/e2e/policy.test.ts
+r12 06:43:13 06:43:22 8.5 completed 0.57 1855325@0.1.56 test/e2e/shipped-plugin.test.ts
+r12 06:43:22 06:43:44 22.8 completed 0.57 1855325@0.1.56 test/e2e/slow-node-test.test.ts
+r12 06:43:44 06:44:33 48.1 completed 0.41 1855325@0.1.56 test/e2e/slow-vitest.test.ts
+r12 06:44:33 06:44:33 0.5 completed 1.22 1855325@0.1.56 test/e2e/torn-status.test.ts
+r12 06:44:33 06:45:13 39.5 completed 1.22 1855325@0.1.56 test/e2e/transitions.test.ts
+r12 06:46:58 06:47:25 26.8 completed 0.93 1855325@0.1.56 test/e2e/worktrees.test.ts
+r13 06:58:04 06:59:10 66.0 completed 0.72 2451514@0.1.57 test/e2e/policy.test.ts
+r13 07:00:56 07:00:56 0.2 completed 0.88 2451514@0.1.57 test/e2e/plugin-copy.test.ts
+r13 07:00:56 07:00:56 0.2 completed 0.88 2451514@0.1.57 test/e2e/torn-status.test.ts
+r13 07:00:56 07:01:03 7.2 completed 0.88 2451514@0.1.57 test/e2e/shipped-plugin.test.ts
+r13 07:01:03 07:01:18 14.4 completed 0.76 2451514@0.1.57 test/e2e/node-test.test.ts
+r13 07:01:18 07:01:41 23.3 completed 0.62 2451514@0.1.57 test/e2e/slow-node-test.test.ts
+r13 07:01:41 07:03:05 84.5 completed 0.48 2451514@0.1.57 test/e2e/worktrees.test.ts
+r13 07:04:51 07:05:03 12.2 completed 0.92 2451514@0.1.57 test/e2e/transitions.test.ts
+r13 07:05:03 07:05:40 36.8 completed 0.75 2451514@0.1.57 test/e2e/lifecycle.test.ts
+r13 07:05:40 07:06:27 47.2 completed 0.66 2451514@0.1.57 test/e2e/slow-vitest.test.ts
+r13 07:24:10 07:24:11 0.9 completed 0.89 3280655@0.1.58 test/e2e/torn-status.test.ts
+r13 07:24:11 07:24:11 0.3 completed 0.89 3280655@0.1.58 test/e2e/plugin-copy.test.ts
+r13 07:24:11 07:24:21 9.3 completed 0.89 3280655@0.1.58 test/e2e/shipped-plugin.test.ts
+r13 07:24:21 07:24:34 13.5 completed 0.84 3280655@0.1.58 test/e2e/transitions.test.ts
+r13 07:24:34 07:24:50 15.8 completed 0.71 3280655@0.1.58 test/e2e/node-test.test.ts
+r13 07:24:50 07:25:14 23.9 completed 0.61 3280655@0.1.58 test/e2e/slow-node-test.test.ts
+r13 07:25:14 07:26:16 61.6 completed 0.47 3280655@0.1.58 test/e2e/lifecycle.test.ts
+r13 07:28:31 07:29:16 44.9 completed 0.92 3280655@0.1.58 test/e2e/slow-vitest.test.ts
+r13 07:29:16 07:30:12 56.4 completed 0.56 3280655@0.1.58 test/e2e/policy.test.ts
+r13 07:30:12 07:30:41 29.4 completed 0.30 3280655@0.1.58 test/e2e/worktrees.test.ts

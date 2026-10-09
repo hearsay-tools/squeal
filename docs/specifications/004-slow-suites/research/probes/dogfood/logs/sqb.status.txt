@@ -1,0 +1,7 @@
+Revision: 1
+Known failures: 0
+Affected checks: 2319 passed, 0 running, 0 queued, 10 skipped
+Slow tier: 10 test files; 10 current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 0, sources changed since. Not covered by Stop's wait.
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: 2329 current results
+Test files without checks: 1 pending, 0 unknown

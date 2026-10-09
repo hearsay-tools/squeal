@@ -1,0 +1,154 @@
+
+added 559 packages in 25s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   esbuild@0.28.1 (postinstall: node install.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+25.85 s
+
+> build
+> npm run build:server && npm run build:web && npm run check:pack
+
+
+> build:server
+> npm run build -w @wjarka/cezarion
+
+
+> @wjarka/cezarion@0.16.0 prebuild
+> node scripts/sync-readme.mjs
+
+
+> @wjarka/cezarion@0.16.0 build
+> tsc
+
+
+> @wjarka/cezarion@0.16.0 postbuild
+> node scripts/inline-contract.mjs
+
+inline-contract ok — contract bundled with declarations, 110 file(s) repointed
+
+> build:web
+> npm run build -w @open-mercato/cezar-web
+
+
+> @open-mercato/cezar-web@0.16.0 build
+> vite build
+
+vite v8.1.4 building client environment for production...
+[2Ktransforming...✓ 2732 modules transformed.
+rendering chunks...
+computing gzip size...
+../cezar/web/dist/index.html                                                    4.61 kB │ gzip:   1.62 kB
+../cezar/web/dist/assets/poppins-latin-ext-500-normal-CK-6C4Hw.woff2            5.48 kB
+../cezar/web/dist/assets/poppins-latin-ext-600-normal-CAhIAdZj.woff2            5.52 kB
+../cezar/web/dist/assets/poppins-latin-ext-400-normal-by3JarPu.woff2            5.64 kB
+../cezar/web/dist/assets/poppins-latin-ext-500-normal-CgAe2rWW.woff             7.37 kB
+../cezar/web/dist/assets/poppins-latin-ext-600-normal-Df5ffKXP.woff             7.43 kB
+../cezar/web/dist/assets/poppins-latin-ext-400-normal-DaBSavcJ.woff             7.46 kB
+../cezar/web/dist/assets/poppins-latin-500-normal-C8OXljZJ.woff2                7.74 kB
+../cezar/web/dist/assets/poppins-latin-400-normal-cpxAROuN.woff2                7.88 kB
+../cezar/web/dist/assets/poppins-latin-600-normal-zEkxB9Mr.woff2                8.00 kB
+../cezar/web/dist/assets/poppins-latin-500-normal-DGXqpDMm.woff                10.37 kB
+../cezar/web/dist/assets/poppins-latin-400-normal-BOb3E3N0.woff                10.53 kB
+../cezar/web/dist/assets/poppins-latin-600-normal-BJdTmd5m.woff                10.60 kB
+../cezar/web/dist/assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2   15.19 kB
+../cezar/web/dist/assets/poppins-devanagari-500-normal-BIdkeU1p.woff2          39.08 kB
+../cezar/web/dist/assets/poppins-devanagari-600-normal-STEjXBNN.woff2          39.29 kB
+../cezar/web/dist/assets/poppins-devanagari-400-normal-CJDn6rn8.woff2          39.66 kB
+../cezar/web/dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2       40.40 kB
+../cezar/web/dist/assets/poppins-devanagari-500-normal-DMPDjHtT.woff           52.42 kB
+../cezar/web/dist/assets/poppins-devanagari-600-normal-ClASKHrr.woff           52.56 kB
+../cezar/web/dist/assets/poppins-devanagari-400-normal-CqVvlrh5.woff           52.98 kB
+../cezar/web/dist/assets/repo-git-CoKp-g9K.css                                  0.32 kB │ gzip:   0.20 kB
+../cezar/web/dist/assets/run-header-8GObNx6F.css                                2.89 kB │ gzip:   0.85 kB
+../cezar/web/dist/assets/task-thread-zNE2Q9E-.css                               5.32 kB │ gzip:   1.23 kB
+../cezar/web/dist/assets/use-hand-to-agent-state-BLIGmwbd.css                   5.97 kB │ gzip:   1.43 kB
+../cezar/web/dist/assets/index-fBFnuvxu.css                                   216.40 kB │ gzip:  36.28 kB
+../cezar/web/dist/assets/mermaid-GHXKKRXX-C4jxqUUb.js                           0.07 kB │ gzip:   0.08 kB
+../cezar/web/dist/assets/play-CmVAj_fu.js                                       0.19 kB │ gzip:   0.17 kB
+../cezar/web/dist/assets/info-DA1x_4bz.js                                       0.20 kB │ gzip:   0.17 kB
+../cezar/web/dist/assets/square-terminal-B6RYYieR.js                            0.24 kB │ gzip:   0.20 kB
+../cezar/web/dist/assets/search-x-I9Q8pgUa.js                                   0.25 kB │ gzip:   0.20 kB
+../cezar/web/dist/assets/app-window-CSHwDX9N.js                                 0.25 kB │ gzip:   0.20 kB
+../cezar/web/dist/assets/agent-accounts-CDhVzwnd.js                             0.34 kB │ gzip:   0.25 kB
+../cezar/web/dist/assets/highlighted-body-OFNGDK62-BL-MfFgl.js                  0.57 kB │ gzip:   0.38 kB
+../cezar/web/dist/assets/rolldown-runtime-QTnfLwEv.js                           0.69 kB │ gzip:   0.42 kB
+../cezar/web/dist/assets/tab-link-COpvArgR.js                                   0.91 kB │ gzip:   0.56 kB
+../cezar/web/dist/assets/image-preview-Dy5i96RC.js                              0.93 kB │ gzip:   0.54 kB
+../cezar/web/dist/assets/skill-empty-hint-oOtzR3v0.js                           0.95 kB │ gzip:   0.45 kB
+../cezar/web/dist/assets/zoomable-image-cL1VgYK4.js                             0.99 kB │ gzip:   0.61 kB
+../cezar/web/dist/assets/createLucideIcon-BHp8sXmF.js                           1.43 kB │ gzip:   0.80 kB
+../cezar/web/dist/assets/format-DTNjugyE.js                                     1.78 kB │ gzip:   0.88 kB
+../cezar/web/dist/assets/diff-controls-BWAkxipD.js                              2.06 kB │ gzip:   0.93 kB
+../cezar/web/dist/assets/nav-row-styles-Ci-Ke7wG.js                             2.15 kB │ gzip:   0.83 kB
+../cezar/web/dist/assets/status-dot-DwFmt_Jg.js                                 2.49 kB │ gzip:   0.91 kB
+../cezar/web/dist/assets/diff-woXpYk--.js                                       2.56 kB │ gzip:   0.68 kB
+../cezar/web/dist/assets/skills-DFBiAuJG.js                                     2.61 kB │ gzip:   1.11 kB
+../cezar/web/dist/assets/json-qhed-kSA.js                                       2.81 kB │ gzip:   0.77 kB
+../cezar/web/dist/assets/preview-state-D8-YBJ6m.js                              2.94 kB │ gzip:   1.28 kB
+../cezar/web/dist/assets/textarea-BbNV5Uo2.js                                   3.06 kB │ gzip:   1.17 kB
+../cezar/web/dist/assets/jsonc-CYpm1nAK.js                                      3.10 kB │ gzip:   0.78 kB
+../cezar/web/dist/assets/task-github-item-gt5TKBDX.js                           3.68 kB │ gzip:   1.74 kB
+../cezar/web/dist/assets/diff-CBBmbZnQ.js                                       4.10 kB │ gzip:   1.80 kB
+../cezar/web/dist/assets/run-diff-BFBP_Xk1.js                                   5.78 kB │ gzip:   2.19 kB
+../cezar/web/dist/assets/toml-CcmNWLt0.js                                       6.41 kB │ gzip:   1.28 kB
+../cezar/web/dist/assets/git-toolbar-D8x7vZxm.js                                6.96 kB │ gzip:   2.61 kB
+../cezar/web/dist/assets/compare-variants-BCV7S23a.js                           7.44 kB │ gzip:   2.79 kB
+../cezar/web/dist/assets/task-changes-CzRq-Sur.js                               7.74 kB │ gzip:   3.15 kB
+../cezar/web/dist/assets/lib-BQXq3kEf.js                                        7.85 kB │ gzip:   4.03 kB
+../cezar/web/dist/assets/task-commits-CV87FCAq.js                               7.93 kB │ gzip:   2.88 kB
+../cezar/web/dist/assets/popover-BjjDOSGv.js                                    8.97 kB │ gzip:   3.25 kB
+../cezar/web/dist/assets/yaml-rwi0_p6S.js                                      10.49 kB │ gzip:   2.26 kB
+../cezar/web/dist/assets/diff-view-DFjlI1Mn.js                                 14.55 kB │ gzip:   5.11 kB
+../cezar/web/dist/assets/task-files-BIB1sPR2.js                                14.83 kB │ gzip:   4.91 kB
+../cezar/web/dist/assets/rust-Cfkwpbl8.js                                      15.06 kB │ gzip:   2.71 kB
+../cezar/web/dist/assets/skills-B5pbKiJa.js                                    16.88 kB │ gzip:   5.24 kB
+../cezar/web/dist/assets/lib-BxQXEXDF.js                                       19.06 kB │ gzip:   6.56 kB
+../cezar/web/dist/assets/sql-BsFa4tDR.js                                       23.42 kB │ gzip:   7.45 kB
+../cezar/web/dist/assets/thread-state-DTkIvHsU.js                              24.34 kB │ gzip:   8.70 kB
+../cezar/web/dist/assets/prompt-templates-DFeXUVOZ.js                          28.08 kB │ gzip:  10.42 kB
+../cezar/web/dist/assets/bundle-mjs-BT31bpU6.js                                29.40 kB │ gzip:   9.54 kB
+../cezar/web/dist/assets/run-header-Kv2diMVQ.js                                31.32 kB │ gzip:   9.92 kB
+../cezar/web/dist/assets/github-CBGffqO5.js                                    31.90 kB │ gzip:  10.44 kB
+../cezar/web/dist/assets/repo-git-_kzSb6-r.js                                  36.48 kB │ gzip:   9.94 kB
+../cezar/web/dist/assets/use-hand-to-agent-state-Bbi29Xy_.js                   40.24 kB │ gzip:  11.68 kB
+../cezar/web/dist/assets/shellscript-CLZ0U2zV.js                               41.47 kB │ gzip:   6.07 kB
+../cezar/web/dist/assets/go-rLFTqkRN.js                                        46.81 kB │ gzip:   5.14 kB
+../cezar/web/dist/assets/css-BsVw1vtW.js                                       49.03 kB │ gzip:  11.90 kB
+../cezar/web/dist/assets/dropdown-menu-Ddqp8eUw.js                             54.27 kB │ gzip:  17.63 kB
+../cezar/web/dist/assets/preview-pane-connected-JmLxO2k3.js                    54.77 kB │ gzip:  16.23 kB
+../cezar/web/dist/assets/alert-dialog-A0-kEfJK.js                              56.91 kB │ gzip:  17.71 kB
+../cezar/web/dist/assets/html-BY76lXLH.js                                      57.24 kB │ gzip:  11.74 kB
+../cezar/web/dist/assets/engine-javascript-FQvzRocB.js                         57.63 kB │ gzip:  20.18 kB
+../cezar/web/dist/assets/markdown-BYOwaDjH.js                                  59.32 kB │ gzip:   5.66 kB
+../cezar/web/dist/assets/python-gzcpVVnB.js                                    69.94 kB │ gzip:   9.09 kB
+../cezar/web/dist/assets/workflows-D63MQmMM.js                                 75.88 kB │ gzip:  23.80 kB
+../cezar/web/dist/assets/core-BCsw8oQw.js                                      93.03 kB │ gzip:  29.18 kB
+../cezar/web/dist/assets/task-thread-BD9ktjGH.js                              104.28 kB │ gzip:  30.12 kB
+../cezar/web/dist/assets/utils-POVs3UKu.js                                    123.80 kB │ gzip:  33.84 kB
+../cezar/web/dist/assets/javascript-BgS3c2Ky.js                               174.82 kB │ gzip:  16.62 kB
+../cezar/web/dist/assets/tsx-udAQXfEw.js                                      175.52 kB │ gzip:  16.62 kB
+../cezar/web/dist/assets/jsx-Bz0zcwM4.js                                      177.78 kB │ gzip:  16.71 kB
+../cezar/web/dist/assets/typescript-bsJCZSQ-.js                               181.07 kB │ gzip:  16.23 kB
+../cezar/web/dist/assets/react-runtime-CCIEwYL0.js                            189.64 kB │ gzip:  59.65 kB
+../cezar/web/dist/assets/button-Jj1Itx83.js                                   312.19 kB │ gzip:  88.00 kB
+../cezar/web/dist/assets/chunk-BO2N2NFS-DE6qKn3r.js                           429.83 kB │ gzip: 130.15 kB
+../cezar/web/dist/assets/index-DlffVCMX.js                                    564.26 kB │ gzip: 158.03 kB
+
+✓ built in 2.49s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+> check:pack
+> npm run check:pack -w @wjarka/cezarion
+
+
+> @wjarka/cezarion@0.16.0 check:pack
+> node scripts/check-pack.mjs
+
+check:pack ok — 883 files, 100 under web/dist (shell + assets present)
+build 21.67 s
+exit 0

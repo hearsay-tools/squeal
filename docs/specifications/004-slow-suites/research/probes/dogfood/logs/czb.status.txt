@@ -1,0 +1,6 @@
+Revision: 0
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued
+Slow tier: 13 test files; 13 not run at revision 0. Not covered by Stop's wait; `squeal run --slow` runs them now.
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 674 unknown

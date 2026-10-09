@@ -1,0 +1,72 @@
+{
+  "interrupt": {
+    "onRegression": true
+  },
+  "stop": {
+    "blockOnKnownFailures": false,
+    "requireFullSuite": false,
+    "waitMs": 0,
+    "requireSlowSuite": false
+  },
+  "baseline": {
+    "onStart": "lookup-only"
+  },
+  "inputs": {
+    "packages/cezar/test/e2e/**": [
+      "packages/cezar/dist/**"
+    ]
+  },
+  "observe": {
+    "runtimeInputs": true
+  },
+  "env": {
+    "allowlist": []
+  },
+  "runner": {
+    "tierSize": 4,
+    "backlogTierSize": 200,
+    "timeoutMs": 600000
+  },
+  "nodeTest": [
+    {
+      "name": "test:unit",
+      "cwd": "packages/cezar",
+      "argv": [
+        "--import",
+        "../../scripts/test-git-env.mjs",
+        "--import",
+        "tsx"
+      ],
+      "include": [
+        "test/unit/*.test.ts"
+      ]
+    },
+    {
+      "name": "test:package",
+      "cwd": "packages/cezar",
+      "argv": [
+        "--import",
+        "../../scripts/test-git-env.mjs",
+        "--import",
+        "tsx"
+      ],
+      "include": [
+        "test/e2e/*.test.ts"
+      ],
+      "slow": true
+    }
+  ],
+  "slow": {
+    "include": [],
+    "maxWorkers": 2,
+    "maxLoadPerCpu": 1,
+    "maxDeferMs": 600000
+  },
+  "daemon": {
+    "idleExitMinutes": 60
+  },
+  "store": {
+    "retentionDays": 7,
+    "maxSizeMb": null
+  }
+}
