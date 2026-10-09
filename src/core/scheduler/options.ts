@@ -67,7 +67,7 @@ export interface SchedulerOptions {
 
 /** The slow tier's surroundings, for tests and the daemon. */
 export interface SlowTierOptions {
-  /** Directory of the per-user slot (`slow.lock`). Default `userTmpDir()` (spec 004 D2). */
+  /** Directory of the per-user slot (`slow.lock`). Default `slowSlotDir()` (spec 004 D2). */
   readonly slotDir?: AbsolutePath;
   /**
    * How often pending slow work that cannot start is looked at again: the

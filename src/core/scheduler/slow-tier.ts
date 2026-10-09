@@ -1,5 +1,4 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { currentUid, userTmpDir } from "../daemon/paths.js";
 import { POLICY_FILE } from "../daemon/policy.js";
 import { readTurn } from "../delivery/turn.js";
 import {
@@ -7,6 +6,7 @@ import {
   inheritsAcrossWorktrees,
   SLOW_LOCK_FILE,
   type SlowSlot,
+  slowSlotDir,
   waitForCapacity,
 } from "../slow/index.js";
 import {
@@ -120,7 +120,7 @@ export class SlowTier {
     const ref = await this.host.lock.run(() => this.#candidate());
     if (ref === null) return null;
     const { context } = this.host.started();
-    const dir = this.options.slotDir ?? userTmpDir(currentUid());
+    const dir = this.options.slotDir ?? slowSlotDir();
     const slot = acquireSlowSlot({
       dir,
       owner: { pid: process.pid, worktreeId: context.worktreeId },
