@@ -12,7 +12,9 @@ import { type InvalidatedPath, isSlowLane, type RunnerAdapter } from "../types/i
  * invalidated while the slow instance lives reach it before its next run,
  * not at once, which would wait behind the slow run in flight; a config
  * change among them recreates it there as it recreated the fast one. A
- * fresh instance reads the disk as it is and needs none.
+ * `touch` (task 001-159) reaches it at once: it waits for nothing, and a
+ * slow run in flight must hear it. A fresh instance reads the disk as it
+ * is and needs none.
  */
 export function withSlowInstance(
   fast: RunnerAdapter,
@@ -36,7 +38,12 @@ export function withSlowInstance(
     name: fast.name,
     adapterVersion: fast.adapterVersion,
     invalidate(paths) {
-      if (slow !== null) pending.push(...paths);
+      if (slow !== null) {
+        // Task 001-159: a touch is heard at once, so a slow run in flight is not stored.
+        const touched = paths.filter((p) => p.kind === "touch");
+        if (touched.length > 0) void slow.invalidate(touched).catch(() => {});
+        pending.push(...paths.filter((p) => p.kind !== "touch"));
+      }
       return fast.invalidate(paths);
     },
     affected: (changedPaths) => fast.affected(changedPaths),
