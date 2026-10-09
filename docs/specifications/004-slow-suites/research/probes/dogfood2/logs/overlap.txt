@@ -10,6 +10,12 @@ czb 15:47:04.210 -> 15:47:34.210 (30.0 s) completed 1 file(s): serve-port.test.t
 czb 15:47:34.408 -> 15:47:35.539 (1.1 s) completed 1 file(s): stop-child.test.ts
 czb 15:47:35.599 -> 15:48:28.809 (53.2 s) completed 1 file(s): task-cli.test.ts
 czb 15:48:28.906 -> 15:48:29.963 (1.1 s) completed 1 file(s): tick-writer.test.ts
+czb 15:55:13.014 -> 15:55:16.398 (3.4 s) completed 1 file(s): tick-writer.test.ts
+czb 15:55:17.346 -> 15:55:20.019 (2.7 s) completed 1 file(s): stop-child.test.ts
+czb 15:55:20.710 -> 15:55:23.117 (2.4 s) completed 1 file(s): alias-bin-exports.test.ts
+czb 15:55:24.080 -> 15:55:34.007 (9.9 s) completed 1 file(s): inline-contract.test.ts
+czb 15:55:34.573 -> 15:56:20.178 (45.6 s) completed 1 file(s): release.test.ts
+czb 15:56:20.463 -> 15:57:56.464 (96.0 s) completed 1 file(s): release-snapshot.test.ts
 czc 15:39:17.194 -> 15:39:20.616 (3.4 s) completed 1 file(s): alias-bin-exports.test.ts
 czc 15:39:21.017 -> 15:44:44.398 (323.4 s) completed 1 file(s): application-update.test.ts
 czc 15:44:44.608 -> 15:45:26.862 (42.3 s) completed 1 file(s): cockpit-ownership.test.ts
@@ -23,7 +29,16 @@ czc 15:48:51.119 -> 15:49:38.886 (47.8 s) completed 1 file(s): serve-port.test.t
 czc 15:49:39.388 -> 15:49:41.141 (1.8 s) completed 1 file(s): stop-child.test.ts
 czc 15:49:41.496 -> 15:51:50.360 (128.9 s) completed 1 file(s): task-cli.test.ts
 czc 15:51:50.867 -> 15:51:54.066 (3.2 s) completed 1 file(s): tick-writer.test.ts
+czc 15:55:41.209 -> 15:57:25.831 (104.6 s) completed 1 file(s): task-cli.test.ts
+czc 15:57:26.717 -> 15:57:29.694 (3.0 s) completed 1 file(s): stop-child.test.ts
+czc 15:57:30.510 -> 15:57:33.231 (2.7 s) completed 1 file(s): tick-writer.test.ts
+czc 15:57:33.986 -> 15:57:37.960 (4.0 s) completed 1 file(s): alias-bin-exports.test.ts
+czc 15:57:38.719 -> 15:57:52.505 (13.8 s) completed 1 file(s): inline-contract.test.ts
+czc 15:57:52.883 -> 15:58:54.997 (62.1 s) completed 1 file(s): release-snapshot.test.ts
 sq 15:49:42.607 -> 15:52:19.954 (157.3 s) completed 1 file(s): lifecycle.test.ts
+sq 16:11:32.875 -> 16:12:44.535 (71.7 s) completed 4 file(s): node-test.test.ts plugin-copy.test.ts policy.test.ts shipped-plugin.test.ts
+sq 16:12:44.580 -> 16:13:34.520 (49.9 s) completed 4 file(s): slow-node-test.test.ts slow-vitest.test.ts torn-status.test.ts transitions.test.ts
+sq 16:13:34.553 -> 16:14:03.820 (29.3 s) completed 1 file(s): worktrees.test.ts
 
 ## slow files running at once (per worktree, total)
 15:34:46.808 cz=1 total=1
@@ -78,3 +93,33 @@ sq 15:49:42.607 -> 15:52:19.954 (157.3 s) completed 1 file(s): lifecycle.test.ts
 15:51:50.867 cz=0 czc=1 czb=0 sq=1 total=2
 15:51:54.066 cz=0 czc=0 czb=0 sq=1 total=1
 15:52:19.954 cz=0 czc=0 czb=0 sq=0 total=0
+15:55:13.014 cz=0 czc=0 czb=1 sq=0 total=1
+15:55:16.398 cz=0 czc=0 czb=0 sq=0 total=0
+15:55:17.346 cz=0 czc=0 czb=1 sq=0 total=1
+15:55:20.019 cz=0 czc=0 czb=0 sq=0 total=0
+15:55:20.710 cz=0 czc=0 czb=1 sq=0 total=1
+15:55:23.117 cz=0 czc=0 czb=0 sq=0 total=0
+15:55:24.080 cz=0 czc=0 czb=1 sq=0 total=1
+15:55:34.007 cz=0 czc=0 czb=0 sq=0 total=0
+15:55:34.573 cz=0 czc=0 czb=1 sq=0 total=1
+15:55:41.209 cz=0 czc=1 czb=1 sq=0 total=2
+15:56:20.178 cz=0 czc=1 czb=0 sq=0 total=1
+15:56:20.463 cz=0 czc=1 czb=1 sq=0 total=2
+15:57:25.831 cz=0 czc=0 czb=1 sq=0 total=1
+15:57:26.717 cz=0 czc=1 czb=1 sq=0 total=2
+15:57:29.694 cz=0 czc=0 czb=1 sq=0 total=1
+15:57:30.510 cz=0 czc=1 czb=1 sq=0 total=2
+15:57:33.231 cz=0 czc=0 czb=1 sq=0 total=1
+15:57:33.986 cz=0 czc=1 czb=1 sq=0 total=2
+15:57:37.960 cz=0 czc=0 czb=1 sq=0 total=1
+15:57:38.719 cz=0 czc=1 czb=1 sq=0 total=2
+15:57:52.505 cz=0 czc=0 czb=1 sq=0 total=1
+15:57:52.883 cz=0 czc=1 czb=1 sq=0 total=2
+15:57:56.464 cz=0 czc=1 czb=0 sq=0 total=1
+15:58:54.997 cz=0 czc=0 czb=0 sq=0 total=0
+16:11:32.875 cz=0 czc=0 czb=0 sq=4 total=4
+16:12:44.535 cz=0 czc=0 czb=0 sq=0 total=0
+16:12:44.580 cz=0 czc=0 czb=0 sq=4 total=4
+16:13:34.520 cz=0 czc=0 czb=0 sq=0 total=0
+16:13:34.553 cz=0 czc=0 czb=0 sq=1 total=1
+16:14:03.820 cz=0 czc=0 czb=0 sq=0 total=0

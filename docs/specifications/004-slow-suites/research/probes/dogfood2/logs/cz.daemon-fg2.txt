@@ -9,3 +9,10 @@ squeal daemon: stopped 3 processes a test left running after its tier: 590852 op
 squeal daemon: stopped 1 process a test left running after its tier: 942900 claude auth status --json
 squeal daemon: stopped 3 processes a test left running after its tier: 1169964 opencode auth list; 1169986 /home/agent/.local/bin/agent --use-system-ca /home/agent/.local/share/cursor-agent/versions/2026.10.01-e373342/index....; 1170004 omp models --json
 squeal daemon: stopped 2 processes a test left running after its tier: 1182725 opencode auth list; 1182744 omp models --json
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: heartbeat failed: Error: database is locked
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: daemon stopped: squeal stop
+16:15:25.301 daemon exit code=0 signal=null

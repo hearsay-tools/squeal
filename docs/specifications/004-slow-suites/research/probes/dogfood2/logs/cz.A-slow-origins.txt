@@ -1,0 +1,16 @@
+## known_states of slow files by outcome, validity, origin
+packages/cezar/test/e2e/alias-bin-exports.test.ts pass current own  2
+packages/cezar/test/e2e/application-update.test.ts pass current own  28
+packages/cezar/test/e2e/cockpit-ownership.test.ts pass current inherited b5961de107e0f491 2
+packages/cezar/test/e2e/cursor-print.test.ts pass current inherited b5961de107e0f491 2
+packages/cezar/test/e2e/delegation.test.ts pass current inherited b5961de107e0f491 3
+packages/cezar/test/e2e/inline-contract.test.ts pass current inherited b5961de107e0f491 5
+packages/cezar/test/e2e/package-cli.test.ts pass current inherited b5961de107e0f491 2
+packages/cezar/test/e2e/release-snapshot.test.ts pass current inherited b5961de107e0f491 9
+packages/cezar/test/e2e/release.test.ts pass current inherited b5961de107e0f491 13
+packages/cezar/test/e2e/serve-port.test.ts pass current inherited b5961de107e0f491 9
+packages/cezar/test/e2e/stop-child.test.ts pass current inherited b5961de107e0f491 4
+packages/cezar/test/e2e/task-cli.test.ts pass current inherited b5961de107e0f491 2
+packages/cezar/test/e2e/tick-writer.test.ts pass current inherited b5961de107e0f491 3
+
+## consumers
