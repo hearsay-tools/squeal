@@ -194,7 +194,10 @@ async function observedLinks(
  * root and the target is not another one, so an ordinary directory beside a
  * worktree that lives inside a checkout is still observed.
  */
-async function inOtherRepository(root: AbsolutePath, target: AbsolutePath): Promise<boolean> {
+export async function inOtherRepository(
+  root: AbsolutePath,
+  target: AbsolutePath,
+): Promise<boolean> {
   for (let dir = target; !holdsRoot(root, dir); dir = dirname(dir)) {
     if (await hasGitEntry(dir)) return true;
   }
@@ -202,7 +205,7 @@ async function inOtherRepository(root: AbsolutePath, target: AbsolutePath): Prom
 }
 
 /** True when `dir` is the root or a directory above it. */
-function holdsRoot(root: AbsolutePath, dir: AbsolutePath): boolean {
+export function holdsRoot(root: AbsolutePath, dir: AbsolutePath): boolean {
   return root === dir || root.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
 }
 
