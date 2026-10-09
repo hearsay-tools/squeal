@@ -131,11 +131,20 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
   return lines;
 }
 
-/** Task 001-173: where the shown result's console output is, and with `--include-logs` its lines. */
+/**
+ * Task 001-173: where the shown result's console output is, and with
+ * `--include-logs` its lines. Task 001-188: a node:test file's own logs, and
+ * no run named when none is identifiably the producer.
+ */
 function runLog(why: WhyReport): string[] {
   const log = why.runLog;
-  if (log === null) return ["Run log: none, no stored result is behind the known state"];
+  if (log === null) {
+    return [
+      "Run log: unknown, no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)",
+    ];
+  }
   const where = producer(why, log);
+  const file = testFileLabel(why.check.project, why.check.testPath);
   if (log.state === "pruned") {
     return [`Run log: ${log.path} was pruned; run ${log.runId} in ${where} left no output`];
   }
@@ -143,21 +152,35 @@ function runLog(why: WhyReport): string[] {
     return [
       `Run log: none, run ${log.runId} in ${where} wrote no ${basename(log.path)}`,
       `  Its runner's output is under ${dirname(log.path)}`,
+      ...(log.console === null ? [] : [`  No console of ${file} was captured in this run.`]),
     ];
   }
-  const file = testFileLabel(why.check.project, why.check.testPath);
-  const lines = [
-    `Run log: ${log.path}`,
-    `  Run ${log.runId} in ${where} produced the result shown. The log covers that whole run, every test file in it, not only this check.`,
-  ];
+  const lines =
+    log.state === "node-test"
+      ? [
+          `Run log: ${log.path}`,
+          `  Run ${log.runId} in ${where} produced the result shown. Under node:test ${file} has its own logs: stdout above, stderr ${log.stderrPath ?? "not recorded"}.`,
+        ]
+      : [
+          `Run log: ${log.path}`,
+          `  Run ${log.runId} in ${where} produced the result shown. The log covers that whole run, every test file in it, not only this check.`,
+        ];
+  const source = log.state === "node-test" ? "these logs" : "this log";
   if (log.console === null) {
-    lines.push(`  --include-logs prints the console lines of ${file} from it.`);
+    lines.push(
+      `  --include-logs prints the console lines of ${file} from ${source === "this log" ? "it" : "them"}.`,
+    );
     return lines;
   }
   const { lines: kept, total, limit } = log.console;
-  if (total === 0) return [...lines, "", `Console of ${file} in this log: none`];
+  if (total === 0) return [...lines, "", `Console of ${file} in ${source}: none`];
   const shown = total > kept.length ? `first ${limit} of ${total} lines` : plural(total, "line");
-  return [...lines, "", `Console of ${file} in this log (${shown}):`, ...kept.map((l) => `  ${l}`)];
+  return [
+    ...lines,
+    "",
+    `Console of ${file} in ${source} (${shown}):`,
+    ...kept.map((l) => `  ${l}`),
+  ];
 }
 
 function producer(why: WhyReport, log: WhyRunLog): string {

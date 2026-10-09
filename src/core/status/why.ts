@@ -2,6 +2,7 @@ import { worktreeIdFor } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import {
   checkIdentity,
+  failureKeysOnce,
   formatCheck,
   heldFailure,
   parseCheck,
@@ -12,6 +13,7 @@ import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckId,
+  type CheckKey,
   PAYLOAD_SCHEMA_VERSION,
   type ResultRecord,
   type Store,
@@ -63,10 +65,12 @@ function known(store: Store, worktreeId: string, check: CheckId): boolean {
 }
 
 function resolve(store: Store, worktreeId: string, query: string): CheckId | WhyNoMatch {
-  const named = store.knownStates.list(worktreeId).map((s) => ({
-    check: s.check,
-    name: formatCheck(s.check),
-  }));
+  const named = [
+    ...store.knownStates.list(worktreeId).map((s) => s.check),
+    ...held(store, worktreeId),
+  ]
+    .filter((check, i, all) => all.findIndex((c) => sameCheck(c, check)) === i)
+    .map((check) => ({ check, name: formatCheck(check) }));
   const stem = query.endsWith("...") ? query.slice(0, -3) : null;
   let matches = named.filter(
     (n) => n.name.includes(query) || (stem !== null && n.name.startsWith(stem)),
@@ -88,6 +92,25 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
   };
 }
 
+/**
+ * Checks of this worktree held under its current keys: another worktree's
+ * fail, not yet confirmed here, with no known state of its own (review
+ * wave-13i N1). Only the current keys, so no other worktree's history.
+ */
+function held(store: Store, worktreeId: string): CheckId[] {
+  const failureKeys = failureKeysOnce(store, worktreeId);
+  return store.testFileKeys.list(worktreeId).flatMap(({ key }) =>
+    store.results
+      .byKey(key, 0)
+      .filter((r) => heldFailure(store, worktreeId, [r], failureKeys) !== undefined)
+      .map((r) => r.check),
+  );
+}
+
+function sameCheck(a: CheckId, b: CheckId): boolean {
+  return checkIdentity(a) === checkIdentity(b);
+}
+
 function report(
   { store, root, commonDir }: StatusContext,
   check: CheckId,
@@ -96,19 +119,19 @@ function report(
   const worktreeId = worktreeIdFor(root);
   const worktreeRoots = Object.fromEntries(store.worktrees.list().map((w) => [w.id, w.root]));
   const knownState = store.knownStates.get(worktreeId, check);
-  const results = store.results.listForCheck(check, WHY_RESULT_LIMIT).map((result) => ({
+  // Every stored result of the check, not only the listed ones: the shown one may be older (B4).
+  const all = store.results.listForCheck(check, Number.MAX_SAFE_INTEGER);
+  const logDirOf = (result: ResultRecord) =>
+    store.runs.get(result.provenance.runId)?.logDir ?? null;
+  const results = all.slice(0, WHY_RESULT_LIMIT).map((result) => ({
     result,
     worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
-    logDir: store.runs.get(result.provenance.runId)?.logDir ?? null,
+    logDir: logDirOf(result),
   }));
-  const shown = shownResult(worktreeId, knownState, results);
+  const key = currentKey(store, worktreeId, check);
+  const heldFailure = heldFor(store, worktreeId, key, all);
+  const shown = shownResult(worktreeId, knownState, key, all, heldFailure);
   const runsDir = storePaths(commonDir).runsDir;
-  const held = heldFor(
-    store,
-    worktreeId,
-    check,
-    results.map(({ result }) => result),
-  );
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -122,28 +145,36 @@ function report(
     knownState,
     history: store.transitions.history(worktreeId, check),
     results,
-    runLog: shown === null ? null : runLogOf(shown, check, runsDir, includeLogs),
-    ...(held === undefined ? {} : { heldFailure: held }),
+    runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
+    ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
   };
+}
+
+/** This worktree's current key for the check's test file; `null` when it has none. */
+function currentKey(store: Store, worktreeId: string, check: CheckId): CheckKey | null {
+  const file = testFileId(testFileOf(check));
+  return (
+    store.testFileKeys.list(worktreeId).find((row) => testFileId(row.testFile) === file)?.key ??
+    null
+  );
 }
 
 /**
  * The check's result under this worktree's current key for its test file
  * when it is another worktree's fail this worktree holds (`heldFailure`,
- * task 001-170). Read from the results `why` lists, newest first.
+ * task 001-170).
  */
 function heldFor(
   store: Store,
   worktreeId: string,
-  check: CheckId,
+  key: CheckKey | null,
   results: readonly ResultRecord[],
 ): ResultRecord | undefined {
-  const file = testFileId(testFileOf(check));
-  const key = store.testFileKeys
-    .list(worktreeId)
-    .find((row) => testFileId(row.testFile) === file)?.key;
-  if (key === undefined || key === null) return undefined;
-  const current = results.filter((r) => r.key === key);
-  return heldFailure(store, worktreeId, current);
+  if (key === null) return undefined;
+  return heldFailure(
+    store,
+    worktreeId,
+    results.filter((r) => r.key === key),
+  );
 }
