@@ -581,6 +581,24 @@ function readSlowArtifacts(store, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
 }
+function failureKeysMetaKey(worktreeId) {
+  return `failure-keys:${worktreeId}`;
+}
+function readFailureKeys(store, worktreeId) {
+  const raw = store.meta.get(failureKeysMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter(
+        (entry2) => typeof entry2[1] === "string"
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
 
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
@@ -1000,16 +1018,25 @@ function loadOf(store, worktreeId, entry2) {
   const result = store.results.listForCheck(entry2.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
 }
-function slowRunArtifact(store, worktreeId, slow, entry2) {
+function slowRunArtifact(worktreeId, slow, failureKeys, artifactOf, entry2) {
   const { origin } = entry2;
   const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
-  const result = store.results.listForCheck(entry2.check, LOAD_RESULTS_READ).find(
-    (r) => r.outcome === "fail" && r.provenance.worktreeId === from && (origin.kind === "inherited" ? r.provenance.commit === origin.commit : r.provenance.revision === entry2.observedAt)
-  );
-  const recorded = result === void 0 ? void 0 : readSlowArtifacts(store, from).get(result.key);
+  const key = failureKeys.get(checkIdentity(entry2.check));
+  const recorded = key === void 0 ? void 0 : artifactOf(from, key);
   if (recorded !== void 0) return recorded;
   const { project, testPath } = entry2.check;
   return slow?.isSlow({ project, path: testPath }) === true ? null : void 0;
+}
+function recordedArtifacts2(store) {
+  const records = /* @__PURE__ */ new Map();
+  return (from, key) => {
+    let byKey = records.get(from);
+    if (byKey === void 0) {
+      byKey = readSlowArtifacts(store, from);
+      records.set(from, byKey);
+    }
+    return byKey.get(key);
+  };
 }
 function closureFor(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
@@ -1036,12 +1063,14 @@ function attribute(store, consumer, entries, revision) {
   const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
   const closureOf = closureFor(store, consumer.worktreeId);
   const slow = worktreeSlowView(store, consumer.worktreeId);
+  const failureKeys = readFailureKeys(store, consumer.worktreeId);
+  const artifactOf = recordedArtifacts2(store);
   return entries.map((entry2) => {
     if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
     const { project, testPath } = entry2.check;
     const load = loadOf(store, consumer.worktreeId, entry2);
     const loaded = load === void 0 ? {} : { loadAverage: load };
-    const slowArtifact = slowRunArtifact(store, consumer.worktreeId, slow, entry2);
+    const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry2);
     if (slowArtifact !== void 0) return { ...entry2, slowArtifact, ...loaded };
     const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
     const touched = changed === null || closure === void 0 || closure.some((p) => changed.unknown.has(p)) ? void 0 : closure.filter((p) => changed.changed.has(p));
@@ -3605,7 +3634,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.54";
+  if (true) return "0.1.55";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3905,9 +3934,14 @@ ${text}` };
         }
         if (input.agent_id !== void 0) await finishSubagent(context);
         else if (news === null) {
-          const at2 = blocking && decision < STOP_DECISIONS ? { atRevision: header.revision } : {};
-          const ended = await context.delivery.endTurn(consumer, at2);
-          if (!ended) continue;
+          const at2 = blocking ? { atRevision: header.revision } : {};
+          if (!await context.delivery.endTurn(consumer, at2)) {
+            if (decision < STOP_DECISIONS) continue;
+            const text = statusText(header, failures.length, deps.command);
+            return { block: `${retriesReason(header.revision)}
+
+${text}` };
+          }
         }
         return news === null ? null : { news };
       }
@@ -3916,6 +3950,9 @@ ${text}` };
   );
 }
 var STOP_DECISIONS = 3;
+function retriesReason(decided) {
+  return `Squeal: the revision changed ${STOP_DECISIONS} times while Stop decided, now past revision ${decided}; stop again to decide at the newest.`;
+}
 function decide(context, policy, isSlow, now, {
   stopHookActive,
   command

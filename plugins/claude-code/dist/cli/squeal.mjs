@@ -2185,12 +2185,49 @@ function forgetSlowArtifacts(store, worktreeId, keys) {
   if (!changed) return;
   store.meta.set(slowArtifactsMetaKey(worktreeId), JSON.stringify(Object.fromEntries(kept2)));
 }
-var WAITS, SLOW_ARTIFACTS_KEPT;
+function failureKeysMetaKey(worktreeId) {
+  return `failure-keys:${worktreeId}`;
+}
+function readFailureKeys(store, worktreeId) {
+  const raw = store.meta.get(failureKeysMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter(
+        (entry2) => typeof entry2[1] === "string"
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function recordFailureKeys(store, worktreeId, checks) {
+  if (checks.size === 0) return;
+  const kept2 = new Map(readFailureKeys(store, worktreeId));
+  let changed = false;
+  for (const [id2, key2] of checks) {
+    if (key2 === null) {
+      changed = kept2.delete(id2) || changed;
+      continue;
+    }
+    if (kept2.get(id2) === key2) continue;
+    kept2.delete(id2);
+    kept2.set(id2, key2);
+    changed = true;
+  }
+  if (!changed) return;
+  const newest = [...kept2].slice(-FAILURE_KEYS_KEPT);
+  store.meta.set(failureKeysMetaKey(worktreeId), JSON.stringify(Object.fromEntries(newest)));
+}
+var WAITS, SLOW_ARTIFACTS_KEPT, FAILURE_KEYS_KEPT;
 var init_state2 = __esm({
   "src/core/slow/state.ts"() {
     "use strict";
     WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
     SLOW_ARTIFACTS_KEPT = 256;
+    FAILURE_KEYS_KEPT = 1024;
   }
 });
 
@@ -2439,6 +2476,11 @@ var init_transitions = __esm({
 });
 
 // src/core/state/sink.ts
+function failureKeys(results2) {
+  const keys = /* @__PURE__ */ new Map();
+  for (const r of results2) keys.set(checkIdentity(r.check), r.outcome === "fail" ? r.key : null);
+  return keys;
+}
 function createStateSink(store, options = {}) {
   const now = options.now ?? Date.now;
   function begin(worktreeId) {
@@ -2485,6 +2527,7 @@ function createStateSink(store, options = {}) {
       const next = results2.map(
         (r) => stateFromResult(worktreeId, revision, r, keyOf(r), prior(r))
       );
+      recordFailureKeys(store, worktreeId, failureKeys(results2));
       return commit(revision, next, provenance.checkpointId);
     }),
     markUnknown: (worktreeId, revision, testFiles, reason2) => store.transaction(() => {
@@ -2499,15 +2542,18 @@ function createStateSink(store, options = {}) {
       const included = (file) => only === null || only.has(file);
       const at2 = now();
       const next = /* @__PURE__ */ new Map();
+      const hits = [];
       for (const [file, key2] of keys) {
         if (!included(file)) continue;
         for (const r of store.results.byKey(key2.key, at2)) {
+          hits.push(r);
           next.set(
             checkIdentity(r.check),
             stateFromResult(worktreeId, revision, r, key2, prior(r))
           );
         }
       }
+      recordFailureKeys(store, worktreeId, failureKeys(hits));
       for (const [id2, state] of previous) {
         const key2 = keyOf(state);
         if (key2 === void 0 || next.has(id2)) continue;
@@ -2530,6 +2576,7 @@ var init_sink = __esm({
   "src/core/state/sink.ts"() {
     "use strict";
     init_keys();
+    init_state2();
     init_baseline();
     init_derive();
     init_transitions();
@@ -8074,9 +8121,10 @@ var init_scheduler2 = __esm({
         return request;
       }
       refreshObserved() {
-        if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
+        if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
         this.#runnerWork.queueObserved();
         this.#pump();
+        return true;
       }
       status() {
         return { revision: this.#ledger?.revision.number ?? 0 };
@@ -31039,7 +31087,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.54";
+  if (true) return "0.1.55";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33404,13 +33452,16 @@ function startTimers(context) {
     nodeTestObservedPreloadsMetaKey(name)
   ]);
   const readObserved = () => JSON.stringify(observedKeys.map((key2) => store.meta.get(key2)));
-  let observedSeen = null;
-  attempt("observed read", () => {
-    observedSeen = readObserved();
-  });
+  const seen = context.observedSeen ?? {};
+  if (seen.snapshot === void 0) {
+    seen.snapshot = null;
+    attempt("observed read", () => {
+      seen.snapshot = readObserved();
+    });
+  }
   const observed = () => attempt("observed check", () => {
     const read3 = readObserved();
-    if (read3 !== observedSeen && context.observedChanged?.() === true) observedSeen = read3;
+    if (read3 !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read3;
   });
   const prune2 = () => attempt("prune", () => {
     store.prune({
@@ -33997,6 +34048,8 @@ var Daemon = class {
   };
   #lastActive;
   #presence;
+  /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
+  #observedSeen = {};
   #exit = null;
   #resolveExit = () => {
   };
@@ -34052,12 +34105,9 @@ var Daemon = class {
       active: (at2) => {
         this.#lastActive = at2;
       },
-      // Task 003-26: queued runner work, never activity; before the scheduler runs, asked again.
-      observedChanged: () => {
-        if (this.#loop === null || this.#phase === "stopping") return false;
-        this.#loop.scheduler.refreshObserved();
-        return true;
-      },
+      // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
+      observedChanged: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
+      observedSeen: this.#observedSeen,
       note: (text2) => this.#note(text2),
       log: this.#log,
       shutdown: (reason2, text2) => void this.#shutdown(reason2, 0, text2)
