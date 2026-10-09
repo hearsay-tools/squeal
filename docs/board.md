@@ -415,7 +415,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-26 third review: 004-25, 003-41, 003-42 | done: PASS at `29e2f4e` | `/reviewer` on gpt-6.1-sol; third and last round for 004-23's gaps, first for 003-41 and 003-42; spec 003 ships on its result (human, 2026-10-09). | `reviews/wave-2.6.md`. |
 | 004-27 the skill's references describe the slow tier | done (coordinator; ships with the next plugin version) | `plugins/*/skills/squeal/references/` (`reports.md`, `commands.md`, `policy.md`) do not yet name the slow-tier line, `run --slow` or `stop.requireSlowSuite` (004-15's note). | Both copies identical; the skill test passes. |
 | 004-16 e2e for both repository shapes | done (0.1.56) | Testing. | Both plugins, Node 22 and 24. |
-| 004-17 dogfooding | planned | This repository with `test/e2e` declared slow, and a cezar worktree as 003-19 was. | `lessons.md`. |
+| 004-17 dogfooding | running (brief `tasks/wave-3.md`; Codex agent, installed plugin 0.1.56) | This repository with `test/e2e` declared slow, and a cezar worktree as 003-19 was. | `lessons.md`. |
 
 ## Later
 
