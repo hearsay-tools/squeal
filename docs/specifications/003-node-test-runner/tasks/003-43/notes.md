@@ -1,6 +1,6 @@
 # 003-43 worker notes: a run that observes a new preload path
 
-Raised by 001 `reviews/wave-13i.md` B2. Status when written (2026-10-09): the node-test half and the probes are committed; the scheduler half (variant B below) is agreed with the 001 coordinator and waits for 001-187 to reach main.
+Raised by 001 `reviews/wave-13i.md` B2. Status (2026-10-09): all of it landed on this branch on top of 001-187, variant B below as agreed with the 001 coordinator.
 
 ## Why the scheduler
 
@@ -20,9 +20,9 @@ What does not work inside `src/runners/node-test/` alone:
 
 ## Tests
 
-- `test/scheduler/observed-growth.test.ts`: B2's gated ordering, and a key test (B runs, reopens, finds its own fail with no run; A keys differently). Both `it.fails` until the scheduler half lands (`1e8eb8a`). The skipped "after B started" case is re-enabled then. `preloadGrowth` asserts 4 or 6 runs: 6 when B's first run went under keys lacking the path (measured 20 of 20 on Node 24 and 22), 4 when the 003-26 timer re-keys B before its first tier.
+- `test/scheduler/observed-growth.test.ts`: B2's gated ordering, and a key test (B runs, reopens, finds its own fail with no run; A keys differently). Both are plain tests now, and the skipped "after B started" case is re-enabled. `preloadGrowth` asserts 4 or 6 runs: 6 when B's first run went under keys lacking the path (measured 20 of 20 on Node 24 and 22), 4 when the 003-26 timer re-keys B before its first tier.
 - `test/scheduler/environment-growth.test.ts` (new): a preload loading a new helper in every process, counted outside the worktree, ends `unknown` after 3 runs.
-- 001-187's `test/scheduler/preload-heal.test.ts:136` asserts the window itself (A runs under B's key); with this change the keys differ. The edit is proposed to the coordinator; the rest of that test holds.
+- 001-187's `test/scheduler/preload-heal.test.ts:136` asserts the window itself (A runs under B's key); with this change the keys differ. That assertion is changed in its own commit, pending the coordinator's agreement; the rest of that test holds.
 
 ## Measured
 

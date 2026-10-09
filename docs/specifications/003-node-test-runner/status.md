@@ -81,6 +81,8 @@ Started: 2026-10-07
 
 - 2026-10-09, review 004-26 (`../004-slow-suites/reviews/wave-2.6.md`, PASS at `29e2f4e`): 003-41 and 003-42 closed, with independent probes of the production 5 s timer at startup and across a restart on Node 22 and 24. By the human's decision (ship after a review of 003-41), spec 003 moves to shipped.
 
+- 2026-10-09, 003-43 (`../001-core-loop/reviews/wave-13i.md` B2): D5 amended. A run report names, per project, the environment files its preloads loaded (`RunReport.environmentObserved`), keyed or not. A test file whose run loaded one its key lacked keeps no result: the environments are read again and it runs again under the key that holds the path, at most three runs in a row, then `unknown` naming the paths. Two worktrees differing only in a file a preload reaches by a computed load no longer share a key, so one's pass cannot heal the other's own fail. The cost: one more run of each such file the first time its worktree meets the path. No adapter version raise. The re-enabled `observed-growth.test.ts` case, B2's gated ordering and a key test pass 10 of 10 on Node 24 and 22.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
