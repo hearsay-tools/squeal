@@ -2800,14 +2800,34 @@ function changedSince(store, worktreeId, revision, since) {
   }
   return changes;
 }
+var DAEMON_START_GRACE_MS = 1e4;
 function livenessMetaKey(worktreeId) {
   return `liveness-told:${worktreeId}`;
 }
 function toldLiveness(store, consumer) {
-  return readSlot(store, livenessMetaKey(consumer.worktreeId), consumer) === "down" ? "down" : "alive";
+  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
+  if (told === "down") return "down";
+  const since = isRecord(told) ? told.startingSince : void 0;
+  return typeof since === "number" ? { startingSince: since } : "alive";
 }
-function tellLiveness(store, consumer, state) {
-  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, state);
+function tellLiveness(store, consumer, told) {
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
+}
+function asTold(live, told, at) {
+  if (live.state === "alive" || typeof told !== "object") return live;
+  const { startingSince } = told;
+  const heartbeatSince = live.since !== null && live.since >= startingSince;
+  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
+  return { ...live, startingSince };
+}
+function withTold(header, told, at) {
+  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
+}
+function livenessChange(store, consumer, at) {
+  const told = toldLiveness(store, consumer);
+  const live = asTold(worktreeLiveness(store.worktrees.get(consumer.worktreeId), at), told, at);
+  if (live.state === "down" && live.startingSince !== void 0) return null;
+  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
 function revisionMetaKey(worktreeId) {
   return `revision-told:${worktreeId}`;
@@ -2933,10 +2953,6 @@ function createDelivery(store, options) {
     });
     return keep === null ? full : restrictPlan(full, keep);
   }
-  function livenessChange(consumer, at) {
-    const live = worktreeLiveness(store.worktrees.get(consumer.worktreeId), at);
-    return live.state === toldLiveness(store, consumer) ? null : live;
-  }
   function deliver(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
     const select = (states) => {
       if (!idle) return { only: keep, trim: null };
@@ -2954,7 +2970,7 @@ function createDelivery(store, options) {
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
       if (selection === "silent") return null;
-      const quiet = !liveness2 || livenessChange(consumer, now()) === null;
+      const quiet = !liveness2 || livenessChange(store, consumer, now()) === null;
       const empty = isEmpty(plan(consumer, states, now(), selection.only));
       if (quiet && empty && selection.trim === null) return null;
     }
@@ -2968,7 +2984,7 @@ function createDelivery(store, options) {
       const delta = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const changed = liveness2 ? livenessChange(consumer, at) : null;
+      const changed = liveness2 ? livenessChange(store, consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
       const delivered = delta.entries.length > 0 || changed !== null;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -2978,7 +2994,8 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const live = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      const read3 = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      const live = withTold(read3, toldLiveness(store, consumer), at);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -3000,7 +3017,7 @@ function createDelivery(store, options) {
     });
   }
   return {
-    register: async (consumer, { inTurn = false, atStart = false } = {}) => store.transaction(() => {
+    register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) => store.transaction(() => {
       const at = now();
       const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at);
@@ -3009,10 +3026,13 @@ function createDelivery(store, options) {
         consumer,
         states.map((s) => toView(s, at))
       );
-      const live = readLiveHeader(store, consumer.worktreeId, at, states);
+      const told = startingSince === void 0 ? null : { startingSince };
+      const read3 = readLiveHeader(store, consumer.worktreeId, at, states);
+      const live = told === null ? read3 : withTold(read3, told, at);
       const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
-      tellLiveness(store, consumer, header.daemon?.state ?? null);
+      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+      tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
       if (!registered) {
         const alive = atStart && header.daemon?.state === "alive";
@@ -3113,7 +3133,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.56";
+  if (true) return "0.1.57";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

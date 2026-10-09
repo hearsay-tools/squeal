@@ -31090,7 +31090,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.56";
+  if (true) return "0.1.57";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33252,6 +33252,7 @@ function toHarness(value) {
 }
 
 // src/core/delivery/liveness.ts
+init_fs();
 init_keys();
 init_state3();
 init_slots();
@@ -33268,8 +33269,8 @@ function worktreeLiveness(worktree, now) {
 function livenessMetaKey(worktreeId) {
   return `liveness-told:${worktreeId}`;
 }
-function tellLiveness(store, consumer, state) {
-  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, state);
+function tellLiveness(store, consumer, told) {
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
 }
 function revisionMetaKey(worktreeId) {
   return `revision-told:${worktreeId}`;
