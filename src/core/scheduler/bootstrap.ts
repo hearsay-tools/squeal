@@ -12,6 +12,7 @@ import {
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
+import { takeHeldFiles } from "./held.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { priorityOf } from "./queue.js";
@@ -93,6 +94,8 @@ export async function baseline(
 ): Promise<void> {
   const { store, keys, runner, worktreeId, policy } = context;
   const failures: Failures = new Map();
+  // The lookup below finds a file a heal left held as a miss (review wave 13i, B1).
+  takeHeldFiles(store, worktreeId);
   await readEnvironments(context, failures);
   const listed = await tryRunner(context, "testFiles", () => runner.testFiles());
   ledger.listingFailed = listed === null;

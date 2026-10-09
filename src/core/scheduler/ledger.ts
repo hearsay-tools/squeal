@@ -15,6 +15,7 @@ import {
 import { Checkpoints } from "./checkpoints.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, durationOf, type FileState, newFileState } from "./files.js";
+import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { slowView } from "./slow.js";
 
@@ -239,6 +240,27 @@ export class Ledger {
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
     this.checkpoints.done(file.ref, checkpointId);
+  }
+
+  /**
+   * Review wave 13i, B1: queues the files another worktree's heal left held
+   * here (`takeHeldFiles`). A file still at that key loses its `resultKey`,
+   * the shortcut that would count it done, and is queued at its normal D5
+   * priority unless a tier runs it; every such file's row is written again,
+   * so the `queued` the heal wrote gives way to the phase held here. Returns
+   * whether there were any, so the caller commits.
+   */
+  confirmHeld(): boolean {
+    const held = takeHeldFiles(this.context.store, this.context.worktreeId);
+    for (const { testFile, key } of held) {
+      const file = this.file(testFile);
+      if (!file) continue;
+      this.touch(file);
+      if (file.key !== key || file.runningKey === key) continue;
+      if (file.resultKey === key) file.resultKey = null;
+      if (file.blocked === null) this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+    }
+    return held.length > 0;
   }
 
   enqueue(file: FileState, priority: Priority, forced = false, recent = false): void {

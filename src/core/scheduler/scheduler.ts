@@ -185,6 +185,8 @@ class TierScheduler implements Scheduler {
         if (!this.#awaitingInstall) await this.#baseline(context, ledger);
         return;
       }
+      // Another worktree's heal may have left a file held here (review wave 13i, B1).
+      if (ledger.confirmHeld()) ledger.commit();
       const { applied, touched } = await reconcileBatch(context, ledger, batch);
       // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
       const install = applied?.revision.changes.some((change) => touchesInstall(change.path));

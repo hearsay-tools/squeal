@@ -1,6 +1,7 @@
-import { createStateSink, recordFlips } from "../state/index.js";
+import { createStateSink, heldFailure, recordFlips } from "../state/index.js";
 import type { ResultRecord } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import { addHeldFile } from "./held.js";
 
 /**
  * Stores one run's results of a test file (`results.putMany`, one row per
@@ -11,6 +12,9 @@ import type { SchedulerContext } from "./context.js";
  * from the row, so a failure they held or confirmed becomes the current pass
  * and is delivered to them as `FAIL -> PASS`. A pass replaced by a fail
  * changes no other worktree: its fail stands there only once it runs there.
+ * When the run that heals also failed a check another worktree never
+ * confirmed, that worktree's file stays held: its row is marked `queued` and
+ * its daemon is told to run it (`addHeldFile`, review wave 13i B1).
  * Returns what the key held before (task 001-171, `holdsNewFailure`).
  */
 export function storeResults(
@@ -29,9 +33,15 @@ export function storeResults(
     const { project, testPath } = first.check;
     // The scheduler's sink is this worktree's; another worktree's states go through the store's own.
     const sink = createStateSink(store, { now });
+    const rows = store.results.byKey(first.key, 0);
     for (const row of store.testFileKeys.withKey(first.key)) {
       if (row.worktreeId === worktreeId) continue;
       if (row.testFile.project !== project || row.testFile.path !== testPath) continue;
+      if (heldFailure(store, row.worktreeId, rows) !== undefined) {
+        // Its states fall to pending, not stale: its daemon queues the file (`Ledger.confirmHeld`).
+        if (row.pending === null) store.testFileKeys.upsertMany([{ ...row, pending: "queued" }]);
+        addHeldFile(store, row.worktreeId, { testFile: row.testFile, key: first.key });
+      }
       const revision = store.revisions.latest(row.worktreeId)?.number ?? row.revision;
       sink.refresh(row.worktreeId, revision, { checkpointId: null }, [row.testFile]);
     }
