@@ -531,6 +531,13 @@ function slowFiles(policy, projects) {
 
 // src/core/slow/inherit.ts
 import { posix as posix2 } from "node:path";
+function inheritsAcrossWorktrees(testFile, declaredInputs, testFiles, slowGlobs2) {
+  if (!testFile.slow) return true;
+  const covered = slowGlobs2.map(coveredPrefix);
+  return declaredInputs.some(
+    (path) => !testFiles.has(path) && !covered.some((prefix) => covers(prefix, path))
+  );
+}
 function slowGlobs(policy, projects) {
   const globs2 = [...policy.slow.include];
   for (const project of projects) {
@@ -539,6 +546,19 @@ function slowGlobs(policy, projects) {
     for (const glob of project.include) globs2.push(posix2.join(cwd, glob));
   }
   return globs2;
+}
+var GLOB_CHARS = /[*?[{]/;
+function coveredPrefix(glob) {
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  const segments = source.split("/");
+  const wild = segments.findIndex((segment) => GLOB_CHARS.test(segment));
+  if (wild === -1) return { file: source };
+  return {
+    dir: segments.slice(0, wild).map((segment) => `${segment}/`).join("")
+  };
+}
+function covers(covered, path) {
+  return "file" in covered ? covered.file === path : path.startsWith(covered.dir);
 }
 
 // src/core/slow/state.ts
@@ -606,14 +626,16 @@ function readFailureKeys(store, worktreeId) {
 
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
-  if (slowGlobs(policy, policy.nodeTest).length === 0) return null;
+  const globs2 = slowGlobs(policy, policy.nodeTest);
+  if (globs2.length === 0) return null;
   const { inputs: inputs2 } = policy;
-  const rules = isInputList(inputs2) ? [{ applies: () => true, globs: inputs2 }] : Object.entries(inputs2).map(([testGlob, globs2]) => ({
+  const rules = isInputList(inputs2) ? [{ applies: () => true, globs: inputs2 }] : Object.entries(inputs2).map(([testGlob, globs3]) => ({
     applies: createInputMatcher([testGlob]),
-    globs: globs2
+    globs: globs3
   }));
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
+    slowGlobs: globs2,
     artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort()
   };
 }
@@ -644,12 +666,14 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt = null;
+  let currentUpTo = null;
   const ranFrom = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
     const id = testFileId(testFileOf(state.check));
     if (files.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
+    currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
     const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
     ranFrom.set(id, origin);
   }
@@ -668,13 +692,23 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
     }
   }
   const globs2 = [...artifact].sort();
+  const testFiles = new Set(keys.map((row) => row.testFile.path));
+  const isSource = (path) => inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs);
   return {
     testFiles: files.size,
     ...counts,
     currentAt,
+    ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
     artifact: globs2,
     ...artifactUnknown > 0 ? { artifactUnknown } : {},
-    sourcesChangedSince: currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, [...globs2, ...declaredToday]),
+    sourcesChangedSince: currentAt !== null && sourcesChanged(
+      store,
+      worktreeId,
+      currentAt,
+      revision,
+      [...globs2, ...declaredToday],
+      isSource
+    ),
     activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow)
   };
 }
@@ -696,10 +730,10 @@ function liveActivity(activity, keys, isSlow) {
   );
   return running ? activity : null;
 }
-function sourcesChanged(store, worktreeId, since, revision, artifact) {
+function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
   const isArtifact = createInputMatcher(artifact);
-  return store.revisions.range(worktreeId, since, revision).some((r) => r.changes.some((change2) => !isArtifact(change2.path)));
+  return store.revisions.range(worktreeId, since, revision).filter((r) => !(r.number === 1 && r.changes.every((change2) => change2.oldHash === null))).some((r) => r.changes.some((change2) => !isArtifact(change2.path) && isSource(change2.path)));
 }
 
 // src/core/state/header.ts
@@ -828,20 +862,21 @@ function clockText(at2) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
-function pendingText(pending, activity) {
+function pendingText(pending, activity, late) {
   if (activity === null) return `${pending} pending`;
+  const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, waiting for ${WAITING_FOR[activity.for]}`;
+    return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
   }
   const last = activity.lastDurationMs === null ? "no earlier run" : `last run ${durationText(activity.lastDurationMs)}`;
-  const running = `running ${activity.path} since ${clockText(activity.since)} (${last})`;
+  const running = `${reported}running ${activity.path} since ${clockText(activity.since)} (${last})`;
   return pending === 1 ? running : `${pending} pending, ${running}`;
 }
 function currentText(tier) {
   const unknown = tier.artifactUnknown ?? 0;
-  if (unknown >= tier.current)
-    return `current at revision ${tier.currentAt}, declared artifact unknown`;
-  const against = tier.artifact.length === 0 ? `current at revision ${tier.currentAt}, against no declared artifact` : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
+  const at2 = tier.currentUpTo === void 0 ? `revision ${tier.currentAt}` : `revisions ${tier.currentAt} to ${tier.currentUpTo}`;
+  if (unknown >= tier.current) return `current at ${at2}, declared artifact unknown`;
+  const against = tier.artifact.length === 0 ? `current at ${at2}, against no declared artifact` : `current against ${tier.artifact.join(", ")} as of ${at2}`;
   return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
 }
 function slowTierText(header, command) {
@@ -857,8 +892,7 @@ function slowTierText(header, command) {
     );
   }
   if (tier.pending > 0) {
-    const activity = header.daemon?.state === "down" ? null : tier.activity;
-    parts.push(pendingText(tier.pending, activity));
+    parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
@@ -3503,7 +3537,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.59";
+  if (true) return "0.1.60";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
