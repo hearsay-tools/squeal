@@ -1,5 +1,6 @@
 import { appendFileSync } from "node:fs";
-import type { Reporter, SerializedError, TestCase, TestModule } from "vitest/node";
+import type { Reporter, SerializedError, TestCase, TestModule, Vitest } from "vitest/node";
+import { consolePrefix, testFileLabel } from "../../core/run-log.js";
 import type { AbsolutePath, CheckRunResult, TestFileRef } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { checkNames, refKey, toCheckRunResult } from "./results.js";
@@ -113,8 +114,15 @@ export class RunCollector {
     }
   }
 
-  console(type: string, content: string): void {
-    this.log.push(`[${type}] ${content.replace(/\n$/, "")}`);
+  /**
+   * One `console` output, every line tagged with the requested test file
+   * that wrote it (`module`), so `squeal why --include-logs` can keep that
+   * file's lines (task 001-173).
+   */
+  console(type: string, content: string, module: TestModule | null): void {
+    const ref = module === null ? null : this.#ref(module.project.name, module.moduleId);
+    const prefix = consolePrefix(type, ref === null ? null : label(ref));
+    for (const line of content.replace(/\n$/, "").split("\n")) this.log.push(`${prefix}${line}`);
   }
 }
 
@@ -123,11 +131,20 @@ export class RunCollector {
  * hooks firing outside a `run` call (none are expected) are dropped.
  */
 export function createSquealReporter(current: () => RunCollector | null): Reporter {
+  let vitest: Vitest | null = null;
+  const moduleOf = (taskId: string | undefined): TestModule | null => {
+    const entity = taskId === undefined ? undefined : vitest?.state.getReportedEntityById(taskId);
+    if (entity === undefined) return null;
+    return entity.type === "module" ? entity : entity.module;
+  };
   return {
+    onInit: (instance) => {
+      vitest = instance;
+    },
     onTestCaseResult: (testCase) => current()?.testCase(testCase),
     onTestModuleEnd: (module) => current()?.moduleEnd(module),
     onTestRunEnd: (_modules, unhandledErrors, reason) => current()?.runEnd(unhandledErrors, reason),
-    onUserConsoleLog: (log) => current()?.console(log.type, log.content),
+    onUserConsoleLog: (log) => current()?.console(log.type, log.content, moduleOf(log.taskId)),
   };
 }
 
@@ -148,7 +165,7 @@ function moduleDuration(module: TestModule): number | null {
   return parts.every((part) => Number.isFinite(part)) ? parts.reduce((a, b) => a + b, 0) : null;
 }
 
-const label = (ref: TestFileRef) => (ref.project ? `[${ref.project}] ${ref.path}` : ref.path);
+const label = (ref: TestFileRef) => testFileLabel(ref.project, ref.path);
 
 const indent = (text: string) => text.replace(/^/gm, "    ");
 

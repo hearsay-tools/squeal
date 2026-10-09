@@ -131,6 +131,33 @@ describe("vitest adapter: run()", SLOW, () => {
     expect(saved.report.results).toHaveLength(1);
   });
 
+  it("tags every console line in vitest.log with the test file that wrote it", async () => {
+    const fx = await openFixture();
+    fx.write(
+      "test/one.test.ts",
+      'import { it } from "vitest";\nconsole.log("one at import");\nit("a", () => { console.log("one in a\\nsecond line"); });\n',
+    );
+    fx.write(
+      "test/two.test.ts",
+      'import { it } from "vitest";\nit("b", () => { console.error("two in b"); });\n',
+    );
+    await fx.adapter.invalidate([
+      { path: "test/one.test.ts", kind: "add" },
+      { path: "test/two.test.ts", kind: "add" },
+    ]);
+    const options = fx.runOptions();
+    await fx.adapter.run([ref("test/one.test.ts"), ref("test/two.test.ts")], options);
+
+    const lines = readFileSync(join(options.logDir, "vitest.log"), "utf8").split("\n");
+    const consoleLines = lines.filter((line) => /^\[std(out|err)\]/.test(line)).sort();
+    expect(consoleLines).toEqual([
+      "[stderr] test/two.test.ts: two in b",
+      "[stdout] test/one.test.ts: one at import",
+      "[stdout] test/one.test.ts: one in a",
+      "[stdout] test/one.test.ts: second line",
+    ]);
+  });
+
   it("honours timeoutMs, keeps finished files and stays usable", async () => {
     const fx = await openFixture();
     fx.write(
