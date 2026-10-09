@@ -148,6 +148,12 @@ export interface Scheduler {
    * D2) do not count; a slow file running or waiting for load does.
    */
   idle(): Promise<void>;
+  /**
+   * A slow file (spec 004 D2) is queued or running. A daemon whose last
+   * session left drains them before it exits (001 D10 as amended, task
+   * 004-29). False before the scheduler started and once it closed.
+   */
+  slowPending(): boolean;
   /** Paths the stat cache holds, for `ChangeFeed` reconciliation passes. */
   trackedPaths(): Iterable<RelativePath>;
   /**

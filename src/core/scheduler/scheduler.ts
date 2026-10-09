@@ -11,6 +11,7 @@ import type {
   SchedulerStatus,
   SlowSuiteRequest,
 } from "../types/index.js";
+import { isSlowLane } from "../types/runner.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
@@ -289,6 +290,12 @@ class TierScheduler implements Scheduler {
   idle(): Promise<void> {
     if (this.#isIdle()) return Promise.resolve();
     return new Promise((resolve) => this.#idle.push(resolve));
+  }
+
+  slowPending(): boolean {
+    if (this.#closed || !this.#ledger) return false;
+    if ([...this.#inFlight.keys()].some(isSlowLane)) return true;
+    return this.#ledger.orderedSlow().length > 0;
   }
 
   trackedPaths(): Iterable<RelativePath> {
