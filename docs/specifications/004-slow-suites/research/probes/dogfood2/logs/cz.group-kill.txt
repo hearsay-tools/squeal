@@ -1,0 +1,2 @@
+test/unit/test-env-launcher.test.ts: runner rc 0; canary 418304 alive; ℹ pass 17 ℹ fail 0 
+test/unit/cursor-hang-stdin.test.ts: runner rc 0; canary 453814 alive; ℹ pass 1 ℹ fail 0 

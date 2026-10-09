@@ -1,0 +1,5 @@
+15:28:17.555 daemon pid 239247 for /tmp/squeal-dogfood2-cezarion-58239afe
+squeal daemon: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+squeal daemon: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+squeal daemon: serving /tmp/squeal-dogfood2-cezarion-58239afe on /run/user/1001/squeal-f5a30f76673c5551.sock
+15:29:27.594 daemon exit code=null signal=SIGKILL

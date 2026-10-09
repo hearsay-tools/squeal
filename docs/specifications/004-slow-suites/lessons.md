@@ -166,3 +166,107 @@ Numbered from 1 for this spec.
 - openai/codex#31383 across a turn boundary: not reproduced (defect 6 gives the evidence).
 - A 0.1.56 daemon whose plugin directory was deleted kept running its slow lane: it created the second Vitest instance and ran 10 files after the removal.
 - Squeal's slot follows `XDG_RUNTIME_DIR` (004-16): `/run/user/1001/squeal/slow.lock`.
+
+## Re-dogfood at 0.1.68
+
+Task 004-46, 2026-10-09, 15:20 to 16:35 UTC. A short check of the slow lane after waves 4 to 4.7, in the same two places as the first dogfood. The agent was Claude Code 2.1.295 (`claude -p --model opus`) loading the dogfood worktree's own plugin (`--plugin-dir`), with the hub's `squeal@hearsay` 0.1.62 disabled in the worktree's untracked `.claude/settings.local.json`. The session's `init` event lists `squeal@inline` 0.1.69 as its only Squeal. `origin/main` was `98874f1`, version 0.1.69: 0.1.68's slow lane plus 001-168, which removed the own-write exemption and added the completion barrier. Every daemon here ran 0.1.69. Node 24.21.0. The host's load was 2 to 7.6 per CPU on 24 CPUs throughout, from other agents' test runs, so every timing below is a loaded-host number. Scripts, prompt and trimmed logs: `research/probes/dogfood2/`. Its README lists the rules followed.
+
+Setup:
+
+- This repository: `git worktree add --detach /tmp/squeal-dogfood2-58239afe origin/main`, `npm ci`, `npm run build` (the build reproduced the committed `dist`). The committed config plus `"slow": {"include": ["test/e2e/**/*.test.ts"], "maxLoadPerCpu": 100}`. That gives 10 slow files.
+- Cezarion: three worktrees at `c07b0bfc`, each with `npm ci` and `npm run build`:
+  - A: `/tmp/squeal-dogfood2-cezarion-58239afe`.
+  - B and C: the same path with `-b` and `-c`.
+- Cezarion's config: `squeal init` (0.1.69) seeded `test:unit` and `test:package`. I then set `test:package` `slow: true`, `inputs` `{"packages/cezar/test/e2e/**": ["packages/cezar/dist/**"]}` and `slow.maxLoadPerCpu` 100. The default `baseline.onStart` stayed (`lookup-then-run-missing`). That gives 13 slow files.
+- `slow.maxLoadPerCpu` 100 turns the load guard off. The first dogfood measured the guard (open question 1 above). Here it would have deferred every file to its 10-minute bound.
+
+### Verdict
+
+| Check | Verdict | Evidence |
+| --- | --- | --- |
+| 1. Defect 1: a `claude -p` session that ends with slow files pending, and the daemon drains them before it exits | the drain starts; it did not finish, because of new defect 10 | sq1 ran from 15:27:18 to 15:30:31.6, with 10 slow files pending. At 15:30:34.1 the daemon noted "the last session ended with slow files pending; this daemon runs them before it exits, for at most 60 min (daemon.idleExitMinutes)". The drain waited for revision 1's edit-caused fast work (sq1 changed `src` and rebuilt both plugins, so nearly every file was in it). The first slow file, `lifecycle.test.ts`, ran from 15:49:42.6 to 15:52:20.0 (157 s). Then Squeal's own node-test tests started making a revision every 4 to 60 s (defect 10). The other 9 slow files stayed "waiting for fast test files" up to the drain bound (outcome below). Under 0.1.56 the daemon exited 3 s after the session. |
+| 2. Defect 3: cezarion with the default baseline | held | In each of the five cezarion daemon starts, the first slow file started 0.2 to 1.6 s after the baseline's first tier: A's first daemon at 15:26:50.1 and 15:26:51.7, its second at 15:29:09.0 and 15:29:10.1, its third at 15:34:46.6 and 15:34:46.8, C at 15:39:16.7 and 15:39:17.2, B at 15:40:55.6 and 15:40:55.8. Under 0.1.56 no slow file ran in 28 minutes. Edit precedence: at 15:36:26.0 I appended a comment to A's `packages/cezar/src/paths.ts` (r1), and later reverted it (r2, 15:39:50). The slow file in flight, `application-update.test.ts`, ran on to 15:38:07.2, as D4 says. No slow file started after it while r1's and r2's edit tiers ran, 15:36:28.9 to past 15:59. The line read "11 pending, waiting for fast test files". |
+| 3. Catch-up width | not exercised: no worktree's fast side went idle | Every slow tier in every worktree held one file. B's and C's 200-file baseline tiers each timed out at `runner.timeoutMs` and restarted whole (defect 13), so neither worktree was ever idle. The line never named more than one running file. Tier wall time, one file at a time beside the baseline: B ran 11 files (2 inherited) from 15:40:55.8 to 15:48:30.0, 454 s. C ran 13 from 15:39:17.2 to 15:51:54.1, 757 s. The first dogfood took 299 s for cezarion's 13 files at load 0.2 to 0.6. `application-update.test.ts` alone took 200.4 s in A and 323.4 s in C (201 s in the first dogfood). This repository: only `lifecycle.test.ts` ran (157 s, against 37 to 62 s in the first dogfood). |
+| 4. Defect 2: both places' slow tiers overlap within the per-user permits | held | `permits.txt`, from `/proc/locks`: B held `slow.1.lock` while C held `slow.lock`, file after file from 15:40:55.8 to 15:48:30.0. This repository's daemon held `slow.1.lock` while cezarion C held `slow.lock`, from 15:49:42.6 to 15:51:54.1. At most 2 of the 4 permits were held at once (`overlap.txt`). No line ever read "waiting for the slow slot". Under 0.1.58, cezarion waited 5 min 24 s for this repository's whole tier. |
+| 5. Defect 7: worktrees with different gitignored builds key a slow file differently; equal builds inherit | held | Equal builds need copied bytes: two builds of the same cezar commit differ in two `.d.ts` files (note 14). So B's and C's `dist` are copies of A's (750 files, tree hash `0f3057549c466e16`). C also has one line appended to `dist/todos.js` (`148ffe767f463100`). At revision 0, all 13 of B's slow keys equal A's, and all 13 of C's differ (`cz.keys-abc.txt`). The 0.1.58 key bug gave C the same keys as B. B started with "2 current": `alias-bin-exports.test.ts` and `application-update.test.ts`, inherited from A (`known_states` origin `inherited`, worktree `f5a30f76673c5551`, 2 and 28 checks). Those were the only two that A had run by then. C inherited none and ran all 13 itself. All four daemons ran from one plugin path, so this check says nothing about the path in the key. |
+| 6. Defect 8: every slow-tier line state against the truth | defects 8a, 8c and 8d gone; 8b not exercised; three new slips (defects 11, 12 and 15) | Table below. |
+
+Whether the agent ran tests itself: sq1 ran `npx vitest run test/status/slow-tier.test.ts` (26 passed, 48.4 s). Its reason: "Squeal hadn't produced a result for the changed file after 60 s (294 files still pending a first listing)". It quoted `status --wait 60000` returning on its timeout, with 0 checks run at revision 1. It ran no e2e file and no full suite, citing the prompt's "keep the session short". In a fresh worktree, under load 6 to 7 per CPU, the daemon listed nothing within the session's first 3 minutes.
+
+### The slow-tier line, seen against the truth (check 6)
+
+| State shown | Where | True? |
+| --- | --- | --- |
+| "no slow test files listed yet; not covered by Stop's wait." | first 4 to 91 s of every start | yes |
+| "N pending, waiting for the agent to pause" | this repository, 15:28:14 to 15:30:31, during sq1 | yes |
+| the same | this repository, 15:30:34 to 15:49:43, after sq1 ended and the drain note | no: no consumer was registered. The tier waited for revision 1's fast work (defect 11). |
+| "N pending, running <file> since HH:MM (no earlier run)" and "(last run N s)" | every slow run | yes, except for a restarted daemon (defect 12) |
+| "N pending, last reported running <file> since HH:MM" | cezarion, 15:27:24 and 15:57:22, once no daemon was validating | yes |
+| "N current against packages/cezar/dist/** as of revision R" | after each tier | yes |
+| "N current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 1, sources changed since" | this repository from 15:52:23 | yes: `lifecycle.test.ts` ran against r1's bundles, and the node-test fixtures changed since |
+| ", sources changed since" | A from r1 (`src/paths.ts` edited, `dist` not rebuilt) | yes |
+| the same | A at r2, after the revert restored revision 0's bytes; C after only `squeal.config.json` changed (15:55:28) | no (defect 15). Defect 8a's case, a change to a slow test file only, was not repeated. |
+| "N pending, waiting for fast test files" | A from 15:38:10, this repository from 15:52:23 | yes |
+| "N pending." with no reason | between two files of a tier, 3 s at most (C 15:47:04, 15:55:40); after `squeal stop` (B 15:57:58, C 15:58:58) | yes; the stop leaves nothing running |
+| "N current ...; running <file>" with no pending count | C, 15:51:52, its last file | yes |
+| "N not run at revision R" | not seen | |
+
+Defect 8c (the text dropping the reason the JSON kept) did not recur: in all 126 polled lines whose JSON named a wait, the text named the same one. Defect 8d (a fresh worktree reading "sources changed since" on inherited results) did not recur in B: its line read "2 current ... as of revision 0" with no clause. Defect 8b (a run at revision 2 reported "as of revision 1") was not exercised.
+
+### Defects found
+
+Numbered on from the first dogfood's 9. None is fixed here.
+
+10. **In this repository, Squeal's own node-test tests feed a revision loop, which holds the slow drain behind fast work it makes itself.**
+    - Where: keys and watcher (004-33 and 004-44 list ignored declared inputs on every interval pass) with 001-168 (0.1.69, no own-write exemption).
+    - Reproduction: the dogfood worktree with sq1's changes and no consumer.
+    - From 15:50:24, revisions r2 to r23 came in 9.5 minutes (r2 at 15:50:24.9, r23 at 15:59:51.1). Each lists only paths under `test/fixtures/node-test/.tmp/<uuid>/`, made (`oldHash` null) or deleted (`newHash` null). Triggers alternate between `interval` and `watch`.
+    - `.tmp/` is gitignored (`test/fixtures/node-test/.gitignore:1`), but it lies under the declared inputs of `test/runners/node-test/**/*.test.ts` and `test/integration/node-test.test.ts`.
+    - Those files write and remove `.tmp` directories while they run. Each run's writes re-key the same files. The four files `adapter-recorders`, `adapter-preload`, `adapter-preload-require` and `integration/node-test` re-ran in tiers at 15:51:58, 15:53:19 and 15:54:07, and on.
+    - Effect: the fast tier is never empty, so the 9 remaining slow files stay "waiting for fast test files". The same loop burns CPU in any worktree of this repository whose daemon runs these tests.
+    - Fix direction, for the coordinator: those tests write under a directory no declared input covers (for example the OS temp directory), or the inputs drop `.tmp/`. Or Squeal ignores a test's own writes for re-keying the files that made them (a product decision against 001-168).
+11. **After the last session ends, the slow-tier line still says "waiting for the agent to pause".**
+    - Where: status, D8.
+    - From the drain note at 15:30:34 to the first slow file at 15:49:43, the line read "10 pending, waiting for the agent to pause". The JSON read `activity: {"kind":"waiting","for":"idle"}`.
+    - No consumer was registered. The tier was waiting for revision 1's edit-caused fast work, which the line reports elsewhere as "waiting for fast test files".
+12. **A restarted daemon shows its dead predecessor's slow file as running.**
+    - Where: status, D8.
+    - Cezarion A's second daemon started at 15:28:17. From 15:28:28 to 15:29:10 its line read "running packages/cezar/test/e2e/application-update.test.ts since 17:26 (no earlier run)", taken from `since` 15:26:57.5. That is the first daemon's run, and the first daemon was SIGKILLed at about 15:27:14.
+    - The same happened after the third daemon started: from 15:34:30 to 15:34:46 the line showed the second daemon's `since` 15:29:10.
+    - The `slow-tier:<worktree>` meta row outlives its daemon. The new daemon serves it until it publishes its own state.
+    - The orphaned test process did still run: the first daemon's `events-0.ndjson` was written up to 15:30:02. But no Squeal run owned it, and no result could come from it.
+13. **A 200-file baseline tier that hits `runner.timeoutMs` is re-run whole, so a large repository under load never goes idle.**
+    - Where: scheduler, 001 (backlog tiers) against 004 D2's idle width.
+    - B's tier `5a179cc6` (200 files) ran from 15:40:55.6 to 15:51:00.7 and ended `timed-out`. Its successor `a4e2fec6` started at 15:51:05.0 with 200 files.
+    - C showed the same: `9266bc96` ran 15:39:16.7 to 15:49:20.2 and timed out; `10464ea6` started at 15:49:23.5.
+    - A's first 200-file tier completed in 103 s (15:34:46.6 to 15:36:29.8).
+    - Likely cause: one hanging file. A's edit tier `6aaca95a` took 6 min 37 s for 4 files (`cursor-integration`, `provision-workflows`, `paths`, `migrations`), and the same set took 3 min 41 s again in tier `9ac9bd50`.
+    - Effect: a 600 s tier that restarts keeps `#fastIdle()` false, so every slow tier stays one file wide (check 3), and the baseline may not converge.
+    - Next step: find the file that holds the tier, and decide whether a timed-out backlog tier should split.
+14. **Cezar's build is not reproducible, so slow keys over all of `dist/**` differ between two builds of one commit.**
+    - A cezarion config matter, not a Squeal defect.
+    - A's and B's `npm run build` from `c07b0bfc` differ in `dist/delegation/transport.d.ts` and `dist/server/server.d.ts`: the same union members in another order, same size (`cz.build-nondeterminism.txt`).
+    - So two worktrees at one commit never inherit each other's slow results unless one copies the other's bytes.
+    - Declaring `packages/cezar/dist/**/*.js` would leave the declaration files out of the key.
+15. **"sources changed since" stays after the sources return to the artifact's revision, and appears after a config-only change.**
+    - Where: status, D8, close to defect 8a.
+    - A at r2, after the revert, read "2 current against packages/cezar/dist/** as of revision 0, sources changed since". Every source was byte-identical to revision 0 again.
+    - C after only `squeal.config.json` changed read "13 current ... as of revision 0, sources changed since". The config is not a source of the artifact.
+    - The clause compares revisions, not content.
+16. **A cezarion daemon started from inside a cezar-managed worktree was SIGKILLed about 18 s into its first tiers, twice in two starts. Three starts from `/tmp` survived.**
+    - Where: unknown, not isolated.
+    - The first daemon (`squeal start` through `ready.mjs`, cwd this task's cezar worktree) started at 15:25:16.7. Its last heartbeat was at 15:27:14.8 and it was gone by 15:27:20, with no exit note. The tiers started at 15:26:50.1.
+    - The second (`daemon-fg.mjs`, same cwd) started at 15:28:17.6 and exited `signal=SIGKILL` at 15:29:27.6. Its tiers started at 15:29:09.0.
+    - Both times the start's 10-file `test:unit` tier and its 200-file Vitest backlog tier ran beside `application-update.test.ts`.
+    - The third daemon (cwd `/tmp`, same command) ran the same tiers from 15:34:46.6 and lived until I stopped it. So did B and C, both started from `/tmp`.
+    - The daemon `chdir`s to the worktree root, so only the inherited environment (`PWD`, `OLDPWD`) differed. That points at a cezar test acting on the environment's cezar state. Cezar has code that SIGKILLs process groups holding a path (`terminateRecorded` in `packages/cezar/src/workflows/run.ts`). `test-env-launcher.test.ts` and `cursor-hang-stdin.test.ts` do not kill their own process group (`cz.group-kill.txt`).
+    - The first dogfood's two short-lived cezarion daemons ("Not explained", 16 to 20 s, no note) match this pattern.
+    - The slow file's process survived its daemon and ran on as an orphan for at least 3 min.
+    - Next step: run the 200-file tier's files under `bin/group-kill.sh` with this worktree as the cwd.
+
+### Not exercised
+
+- Catch-up width and the line naming several running files (check 3): see defect 13.
+- Defect 8b.
+- Preemption of a slow tier by an edit between files. The edit at 15:36:26 landed while a single file was in flight.
+- The load guard: off by configuration.

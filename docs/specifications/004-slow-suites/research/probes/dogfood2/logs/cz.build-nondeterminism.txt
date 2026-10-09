@@ -1,0 +1,14 @@
+Files /tmp/squeal-dogfood2-cezarion-58239afe/packages/cezar/dist/delegation/transport.d.ts and /tmp/squeal-dogfood2-cezarion-58239afe-b/packages/cezar/dist/delegation/transport.d.ts differ
+Files /tmp/squeal-dogfood2-cezarion-58239afe/packages/cezar/dist/server/server.d.ts and /tmp/squeal-dogfood2-cezarion-58239afe-b/packages/cezar/dist/server/server.d.ts differ
+465a466,477
+>                 error: string;
+>                 code?: "invalid_input" | undefined;
+>             };
+>             outputFormat: "json";
+>             status: 400;
+>             input: {
+>                 param: {
+>                     workerId: string;
+>                 };
+>             };
+>         } | {

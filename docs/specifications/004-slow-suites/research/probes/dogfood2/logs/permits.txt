@@ -1,0 +1,23 @@
+15:25:16 slow.lock=free
+15:26:52 slow.lock=116600(squeal-dogfood2-cezarion-58239afe)
+15:27:20 slow.lock=free
+15:29:11 slow.lock=239247(squeal-dogfood2-cezarion-58239afe)
+15:29:28 slow.lock=free
+15:34:47 slow.lock=470631(squeal-dogfood2-cezarion-58239afe)
+15:38:07 slow.lock=free
+15:39:17 slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:40:56 slow.1.lock=737002(squeal-dogfood2-cezarion-58239afe-b) slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:42:09 slow.1.lock=737002(squeal-dogfood2-cezarion-58239afe-b) slow.lock=free
+15:42:10 slow.1.lock=737002(squeal-dogfood2-cezarion-58239afe-b) slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:42:23 slow.1.lock=free slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:42:24 slow.1.lock=737002(squeal-dogfood2-cezarion-58239afe-b) slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:48:30 slow.1.lock=free slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:49:43 slow.1.lock=198576(squeal-dogfood2-58239afe) slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:49:54 slow.1.lock=free slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:49:55 slow.1.lock=198576(squeal-dogfood2-58239afe) slow.lock=647670(squeal-dogfood2-cezarion-58239afe-c)
+15:51:55 slow.1.lock=198576(squeal-dogfood2-58239afe) slow.lock=free
+15:52:21 slow.1.lock=free slow.lock=free
+15:55:13 slow.1.lock=free slow.lock=737002(squeal-dogfood2-cezarion-58239afe-b)
+15:55:42 slow.1.lock=647670(squeal-dogfood2-cezarion-58239afe-c) slow.lock=737002(squeal-dogfood2-cezarion-58239afe-b)
+15:57:57 slow.1.lock=647670(squeal-dogfood2-cezarion-58239afe-c) slow.lock=free
+15:58:55 slow.1.lock=free slow.lock=free

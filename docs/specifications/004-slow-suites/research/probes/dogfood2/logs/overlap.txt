@@ -1,0 +1,80 @@
+cz 15:34:46.808 -> 15:38:07.221 (200.4 s) completed 1 file(s): application-update.test.ts
+czb 15:40:55.778 -> 15:42:11.946 (76.2 s) completed 1 file(s): cockpit-ownership.test.ts
+czb 15:42:12.123 -> 15:43:15.906 (63.8 s) completed 1 file(s): cursor-print.test.ts
+czb 15:43:16.246 -> 15:44:32.283 (76.0 s) completed 1 file(s): delegation.test.ts
+czb 15:44:32.483 -> 15:44:39.800 (7.3 s) completed 1 file(s): inline-contract.test.ts
+czb 15:44:39.981 -> 15:46:21.428 (101.4 s) completed 1 file(s): package-cli.test.ts
+czb 15:46:21.533 -> 15:46:46.597 (25.1 s) completed 1 file(s): release-snapshot.test.ts
+czb 15:46:46.667 -> 15:47:04.075 (17.4 s) completed 1 file(s): release.test.ts
+czb 15:47:04.210 -> 15:47:34.210 (30.0 s) completed 1 file(s): serve-port.test.ts
+czb 15:47:34.408 -> 15:47:35.539 (1.1 s) completed 1 file(s): stop-child.test.ts
+czb 15:47:35.599 -> 15:48:28.809 (53.2 s) completed 1 file(s): task-cli.test.ts
+czb 15:48:28.906 -> 15:48:29.963 (1.1 s) completed 1 file(s): tick-writer.test.ts
+czc 15:39:17.194 -> 15:39:20.616 (3.4 s) completed 1 file(s): alias-bin-exports.test.ts
+czc 15:39:21.017 -> 15:44:44.398 (323.4 s) completed 1 file(s): application-update.test.ts
+czc 15:44:44.608 -> 15:45:26.862 (42.3 s) completed 1 file(s): cockpit-ownership.test.ts
+czc 15:45:27.058 -> 15:46:06.444 (39.4 s) completed 1 file(s): cursor-print.test.ts
+czc 15:46:06.507 -> 15:47:00.682 (54.2 s) completed 1 file(s): delegation.test.ts
+czc 15:47:00.736 -> 15:47:04.636 (3.9 s) completed 1 file(s): inline-contract.test.ts
+czc 15:47:04.668 -> 15:47:56.128 (51.5 s) completed 1 file(s): package-cli.test.ts
+czc 15:47:56.197 -> 15:48:23.298 (27.1 s) completed 1 file(s): release-snapshot.test.ts
+czc 15:48:23.443 -> 15:48:50.971 (27.5 s) completed 1 file(s): release.test.ts
+czc 15:48:51.119 -> 15:49:38.886 (47.8 s) completed 1 file(s): serve-port.test.ts
+czc 15:49:39.388 -> 15:49:41.141 (1.8 s) completed 1 file(s): stop-child.test.ts
+czc 15:49:41.496 -> 15:51:50.360 (128.9 s) completed 1 file(s): task-cli.test.ts
+czc 15:51:50.867 -> 15:51:54.066 (3.2 s) completed 1 file(s): tick-writer.test.ts
+sq 15:49:42.607 -> 15:52:19.954 (157.3 s) completed 1 file(s): lifecycle.test.ts
+
+## slow files running at once (per worktree, total)
+15:34:46.808 cz=1 total=1
+15:38:07.221 cz=0 total=0
+15:39:17.194 cz=0 czc=1 total=1
+15:39:20.616 cz=0 czc=0 total=0
+15:39:21.017 cz=0 czc=1 total=1
+15:40:55.778 cz=0 czc=1 czb=1 total=2
+15:42:11.946 cz=0 czc=1 czb=0 total=1
+15:42:12.123 cz=0 czc=1 czb=1 total=2
+15:43:15.906 cz=0 czc=1 czb=0 total=1
+15:43:16.246 cz=0 czc=1 czb=1 total=2
+15:44:32.283 cz=0 czc=1 czb=0 total=1
+15:44:32.483 cz=0 czc=1 czb=1 total=2
+15:44:39.800 cz=0 czc=1 czb=0 total=1
+15:44:39.981 cz=0 czc=1 czb=1 total=2
+15:44:44.398 cz=0 czc=0 czb=1 total=1
+15:44:44.608 cz=0 czc=1 czb=1 total=2
+15:45:26.862 cz=0 czc=0 czb=1 total=1
+15:45:27.058 cz=0 czc=1 czb=1 total=2
+15:46:06.444 cz=0 czc=0 czb=1 total=1
+15:46:06.507 cz=0 czc=1 czb=1 total=2
+15:46:21.428 cz=0 czc=1 czb=0 total=1
+15:46:21.533 cz=0 czc=1 czb=1 total=2
+15:46:46.597 cz=0 czc=1 czb=0 total=1
+15:46:46.667 cz=0 czc=1 czb=1 total=2
+15:47:00.682 cz=0 czc=0 czb=1 total=1
+15:47:00.736 cz=0 czc=1 czb=1 total=2
+15:47:04.075 cz=0 czc=1 czb=0 total=1
+15:47:04.210 cz=0 czc=1 czb=1 total=2
+15:47:04.636 cz=0 czc=0 czb=1 total=1
+15:47:04.668 cz=0 czc=1 czb=1 total=2
+15:47:34.210 cz=0 czc=1 czb=0 total=1
+15:47:34.408 cz=0 czc=1 czb=1 total=2
+15:47:35.539 cz=0 czc=1 czb=0 total=1
+15:47:35.599 cz=0 czc=1 czb=1 total=2
+15:47:56.128 cz=0 czc=0 czb=1 total=1
+15:47:56.197 cz=0 czc=1 czb=1 total=2
+15:48:23.298 cz=0 czc=0 czb=1 total=1
+15:48:23.443 cz=0 czc=1 czb=1 total=2
+15:48:28.809 cz=0 czc=1 czb=0 total=1
+15:48:28.906 cz=0 czc=1 czb=1 total=2
+15:48:29.963 cz=0 czc=1 czb=0 total=1
+15:48:50.971 cz=0 czc=0 czb=0 total=0
+15:48:51.119 cz=0 czc=1 czb=0 total=1
+15:49:38.886 cz=0 czc=0 czb=0 total=0
+15:49:39.388 cz=0 czc=1 czb=0 total=1
+15:49:41.141 cz=0 czc=0 czb=0 total=0
+15:49:41.496 cz=0 czc=1 czb=0 total=1
+15:49:42.607 cz=0 czc=1 czb=0 sq=1 total=2
+15:51:50.360 cz=0 czc=0 czb=0 sq=1 total=1
+15:51:50.867 cz=0 czc=1 czb=0 sq=1 total=2
+15:51:54.066 cz=0 czc=0 czb=0 sq=1 total=1
+15:52:19.954 cz=0 czc=0 czb=0 sq=0 total=0

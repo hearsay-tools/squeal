@@ -1,0 +1,65 @@
+15:40:07.966 daemon pid 737002 for /tmp/squeal-dogfood2-cezarion-58239afe-b
+squeal daemon: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:39:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:97:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+squeal daemon: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+squeal daemon: serving /tmp/squeal-dogfood2-cezarion-58239afe-b on /run/user/1001/squeal-b5961de107e0f491.sock
+squeal daemon: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/cursor-print.test.ts
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'review/pr-42'
+Switched to a new branch 'review/pr-42'
+Switched to a new branch 'cez/task1234'
+Switched to a new branch 'review/pr-42'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+Switched to a new branch 'task'
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint: 
+hint: 	git config --global init.defaultBranch <name>
+hint: 
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint: 
+hint: 	git branch -m <name>
+Switched to a new branch 'side'
+Switched to a new branch 'existing'
+Switched to branch 'main'
+Switched to a new branch 'other'
+Switched to branch 'main'
+Switched to a new branch 'feature'
+Switched to branch 'main'
+HEAD is now at 071d5d8 base
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+squeal daemon: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/alias-bin-exports.test.ts
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: daemon stopped: squeal stop
+16:01:09.773 daemon exit code=0 signal=null
