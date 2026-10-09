@@ -1,6 +1,6 @@
 # 004 Slow suites by policy: status
 
-Stage: approved (2026-10-08, by the human; waves on `docs/board.md`, briefs under `tasks/`)
+Stage: shipped (2026-10-09, 0.1.85, released in hub 0.1.86, after the confirmation dogfood 004-53 the human asked for: slow files declared by policy run outside the agent's fast loop, drain before a daemon exits, catch up up to `slow.maxParallel` wide when idle, key their declared artifacts, and the loop of `lessons.md` defect 10 stays closed in real use. Every review of the spec's waves passed. Open, not blocking: 004-52, 004-54 and 004-55 (should-fix), open question 3 (macOS, unrun), D4 held by the human)
 Started: 2026-10-08
 
 ## Decisions so far
@@ -76,6 +76,8 @@ Started: 2026-10-08
 - 2026-10-09, re-review 004-51 (`reviews/wave-5.6.md`, PASS at `3a3e752`, executable `1a3d231`, gpt-6.1-sol): the warm-store loop is closed on Node 22 and 24 (cold and warm probes, a pre-004-50 negative control). One nonblocking should-fix, S1 (row 004-52): a predecessor's saved combined closure re-adds dropped scratch to the watch set, costing one revision on a full interval pass and no rerun. With this, every review of spec 004 has passed and every planned row except the should-fix 004-52 is done; the re-dogfood's defects 1, 2, 3, 7, 8, 10, 11, 12, 15 are fixed in this spec.
 
 - 2026-10-09, decided by the human after reminding of `docs/process.md` step 7 (a spec ships when its goals hold in dogfooding with no blocker): "Confirm when calm". Defect 10's fix is proven by tests and two reviews but not yet in real use, so a short confirmation dogfood (004-53, `tasks/wave-6.md`) runs once the other coordinators' suites leave the host quiet; spec 004 moves to shipped if it is clean. 004-52 (should-fix) does not block shipping.
+
+- 2026-10-09, confirmation dogfood 004-53 (`lessons.md`, "Confirmation at 0.1.85"; this repository with the original broad fixture globs and `test/e2e` slow, load 0.03 to 2.6 per CPU, the guard off): defect 10's loop stays closed (r8 stood 15 minutes through the `.tmp`-writing suites; after a fixture edit r11 held for 10 idle minutes, where 0.1.69 made 50 revisions in 20); a `claude -p` session's 10 pending slow files drained and the daemon exited 11 min 45 s after the session (43.5 min under 0.1.69); an idle tier ran 4, 4 and 2 wide, 10 files in 117.6 s, holding and releasing all 4 permits; defects 11, 12 and 15 hold. Two new slips of the line, should-fix: defect 17 (a restarted daemon reads "(no earlier run)" when the slow files' keys moved since their last run; row 004-54) and 18 ("sources changed since" counts fast tests' fixtures; row 004-55). With no blocker, spec 004 moves to shipped (`docs/process.md` step 7).
 
 ## Research
 
