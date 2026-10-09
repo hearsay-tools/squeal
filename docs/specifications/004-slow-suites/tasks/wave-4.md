@@ -37,3 +37,17 @@ Owns: `src/runners/node-test/**`, `test/runners/node-test/**`. Leave alone: ever
 Done when: the test; lint, typecheck, the node:test tests on Node 24 and 22.
 
 Use /worker.
+
+## 004-28 a gitignored declared artifact enters the slow file's key (defect 7)
+
+Outcome: a slow file whose declared `inputs` name a gitignored build output (cezarion's `packages/cezar/dist/**`) is keyed by those files' bytes, so two worktrees with different builds never share its key, and an edit of the build re-keys it.
+
+Read: `lessons.md` defect 7 and its reproduction; spec 004 D5, D6; 001 D3 (declared inputs); `src/core/scheduler/keying.ts` (`#knownFiles`, `createDeclaredInputs`, `updateDeclaredInputs`: today declared globs are matched against tracked files and the ignored extras a closure references only).
+
+Shape: repair. Probe first, test first: print one slow file's key inputs in two worktrees of a fixture whose gitignored `dist` differs, and confirm the key leaves the artifact out; then a scheduler test where the two keys differ and a change to an ignored artifact file re-keys the slow file. Seam: expand declared-input globs against the worktree's files including ignored ones and treat the matches as extras, as closure-referenced ignored files already are. Keep `node_modules` out.
+
+Owns: `src/core/scheduler/keying.ts`, `src/core/keys/**` if the glob expansion lives there, their tests. If the watcher or change feed must learn of the new extras (`src/core/watcher/**`, `src/core/scheduler/batch.ts`), stop and ask me first: the 001 lane's 001-159 is changing them now.
+
+Done when: the probe's finding is in your report; the tests on Node 24 and 22; lint, typecheck, full suite.
+
+Use /worker.
