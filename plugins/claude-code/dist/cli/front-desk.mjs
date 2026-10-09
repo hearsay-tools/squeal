@@ -32,12 +32,16 @@ function parseRequest(line) {
     case "run-slow":
     case "stop":
       return { type: request.type };
-    case "sync":
+    case "sync": {
       if (request.after === void 0) return { type: "sync" };
       if (!Number.isInteger(request.after) || request.after < 0) {
         return '"after" must be a revision number';
       }
-      return { type: "sync", after: request.after };
+      const after = request.after;
+      if (request.resolvedSince === void 0) return { type: "sync", after };
+      if (!Number.isFinite(request.resolvedSince)) return '"resolvedSince" must be a time';
+      return { type: "sync", after, resolvedSince: request.resolvedSince };
+    }
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -178,7 +182,7 @@ function createHandlers(context) {
         const requestId = randomUUID();
         const state = { revision: null, error: null, rekeyed: null };
         remember(syncRequests, requestId, state);
-        context.requestSync(request.after ?? null).then(
+        context.requestSync(request.after ?? null, request.resolvedSince ?? null).then(
           (answer2) => {
             state.revision = answer2.revision;
             state.rekeyed = answer2.rekeyed;
@@ -337,10 +341,10 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestSync: (after) => new Promise((resolve, reject) => {
+    requestSync: (after, resolvedSince) => new Promise((resolve, reject) => {
       const id = randomUUID2();
       waitingSync.set(id, { resolve, reject });
-      post({ type: "sync", id, after });
+      post({ type: "sync", id, after, resolvedSince });
     }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
