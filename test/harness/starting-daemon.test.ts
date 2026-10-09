@@ -149,3 +149,31 @@ describe("a tool boundary that registers after spawning a daemon", () => {
     expect(context(out)).not.toContain("starting");
   });
 });
+
+/*
+ * The signal for a running daemon is the store heartbeat: down once older
+ * than two intervals (10 s at the default 5 s), compared at each boundary.
+ * A 1 to 3 s event-loop stall leaves it at most 8 s old; on this host at
+ * load 90 to 130 the five live daemons' heartbeats peaked at 7 s.
+ */
+describe("a running daemon's late heartbeat", () => {
+  async function registeredWith(heartbeatAt: number) {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), deps("alive"));
+    r.daemon("stale", heartbeatAt);
+    return r;
+  }
+
+  it("is no news within two intervals of the last heartbeat", async () => {
+    const r = await registeredWith(T);
+    expect((await batch(r, T + 10_000)).stdout).toBe("");
+  });
+
+  it("is reported once past them", async () => {
+    const r = await registeredWith(T);
+    expect(context(await batch(r, T + 10_001))).toMatch(
+      /^SQUEAL · no daemon is validating at revision 1\n/,
+    );
+  });
+});
