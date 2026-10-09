@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   writeFileSync,
@@ -70,6 +71,15 @@ export interface FixtureOptions {
   readonly policy?: object | string;
   /** Adds `test/slow.test.ts`, which takes `SLOW_MS` per run. */
   readonly slow?: boolean;
+  /** A directory under `test/fixtures/e2e` copied over the repository, after the others. */
+  readonly overlay?: string;
+  /** Files written by `writeAt` before the first commit, by repository path, such as a built artifact. */
+  readonly files?: Readonly<Record<string, string>>;
+  /**
+   * Edits `squeal.config.json` before the first commit, after `policy` or
+   * `squeal init` wrote it: a node:test fixture marks a project slow this way.
+   */
+  readonly amendPolicy?: (policy: Record<string, unknown>) => object;
 }
 
 interface BuildOptions extends FixtureOptions {
@@ -128,10 +138,14 @@ export class E2E {
     execFileSync("mv", [join(repo, "_gitignore"), join(repo, ".gitignore")]);
     if (options.slow === true) cpSync(join(FIXTURE, "slow"), repo, { recursive: true });
     if (nodeTest) cpSync(join(FIXTURE, "node-test"), repo, { recursive: true });
+    if (options.overlay !== undefined) {
+      cpSync(join(FIXTURE, options.overlay), repo, { recursive: true });
+    }
     this.write(repo, "math", MATH());
     this.write(repo, "strings", STRINGS());
     if (options.slow === true) this.write(repo, "slow", SLOW());
     if (nodeTest) this.write(repo, "demo", DEMO());
+    for (const [path, body] of Object.entries(options.files ?? {})) this.writeAt(repo, path, body);
     this.#copyInstall(repo, true);
     git(repo, ["init", "-q", "-b", "main"]);
     if (nodeTest) {
@@ -151,6 +165,11 @@ export class E2E {
         join(repo, "squeal.config.json"),
         typeof policy === "string" ? policy : `${JSON.stringify(policy, null, 2)}\n`,
       );
+    }
+    if (options.amendPolicy !== undefined) {
+      const file = join(repo, "squeal.config.json");
+      const policy = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+      writeFileSync(file, `${JSON.stringify(options.amendPolicy(policy), null, 2)}\n`);
     }
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
@@ -181,9 +200,14 @@ export class E2E {
 
   /** Writes the source `file` with a fresh counter comment, so its content is new to the store. */
   write(root: string, file: Source, body: string): void {
-    const path = join(root, SOURCE_PATH[file]);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `// edit ${this.#edits++}\n${body}`);
+    this.writeAt(root, SOURCE_PATH[file], body);
+  }
+
+  /** Writes `body` at the repository path `path` with a fresh counter comment, as `write` does. */
+  writeAt(root: string, path: string, body: string): void {
+    const at = join(root, path);
+    mkdirSync(dirname(at), { recursive: true });
+    writeFileSync(at, `// edit ${this.#edits++}\n${body}`);
   }
 
   /** Runs a hook the way the plugin's harness does, fed the recorded input with `cwd` set to `root`. */
@@ -246,14 +270,43 @@ export class E2E {
     accept: (s: StatusSnapshot) => boolean = () => true,
     after = -1,
   ): Promise<StatusSnapshot> {
+    return this.#settle(root, what, accept, after, false);
+  }
+
+  /**
+   * `settle` for the fast tier alone (spec 004 D2): slow files may stay
+   * pending, as they do while a consumer is in a turn.
+   */
+  settleFast(
+    root: string,
+    what: string,
+    accept: (s: StatusSnapshot) => boolean = () => true,
+    after = -1,
+  ): Promise<StatusSnapshot> {
+    return this.#settle(root, what, accept, after, true);
+  }
+
+  #settle(
+    root: string,
+    what: string,
+    accept: (s: StatusSnapshot) => boolean,
+    after: number,
+    fastOnly: boolean,
+  ): Promise<StatusSnapshot> {
     return until(what, SETTLE_WAIT_MS, async () => {
       const s = await this.status(root);
+      const slow = fastOnly ? s.slowPending : undefined;
+      const pending =
+        s.counts.pending -
+        (slow?.checks ?? 0) +
+        s.testFilesWithoutChecks.pending -
+        (slow?.testFilesWithoutChecks ?? 0) +
+        s.testFilesWithoutChecks.unknown;
       const quiet =
         s.daemon.state === "alive" &&
         s.revision > after &&
         s.runnerPartPending !== true &&
-        s.counts.pending + s.testFilesWithoutChecks.pending + s.testFilesWithoutChecks.unknown ===
-          0;
+        pending === 0;
       return quiet && accept(s) ? s : null;
     });
   }
