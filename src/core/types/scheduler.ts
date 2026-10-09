@@ -136,8 +136,11 @@ export interface Scheduler {
    * paths. Queues a runner-only refinement, which stores no revision: the
    * runner reports the test files and projects the growth re-keys, and their
    * closures and environments are fetched again. `idle` waits for it.
+   * False when nothing took it: before the baseline ends, while waiting for
+   * the install, or once closed (004 review wave 2.5, B3); the caller asks
+   * again.
    */
-  refreshObserved(): void;
+  refreshObserved(): boolean;
   status(): SchedulerStatus;
   /**
    * Resolves once nothing is queued or running and no revision waits for its

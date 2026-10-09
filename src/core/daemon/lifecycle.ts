@@ -75,7 +75,8 @@ export interface TimerContext {
   /**
    * A `nodeTest` project's observed keys changed since the last call that
    * returned true: queue a runner-only refinement. False while nothing takes
-   * it (no scheduler yet); the timer asks again at its next read.
+   * it (no scheduler yet, or its baseline still running: 004 review wave 2.5,
+   * B3); the timer asks again at its next read.
    */
   readonly observedChanged?: () => boolean;
   readonly note: (text: string) => void;
