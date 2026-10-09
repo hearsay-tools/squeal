@@ -50,26 +50,40 @@ describe("queueReruns (task 001-171)", () => {
     expect(ledger.queue.has(forced.file.ref)).toBe(true);
   });
 
-  it("re-runs every new failure of a tier while the cap is unbounded", () => {
-    const { ledger, context, notes } = fake();
-    const many = Array.from({ length: 200 }, (_, i) => failure(`test/f${i}.test.ts`));
-    queueReruns(context, ledger, many);
-    expect(ledger.queue.size).toBe(200);
-    expect(notes).toEqual([]);
+  it("re-runs a tier's new failures up to the default cap of 8, and none of 9, with one note", () => {
+    expect(RERUN_CAP).toBe(8);
+    const eight = fake();
+    queueReruns(
+      eight.context,
+      eight.ledger,
+      Array.from({ length: 8 }, (_, i) => failure(`test/f${i}.test.ts`)),
+    );
+    expect(eight.ledger.queue.size).toBe(8);
+    expect(eight.notes).toEqual([]);
+
+    const nine = fake();
+    queueReruns(
+      nine.context,
+      nine.ledger,
+      Array.from({ length: 9 }, (_, i) => failure(`test/f${i}.test.ts`)),
+    );
+    expect(nine.ledger.queue.size).toBe(0);
+    expect(nine.notes).toEqual([
+      "9 test files failed anew in one tier, more than the 8 Squeal re-runs: a mass break is " +
+        "not re-run (test/f0.test.ts, test/f1.test.ts, test/f2.test.ts, test/f3.test.ts, " +
+        "test/f4.test.ts and 4 more)",
+    ]);
   });
 
-  it("re-runs none of a tier's new failures above the cap, with a note naming why", () => {
-    const { ledger, context, notes } = fake(2);
-    const three = ["a", "b", "c"].map((n) => failure(`test/${n}.test.ts`));
-    queueReruns(context, ledger, three);
-    expect(ledger.queue.size).toBe(0);
-    expect(notes).toEqual([
-      "3 test files failed anew in one tier, above the re-run cap of 2 per tier: none is " +
-        "re-run, since a failure that wide is rarely caused by load " +
-        "(test/a.test.ts, test/b.test.ts, test/c.test.ts)",
+  it("counts only the failures due: forced and slow ones leave room under the cap", () => {
+    const { ledger, context, notes } = fake(2, ["test/slow.test.ts"]);
+    const due = ["a", "b"].map((n) => failure(`test/${n}.test.ts`));
+    queueReruns(context, ledger, [
+      ...due,
+      failure("test/c.test.ts", K, true),
+      failure("test/slow.test.ts"),
     ]);
-    // Not spent either: at most the cap, counting only what is due, re-runs.
-    queueReruns(context, ledger, [three[0] ?? expect.fail(), failure("test/d.test.ts", K, true)]);
-    expect(ledger.queue.size).toBe(1);
+    expect(ledger.queue.size).toBe(2);
+    expect(notes).toEqual([]);
   });
 });

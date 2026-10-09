@@ -45,19 +45,19 @@ export interface NewFailure {
 }
 
 /**
- * `SchedulerOptions.rerunCap`'s default: the most new failures of one tier
- * that are re-run. Unbounded until the human decides a cap.
+ * `SchedulerOptions.rerunCap`'s default, decided by the human (2026-10-09):
+ * the most new failures of one tier that are re-run. A wider failure is a
+ * mass break, rarely caused by load, and re-running it would double the tier.
  */
-export const RERUN_CAP = Number.POSITIVE_INFINITY;
+export const RERUN_CAP = 8;
 
 /**
  * Queues the re-run of a tier's new failures, called once the tier's results
  * are applied. A failure is not re-run when its run was forced, its key was
  * already re-run, or its file is slow (a limit: a slow run can cost minutes
  * to an hour; the slow tier runs it again when spec 004 D2's triggers say).
- * When more than `rerunCap` are left, none is re-run and a note says why: a
- * failure that wide is rarely caused by load, and re-running it doubles the
- * tier.
+ * When more than `rerunCap` are left, none is re-run and one note says how
+ * many failed anew and that a mass break is not re-run.
  */
 export function queueReruns(
   context: Pick<SchedulerContext, "note" | "rerunCap">,
@@ -71,9 +71,9 @@ export function queueReruns(
   if (due.length > context.rerunCap) {
     const files = due.length === 1 ? "test file" : "test files";
     context.note(
-      `${due.length} ${files} failed anew in one tier, above the re-run cap of ` +
-        `${context.rerunCap} per tier: none is re-run, since a failure that wide is rarely ` +
-        `caused by load (${listPaths(due.map(({ file }) => file.ref.path))})`,
+      `${due.length} ${files} failed anew in one tier, more than the ${context.rerunCap} ` +
+        "Squeal re-runs: a mass break is not re-run " +
+        `(${listPaths(due.map(({ file }) => file.ref.path))})`,
     );
     return;
   }
