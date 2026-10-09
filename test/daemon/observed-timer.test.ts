@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { startTimers } from "../../src/core/daemon/lifecycle.js";
+import { type ObservedSeen, startTimers } from "../../src/core/daemon/lifecycle.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   type DaemonExitReason,
@@ -46,9 +46,11 @@ interface Timed {
   stop(): void;
 }
 
-function timed(options: { projects?: readonly NodeTestProject[] } = {}): Timed {
+function timed(
+  options: { projects?: readonly NodeTestProject[]; store?: Store; seen?: ObservedSeen } = {},
+): Timed {
   const commonDir = fakeCommonDir();
-  const store = open(commonDir);
+  const store = options.store ?? open(commonDir);
   mkdirSync(storePaths(commonDir).locksDir, { recursive: true });
   let clock = 1_000_000;
   let changed = 0;
@@ -83,6 +85,7 @@ function timed(options: { projects?: readonly NodeTestProject[] } = {}): Timed {
     active: () => {
       throw new Error("no activity is expected");
     },
+    ...(options.seen ? { observedSeen: options.seen } : {}),
     observedChanged: () => {
       if (t.accept) changed += 1;
       return t.accept;
@@ -135,6 +138,20 @@ describe("observed timer (task 003-26)", () => {
     t.advance(6_000);
     await waitFor(() => t.shutdowns.length > 0, 2_000, "the idle exit");
     expect(t.shutdowns).toEqual(["idle"]);
+  });
+
+  it("notices a change written between its last tick and a restart (task 003-42)", async () => {
+    // The daemon keeps the snapshot, so a policy reload's new timer starts from it.
+    const seen: ObservedSeen = {};
+    const before = timed({ seen });
+    await delay(60);
+    before.stop();
+    expect(before.changed()).toBe(0);
+    observe(before.store, { "test/a.test.mjs": ["src/hidden.mjs"] });
+    const after = timed({ store: before.store, seen });
+    await waitFor(() => after.changed() === 1, 2_000, "the change written before the reload");
+    await delay(60);
+    expect(after.changed()).toBe(1);
   });
 
   it("stops with the other timers, and has none without a node:test project", async () => {
