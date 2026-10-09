@@ -1,6 +1,6 @@
 # 004 Slow suites by policy
 
-Stage: approved 2026-10-08. Amendments: `status.md`. Research: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra), both measured on this shared Linux host at load 5 to 36, never at calm load. Specs 001 (D2 to D12), 002 and 003 hold unless a section here says otherwise.
+Stage: shipped 2026-10-09 (0.1.85; released in hub 0.1.86). Amendments: `status.md`. Research: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra), both measured on this shared Linux host at load 5 to 36, never at calm load. Specs 001 (D2 to D12), 002 and 003 hold unless a section here says otherwise.
 
 ## Problem
 
