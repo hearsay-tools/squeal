@@ -53,6 +53,8 @@ Started: 2026-10-08
 
 - 2026-10-09, re-review 004-40 (`reviews/wave-4.5.md`, FAIL at `a850a94`, product `641f95b`, gpt-6.1-sol, second and last round): wave-4 B1, B2 and S2 closed; the one-project rule and the exported watcher predicates checked. Two cases remain, proven on Node 22 and 24. Report B1 (wave-4 B3): a git-tracked link `dist -> real-build` under a directory-only ignore, declared with a leading-wildcard glob (`**/dist/**`), contributes no build bytes (`ignoredInputs` asks git only for untracked files, and the glob has no literal prefix to find the link by), so a different build inherited a current pass; literal `dist/**` holds. Report B2 (wave-4 B4): a genuine first source addition found by interval reconciliation is still taken for the start listing; the clean fix drops 004-39's filter once 001-166 stops the start walk making a revision. Both to the human.
 
+- 2026-10-09, decided by the human after `reviews/wave-4.5.md`: fix both remaining cases and run a fourth review limited to them (004-41 for B1 with 004-33, 004-42 for B2 after 001-166, review 004-43). 0.1.63 is released through the hub only after that review passes or the human accepts.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
