@@ -1,0 +1,70 @@
+diff --git a/squeal.config.json b/squeal.config.json
+index 68d80e7b..f1890fcb 100644
+--- a/squeal.config.json
++++ b/squeal.config.json
+@@ -13,46 +13,41 @@
+       "test/fixtures/codex-hooks/**",
+       "test/harness/recorded/**"
+     ],
+-    "test/policy/repository-inputs.test.ts": ["squeal.config.json", "**/.gitignore"],
++    "test/policy/repository-inputs.test.ts": [
++      "squeal.config.json",
++      "**/.gitignore"
++    ],
+     "test/runners/vitest/**/*.test.ts": [
+-      "test/fixtures/vitest/basic/**",
+-      "test/fixtures/vitest/escapes/**",
+-      "test/fixtures/vitest/observed/**",
+-      "test/fixtures/vitest/packages/**",
+-      "test/fixtures/vitest/projects/**"
++      "test/fixtures/vitest/**"
+     ],
+     "test/harness/codex/**/*.test.ts": [
+       "plugins/codex/**",
+       "src/**/*.ts",
+       "test/fixtures/codex-hooks/**"
+     ],
+-    "test/plugins/codex/**/*.test.ts": ["plugins/codex/**"],
++    "test/plugins/codex/**/*.test.ts": [
++      "plugins/codex/**"
++    ],
+     "test/runners/node-test/**/*.test.ts": [
+-      "test/fixtures/node-test/*.mjs",
+-      "test/fixtures/node-test/README.md",
+-      "test/fixtures/node-test/edge/**",
+-      "test/fixtures/node-test/monorepo/**",
+-      "test/fixtures/node-test/packages/**",
+-      "test/fixtures/node-test/reference/**",
+-      "test/fixtures/node-test/spawn-cli/**",
+-      "test/fixtures/node-test/streams/**",
++      "test/fixtures/node-test/**",
+       "src/runners/node-test/runtime/**"
+     ],
+-    "test/runners/node-test/graph-memory.test.ts": ["src/runners/node-test/graph/**"],
++    "test/runners/node-test/graph-memory.test.ts": [
++      "src/runners/node-test/graph/**"
++    ],
+     "test/runners/node-test/graph-bundle.test.ts": [
+       "src/runners/node-test/graph/**",
+       "src/harness/build.ts"
+     ],
+     "test/integration/node-test.test.ts": [
+       "src/**/*.ts",
+-      "test/fixtures/node-test/*.mjs",
+-      "test/fixtures/node-test/README.md",
+-      "test/fixtures/node-test/edge/**",
+-      "test/fixtures/node-test/monorepo/**",
+-      "test/fixtures/node-test/packages/**",
+-      "test/fixtures/node-test/reference/**",
+-      "test/fixtures/node-test/spawn-cli/**",
+-      "test/fixtures/node-test/streams/**"
++      "test/fixtures/node-test/**"
+     ]
++  },
++  "slow": {
++    "include": [
++      "test/e2e/**/*.test.ts"
++    ],
++    "maxLoadPerCpu": 100
+   }
+ }

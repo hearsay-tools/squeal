@@ -1,0 +1,10 @@
+21:22:55 slow.1.lock=free slow.2.lock=free slow.3.lock=free slow.lock=free
+21:32:31 slow.1.lock=free slow.2.lock=free slow.3.lock=free slow.lock=2836047(squeal-dogfood3-378b91af)
+21:34:32 slow.1.lock=2836047(squeal-dogfood3-378b91af) slow.2.lock=2836047(squeal-dogfood3-378b91af) slow.3.lock=2836047(squeal-dogfood3-378b91af) slow.lock=2836047(squeal-dogfood3-378b91af)
+21:35:16 slow.1.lock=2836047(squeal-dogfood3-378b91af) slow.2.lock=free slow.3.lock=free slow.lock=2836047(squeal-dogfood3-378b91af)
+21:35:38 slow.1.lock=free slow.2.lock=free slow.3.lock=free slow.lock=free
+21:52:16 slow.1.lock=3221938(squeal-dogfood3-378b91af) slow.2.lock=3221938(squeal-dogfood3-378b91af) slow.3.lock=3221938(squeal-dogfood3-378b91af) slow.lock=3221938(squeal-dogfood3-378b91af)
+21:52:20 slow.1.lock=free slow.2.lock=free slow.3.lock=free slow.lock=free
+21:52:26 slow.1.lock=3470848(squeal-dogfood3-378b91af) slow.2.lock=3470848(squeal-dogfood3-378b91af) slow.3.lock=3470848(squeal-dogfood3-378b91af) slow.lock=3470848(squeal-dogfood3-378b91af)
+21:54:05 slow.1.lock=3470848(squeal-dogfood3-378b91af) slow.2.lock=free slow.3.lock=free slow.lock=3470848(squeal-dogfood3-378b91af)
+21:54:23 slow.1.lock=free slow.2.lock=free slow.3.lock=free slow.lock=free

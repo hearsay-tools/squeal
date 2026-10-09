@@ -1,0 +1,5 @@
+21:38:08.277799318
+Squeal daemon spawned for /tmp/squeal-dogfood3-378b91af
+
+21:38:10.046962853
+3221938

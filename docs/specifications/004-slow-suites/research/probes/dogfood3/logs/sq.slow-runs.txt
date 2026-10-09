@@ -1,0 +1,11 @@
+revision start end seconds end_state load/cpu daemon file
+r8 21:32:30 21:33:19 48.5 completed 0.65 2836047@checkout test/e2e/lifecycle.test.ts
+r8 21:33:19 21:33:34 15.6 completed 0.80 2836047@checkout test/e2e/node-test.test.ts
+r8 21:33:34 21:33:35 0.3 completed 0.73 2836047@checkout test/e2e/plugin-copy.test.ts
+r8 21:33:35 21:34:31 56.4 completed 0.73 2836047@checkout test/e2e/policy.test.ts
+r8 21:34:31 21:35:15 43.8 completed 0.33 2836047@checkout test/e2e/shipped-plugin.test.ts test/e2e/slow-node-test.test.ts test/e2e/slow-vitest.test.ts test/e2e/torn-status.test.ts
+r8 21:35:15 21:35:37 21.8 completed 0.26 2836047@checkout test/e2e/transitions.test.ts test/e2e/worktrees.test.ts
+r12 21:52:15 - ? null 0.03 3221938@checkout test/e2e/torn-status.test.ts test/e2e/plugin-copy.test.ts test/e2e/shipped-plugin.test.ts test/e2e/transitions.test.ts
+r12 21:52:25 21:53:21 56.6 completed 0.06 3470848@checkout test/e2e/lifecycle.test.ts test/e2e/node-test.test.ts test/e2e/plugin-copy.test.ts test/e2e/policy.test.ts
+r12 21:53:21 21:54:04 42.7 completed 0.10 3470848@checkout test/e2e/shipped-plugin.test.ts test/e2e/slow-node-test.test.ts test/e2e/slow-vitest.test.ts test/e2e/torn-status.test.ts
+r12 21:54:04 21:54:22 18.3 completed 0.11 3470848@checkout test/e2e/transitions.test.ts test/e2e/worktrees.test.ts

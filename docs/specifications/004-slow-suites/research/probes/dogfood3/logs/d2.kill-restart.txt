@@ -1,0 +1,19 @@
+21:52:20.315 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/torn-status.test.ts, test/e2e/plugin-copy.test.ts and 2 more (longest last run 13 s).
+    activity {"kind":"running","path":"test/e2e/torn-status.test.ts","paths":["test/e2e/torn-status.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/shipped-plugin.test.ts","test/e2e/transitions.test.ts"],"since":1791582735104,"lastDurationMs":12713.961992}
+21:52:20.582 kill -9 3221938
+21:52:22.587 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/torn-status.test.ts, test/e2e/plugin-copy.test.ts and 2 more (longest last run 13 s).
+    activity {"kind":"running","path":"test/e2e/torn-status.test.ts","paths":["test/e2e/torn-status.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/shipped-plugin.test.ts","test/e2e/transitions.test.ts"],"since":1791582735104,"lastDurationMs":12713.961992}
+21:52:22.899 squeal start: Squeal daemon spawned for /tmp/squeal-dogfood3-378b91af
+21:52:24.320 Slow tier: 10 test files; 10 pending.
+    activity null
+21:52:25.553 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/lifecycle.test.ts, test/e2e/node-test.test.ts and 2 more (no earlier run).
+    activity {"kind":"running","path":"test/e2e/lifecycle.test.ts","paths":["test/e2e/lifecycle.test.ts","test/e2e/node-test.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/policy.test.ts"],"since":1791582745335,"lastDurationMs":null}
+21:52:26.799 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/lifecycle.test.ts, test/e2e/node-test.test.ts and 2 more (no earlier run).
+    activity {"kind":"running","path":"test/e2e/lifecycle.test.ts","paths":["test/e2e/lifecycle.test.ts","test/e2e/node-test.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/policy.test.ts"],"since":1791582745335,"lastDurationMs":null}
+21:52:28.062 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/lifecycle.test.ts, test/e2e/node-test.test.ts and 2 more (no earlier run).
+    activity {"kind":"running","path":"test/e2e/lifecycle.test.ts","paths":["test/e2e/lifecycle.test.ts","test/e2e/node-test.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/policy.test.ts"],"since":1791582745335,"lastDurationMs":null}
+21:52:29.313 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/lifecycle.test.ts, test/e2e/node-test.test.ts and 2 more (no earlier run).
+    activity {"kind":"running","path":"test/e2e/lifecycle.test.ts","paths":["test/e2e/lifecycle.test.ts","test/e2e/node-test.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/policy.test.ts"],"since":1791582745335,"lastDurationMs":null}
+21:52:30.552 Slow tier: 10 test files; 10 pending, running 4 slow files since 23:52: test/e2e/lifecycle.test.ts, test/e2e/node-test.test.ts and 2 more (no earlier run).
+    activity {"kind":"running","path":"test/e2e/lifecycle.test.ts","paths":["test/e2e/lifecycle.test.ts","test/e2e/node-test.test.ts","test/e2e/plugin-copy.test.ts","test/e2e/policy.test.ts"],"since":1791582745335,"lastDurationMs":null}
+... (the same line and activity every 1.2 s until 21:53:12)
