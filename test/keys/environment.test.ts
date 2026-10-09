@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -5,6 +6,7 @@ import {
   environmentHash,
   findInstalledLockfile,
   installedDependenciesFingerprint,
+  KEY_FORMAT_VERSION,
 } from "../../src/core/keys/index.js";
 import type {
   CoreEnvironmentInputs,
@@ -78,7 +80,6 @@ describe("environmentHash", () => {
   });
 
   const changes: Record<string, [Partial<CoreEnvironmentInputs>, Partial<RunnerEnvironment>]> = {
-    "squeal version": [{ squealVersion: "0.2.0" }, {}],
     "node version": [{ nodeVersion: "v24.21.1" }, {}],
     platform: [{ platform: "darwin" }, {}],
     arch: [{ arch: "arm64" }, {}],
@@ -99,6 +100,38 @@ describe("environmentHash", () => {
       ).not.toBe(environmentHash(core, runner, hashOf));
     });
   }
+
+  it("keeps every key across a release that changed only the Squeal version", () => {
+    const released = environmentHash({ ...core, squealVersion: "0.2.0" }, runner, hashOf);
+    expect(released).toBe(environmentHash(core, runner, hashOf));
+  });
+
+  it("holds KEY_FORMAT_VERSION, a number, where keys before task 001-199 held the Squeal version", () => {
+    // Today's encoding with `slot` second; a number never JSON-encodes as any version string.
+    const encoded = (slot: string | number) =>
+      createHash("sha256")
+        .update(
+          JSON.stringify([
+            "squeal-environment/1",
+            slot,
+            core.nodeVersion,
+            core.platform,
+            core.arch,
+            core.installedDependencies,
+            Object.entries(core.env).sort(),
+            runner.project,
+            runner.runnerName,
+            runner.runnerVersion,
+            runner.adapterVersion,
+            runner.resolvedConfig,
+            runner.files.map((path) => [path, hashOf(path)]).sort(),
+          ]),
+        )
+        .digest("hex");
+    expect(KEY_FORMAT_VERSION).toBeTypeOf("number");
+    expect(environmentHash(core, runner, hashOf)).toBe(encoded(KEY_FORMAT_VERSION));
+    expect(environmentHash(core, runner, hashOf)).not.toBe(encoded(core.squealVersion));
+  });
 
   it("does not confuse field boundaries", () => {
     const a = environmentHash({ ...core, platform: "linux", arch: "x64" }, runner, hashOf);
