@@ -1,6 +1,9 @@
-import { rmSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { expect } from "vitest";
+import { createFsHasher } from "../../src/core/hash/index.js";
+import { statCandidates } from "../../src/core/revision/index.js";
 import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
 import type { Harness } from "../scheduler/helpers.js";
 import { BASE, OLD, readsNew, warmOptions } from "./stamps-repo.js";
@@ -93,11 +96,11 @@ export function touchHeard(h: Harness): Promise<void> {
 
 /**
  * `plant` reads transient bytes into the scheduler's own adapter during its
- * first closure walk and restores the disk. The first tier then waits until
- * the scheduler handed the runner the touch of `touched`, as a watch batch
- * of the restore would. Then the scheduler runs to idle. Open the harness
- * with `runnerPartBesideRun`, so the touch reaches the adapter before the
- * first run does.
+ * first closure walk and restores the disk. The watch batch of the restore
+ * then waits for the scheduler's lock behind that walk, so the scheduler
+ * hands the runner the touch of `touched` before it selects the first tier.
+ * Then the scheduler runs to idle. A touch reconciled only after the tier
+ * was selected withholds its run (task 001-168): `touched-late.test.ts`.
  */
 export async function probeTouched(
   h: Harness,
@@ -106,23 +109,21 @@ export async function probeTouched(
 ): Promise<void> {
   const closure = h.runner.closure;
   const heard = touchHeard(h);
-  let phase: "plant" | "touch" | "done" = "plant";
+  let batch: Promise<void> | null = null;
   h.runner.closure = async (testFile) => {
-    if (phase === "plant") {
+    if (batch === null) {
       await plant({ ...h.runner, closure });
-      phase = "touch";
+      const paths = await statCandidates(touched, createFsHasher(h.root, "sha1"));
+      // Queued on the lock the walk holds, ahead of the first tier's selection.
+      batch = h.scheduler.handleBatch({ trigger: "watch", paths });
     }
     return closure(testFile);
   };
-  h.runner.beforeRun = async () => {
-    if (phase !== "touch") return;
-    phase = "done";
-    await h.batch(...touched);
-    await heard;
-  };
   await h.scheduler.start();
+  await batch;
+  await heard;
   await h.scheduler.idle();
-  expect(phase).toBe("done");
+  expect(batch).not.toBeNull();
 }
 
 /**
@@ -159,4 +160,92 @@ export async function optimizeNow(h: Harness, adapter: RunnerAdapter): Promise<v
     { path: "vitest.config.ts", kind: "change" },
   ]);
   expect(recreatedProjects).toEqual([""]);
+}
+
+/*
+ * Task 001-168 (review wave-13e B1): a test file that, unless released
+ * (`flags/heard`, git-ignored), rewrites a worktree file with the bytes it
+ * holds, writes `flags/started` and waits to be released.
+ */
+
+/** `body` runs inside the test after the rewrite and the wait. */
+const held = (imports: string, path: string, body: string) =>
+  [
+    'import { existsSync, readFileSync, writeFileSync } from "node:fs";',
+    'import { setTimeout as sleep } from "node:timers/promises";',
+    'import { expect, it } from "vitest";',
+    imports,
+    'const at = (path: string) => new URL("../" + path, import.meta.url);',
+    'it("restored bytes", async () => {',
+    '  if (!existsSync(at("flags/heard"))) {',
+    `    writeFileSync(at("${path}"), readFileSync(at("${path}")));`,
+    '    writeFileSync(at("flags/started"), "");',
+    '    for (let i = 0; i < 600 && !existsSync(at("flags/heard")); i++) await sleep(50);',
+    "  }",
+    `  ${body}`,
+    "});",
+    "",
+  ].join("\n");
+
+const FLAGS = { ".gitignore": "node_modules/\nflags/\n", "flags/.keep": "\n" };
+
+/** `VIRTUAL`, its virtual test rewriting `src/mod.ts`, the input its plugin declares. */
+export const VIRTUAL_HELD: Readonly<Record<string, string>> = {
+  ...VIRTUAL,
+  ...FLAGS,
+  "test/virtual.test.ts": held(
+    'import { which } from "virtual:which";',
+    "src/mod.ts",
+    'expect(which).toBe("new");',
+  ),
+};
+
+/** `CSS`, its test rewriting `src/base.css`, which no closure names. */
+export const CSS_HELD: Readonly<Record<string, string>> = {
+  ...CSS,
+  ...FLAGS,
+  "test/css.test.ts": held(
+    'import style from "../src/style.css?inline";',
+    "src/base.css",
+    'expect(style).toContain("new");',
+  ),
+};
+
+/** Lets a held test run through: for a warm-up or a fresh control. */
+export function release(root: string): void {
+  writeFileSync(join(root, "flags/heard"), "");
+}
+
+/**
+ * Plants with `plant` during the scheduler's first closure walk, the held
+ * test released, then starts the scheduler. Once its run started, the batch
+ * of `path`, which the run rewrote, is handed over; the run ends once the
+ * runner heard the touch. Then the scheduler runs to idle.
+ */
+export async function touchWhileHeld(
+  h: Harness,
+  plant: (adapter: RunnerAdapter) => Promise<void>,
+  path: string,
+): Promise<void> {
+  const closure = h.runner.closure;
+  let planted = false;
+  h.runner.closure = async (testFile) => {
+    if (!planted) {
+      planted = true;
+      release(h.root);
+      await plant({ ...h.runner, closure });
+      rmSync(join(h.root, "flags/heard"), { force: true });
+      rmSync(join(h.root, "flags/started"), { force: true });
+    }
+    return closure(testFile);
+  };
+  const heard = touchHeard(h);
+  await h.scheduler.start();
+  const started = join(h.root, "flags/started");
+  for (let i = 0; i < 1200 && !existsSync(started); i++) await sleep(25);
+  expect(existsSync(started)).toBe(true);
+  await h.batch(path);
+  await heard;
+  release(h.root);
+  await h.scheduler.idle();
 }

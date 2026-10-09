@@ -80,7 +80,8 @@ export class VitestAdapter implements RunnerAdapter {
   /**
    * Task 001-159: files touched with their bytes ending as they were, since
    * the current instance began to start. The next call replaces it; a run
-   * that hears of one before it ends is not stored.
+   * that hears of one before it ends is not stored, whoever wrote it (task
+   * 001-168).
    */
   #touched: RelativePath[] = [];
   /** Installed lockfiles the current instance started with. */
@@ -409,13 +410,10 @@ export class VitestAdapter implements RunnerAdapter {
           });
         }
         const built = buildReport(collector, execution, Math.round(performance.now() - started));
-        const taken = this.#observer.take(built.completedFiles);
-        const observed = taken?.inputs;
-        // A path the run wrote itself does not count: a fresh run of the same bytes writes it
-        // too, and the instance is replaced all the same.
-        const touched = heard
-          .filter((path) => !taken?.written.has(this.paths.toAbsolute(path)))
-          .sort();
+        const observed = this.#observer.take(built.completedFiles);
+        // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
+        // nothing about which bytes a cache served the run.
+        const touched = heard.sort();
         const kept = withoutFiles(
           observed === undefined ? built : { ...built, observed },
           mayHaveRun(vitest, moved, testFiles, this.paths),

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { afterAll } from "vitest";
+import { afterAll, expect } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
 import {
@@ -139,4 +139,18 @@ export function withSlowLanes(
     rmSync(slotDir, { recursive: true, force: true });
   };
   return { made: () => made };
+}
+
+/**
+ * Task 001-168: `testPath` was recorded unknown by the completion barrier,
+ * since `path` was restored after the tier's snapshot and no batch said so
+ * before the run ended.
+ */
+export function withheldByBarrier(h: Harness, testPath: string, path = "src/mod.ts"): void {
+  const reasons = h.sink
+    .callsOf("markUnknown")
+    .filter((call) => call.testFiles.some((f) => f.path === testPath))
+    .map((call) => call.reason);
+  const barrier = new RegExp(`${path} was written while this run was in flight.*task 001-168`);
+  expect(reasons).toContainEqual(expect.stringMatching(barrier));
 }

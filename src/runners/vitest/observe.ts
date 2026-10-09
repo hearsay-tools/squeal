@@ -81,18 +81,10 @@ export class VitestObserver {
     }
   }
 
-  /**
-   * What the run's completed files were observed to read, and the paths any
-   * file of the run wrote (task 001-159); `undefined` when not observing.
-   */
-  take(
-    completed: readonly TestFileRef[],
-  ): { inputs: ObservedInputs[]; written: Set<AbsolutePath> } | undefined {
+  /** What the run's completed files were observed to read; `undefined` when not observing. */
+  take(completed: readonly TestFileRef[]): ObservedInputs[] | undefined {
     if (this.#out === null) return undefined;
-    const recorded = takeRecorded(this.#out);
-    const written = new Set<AbsolutePath>();
-    for (const entry of recorded.values()) for (const path of entry.written) written.add(path);
-    return { inputs: observedInputs(recorded, completed, this.paths), written };
+    return observedInputs(takeRecorded(this.#out), completed, this.paths);
   }
 
   /** Drops the current instance's directory. */
