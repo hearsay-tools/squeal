@@ -9,7 +9,9 @@ import {
   type RevisionNumber,
   type RunAllResponse,
   type RunSlowResponse,
+  type SyncAnswer,
   type SyncResponse,
+  type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
@@ -39,9 +41,10 @@ export interface HandlerContext {
   /**
    * Runs a reconciliation pass for `status --wait` (lessons, defect 30) and
    * resolves with the worktree's revision once the pass is stored, like
-   * `requestFullSuite`. Absent: this daemon answers that it cannot sync.
+   * `requestFullSuite`; with `after`, also with the files the revisions after
+   * it re-keyed (task 001-186). Absent: this daemon answers that it cannot sync.
    */
-  readonly requestSync?: () => Promise<RevisionNumber>;
+  readonly requestSync?: (after: RevisionNumber | null) => Promise<SyncAnswer>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
@@ -66,6 +69,7 @@ interface RunSlowState {
 interface SyncState {
   revision: RevisionNumber | null;
   error: string | null;
+  rekeyed: readonly TestFileRef[] | null;
 }
 
 /**
@@ -100,6 +104,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     requestId,
     revision: state.revision,
     error: state.error,
+    ...(state.rekeyed === null ? {} : { rekeyed: state.rekeyed }),
   });
 
   return (request): DaemonResponse => {
@@ -167,11 +172,12 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
-        const state: SyncState = { revision: null, error: null };
+        const state: SyncState = { revision: null, error: null, rekeyed: null };
         remember(syncRequests, requestId, state);
-        context.requestSync().then(
-          (revision) => {
-            state.revision = revision;
+        context.requestSync(request.after ?? null).then(
+          (answer) => {
+            state.revision = answer.revision;
+            state.rekeyed = answer.rekeyed;
           },
           (error: unknown) => {
             state.error = error instanceof Error ? error.message : String(error);

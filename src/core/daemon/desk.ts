@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import type { CheckpointRecord, DaemonPhase, RevisionNumber } from "../types/index.js";
+import type { CheckpointRecord, DaemonPhase, RevisionNumber, SyncAnswer } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -20,7 +20,7 @@ export interface DeskEvents {
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
-  readonly requestSync: () => Promise<RevisionNumber>;
+  readonly requestSync: (after: RevisionNumber | null) => Promise<SyncAnswer>;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
@@ -132,13 +132,13 @@ async function inWorker(
           );
           return;
         case "sync":
-          events.requestSync().then(
-            (revision) => post({ type: "sync-result", id: message.id, revision, error: null }),
+          events.requestSync(message.after).then(
+            (answer) => post({ type: "sync-result", id: message.id, answer, error: null }),
             (error: unknown) =>
               post({
                 type: "sync-result",
                 id: message.id,
-                revision: null,
+                answer: null,
                 error: error instanceof Error ? error.message : String(error),
               }),
           );

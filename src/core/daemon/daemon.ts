@@ -11,6 +11,7 @@ import type {
   Policy,
   RevisionNumber,
   RunnerAdapter,
+  SyncAnswer,
   WorktreeId,
 } from "../types/index.js";
 import { bootstrappedMetaKey, DEFAULT_POLICY, SLOW_LANE_PREFIX } from "../types/index.js";
@@ -408,7 +409,7 @@ class Daemon {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: () => this.#requestSync(),
+        requestSync: (after) => this.#requestSync(after),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -450,14 +451,22 @@ class Daemon {
     return requestSlowSuite(this.#loop.scheduler);
   }
 
-  /** Lessons, defect 30: the revision of every change made before the request, once stored. */
-  async #requestSync(): Promise<RevisionNumber> {
+  /**
+   * Lessons, defect 30: the revision of every change made before the
+   * request, once stored. With `after` (task 001-186), once its runner part
+   * is applied too, with the test files the revisions after `after` re-keyed.
+   */
+  async #requestSync(after: RevisionNumber | null): Promise<SyncAnswer> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
     await this.#loop.reconcile();
-    return this.#loop.scheduler.status().revision;
+    const scheduler = this.#loop.scheduler;
+    const revision = scheduler.status().revision;
+    if (after === null) return { revision, rekeyed: null };
+    await scheduler.refined();
+    return { revision, rekeyed: scheduler.rekeyedSince(after, revision) };
   }
 
   #note(text: string): void {

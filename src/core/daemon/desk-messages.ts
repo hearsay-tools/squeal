@@ -3,6 +3,7 @@ import type {
   DaemonPhase,
   EpochMs,
   RevisionNumber,
+  SyncAnswer,
   WorktreeId,
 } from "../types/index.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -35,7 +36,7 @@ export type ToDesk =
   | {
       readonly type: "sync-result";
       readonly id: string;
-      readonly revision: RevisionNumber | null;
+      readonly answer: SyncAnswer | null;
       readonly error: string | null;
     }
   | { readonly type: "close" };
@@ -47,7 +48,7 @@ export type FromDesk =
   | { readonly type: "activity" }
   | { readonly type: "run-all"; readonly id: string; readonly force: boolean }
   | { readonly type: "run-slow"; readonly id: string }
-  | { readonly type: "sync"; readonly id: string }
+  | { readonly type: "sync"; readonly id: string; readonly after: RevisionNumber | null }
   | { readonly type: "stop" }
   | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };
