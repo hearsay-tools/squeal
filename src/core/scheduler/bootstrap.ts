@@ -145,7 +145,8 @@ export async function baseline(
     // `usedAt` 0 never advances last-used: reading a duration is not a lookup hit (D8).
     const results = store.results.byKey(previous, 0);
     if (results.length === 0) continue;
-    file.resultKey = previous;
+    // A miss at its previous key is a held inherited fail (task 001-170): no result stands here yet.
+    if (previous !== file.key) file.resultKey = previous;
     file.durationMs = durationOf(results);
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);

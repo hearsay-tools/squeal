@@ -11,6 +11,7 @@ import type {
 import type { CheckKey } from "./keys.js";
 import type {
   DiagnosticFingerprint,
+  FlakyNote,
   KnownOutcome,
   ResultOrigin,
   TransitionKind,
@@ -82,6 +83,12 @@ export interface TransitionEntry {
    * findings." Absent means false.
    */
   readonly baseline?: boolean;
+  /**
+   * The check's flaky note when it was recorded under the worktree's current
+   * key for the check's test file: the same inputs both failed and passed
+   * (spec 001 D6 as amended, task 001-170). Absent otherwise.
+   */
+  readonly flaky?: FlakyNote;
   /**
    * For a failure: the paths of its test file's closure (`TestFileRecord`)
    * changed in this worktree since the consumer registered, the revisions

@@ -86,6 +86,10 @@ export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
           worktreeId,
         )
         .map(toTestFileKey),
+    withKey: (key) =>
+      conn
+        .all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key)
+        .map(toTestFileKey),
     upsertMany: (records) =>
       conn.transaction(() => {
         for (const r of records) {

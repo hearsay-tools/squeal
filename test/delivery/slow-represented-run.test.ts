@@ -85,8 +85,13 @@ function sourceRun(key: string, glob: string, sourceRevision: number): ResultRec
   return stored;
 }
 
-/** wt-a keys the slow file `key` at a new revision and takes what the store holds (D5 step 3). */
+/**
+ * wt-a keys the slow file `key` at a new revision and takes what the store
+ * holds (D5 step 3). Its own run failed under the key first, so wt-b's fail
+ * stands there (task 001-170: an inherited fail stands once confirmed).
+ */
 function inherit(key: string): void {
+  recordFailureKeys(store, WT, new Map([[checkIdentity(A), key]]));
   const next = revision();
   setKey(store, key, { file: SLOW });
   sink.refresh(WT, next, { checkpointId: null });

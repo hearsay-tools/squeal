@@ -491,10 +491,13 @@ describe("baseline findings", () => {
     ]);
   });
 
-  it("labels a lookup hit made for the baseline", async () => {
+  it("delivers nothing for another worktree's fail a baseline lookup finds, then labels its own run's (task 001-170)", async () => {
     await delivery.register(C1);
     store.results.putMany([result(A, "fail", { worktreeId: OTHER })]);
-    sink.refresh(WT, 1, startBaseline());
+    const baseline = startBaseline();
+    sink.refresh(WT, 1, baseline);
+    expect(await delivery.onToolBoundary(C1)).toBeNull();
+    sink.applyResults(WT, 1, [fail()], baseline);
     expect((await delivery.onToolBoundary(C1))?.label).toBe("baseline");
   });
 

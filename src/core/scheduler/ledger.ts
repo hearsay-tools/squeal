@@ -1,5 +1,6 @@
 import { testFileId } from "../keys/index.js";
 import { inheritsAcrossWorktrees } from "../slow/index.js";
+import { heldFailure } from "../state/index.js";
 import {
   type CheckId,
   type CheckKey,
@@ -179,14 +180,18 @@ export class Ledger {
   /**
    * The stored results of `key` that may stand for `file`: every hit, unless
    * one comes from another worktree and the file may not inherit (spec 004
-   * D6, `inherits`), when there is none. The store holds one result per
-   * check and key, so a mixed set is never partly this worktree's own.
+   * D6, `inherits`), or one is another worktree's fail this worktree has not
+   * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
+   * there is none: the file is a miss and runs here, and its local result
+   * replaces the shared row. The store holds one result per check and key,
+   * so a mixed set is never partly this worktree's own.
    */
   lookup(file: FileState, key: CheckKey): readonly ResultRecord[] {
     const { store, worktreeId, now } = this.context;
     const hits = store.results.byKey(key, now());
     if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
-    return this.inherits(file.ref) ? hits : [];
+    if (!this.inherits(file.ref)) return [];
+    return heldFailure(store, worktreeId, hits) === undefined ? hits : [];
   }
 
   /** Spec 004 D6: whether another worktree's result may stand for `ref`. */

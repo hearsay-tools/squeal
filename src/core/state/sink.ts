@@ -21,6 +21,7 @@ import {
   testFileKeyOf,
   unknownState,
 } from "./derive.js";
+import { failureKeysOnce, heldFailure } from "./inherited.js";
 import { transitionKind } from "./transitions.js";
 
 export interface StateSinkOptions {
@@ -121,9 +122,13 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
         const at = now();
         const next = new Map<string, KnownState>();
         const hits: ResultRecord[] = [];
+        const confirmed = failureKeysOnce(store, worktreeId);
         for (const [file, key] of keys) {
           if (!included(file)) continue;
-          for (const r of store.results.byKey(key.key, at)) {
+          const results = store.results.byKey(key.key, at);
+          // Another worktree's unconfirmed fail holds the whole file until it runs here (task 001-170).
+          if (heldFailure(store, worktreeId, results, confirmed) !== undefined) continue;
+          for (const r of results) {
             hits.push(r);
             next.set(
               checkIdentity(r.check),

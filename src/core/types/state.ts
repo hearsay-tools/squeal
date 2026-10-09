@@ -1,6 +1,6 @@
 import type { CheckId } from "./check.js";
 import type { CommitSha, EpochMs, RevisionNumber, SourceLocation, WorktreeId } from "./common.js";
-import type { TestFileRef } from "./keys.js";
+import type { CheckKey, TestFileRef } from "./keys.js";
 import type { ResultRecord } from "./store-records.js";
 
 /**
@@ -79,6 +79,22 @@ export interface KnownState {
    */
   readonly summary: string | null;
   readonly fingerprint: DiagnosticFingerprint | null;
+}
+
+/**
+ * A check whose stored outcome flipped under one key: a `fail` replaced by a
+ * `pass`, or the reverse, so the same inputs gave both (spec 001 D6 as
+ * amended, task 001-170). The newest flip per check is kept in `meta`.
+ */
+export interface FlakyNote {
+  readonly key: CheckKey;
+  readonly from: "pass" | "fail";
+  readonly to: "pass" | "fail";
+  /** Worktree whose run stored the replaced result. */
+  readonly fromWorktreeId: WorktreeId;
+  /** Worktree whose run stored the result that replaced it. */
+  readonly toWorktreeId: WorktreeId;
+  readonly at: EpochMs;
 }
 
 /**

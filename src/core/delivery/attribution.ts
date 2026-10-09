@@ -1,6 +1,12 @@
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
-import { checkIdentity, type SlowPolicyView, worktreeSlowView } from "../state/index.js";
+import {
+  checkIdentity,
+  readFlakyNotes,
+  type SlowPolicyView,
+  testFileOf,
+  worktreeSlowView,
+} from "../state/index.js";
 import type {
   CheckId,
   CheckKey,
@@ -185,7 +191,11 @@ export function annotate(
   states: readonly KnownState[],
 ): Annotated {
   return {
-    entries: attribute(store, consumer, entries, header.revision),
+    entries: withFlaky(
+      store,
+      consumer.worktreeId,
+      attribute(store, consumer, entries, header.revision),
+    ),
     header: withDependencies(
       store,
       consumer.worktreeId,
@@ -194,6 +204,30 @@ export function annotate(
     ),
     stillFailing: states.filter((s) => s.outcome === "fail").map((s) => s.check),
   };
+}
+
+/**
+ * Each entry with its check's flaky note (`TransitionEntry.flaky`) when the
+ * note was recorded under the worktree's current key for the check's test
+ * file: the same inputs both failed and passed (task 001-170).
+ */
+function withFlaky(
+  store: Store,
+  worktreeId: WorktreeId,
+  entries: readonly DeltaEntry[],
+): readonly DeltaEntry[] {
+  if (!entries.some((e) => e.kind !== "fail-retired")) return entries;
+  const notes = readFlakyNotes(store);
+  if (notes.size === 0) return entries;
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId).map((r) => [testFileId(r.testFile), r.key]),
+  );
+  return entries.map((entry) => {
+    if (entry.kind === "fail-retired") return entry;
+    const note = notes.get(checkIdentity(entry.check));
+    const key = keys.get(testFileId(testFileOf(entry.check)));
+    return note === undefined || note.key !== key ? entry : { ...entry, flaky: note };
+  });
 }
 
 /** `header` with `dependenciesInstalled` when `failing`: the note matters only beside a failure. */

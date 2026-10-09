@@ -1,10 +1,19 @@
 import { worktreeIdFor } from "../fs/index.js";
-import { formatCheck, parseCheck } from "../state/index.js";
+import { testFileId } from "../keys/index.js";
+import {
+  checkIdentity,
+  formatCheck,
+  heldFailure,
+  parseCheck,
+  readFlakyNotes,
+  testFileOf,
+} from "../state/index.js";
 import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckId,
   PAYLOAD_SCHEMA_VERSION,
+  type ResultRecord,
   type Store,
   type WhyNoMatch,
   type WhyReport,
@@ -94,6 +103,8 @@ function report(
   }));
   const shown = shownResult(worktreeId, knownState, results);
   const runsDir = storePaths(commonDir).runsDir;
+  const held = heldFor(store, worktreeId, check, results.map(({ result }) => result));
+  const flaky = readFlakyNotes(store).get(checkIdentity(check));
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -107,5 +118,27 @@ function report(
     history: store.transitions.history(worktreeId, check),
     results,
     runLog: shown === null ? null : runLogOf(shown, check, runsDir, includeLogs),
+    ...(held === undefined ? {} : { heldFailure: held }),
+    ...(flaky === undefined ? {} : { flaky }),
   };
+}
+
+/**
+ * The check's result under this worktree's current key for its test file
+ * when it is another worktree's fail this worktree holds (`heldFailure`,
+ * task 001-170). Read from the results `why` lists, newest first.
+ */
+function heldFor(
+  store: Store,
+  worktreeId: string,
+  check: CheckId,
+  results: readonly ResultRecord[],
+): ResultRecord | undefined {
+  const file = testFileId(testFileOf(check));
+  const key = store.testFileKeys
+    .list(worktreeId)
+    .find((row) => testFileId(row.testFile) === file)?.key;
+  if (key === undefined || key === null) return undefined;
+  const current = results.filter((r) => r.key === key);
+  return heldFailure(store, worktreeId, current);
 }

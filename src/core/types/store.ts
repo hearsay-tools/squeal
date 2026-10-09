@@ -66,6 +66,8 @@ export interface TestFileRepo {
 /** Per-worktree current keys and pending work. See `TestFileKeyRecord`. */
 export interface TestFileKeyRepo {
   list(worktreeId: WorktreeId): readonly TestFileKeyRecord[];
+  /** Rows of every worktree whose key is `key` (task 001-170: a pass heals each of them). */
+  withKey(key: CheckKey): readonly TestFileKeyRecord[];
   upsertMany(records: readonly TestFileKeyRecord[]): void;
   remove(worktreeId: WorktreeId, testFiles: readonly TestFileRef[]): void;
 }
