@@ -1,6 +1,7 @@
 import { createStateSink, heldFailure, recordFlips } from "../state/index.js";
 import type { ResultRecord } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import { unresolvedPreloads } from "./growth.js";
 import { addHeldFile } from "./held.js";
 
 /**
@@ -14,7 +15,9 @@ import { addHeldFile } from "./held.js";
  * changes no other worktree: its fail stands there only once it runs there.
  * When the run that heals also failed a check another worktree never
  * confirmed, that worktree's file stays held: its row is marked `queued` and
- * its daemon is told to run it (`addHeldFile`, review wave 13i B1).
+ * its daemon is told to run it (`addHeldFile`, review wave 13i B1). Under a
+ * key that may lack an observed preload (`unresolvedPreloads`, B2) the
+ * results are stored with no note and no heal.
  * Returns what the key held before (task 001-171, `holdsNewFailure`).
  */
 export function storeResults(
@@ -28,6 +31,8 @@ export function storeResults(
     // `usedAt` 0 never advances last-used: reading what is replaced is not a lookup hit (D8).
     const prior = store.results.byKey(first.key, 0);
     store.results.putMany(records);
+    // The key may lack a preload path two worktrees differ in (review wave 13i, B2).
+    if (unresolvedPreloads(context, first.check.project)) return prior;
     const flips = recordFlips(store, prior, records, now());
     if (!flips.some((note) => note.to === "pass")) return prior;
     const { project, testPath } = first.check;

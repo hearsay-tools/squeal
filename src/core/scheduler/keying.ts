@@ -559,6 +559,11 @@ export class WorktreeKeys {
     return [...this.#extra].sort();
   }
 
+  /** The files `project`'s environment hash was last read with (D3); none before the first read. */
+  environmentFiles(project: ProjectName): readonly RelativePath[] {
+    return this.#environments.get(project)?.files ?? [];
+  }
+
   /** What the stability check compares for a test file: its closure, its project's environment files, its lockfile. */
   stabilityPaths(ref: TestFileRef): RelativePath[] {
     const paths = new Set(this.index.closure(ref)?.paths ?? []);
