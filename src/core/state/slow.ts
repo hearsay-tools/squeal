@@ -2,7 +2,7 @@ import { readPolicy } from "../daemon/policy.js";
 import { createInputMatcher } from "../keys/glob.js";
 import { isInputList, testFileId } from "../keys/index.js";
 import { slowFiles } from "../slow/classify.js";
-import { slowGlobs } from "../slow/inherit.js";
+import { inheritsAcrossWorktrees, slowGlobs } from "../slow/inherit.js";
 import { readSlowActivity, readSlowArtifacts } from "../slow/state.js";
 import type {
   CheckKey,
@@ -27,13 +27,16 @@ import { testFileOf } from "./derive.js";
 /** A policy's slow files and what they are declared to run against. */
 export interface SlowPolicyView {
   readonly isSlow: (testFile: TestFileRef) => boolean;
+  /** Every glob that marks slow files (`slowGlobs`). */
+  readonly slowGlobs: readonly string[];
   /** The declared input globs of the slow test file at `path`, sorted (D5). */
   artifactFor(path: RelativePath): readonly string[];
 }
 
 /** The slow view of `policy`; `null` when it declares no slow file (D1). */
 export function slowPolicyView(policy: Policy): SlowPolicyView | null {
-  if (slowGlobs(policy, policy.nodeTest).length === 0) return null;
+  const globs = slowGlobs(policy, policy.nodeTest);
+  if (globs.length === 0) return null;
   const { inputs } = policy;
   const rules = isInputList(inputs)
     ? [{ applies: () => true, globs: inputs }]
@@ -43,6 +46,7 @@ export function slowPolicyView(policy: Policy): SlowPolicyView | null {
       }));
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
+    slowGlobs: globs,
     artifactFor: (path) =>
       [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
   };
@@ -116,12 +120,14 @@ export function readSlowTier(
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt: RevisionNumber | null = null;
+  let currentUpTo: RevisionNumber | null = null;
   const ranFrom = new Map<string, WorktreeId>();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
     const id = testFileId(testFileOf(state.check));
     if (files.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
+    currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
     const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
     ranFrom.set(id, origin);
   }
@@ -141,15 +147,26 @@ export function readSlowTier(
     }
   }
   const globs = [...artifact].sort();
+  const testFiles = new Set(keys.map((row) => row.testFile.path));
+  const isSource = (path: RelativePath) =>
+    inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs);
   return {
     testFiles: files.size,
     ...counts,
     currentAt,
+    ...(currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}),
     artifact: globs,
     ...(artifactUnknown > 0 ? { artifactUnknown } : {}),
     sourcesChangedSince:
       currentAt !== null &&
-      sourcesChanged(store, worktreeId, currentAt, revision, [...globs, ...declaredToday]),
+      sourcesChanged(
+        store,
+        worktreeId,
+        currentAt,
+        revision,
+        [...globs, ...declaredToday],
+        isSource,
+      ),
     activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow),
   };
 }
@@ -181,19 +198,28 @@ function liveActivity(
   return running ? activity : null;
 }
 
-/** Whether a revision after `since` up to `revision` changed a path no artifact glob matches. */
+/**
+ * Whether a revision after `since` up to `revision` changed a source the
+ * artifact could be built from: a path no artifact glob matches that
+ * `isSource` admits, so neither a test file nor a slow directory's fixture
+ * (as D6 tells an artifact from them; lessons defect 8a). A worktree's first
+ * revision with only adds is its first listing, every file found new against
+ * an empty stat cache, not a change (lessons defect 8d).
+ */
 function sourcesChanged(
   store: Store,
   worktreeId: WorktreeId,
   since: RevisionNumber,
   revision: RevisionNumber,
   artifact: readonly string[],
+  isSource: (path: RelativePath) => boolean,
 ): boolean {
   if (since >= revision) return false;
   const isArtifact = createInputMatcher(artifact);
   return store.revisions
     .range(worktreeId, since, revision)
-    .some((r) => r.changes.some((change) => !isArtifact(change.path)));
+    .filter((r) => !(r.number === 1 && r.changes.every((change) => change.oldHash === null)))
+    .some((r) => r.changes.some((change) => !isArtifact(change.path) && isSource(change.path)));
 }
 
 /** The listed slow test files not current: pending or not run (`stop.requireSlowSuite`, D7). */

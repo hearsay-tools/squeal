@@ -34,17 +34,22 @@ export function clockText(at: number): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-/** What the pending slow files are doing, from the daemon's published activity. */
-function pendingText(pending: number, activity: SlowTierActivity | null): string {
+/**
+ * What the pending slow files are doing, from the daemon's published
+ * activity: "last reported" when no daemon is validating, since it may be
+ * old news (the header's liveness sentence says why).
+ */
+function pendingText(pending: number, activity: SlowTierActivity | null, late: boolean): string {
   if (activity === null) return `${pending} pending`;
+  const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, waiting for ${WAITING_FOR[activity.for]}`;
+    return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
   }
   const last =
     activity.lastDurationMs === null
       ? "no earlier run"
       : `last run ${durationText(activity.lastDurationMs)}`;
-  const running = `running ${activity.path} since ${clockText(activity.since)} (${last})`;
+  const running = `${reported}running ${activity.path} since ${clockText(activity.since)} (${last})`;
   return pending === 1 ? running : `${pending} pending, ${running}`;
 }
 
@@ -55,20 +60,22 @@ function pendingText(pending: number, activity: SlowTierActivity | null): string
  */
 function currentText(tier: SlowTierState): string {
   const unknown = tier.artifactUnknown ?? 0;
-  if (unknown >= tier.current)
-    return `current at revision ${tier.currentAt}, declared artifact unknown`;
+  const at =
+    tier.currentUpTo === undefined
+      ? `revision ${tier.currentAt}`
+      : `revisions ${tier.currentAt} to ${tier.currentUpTo}`;
+  if (unknown >= tier.current) return `current at ${at}, declared artifact unknown`;
   const against =
     tier.artifact.length === 0
-      ? `current at revision ${tier.currentAt}, against no declared artifact`
-      : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
+      ? `current at ${at}, against no declared artifact`
+      : `current against ${tier.artifact.join(", ")} as of ${at}`;
   return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
 }
 
 /**
  * The slow-tier line, or `null` when the header has no slow tier. The
- * daemon's activity is left out when no daemon is validating: it would be
- * old news (the header's liveness sentence says so). `command` is how the
- * text names the CLI.
+ * daemon's activity is the one the JSON carries, kept when no daemon is
+ * validating (lessons defect 8c). `command` is how the text names the CLI.
  */
 export function slowTierText(header: StatusHeader, command: string): string | null {
   const tier = header.slowTier;
@@ -83,8 +90,7 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
     );
   }
   if (tier.pending > 0) {
-    const activity = header.daemon?.state === "down" ? null : tier.activity;
-    parts.push(pendingText(tier.pending, activity));
+    parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
