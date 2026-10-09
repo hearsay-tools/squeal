@@ -107,6 +107,27 @@ describe("vitest adapter: a module whose bytes moved after Vite read them (001-1
     }
   });
 
+  // Task 001-157: a transform some path other than the container's `load`
+  // cached (Vitest's `fsModuleCache` reads its own copy) has no stamp: stale
+  // before a run, and named by the run's own check, so its files are not stored.
+  it("counts a cached transform of a project file no stamped load produced as stale", async () => {
+    const fx = await openFixture("basic", { "src/mod.ts": NEW });
+    const root = fx.root as AbsolutePath;
+    const vitest = await createVitest("test", { root, watch: false, reporters: [] });
+    try {
+      const stamps = new SourceStamps(new WorktreePaths(root));
+      stamps.attach(vitest);
+      const ssr = vitest.projects[0]?.vite.environments.ssr;
+      const file = `${root}/src/mod.ts` as AbsolutePath;
+      const module = await ssr?.moduleGraph.ensureEntryFromUrl(`${file}?copy`);
+      if (!module) throw new Error("no module node");
+      module.transformResult = { code: "export const which = 'old';", map: null };
+      expect(await stamps.stale(vitest, Date.now())).toEqual([file]);
+    } finally {
+      await vitest.close();
+    }
+  });
+
   it("does not complete a file whose run loaded bytes no longer on disk", async () => {
     const fx = await openFixture("basic", {
       "src/mod.ts": NEW,
