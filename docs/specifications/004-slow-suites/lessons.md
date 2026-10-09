@@ -274,3 +274,91 @@ Numbered on from the first dogfood's 9. None is fixed here.
 - Defect 8b.
 - Preemption of a slow tier by an edit between files. The edit at 15:36:26 landed while a single file was in flight.
 - The load guard: off by configuration.
+
+## Confirmation at 0.1.85
+
+Task 004-53, 2026-10-09, 21:20 to 21:57 UTC. A check that the revision loop of defect 10 stays closed in real use, with the slow-tier line read against the truth. This repository only. The agent was Claude Code 2.1.296 (`claude -p --model opus`) loading the dogfood worktree's own plugin (`--plugin-dir`), with `squeal@hearsay` disabled in the worktree's untracked `.claude/settings.local.json`. The session's `init` event lists `squeal@inline` 0.1.85 as its only Squeal. `origin/main` was `8b40d341`, version 0.1.85. Node 24.21.0. The load was 0.03 to 2.6 per CPU on 24 CPUs, 1 or above only at 21:32 and from 21:36 to 21:42 (other agents and r9 to r11's fast work). Scripts, prompt and trimmed logs: `research/probes/dogfood3/`; its README lists the rules followed.
+
+Setup:
+
+- `git worktree add --detach /tmp/squeal-dogfood3-378b91af origin/main`, `npm ci`, `npm run build`. The build reproduced the committed `dist`.
+- Config, uncommitted: `b70fcc2`'s narrowing undone, so `test/fixtures/node-test/**` and `test/fixtures/vitest/**` are declared again, plus `"slow": {"include": ["test/e2e/**/*.test.ts"], "maxLoadPerCpu": 100}` as in 004-46 (`logs/squeal.config.diff`). That gives 10 slow files.
+- The shared store was kept. Other worktrees' 0.1.62 daemons wrote to it throughout and hold 2,145 `.tmp` paths in `file_hashes`. This worktree's daemons hashed none.
+- Daemons, all serving the dogfood worktree:
+  - 2836047: started by sq1's SessionStart hook. It drained and exited on its own.
+  - 3221938: started by me (`squeal start`). I SIGKILLed it for check 4.
+  - 3470848: started by me. I stopped it with `squeal stop`.
+- No orphan processes were left. The worktree is removed.
+
+Sessions and edits:
+
+| When (UTC) | What | Revision |
+| --- | --- | --- |
+| 21:21:54.7 to 21:23:52.9 | sq1, 004-46's prompt: hours in `durationText`, a unit test, `npm run build`. The agent ran no test itself; it read `squeal status --wait 60000` and `squeal why` (`logs/sq1.result.txt`). | r1 to r8 |
+| 21:38:08 | `squeal start` (3221938) | r8 |
+| 21:38:50.2 | a comment appended to `src/core/state/slow-text.ts`, no rebuild | r9 |
+| 21:39:43.2 | that comment removed | r10 |
+| 21:40:16.6 | a line appended to `test/fixtures/node-test/README.md`, and new file `test/fixtures/vitest/dogfood3.md` | r11 |
+| 21:52:14.2 | a line appended to `plugins/claude-code/README.md`, which re-keys the slow files | r12 |
+| 21:52:20.6 | `kill -9 3221938` during its slow tier, then `squeal start` (3470848) at 21:52:22.9 | r12 |
+| 21:55:07.0 | the plugin README edit reverted | r13 |
+| 21:55:19.1 | the fixture edits reverted | r14 |
+| 21:55:44.9 | `squeal stop` | r14 |
+
+### Verdict
+
+| Check | Verdict | Evidence |
+| --- | --- | --- |
+| 1. Defect 10: the revision number settles after a session's edits and the node:test runs that write `.tmp` | held | Every revision r1 to r14 is an edit of sq1's or mine (`logs/sq.store-slow.txt`). None names a `.tmp` path, and this worktree's daemons hashed no `.tmp` path. In sq1's drain, the `.tmp` writers ran at r0 (21:21:59.5 to 21:22:19.0), r8 (`integration/node-test.test.ts` 21:30:37.7 to 21:30:47.0, and a 100-file tier holding all of `test/runners/node-test/**` 21:32:30.8 to 21:34:15.9). r8 stood from 21:23:02.7 until my edit at 21:38:50, under two daemons. The 10 idle minutes: r11's fixture edit re-ran all of `test/runners/node-test/**`, `test/runners/vitest/**` and `integration/node-test.test.ts` from 21:40:17.3 to 21:41:16.6. Nothing ran after that. The newest revision, read once a minute from 21:41:47 to 21:51:47, was r11 at 21:40:16 each time (`logs/sq.revisions.txt`). In 004-46, under 0.1.69, 50 revisions came in 20 minutes. |
+| 2. Defect 1: a `claude -p` session that ends with slow files pending, and the daemon drains them before it exits | held, in 11 min 44.5 s | sq1 ended at 21:23:52.9 with 10 slow files pending. The drain note came at 21:23:55.6 ("this daemon runs them before it exits, for at most 60 min"). The slow tier waited 8 min 38 s for r8's edit-caused fast work, which held nearly every fast file (sq1 changed `src` and rebuilt both plugins). The first slow file started at 21:32:30.8, beside a 100-file background tier. At 21:35:37.4 the daemon noted "the slow files pending when its last session ended have run" and exited. Under 0.1.69 the same drain took 43.5 min, 20 of them in defect 10's loop. |
+| 3. An idle slow tier's width, and the line naming its running files | held | While the 100-file background tier ran, the slow tier took one file at a time: `lifecycle`, `node-test`, `plugin-copy`, `policy`, from 21:32:30.8 to 21:34:31.6, 121 s in total. Once the worktree was idle it took 4 and then 2 (21:34:31.7 to 21:35:37.3). The restarted daemon was idle from its start and ran 4, 4 and 2: 10 files in 117.6 s, 21:52:25.3 to 21:54:22.9, at load 0.03 to 0.11 per CPU. `permits.txt` shows the daemon held all 4 permits (`slow.lock` to `slow.3.lock`) during each 4-file tier and 2 during each 2-file tier, then released them all. The line named the files and was true: "running 4 slow files since 23:34: test/e2e/shipped-plugin.test.ts, test/e2e/slow-node-test.test.ts and 2 more", and "running 2 slow files since 23:35: test/e2e/transitions.test.ts and test/e2e/worktrees.test.ts". For comparison, 004-46 ran 9 files in 151 s at load 1.0 to 1.7, and the first dogfood ran 10 files one at a time in 261 s. |
+| 4. Defects 11, 12, 15: the line after a session ends, after a daemon restart, after a revert | 11, 12 and 15's revert case gone; two new slips (defects 17 and 18) | Table below. |
+
+### The slow-tier line, seen against the truth (check 4)
+
+| When (UTC) | Line | True? |
+| --- | --- | --- |
+| 21:22:00 to 21:23:51, during sq1 | "10 pending, waiting for the agent to pause" (activity `{"kind":"waiting","for":"idle"}`) | yes |
+| 21:23:56 to 21:32:30, after sq1 ended | "10 pending, waiting for fast test files" (`{"for":"fast"}`), 3 s after the session ended | yes: r8's edit-caused tiers ran until 21:32:30. Defect 11 is gone: in 004-46 this read "waiting for the agent to pause" for 19 minutes. |
+| 21:32:31 to 21:35:37, during the drain | "10 pending, running test/e2e/lifecycle.test.ts since 23:32 (no earlier run)", then "N current ... as of revision 8; M pending, running ..." | yes. These were each file's first run in this worktree. |
+| 21:35:41, and from 21:38:12 after a graceful restart | "10 current against plugins/claude-code/**, plugins/codex/**, test/fixtures/codex-hooks/**, test/fixtures/e2e/**, test/harness/recorded/** as of revision 8" | yes |
+| 21:38:52 to 21:39:43, r9 (`src` edited) | "10 pending." with no reason (activity `null`) | true but incomplete. The 10 were pending because `slow-text.ts` is in their static closure (through `src/harness/claude-code/build.ts`, D5). They were waiting for r9's 1,499 queued fast checks, and the line named no wait for 51 s. Not numbered: D8 lists the reasons, and naming none is not false. |
+| from 21:39:45, r10 (the edit reverted) | "10 current ... as of revision 8" with no clause, and all 2,661 checks current with no run | yes: the keys returned to r8's and the results were reused |
+| from 21:40:19, r11 (two fixture files) | "10 current ... as of revision 8, sources changed since" | no (defect 18): neither file is a source of `plugins/**`, and the slow files' keys did not change |
+| 21:52:15 to 21:52:22, r12 | "10 pending, running 4 slow files since 23:52: test/e2e/torn-status.test.ts, test/e2e/plugin-copy.test.ts and 2 more (longest last run 13 s)" | yes until the SIGKILL at 21:52:20.6. For the 2 s after it the line still said running. That is inside the 5 s heartbeat interval, so not judged. |
+| 21:52:24.3, 1.4 s after `squeal start` | "10 pending." (activity `null`) | yes. Defect 12 is gone: the dead daemon's tier, published `since` 21:52:15.1, is not shown as running. The killed run stays in `runs` with no end (`0cce330c`). No orphan of it was alive at 21:53. |
+| 21:52:25.6 to 21:54:23, the new daemon's three tiers | "running 4 slow files since 23:52: test/e2e/lifecycle.test.ts, test/e2e/node-test.test.ts and 2 more (no earlier run)", and the same clause for the next two tiers | the files yes; "(no earlier run)" no (defect 17): each file had run at r8, `lifecycle.test.ts` for 48.5 s |
+| from 21:54:27 | "10 current ... as of revision 12" | yes |
+| from 21:55:09, r13 (plugin README reverted) | "10 current ... as of revision 8, sources changed since" | the count and revision yes: r8's results were reused under the restored keys, with no run. The clause no (defect 18): only the fixture files still differed from r8. |
+| from 21:55:20, r14 (fixtures reverted) | "10 current ... as of revision 8" | yes. Defect 15's revert case is gone: every path was back to r8's bytes. |
+| after `squeal stop` | the same, with "no daemon running since 21:55:44" | yes |
+
+### Defects found
+
+Numbered on from 004-46's 16. Neither blocks: both are words on the line, and neither leaves a slow result wrong or unrun.
+
+17. **A restarted daemon says "(no earlier run)" for slow files that ran before, when their keys moved since.**
+    - Where: scheduler bootstrap (`src/core/scheduler/bootstrap.ts`, the loop over `misses`).
+    - At start, a missed file takes its last duration from results under its previous stored key. The killed daemon had already stored r12's keys, which had no results yet, so every duration came back `null`. The new daemon's three tiers then read "(no earlier run)".
+    - Reproduction: run the slow tier once (r8), change a declared artifact file (r12), restart the daemon before the slow files run, and read the line once the next slow tier starts (`logs/d2.kill-restart.txt`). A graceful `squeal stop` in place of the SIGKILL should do the same, since the keys are stored at the revision, not at the run. That variant was not tried.
+    - Effect: the line's duration is lost. So is 001 D5's shortest-first order within a class, until each file runs again.
+    - Fix direction: keep the last known duration per file across keys, for example in `test_file_keys` or from the newest completed run of the file.
+18. **"sources changed since" counts any changed path outside the artifact, test files and slow directories as a source, including fast tests' fixtures.**
+    - Where: status, D8 (`sourcesChanged` in `src/core/state/slow.ts`).
+    - At r11 only `test/fixtures/node-test/README.md` and a new `test/fixtures/vitest/dogfood3.md` changed. Neither is in any slow file's key or a source of `plugins/**`, yet the line read "as of revision 8, sources changed since". It stayed so after the artifact revert (r13), and went only when the fixtures were reverted (r14).
+    - 004-48 fixed the content comparison (revert) and the config case. What remains is which paths count as a source: in this repository, any change under `docs/`, `test/` (outside `test/e2e/`) or a fixture shows the clause until the slow files re-run or the change is reverted.
+    - Fix direction, for the coordinator: count only paths in some slow file's closure (its key's sources), or say "files changed since" if the wider meaning is wanted.
+
+### Non-defects checked
+
+- `plugins/codex/skills/squeal/SKILL.md` made two revisions in sq1's build (r6 watch, r8 interval). The second restored the first's old hash (`9fe7f3d6`): the build copies the skill and then writes its note, and the watcher saw only the first write. Both are real changes; the interval pass caught the second 31 s later.
+- `src/core/state/slow-text.ts` moving all 10 slow files to pending (r9) is D5: the e2e helpers import `src/harness/claude-code/build.ts`, so `src` is in their static closure (201 paths, 75 under `src/`). In this repository a source edit re-keys the slow files directly, so the "sources changed since" case for `src` cannot arise here.
+
+### Not exercised
+
+- Cezarion, inheritance across worktrees, the shared permits across repositories, and the load guard (off by configuration). 004-46 covered them, and this check did not repeat them.
+- A session that starts while a slow tier runs, and an edit that preempts a slow tier between tiers.
+- Defect 8b.
+- The line once no daemon is validating after a crash (a SIGKILL with no restart within two heartbeats).
+
+Proposed: spec 004's goals hold in this repository's real use with no blocker, so per `docs/process.md` step 7 it can move to shipped. Defects 17 and 18 are should-fix rows.
