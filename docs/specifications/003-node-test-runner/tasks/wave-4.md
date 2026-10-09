@@ -114,6 +114,6 @@ Use /worker.
 
 ## 003-46 re-review of 003-45
 
-Outcome: `reviews/wave-4.5.md`: is `reviews/wave-4.md` B1 closed on Node 22 and 24, and does no growth move erase an earlier window or attribute a file to a window it does not owe. Range: 003-45's commits and bundles on main. Second and last round for 003-43: a remaining blocker goes to the human. Rules as for 003-25.
+Outcome: `reviews/wave-4.5.md`: is `reviews/wave-4.md` B1 closed on Node 22 and 24, and does no growth move erase an earlier window or attribute a file to a window it does not owe. Range: `fefaa9d7` (003-45) and `adcd9916` (the 0.1.84 bundles) on main; 001-194, landing after it, is out of scope. Second and last round for 003-43: a remaining blocker goes to the human. Rules as for 003-25.
 
 Use /reviewer.
