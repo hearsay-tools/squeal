@@ -1,6 +1,6 @@
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
-import { readSlowArtifacts } from "../slow/state.js";
-import { type SlowPolicyView, worktreeSlowView } from "../state/index.js";
+import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
+import { checkIdentity, type SlowPolicyView, worktreeSlowView } from "../state/index.js";
 import type {
   CheckId,
   CheckKey,
@@ -47,37 +47,42 @@ function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): n
 }
 
 /**
- * Spec 004 D8, review wave 2 B2: the declared artifact of the slow run that
- * stored `entry`'s failure, as its worktree recorded it with the result's
- * key; `null` when the run is a slow file's by today's policy but none is
- * recorded (a result stored before the records), `undefined` when the
- * failure is no slow run's. The result is the newest failing one of its
- * worktree at its revision (own) or commit (inherited). A run recorded slow
- * stays slow when the policy no longer marks its file.
+ * Spec 004 D8, review wave 2 B2 and wave 2.5 B1: the declared artifact of the
+ * slow run whose result `entry`'s state holds, as the worktree that ran it
+ * recorded it with the result's key; `null` when the run is a slow file's by
+ * today's policy but no declaration is known (a state or result from before
+ * the records), `undefined` when the failure is no slow run's. The key is the
+ * one the state sink recorded with the state (`failureKeys`), current,
+ * pending or stale alike. A run recorded slow stays slow when the policy no
+ * longer marks its file.
  */
 function slowRunArtifact(
-  store: Store,
   worktreeId: WorktreeId,
   slow: SlowPolicyView | null,
+  failureKeys: ReadonlyMap<string, CheckKey>,
+  artifactOf: (from: WorktreeId, key: CheckKey) => readonly string[] | undefined,
   entry: TransitionEntry,
 ): readonly string[] | null | undefined {
   const { origin } = entry;
   const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
-  const result = store.results
-    .listForCheck(entry.check, LOAD_RESULTS_READ)
-    .find(
-      (r) =>
-        r.outcome === "fail" &&
-        r.provenance.worktreeId === from &&
-        (origin.kind === "inherited"
-          ? r.provenance.commit === origin.commit
-          : r.provenance.revision === entry.observedAt),
-    );
-  const recorded =
-    result === undefined ? undefined : readSlowArtifacts(store, from).get(result.key);
+  const key = failureKeys.get(checkIdentity(entry.check));
+  const recorded = key === undefined ? undefined : artifactOf(from, key);
   if (recorded !== undefined) return recorded;
   const { project, testPath } = entry.check;
   return slow?.isSlow({ project, path: testPath }) === true ? null : undefined;
+}
+
+/** The declared artifact of a slow run of `key` in a worktree, reading each worktree's record once. */
+function recordedArtifacts(store: Store) {
+  const records = new Map<WorktreeId, ReadonlyMap<CheckKey, readonly string[]>>();
+  return (from: WorktreeId, key: CheckKey): readonly string[] | undefined => {
+    let byKey = records.get(from);
+    if (byKey === undefined) {
+      byKey = readSlowArtifacts(store, from);
+      records.set(from, byKey);
+    }
+    return byKey.get(key);
+  };
 }
 
 /**
@@ -130,12 +135,14 @@ export function attribute(
   const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
   const closureOf = closureFor(store, consumer.worktreeId);
   const slow = worktreeSlowView(store, consumer.worktreeId);
+  const failureKeys = readFailureKeys(store, consumer.worktreeId);
+  const artifactOf = recordedArtifacts(store);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const { project, testPath } = entry.check;
     const load = loadOf(store, consumer.worktreeId, entry);
     const loaded = load === undefined ? {} : { loadAverage: load };
-    const slowArtifact = slowRunArtifact(store, consumer.worktreeId, slow, entry);
+    const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry);
     if (slowArtifact !== undefined) return { ...entry, slowArtifact, ...loaded };
     const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
