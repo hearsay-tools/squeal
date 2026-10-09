@@ -4,11 +4,15 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
+import { createDelivery } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createScheduler } from "../../src/core/scheduler/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
+  type CheckKey,
+  type Consumer,
   DEFAULT_POLICY,
+  MAIN_AGENT,
   type NodeTestProject,
   type RunnerAdapter,
   type TestFileRef,
@@ -16,6 +20,16 @@ import {
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import {
+  CONTROL_TEST,
+  HIDDEN_TEST,
+  keyOf,
+  open,
+  origin,
+  outcome,
+  PRELOADED,
+  twoWorktrees,
+} from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
 
 /*
@@ -108,5 +122,103 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
         ),
       }),
     ]);
+  });
+
+  /*
+   * 001 review wave 13j, B2: under 001-187's stopgap, A's pass stored under
+   * the key lacking the preload path healed no worktree at once, but B's
+   * forced full suite refreshed B's states from that shared row, delivering
+   * FAIL -> PASS while B's own run was held. Here A's run, which loaded the
+   * path its key lacked, stores nothing under that key: there is no row to
+   * read, and B keeps its own fail through the request.
+   */
+  it("a forced full suite in B reads no pass A stored under the key lacking the preload path", async () => {
+    const { repo, rootB, store } = await twoWorktrees(true);
+    let releaseA = () => {};
+    const heldA = new Promise<void>((resolve) => {
+      releaseA = resolve;
+    });
+    let gateB: Promise<void> | undefined;
+    let releaseB = () => {};
+    onTestFinished(() => {
+      releaseA();
+      releaseB();
+    });
+    // The key each file of each run went under, read as the run starts.
+    const ranUnder: { root: string; path: string; key: CheckKey | null | undefined }[] = [];
+    const note = (root: string) => () => {
+      for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
+        ranUnder.push({ root, path, key: keyOf(store, root, path) });
+      }
+      return root === rootB ? gateB : undefined;
+    };
+    const a = await open(repo.main, store, repo.commonDir, heldA, PRELOADED, note(repo.main));
+    const b = await open(rootB, store, repo.commonDir, undefined, PRELOADED, note(rootB));
+
+    // A read its environment and computed a closure; B runs to its own fail meanwhile.
+    const aStarted = a.scheduler.start();
+    await expect.poll(() => a.closures()).toBeGreaterThan(0);
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
+      expect(outcome(store, rootB, path)).toBe("fail");
+      expect(origin(store, rootB, path)).toBe("own");
+    }
+    releaseA();
+    await aStarted;
+    await a.scheduler.idle();
+    expect(outcome(store, repo.main)).toBe("pass");
+
+    // A's first run went under keys lacking the path, the keys B's first run went under too:
+    // no result of either file is stored under them.
+    const first = (root: string, path: string) =>
+      ranUnder.find((r) => r.root === root && r.path === path)?.key;
+    for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
+      const incomplete = first(repo.main, path);
+      expect(incomplete).toBeTruthy();
+      expect(first(rootB, path)).toBe(incomplete);
+      expect(store.results.byKey(incomplete ?? null, 0)).toEqual([]);
+      expect(keyOf(store, repo.main, path)).not.toBe(keyOf(store, rootB, path));
+    }
+
+    // B's consumer, then B's forced full suite with B's next run held before it starts.
+    const delivery = createDelivery(store, {
+      status: {
+        build: () => ({
+          schemaVersion: 1,
+          available: false,
+          reason: "timeout",
+          message: "status is not under test here",
+        }),
+      },
+    });
+    const consumer: Consumer = {
+      worktreeId: worktreeIdFor(rootB),
+      sessionId: "session",
+      agentId: MAIN_AGENT,
+    };
+    await delivery.register(consumer);
+    gateB = new Promise<void>((resolve) => {
+      releaseB = resolve;
+    });
+    const before = b.runs.length;
+    await b.scheduler.requestFullSuite({ force: true });
+    for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
+      expect(outcome(store, rootB, path)).toBe("fail");
+      expect(origin(store, rootB, path)).toBe("own");
+    }
+    const held = await delivery.onToolBoundary(consumer);
+    expect(held?.entries.filter((e) => e.kind === "fail-to-pass") ?? []).toEqual([]);
+
+    // B's own run confirms its fail; nothing ever told B it passed.
+    releaseB();
+    await b.scheduler.idle();
+    expect(b.runs.length).toBeGreaterThan(before);
+    for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
+      expect(outcome(store, rootB, path)).toBe("fail");
+      expect(origin(store, rootB, path)).toBe("own");
+    }
+    const after = await delivery.onToolBoundary(consumer);
+    expect(after?.entries.filter((e) => e.kind === "fail-to-pass") ?? []).toEqual([]);
   });
 });
