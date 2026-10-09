@@ -362,7 +362,7 @@ Spec: `specifications/003-node-test-runner/spec.md`, approved 2026-10-07. Sectio
 | 003-37 preload attribution and unseen inputs | done (0.1.45, with 004-19) | `lessons.md` defects 3 and 6: a module loaded by `createRequire(<file>)` is counted as a preload load and re-runs the whole project; a test that reaches its input through a spawned process or a literal-URL file read keeps a stale pass and nothing names it. | The probes are tests; such closures get a note naming the file and the `inputs` to declare. | Testing, proof: a cezarion worktree with `test:unit` and `test:package` configured and a Cezar worker on Claude Code, reported in `lessons.md`. | `lessons.md` resolves the open questions with evidence; no blocker. |
 | 003-38 node:test children marked for the daemon's sweep | done (0.1.45, coordinator) | From the 001 coordinator, 2026-10-08: 001-142 marks Vitest workers with `SQUEAL_DAEMON_CHILD=<token>` and stops marked processes after each tier and at exit; node:test files run in their own process groups (003 D5), so their leftovers die only at the deadline (gap recorded in 001 D12). Pass the same entry into the node:test runner's env through `createNodeTestRunners` options beside `tempDir`. | A node:test file's escaped child is stopped after its tier, as a Vitest one is. |
 | 003-39 a preload's createRequire load stays with the preloads | done (0.1.48, adapter version 8) | 004 `reviews/wave-1.md` S1: a helper a `--require`/`--import` preload loads through `createRequire(package.json)` lands in every test file's observed closure, not the environment. | Both preload probes are tests on Node 22 and 24. |
-| 003-40 a preload phase belongs to the project only at its own startup | verified, lands with wave 2 (adapter version 9) | 004 `reviews/wave-1.5.md` S2, S3: an `eval` Worker's loads, and a test-spawned child's own `--require` preload, are tagged preload and enter the project environment, re-running unrelated files (over-run, never stale). | Both probes are tests on Node 22 and 24, each beside an unaffected second file. |
+| 003-40 a preload phase belongs to the project only at its own startup | done (0.1.51, adapter version 9) | 004 `reviews/wave-1.5.md` S2, S3: an `eval` Worker's loads, and a test-spawned child's own `--require` preload, are tagged preload and enter the project environment, re-running unrelated files (over-run, never stale). | Both probes are tests on Node 22 and 24, each beside an unaffected second file. |
 
 ## Feature 004: slow suites by policy
 
@@ -391,14 +391,15 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-19 a slow node:test project's spawned processes are observed | done (0.1.45, with 003-37) | D5's recorder sentence, from 004-13's finding: the recorder in `NODE_OPTIONS` for slow node:test projects; a child process's loads belong to the test file, not the preloads. | `test/integration/slow-spawn.test.ts` flips: a spawned CLI's helper edit re-runs the slow file. |
 | 004-20 the slow tier rechecks its trigger; Stop never waits for slow files | done (0.1.48) | `reviews/wave-1.md` B1: a slow file the idle trigger chose starts after the consumer entered a turn during the guard's wait; B2: a Stop with only slow files pending still waits `stop.waitMs`. | Both probes are tests; full suite on Node 22 and 24. |
 | 004-21 re-review of wave 1.5 | done: PASS at `e9758a6`; S2 and S3 to 003-40 | `/reviewer` on gpt-6.1-sol: B1, B2 and S1 closed. Second round on this slice. | `reviews/wave-1.5.md`. |
-| 004-18 a separate lane for slow files | running (brief in `tasks/wave-1.md`; on 001-140's lanes, 0.1.49; also closes 001 `reviews/wave-13.md` B1 and S2 in `escaped.ts`) | D2's execution: a second runner at low priority, concurrent with fast tiers. | An edit's fast file is reported while a slow file is running. |
+| 004-18 a separate lane for slow files | done (0.1.51; also closed 001 `reviews/wave-13.md` B1 and S2) | D2's execution: a second runner at low priority, concurrent with fast tiers. | An edit's fast file is reported while a slow file is running. |
 | 004-14 review of wave 1 | done: FAIL, B1 and B2 to 004-20, S1 to 003-39 | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
 ### Wave 2: telling the agent; Wave 3: proof
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 004-15 slow-tier line, failure line, primer, `stop.requireSlowSuite` | verified, lands with 004-18 | D8, D9. | Status and delivery tests for each state; Claude Code and Codex texts. |
+| 004-15 slow-tier line, failure line, primer, `stop.requireSlowSuite` | done (0.1.51) | D8, D9. | Status and delivery tests for each state; Claude Code and Codex texts. |
+| 004-22 review of wave 2 | running | `/reviewer` on gpt-6.1-sol: 004-15, 004-18, 003-40 at 0.1.51. | `reviews/wave-2.md`. |
 | 004-16 e2e for both repository shapes | planned | Testing. | Both plugins, Node 22 and 24. |
 | 004-17 dogfooding | planned | This repository with `test/e2e` declared slow, and a cezar worktree as 003-19 was. | `lessons.md`. |
 
