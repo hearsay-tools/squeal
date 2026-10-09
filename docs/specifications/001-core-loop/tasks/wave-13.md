@@ -234,3 +234,17 @@ Done when: every probe from the four review reports (two separate configs, share
 ## 001-160 fifth review: the discard rule
 
 Use /reviewer on gpt-6.1-sol, after 001-159 lands. Output `reviews/wave-13e.md`. Range: from 0.1.58's landing to 001-159's. Question: is there any way left for a cached Vite/Vitest state (transform, module graph, executed setup, optimizer output, anything else) to run bytes other than those a stored result's key names, now that every touched-unchanged batch discards them all? Probe the rule itself (when is a touched-unchanged file not seen: an event the watcher coalesces away entirely, a change outside the watched set, a change during the discard, a lane mid-run) rather than another cache class. Decided by the human: blockers go to the human.
+
+## 001-164 the plugin id is `squeal@hearsay`, one constant
+
+Use /worker. Shape: slice. From `research/release-hub.md` (001-163) and the human's decision (2026-10-09): one private hub repository `hearsay-tools/marketplace` (created, README only), marketplace name `hearsay`, so the installed plugin id becomes `squeal@hearsay`.
+
+Outcome: every place that names the plugin id uses one exported constant derived from the hub's marketplace name: `src/cli/init.ts` (the `enabledPlugins` entry), `src/cli/codex/init.ts` (`CODEX_PLUGIN_ID`), `src/cli/codex/hash.ts` (`PLUGIN_KEY_SOURCE`), `src/cli/codex/trust.ts`, `src/cli/remove.ts`'s instructions, both plugin READMEs, the skill's references, and the tests. A repository initialized under the old id still works: `squeal remove` and `squeal init` recognize `squeal@squeal` as the previous id (remove it, write the new one), and `init --harness codex --trust` says when the old id's hooks are still trusted.
+
+Settle and record in the report: this repository's own `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json` (named `squeal`) stay for local development from a checkout, or are renamed. Two marketplaces named `hearsay` cannot both be added, and a checkout install under another name gives another id. Prefer keeping them as a dev-only marketplace with a distinct name, and say what `squeal init` writes for a dev install.
+
+Read: `research/release-hub.md` (the migration section), D9 and D12's install text, `src/cli/`, `plugins/*/README.md`, `test/cli/`.
+
+Own: `src/cli/`, `src/harness/` only for the id, `plugins/*/README.md` and the skill's references (not `dist`), the two in-repo marketplace manifests, tests under `test/cli/` and `test/harness/`. Do not run `npm run build`.
+
+Done when: no `squeal@squeal` remains outside the previous-id handling and its tests; `squeal init` (Claude Code and Codex) writes `squeal@hearsay`; a repository initialized with `squeal@squeal` is migrated by `squeal init` and cleaned by `squeal remove`; the Codex trust hash uses the new key and a test pins its value.
