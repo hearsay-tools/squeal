@@ -150,6 +150,8 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
         testFile: math,
         revision: latest(h),
       });
+      release();
+      await h.scheduler.idle();
     },
   );
 });
