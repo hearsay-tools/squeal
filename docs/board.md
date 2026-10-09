@@ -473,7 +473,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-01 research: adoption-baseline | done (`2b342d3`, Opus, `research/adoption-baseline.md`; 0 subject sessions) | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
 | 005-02 research: instruction-surfaces | done (`88f34a1`, Opus, `research/instruction-surfaces.md`; 40 sessions, $2.45 Claude Code plus Codex tokens; host proxy URL redacted at landing) | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
 | 005-03 research: hook-levers | done (`e01e691`, Astra, `research/hook-levers.md`; 40 sessions, $0.35 Claude Code plus Codex tokens) | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
-| 005-05 research: cli-distribution | planned | Plugin updates and a PATH shim, CLI distribution options and version skew on one store, a terminal `squeal setup` with the warm-up, prior art; light on load (human, 2026-10-09). | `research/cli-distribution.md` committed. |
+| 005-05 research: cli-distribution | running (`46d4ef2f`, Opus) | Plugin updates and a PATH shim, CLI distribution options and version skew on one store, a terminal `squeal setup` with the warm-up, prior art; light on load (human, 2026-10-09). | `research/cli-distribution.md` committed. |
 
 ### Wave 0: checks (on the human's go)
 
