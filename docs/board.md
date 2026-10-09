@@ -426,6 +426,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-31 the slow-tier line's wording slips | done (0.1.60) | `lessons.md` defect 8 (a) to (d). | One test per slip. |
 | 004-32 Squeal's own plugin paths leave the node:test key | done (0.1.60: no defect, a guard test; a restart moves keys when observed loads arrived between starts, 003 D3) | `lessons.md` defect 7, last point: the slow run's argv carries the plugin's absolute recorder and reporter paths, so one version at two paths never inherits. | Two plugin roots, one key. |
 | 004-33 a new file in an ignored declared directory joins the key | planned, after 001-159 | From 004-28: the watcher does not report additions under ignored directories, so such a file joins the key only at the next policy reload or daemon start. | A rebuild that only adds a file re-keys the slow file. |
+| 004-34 the slow lane catches up: beside background work, several files when idle | running (`tasks/wave-4.md`) | D2 as amended by the human 2026-10-09: a slow file may start beside background-only fast work; when the machine is idle a slow tier takes up to `slow.maxParallel` (new, default 4) files; edits keep priority. Fixes `lessons.md` defect 3. | Scheduler tests for both rules and the shared permits. |
 
 ## Later
 
