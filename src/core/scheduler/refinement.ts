@@ -4,6 +4,7 @@ import type {
   ProjectName,
   RelativePath,
   Revision,
+  RevisionNumber,
   RunnerClosure,
   RunnerEnvironment,
   TestFileRef,
@@ -166,12 +167,16 @@ export async function fetchRunnerPart(
  * newest the runner gave, and its test file is returned so the next
  * refinement, which that revision queued, resolves it again. No tier is
  * selected in between: selection waits for every queued refinement.
+ *
+ * `keyedAt` is the revision a refinement refines: the keys it moves are that
+ * revision's edit (task 001-186). A runner-only refinement passes none.
  */
 export async function applyRunnerPart(
   context: SchedulerContext,
   ledger: Ledger,
   part: RunnerPart,
   changedMeanwhile: ReadonlySet<RelativePath>,
+  keyedAt?: RevisionNumber,
 ): Promise<TestFileRef[]> {
   const { keys } = context;
   const changed = new Set(part.revision.changes.map((c) => c.path));
@@ -196,7 +201,10 @@ export async function applyRunnerPart(
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved);
   touch(part.reresolved);
-  ledger.settle(touched.values(), changed, { direct: part.direct });
+  ledger.settle(touched.values(), changed, {
+    direct: part.direct,
+    ...(keyedAt === undefined ? {} : { keyedAt }),
+  });
   settleFailures(ledger, part.failures, part.retrying, changed);
   return stale;
 }

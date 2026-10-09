@@ -4,6 +4,7 @@ import type {
   CheckKey,
   PendingPhase,
   ResultRecord,
+  RevisionNumber,
   TestFileRef,
   Validity,
 } from "../types/index.js";
@@ -14,6 +15,12 @@ export interface FileState {
   readonly id: string;
   /** Key at the current revision; `null` while unkeyed (no environment, untracked path). */
   key: CheckKey | null;
+  /**
+   * The revision whose change last moved `key` (`SettleOptions.keyedAt`), so
+   * `status --wait` holds for the files its window's edits re-keyed (task
+   * 001-186); `null` when only the baseline, a backlog or a run moved it.
+   */
+  keyedAt: RevisionNumber | null;
   /** Key of the results last applied for this worktree; `null` when there are none. */
   resultKey: CheckKey | null;
   /** Checks of those results: what the state sink knows for this file. */
@@ -66,6 +73,7 @@ export function newFileState(ref: TestFileRef): FileState {
     ref,
     id: testFileId(ref),
     key: null,
+    keyedAt: null,
     resultKey: null,
     checks: [],
     failing: false,

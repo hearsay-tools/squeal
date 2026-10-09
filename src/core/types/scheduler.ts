@@ -1,4 +1,5 @@
 import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
+import type { TestFileRef } from "./keys.js";
 import type { CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
@@ -142,6 +143,19 @@ export interface Scheduler {
    */
   refreshObserved(): boolean;
   status(): SchedulerStatus;
+  /**
+   * Resolves once the runner work queued before the call is applied: the
+   * runner part of every revision stored so far included (task 001-186).
+   * Rejects once the scheduler closed.
+   */
+  refined(): Promise<void>;
+  /**
+   * Test files whose key a revision numbered after `after` up to `upTo`
+   * last moved: its content, closure, declared inputs, observed paths or
+   * environment, or the file was added (task 001-186, `status --wait`). Not
+   * the baseline's, a backlog's or a run's moves. Empty before the start.
+   */
+  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly TestFileRef[];
   /**
    * Resolves once nothing is queued or running and no revision waits for its
    * runner part. Slow files that wait for a trigger or the slot (spec 004

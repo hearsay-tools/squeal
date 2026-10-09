@@ -42,6 +42,12 @@ export interface SettleOptions {
   readonly queueMisses?: boolean;
   /** `testFileId`s the runner reported as direct importers of `changed` (D5 step 4). */
   readonly direct?: ReadonlySet<string>;
+  /**
+   * The revision whose change these key moves belong to, recorded on each
+   * file whose key moves (`FileState.keyedAt`, task 001-186). Absent: the
+   * move is the baseline's, a backlog's or a run's, and records nothing.
+   */
+  readonly keyedAt?: RevisionNumber;
 }
 
 /**
@@ -148,6 +154,7 @@ export class Ledger {
       const key = this.context.keys.index.key(ref);
       if (key !== file.key) {
         file.key = key;
+        if (options.keyedAt !== undefined) file.keyedAt = options.keyedAt;
         this.#dirty.add(file.id);
       }
       // A re-run queued for another key is no re-run here: the new key runs as any miss (S1).

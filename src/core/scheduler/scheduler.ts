@@ -8,9 +8,11 @@ import {
   type FullSuiteRequest,
   isSlowLane,
   type RelativePath,
+  type RevisionNumber,
   type Scheduler,
   type SchedulerStatus,
   type SlowSuiteRequest,
+  type TestFileRef,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
@@ -295,6 +297,19 @@ class TierScheduler implements Scheduler {
 
   status(): SchedulerStatus {
     return { revision: this.#ledger?.revision.number ?? 0 };
+  }
+
+  async refined(): Promise<void> {
+    await this.#runnerWork.afterTier(() => Promise.resolve());
+  }
+
+  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly TestFileRef[] {
+    const refs: TestFileRef[] = [];
+    for (const file of this.#ledger?.files.values() ?? []) {
+      const at = file.keyedAt;
+      if (at !== null && at > after && at <= upTo) refs.push(file.ref);
+    }
+    return refs;
   }
 
   idle(): Promise<void> {
