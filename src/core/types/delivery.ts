@@ -47,6 +47,11 @@ export interface ViewEntry {
   readonly toldAt: EpochMs;
 }
 
+/** `HarnessDelivery.endTurn`: the revision the caller decided at. */
+export interface EndTurnOptions {
+  readonly atRevision?: RevisionNumber;
+}
+
 /**
  * One notable difference between a consumer's view and the known state of a
  * check that still has one.
@@ -290,8 +295,11 @@ export interface HarnessDelivery {
   /**
    * A turn ended silently: the consumer is idle, waiting for the test files
    * pending now and those with a difference not yet delivered. Task 001-85.
+   * With `atRevision`, only while the worktree's latest revision is that one:
+   * a caller that decided to end the turn at a revision writes nothing when
+   * a newer one came meanwhile, and gets `false` (spec 004 D7, task 004-23).
    */
-  endTurn(consumer: Consumer): Promise<void>;
+  endTurn(consumer: Consumer, options?: EndTurnOptions): Promise<boolean>;
 
   status(worktreeId: WorktreeId): Promise<StatusResult>;
 }

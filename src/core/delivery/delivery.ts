@@ -246,13 +246,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
     startTurn: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
 
-    endTurn: async (consumer) => {
+    endTurn: async (consumer, { atRevision } = {}) =>
       store.transaction(() => {
-        if (store.consumers.get(consumer) === null) return;
+        if (store.consumers.get(consumer) === null) return true;
+        const latest = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
+        if (atRevision !== undefined && latest !== atRevision) return false;
         const states = store.knownStates.list(consumer.worktreeId);
         endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
-      });
-    },
+        return true;
+      }),
 
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
