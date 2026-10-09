@@ -331,9 +331,10 @@ export class VitestAdapter implements RunnerAdapter {
 
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
     return this.#gate.run(async (hold) => {
+      // Task 001-146: drops what moved since Vite read it. Task 001-157: an
+      // instance unsure of what it read once is then replaced.
       await this.#invalidateStale(await this.#instance(hold));
       const vitest = await this.#instance(hold);
-      const unsure = this.#unsure;
       const specs = testFiles.map((ref) =>
         findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
       );
@@ -344,7 +345,7 @@ export class VitestAdapter implements RunnerAdapter {
         return empty;
       }
       const exitCode = process.exitCode;
-      await this.#invalidateStale(vitest);
+      const unsure = this.#unsure;
       const loadedSince = Date.now();
       const started = performance.now();
       this.#collector = collector;
