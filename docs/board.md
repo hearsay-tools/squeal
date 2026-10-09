@@ -464,9 +464,9 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-44 a file a rebuild adds joins the key on every interval pass | done (0.1.68) | `reviews/wave-4.6.md` B1: 004-33's re-listing runs only on an interval pass with no other change, so steady source edits keep a stale slow pass current. | The probe and its quiet control on both Nodes; no touch from an unchanged ignored rewrite. |
 | 004-45 re-review of 004-44 | done: PASS at `7c9109a` (executable `caec2ce`) | `/reviewer` on gpt-6.1-sol; second and last round for 004-33. | `reviews/wave-4.7.md`. |
 | 004-46 re-dogfood at 0.1.68 | done (`lessons.md` addendum: defects 1, 2, 3, 7 held in real use; idle width 4 seen; new defects 10 to 16) | Human (2026-10-09): before 004 ships, a short re-dogfood of the fixed slow lane: dogfooding's defects 1, 2, 3, 7, 8 in real use, and the parallel slow lane. Claude Code with the checkout's plugin (`--plugin-dir`), since the hub serves 0.1.62. | A `lessons.md` addendum with a verdict per check. |
-| 004-47 ignored files enter only a slow file's declared artifact | running (`tasks/wave-5.5.md`), the ship and release blocker | `lessons.md` defect 10: this repository's node:test tests write gitignored `.tmp` under their declared inputs, so every run re-keys itself (004-28/41/44 with 001-168's barrier): a revision loop. | A run writing into a declared ignored scratch directory settles; the loop's case. |
-| 004-48 the slow-tier line after a session ends, after a restart, after a revert | running (`tasks/wave-5.5.md`) | `lessons.md` defects 11, 12, 15. | One test per case. |
-| 004-49 review of wave 5.5 | planned | `/reviewer` on gpt-6.1-sol; first round. | `reviews/wave-5.5.md`. |
+| 004-47 ignored files enter only a slow file's declared artifact | done (0.1.74) | `lessons.md` defect 10: this repository's node:test tests write gitignored `.tmp` under their declared inputs, so every run re-keys itself (004-28/41/44 with 001-168's barrier): a revision loop. | A run writing into a declared ignored scratch directory settles; the loop's case. |
+| 004-48 the slow-tier line after a session ends, after a restart, after a revert | done (0.1.74) | `lessons.md` defects 11, 12, 15. | One test per case. |
+| 004-49 review of wave 5.5 | running | `/reviewer` on gpt-6.1-sol; first round. | `reviews/wave-5.5.md`. |
 
 ## Feature 005: agent adoption
 

@@ -30,6 +30,6 @@ Use /worker.
 
 ## 004-49 review of wave 5.5
 
-Outcome: `reviews/wave-5.5.md`: 004-47 and 004-48, first round; also that this repository's own node:test fixture writes no longer loop. Range pinned at dispatch. Rules as for 004-14.
+Outcome: `reviews/wave-5.5.md`: 004-47 and 004-48, first round; also that this repository's own node:test fixture writes no longer loop. Range: `git log --oneline b70fcc2..2554be0` on main, 0.1.74: 004-48 and 004-47 and the bundles. Also check that this repository's node:test and Vitest fixture `.tmp` writes no longer key or loop with the original `test/fixtures/node-test/**` and `test/fixtures/vitest/**` globs (the 001 coordinator narrowed them in `b70fcc2` as a stopgap), and the copied `turn:<worktree>` key in `src/core/state/slow.ts`. Rules as for 004-14.
 
 Use /reviewer.
