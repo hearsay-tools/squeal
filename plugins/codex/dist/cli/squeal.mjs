@@ -5225,6 +5225,7 @@ function newFileState(ref2) {
     unknownKey: null,
     discards: 0,
     rerunKey: null,
+    rerunPending: false,
     blocked: null
   };
 }
@@ -6434,6 +6435,50 @@ var init_records = __esm({
   }
 });
 
+// src/core/scheduler/rerun-memory.ts
+function rerunsMetaKey(worktreeId) {
+  return `reruns:${worktreeId}`;
+}
+function readReruns(store, worktreeId) {
+  const raw = store.meta.get(rerunsMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(value.filter(isMemory).map((m) => [testFileId(m.testFile), m]));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writeReruns(store, worktreeId, entries2) {
+  if (entries2.length === 0) return;
+  store.transaction(() => {
+    const reruns = readReruns(store, worktreeId);
+    for (const entry2 of entries2) reruns.set(testFileId(entry2.testFile), entry2);
+    store.meta.set(rerunsMetaKey(worktreeId), JSON.stringify([...reruns.values()]));
+  });
+}
+function pruneReruns(store, worktreeId, kept2) {
+  const reruns = readReruns(store, worktreeId);
+  const left = [...reruns].filter(([id2]) => kept2.has(id2)).map(([, m]) => m);
+  if (left.length === reruns.size) return;
+  store.meta.set(rerunsMetaKey(worktreeId), JSON.stringify(left));
+}
+function isMemory(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { testFile, key: key2, pending } = value;
+  if (typeof key2 !== "string" || typeof pending !== "boolean") return false;
+  if (typeof testFile !== "object" || testFile === null) return false;
+  const { project, path } = testFile;
+  return typeof project === "string" && typeof path === "string";
+}
+var init_rerun_memory = __esm({
+  "src/core/scheduler/rerun-memory.ts"() {
+    "use strict";
+    init_keys();
+  }
+});
+
 // src/core/scheduler/rerun.ts
 function holdsNewFailure(context, prior, records) {
   const { store, worktreeId } = context;
@@ -6446,18 +6491,49 @@ function queueReruns(context, ledger, failures) {
   const due = failures.filter(
     ({ file, key: key2, forced }) => !forced && file.rerunKey !== key2 && !ledger.queue.isSlow(file.ref)
   );
-  if (due.length === 0) return;
+  if (due.length === 0) return [];
   if (due.length > context.rerunCap) {
     const files = due.length === 1 ? "test file" : "test files";
     context.note(
       `${due.length} ${files} failed anew in one tier, more than the ${context.rerunCap} Squeal re-runs: a mass break is not re-run (${listPaths(due.map(({ file }) => file.ref.path))})`
     );
-    return;
+    return [];
   }
   for (const { file, key: key2 } of due) {
     file.rerunKey = key2;
+    file.rerunPending = true;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
   }
+  return due;
+}
+function rememberReruns(context, queued) {
+  const entries2 = queued.map(({ file, key: key2 }) => ({ testFile: file.ref, key: key2, pending: true }));
+  writeReruns(context.store, context.worktreeId, entries2);
+}
+function endRerun(context, file) {
+  if (!file.rerunPending || file.rerunKey === null) return;
+  file.rerunPending = false;
+  writeReruns(context.store, context.worktreeId, [
+    { testFile: file.ref, key: file.rerunKey, pending: false }
+  ]);
+}
+function restoreReruns(context, ledger, queue) {
+  const { store, worktreeId } = context;
+  const ended2 = [];
+  for (const [id2, memory] of readReruns(store, worktreeId)) {
+    const file = ledger.files.get(id2);
+    if (!file) continue;
+    file.rerunKey = memory.key;
+    if (!memory.pending) continue;
+    if (file.key !== memory.key || ledger.queue.isSlow(file.ref)) {
+      ended2.push({ ...memory, pending: false });
+    } else if (queue) {
+      file.rerunPending = true;
+      ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    }
+  }
+  writeReruns(store, worktreeId, ended2);
+  pruneReruns(store, worktreeId, new Set(ledger.files.keys()));
 }
 var RERUN_CAP;
 var init_rerun = __esm({
@@ -6467,6 +6543,7 @@ var init_rerun = __esm({
     init_files();
     init_notes2();
     init_queue();
+    init_rerun_memory();
     RERUN_CAP = 8;
   }
 });
@@ -6652,6 +6729,68 @@ var init_slow3 = __esm({
   }
 });
 
+// src/core/scheduler/growth.ts
+function unresolvedPreloads(context, project) {
+  const raw = context.store.meta.get(nodeTestObservedPreloadsMetaKey(project));
+  if (raw === null) return false;
+  let observed;
+  try {
+    observed = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(observed)) return false;
+  const keyed = new Set(context.keys.environmentFiles(project));
+  return observed.some((path) => typeof path === "string" && !keyed.has(path));
+}
+var init_growth = __esm({
+  "src/core/scheduler/growth.ts"() {
+    "use strict";
+    init_types();
+  }
+});
+
+// src/core/scheduler/held.ts
+function heldFilesMetaKey(worktreeId) {
+  return `held-files:${worktreeId}`;
+}
+function addHeldFile(store, worktreeId, file) {
+  const held2 = readHeldFiles(store, worktreeId).filter(
+    (h) => testFileId(h.testFile) !== testFileId(file.testFile)
+  );
+  store.meta.set(heldFilesMetaKey(worktreeId), JSON.stringify([...held2, file]));
+}
+function takeHeldFiles(store, worktreeId) {
+  return store.transaction(() => {
+    const held2 = readHeldFiles(store, worktreeId);
+    if (held2.length > 0) store.meta.set(heldFilesMetaKey(worktreeId), "[]");
+    return held2;
+  });
+}
+function readHeldFiles(store, worktreeId) {
+  const raw = store.meta.get(heldFilesMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isHeldFile) : [];
+  } catch {
+    return [];
+  }
+}
+function isHeldFile(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { testFile, key: key2 } = value;
+  if (typeof key2 !== "string" || typeof testFile !== "object" || testFile === null) return false;
+  const { project, path } = testFile;
+  return typeof project === "string" && typeof path === "string";
+}
+var init_held = __esm({
+  "src/core/scheduler/held.ts"() {
+    "use strict";
+    init_keys();
+  }
+});
+
 // src/core/scheduler/store-results.ts
 function storeResults(context, records) {
   const [first] = records;
@@ -6660,13 +6799,19 @@ function storeResults(context, records) {
   return store.transaction(() => {
     const prior = store.results.byKey(first.key, 0);
     store.results.putMany(records);
+    if (unresolvedPreloads(context, first.check.project)) return prior;
     const flips = recordFlips(store, prior, records, now());
     if (!flips.some((note) => note.to === "pass")) return prior;
     const { project, testPath } = first.check;
     const sink = createStateSink(store, { now });
+    const rows = store.results.byKey(first.key, 0);
     for (const row of store.testFileKeys.withKey(first.key)) {
       if (row.worktreeId === worktreeId) continue;
       if (row.testFile.project !== project || row.testFile.path !== testPath) continue;
+      if (heldFailure(store, row.worktreeId, rows) !== void 0) {
+        if (row.pending === null) store.testFileKeys.upsertMany([{ ...row, pending: "queued" }]);
+        addHeldFile(store, row.worktreeId, { testFile: row.testFile, key: first.key });
+      }
       const revision = store.revisions.latest(row.worktreeId)?.number ?? row.revision;
       sink.refresh(row.worktreeId, revision, { checkpointId: null }, [row.testFile]);
     }
@@ -6677,6 +6822,8 @@ var init_store_results = __esm({
   "src/core/scheduler/store-results.ts"() {
     "use strict";
     init_state3();
+    init_growth();
+    init_held();
   }
 });
 
@@ -6849,7 +6996,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         storeKey = ranUnderCurrent ? context.keys.index.key(file.ref) : null;
       }
       if (inputs2.some(unstable) || growth?.growth.some(unstable)) {
-        ledger.discard(file, key2);
+        ledger.discard(file, key2, forced);
         continue;
       }
       if (growth !== void 0 && growth.firstSeen.length > 0) {
@@ -6867,8 +7014,13 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
         describe: context.describe
       });
       const prior = storeResults(context, records);
+      if (forced && file.rerunKey === key2) endRerun(context, file);
+      if (growth !== void 0 || file.key === key2) {
+        if (holdsNewFailure(context, prior, records)) {
+          failedAnew.push({ file, key: storeKey, forced });
+        }
+      }
       if (growth === void 0 && file.key === key2) {
-        if (holdsNewFailure(context, prior, records)) failedAnew.push({ file, key: key2, forced });
         ledger.applyResults(file, key2, records, checkpointId);
       }
     }
@@ -6877,7 +7029,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
     ledger.rerunFirstSeen(firstSeen);
-    queueReruns(context, ledger, failedAnew);
+    rememberReruns(context, queueReruns(context, ledger, failedAnew));
     storeClosures(
       context,
       grown.map((g2) => g2.ref)
@@ -6896,6 +7048,7 @@ function abandonFullSuite(ledger) {
 }
 function queueFullSuite(ledger, force) {
   const id2 = randomUUID3();
+  ledger.confirmHeld();
   const files = [...ledger.files.values()];
   const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
   const runnable = files.filter((file) => file.key !== null && file.blocked === null);
@@ -6988,6 +7141,7 @@ function readRefined2(store, worktreeId) {
 async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   const { store, keys, runner, worktreeId, policy } = context;
   const failures = /* @__PURE__ */ new Map();
+  takeHeldFiles(store, worktreeId);
   await readEnvironments(context, failures);
   const listed = await tryRunner(context, "testFiles", () => runner.testFiles());
   ledger.listingFailed = listed === null;
@@ -7054,6 +7208,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
       ledger.enqueue(file, priorityOf(file, changed), false, recent.has(file.id));
     }
   }
+  restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
@@ -7093,8 +7248,10 @@ var init_bootstrap = __esm({
     init_context();
     init_failures();
     init_files();
+    init_held();
     init_notes2();
     init_queue();
+    init_rerun();
     init_revision2();
   }
 });
@@ -7850,6 +8007,10 @@ var init_keying = __esm({
       extraFiles() {
         return [...this.#extra].sort();
       }
+      /** The files `project`'s environment hash was last read with (D3); none before the first read. */
+      environmentFiles(project) {
+        return this.#environments.get(project)?.files ?? [];
+      }
       /** What the stability check compares for a test file: its closure, its project's environment files, its lockfile. */
       stabilityPaths(ref2) {
         const paths = new Set(this.index.closure(ref2)?.paths ?? []);
@@ -8017,7 +8178,9 @@ var init_ledger = __esm({
     init_checkpoints();
     init_context();
     init_files();
+    init_held();
     init_queue();
+    init_rerun();
     init_slow3();
     MAX_DISCARDS = 3;
     Ledger = class {
@@ -8105,6 +8268,10 @@ var init_ledger = __esm({
             file.key = key2;
             this.#dirty.add(file.id);
           }
+          if (file.rerunPending && key2 !== file.rerunKey) {
+            endRerun(this.context, file);
+            this.queue.remove(ref2);
+          }
           if (this.queue.isForced(ref2)) continue;
           if (key2 === null || key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey) {
             this.queue.remove(ref2);
@@ -8182,6 +8349,26 @@ var init_ledger = __esm({
         this.#syncPhase(file);
         this.checkpoints.done(file.ref, checkpointId);
       }
+      /**
+       * Review wave 13i, B1: queues the files another worktree's heal left held
+       * here (`takeHeldFiles`). A file still at that key loses its `resultKey`,
+       * the shortcut that would count it done, and is queued at its normal D5
+       * priority unless a tier runs it; every such file's row is written again,
+       * so the `queued` the heal wrote gives way to the phase held here. Returns
+       * whether there were any, so the caller commits.
+       */
+      confirmHeld() {
+        const held2 = takeHeldFiles(this.context.store, this.context.worktreeId);
+        for (const { testFile, key: key2 } of held2) {
+          const file = this.file(testFile);
+          if (!file) continue;
+          this.touch(file);
+          if (file.key !== key2 || file.runningKey === key2) continue;
+          if (file.resultKey === key2) file.resultKey = null;
+          if (file.blocked === null) this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+        }
+        return held2.length > 0;
+      }
       enqueue(file, priority, forced = false, recent = false) {
         this.queue.add(file.ref, priority, forced, recent);
         this.#syncPhase(file);
@@ -8213,12 +8400,12 @@ var init_ledger = __esm({
        * during every run. A discard whose key moved is an edit the agent made
        * while the file ran; it is not counted (review S5).
        */
-      discard(file, key2) {
+      discard(file, key2, forced = false) {
         file.discards = file.key === key2 ? file.discards + 1 : 0;
         if (file.discards >= MAX_DISCARDS) {
           this.markUnknown([{ file, key: key2 }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
         } else if (file.key !== null && file.blocked === null) {
-          this.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+          this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key2);
         }
       }
       /**
@@ -9153,6 +9340,7 @@ var init_scheduler2 = __esm({
             if (!this.#awaitingInstall) await this.#baseline(context, ledger);
             return;
           }
+          if (ledger.confirmHeld()) ledger.commit();
           const { applied, touched } = await reconcileBatch(context, ledger, batch);
           const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
           if (install || batch.trigger === "interval") {
@@ -32263,7 +32451,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.77";
+  if (true) return "0.1.78";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
