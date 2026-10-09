@@ -39,6 +39,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
+import { linkedFiles } from "../watcher/linked-files.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
 
@@ -128,7 +129,9 @@ export class WorktreeKeys {
    * Brings the stat cache up to date at daemon start. Cached paths are
    * reconciled, so what changed while no daemon ran becomes a revision.
    * Tracked and untracked files git knows and the cache does not are hashed
-   * without a revision: there is nothing earlier to compare them with.
+   * without a revision: there is nothing earlier to compare them with. So
+   * are the files under a symlinked directory git lists, which the change
+   * feed walks (task 001-166).
    * Cached paths git ignores entered the cache because a closure or an
    * environment named them, so they are watched again as extra files.
    */
@@ -150,7 +153,11 @@ export class WorktreeKeys {
     const known = new Set(listed);
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
     for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
-    await this.#seed(listed.filter((path) => this.cache.hashOf(path) === undefined));
+    // Task 001-166: the files the change feed walks under a symlinked directory git lists.
+    const linked = await linkedFiles(this.options.root, listed, this.extraFiles());
+    await this.#seed(
+      [...listed, ...linked].filter((path) => this.cache.hashOf(path) === undefined),
+    );
     await this.#trackIgnoredInputs();
     this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
     return revision;
