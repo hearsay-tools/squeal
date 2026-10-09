@@ -282,3 +282,21 @@ Done when: each of the review's three probes is a scheduler regression (observat
 ## 001-169 sixth review: the stale-transform slice after 001-168
 
 Use /reviewer on gpt-6.1-sol, after 001-168 lands. Output `reviews/wave-13f.md`. Range: from 0.1.64's landing to 001-168's. Are `reviews/wave-13e.md` B1 to B3 closed; can any result still be stored current while its run executed bytes other than its key names, with the conservative rules now in place (withhold on any touch over a run's interval, rebuild optimizer output at every start)? Decided by the human: blockers go to the human.
+
+## 001-170 an inherited failure stands only once the receiving worktree confirms it
+
+Use /worker. Shape: slice. Decided by the human (2026-10-09, `status.md`, relayed by the 002/003/004 coordinator).
+
+Outcome: when a lookup finds another worktree's `fail` for a key, the check is pending, not current: its inherited outcome and failure text are available to `squeal why` ("inherited FAIL from <worktree> at <commit>, being confirmed"), no transition or known failure is delivered for it, and its file is queued at normal priority. The local run's result replaces the shared row (results are one row per check and key, `INSERT OR REPLACE`), so a local pass heals every worktree under that key and a local fail is delivered as usual. When a row's outcome flips under one key (fail replaced by pass, or the reverse), a flaky note is recorded on the check and shown by `why` and in the report line. An inherited pass stands at once as today. A slow file's inherited fail is confirmed by the slow tier when it next runs (004 D2's triggers) and stays pending until then; if that needs `src/core/scheduler/slow-tier.ts`, stop and ask (the 002/003/004 coordinator sequences it).
+
+Read: D5, D6 (state, transitions, delivery), `src/core/scheduler/ledger.ts` (`lookup`, `applyResults`), `src/core/state/` (derive, sink), `src/core/store/repos/results.ts`, `src/cli/why.ts`.
+
+Own: `src/core/scheduler/` (ledger, tiers), `src/core/state/`, `src/core/store/` additively (the flaky note: a column or a meta row; ask before a schema change), `src/cli/why.ts`, `src/core/delivery/` format, tests, D6. Do not run `npm run build`.
+
+Done when: a scheduler test inherits a fail into a second worktree: pending, nothing delivered, its file runs; a local pass replaces the row and the first worktree's state becomes current pass too, with a flaky note; a local fail is delivered once; an inherited pass is current at once with zero runs; a slow file's inherited fail stays pending until the slow tier runs.
+
+## 001-171 a new failure is re-run once before it is trusted
+
+Use /worker. Shape: slice. After 001-170 (same files). Decided by the human (2026-10-09).
+
+Outcome: a worktree's own new failure (a check whose stored outcome becomes `fail` from `pass`, `unknown` or none, under its current key) is reported at once as today, then its file is re-run once in the next tier, forced, at normal priority. If the re-run passes, the pass replaces the row and the check is reported `FAIL -> PASS` with 001-170's flaky note; if it fails again, nothing more is reported. A failure is re-run once per key, never in a loop; a forced `run --all` does not trigger re-runs. Own and Read as 001-170. Done when: a test with a file failing once then passing reports FAIL then FAIL -> PASS with the flaky note and one re-run; a file failing twice reports one FAIL and is re-run exactly once; the re-run does not repeat for the same key.
