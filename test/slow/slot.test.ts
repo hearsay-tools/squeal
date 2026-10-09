@@ -1,11 +1,18 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { currentUid, userTmpDir } from "../../src/core/daemon/paths.js";
-import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/index.js";
+import {
+  acquireSlowSlot,
+  clearSlotWaiter,
+  markSlotWaiter,
+  othersWaitingForSlot,
+  SLOT_WAITER_FRESH_MS,
+  slowSlotDir,
+} from "../../src/core/slow/index.js";
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const slotModule = fileURLToPath(new URL("../../src/core/slow/slot.ts", import.meta.url));
@@ -206,5 +213,38 @@ describe("the slot directory follows the daemon's XDG_RUNTIME_DIR (spec 004 D2, 
     mine?.release();
     holder.child.stdin?.end("release\n");
     await holder.waitFor("released");
+  });
+});
+
+describe("a waiter's mark hands the slot over between files (spec 004 D2, lessons defect 2)", () => {
+  test("another worktree's fresh mark counts, the worktree's own never does", () => {
+    mkdirSync(dir, { mode: 0o700 });
+    expect(othersWaitingForSlot(dir, "a")).toBe(false);
+    markSlotWaiter(dir, "a");
+    expect(othersWaitingForSlot(dir, "a")).toBe(false);
+    expect(othersWaitingForSlot(dir, "b")).toBe(true);
+    clearSlotWaiter(dir, "a");
+    clearSlotWaiter(dir, "a");
+    expect(othersWaitingForSlot(dir, "b")).toBe(false);
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  test("a mark not refreshed within SLOT_WAITER_FRESH_MS is ignored", () => {
+    mkdirSync(dir, { mode: 0o700 });
+    markSlotWaiter(dir, "a");
+    const later = Date.now() + SLOT_WAITER_FRESH_MS + 1_000;
+    expect(othersWaitingForSlot(dir, "b", later)).toBe(false);
+    // A retry refreshes it.
+    markSlotWaiter(dir, "a");
+    expect(othersWaitingForSlot(dir, "b")).toBe(true);
+  });
+
+  test("a missing directory has no waiters, and marks leave the lock alone", () => {
+    expect(othersWaitingForSlot(dir, "b")).toBe(false);
+    const slot = acquireSlowSlot({ dir, owner });
+    markSlotWaiter(dir, "a");
+    expect(acquireSlowSlot({ dir, owner })).toBeNull();
+    slot?.release();
+    expect(othersWaitingForSlot(dir, "b")).toBe(true);
   });
 });

@@ -6,7 +6,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { DEFAULT_POLICY, type Policy, type PolicyInputs } from "../../src/core/types/index.js";
+import { readSlowActivity } from "../../src/core/slow/state.js";
+import {
+  DEFAULT_POLICY,
+  type Policy,
+  type PolicyInputs,
+  type TestFileRef,
+} from "../../src/core/types/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   addWorktree,
@@ -228,6 +234,85 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
     await Promise.all([a.scheduler.start(), b.scheduler.start()]);
     await waitFor(() => slowRuns(a).length === 2 && slowRuns(b).length === 2, 90_000);
     expect(most).toBe(1);
+  });
+
+  /*
+   * Lessons defect 2: the holder kept the slot across its load guard's wait
+   * and re-took it at once after each file, so the other worktree waited for
+   * its whole tier. Three slow files each; `starts` is the order slow runs began.
+   */
+  async function pair(aLoad: () => number) {
+    const repo = createRepo();
+    const other = addWorktree(repo.main, repo.dir, "other");
+    const store = openRepoStore(repo.commonDir);
+    const shared = slotDir();
+    const policy = slowPolicy([...SLOW_FILES, "test/plain.test.ts"]);
+    const slow = (load: () => number) => ({
+      slotDir: shared,
+      recheckMs: 50,
+      load: () => [load()],
+      cpus: () => 1,
+    });
+    const a = await openHarness(
+      repo.main,
+      store,
+      repo.commonDir,
+      options({ policy, slow: slow(aLoad) }),
+    );
+    const b = await openHarness(
+      other,
+      store,
+      repo.commonDir,
+      options({ policy, slow: slow(() => 0) }),
+    );
+    const starts: string[] = [];
+    const isSlow = (files: readonly TestFileRef[]) =>
+      files.some((f) => policy.slow?.include.includes(f.path));
+    for (const [name, h] of [
+      ["a", a],
+      ["b", b],
+    ] as const) {
+      h.runner.beforeRun = (files) => {
+        if (isSlow(files)) starts.push(name);
+      };
+    }
+    const done = () => starts.filter((s) => s === "a").length === 3 && starts.length === 6;
+    return { store, a, b, starts, isSlow, done };
+  }
+
+  it("lets the other worktree run while the holder's load guard waits", async () => {
+    let load = 0;
+    const { a, b, starts, isSlow, done } = await pair(() => load);
+    const record = a.runner.beforeRun;
+    a.runner.beforeRun = (files) => {
+      record?.(files);
+      // After its first slow file, the guard holds the next one.
+      if (isSlow(files) && starts.filter((s) => s === "a").length === 1) load = 8;
+    };
+    await Promise.all([a.scheduler.start(), b.scheduler.start()]);
+    const deadline = Date.now() + 20_000;
+    while (!starts.includes("b") && Date.now() < deadline) await delay(50);
+    load = 0;
+    await waitFor(done, 90_000);
+    expect(starts.indexOf("b")).toBeLessThan(starts.indexOf("a", starts.indexOf("a") + 1));
+  });
+
+  it("hands the slot to the waiting worktree between the holder's files", async () => {
+    const { store, a, b, starts, isSlow, done } = await pair(() => 0);
+    const record = a.runner.beforeRun;
+    let held = false;
+    a.runner.beforeRun = async (files) => {
+      record?.(files);
+      if (held || !isSlow(files)) return;
+      held = true;
+      // The other worktree comes to its slow tier while the first file runs, and misses the slot.
+      void b.scheduler.start();
+      const missed = JSON.stringify({ kind: "waiting", for: "slot" });
+      await waitFor(() => JSON.stringify(readSlowActivity(store, b.worktreeId)) === missed, 60_000);
+    };
+    await a.scheduler.start();
+    await waitFor(done, 90_000);
+    expect(starts.slice(0, 2)).toEqual(["a", "b"]);
   });
 });
 
