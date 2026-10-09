@@ -1,16 +1,22 @@
-import { existsSync, lstatSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { locateDaemon } from "../core/daemon/ensure.js";
 import { acquireDaemonLock, type DaemonLock } from "../core/daemon/lock.js";
 import { checkPrivateDir, currentUid, socketPathFor, userTmpDir } from "../core/daemon/paths.js";
 import { daemonScratch } from "../core/daemon/scratch.js";
-import { resolveCommonDir, runGit, splitNul } from "../core/fs/index.js";
+import { isRecord, resolveCommonDir, runGit, splitNul } from "../core/fs/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
 import type { AbsolutePath, WorktreeRecord } from "../core/types/index.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import {
+  MARKETPLACE_NAME,
+  PLUGIN_ID,
+  PREVIOUS_MARKETPLACE_NAME,
+  PREVIOUS_PLUGIN_ID,
+} from "./plugin-id.js";
 
 /** A daemon asked to stop finishes the tier in flight (D10); `remove` waits this long for it. */
 const STOP_WAIT_MS = 5_000;
@@ -118,12 +124,45 @@ export async function removeCommand(
         `Delete it there, or run squeal remove --config in that worktree.\n`,
     );
   }
-  io.stdout(
-    "  The plugin: claude plugin uninstall squeal@squeal --scope project (the scope it was " +
-      "installed with), and the extraKnownMarketplaces and enabledPlugins entries squeal init " +
-      "added to .claude/settings.json.\n",
-  );
+  io.stdout(pluginLine(root));
   return failed.length === 0 ? 0 : PARTIAL_EXIT;
+}
+
+/**
+ * The plugin's line under "Still there": the uninstall command of each
+ * Squeal id `.claude/settings.json` enables, the previous `squeal@squeal`
+ * included (row 001-164), or of `squeal@hearsay` when it names none, and the
+ * settings entries `squeal init` wrote that are still there.
+ */
+function pluginLine(root: AbsolutePath): string {
+  let settings: unknown = null;
+  try {
+    settings = JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8"));
+  } catch {
+    // No settings, or unreadable ones: name the released id and no entries.
+  }
+  const keys = (field: string, names: readonly string[]): string[] => {
+    const value = isRecord(settings) ? settings[field] : undefined;
+    return isRecord(value) ? names.filter((name) => name in value) : [];
+  };
+  const plugins = keys("enabledPlugins", [PLUGIN_ID, PREVIOUS_PLUGIN_ID]);
+  const marketplaces = keys("extraKnownMarketplaces", [
+    MARKETPLACE_NAME,
+    PREVIOUS_MARKETPLACE_NAME,
+  ]);
+  const uninstall = (plugins.length === 0 ? [PLUGIN_ID] : plugins)
+    .map((id) => `claude plugin uninstall ${id} --scope project`)
+    .join(", ");
+  const entries = [
+    ...marketplaces.map((name) => `extraKnownMarketplaces.${name}`),
+    ...plugins.map((id) => `enabledPlugins["${id}"]`),
+  ];
+  return (
+    `  The plugin: ${uninstall} (the scope it was installed with)` +
+    (entries.length === 0
+      ? ".\n"
+      : `, and the entries squeal init added to .claude/settings.json: ${entries.join(", ")}.\n`)
+  );
 }
 
 /** Whether git tracks `path` in the worktree at `root`; `false` when git cannot say. */
