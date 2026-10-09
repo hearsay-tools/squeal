@@ -29,6 +29,10 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 ## Amendments after approval
 
 - 2026-10-09, decided by the human at approval: the skill is named `setup` (`/squeal:setup`, D3); goal 6's targets as proposed (agent-run Vitest outside a gate at most half of 9.0 per editing session, workers' full-suite Vitest near zero); no wave starts until the human says so.
+- 2026-10-09, the human: this host's load (65 to 170 on 24 CPUs) is this project's own work, so 005 waits until the other coordinators finish, to add no noise of its own. Held until 001-169 to 001-174 and 004-46 are done. On resume:
+  - D2 and D6 are reconciled with 001-172 (one-file `status --wait` latency on a loaded host) and 001-174 (the skill's red/green workflow and one-file wait), which may make D2 smaller or unnecessary;
+  - the `squeal why` console-output gap is 001-173's;
+  - the baseline was measured at that load, so `metric.mjs` records the load average per session and the proof runs at calm load, since Squeal "not having reached the file" (78% of store-checked runs) may be mostly load.
 
 ## Dogfooding
 
