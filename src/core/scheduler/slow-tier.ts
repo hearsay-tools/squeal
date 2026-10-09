@@ -298,10 +298,17 @@ export class SlowTier {
       picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
     );
     const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
-    // The activity names the file in the transaction that marks it running (review wave 2, B1).
+    const paths = picked.map(({ file }) => file.ref.path);
+    // The activity names the files in the transaction that marks them running (review wave 2, B1; 004-35).
     return context.store.transaction(() => {
       const tier = startTier(context, ledger, picked, false);
-      this.#publish({ kind: "running", path: first.file.ref.path, since, lastDurationMs });
+      this.#publish({
+        kind: "running",
+        path: first.file.ref.path,
+        ...(paths.length > 1 ? { paths } : {}),
+        since,
+        lastDurationMs,
+      });
       return { tier, artifacts };
     });
   }

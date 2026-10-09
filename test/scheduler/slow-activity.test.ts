@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { acquireSlowSlot } from "../../src/core/slow/index.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import { readHeader, slowTierText } from "../../src/core/state/index.js";
+import { clockText, readHeader, slowTierText } from "../../src/core/state/index.js";
 import {
   DEFAULT_POLICY,
   type SlowTierActivity,
@@ -110,6 +110,42 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
       expect(SLOW_FILES).toContain(entry.path);
       expect(entry.since).toBeGreaterThanOrEqual(before);
     }
+    await waitFor(() => activity() === null, 10_000);
+  });
+
+  it("names every file an idle tier runs, and the line counts them (004-35)", async () => {
+    const { h, store, activity, repo } = await harness();
+    // The header reads the slow tier from the policy at the root its `worktrees` row names.
+    writeFileSync(
+      join(h.root, "squeal.config.json"),
+      JSON.stringify({ slow: { include: SLOW_FILES } }),
+    );
+    store.worktrees.upsert({
+      id: h.worktreeId,
+      root: h.root,
+      commonDir: repo.commonDir,
+      isMain: true,
+      registeredAt: 1,
+      daemon: null,
+    });
+    const { delivery, consumer } = await h.consumer();
+    await delivery.startTurn(consumer);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const slow = hold(h, SLOW_FILES);
+    await delivery.endTurn(consumer);
+    await expect.poll(() => slow.held.length, { timeout: 60_000 }).toBe(2);
+    const seen = activity();
+    expect(seen).toMatchObject({ kind: "running", lastDurationMs: null });
+    if (seen?.kind !== "running") return;
+    expect([...(seen.paths ?? [])].sort()).toEqual([...SLOW_FILES].sort());
+    expect(seen.path).toBe(seen.paths?.[0]);
+    const [a, b] = seen.paths ?? [];
+    expect(slowTierText(readHeader(store, h.worktreeId), "squeal")).toContain(
+      `; running 2 slow files since ${clockText(seen.since)}: ${a} and ${b} (no earlier run).`,
+    );
+    slow.release();
+    await h.scheduler.idle();
     await waitFor(() => activity() === null, 10_000);
   });
 });

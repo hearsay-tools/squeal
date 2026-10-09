@@ -27,6 +27,8 @@ import { check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 const NOW = Date.UTC(2026, 9, 9, 12, 0, 0);
 const SLOW_A = "test/e2e/a.test.ts";
 const SLOW_B = "test/e2e/b.test.ts";
+const SLOW_C = "test/e2e/c.test.ts";
+const SLOW_D = "test/e2e/d.test.ts";
 const FAST = "src/a.test.ts";
 const SLOW_POLICY = {
   slow: { include: ["test/e2e/**/*.test.ts"] },
@@ -276,6 +278,79 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(slowLine(status(s))).toBe(
       `Slow tier: 2 test files; 1 current against plugins/** as of revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+    );
+  });
+
+  it("names both files an idle tier runs, with the longest last run (004-35)", () => {
+    const s = seed();
+    keys(s.store, s.repo, { [SLOW_A]: "running", [SLOW_B]: "running" });
+    const since = NOW - 30_000;
+    publishSlowActivity(s.store, s.repo.mainId, {
+      kind: "running",
+      path: SLOW_A,
+      paths: [SLOW_A, SLOW_B],
+      since,
+      lastDurationMs: 72_000,
+    });
+    expect(slowLine(status(s))).toBe(
+      `Slow tier: 2 test files; running 2 slow files since ${clockText(since)}: ${SLOW_A} and ${SLOW_B} (longest last run 1 min 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+    );
+  });
+
+  it("names two of three running files and counts the rest (004-35)", () => {
+    const s = seed();
+    keys(s.store, s.repo, { [SLOW_A]: "running", [SLOW_B]: "running", [SLOW_C]: "running" });
+    const since = NOW - 30_000;
+    publishSlowActivity(s.store, s.repo.mainId, {
+      kind: "running",
+      path: SLOW_A,
+      paths: [SLOW_A, SLOW_B, SLOW_C],
+      since,
+      lastDurationMs: null,
+    });
+    expect(slowLine(status(s))).toBe(
+      `Slow tier: 3 test files; running 3 slow files since ${clockText(since)}: ${SLOW_A}, ${SLOW_B} and 1 more (no earlier run). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+    );
+  });
+
+  it("names only the files still running, and counts the queued ones as pending (004-35)", () => {
+    const s = seed();
+    states(s.store, s.repo, [{ observedAt: 2 }], [SLOW_A]);
+    ran(s.store, s.repo, [SLOW_A]);
+    keys(s.store, s.repo, { [SLOW_B]: "running", [SLOW_C]: "running", [SLOW_D]: "queued" });
+    const since = NOW - 30_000;
+    publishSlowActivity(s.store, s.repo.mainId, {
+      kind: "running",
+      path: SLOW_A,
+      paths: [SLOW_A, SLOW_B, SLOW_C],
+      since,
+      lastDurationMs: 12_000,
+    });
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.activity).toEqual({
+      kind: "running",
+      path: SLOW_B,
+      paths: [SLOW_B, SLOW_C],
+      since,
+      lastDurationMs: 12_000,
+    });
+    expect(slowLine(status(s))).toBe(
+      `Slow tier: 4 test files; 1 current against plugins/** as of revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+    );
+  });
+
+  it("says one file runs when the others of its tier ended (004-35)", () => {
+    const s = seed();
+    keys(s.store, s.repo, { [SLOW_A]: "running" });
+    const since = NOW - 30_000;
+    publishSlowActivity(s.store, s.repo.mainId, {
+      kind: "running",
+      path: SLOW_B,
+      paths: [SLOW_B, SLOW_A],
+      since,
+      lastDurationMs: null,
+    });
+    expect(slowLine(status(s))).toContain(
+      `; running ${SLOW_A} since ${clockText(since)} (no earlier run); 1 not run at revision 2.`,
     );
   });
 

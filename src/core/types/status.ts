@@ -72,9 +72,15 @@ export type SlowTierWait = "fast" | "idle" | "slot" | "load";
 export type SlowTierActivity =
   | {
       readonly kind: "running";
+      /** The first running file, `paths[0]` when `paths` is present. */
       readonly path: RelativePath;
+      /**
+       * Every file the run holds, in run order, when an idle tier runs
+       * several (004-35); absent for one, or from a daemon that published only `path`.
+       */
+      readonly paths?: readonly RelativePath[];
       readonly since: EpochMs;
-      /** The file's last known run time, before this run; `null` when it never ran. */
+      /** The longest last known run time of its files, before this run; `null` when none ran. */
       readonly lastDurationMs: number | null;
     }
   | { readonly kind: "waiting"; readonly for: SlowTierWait };
