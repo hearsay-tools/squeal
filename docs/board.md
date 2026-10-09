@@ -288,6 +288,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-180 research: a daemon started inside a cezar-managed worktree is SIGKILLed in its first tiers | planned | 004-46 addendum (defect 16): a cezarion daemon whose cwd was inside a cezar worktree died by SIGKILL about 18 s into its first tiers, 2 of 2 times, with no exit note; 3 of 3 started from `/tmp` survived. Lead: a leftover fake `gh` from cezar's `src/ci-wait/process.test.ts`, or cezar's tests killing by process group or name. Touches D12 (escaped children, process groups). | The killer is named with evidence; if it is Squeal's own sweep or group handling, a fix row; if it is cezar's tests, a cezar issue drafted for the human. |
 | 001-181 the optimizer note follows the config; the slow regression discriminates | planned | `reviews/wave-13h.md` S1, S2. | The note clears when no config enables the optimizer; the slow regression fails on the old adapter. |
 | 001-182 research: the revert-restore current PASS seen once in a full gate | planned | `reviews/wave-13h.md` Verification: not reproduced alone or in 8 instrumented loaded runs. | The cause named, or its rarity bounded with evidence; a fix row if real. |
+| 001-183 review of 001-170, 001-171 and 001-173 | planned, after 0.1.73 lands (gpt-6.1-sol) | The last unreviewed 001 rows before the next hub release. | `reviews/wave-13i.md` committed. |
 
 ## Feature 002: Codex adapter
 
