@@ -1450,14 +1450,20 @@ async function candidatesForReconcile(ctx, statusPaths) {
     const stat7 = stats[i2];
     if (stat7 !== void 0) out.set(rel, stat7);
   });
-  const links = await topLinks(ctx.root, [...out.keys()]);
-  const linkedDirs2 = await observedLinks(ctx, links);
-  for (const link of linkedDirs2.keys()) {
-    for (const rel of await walkFiles(ctx, nested, link)) {
-      out.set(rel, await statOrNull(ctx.root, rel));
-    }
+  const { links, linkedDirs: linkedDirs2 } = await linksAmong(ctx.root, [...out.keys()]);
+  for (const rel of await filesUnderLinks(ctx, linkedDirs2.keys(), nested)) {
+    out.set(rel, await statOrNull(ctx.root, rel));
   }
   return { paths: sortCandidates(out), linkedDirs: linkedDirs2, links };
+}
+async function linksAmong(root, paths) {
+  const links = await topLinks(root, paths);
+  return { links, linkedDirs: await observedLinks(root, links) };
+}
+async function filesUnderLinks(ctx, linkedDirs2, nested = new NestedRepoProbe(ctx.root)) {
+  const files = [];
+  for (const link of linkedDirs2) files.push(...await walkFiles(ctx, nested, link));
+  return files;
 }
 async function topLinks(root, paths) {
   const probe = new SymlinkProbe(root);
@@ -1470,13 +1476,13 @@ async function topLinks(root, paths) {
   }
   return links;
 }
-async function observedLinks(ctx, links) {
+async function observedLinks(root, links) {
   const observed = /* @__PURE__ */ new Map();
   for (const [rel, target] of links) {
-    if (holdsRoot(ctx.root, target)) continue;
-    if (!await inOtherRepository(ctx.root, target)) observed.set(rel, target);
+    if (holdsRoot(root, target)) continue;
+    if (!await inOtherRepository(root, target)) observed.set(rel, target);
   }
-  for (const link of await ignoredLinks(ctx.root, [...observed.keys()])) observed.delete(link);
+  for (const link of await ignoredLinks(root, [...observed.keys()])) observed.delete(link);
   return observed;
 }
 async function inOtherRepository(root, target) {
@@ -6799,6 +6805,98 @@ var init_install_stamp = __esm({
   }
 });
 
+// src/core/watcher/exclusions.ts
+import { dirname as dirname11 } from "node:path";
+var Exclusions;
+var init_exclusions = __esm({
+  "src/core/watcher/exclusions.ts"() {
+    "use strict";
+    Exclusions = class {
+      constructor(spec) {
+        this.spec = spec;
+        this.excluded = new Set(spec.excluded);
+        this.extra = new Set(spec.extraFiles);
+      }
+      spec;
+      excluded;
+      extra;
+      excludes(path) {
+        if (this.extra.has(path)) return false;
+        const { root } = this.spec;
+        let current2 = path;
+        while (current2.length > root.length) {
+          if (this.excluded.has(current2)) return true;
+          const parent2 = dirname11(current2);
+          if (parent2 === current2) break;
+          current2 = parent2;
+        }
+        return false;
+      }
+    };
+  }
+});
+
+// src/core/watcher/watch-spec.ts
+async function buildWatchSpec(root, extraFiles = [], status2) {
+  const [ignoredEntries, gitState, submodules] = await Promise.all([
+    listIgnored(root),
+    status2 ?? gitStatus(root),
+    listSubmodules(root)
+  ]);
+  const dirs = ignoredEntries.filter((e) => e.endsWith("/")).map((e) => e.slice(0, -1));
+  const ignoredDirs = await checkIgnored(root, dirs);
+  const excluded = /* @__PURE__ */ new Set([".git"]);
+  for (const entry2 of ignoredEntries) {
+    if (!entry2.endsWith("/")) excluded.add(entry2);
+  }
+  for (const dir of dirs) {
+    if (ignoredDirs.has(dir)) excluded.add(dir);
+  }
+  for (const dir of gitState.nestedRepos) excluded.add(dir);
+  for (const dir of submodules) {
+    if (await hasGitEntry(toAbsolute(root, dir))) excluded.add(dir);
+  }
+  return {
+    root,
+    excluded: [...excluded].sort().map((p) => toAbsolute(root, p)),
+    extraFiles: [...new Set(extraFiles)].sort().map((p) => toAbsolute(root, p))
+  };
+}
+function sameWatchSpec(a, b) {
+  return a.root === b.root && sameList(a.excluded, b.excluded) && sameList(a.extraFiles, b.extraFiles);
+}
+var init_watch_spec = __esm({
+  "src/core/watcher/watch-spec.ts"() {
+    "use strict";
+    init_fs();
+    init_git2();
+  }
+});
+
+// src/core/watcher/linked-files.ts
+import { realpath as realpath4 } from "node:fs/promises";
+async function linkedFiles(root, paths, extraFiles = []) {
+  const real2 = await realpath4(root);
+  const { linkedDirs: linkedDirs2 } = await linksAmong(real2, paths);
+  if (linkedDirs2.size === 0) return [];
+  const spec = await buildWatchSpec(real2, extraFiles);
+  const ctx = {
+    root: real2,
+    exclusions: new Exclusions(spec),
+    extraFiles: new Set(extraFiles),
+    trackedPaths: () => paths
+  };
+  return filesUnderLinks(ctx, linkedDirs2.keys());
+}
+var init_linked_files = __esm({
+  "src/core/watcher/linked-files.ts"() {
+    "use strict";
+    init_candidates();
+    init_exclusions();
+    init_watch_spec();
+  }
+});
+
 // src/core/scheduler/lockfiles.ts
 import { join as join29 } from "node:path";
 var Lockfiles;
@@ -6922,6 +7020,7 @@ var init_keying = __esm({
     init_keys();
     init_revision();
     init_git2();
+    init_linked_files();
     init_lockfiles();
     init_notes2();
     PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
@@ -6982,7 +7081,9 @@ var init_keying = __esm({
        * Brings the stat cache up to date at daemon start. Cached paths are
        * reconciled, so what changed while no daemon ran becomes a revision.
        * Tracked and untracked files git knows and the cache does not are hashed
-       * without a revision: there is nothing earlier to compare them with.
+       * without a revision: there is nothing earlier to compare them with. So
+       * are the files under a symlinked directory git lists, which the change
+       * feed walks (task 001-166).
        * Cached paths git ignores entered the cache because a closure or an
        * environment named them, so they are watched again as extra files.
        */
@@ -7004,7 +7105,10 @@ var init_keying = __esm({
         const known2 = new Set(listed);
         const unlisted = [...this.cache.paths()].filter((path) => !known2.has(path));
         for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
-        await this.#seed(listed.filter((path) => this.cache.hashOf(path) === void 0));
+        const linked = await linkedFiles(this.options.root, listed, this.extraFiles());
+        await this.#seed(
+          [...listed, ...linked].filter((path) => this.cache.hashOf(path) === void 0)
+        );
         await this.#trackIgnoredInputs();
         this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
         return revision;
@@ -8982,7 +9086,7 @@ var init_scheduler3 = __esm({
 });
 
 // node_modules/readdirp/index.js
-import { lstat as lstat6, readdir as readdir6, realpath as realpath4, stat as stat4 } from "node:fs/promises";
+import { lstat as lstat6, readdir as readdir6, realpath as realpath5, stat as stat4 } from "node:fs/promises";
 import { join as pjoin, resolve as presolve, sep as psep } from "node:path";
 import { Readable } from "node:stream";
 function readdirp(root, options = {}) {
@@ -9232,7 +9336,7 @@ var init_readdirp = __esm({
       async _getSymlinkEntryType(entry2) {
         const full = entry2.fullPath;
         try {
-          const entryRealPath = await realpath4(full);
+          const entryRealPath = await realpath5(full);
           const entryRealPathStats = await lstat6(entryRealPath);
           if (entryRealPathStats.isFile()) {
             return "file";
@@ -9927,7 +10031,7 @@ var init_handler = __esm({
        * @param realpath
        * @returns closer for the watcher instance.
        */
-      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath6) {
+      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath7) {
         const parentDir2 = this.fsw._getWatchedDir(sp.dirname(dir));
         const tracked = parentDir2.has(sp.basename(dir));
         if (!(initialAdd && this.fsw.options.ignoreInitial) && !target && !tracked) {
@@ -9938,7 +10042,7 @@ var init_handler = __esm({
         let throttler;
         let closer;
         const oDepth = this.fsw.options.depth;
-        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath6)) {
+        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath7)) {
           if (!target) {
             await this._handleRead(dir, initialAdd, wh, target, dir, depth, throttler);
             if (this.fsw.closed)
@@ -10768,37 +10872,6 @@ var init_chokidar = __esm({
   }
 });
 
-// src/core/watcher/exclusions.ts
-import { dirname as dirname13 } from "node:path";
-var Exclusions;
-var init_exclusions = __esm({
-  "src/core/watcher/exclusions.ts"() {
-    "use strict";
-    Exclusions = class {
-      constructor(spec) {
-        this.spec = spec;
-        this.excluded = new Set(spec.excluded);
-        this.extra = new Set(spec.extraFiles);
-      }
-      spec;
-      excluded;
-      extra;
-      excludes(path) {
-        if (this.extra.has(path)) return false;
-        const { root } = this.spec;
-        let current2 = path;
-        while (current2.length > root.length) {
-          if (this.excluded.has(current2)) return true;
-          const parent2 = dirname13(current2);
-          if (parent2 === current2) break;
-          current2 = parent2;
-        }
-        return false;
-      }
-    };
-  }
-});
-
 // src/core/watcher/chokidar-backend.ts
 var KINDS2, chokidarBackend;
 var init_chokidar_backend = __esm({
@@ -11079,45 +11152,8 @@ var init_linked_watch = __esm({
   }
 });
 
-// src/core/watcher/watch-spec.ts
-async function buildWatchSpec(root, extraFiles = [], status2) {
-  const [ignoredEntries, gitState, submodules] = await Promise.all([
-    listIgnored(root),
-    status2 ?? gitStatus(root),
-    listSubmodules(root)
-  ]);
-  const dirs = ignoredEntries.filter((e) => e.endsWith("/")).map((e) => e.slice(0, -1));
-  const ignoredDirs = await checkIgnored(root, dirs);
-  const excluded = /* @__PURE__ */ new Set([".git"]);
-  for (const entry2 of ignoredEntries) {
-    if (!entry2.endsWith("/")) excluded.add(entry2);
-  }
-  for (const dir of dirs) {
-    if (ignoredDirs.has(dir)) excluded.add(dir);
-  }
-  for (const dir of gitState.nestedRepos) excluded.add(dir);
-  for (const dir of submodules) {
-    if (await hasGitEntry(toAbsolute(root, dir))) excluded.add(dir);
-  }
-  return {
-    root,
-    excluded: [...excluded].sort().map((p) => toAbsolute(root, p)),
-    extraFiles: [...new Set(extraFiles)].sort().map((p) => toAbsolute(root, p))
-  };
-}
-function sameWatchSpec(a, b) {
-  return a.root === b.root && sameList(a.excluded, b.excluded) && sameList(a.extraFiles, b.extraFiles);
-}
-var init_watch_spec = __esm({
-  "src/core/watcher/watch-spec.ts"() {
-    "use strict";
-    init_fs();
-    init_git2();
-  }
-});
-
 // src/core/watcher/change-feed.ts
-import { realpath as realpath5 } from "node:fs/promises";
+import { realpath as realpath6 } from "node:fs/promises";
 import { basename as basename6, join as join34 } from "node:path";
 function createChangeFeed(options) {
   return new Feed(options);
@@ -11162,7 +11198,7 @@ var init_change_feed = __esm({
       idleTimer = null;
       closed = false;
       async start() {
-        this.root = await realpath5(this.root);
+        this.root = await realpath6(this.root);
         const status2 = await gitStatus(this.root);
         this.spec = await buildWatchSpec(this.root, this.extraFiles, status2);
         const listener = {
@@ -11225,7 +11261,7 @@ var init_change_feed = __esm({
         let changed = false;
         const links = new Set(hinted.linkedDirs);
         for (const link of links) {
-          const target = await realpath5(join34(this.root, link)).catch(() => null);
+          const target = await realpath6(join34(this.root, link)).catch(() => null);
           if (target === null || this.linkTargets.get(link) === target) continue;
           this.linkTargets.set(link, target);
           changed = true;
@@ -21812,9 +21848,9 @@ var require_CachedInputFileSystem = __commonJS({
           this.fileSystem.realpathSync,
           this.fileSystem
         );
-        const realpath6 = this._realpathBackend.provide;
+        const realpath7 = this._realpathBackend.provide;
         this.realpath = /** @type {FileSystem["realpath"]} */
-        realpath6;
+        realpath7;
         const realpathSync9 = this._realpathBackend.provideSync;
         this.realpathSync = /** @type {SyncFileSystem["realpathSync"]} */
         realpathSync9;
@@ -25564,9 +25600,9 @@ var require_PackageMapPlugin = __commonJS({
        */
       _resolveConfigFile(resolver, callback2) {
         const { configFile } = this.options;
-        const { realpath: realpath6 } = resolver.fileSystem;
-        if (!this.symlinks || !realpath6) return callback2(configFile);
-        realpath6(configFile, (err, result) => {
+        const { realpath: realpath7 } = resolver.fileSystem;
+        if (!this.symlinks || !realpath7) return callback2(configFile);
+        realpath7(configFile, (err, result) => {
           callback2(err || !result ? configFile : String(result));
         });
       }
@@ -31662,7 +31698,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.64";
+  if (true) return "0.1.65";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
