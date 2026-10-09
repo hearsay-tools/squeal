@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
+import { CODEX_PLUGIN_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 
 /*
@@ -73,6 +74,14 @@ describe("the squeal skill", () => {
     );
     expect(example).toContain("its own revision");
     expect(example).toContain("PASS -> FAIL");
+    // Review wave 13k, S1: quiet is no owed work, not a pass; the outcome is read from the result.
+    expect(example).toContain(
+      "Quiet says no result your edits owe is outstanding, not that it passed",
+    );
+    expect(example).toContain("listed under `Known failures` after the revert");
+    expect(example).not.toMatch(/quiet means the test (still )?passes/);
+    const codex = readFileSync(join(CODEX_PLUGIN_DIR, CODEX_SKILL, "SKILL.md"), "utf8");
+    expect(codex).toContain(example);
     expect(body).toContain("`--wait 120000` on a busy host");
     expect(read("commands.md")).toContain("On a busy host give it `120000`");
     expect(body).toContain("duplicates what Squeal is already running");

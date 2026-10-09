@@ -24,7 +24,7 @@ squeal status --wait 60000   # Returned on news: the test's PASS -> FAIL
 # 2. Restore the fix, then:
 squeal status --wait 60000   # Returned on news: FAIL -> PASS
 ```
-Each edit is its own revision, so the first wait reports the revert, not the fix: the result is the FAIL the test had before your fix, often looked up from the store at once since the reverted files are the same bytes. A wait after the revert that returns on quiet means the test still passes: it does not catch the bug.
+Each edit is its own revision, so the first wait reports the revert, not the fix: the result is the FAIL the test had before your fix, often looked up from the store at once since the reverted files are the same bytes, so that wait may return on quiet instead of news. Quiet says no result your edits owe is outstanding, not that it passed: read the outcome in the snapshot the wait prints. The test catches the bug when it is listed under `Known failures` after the revert and gone from it after the restore; listed as passing after the revert, it does not.
 
 ## Reading a header
 
