@@ -43,6 +43,23 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     expect(calls).toEqual([[{ path: "src/math.ts", kind: "touch" }]]);
   });
 
+  // The revert-restore integration test's timeout: a touch reported every project recreated,
+  // so its refinement listed the test files and hashed one added after the touch, whose own
+  // batch then found nothing changed. No revision ever named it.
+  it("lists no test file, so one added meanwhile still makes its revision", SLOW, async () => {
+    const { h } = await open();
+    const revision = latest(h);
+    rewrite(h, "src/math.ts");
+    h.write("test/added.test.ts", 'import { it } from "vitest";\nit("passes", () => {});\n');
+    await h.batch("src/math.ts");
+    await h.scheduler.idle();
+    await h.batch("test/added.test.ts");
+    await h.scheduler.idle();
+
+    expect(latest(h)).toBe(revision + 1);
+    expect(h.runsOf("test/added.test.ts")).toHaveLength(1);
+  });
+
   it("goes with the changes of its batch in one call", SLOW, async () => {
     const { h, calls } = await open();
     rewrite(h, "src/math.ts");
