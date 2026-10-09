@@ -852,8 +852,8 @@ var init_packages = __esm({
 
 // src/core/keys/dependencies.ts
 import { createHash as createHash4 } from "node:crypto";
-function dependencyKeys(installed2, environment) {
-  const { graph, fingerprint } = installed2;
+function dependencyKeys(installed, environment) {
+  const { graph, fingerprint } = installed;
   if (graph === null || environment === void 0 || isOpaque(environment)) {
     return { environment: fingerprint, of: () => "" };
   }
@@ -867,7 +867,7 @@ function dependencyKeys(installed2, environment) {
   const runnerStarts = new Set((environment.runner ?? []).map(started));
   const whole = `whole:${fingerprint}`;
   return {
-    environment: hash([SCOPED_ENCODING, shared, installed2.patches]),
+    environment: hash([SCOPED_ENCODING, shared, installed.patches]),
     of: (packages) => {
       if (packages === void 0 || isOpaque(packages)) return whole;
       const own = packages.imports.filter((entry2) => !runnerStarts.has(started(entry2)));
@@ -1616,7 +1616,7 @@ async function ignoredInputs(root, globs2) {
   );
   const files = listed.filter((path) => !links.has(path));
   for (const link of links) files.push(...await filesBeyond(root, link));
-  return [...new Set(files.filter((path) => matches(path) && !installed(path)))].sort();
+  return [...new Set(files.filter((path) => matches(path) && !isInstalledPath(path)))].sort();
 }
 async function trackedLinks(root, pathspecs) {
   const entries2 = splitNul(
@@ -1649,7 +1649,7 @@ function literalPrefix(glob) {
 async function linkedDirs(root, paths) {
   const resolvedRoot = await realpath2(root);
   const probe = new SymlinkProbe(root);
-  const candidates = [...new Set(paths)].filter((path) => !installed(path));
+  const candidates = [...new Set(paths)].filter((path) => !isInstalledPath(path));
   const kept2 = await mapConcurrent(candidates, async (path) => {
     const abs = toAbsolute(root, path);
     if (!await isLinkedDir(abs) || await probe.linkAbove(path) !== null) return null;
@@ -1684,7 +1684,7 @@ async function filesBeyond(root, link) {
   }
   return files;
 }
-function installed(path) {
+function isInstalledPath(path) {
   return path.split("/").includes("node_modules");
 }
 var INSTALLED;
@@ -7278,13 +7278,13 @@ var init_lockfiles = __esm({
           const lockfile = await this.#find(root);
           this.#projects.set(environment.project, { root, lockfile });
           const path = lockfile?.path ?? null;
-          let installed2 = read4.get(path);
-          if (installed2 === void 0) {
-            installed2 = await installedDependencies(root, this.root, this.#scans);
-            read4.set(path, installed2);
-            if (path !== null) this.#noteOnce(path, installed2.note);
+          let installed = read4.get(path);
+          if (installed === void 0) {
+            installed = await installedDependencies(root, this.root, this.#scans);
+            read4.set(path, installed);
+            if (path !== null) this.#noteOnce(path, installed.note);
           }
-          keys.set(environment.project, dependencyKeys(installed2, environment.packages));
+          keys.set(environment.project, dependencyKeys(installed, environment.packages));
         }
         return keys;
       }
@@ -7375,7 +7375,8 @@ var init_keying = __esm({
         this.#observed = new ObservedSets(options.store);
         this.index = new KeyIndex((path) => {
           const directory = listedDirectory(path);
-          return directory === null ? this.cache.hashOf(path) : this.#listings.hashOf(directory);
+          if (directory !== null) return this.#listings.hashOf(directory);
+          return this.#dropped.has(path) ? void 0 : this.cache.hashOf(path);
         });
       }
       options;
@@ -7387,6 +7388,13 @@ var init_keying = __esm({
       #environmentFiles = /* @__PURE__ */ new Set();
       #extra = /* @__PURE__ */ new Set();
       #untracked = /* @__PURE__ */ new Set();
+      /**
+       * Gitignored paths bootstrap dropped from the cache: a predecessor hashed
+       * them as declared inputs that are no slow file's artifact (004-50). They
+       * count as untracked, so a closure, an environment or a lockfile naming
+       * one hashes it again and watches it.
+       */
+      #dropped = /* @__PURE__ */ new Set();
       #lockfiles;
       /** How each project's installed dependencies enter its keys (D3, task 001-105). */
       #dependencies = /* @__PURE__ */ new Map();
@@ -7422,14 +7430,14 @@ var init_keying = __esm({
        * are the files under a symlinked directory git lists, which the change
        * feed walks (task 001-166).
        * Cached paths git ignores entered the cache because a closure or an
-       * environment named them, so they are watched again as extra files.
+       * environment named them, so they are watched again as extra files. A
+       * daemon from 0.1.60 to 0.1.73 also hashed gitignored scratch under any
+       * declared input: those a slow file's artifact does not admit are dropped
+       * before reconciling, so they neither make a revision nor key a test
+       * (004-50, reviews/wave-5.5.md B1). A closure that still names one tracks
+       * it again.
        */
       async bootstrap(head) {
-        let revision = null;
-        if (this.cache.size > 0) {
-          const paths = await statCandidates(this.cache.paths(), this.options.hasher);
-          revision = await this.reconcile({ trigger: "start", paths }, head);
-        }
         const listed = splitNul(
           await runGit(this.options.root, [
             "ls-files",
@@ -7441,13 +7449,24 @@ var init_keying = __esm({
         );
         const known2 = new Set(listed);
         const unlisted = [...this.cache.paths()].filter((path) => !known2.has(path));
-        for (const path of await checkIgnored(this.options.root, unlisted)) this.#extra.add(path);
+        const admits = this.#artifactRule([...this.#knownFiles(), ...listed])?.admits ?? (() => false);
+        const scratch = [];
+        for (const path of await checkIgnored(this.options.root, unlisted)) {
+          if (this.#isDeclared(path) && !admits(path)) scratch.push(path);
+          else this.#extra.add(path);
+        }
+        this.#drop(scratch);
+        let revision = null;
+        if (this.cache.size > 0) {
+          const paths = await statCandidates(this.cache.paths(), this.options.hasher);
+          revision = await this.reconcile({ trigger: "start", paths }, head);
+        }
         const linked = await linkedFiles(this.options.root, listed, this.extraFiles());
         await this.#seed(
           [...listed, ...linked].filter((path) => this.cache.hashOf(path) === void 0)
         );
         await this.#trackIgnoredInputs();
-        this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+        this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return revision;
       }
       /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
@@ -7531,7 +7550,7 @@ var init_keying = __esm({
         const changes = [];
         if (!sameInputs(previous.inputs, policy.inputs)) {
           this.#isDeclared = createInputMatcher(inputGlobs(policy.inputs));
-          this.#declared = createDeclaredInputs(policy.inputs, this.#knownFiles());
+          this.#declared = createDeclaredInputs(policy.inputs, this.#declarable());
           this.#ignoredStale = true;
           changes.push(
             ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner))
@@ -7664,7 +7683,7 @@ var init_keying = __esm({
           (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path)
         );
         if (!structural) return null;
-        this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+        this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
       }
       /**
@@ -7685,7 +7704,7 @@ var init_keying = __esm({
         const before = this.#extra.size;
         await this.#trackIgnoredInputs();
         if (this.#extra.size === before) return [];
-        this.#declared = createDeclaredInputs(this.#policy.inputs, this.#knownFiles());
+        this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
       }
       /**
@@ -7705,22 +7724,54 @@ var init_keying = __esm({
        * it, so no run feeds its own inputs (lessons defect 10).
        */
       async #ignoredArtifacts() {
+        const rule = this.#artifactRule();
+        if (rule === null) return [];
+        return (await ignoredInputs(this.options.root, rule.globs)).filter(rule.admits);
+      }
+      /**
+       * Which gitignored paths may be declared inputs (`#ignoredArtifacts`): the
+       * globs naming a slow file's artifact, and a predicate admitting a path
+       * they select that is no test file and under no slow glob's directory.
+       * `null` when no gitignored path may. Slow files are found among `files`.
+       */
+      #artifactRule(files = this.#knownFiles()) {
         const view = slowView(this.#policy);
-        if (!view.declared) return [];
+        if (!view.declared) return null;
         const isSlow = createInputMatcher(view.globs);
-        const globs2 = artifactGlobs(this.#policy.inputs, this.#knownFiles(), isSlow);
-        if (globs2.length === 0) return [];
+        const globs2 = artifactGlobs(this.#policy.inputs, files, isSlow);
+        if (globs2.length === 0) return null;
+        const selects = createInputMatcher(globs2);
         const testFiles = new Set([...this.#runnerClosures.values()].map((r) => r.testFile.path));
-        const listed = await ignoredInputs(this.options.root, globs2);
-        return listed.filter(
-          (path) => inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs)
-        );
+        const admits = (path) => selects(path) && !isInstalledPath(path) && inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs);
+        return { globs: globs2, admits };
+      }
+      /**
+       * The files declared inputs are selected from: those git sees, and the
+       * gitignored ones a slow file's artifact admits. A gitignored file a
+       * closure or an environment named, or a predecessor's cache held, keys
+       * only the tests that name it (004-50).
+       */
+      #declarable() {
+        const admits = this.#artifactRule()?.admits ?? (() => false);
+        const seen = [...this.cache.paths()].filter((path) => !this.#extra.has(path));
+        return [...seen, ...[...this.#extra].filter(admits)];
+      }
+      /** Drops `paths` from the cache and the store; they count as untracked until tracked again. */
+      #drop(paths) {
+        if (paths.length === 0) return;
+        const { store, worktreeId } = this.options;
+        const updates = paths.map((path) => ({ kind: "delete", path }));
+        store.transaction(() => this.cache.flush(store.fileHashes, worktreeId, updates));
+        for (const path of paths) this.#dropped.add(path);
       }
       /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
       async track(paths) {
-        const untracked = [...new Set(paths)].filter((path) => this.cache.hashOf(path) === void 0);
+        const untracked = [...new Set(paths)].filter(
+          (path) => this.cache.hashOf(path) === void 0 || this.#dropped.has(path)
+        );
         if (untracked.length === 0) return;
         await this.#seed(untracked);
+        for (const path of untracked) this.#dropped.delete(path);
         const ignored = await checkIgnored(this.options.root, untracked);
         const before = this.#extra.size;
         for (const path of ignored) this.#extra.add(path);
@@ -32159,7 +32210,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.74";
+  if (true) return "0.1.75";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
