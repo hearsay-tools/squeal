@@ -131,6 +131,13 @@ export interface Scheduler {
    * a consumer is in a turn, until no slow file is left pending.
    */
   requestSlowSuite(): Promise<SlowSuiteRequest>;
+  /**
+   * Spec 003 D3, task 003-26: another worktree grew the shared observed
+   * paths. Queues a runner-only refinement, which stores no revision: the
+   * runner reports the test files and projects the growth re-keys, and their
+   * closures and environments are fetched again. `idle` waits for it.
+   */
+  refreshObserved(): void;
   status(): SchedulerStatus;
   /**
    * Resolves once nothing is queued or running and no revision waits for its
