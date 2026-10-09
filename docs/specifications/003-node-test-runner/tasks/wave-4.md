@@ -97,3 +97,23 @@ Questions: (1) Can a node:test result still be stored, inherited or refreshed un
 Rules as for 003-25: change no code; label findings proven, plausible or unverified; only a proven break blocks; probes under `/tmp`, removed after; never this repository's store, never `/home/agent/projects/cezar`. No CPU burners. First review round on this slice.
 
 Use /reviewer.
+
+## 003-45 a growth move keeps the earlier edit's wait window (`reviews/wave-4.md` B1)
+
+Outcome: a `status --wait` that captured an edit's revision keeps holding that edit's file when a later unrelated revision lands and the file's run then grows its environment, until the re-run's result.
+
+Read: `reviews/wave-4.md` B1 (its seven-step reproduction and the no-growth control), `src/core/scheduler/tiers.ts` (the 003-43 growth settle in `recordTier`), `Ledger.settle`'s `keyedAt` (`ledger.ts`), `Scheduler.rekeyedSince`, `src/core/daemon/daemon.ts` `#requestSync`, `src/cli/status-wait-edit.ts`.
+
+Shape: repair. The contract agreed with the 001 lane: the growth settle never changes an existing `keyedAt` (the edit that queued the run already marked the file, and `heldPending` holds it while its re-run is queued); a file whose `keyedAt` is null takes `ledger.revision.number`. The lead: split the moved files in `recordTier` into those with `keyedAt === null` (settled with `{ keyedAt: ledger.revision.number }`) and the rest (settled without), each file settled once; no change to `Ledger` or `SettleOptions`. If the fix seems to need more than that, stop and ask me first.
+
+Test first: the review's deterministic case through the public `waitForStatus` (sync captures revision 1, unrelated revision 2, held growth): the wait stays pending and keeps the file until the re-run's result; with the no-growth control. Keep `test/scheduler/environment-growth.test.ts`'s in-range assertion and the existing exclusions for unrelated backlog and later edits.
+
+Owns: `src/core/scheduler/tiers.ts`, `test/scheduler/environment-growth.test.ts`, a new test file for the wait case. Leave `ledger.ts`, `scheduler.ts`, `src/cli/**` and `src/core/daemon/**` alone (the 001 lane's). Done when: the new case fails before the fix and passes after, 10 of 10 on Node 24 and 22; lint, typecheck, full suite.
+
+Use /worker.
+
+## 003-46 re-review of 003-45
+
+Outcome: `reviews/wave-4.5.md`: is `reviews/wave-4.md` B1 closed on Node 22 and 24, and does no growth move erase an earlier window or attribute a file to a window it does not owe. Range: 003-45's commits and bundles on main. Second and last round for 003-43: a remaining blocker goes to the human. Rules as for 003-25.
+
+Use /reviewer.
