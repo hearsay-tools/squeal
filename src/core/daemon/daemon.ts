@@ -1,5 +1,6 @@
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
+import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { setBusyTimeout } from "../store/index.js";
 import type {
   AbsolutePath,
@@ -304,6 +305,7 @@ class Daemon {
         vitest.createVitestAdapter({
           root,
           note: (text) => this.#note(text),
+          optimizer: (projects) => this.#optimizerOff(projects),
           observe: () => this.#policy.observe.runtimeInputs,
           childEnv: this.#children.envFor(lane),
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
@@ -467,6 +469,15 @@ class Daemon {
     if (after === null) return { revision, rekeyed: null };
     await scheduler.refined();
     return { revision, rekeyed: scheduler.rekeyedSince(after, revision) };
+  }
+
+  /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */
+  #optimizerOff(projects: readonly string[]): void {
+    try {
+      recordOptimizerOff(this.opened.store, this.opened.worktreeId, projects);
+    } catch (error) {
+      this.#log(`could not record the optimizer note: ${String(error)}`);
+    }
   }
 
   #note(text: string): void {

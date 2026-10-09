@@ -31,6 +31,12 @@ export interface VitestAdapterOptions {
    * the config's own.
    */
   readonly maxWorkers?: number;
+  /**
+   * Told at each start the projects whose config turns Vite's dependency
+   * optimizer on, none included, so the registration header names only what
+   * the newest config does (D4, task 001-181). Dropped when absent.
+   */
+  readonly optimizer?: (projects: readonly string[]) => void;
 }
 
 /**
@@ -47,6 +53,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     options.observe,
     options.childEnv,
     options.maxWorkers,
+    options.optimizer,
   );
   await adapter.open();
   return adapter;

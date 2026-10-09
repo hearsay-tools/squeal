@@ -1,5 +1,4 @@
 import { testFileId } from "../keys/index.js";
-import { readDaemonNotes } from "../notes.js";
 import {
   awaitingInstallMetaKey,
   type CheckKey,
@@ -18,7 +17,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
-import { OPTIMIZER_OFF_NOTE } from "./optimizer-note.js";
+import { readOptimizerOff } from "./optimizer-note.js";
 import { readSlowTier, worktreeSlowView } from "./slow.js";
 
 /**
@@ -47,8 +46,8 @@ import { readSlowTier, worktreeSlowView } from "./slow.js";
  * `slowTier` (D8), from the same states and keys. A caller that passes
  * `isSlow` gets `slowPending` from it whatever the policy says.
  *
- * `optimizerOff` is the persisted note that Squeal runs Vitest without the
- * dependency optimizer a config turns on (D4, task 001-176).
+ * `optimizerOff` is the note that Squeal runs Vitest without the dependency
+ * optimizer the newest instance's config turns on (D4, tasks 001-176, 001-181).
  */
 export function readHeader(
   store: Store,
@@ -70,9 +69,7 @@ export function readHeader(
   const awaiting = missing !== null;
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
-  const optimizerOff = readDaemonNotes(store, worktreeId).findLast((note) =>
-    note.text.startsWith(OPTIMIZER_OFF_NOTE),
-  )?.text;
+  const optimizerOff = readOptimizerOff(store, worktreeId);
   return {
     revision,
     counts,

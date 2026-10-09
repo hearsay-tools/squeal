@@ -174,10 +174,10 @@ export interface StatusHeader {
    */
   readonly missingInstalls?: readonly RelativePath[];
   /**
-   * The persisted note saying Squeal runs Vitest without the dependency
-   * optimizer a config turns on (spec 001 D4, task 001-176), for the
-   * registration header. Set by `readHeader` while the note is among the
-   * persisted ones; absent otherwise.
+   * The note saying Squeal runs Vitest without the dependency optimizer a
+   * config turns on (spec 001 D4, task 001-176), for the registration
+   * header. Set by `readHeader` while the newest Vitest instance's config
+   * turns it on; absent otherwise (task 001-181).
    */
   readonly optimizerOff?: string;
   /**
