@@ -138,8 +138,9 @@ export class VitestAdapter implements RunnerAdapter {
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
     // Task 001-159: the optimizer's bundles on disk may hold a touched file's other bytes.
-    const forceOptimizeDeps = this.#touched.length > 0;
-    this.#touched = [];
+    // Touches heard from here on are after this start read the disk; a failed start keeps all.
+    const heard = this.#touched.length;
+    const forceOptimizeDeps = heard > 0;
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
     const vitest = await this.#node.createVitest(
@@ -171,6 +172,7 @@ export class VitestAdapter implements RunnerAdapter {
       this.#configFiles = configFiles(vitest);
       this.#config = config;
       this.#unsure = await config.unsure(this.#configFiles);
+      this.#touched = this.#touched.slice(heard);
     } catch (error) {
       await vitest.close();
       throw error;
