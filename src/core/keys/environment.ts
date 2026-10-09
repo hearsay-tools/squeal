@@ -15,6 +15,7 @@ import {
   packageFoldersFingerprint,
   staleHiddenLockfile,
 } from "./hidden-lockfile.js";
+import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
 import { InstalledGraph } from "./packages.js";
 
@@ -24,13 +25,15 @@ const ENVIRONMENT_ENCODING = "squeal-environment/1";
 /**
  * Environment hash of one runner project in one worktree.
  *
- * Spec 001 D3: "Squeal version and runner-adapter version, Vitest and Node
- * versions, platform and arch, the resolved Vitest config, the contents of the
+ * Spec 001 D3: "the key format version and the runner-adapter version,
+ * Vitest and Node versions, platform and arch, the resolved Vitest config, the contents of the
  * config file and its `configFileDependencies`, the closure of every
  * `setupFiles` and `globalSetup` entry, the installed-dependency fingerprint
  * [...], allow-listed environment variables". Env variables and runner files
  * are sorted, so their order does not matter. Fields are JSON-encoded, so no
- * two different inputs share an encoding.
+ * two different inputs share an encoding. `core.squealVersion` is left out
+ * (task 001-199): a release changes keys only through `KEY_FORMAT_VERSION` or
+ * an adapter's version.
  *
  * `hashOf` hashes the runner files, normally `StatCache.hashOf`, so they get
  * the same file hash as closure paths (D3: "One definition everywhere"). `null`
@@ -53,7 +56,7 @@ export function environmentHash(
   });
   const encoded = JSON.stringify([
     ENVIRONMENT_ENCODING,
-    core.squealVersion,
+    KEY_FORMAT_VERSION,
     core.nodeVersion,
     core.platform,
     core.arch,
@@ -70,6 +73,7 @@ export function environmentHash(
 }
 
 export interface CoreEnvironmentOptions {
+  /** The daemon's version; never hashed (task 001-199), so a release alone keeps every key. */
   readonly squealVersion: string;
   /** From `installedDependenciesFingerprint`. */
   readonly installedDependencies: string;
