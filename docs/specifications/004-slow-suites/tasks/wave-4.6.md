@@ -32,6 +32,6 @@ After 001-166 lands (the start walk seeds files under linked directories without
 
 ## 004-43 fourth review: wave-4.5 B1 and B2 (last), 004-33 and 004-35 (first)
 
-Outcome: `reviews/wave-4.6.md`. Range pinned at dispatch. For wave-4.5 B1 and B2 this is the human-approved fourth and last round, limited to those two cases and what their fixes touch; 004-33 and 004-35 get a first review. Rules as for 004-14.
+Outcome: `reviews/wave-4.6.md`. Range: on main, `aadc80b` (004-42), `f70fd92` and `435c695` (004-41 with 004-33), `92b2083` (004-35) and the 0.1.67 bundles `9833c33`; the 001 commits between `3bdeffb` and `9833c33` are out of scope except 001-166 (`4d7c203`), on which 004-42 relies (a worktree's first listing makes no revision): check that reliance only. Known at the 0.1.67 gate and not in scope: `test/daemon/busy-store.test.ts:80` fails on Node 22 (writer children's warnings on stderr; 001-161). For wave-4.5 B1 and B2 this is the human-approved fourth and last round, limited to those two cases and what their fixes touch; 004-33 and 004-35 get a first review. Rules as for 004-14.
 
 Use /reviewer.
