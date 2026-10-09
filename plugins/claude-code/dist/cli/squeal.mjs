@@ -1541,8 +1541,8 @@ function stateFromResult(worktreeId, revision, result, key2, previous) {
   const described = failed2 && (result.fingerprint === null || result.summary === null);
   const fallback = described ? describeFailure(result.errors, result.location) : null;
   const fingerprint = failed2 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
-  const unchanged = previous !== null && previous.outcome === result.outcome && previous.fingerprint === fingerprint && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
-  const observedAt = origin.kind === "own" ? result.provenance.revision : unchanged && previous.observedAt !== null ? previous.observedAt : revision;
+  const unchanged2 = previous !== null && previous.outcome === result.outcome && previous.fingerprint === fingerprint && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
+  const observedAt = origin.kind === "own" ? result.provenance.revision : unchanged2 && previous.observedAt !== null ? previous.observedAt : revision;
   return {
     worktreeId,
     check: result.check,
@@ -1712,6 +1712,12 @@ var init_policy = __esm({
 // src/core/types/runner.ts
 function isSlowLane(lane) {
   return lane.startsWith(SLOW_LANE_PREFIX);
+}
+function nodeTestObservedMetaKey(project) {
+  return `nodeTest.observed.${project}`;
+}
+function nodeTestObservedPreloadsMetaKey(project) {
+  return `nodeTest.observedPreloads.${project}`;
 }
 var SLOW_LANE_PREFIX;
 var init_runner = __esm({
@@ -2144,11 +2150,47 @@ function toActivity(value) {
   }
   return null;
 }
-var WAITS;
+function slowArtifactsMetaKey(worktreeId) {
+  return `slow-artifacts:${worktreeId}`;
+}
+function readSlowArtifacts(store, worktreeId) {
+  const raw = store.meta.get(slowArtifactsMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter(
+        (entry2) => Array.isArray(entry2[1]) && entry2[1].every((glob) => typeof glob === "string")
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function recordSlowArtifacts(store, worktreeId, runs) {
+  if (runs.size === 0) return;
+  const kept = new Map(readSlowArtifacts(store, worktreeId));
+  for (const [key2, globs2] of runs) {
+    kept.delete(key2);
+    kept.set(key2, globs2);
+  }
+  const newest = [...kept].slice(-SLOW_ARTIFACTS_KEPT);
+  store.meta.set(slowArtifactsMetaKey(worktreeId), JSON.stringify(Object.fromEntries(newest)));
+}
+function forgetSlowArtifacts(store, worktreeId, keys) {
+  const kept = new Map(readSlowArtifacts(store, worktreeId));
+  let changed = false;
+  for (const key2 of keys) changed = kept.delete(key2) || changed;
+  if (!changed) return;
+  store.meta.set(slowArtifactsMetaKey(worktreeId), JSON.stringify(Object.fromEntries(kept)));
+}
+var WAITS, SLOW_ARTIFACTS_KEPT;
 var init_state2 = __esm({
   "src/core/slow/state.ts"() {
     "use strict";
     WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+    SLOW_ARTIFACTS_KEPT = 256;
   }
 });
 
@@ -2190,16 +2232,30 @@ function classifySlowFiles(states, keys, isSlow) {
 function readSlowTier(store, worktreeId, revision, states, keys, view) {
   const files = classifySlowFiles(states, keys, view.isSlow);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  const artifact = /* @__PURE__ */ new Set();
-  for (const { ref: ref2, class: cls } of files.values()) {
-    counts[cls]++;
-    for (const glob of view.artifactFor(ref2.path)) artifact.add(glob);
-  }
+  for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt = null;
+  const ranFrom = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
-    if (files.get(testFileId(testFileOf(state.check)))?.class !== "current") continue;
+    const id2 = testFileId(testFileOf(state.check));
+    if (files.get(id2)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
+    const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
+    ranFrom.set(id2, origin);
+  }
+  const artifactOf = recordedArtifacts(store);
+  const artifact = /* @__PURE__ */ new Set();
+  const declaredToday = /* @__PURE__ */ new Set();
+  let artifactUnknown = 0;
+  for (const row of keys) {
+    const from = ranFrom.get(testFileId(row.testFile));
+    if (from === void 0) continue;
+    const recorded2 = row.key === null ? void 0 : artifactOf(from, row.key);
+    if (recorded2 === void 0) artifactUnknown++;
+    for (const glob of recorded2 ?? []) artifact.add(glob);
+    for (const glob of recorded2 === void 0 ? view.artifactFor(row.testFile.path) : []) {
+      declaredToday.add(glob);
+    }
   }
   const globs2 = [...artifact].sort();
   return {
@@ -2207,9 +2263,28 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
     ...counts,
     currentAt,
     artifact: globs2,
-    sourcesChangedSince: currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, globs2),
-    activity: readSlowActivity(store, worktreeId)
+    ...artifactUnknown > 0 ? { artifactUnknown } : {},
+    sourcesChangedSince: currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, [...globs2, ...declaredToday]),
+    activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow)
   };
+}
+function recordedArtifacts(store) {
+  const records = /* @__PURE__ */ new Map();
+  return (from, key2) => {
+    let byKey = records.get(from);
+    if (byKey === void 0) {
+      byKey = readSlowArtifacts(store, from);
+      records.set(from, byKey);
+    }
+    return byKey.get(key2);
+  };
+}
+function liveActivity(activity, keys, isSlow) {
+  if (activity?.kind !== "running") return activity;
+  const running = keys.some(
+    (row) => row.testFile.path === activity.path && row.pending === "running" && isSlow(row.testFile)
+  );
+  return running ? activity : null;
 }
 function sourcesChanged(store, worktreeId, since, revision, artifact) {
   if (since >= revision) return false;
@@ -2482,6 +2557,13 @@ function pendingText(pending, activity) {
   const running = `running ${activity.path} since ${clockText(activity.since)} (${last})`;
   return pending === 1 ? running : `${pending} pending, ${running}`;
 }
+function currentText(tier) {
+  const unknown = tier.artifactUnknown ?? 0;
+  if (unknown >= tier.current)
+    return `current at revision ${tier.currentAt}, declared artifact unknown`;
+  const against = tier.artifact.length === 0 ? `current at revision ${tier.currentAt}, against no declared artifact` : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
+  return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
+}
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
@@ -2490,9 +2572,8 @@ function slowTierText(header, command) {
   }
   const parts = [];
   if (tier.current > 0) {
-    const against = tier.artifact.length === 0 ? `current at revision ${tier.currentAt}, against no declared artifact` : `current against ${tier.artifact.join(", ")} as of revision ${tier.currentAt}`;
     parts.push(
-      `${tier.current} ${against}${tier.sourcesChangedSince ? ", sources changed since" : ""}`
+      `${tier.current} ${currentText(tier)}${tier.sourcesChangedSince ? ", sources changed since" : ""}`
     );
   }
   if (tier.pending > 0) {
@@ -7261,13 +7342,19 @@ var init_refinement = __esm({
 });
 
 // src/core/scheduler/runner-work.ts
-var RunnerWork;
+function unchanged(context, ledger) {
+  const { number, head, dirty } = ledger.revision;
+  const { worktreeId, now } = context;
+  return { worktreeId, number, createdAt: now(), head, dirty, trigger: "interval", changes: [] };
+}
+var NO_CONTENT, RunnerWork;
 var init_runner_work = __esm({
   "src/core/scheduler/runner-work.ts"() {
     "use strict";
     init_keys();
     init_types();
     init_refinement();
+    NO_CONTENT = { rekeyed: [], environment: false };
     RunnerWork = class {
       constructor(host) {
         this.host = host;
@@ -7288,7 +7375,27 @@ var init_runner_work = __esm({
       /** Queues the runner part of `revision`. */
       queueRefine(revision, content) {
         this.#tasks.push({
-          run: () => this.#refine(revision, content),
+          run: () => this.#refine(revision, content, revision.number),
+          cancel: () => {
+          },
+          refine: true
+        });
+      }
+      /**
+       * Queues a runner-only refinement (task 003-26): another worktree grew the
+       * observed paths, which may move keys this worktree holds results under.
+       * It asks the runner what any refinement asks with no changed path, so the
+       * adapters report the grown files and projects and their keys are fetched
+       * again; it stores no revision. A refinement queued and not started yet
+       * asks the same, so it stands in for this one.
+       */
+      queueObserved() {
+        if (this.#tasks.some((task) => task.refine === true)) return;
+        this.#tasks.push({
+          run: () => {
+            const { context, ledger } = this.host.started();
+            return this.#refine(unchanged(context, ledger), NO_CONTENT, null);
+          },
           cancel: () => {
           },
           refine: true
@@ -7311,9 +7418,10 @@ var init_runner_work = __esm({
        * reconciled meanwhile; the apply phase takes the lock, applies what the
        * runner said, and commits it with the revision as refined (D2 as
        * amended). Never rejects: an error is a note, and the revision counts as
-       * refined so no wait hangs on it.
+       * refined so no wait hangs on it. A runner-only refinement (`refined`
+       * `null`) commits no refined revision.
        */
-      async #refine(revision, content) {
+      async #refine(revision, content, refined) {
         const { context, ledger } = this.host.started();
         this.#refining = true;
         try {
@@ -7326,11 +7434,15 @@ var init_runner_work = __esm({
             ledger.refineChanges = null;
             const stale = await applyRunnerPart(context, ledger, part, changedMeanwhile);
             for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
-            ledger.commit({ refined: revision.number });
+            ledger.commit(refined === null ? {} : { refined });
           });
         } catch (error) {
-          this.host.backgroundError(`could not apply revision ${revision.number}`, error);
-          this.#refinedAfterError(context, revision.number);
+          if (refined === null) {
+            this.host.backgroundError("could not apply observed paths", error);
+          } else {
+            this.host.backgroundError(`could not apply revision ${refined}`, error);
+            this.#refinedAfterError(context, refined);
+          }
         } finally {
           ledger.refineChanges = null;
           this.#refining = false;
@@ -7382,6 +7494,13 @@ var init_runner_work = __esm({
 
 // src/core/scheduler/slow-tier.ts
 import { setTimeout as delay2 } from "node:timers/promises";
+function tierKeys(tier, ledger) {
+  const keys = tier.files.flatMap(({ file, key: key2 }) => [key2, ledger.files.get(file.id)?.key ?? null]);
+  return [...new Set(keys.filter((key2) => key2 !== null))];
+}
+function forgetSlowRuns(context, ledger, tier) {
+  forgetSlowArtifacts(context.store, context.worktreeId, tierKeys(tier, ledger));
+}
 function noArtifactNote(project, paths) {
   const owner2 = project === "" ? "" : ` of project ${project}`;
   return `slow files${owner2} with no declared artifact: ${listPaths(paths)}. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in ${POLICY_FILE} "inputs" (spec 004 D5, D6)`;
@@ -7417,6 +7536,7 @@ var init_slow_tier = __esm({
     init_turn();
     init_slow2();
     init_state2();
+    init_state3();
     init_types();
     init_context();
     init_files();
@@ -7445,6 +7565,8 @@ var init_slow_tier = __esm({
       #preemptions = 0;
       /** No-artifact notes written or found persisted (D5). */
       #noted = null;
+      /** What this tier last published, as stored, so `close` clears only its own. */
+      #published = null;
       /** `run --slow`: the pending slow files run behind fast work, whatever the turns (trigger b). */
       request() {
         this.#requested = true;
@@ -7483,9 +7605,9 @@ var init_slow_tier = __esm({
           if (preemptions !== this.#preemptions) return "again";
           const load = await this.#waitForCapacity(context);
           if (load === "preempted") return "again";
-          const tier = await this.host.lock.run(() => this.#select(ref2, load));
-          if (tier === null) return "again";
-          run = { tier, slot: slot2 };
+          const selected = await this.host.lock.run(() => this.#select(ref2, load));
+          if (selected === null) return "again";
+          run = { ...selected, slot: slot2 };
           return run;
         } finally {
           if (run === null) slot2.release();
@@ -7583,13 +7705,51 @@ var init_slow_tier = __esm({
         }
         const inputs2 = context.keys.stabilityPaths(ref2);
         const since = context.now();
-        this.#publish({ kind: "running", path: ref2.path, since, lastDurationMs: file.durationMs });
-        return startTier(context, ledger, [{ file, key: key2, inputs: inputs2, checkpointId, forced }], false);
+        const artifact = slowPolicyView(context.policy)?.artifactFor(ref2.path) ?? [];
+        return context.store.transaction(() => {
+          const tier = startTier(context, ledger, [{ file, key: key2, inputs: inputs2, checkpointId, forced }], false);
+          this.#publish({ kind: "running", path: ref2.path, since, lastDurationMs: file.durationMs });
+          return { tier, artifact };
+        });
+      }
+      /**
+       * Under the lock, in the transaction that records `run` (D5, D8, review
+       * wave 2 B1 and B2): the keys it ran under were declared to test its
+       * artifact, and its activity goes with it (`ended`).
+       */
+      recorded(run, ledger, othersInFlight) {
+        const { context } = this.host.started();
+        const runs = new Map(tierKeys(run.tier, ledger).map((key2) => [key2, run.artifact]));
+        recordSlowArtifacts(context.store, context.worktreeId, runs);
+        this.ended(othersInFlight);
+      }
+      /**
+       * Under the lock, as a slow run ends, recorded, discarded or put back: its
+       * "running" activity goes in favour of what the remaining slow files wait
+       * for, without starting one (review wave 2, B1). Fast work in flight or
+       * pending, or the agent not pausing; when a trigger already holds, nothing
+       * until `next` decides. `othersInFlight`: a tier of another lane runs.
+       */
+      ended(othersInFlight) {
+        const { context, ledger } = this.host.started();
+        const queued = ledger.orderedSlow();
+        if (queued.length === 0) this.#publish(null);
+        else if (othersInFlight || this.host.fastPending())
+          this.#publish({ kind: "waiting", for: "fast" });
+        else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
+        else this.#publish({ kind: "waiting", for: "idle" });
+      }
+      /** At close: clears the activity unless another daemon published since (a handover). */
+      retire() {
+        const { context } = this.host.started();
+        const now = readSlowActivity(context.store, context.worktreeId);
+        if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
       }
       /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
       #publish(activity) {
         const { context } = this.host.started();
         publishSlowActivity(context.store, context.worktreeId, activity);
+        this.#published = activity === null ? null : JSON.stringify(activity);
         return null;
       }
       #slotMissed(context, dir) {
@@ -7871,6 +8031,11 @@ var init_scheduler2 = __esm({
         this.#pump();
         return request;
       }
+      refreshObserved() {
+        if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
+        this.#runnerWork.queueObserved();
+        this.#pump();
+      }
       status() {
         return { revision: this.#ledger?.revision.number ?? 0 };
       }
@@ -7893,6 +8058,7 @@ var init_scheduler2 = __esm({
         this.#runnerWork.cancel();
         await this.#lock.run(() => {
           this.#ledger?.checkpoints.finish("abandoned");
+          if (this.#context) this.#retireSlow();
           if (this.#awaitingInstall) stopWaiting(this.options);
         });
         for (const resolve11 of this.#idle.splice(0)) resolve11();
@@ -8008,7 +8174,20 @@ var init_scheduler2 = __esm({
             const installMoved = this.#reinstalled || await this.#install.stamp() !== installStamp;
             const moved = await this.#lock.run(async () => {
               const observed = installMoved ? void 0 : await prepareObserved(context, report2, tier.run);
-              return recordTier(context, ledger, tier, report2, changed, installMoved, observed);
+              return context.store.transaction(() => {
+                const result = recordTier(
+                  context,
+                  ledger,
+                  tier,
+                  report2,
+                  changed,
+                  installMoved,
+                  observed
+                );
+                if (slow === null) forgetSlowRuns(context, ledger, tier);
+                else this.#slow.recorded(slow, ledger, this.#othersInFlight(tier.lane));
+                return result;
+              });
             });
             recorded2 = true;
             slow?.slot.release();
@@ -8016,7 +8195,7 @@ var init_scheduler2 = __esm({
             if (slow !== null) await this.#releaseIfDrained(tier.lane);
           } catch (error) {
             this.#stall(error);
-            if (!recorded2) await this.#requeue(tier);
+            if (!recorded2) await this.#requeue(tier, slow !== null);
           } finally {
             slow?.slot.release();
             this.#inFlight.delete(tier.lane);
@@ -8087,8 +8266,19 @@ var init_scheduler2 = __esm({
         const work = this.#runnerWork;
         return work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0;
       }
-      /** Puts the files of a tier that never got recorded back into the queue. */
-      async #requeue(tier) {
+      #retireSlow() {
+        try {
+          this.#slow.retire();
+        } catch (error) {
+          this.#note(`could not clear the slow tier's activity: ${String(error)}`);
+        }
+      }
+      /** A tier of a lane other than `lane` is in flight. */
+      #othersInFlight(lane) {
+        return [...this.#inFlight.keys()].some((other) => other !== lane);
+      }
+      /** Puts the files of a tier that never got recorded back into the queue; a slow one's activity goes. */
+      async #requeue(tier, slow) {
         await this.#lock.run(() => {
           const { context, ledger } = this.#started();
           endTier(context, ledger, tier);
@@ -8100,6 +8290,7 @@ var init_scheduler2 = __esm({
           }
           try {
             ledger.commit();
+            if (slow) this.#slow.ended(this.#othersInFlight(tier.lane));
           } catch (error) {
             this.#note(`could not record the re-queued tier: ${String(error)}`);
           }
@@ -30351,12 +30542,6 @@ __export(node_test_runners_exports, {
   nodeTestObservedPreloadsMetaKey: () => nodeTestObservedPreloadsMetaKey,
   observedStore: () => observedStore
 });
-function nodeTestObservedMetaKey(project) {
-  return `nodeTest.observed.${project}`;
-}
-function nodeTestObservedPreloadsMetaKey(project) {
-  return `nodeTest.observedPreloads.${project}`;
-}
 function observedStore(store, project) {
   const key2 = nodeTestObservedMetaKey(project);
   const preloadKey = nodeTestObservedPreloadsMetaKey(project);
@@ -30449,6 +30634,7 @@ var init_node_test_runners = __esm({
     "use strict";
     init_adapter2();
     init_fs();
+    init_types();
     init_runner2();
   }
 });
@@ -30662,7 +30848,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.51";
+  if (true) return "0.1.52";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -32469,8 +32655,12 @@ async function terminate(found, table = PROC) {
     if (!same(entry2)) continue;
     named.push({ entry: entry2, args: await table.commandLine(entry2.pid) });
   }
-  const termed = named.filter(({ entry: entry2 }) => same(entry2)).map(({ entry: entry2 }) => entry2);
-  for (const { pid } of termed) table.signal(pid, "SIGTERM");
+  const termed = [];
+  for (const { entry: entry2 } of named) {
+    if (!same(entry2)) continue;
+    table.signal(entry2.pid, "SIGTERM");
+    termed.push(entry2);
+  }
   const deadline = Date.now() + GRACE_MS;
   let alive = termed.filter(same);
   while (alive.length > 0 && Date.now() < deadline) {
@@ -32585,6 +32775,7 @@ init_types();
 
 // src/core/delivery/attribution.ts
 init_keys();
+init_state2();
 init_state3();
 
 // src/core/delivery/registered.ts
@@ -32945,6 +33136,7 @@ function shellWord(text2) {
 
 // src/core/daemon/lifecycle.ts
 init_store2();
+init_types();
 function startTimers(context) {
   const { store, worktreeId, now, timings } = context;
   const idleMs = context.policy.daemon.idleExitMinutes * 6e4;
@@ -33016,6 +33208,19 @@ function startTimers(context) {
     attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
     attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
   };
+  const observedKeys = context.policy.nodeTest.flatMap(({ name }) => [
+    nodeTestObservedMetaKey(name),
+    nodeTestObservedPreloadsMetaKey(name)
+  ]);
+  const readObserved = () => JSON.stringify(observedKeys.map((key2) => store.meta.get(key2)));
+  let observedSeen = null;
+  attempt("observed read", () => {
+    observedSeen = readObserved();
+  });
+  const observed = () => attempt("observed check", () => {
+    const read3 = readObserved();
+    if (read3 !== observedSeen && context.observedChanged?.() === true) observedSeen = read3;
+  });
   const prune2 = () => attempt("prune", () => {
     store.prune({
       now: now(),
@@ -33027,7 +33232,8 @@ function startTimers(context) {
     setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
     setInterval(departure, presenceMs),
-    setInterval(prune2, pruneMs)
+    setInterval(prune2, pruneMs),
+    ...observedKeys.length > 0 && context.observedChanged ? [setInterval(observed, timings.observedMs ?? 5e3)] : []
   ];
   const first = setTimeout(prune2, timings.firstPruneMs ?? 6e4);
   for (const timer of [...timers, first]) timer.unref();
@@ -33654,6 +33860,12 @@ var Daemon = class {
       lastActive: () => this.#lastActive,
       active: (at2) => {
         this.#lastActive = at2;
+      },
+      // Task 003-26: queued runner work, never activity; before the scheduler runs, asked again.
+      observedChanged: () => {
+        if (this.#loop === null || this.#phase === "stopping") return false;
+        this.#loop.scheduler.refreshObserved();
+        return true;
       },
       note: (text2) => this.#note(text2),
       log: this.#log,
