@@ -5850,8 +5850,12 @@ var init_guard = __esm({
 });
 
 // src/core/slow/slot.ts
-import { join as join26 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join26 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+function slowSlotDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join26(xdg, "squeal") : userTmpDir();
+}
 function acquireSlowSlot(request) {
   const { dir, owner: owner2, signal: signal2 } = request;
   if (signal2?.aborted) return null;
@@ -7620,7 +7624,6 @@ var SLOW_RECHECK_MS, SLOT_HELD_NOTE_MS, SlowTier;
 var init_slow_tier = __esm({
   "src/core/scheduler/slow-tier.ts"() {
     "use strict";
-    init_paths3();
     init_policy2();
     init_turn();
     init_slow2();
@@ -7676,7 +7679,7 @@ var init_slow_tier = __esm({
         const ref2 = await this.host.lock.run(() => this.#candidate());
         if (ref2 === null) return null;
         const { context } = this.host.started();
-        const dir = this.options.slotDir ?? userTmpDir(currentUid());
+        const dir = this.options.slotDir ?? slowSlotDir();
         const slot2 = acquireSlowSlot({
           dir,
           owner: { pid: process.pid, worktreeId: context.worktreeId }
@@ -12238,7 +12241,7 @@ var init_lexer = __esm({
 
 // src/runners/vitest/packages.ts
 import { readFile as readFile4 } from "node:fs/promises";
-import { dirname as dirname17, isAbsolute as isAbsolute7 } from "node:path";
+import { dirname as dirname17, isAbsolute as isAbsolute8 } from "node:path";
 function closurePackages(graph, paths) {
   const imports = [];
   const builtins = new Set(graph.builtins);
@@ -12327,7 +12330,7 @@ function configModules(config) {
   const serializers = Array.isArray(config.snapshotSerializers) ? config.snapshotSerializers : [];
   const values = [...serializers, config.runner, config.snapshotEnvironment, config.diff];
   return values.filter(
-    (value) => typeof value === "string" && isAbsolute7(value)
+    (value) => typeof value === "string" && isAbsolute8(value)
   );
 }
 async function loadsOf(file) {
@@ -29604,7 +29607,7 @@ var require_lib2 = __commonJS({
 });
 
 // src/runners/node-test/graph/tsconfig.ts
-import { dirname as dirname21, isAbsolute as isAbsolute8, join as join45, resolve as resolve10 } from "node:path";
+import { dirname as dirname21, isAbsolute as isAbsolute9, join as join45, resolve as resolve10 } from "node:path";
 function readTsconfigPaths(file, read3) {
   const files = [];
   const load = (config, seen) => {
@@ -29633,7 +29636,7 @@ function readTsconfigPaths(file, read3) {
 }
 function locate(specifier, dir, read3) {
   const exists2 = (path) => read3(path) !== null;
-  if (specifier.startsWith(".") || isAbsolute8(specifier)) {
+  if (specifier.startsWith(".") || isAbsolute9(specifier)) {
     const path = resolve10(dir, specifier);
     return [path, `${path}.json`].find(exists2) ?? null;
   }
@@ -31087,7 +31090,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.55";
+  if (true) return "0.1.56";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
