@@ -43,3 +43,17 @@ Owns: `src/runners/node-test/runtime/recorder.cjs`, `src/runners/node-test/run/o
 Done when: both probes are tests on Node 22 and 24; existing attribution tests unchanged; lint, typecheck, full suite on Node 24 and 22.
 
 Use /worker.
+
+## 003-26 another worktree's observed growth re-keys this one without a local edit
+
+Outcome: a worktree with no local edit stops holding a pass under a key that lacks a path another worktree observed, within the reconciliation interval.
+
+Read: `reviews/wave-2.md` S2 and its probe; the board row; `src/runners/node-test/adapter-observed.ts` (`refresh`, `grown`, `preloadsGrew`: growth is reported at the next refinement); `src/core/scheduler/runner-work.ts` (refinements); `src/core/daemon/lifecycle.ts` (the daemon's periodic timers).
+
+Shape: slice. Test first: two schedulers over one store with the `hidden.test.ts` fixture; A runs and records `src/hidden.ts`; B, with no edit, re-keys `hidden.test.ts` and runs it within the interval. Seam: a cheap periodic check (a timer in `lifecycle.ts` beside the others, or the scheduler's own) that a `nodeTest.observed.*` meta key changed since this daemon last read it, and if so queues a runner-only refinement through `RunnerWork` (no revision, no content re-key) that calls the adapters' `affected([])` or a new `refreshObserved()` so `Observed.refresh` reports the grown files and the scheduler re-fetches their closures and keys. Idle cost: one meta read per interval; no work when nothing changed.
+
+Owns: `src/core/scheduler/runner-work.ts`, the method this needs in `src/core/scheduler/scheduler.ts` (not `#select`, `#pump` or lanes), `src/core/daemon/lifecycle.ts` (one timer), `src/runners/node-test/adapter-observed.ts`, `adapter-project.ts`, `src/core/types/runner.ts` (additive), their tests. Leave alone: `src/core/scheduler/observed.ts` and `test/scheduler/first-observation.test.ts` (001-148 is running there), `src/runners/vitest/**` (001-150), `src/runners/node-test/runtime/**` and `run/**`.
+
+Done when: the two-scheduler test; a test that an idle daemon with no observed change does no runner work; lint, typecheck, full suite on Node 24 and 22.
+
+Use /worker.
