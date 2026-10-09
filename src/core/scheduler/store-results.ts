@@ -11,17 +11,21 @@ import type { SchedulerContext } from "./context.js";
  * from the row, so a failure they held or confirmed becomes the current pass
  * and is delivered to them as `FAIL -> PASS`. A pass replaced by a fail
  * changes no other worktree: its fail stands there only once it runs there.
+ * Returns what the key held before (task 001-171, `holdsNewFailure`).
  */
-export function storeResults(context: SchedulerContext, records: readonly ResultRecord[]): void {
+export function storeResults(
+  context: SchedulerContext,
+  records: readonly ResultRecord[],
+): readonly ResultRecord[] {
   const [first] = records;
-  if (first === undefined) return;
+  if (first === undefined) return [];
   const { store, worktreeId, now } = context;
-  store.transaction(() => {
+  return store.transaction(() => {
     // `usedAt` 0 never advances last-used: reading what is replaced is not a lookup hit (D8).
     const prior = store.results.byKey(first.key, 0);
     store.results.putMany(records);
     const flips = recordFlips(store, prior, records, now());
-    if (!flips.some((note) => note.to === "pass")) return;
+    if (!flips.some((note) => note.to === "pass")) return prior;
     const { project, testPath } = first.check;
     // The scheduler's sink is this worktree's; another worktree's states go through the store's own.
     const sink = createStateSink(store, { now });
@@ -31,5 +35,6 @@ export function storeResults(context: SchedulerContext, records: readonly Result
       const revision = store.revisions.latest(row.worktreeId)?.number ?? row.revision;
       sink.refresh(row.worktreeId, revision, { checkpointId: null }, [row.testFile]);
     }
+    return prior;
   });
 }

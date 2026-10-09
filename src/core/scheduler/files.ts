@@ -43,6 +43,11 @@ export interface FileState {
    */
   discards: number;
   /**
+   * Key whose new failure was re-run (task 001-171): a failure is re-run
+   * once per key, never in a loop.
+   */
+  rerunKey: CheckKey | null;
+  /**
    * Why the file is `unknown` because a runner call it needs failed (spec 001
    * D5: "A runner call that fails is a state, never a skip"). It is not run
    * until the runner recovers; `null` otherwise.
@@ -63,6 +68,7 @@ export function newFileState(ref: TestFileRef): FileState {
     runningKey: null,
     unknownKey: null,
     discards: 0,
+    rerunKey: null,
     blocked: null,
   };
 }
