@@ -9,7 +9,14 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import {
+  DEFAULT_POLICY,
+  type NodeTestProject,
+  type Policy,
+  type Store,
+} from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -19,6 +26,9 @@ import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./he
  * enter keys only as a slow file's declared artifact (spec 004 D5), never
  * under a directory a slow glob covers (D6), so no run feeds its own inputs:
  * its result is stored, and no revision follows within two interval passes.
+ * A store a daemon from 0.1.60 to 0.1.73 wrote, which hashed such scratch
+ * as a declared input, settles as a fresh one does (004-50,
+ * reviews/wave-5.5.md B1).
  */
 
 const STRINGS = "test/strings.test.ts";
@@ -64,6 +74,13 @@ function repo(ignore: string, tracked: Record<string, string>) {
   mkdirSync(join(r.main, "dist"));
   writeFileSync(join(r.main, "dist/index.js"), "export const build = 'a';\n");
   return r;
+}
+
+/** Persists `paths`' hashes as a predecessor's listing of gitignored declared inputs did. */
+async function seedPredecessor(store: Store, root: string, paths: string[]): Promise<void> {
+  const cache = new StatCache();
+  await seedStatCache(cache, root, paths, { objectFormat: "sha1" });
+  store.transaction(() => cache.flush(store.fileHashes, worktreeIdFor(root)));
 }
 
 /** Two interval passes, as the daemon's every 30 s, each followed by the work it made. */
@@ -187,5 +204,80 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     expect(h.scheduler.extraFiles()).toContain("dist/index.js");
     expect(h.scheduler.extraFiles()).not.toContain("test/.tmp/out.txt");
     expect(h.runsOf(STRINGS)).toHaveLength(1);
+  });
+
+  it.each([
+    ["a fresh store", false],
+    ["a store a predecessor cached the scratch file in", true],
+  ])(
+    "stores a fast file's run that rewrites an existing ignored scratch file, from %s",
+    async (_, warm) => {
+      const SCRATCH = "fixtures/.tmp/out.txt";
+      const r = repo("fixtures/.tmp/", { "fixtures/data.txt": "data\n" });
+      mkdirSync(join(r.main, "fixtures/.tmp"));
+      writeFileSync(join(r.main, SCRATCH), "scratch\n");
+      const store = openRepoStore(r.commonDir);
+      if (warm) {
+        await seedPredecessor(store, r.main, [SCRATCH]);
+        expect(store.fileHashes.list(worktreeIdFor(r.main)).map((row) => row.path)).toContain(
+          SCRATCH,
+        );
+      }
+      const h = await openHarness(r.main, store, r.commonDir, {
+        policy: policy({ [MATH]: ["fixtures/**"] }),
+        slow: calm(),
+      });
+      // Each run of the fast file writes new bytes into the same scratch file.
+      h.runner.beforeRun = (files) => {
+        if (files.some((f) => f.path === MATH)) h.write(SCRATCH, `${Math.random()}\n`);
+      };
+      await h.scheduler.start();
+      await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
+      await expect.poll(() => h.keyOf(MATH) !== null && h.runsOf(MATH).length > 0).toBe(true);
+      await h.scheduler.idle();
+      expect(h.runsOf(MATH)).toHaveLength(1);
+      const revision = h.scheduler.status().revision;
+
+      await twoIntervals(h);
+      expect(h.scheduler.status().revision).toBe(revision);
+      expect(h.runsOf(MATH)).toHaveLength(1);
+      expect(h.scheduler.extraFiles()).not.toContain(SCRATCH);
+      expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+      expect([...h.scheduler.trackedPaths()]).not.toContain(SCRATCH);
+      const states = h.sink.states().filter((s) => JSON.stringify(s.check).includes(MATH));
+      expect(states.length).toBeGreaterThan(0);
+      for (const state of states) expect(state.validity).toBe("current");
+    },
+  );
+
+  it("tracks a dropped gitignored file again when a closure names it, rewritten while no daemon ran", async () => {
+    const GEN = "test/gen.test.ts";
+    const CLIENT = "src/gen/client.ts";
+    // The fixture gitignores `src/gen/`; a fast file's declaration covers it.
+    const r = repo("", {});
+    const store = openRepoStore(r.commonDir);
+    const options = { policy: policy({ [MATH]: ["src/**"] }), slow: calm() };
+    const first = await openHarness(r.main, store, r.commonDir, options);
+    await first.scheduler.start();
+    await expect.poll(() => first.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
+    await first.scheduler.idle();
+    expect(first.scheduler.extraFiles()).toContain(CLIENT);
+    await first.scheduler.close();
+    await first.runner.close();
+
+    writeFileSync(join(r.main, CLIENT), 'export const client = () => "o" + "k";\n');
+    const second = await openHarness(r.main, store, r.commonDir, options);
+    await second.scheduler.start();
+    await expect.poll(() => second.runsOf(GEN).length, { timeout: 60_000 }).toBe(1);
+    await second.scheduler.idle();
+    expect(second.runner.runs.flatMap((run) => run.files.map((f) => f.path))).toEqual([GEN]);
+    expect(second.scheduler.extraFiles()).toContain(CLIENT);
+
+    // Watched again: an edit reruns the file that imports it.
+    second.write(CLIENT, 'export const client = () => "ok" as string;\n');
+    await second.batch(CLIENT);
+    await second.scheduler.idle();
+    expect(second.runsOf(GEN)).toHaveLength(2);
+    expect(second.runsOf(MATH)).toHaveLength(0);
   });
 });
