@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { runGit, sameList, splitNul } from "../fs/index.js";
 import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
 import {
+  artifactGlobs,
   assembleClosure,
   coreEnvironmentInputs,
   createDeclaredInputs,
@@ -22,6 +23,7 @@ import {
   unmatchedInputs,
 } from "../keys/index.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
+import { inheritsAcrossWorktrees } from "../slow/index.js";
 import type {
   AbsolutePath,
   CandidateBatch,
@@ -42,6 +44,7 @@ import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
+import { slowView } from "./slow.js";
 
 export interface KeyingOptions {
   readonly root: AbsolutePath;
@@ -301,15 +304,13 @@ export class WorktreeKeys {
 
   /**
    * What every reconciliation pass reconciles too, whatever else it found:
-   * the gitignored declared inputs, within the declared globs' reach, not
-   * watched yet, a path already hashed included. A file a rebuild only added
-   * joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches them
-   * from here on.
+   * the gitignored files of slow files' declared artifacts (`#ignoredArtifacts`),
+   * not watched yet, a path already hashed included. A file a rebuild only
+   * added joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches
+   * them from here on.
    */
   async ignoredCandidates(): Promise<RelativePath[]> {
-    const globs = inputGlobs(this.#policy.inputs);
-    if (globs.length === 0) return [];
-    const listed = await ignoredInputs(this.options.root, globs);
+    const listed = await this.#ignoredArtifacts();
     const unwatched = listed.filter((path) => !this.#extra.has(path));
     if (unwatched.length === 0) return [];
     for (const path of unwatched) this.#extra.add(path);
@@ -437,7 +438,27 @@ export class WorktreeKeys {
    */
   async #trackIgnoredInputs(): Promise<void> {
     this.#ignoredStale = false;
-    await this.track(await ignoredInputs(this.options.root, inputGlobs(this.#policy.inputs)));
+    await this.track(await this.#ignoredArtifacts());
+  }
+
+  /**
+   * The gitignored files a slow file's declared artifact selects (spec 004
+   * D5): only entries of policy `inputs` whose test-file glob selects a slow
+   * file list them, and none is a test file or under a directory a slow
+   * glob covers (D6's rule). A test's own gitignored scratch files never key
+   * it, so no run feeds its own inputs (lessons defect 10).
+   */
+  async #ignoredArtifacts(): Promise<RelativePath[]> {
+    const view = slowView(this.#policy);
+    if (!view.declared) return [];
+    const isSlow = createInputMatcher(view.globs);
+    const globs = artifactGlobs(this.#policy.inputs, this.#knownFiles(), isSlow);
+    if (globs.length === 0) return [];
+    const testFiles = new Set([...this.#runnerClosures.values()].map((r) => r.testFile.path));
+    const listed = await ignoredInputs(this.options.root, globs);
+    return listed.filter((path) =>
+      inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs),
+    );
   }
 
   /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */

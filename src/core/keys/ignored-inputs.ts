@@ -8,15 +8,40 @@ import {
   splitNul,
   toAbsolute,
 } from "../fs/index.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import type { AbsolutePath, PolicyInputs, RelativePath } from "../types/index.js";
 import { holdsRoot, inOtherRepository } from "../watcher/candidates.js";
 import { ignoredLinks } from "../watcher/git.js";
 import { isLinkedDir, SymlinkProbe } from "../watcher/links.js";
 import { selfAndAncestors } from "../watcher/paths.js";
+import { isInputList } from "./closure.js";
 import { createInputMatcher, globToRegExp } from "./glob.js";
 
 /** Installed packages enter keys through the environment hash (D3), never as declared inputs. */
 const INSTALLED = ":(exclude,glob)**/node_modules/**";
+
+/**
+ * The input globs of policy `inputs` that name a slow file's artifact (spec
+ * 004 D5), the only ones whose gitignored files `ignoredInputs` lists: those
+ * of each entry whose test-file glob selects a file of `files` that `isSlow`
+ * holds, and every glob of a list once one of `files` is slow. A fast test's
+ * gitignored scratch files under its declared inputs then never key it, so no
+ * run feeds its own inputs (lessons defect 10).
+ */
+export function artifactGlobs(
+  inputs: PolicyInputs,
+  files: Iterable<RelativePath>,
+  isSlow: (path: RelativePath) => boolean,
+): string[] {
+  const slow: RelativePath[] = [];
+  for (const file of files) if (isSlow(file)) slow.push(file);
+  if (slow.length === 0) return [];
+  if (isInputList(inputs)) return [...inputs];
+  const globs = Object.entries(inputs).flatMap(([testGlob, globs]) => {
+    const applies = createInputMatcher([testGlob]);
+    return slow.some(applies) ? globs : [];
+  });
+  return [...new Set(globs)];
+}
 
 /**
  * The gitignored files under `root` that policy input `globs` select, sorted:
