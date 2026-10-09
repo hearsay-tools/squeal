@@ -1,6 +1,7 @@
+import { type StatCache, sameStat } from "../hash/index.js";
 import { ancestorListings } from "../keys/index.js";
-import { commitBatch, diffBatch, statCandidates } from "../revision/index.js";
-import type { CandidateBatch, Revision } from "../types/index.js";
+import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/index.js";
+import type { CandidateBatch, RelativePath, Revision } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { type ContentRekey, rekeyContent } from "./revision.js";
@@ -19,12 +20,19 @@ import { type ContentRekey, rekeyContent } from "./revision.js";
  * A reconciliation pass that finds no change also asks whether an
  * installed lockfile appeared, vanished or moved; that becomes a revision
  * of its own (review S8, N3).
+ *
+ * `touched` is what no revision names (task 001-159): the paths written
+ * since they were hashed whose bytes ended as they were, a revert and its
+ * restore in one batch among them.
  */
 export async function reconcileBatch(
   context: SchedulerContext,
   ledger: Ledger,
   batch: CandidateBatch,
-): Promise<{ revision: Revision; content: ContentRekey } | null> {
+): Promise<{
+  applied: { revision: Revision; content: ContentRekey } | null;
+  touched: RelativePath[];
+}> {
   const { keys, hasher, store, worktreeId } = context;
   let diff = await diffBatch(batch, keys.cache, hasher);
   if (diff.changes.length === 0 && batch.trigger !== "watch") {
@@ -36,7 +44,8 @@ export async function reconcileBatch(
     }
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
-  return store.transaction(() => {
+  const touched = touchedUnchanged(diff, keys.cache);
+  const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
       head,
@@ -60,4 +69,21 @@ export async function reconcileBatch(
     ledger.commit();
     return { revision, content };
   });
+  return { applied, touched };
+}
+
+/**
+ * Paths of `diff` hashed because their stat moved, with the hash they had.
+ * Read before `commitBatch` updates `cache`. A racy entry re-hashed on an
+ * equal stat was not written since, so it is not among them.
+ */
+function touchedUnchanged(diff: BatchDiff, cache: StatCache): RelativePath[] {
+  const changed = new Set(diff.changes.map((change) => change.path));
+  const touched: RelativePath[] = [];
+  for (const update of diff.updates) {
+    if (update.kind !== "set" || changed.has(update.record.path)) continue;
+    const cached = cache.get(update.record.path);
+    if (cached !== undefined && !sameStat(cached, update.record)) touched.push(cached.path);
+  }
+  return touched;
 }

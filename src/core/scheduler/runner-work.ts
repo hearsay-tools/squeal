@@ -65,10 +65,31 @@ export class RunnerWork {
     return this.#refining;
   }
 
-  /** Queues the runner part of `revision`. */
-  queueRefine(revision: Revision, content: ContentRekey): void {
+  /** Queues the runner part of `revision`, and of the files its batch touched (`queueTouched`). */
+  queueRefine(
+    revision: Revision,
+    content: ContentRekey,
+    touched: readonly RelativePath[] = [],
+  ): void {
     this.#tasks.push({
-      run: () => this.#refine(revision, content, revision.number),
+      run: () => this.#refine(revision, content, revision.number, touched),
+      cancel: () => {},
+      refine: true,
+    });
+  }
+
+  /**
+   * Queues a runner-only refinement for files a batch touched whose bytes
+   * ended as they were (task 001-159): no revision names them, but the
+   * runner may hold what it read of them in between. It invalidates them
+   * as `touch`, and takes what a recreate the runner reports for it re-keys.
+   */
+  queueTouched(touched: readonly RelativePath[]): void {
+    this.#tasks.push({
+      run: () => {
+        const { context, ledger } = this.host.started();
+        return this.#refine(unchanged(context, ledger), NO_CONTENT, null, touched);
+      },
       cancel: () => {},
       refine: true,
     });
@@ -119,6 +140,7 @@ export class RunnerWork {
     revision: Revision,
     content: ContentRekey,
     refined: Revision["number"] | null,
+    touched: readonly RelativePath[] = [],
   ): Promise<void> {
     const { context, ledger } = this.host.started();
     this.#refining = true;
@@ -126,7 +148,7 @@ export class RunnerWork {
       ledger.refineChanges = new Set();
       const carried = [...this.#carried.values()];
       this.#carried.clear();
-      const part = await fetchRunnerPart(context, ledger, revision, content, carried);
+      const part = await fetchRunnerPart(context, ledger, revision, content, carried, touched);
       await this.host.lock.run(async () => {
         const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
         ledger.refineChanges = null;

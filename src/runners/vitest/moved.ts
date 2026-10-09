@@ -1,5 +1,5 @@
 import type { Vitest } from "vitest/node";
-import type { AbsolutePath, RunReport, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath, RelativePath, RunReport, TestFileRef } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { refKey } from "./results.js";
 
@@ -64,11 +64,29 @@ export function withoutFiles(
   stale: readonly AbsolutePath[],
   paths: WorktreePaths,
 ): RunReport {
+  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
+  const reason = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
+  return dropFiles(report, dropped, reason);
+}
+
+/**
+ * Task 001-159: `report` without any of `testFiles`, since `touched` were
+ * written during the run and ended as they were. Any cache the run read
+ * may hold their other bytes, so no file of it is stored.
+ */
+export function withoutTouched(
+  report: RunReport,
+  testFiles: readonly TestFileRef[],
+  touched: readonly RelativePath[],
+): RunReport {
+  const reason = `vitest adapter: ${touched.join(", ")} was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)`;
+  return dropFiles(report, testFiles, reason);
+}
+
+function dropFiles(report: RunReport, dropped: readonly TestFileRef[], reason: string): RunReport {
   if (dropped.length === 0) return report;
   const gone = new Set(dropped.map(refKey));
   const kept = (ref: TestFileRef) => !gone.has(refKey(ref));
-  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
-  const reason = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
   const { fileDurations, observed } = report;
   return {
     ...report,

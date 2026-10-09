@@ -1,5 +1,6 @@
 import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
 import type {
+  InvalidatedPath,
   ProjectName,
   RelativePath,
   Revision,
@@ -43,7 +44,8 @@ export interface RunnerPart {
  * Spec 001 D5: "1. invalidates changed paths in the runner [...]; 2.
  * computes the affected test files and recomputes their keys". In detail:
  *
- * - `runner.invalidate` with every change;
+ * - `runner.invalidate` with every change, and as `touch` each path its
+ *   batch touched with no change (task 001-159);
  * - the environment is read again when the runner recreated a project, when
  *   an environment input changed, or while a runner failure is outstanding;
  * - the test file list is re-read after an add, a delete, a recreate, or a
@@ -64,6 +66,7 @@ export async function fetchRunnerPart(
   revision: Revision,
   content: ContentRekey,
   carried: Iterable<TestFileRef>,
+  touched: readonly RelativePath[] = [],
 ): Promise<RunnerPart> {
   const { keys, runner } = context;
   const changes = revision.changes;
@@ -71,11 +74,15 @@ export async function fetchRunnerPart(
   const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
   const failures: Failures = new Map();
   const retrying = ledger.broken;
+  const invalidations: InvalidatedPath[] = [
+    ...changes.map(toInvalidatedPath),
+    ...touched.map((path) => ({ path, kind: "touch" as const })),
+  ];
 
   const invalidated = await tryRunner(
     context,
-    `invalidate (${listPaths(paths)})`,
-    () => runner.invalidate(changes.map(toInvalidatedPath)),
+    `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
+    () => runner.invalidate(invalidations),
     (reason) => failed(failures, null, reason),
   );
   const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);

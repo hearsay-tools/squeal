@@ -182,15 +182,19 @@ class TierScheduler implements Scheduler {
         if (!this.#awaitingInstall) await this.#baseline(context, ledger);
         return;
       }
-      const applied = await reconcileBatch(context, ledger, batch);
+      const { applied, touched } = await reconcileBatch(context, ledger, batch);
       // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
-      const touched = applied?.revision.changes.some((change) => touchesInstall(change.path));
-      if (touched || batch.trigger === "interval") {
+      const install = applied?.revision.changes.some((change) => touchesInstall(change.path));
+      if (install || batch.trigger === "interval") {
         const { missing } = await this.#install.check();
         // The revision stays unrefined, so the next daemon's `scan` reads its paths as edits.
         if (missing !== null) return this.#reinstall(ledger);
       }
-      if (applied === null) return;
+      // Task 001-159: the runner hears of a touched-unchanged file before the next tier.
+      if (applied === null) {
+        if (touched.length > 0) this.#runnerWork.queueTouched(touched);
+        return;
+      }
       this.#slow.preempt();
       // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
       for (const { tier } of this.#inFlight.values()) {
@@ -198,7 +202,7 @@ class TierScheduler implements Scheduler {
           tier.cancel.abort();
         }
       }
-      this.#runnerWork.queueRefine(applied.revision, applied.content);
+      this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
     });
     if (this.#reinstalled) this.#tellReinstall();
     else this.#pump();
