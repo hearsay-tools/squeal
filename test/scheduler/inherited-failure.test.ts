@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { formatDelta } from "../../src/core/delivery/index.js";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import type { CheckId, Store } from "../../src/core/types/index.js";
+import { type CheckId, DEFAULT_POLICY, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import {
   addWorktree,
@@ -32,8 +32,25 @@ const flips: CheckId = { kind: "test", project: "", testPath: FLAKY, fullName: "
 
 const markers: string[] = [];
 afterEach(() => {
-  for (const marker of markers.splice(0)) rmSync(marker, { force: true });
+  for (const marker of markers.splice(0)) rmSync(marker, { recursive: true, force: true });
 });
+
+/**
+ * The flaky file slow (spec 004 D2), with a declared artifact so another
+ * worktree may inherit it (D6), one slow file at a time on an idle host.
+ */
+function slowOptions(): HarnessOptions {
+  const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-170-slot-"));
+  markers.push(slotDir);
+  return {
+    tierSize: 4,
+    policy: {
+      slow: { ...DEFAULT_POLICY.slow, include: [FLAKY], maxParallel: 1 },
+      inputs: { [FLAKY]: ["src/math.ts"] },
+    },
+    slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
+  };
+}
 
 /** A repository whose committed `test/flaky.test.ts` fails while the returned marker exists. */
 function flakyRepo() {
@@ -75,7 +92,7 @@ function resultOf(store: Store, key: string | null) {
  * Worktree A runs and fails `flips`; worktree B starts with its first run
  * of the flaky file held, and `look` runs while it is held.
  */
-async function inheritFail(options: HarnessOptions, slowFile = false) {
+async function inheritFail(options: HarnessOptions) {
   const repo = flakyRepo();
   const other = addWorktree(repo.main, repo.dir, "other");
   const store = openRepoStore(repo.commonDir);
@@ -98,7 +115,7 @@ async function inheritFail(options: HarnessOptions, slowFile = false) {
   };
   await b.scheduler.start();
   await atRun;
-  expect(slowFile ? b.runsOf(FLAKY) : []).toEqual([]);
+  expect(b.runsOf(FLAKY)).toEqual([]);
   return { repo, store, a, b, told, release: gate.release };
 }
 
@@ -186,6 +203,31 @@ describe("an inherited failure stands only once the receiving worktree confirms 
     // A's own fail stands: it confirmed the key itself.
     expect(store.knownStates.get(a.worktreeId, flips)).toMatchObject({
       outcome: "fail",
+      validity: "current",
+    });
+  });
+
+  it("keeps a slow file's inherited fail pending until the slow tier runs it", async () => {
+    const options = slowOptions();
+    const { repo, store, a, b, release } = await inheritFail(options);
+    // Held at the slow tier's run: every fast file is done, the slow one alone has no state yet.
+    const fast = b.runner.runs.flatMap((run) => run.files.map((f) => f.path));
+    expect(fast).not.toContain(FLAKY);
+    expect(b.sink.stateOf(flips)).toBeNull();
+    expect(
+      store.testFileKeys.list(b.worktreeId).find((r) => r.testFile.path === FLAKY)?.pending,
+    ).toBe("running");
+    const { delivery, consumer } = await b.consumer();
+    expect(await delivery.onToolBoundary(consumer)).toBeNull();
+
+    rmSync(repo.marker);
+    release();
+    await b.scheduler.idle();
+    const slowRuns = b.runsOf(FLAKY);
+    expect(slowRuns.map((run) => run.files.map((f) => f.path))).toEqual([[FLAKY]]);
+    expect(b.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });
+    expect(store.knownStates.get(a.worktreeId, flips)).toMatchObject({
+      outcome: "pass",
       validity: "current",
     });
   });
