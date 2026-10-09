@@ -5241,6 +5241,7 @@ function newFileState(ref2) {
     id: testFileId(ref2),
     key: null,
     keyedAt: null,
+    lastKeyedAt: null,
     resultKey: null,
     checks: [],
     failing: false,
@@ -5254,6 +5255,14 @@ function newFileState(ref2) {
     blocked: null,
     tierCap: null
   };
+}
+function noteKeyedAt(file, revision) {
+  file.keyedAt = file.keyedAt === null ? revision : Math.min(file.keyedAt, revision);
+  file.lastKeyedAt = file.lastKeyedAt === null ? revision : Math.max(file.lastKeyedAt, revision);
+}
+function clearKeyedAt(file) {
+  file.keyedAt = null;
+  file.lastKeyedAt = null;
 }
 function classify2(file) {
   if (file.phase !== null) return "pending";
@@ -6806,7 +6815,7 @@ var init_ledger = __esm({
           const key2 = this.context.keys.index.key(ref2);
           if (key2 !== file.key) {
             file.key = key2;
-            if (options.keyedAt !== void 0) file.keyedAt = options.keyedAt;
+            if (options.keyedAt !== void 0) noteKeyedAt(file, options.keyedAt);
             this.#dirty.add(file.id);
           }
           if (file.rerunPending && key2 !== file.rerunKey) {
@@ -6815,6 +6824,7 @@ var init_ledger = __esm({
           }
           if (this.queue.isForced(ref2)) continue;
           if (key2 === null || key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey) {
+            if (key2 !== null && (key2 === file.resultKey || key2 === file.unknownKey)) clearKeyedAt(file);
             this.queue.remove(ref2);
             this.#syncPhase(file);
             continue;
@@ -6887,6 +6897,7 @@ var init_ledger = __esm({
         file.discards = 0;
         file.blocked = null;
         file.tierCap = null;
+        if (key2 === file.key) clearKeyedAt(file);
         if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
         this.#syncPhase(file);
         this.checkpoints.done(file.ref, checkpointId);
@@ -6929,6 +6940,7 @@ var init_ledger = __esm({
         if (entries2.length === 0) return;
         for (const { file, key: key2 } of entries2) {
           file.unknownKey = key2;
+          if (key2 === file.key) clearKeyedAt(file);
           if (file.key === key2 && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
           this.#syncPhase(file);
           this.checkpoints.failed(file.ref);
@@ -9573,9 +9585,10 @@ var init_scheduler2 = __esm({
       rekeyedSince(after, upTo) {
         const files = [];
         for (const file of this.#ledger?.files.values() ?? []) {
-          const revision = file.keyedAt;
-          if (revision !== null && revision > after && revision <= upTo) {
-            files.push({ testFile: file.ref, revision });
+          for (const revision of /* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])) {
+            if (revision !== null && revision > after && revision <= upTo) {
+              files.push({ testFile: file.ref, revision });
+            }
           }
         }
         return files;
@@ -32615,7 +32628,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.85";
+  if (true) return "0.1.86";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
