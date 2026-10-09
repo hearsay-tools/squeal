@@ -312,8 +312,13 @@ export async function terminate(
     if (!same(entry)) continue;
     named.push({ entry, args: await table.commandLine(entry.pid) });
   }
-  const termed = named.filter(({ entry }) => same(entry)).map(({ entry }) => entry);
-  for (const { pid } of termed) table.signal(pid, "SIGTERM");
+  // Each identity is checked right before its own signal; one signal may free the next pid (review wave-13b S2).
+  const termed: ProcessEntry[] = [];
+  for (const { entry } of named) {
+    if (!same(entry)) continue;
+    table.signal(entry.pid, "SIGTERM");
+    termed.push(entry);
+  }
   const deadline = Date.now() + GRACE_MS;
   let alive = termed.filter(same);
   while (alive.length > 0 && Date.now() < deadline) {
