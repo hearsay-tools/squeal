@@ -80,6 +80,9 @@ describe("a path a preload loads at run time (review wave 2, B1)", () => {
       timeoutMs: 30_000,
     });
     expect(report).toMatchObject({ end: "completed", completedFiles: [A] });
+    // Task 003-43: the report names what the preloads loaded, so the scheduler stores the run's
+    // results only under an environment that holds it.
+    expect(report.environmentObserved).toEqual([{ project: "p", paths: [HELPER] }]);
 
     // As D3 has it for a test file's observed path, this worktree re-keys at the next edit
     // of the path: the scheduler reads the environment again for a recreated project.
@@ -111,5 +114,12 @@ describe("a path a preload loads at run time (review wave 2, B1)", () => {
     });
     expect((await other.environment())[0]?.files).toContain(HELPER);
     expect((await other.affected([HELPER])).transitive).toEqual([A]);
+    // Each run names the path again, keyed or not: the scheduler compares it with the key it ran under.
+    const again = await adapter.run([A], {
+      runId: "r2",
+      logDir: join(logs, randomUUID()),
+      timeoutMs: 30_000,
+    });
+    expect(again.environmentObserved).toEqual([{ project: "p", paths: [HELPER] }]);
   });
 });

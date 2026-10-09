@@ -84,8 +84,13 @@ export class Observed {
     return recreate;
   }
 
-  /** D3, D5: what each completed, listed file and its preloads loaded beyond the static graph. */
-  record(seen: readonly ObservedClosure[], listed: ReadonlySet<RelativePath>): void {
+  /**
+   * D3, D5: what each completed, listed file and its preloads loaded beyond
+   * the static graph. Returns the preloads' observed-only paths of this run,
+   * sorted, so the scheduler keeps no result of a file whose key lacked
+   * one (task 003-43).
+   */
+  record(seen: readonly ObservedClosure[], listed: ReadonlySet<RelativePath>): RelativePath[] {
     const tests: Record<RelativePath, RelativePath[]> = {};
     const preloadStatic = new Set(this.graph.preloads().paths);
     const preloads = new Set<RelativePath>();
@@ -100,13 +105,15 @@ export class Observed {
       if (added.length > 0) tests[testFile.path] = added;
     }
     const addedPreloads = this.addPreloads([...preloads]);
-    if (this.store === undefined) return;
-    try {
-      if (Object.keys(tests).length > 0) this.store.write(tests);
-      if (addedPreloads.length > 0) this.store.writePreloads(addedPreloads);
-    } catch (error) {
-      this.note(`could not store observed paths: ${String(error)}`);
+    if (this.store !== undefined) {
+      try {
+        if (Object.keys(tests).length > 0) this.store.write(tests);
+        if (addedPreloads.length > 0) this.store.writePreloads(addedPreloads);
+      } catch (error) {
+        this.note(`could not store observed paths: ${String(error)}`);
+      }
     }
+    return [...preloads].sort(compare);
   }
 
   /** Adds paths to one test file's set; returns the new ones. */

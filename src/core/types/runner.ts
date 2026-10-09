@@ -297,6 +297,20 @@ export interface RunReport {
    * the runner observes (task 001-132). Absent: nothing observed.
    */
   readonly observed?: readonly ObservedInputs[];
+  /**
+   * Per project, the environment files the run was observed to load: what a
+   * node:test preload loads by a computed specifier (spec 003 D5; task
+   * 003-43), keyed or not. For a test file whose key lacked one, the core
+   * stores nothing, reads the environments again and runs the file again
+   * under the key that holds it. Absent: nothing observed.
+   */
+  readonly environmentObserved?: readonly EnvironmentObserved[];
+}
+
+/** One project's observed environment files (`RunReport.environmentObserved`). */
+export interface EnvironmentObserved {
+  readonly project: ProjectName;
+  readonly paths: readonly RelativePath[];
 }
 
 /**
