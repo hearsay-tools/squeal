@@ -12,7 +12,6 @@ import {
   type SchedulerStatus,
   type SlowSuiteRequest,
 } from "../types/index.js";
-import { isSlowLane } from "../types/runner.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
