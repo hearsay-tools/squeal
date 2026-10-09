@@ -48,6 +48,6 @@ Use /worker.
 
 ## 004-26 third review: 004-25, 003-41, 003-42
 
-Outcome: `reviews/wave-2.6.md`, committed. Range: the 004-25, 003-41 and 003-42 commits and their bundles on main (pinned at dispatch). For 004-25: are `reviews/wave-2.5.md` B1 and B2 closed (third and last round, by the human's decision). For 003-41 and 003-42: first review; spec 003 ships on its result. Also for 004-25's new `failure-keys:<worktreeId>` meta row, written by `src/core/state/sink.ts` for every applied result (from the 001 coordinator): measure a 2,000-result apply transaction's write-lock hold with and without it at this host's load, and prove that a crashed or timed-out run never removes a still-failing check's key. Rules as for 004-14.
+Outcome: `reviews/wave-2.6.md`, committed. Range: `git log --oneline 35e2769^..265f783` on main, 0.1.55 (003-41, 003-42, 004-25 and their bundles; 001 commits before it are out of scope). For 004-25: are `reviews/wave-2.5.md` B1 and B2 closed (third and last round, by the human's decision). For 003-41 and 003-42: first review; spec 003 ships on its result. Also for 004-25's new `failure-keys:<worktreeId>` meta row, written by `src/core/state/sink.ts` for every applied result (from the 001 coordinator): measure a 2,000-result apply transaction's write-lock hold with and without it at this host's load, and prove that a crashed or timed-out run never removes a still-failing check's key. Rules as for 004-14.
 
 Use /reviewer.

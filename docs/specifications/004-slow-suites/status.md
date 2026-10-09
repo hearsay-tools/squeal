@@ -36,6 +36,8 @@ Started: 2026-10-08
 
 - 2026-10-09, decided by the human after `reviews/wave-2.5.md`: 004-23's remaining B1 and B2 get a fix (004-25) and a third review (004-26); spec 003 moves to shipped after a review of 003-41 (in 004-26); the quality pass runs once spec 001's coordinator finishes and these fixes land. Wave 2.6 also starts the e2e (004-16), which makes the slow slot follow the daemon's `XDG_RUNTIME_DIR` so a slow e2e file run under an outer daemon does not wait on its own slot.
 
+- 2026-10-09, wave 2.6 fixes, 0.1.55 (gate fully green on Node 24 and 22, 2037 tests): 004-25, every Stop `endTurn` keeps the revision guard and the retry bound blocks with a short reason; a slow failure's artifact comes from `failure-keys:<worktreeId>` (check to the key of its applied failing result, written by the state sink in the result's transaction, newest 1,024) and `slow-artifacts`, else "declared artifact unknown". 003-41 and 003-42 in spec 003. Third review 004-26 dispatched.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
