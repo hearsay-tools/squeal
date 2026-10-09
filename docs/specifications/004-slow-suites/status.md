@@ -81,6 +81,8 @@ Started: 2026-10-08
 
 - 2026-10-10, decided by the human after shipping: run the three should-fix rows now (004-52, 004-54, 004-55, briefs in `tasks/wave-6.md`, on disjoint seams), then one review (004-56). 004-52's brief is corrected: 004-50's drop lives in `src/core/scheduler/keying.ts`.
 
+- 2026-10-10, wave 6, 0.1.88 (gate fully green on Node 24 and 22): 004-52, a path bootstrap tracks again only because a saved closure names it is dropped once nothing current needs it (`keying.ts`; the brief's lead sat in 004-54's file); 004-54, a missed slow file whose stored key has no results takes its duration from its own newest results under any key, `resultKey` untouched (`lessons.md` defect 17); 004-55, D8 amended by the coordinator: a source is a path some test file's stored closure names, fast or slow, minus test files, slow directories, fast tests' declared inputs, the policy file and declared artifacts. The slow files' closures alone, the brief's lead, would have hidden the clause where the end-to-end tests read only the build output (`lessons.md` defect 18). Rebased onto the 001 lane's 0.1.87 (001-196), so this lands as 0.1.88. Review 004-56 dispatched.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
