@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,7 +26,10 @@ import { resultOf } from "./scratch-helpers.js";
  * `codex exec` and `claude -p`) run before the daemon exits, for at most
  * `daemon.idleExitMinutes`; a session that starts during the drain is served,
  * its fast work beside the slow file, and the daemon stays after the drain.
- * The one slow file holds until the test writes its flag.
+ * The one slow file holds until the test writes its flag. Review wave 4, S2
+ * (task 004-37): slow files an in-turn session left queued and unstarted
+ * start when it ends, and a session arriving before the next file starts is
+ * served first.
  */
 
 const suite = daemonSuite();
@@ -100,6 +103,73 @@ async function draining(idleExitMinutes?: number) {
     },
   );
   return { repo, spawned, release: () => writeFileSync(join(dir, "flag"), "") };
+}
+
+/** A Vitest file that appends to `started-<name>` and holds until `release-<name>` exists. */
+function heldTest(dir: string, name: string): string {
+  const at = (file: string) => JSON.stringify(join(dir, `${file}-${name}`));
+  return `import { appendFileSync, existsSync } from "node:fs";
+import { expect, it } from "vitest";
+it("holds until released", async () => {
+  appendFileSync(${at("started")}, "x");
+  const deadline = Date.now() + 150_000;
+  while (!existsSync(${at("release")}) && Date.now() < deadline) {
+    await new Promise((done) => setTimeout(done, 100));
+  }
+  expect(existsSync(${at("release")})).toBe(true);
+}, 170_000);
+`;
+}
+
+const SLOW_NAMES = ["a", "b"] as const;
+const slowPath = (name: string) => `test/slow-${name}.test.ts`;
+
+/**
+ * Review wave 4, S2: a daemon whose session `s1` is in a turn, so its two
+ * slow files stay queued, unstarted, after the fast baseline.
+ */
+async function queuedInTurn(maxParallel: number) {
+  const dir = mkdtempSync(join(tmpdir(), "sq-004-37-"));
+  suite.cleanup(() => rmSync(dir, { recursive: true, force: true }));
+  const files: Record<string, string> = {
+    "squeal.config.json": `${JSON.stringify({
+      runner: { tierSize: 1 },
+      slow: { include: ["test/slow-*.test.ts"], maxParallel, maxLoadPerCpu: 1000 },
+    })}\n`,
+  };
+  for (const name of SLOW_NAMES) files[slowPath(name)] = heldTest(dir, name);
+  const repo = suite.fixture(files);
+  const spawned = suite.daemon(repo);
+  await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
+  await start(repo, "s1");
+  await prompt(repo, "s1");
+  await waitFor(
+    () => (outcome(repo, "test/math.test.ts") === "pass" ? true : null),
+    120_000,
+    "the fast baseline",
+  ).catch((error: Error) => {
+    throw new Error(`${error.message}\n${diagnose(repo, spawned)}`);
+  });
+  const starts = () =>
+    SLOW_NAMES.map((name) => {
+      const path = join(dir, `started-${name}`);
+      return existsSync(path) ? readFileSync(path, "utf8").length : 0;
+    });
+  const release = (name: string) => writeFileSync(join(dir, `release-${name}`), "");
+  suite.cleanup(() => {
+    for (const name of SLOW_NAMES) release(name);
+  });
+  return { repo, spawned, starts, release };
+}
+
+async function prompt(repo: FixtureRepo, sessionId: string) {
+  const payload = recorded("user-prompt-submit", repo.root, { session_id: sessionId });
+  await runHook("user-prompt-submit", payload, deps(repo));
+}
+
+async function stop(repo: FixtureRepo, sessionId: string) {
+  const payload = recorded("stop", repo.root, { session_id: sessionId });
+  await runHook("stop", payload, deps(repo));
 }
 
 const outcome = (repo: FixtureRepo, path: string) =>
@@ -180,6 +250,68 @@ describe.runIf(process.platform === "linux")(
       expect(await exitWithin(spawned, 60_000, repo)).toEqual({ code: 0, signal: null });
       expect(outcome(repo, "test/slow.test.ts")).toBe("pass");
       expect(readNotes(repo).filter((n) => DRAINED_NOTE.test(n))).toEqual([]);
+    });
+
+    it("starts the queued slow files an in-turn session left, all at once, and stores them before exit", async () => {
+      const { repo, spawned, starts, release } = await queuedInTurn(2);
+      // In a turn: the baseline is done and no slow file started (D2).
+      await delay(3_000);
+      expect(starts()).toEqual([0, 0]);
+
+      await end(repo, "s1");
+      // Both start together, runner.tierSize 1 notwithstanding: an idle tier of slow.maxParallel files.
+      await waitFor(() => (starts().every((n) => n === 1) ? true : null), 60_000, "both started");
+      expect(spawned.child.exitCode).toBeNull();
+      for (const name of SLOW_NAMES) release(name);
+      expect(await exitWithin(spawned, 60_000, repo)).toEqual({ code: 0, signal: null });
+      expect(starts()).toEqual([1, 1]);
+      for (const name of SLOW_NAMES) expect(outcome(repo, slowPath(name))).toBe("pass");
+      expect(readNotes(repo).filter((n) => DRAINED_NOTE.test(n))).toHaveLength(1);
+    });
+
+    it("serves a session and its first edit that arrive before the second slow file starts", async () => {
+      const { repo, spawned, starts, release } = await queuedInTurn(1);
+      await end(repo, "s1");
+      await waitFor(() => (starts().includes(1) ? true : null), 60_000, "the first slow file");
+      const first = starts()[0] === 1 ? "a" : "b";
+      const second = first === "a" ? "b" : "a";
+      const secondAt = SLOW_NAMES.indexOf(second);
+
+      await start(repo, "s2");
+      await prompt(repo, "s2");
+      writeFileSync(
+        join(repo.root, "src/math.ts"),
+        "export const add = (a: number, b: number) => a - b;\n",
+      );
+      await waitFor(
+        () => outcome(repo, "test/math.test.ts") === "fail" || null,
+        120_000,
+        "the edit's fast file reported",
+      );
+      release(first);
+      await waitFor(() => outcome(repo, slowPath(first)) === "pass" || null, 60_000, "the first");
+      // s2 is in a turn: the second file waits, and the daemon stays.
+      await delay(3_000);
+      expect(starts()[secondAt]).toBe(0);
+      expect(spawned.child.exitCode).toBeNull();
+
+      // The agent fixes its edit and stops: idle, the second file starts.
+      writeFileSync(
+        join(repo.root, "src/math.ts"),
+        "export const add = (a: number, b: number) => a + b;\n",
+      );
+      await waitFor(
+        () => outcome(repo, "test/math.test.ts") === "pass" || null,
+        120_000,
+        "the fix reported",
+      );
+      await stop(repo, "s2");
+      await waitFor(() => starts()[secondAt] === 1 || null, 60_000, "the second slow file");
+      release(second);
+      await waitFor(() => outcome(repo, slowPath(second)) === "pass" || null, 60_000, "the second");
+      await end(repo, "s2");
+      expect(await exitWithin(spawned, 30_000, repo)).toEqual({ code: 0, signal: null });
+      expect(starts()).toEqual([1, 1]);
     });
   },
 );
