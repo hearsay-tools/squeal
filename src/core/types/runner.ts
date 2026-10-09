@@ -357,3 +357,20 @@ export interface RunnerAdapter {
 
   close(): Promise<void>;
 }
+
+/**
+ * Spec 003 D3 as amended: the observed-only paths of one node:test project,
+ * a map from test path to paths, shared by every worktree of the repository.
+ */
+export function nodeTestObservedMetaKey(project: ProjectName): string {
+  return `nodeTest.observed.${project}`;
+}
+
+/**
+ * Review wave 2, B1: the paths one node:test project's preloads loaded at
+ * run time outside their static closure, a sorted array, shared like
+ * {@link nodeTestObservedMetaKey}. They are environment inputs of the project.
+ */
+export function nodeTestObservedPreloadsMetaKey(project: ProjectName): string {
+  return `nodeTest.observedPreloads.${project}`;
+}
