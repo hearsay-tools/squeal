@@ -2,14 +2,15 @@ import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
 import { statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
-import type {
-  CandidateBatch,
-  CheckpointRecord,
-  FullSuiteRequest,
-  RelativePath,
-  Scheduler,
-  SchedulerStatus,
-  SlowSuiteRequest,
+import {
+  type CandidateBatch,
+  type CheckpointRecord,
+  type FullSuiteRequest,
+  isSlowLane,
+  type RelativePath,
+  type Scheduler,
+  type SchedulerStatus,
+  type SlowSuiteRequest,
 } from "../types/index.js";
 import { isSlowLane } from "../types/runner.js";
 import { cancelsBacklog } from "./backlog.js";
@@ -101,7 +102,8 @@ class TierScheduler implements Scheduler {
         started: () => this.#started(),
         closed: () => this.#closed,
         pump: () => this.#pump(),
-        fastPending: () => this.#fastPending(),
+        editPending: () => this.#editPending(),
+        fastIdle: () => this.#fastIdle(),
       },
       options.slow,
     );
@@ -339,10 +341,12 @@ class TierScheduler implements Scheduler {
    * behind its own run (Vitest's adapter) still holds the runner work for
    * as long as its tier runs.
    *
-   * A slow file (spec 004 D2) is selected only when no tier is in flight,
-   * so the slow tier's start rules stand as they were with one tier at a
-   * time; it runs in a lane of its own (`laneOf`, task 004-18), so an edit's
-   * fast tier starts beside it.
+   * A slow tier (spec 004 D2) is selected when no slow tier and no edit's
+   * tier is in flight (`#slowMayStart`): a backlog tier may run beside it
+   * (D2 as amended 2026-10-09, task 004-34). It runs in a lane of its own
+   * (`laneOf`, task 004-18), so an edit's fast tier starts beside it. A fast
+   * tier that ends gives way at once from the slow tier's load guard, so the
+   * backlog's next tier is not held behind the wait.
    *
    * An error of a tier stops the pump with a note; the tier's files go back
    * to the queue, the tiers still in flight are recorded, and the next batch
@@ -368,7 +372,7 @@ class TierScheduler implements Scheduler {
           }
           if (this.#awaitingInstall || this.#reinstalled) break;
           // The check before a tier, never during one: only when a free lane has a file to take.
-          if (this.#inFlight.size > 0 && !this.#freeLaneQueued()) {
+          if (this.#inFlight.size > 0 && !this.#freeLaneQueued() && !this.#slowMayStart()) {
             await this.#nextEvent();
             continue;
           }
@@ -397,16 +401,16 @@ class TierScheduler implements Scheduler {
             continue;
           }
           if (this.#reinstalled) break;
-          if (this.#inFlight.size === 0) {
-            // Spec 004 D2: no fast file pending or running; a slow file may run, one per tier.
+          if (this.#slowMayStart()) {
+            // Spec 004 D2: no edit's fast work pending or running; a slow tier may start.
             const after = await this.#slow.next();
             if (after === "again") continue;
             if (after !== null) {
               this.#fly(after.tier, install.stamp, after);
               continue;
             }
-            if (!this.#woken) break;
           }
+          if (this.#inFlight.size === 0 && !this.#woken) break;
           await this.#nextEvent();
         }
       } catch (error) {
@@ -453,7 +457,7 @@ class TierScheduler implements Scheduler {
               observed,
             );
             if (slow === null) forgetSlowRuns(context, ledger, tier);
-            else this.#slow.recorded(slow, ledger, this.#othersInFlight(tier.lane));
+            else this.#slow.recorded(slow, ledger);
             return result;
           });
         });
@@ -468,6 +472,8 @@ class TierScheduler implements Scheduler {
       } finally {
         slow?.slot.release();
         this.#inFlight.delete(tier.lane);
+        // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
+        if (slow === null) this.#slow.preempt();
         this.#notify();
       }
     })();
@@ -542,10 +548,36 @@ class TierScheduler implements Scheduler {
     return this.#runnerWork.size > 0 || (this.#ledger?.queue.fastSize ?? 0) > 0;
   }
 
-  /** Fast work goes before a slow file (spec 004 D2), a refinement in flight included. */
-  #fastPending(): boolean {
+  /**
+   * An edit's fast work goes before a slow file (spec 004 D2 as amended):
+   * runner work, a refinement in flight included, a recent fast file queued,
+   * or an edit's tier in flight. A backlog tier carries its `cancel`.
+   */
+  #editPending(): boolean {
     const work = this.#runnerWork;
-    return work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0;
+    if (work.size > 0 || work.refining || this.#ledger?.queue.hasRecent()) return true;
+    return [...this.#inFlight.values()].some(
+      ({ tier }) => tier.cancel === null && !isSlowLane(tier.lane),
+    );
+  }
+
+  /** No fast work pending or running: an idle slow tier may take several files (D2). */
+  #fastIdle(): boolean {
+    const work = this.#runnerWork;
+    if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
+    return [...this.#inFlight.keys()].every(isSlowLane);
+  }
+
+  /**
+   * The pump may ask the slow tier: nothing is in flight (it then also ends
+   * a drained pass), or slow files are queued and neither a slow tier nor an
+   * edit's tier is in flight.
+   */
+  #slowMayStart(): boolean {
+    if (this.#inFlight.size === 0) return true;
+    if ((this.#ledger?.queue.slowSize ?? 0) === 0) return false;
+    if ([...this.#inFlight.keys()].some(isSlowLane)) return false;
+    return !this.#editPending();
   }
 
   #retireSlow(): void {
@@ -554,11 +586,6 @@ class TierScheduler implements Scheduler {
     } catch (error) {
       this.#note(`could not clear the slow tier's activity: ${String(error)}`);
     }
-  }
-
-  /** A tier of a lane other than `lane` is in flight. */
-  #othersInFlight(lane: string): boolean {
-    return [...this.#inFlight.keys()].some((other) => other !== lane);
   }
 
   /** Puts the files of a tier that never got recorded back into the queue; a slow one's activity goes. */
@@ -574,7 +601,7 @@ class TierScheduler implements Scheduler {
       }
       try {
         ledger.commit();
-        if (slow) this.#slow.ended(this.#othersInFlight(tier.lane));
+        if (slow) this.#slow.ended();
       } catch (error) {
         this.#note(`could not record the re-queued tier: ${String(error)}`);
       }

@@ -9,8 +9,8 @@ import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./he
 /*
  * Spec 004 D2, execution: a slow file runs in a lane of its own,
  * `"slow:" + the runner's lane`, so an edit's fast tier runs beside a slow
- * file in flight (task 004-18); a slow file still starts only when no tier
- * is. The harness holds a run before the Vitest adapter's queue
+ * file in flight (task 004-18); a slow file starts only when no edit's tier
+ * is (D2 as amended, task 004-34). The harness holds a run before the Vitest adapter's queue
  * (`runnerPartBesideRun`), as the slow lane's own instance would let it.
  * In the `basic` fixture `test/strings.test.ts` imports `src/strings.ts`;
  * `test/math.test.ts` imports `src/math.ts`.
@@ -86,7 +86,7 @@ describe("the slow lane (spec 004 D2, task 004-18)", SLOW, () => {
     expect(new Set(lanesOf(h, MATH))).toEqual(new Set([""]));
   });
 
-  it("starts no slow file while a fast tier is in flight (D2's start rule)", async () => {
+  it("starts no slow file while an edit's fast tier is in flight (D2's start rule)", async () => {
     const { h } = await open();
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);

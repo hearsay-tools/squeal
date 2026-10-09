@@ -30,7 +30,7 @@ import {
  * their own tier class, run one at a time behind fast work and only on a
  * trigger, under the per-user slot and the load guard, are discarded when a
  * keyed input moved during their run, and are inherited only with a declared
- * artifact. In the `basic` fixture `test/strings.test.ts` and
+ * artifact. With `slow.maxParallel` 1; `slow-parallel.test.ts` covers more. In the `basic` fixture `test/strings.test.ts` and
  * `test/upper.test.ts` import `src/strings.ts`; the others are fast.
  */
 
@@ -49,8 +49,9 @@ function slotDir(): string {
   return dir;
 }
 
+/** One slow file at a time, one permit per user: D2's rules before the idle width (task 004-34). */
 function slowPolicy(include: readonly string[], inputs: PolicyInputs = []): Partial<Policy> {
-  return { slow: { ...DEFAULT_POLICY.slow, include }, inputs };
+  return { slow: { ...DEFAULT_POLICY.slow, include, maxParallel: 1 }, inputs };
 }
 
 function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}): HarnessOptions {
