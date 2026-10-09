@@ -264,3 +264,21 @@ Use /worker. Shape: fix. The board row's evidence (004-39): bootstrap seeds only
 ## 001-167 the parcel backend watches extra files behind a symlinked directory
 
 Use /worker. Shape: fix. The board row's evidence (004-38): `subscribeAll` in `src/core/watcher/parcel-backend.ts` subscribes an extra's parent, which can be a link (`dist -> real-build`), and fails with "inotify_add_watch ... Not a directory" on Linux; on macOS, FSEvents likely reports canonical paths that `files.has(path)` drops. Fix: subscribe hidden extras at `realpath(parent)` and map events back to the declared extra paths. Own: `src/core/watcher/parcel-backend.ts`, tests under `test/watcher/`. Do not touch the start walk (001-166). Do not run `npm run build`. Done when: a parcel-backend test on Linux with `dist -> real-build` reports a rebuild of `real-build/index.js` as `dist/index.js` within one batch, with no watch error.
+
+## 001-168 no result recorded while a touch could still be pending; the optimizer rebuilt at every start; no own-write exemption
+
+Use /worker. Shape: repair. From `reviews/wave-13e.md` (001-160) B1 to B3. Decided by the human (2026-10-09): fix, then a sixth review (001-169).
+
+- **B1:** remove 001-159's own-write exemption. A run that heard a touch withholds its files whatever it wrote. A test that rewrites a worktree file with identical bytes on every run is then reported unknown with a reason naming the path; say so in the skill's troubleshooting text, with the remedy (write outside the worktree or under an ignored path, or declare the file), and keep the fixture-rewrite test, asserting the honest unknown, not liveness.
+- **B2:** before a run's results are recorded, a completion barrier reconciles the paths touched over the run's interval (a stat pass of what the run's closures and observed sets name, or the change feed flushed up to the run's end), and a touch found there withholds the run as a heard touch would. If a touch can still arrive after recording, retire the suspect shared result rows and queue a forced re-run, never only a local unknown (the shared key would promote or inherit it again). Keep the no-relist choice.
+- **B3:** every Vitest instance start (fast and slow, initial and replacement) rebuilds optimizer output that could hold project bytes (`forceOptimizeDeps`, or delete the instance's optimizer cache first), or persists and verifies source evidence per bundle; measure the start cost on this repository and on a cezar clone (env -u every `CEZ_*`, cwd in the clone through a subshell), and record it in D4.
+
+Read: `reviews/wave-13e.md` (every probe), `reviews/wave-13d.md`, `tasks/001-159/notes.md`, D2, D4, D5.
+
+Own: `src/runners/vitest/`, `src/core/scheduler/` for the barrier (ledger, runner work, batch), `src/core/daemon/slow-instance.ts` only if the slow instance's start needs it (by the agreement 001-159 used), the skill's references, tests under `test/runners/vitest/`, `test/scheduler/`, `test/integration/`; D2, D4. Do not run `npm run build`.
+
+Done when: each of the review's three probes is a scheduler regression (observation on and off) with a fresh control, failing without the fix; B2's includes a result lookup after the late touch and an inheritance control; B3's covers close/reopen and a forced checkpoint; every earlier review's probe still passes; the start-cost measurement is in D4.
+
+## 001-169 sixth review: the stale-transform slice after 001-168
+
+Use /reviewer on gpt-6.1-sol, after 001-168 lands. Output `reviews/wave-13f.md`. Range: from 0.1.64's landing to 001-168's. Are `reviews/wave-13e.md` B1 to B3 closed; can any result still be stored current while its run executed bytes other than its key names, with the conservative rules now in place (withhold on any touch over a run's interval, rebuild optimizer output at every start)? Decided by the human: blockers go to the human.
