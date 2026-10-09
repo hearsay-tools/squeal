@@ -39,9 +39,20 @@ export interface OpenedDaemon {
 export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
 
 /**
+ * Task 001-161: until it is ready the daemon waits this long on the store.
+ * A start that gives up exits, and nothing restarts it before the next hook
+ * boundary, while one more wait costs nothing: the socket answers from its
+ * own thread. On cezar's store a daemon starting beside another worktree's
+ * tier exited 5.03 s after that tier's write transaction began; recording a
+ * 198-file tier then held the lock 11 to 67 s.
+ */
+export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
+
+/**
  * Daemon start up to the open store: realpath of the root; the common dir
  * from git (D1); the worktree id; the exclusive lock (D10), losers exit;
- * the store with `integrity_check` (D12), exiting with a note on a newer
+ * the store with `integrity_check` (D12) and the start's busy timeout
+ * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
  * Spec 001 D10 as amended after the wave 3 review: the daemon takes the
  * lock "before opening the store, so losers never run the integrity check".
@@ -88,7 +99,7 @@ export async function openDaemon(
   try {
     const opened = openStore(commonDir, {
       checkIntegrity: true,
-      busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS,
+      busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
       now,
     });
     if (isStoreOpenFailure(opened)) {

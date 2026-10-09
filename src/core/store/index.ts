@@ -7,6 +7,7 @@ export {
   META_STORE_RECOVERED,
   type OpenStoreOptions,
   openStore,
+  setBusyTimeout,
 } from "./open.js";
 export { lockFileFor, type StorePaths, storePaths } from "./paths.js";
 export { SCHEMA_VERSION } from "./schema.js";
