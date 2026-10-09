@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
-import { publishSlowActivity } from "../../src/core/slow/state.js";
+import { publishSlowActivity, recordSlowArtifacts } from "../../src/core/slow/state.js";
 import { clockText, readHeader } from "../../src/core/state/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type {
@@ -104,6 +104,11 @@ function states(
   );
 }
 
+/** The slow runs of `paths` at their keys were declared to test `globs` (`recordSlowArtifacts`). */
+function ran(store: Store, repo: FakeRepo, paths: string[], globs: string[] = ["plugins/**"]) {
+  recordSlowArtifacts(store, repo.mainId, new Map(paths.map((path) => [`key-${path}`, globs])));
+}
+
 function status({ repo, store }: Seeded): string {
   store.close();
   return formatStatus(readStatus(repo.main, { now: () => NOW }), NOW);
@@ -124,6 +129,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("says current against the artifact at a revision, and that sources changed since", () => {
     const s = seed(SLOW_POLICY, { revisions: 3 });
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 3 }, {}], [SLOW_A, SLOW_B, FAST]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     const header = readHeader(s.store, s.repo.mainId);
     expect(header.slowTier).toMatchObject({
       testFiles: 2,
@@ -143,6 +149,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("does not say sources changed when only the artifact changed since", () => {
     const s = seed(SLOW_POLICY, { revisions: 3, changes: ["plugins/claude-code/dist/a.js"] });
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     expect(slowLine(status(s))).toBe(
       "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.",
     );
@@ -151,6 +158,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("says when no artifact is declared", () => {
     const s = seed({ slow: SLOW_POLICY.slow }, { revisions: 2 });
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B], []);
     expect(slowLine(status(s))).toBe(
       "Slow tier: 2 test files; 2 current at revision 2, against no declared artifact. Not covered by Stop's wait.",
     );
@@ -159,6 +167,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("says running since HH:MM with the last run's duration", () => {
     const s = seed();
     states(s.store, s.repo, [{ observedAt: 2 }], [SLOW_B]);
+    ran(s.store, s.repo, [SLOW_B]);
     keys(s.store, s.repo, { [SLOW_A]: "running" });
     const since = NOW - 30_000;
     publishSlowActivity(s.store, s.repo.mainId, {
@@ -169,6 +178,23 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(slowLine(status(s))).toBe(
       `Slow tier: 2 test files; 1 current against plugins/** as of revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+    );
+  });
+
+  it("never says a file runs that is not running: its run ended since (review wave 2, B1)", () => {
+    const s = seed();
+    states(s.store, s.repo, [{ observedAt: 2 }], [SLOW_A]);
+    ran(s.store, s.repo, [SLOW_A]);
+    keys(s.store, s.repo, { [SLOW_B]: "queued" });
+    publishSlowActivity(s.store, s.repo.mainId, {
+      kind: "running",
+      path: SLOW_A,
+      since: NOW - 30_000,
+      lastDurationMs: null,
+    });
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.activity).toBeNull();
+    expect(slowLine(status(s))).toBe(
+      "Slow tier: 2 test files; 1 current against plugins/** as of revision 2; 1 pending. Not covered by Stop's wait; `squeal run --slow` runs them now.",
     );
   });
 

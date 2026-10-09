@@ -9,8 +9,15 @@ import {
   type SlowSlot,
   waitForCapacity,
 } from "../slow/index.js";
-import { publishSlowActivity } from "../slow/state.js";
 import {
+  forgetSlowArtifacts,
+  publishSlowActivity,
+  readSlowActivity,
+  recordSlowArtifacts,
+} from "../slow/state.js";
+import { slowPolicyView } from "../state/index.js";
+import {
+  type CheckKey,
   CONSUMER_EXPIRY_MS,
   type EpochMs,
   type RelativePath,
@@ -44,10 +51,14 @@ export interface SlowHost {
   fastPending(): boolean;
 }
 
-/** A one-file slow tier, selected, with the slot it holds until it is recorded. */
+/**
+ * A one-file slow tier, selected, with the slot it holds until it is
+ * recorded and the artifact globs its file was declared to test (D5).
+ */
 export interface SlowRun {
   readonly tier: Tier;
   readonly slot: SlowSlot;
+  readonly artifact: readonly string[];
 }
 
 /** `next`: a slow run, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
@@ -78,6 +89,8 @@ export class SlowTier {
   #preemptions = 0;
   /** No-artifact notes written or found persisted (D5). */
   #noted: Set<string> | null = null;
+  /** What this tier last published, as stored, so `close` clears only its own. */
+  #published: string | null = null;
 
   constructor(
     private readonly host: SlowHost,
@@ -125,9 +138,9 @@ export class SlowTier {
       if (preemptions !== this.#preemptions) return "again";
       const load = await this.#waitForCapacity(context);
       if (load === "preempted") return "again";
-      const tier = await this.host.lock.run(() => this.#select(ref, load));
-      if (tier === null) return "again";
-      run = { tier, slot };
+      const selected = await this.host.lock.run(() => this.#select(ref, load));
+      if (selected === null) return "again";
+      run = { ...selected, slot };
       return run;
     } finally {
       if (run === null) slot.release();
@@ -201,7 +214,10 @@ export class SlowTier {
    * stays queued and the pass keeps its budget), or the store now holds a
    * result that may stand for it (`Ledger.lookup`).
    */
-  #select(ref: TestFileRef, ranUnderLoad: number | null): Tier | null {
+  #select(
+    ref: TestFileRef,
+    ranUnderLoad: number | null,
+  ): { tier: Tier; artifact: readonly string[] } | null {
     const { context, ledger } = this.host.started();
     if (this.host.fastPending() || !ledger.queue.has(ref) || !ledger.queue.isSlow(ref)) return null;
     if (!this.#trigger(context, ledger)(ref)) return null;
@@ -231,14 +247,56 @@ export class SlowTier {
     }
     const inputs = context.keys.stabilityPaths(ref);
     const since = context.now();
-    this.#publish({ kind: "running", path: ref.path, since, lastDurationMs: file.durationMs });
-    return startTier(context, ledger, [{ file, key, inputs, checkpointId, forced }], false);
+    const artifact = slowPolicyView(context.policy)?.artifactFor(ref.path) ?? [];
+    // The activity names the file in the transaction that marks it running (review wave 2, B1).
+    return context.store.transaction(() => {
+      const tier = startTier(context, ledger, [{ file, key, inputs, checkpointId, forced }], false);
+      this.#publish({ kind: "running", path: ref.path, since, lastDurationMs: file.durationMs });
+      return { tier, artifact };
+    });
+  }
+
+  /**
+   * Under the lock, in the transaction that records `run` (D5, D8, review
+   * wave 2 B1 and B2): the keys it ran under were declared to test its
+   * artifact, and its activity goes with it (`ended`).
+   */
+  recorded(run: SlowRun, ledger: Ledger, othersInFlight: boolean): void {
+    const { context } = this.host.started();
+    const runs = new Map(tierKeys(run.tier, ledger).map((key) => [key, run.artifact]));
+    recordSlowArtifacts(context.store, context.worktreeId, runs);
+    this.ended(othersInFlight);
+  }
+
+  /**
+   * Under the lock, as a slow run ends, recorded, discarded or put back: its
+   * "running" activity goes in favour of what the remaining slow files wait
+   * for, without starting one (review wave 2, B1). Fast work in flight or
+   * pending, or the agent not pausing; when a trigger already holds, nothing
+   * until `next` decides. `othersInFlight`: a tier of another lane runs.
+   */
+  ended(othersInFlight: boolean): void {
+    const { context, ledger } = this.host.started();
+    const queued = ledger.orderedSlow();
+    if (queued.length === 0) this.#publish(null);
+    else if (othersInFlight || this.host.fastPending())
+      this.#publish({ kind: "waiting", for: "fast" });
+    else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
+    else this.#publish({ kind: "waiting", for: "idle" });
+  }
+
+  /** At close: clears the activity unless another daemon published since (a handover). */
+  retire(): void {
+    const { context } = this.host.started();
+    const now = readSlowActivity(context.store, context.worktreeId);
+    if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
   }
 
   /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
   #publish(activity: SlowTierActivity | null): null {
     const { context } = this.host.started();
     publishSlowActivity(context.store, context.worktreeId, activity);
+    this.#published = activity === null ? null : JSON.stringify(activity);
     return null;
   }
 
@@ -292,6 +350,21 @@ export class SlowTier {
       context.note(text);
     }
   }
+}
+
+/**
+ * The keys `tier`'s results may be stored under: each file's run key and,
+ * after recording, its current key (a run whose observed growth re-keyed the
+ * file stores under that).
+ */
+export function tierKeys(tier: Tier, ledger: Ledger): CheckKey[] {
+  const keys = tier.files.flatMap(({ file, key }) => [key, ledger.files.get(file.id)?.key ?? null]);
+  return [...new Set(keys.filter((key): key is CheckKey => key !== null))];
+}
+
+/** A fast run of `tier`: the records of its keys' slow runs go (D8, review wave 2 B2). */
+export function forgetSlowRuns(context: SchedulerContext, ledger: Ledger, tier: Tier): void {
+  forgetSlowArtifacts(context.store, context.worktreeId, tierKeys(tier, ledger));
 }
 
 /** The D5 note for `project`'s slow `paths`. */

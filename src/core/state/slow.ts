@@ -3,12 +3,14 @@ import { createInputMatcher } from "../keys/glob.js";
 import { isInputList, testFileId } from "../keys/index.js";
 import { slowFiles } from "../slow/classify.js";
 import { slowGlobs } from "../slow/inherit.js";
-import { readSlowActivity } from "../slow/state.js";
+import { readSlowActivity, readSlowArtifacts } from "../slow/state.js";
 import type {
+  CheckKey,
   KnownState,
   Policy,
   RelativePath,
   RevisionNumber,
+  SlowTierActivity,
   SlowTierState,
   Store,
   TestFileKeyRecord,
@@ -94,7 +96,14 @@ export function classifySlowFiles(
   return files;
 }
 
-/** The slow-tier line's state (D8) at `revision`, read in the caller's transaction. */
+/**
+ * The slow-tier line's state (D8) at `revision`, read in the caller's
+ * transaction. A current claim names the artifact the current results' runs
+ * were declared to test, from the record their worktree kept with the key
+ * (`readSlowArtifacts`), never today's policy; a current file with none
+ * counts as `artifactUnknown` (review wave 2, B2). A "running" activity
+ * stands only while the file it names is running (B1).
+ */
 export function readSlowTier(
   store: Store,
   worktreeId: WorktreeId,
@@ -105,16 +114,31 @@ export function readSlowTier(
 ): SlowTierState {
   const files = classifySlowFiles(states, keys, view.isSlow);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  const artifact = new Set<string>();
-  for (const { ref, class: cls } of files.values()) {
-    counts[cls]++;
-    for (const glob of view.artifactFor(ref.path)) artifact.add(glob);
-  }
+  for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt: RevisionNumber | null = null;
+  const ranFrom = new Map<string, WorktreeId>();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
-    if (files.get(testFileId(testFileOf(state.check)))?.class !== "current") continue;
+    const id = testFileId(testFileOf(state.check));
+    if (files.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
+    const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
+    ranFrom.set(id, origin);
+  }
+  const artifactOf = recordedArtifacts(store);
+  const artifact = new Set<string>();
+  // Only to tell later source changes from artifact ones; never named as what a run tested.
+  const declaredToday = new Set<string>();
+  let artifactUnknown = 0;
+  for (const row of keys) {
+    const from = ranFrom.get(testFileId(row.testFile));
+    if (from === undefined) continue;
+    const recorded = row.key === null ? undefined : artifactOf(from, row.key);
+    if (recorded === undefined) artifactUnknown++;
+    for (const glob of recorded ?? []) artifact.add(glob);
+    for (const glob of recorded === undefined ? view.artifactFor(row.testFile.path) : []) {
+      declaredToday.add(glob);
+    }
   }
   const globs = [...artifact].sort();
   return {
@@ -122,10 +146,39 @@ export function readSlowTier(
     ...counts,
     currentAt,
     artifact: globs,
+    ...(artifactUnknown > 0 ? { artifactUnknown } : {}),
     sourcesChangedSince:
-      currentAt !== null && sourcesChanged(store, worktreeId, currentAt, revision, globs),
-    activity: readSlowActivity(store, worktreeId),
+      currentAt !== null &&
+      sourcesChanged(store, worktreeId, currentAt, revision, [...globs, ...declaredToday]),
+    activity: liveActivity(readSlowActivity(store, worktreeId), keys, view.isSlow),
   };
+}
+
+/** The declared artifact of a slow run of `key` in `worktreeId`, reading each worktree's record once. */
+function recordedArtifacts(store: Store) {
+  const records = new Map<WorktreeId, ReadonlyMap<CheckKey, readonly string[]>>();
+  return (from: WorktreeId, key: CheckKey): readonly string[] | undefined => {
+    let byKey = records.get(from);
+    if (byKey === undefined) {
+      byKey = readSlowArtifacts(store, from);
+      records.set(from, byKey);
+    }
+    return byKey.get(key);
+  };
+}
+
+/** `activity`, unless it names a file as running that is not: a run ended since it was published. */
+function liveActivity(
+  activity: SlowTierActivity | null,
+  keys: readonly TestFileKeyRecord[],
+  isSlow: (testFile: TestFileRef) => boolean,
+): SlowTierActivity | null {
+  if (activity?.kind !== "running") return activity;
+  const running = keys.some(
+    (row) =>
+      row.testFile.path === activity.path && row.pending === "running" && isSlow(row.testFile),
+  );
+  return running ? activity : null;
 }
 
 /** Whether a revision after `since` up to `revision` changed a path no artifact glob matches. */

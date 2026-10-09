@@ -96,8 +96,18 @@ export interface SlowTierState {
    * slow result stands for the artifact as it was then. `null` with none current.
    */
   readonly currentAt: RevisionNumber | null;
-  /** The declared artifact globs of the slow files (D5), sorted; empty when none is declared. */
+  /**
+   * The artifact globs the runs of the current slow results were declared to
+   * test (D5), sorted; empty when none is declared or recorded. Recorded
+   * with each run's key, never read from today's policy (review wave 2, B2).
+   */
   readonly artifact: readonly string[];
+  /**
+   * Current slow files whose run's declared artifact is not recorded: a
+   * result stored before the records, or one whose record is gone. Absent
+   * when none is.
+   */
+  readonly artifactUnknown?: number;
   /**
    * A path other than the artifact changed in a revision after `currentAt`:
    * the sources behind the artifact are newer than the build the results ran
