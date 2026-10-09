@@ -370,10 +370,13 @@ export function recordTier(
       }
     }
     // Task 003-43: the environments read again moved the keys of every file of their projects.
+    // The moves count as the latest revision's (001-186), so `status --wait` holds for them: never
+    // below a later edit's own move, and inside every window that holds the run's edit.
     if (environment !== undefined) {
       ledger.settle(
         environment.changes.map((change) => change.testFile),
         NOTHING_CHANGED,
+        { keyedAt: ledger.revision.number },
       );
       rerunGrown(ledger, environment, grewEnvironment);
     }

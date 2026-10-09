@@ -113,6 +113,11 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
     await scheduler.start();
     await scheduler.idle();
     expect(runs.flat().map((f) => f.path)).toEqual([TEST, TEST, TEST]);
+    // Each growth's move counts as the latest revision's, so `status --wait` holds for the file.
+    const { revision } = scheduler.status();
+    expect(scheduler.rekeyedSince(revision - 1, revision)).toEqual([
+      { testFile: { project: "nt", path: TEST }, revision },
+    ]);
     // It never ran to a result, so the file itself is what is unknown.
     expect(sink.calls.filter((call) => call.method === "markUnknown")).toEqual([
       expect.objectContaining({
