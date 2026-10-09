@@ -84,6 +84,12 @@ export interface SyncRequest {
    * (`SyncResponse.rekeyed`). A daemon from before the field ignores it.
    */
   readonly after?: RevisionNumber;
+  /**
+   * With `after`, when the wait started (task 001-196): the answer also names
+   * the files whose move had its result since (`RekeyedTestFile.resolved`).
+   * A daemon from before the field ignores it.
+   */
+  readonly resolvedSince?: EpochMs;
 }
 
 /** The revision a `sync` request's pass left, once it was stored. */

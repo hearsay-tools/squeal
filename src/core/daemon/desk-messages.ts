@@ -48,7 +48,12 @@ export type FromDesk =
   | { readonly type: "activity" }
   | { readonly type: "run-all"; readonly id: string; readonly force: boolean }
   | { readonly type: "run-slow"; readonly id: string }
-  | { readonly type: "sync"; readonly id: string; readonly after: RevisionNumber | null }
+  | {
+      readonly type: "sync";
+      readonly id: string;
+      readonly after: RevisionNumber | null;
+      readonly resolvedSince: EpochMs | null;
+    }
   | { readonly type: "stop" }
   | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };

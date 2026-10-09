@@ -411,7 +411,7 @@ class Daemon {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: (after) => this.#requestSync(after),
+        requestSync: (after, resolvedSince) => this.#requestSync(after, resolvedSince),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -457,8 +457,14 @@ class Daemon {
    * Lessons, defect 30: the revision of every change made before the
    * request, once stored. With `after` (task 001-186), once its runner part
    * is applied too, with the test files the revisions after `after` re-keyed.
+   * With `resolvedSince` (task 001-196), also those whose move had its result
+   * since that time: a result before the answer does not take its file out
+   * of the wait's window.
    */
-  async #requestSync(after: RevisionNumber | null): Promise<SyncAnswer> {
+  async #requestSync(
+    after: RevisionNumber | null,
+    resolvedSince: EpochMs | null,
+  ): Promise<SyncAnswer> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
@@ -468,7 +474,10 @@ class Daemon {
     const revision = scheduler.status().revision;
     if (after === null) return { revision, rekeyed: null };
     await scheduler.refined();
-    return { revision, rekeyed: scheduler.rekeyedSince(after, revision) };
+    return {
+      revision,
+      rekeyed: scheduler.rekeyedSince(after, revision, resolvedSince ?? undefined),
+    };
   }
 
   /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */

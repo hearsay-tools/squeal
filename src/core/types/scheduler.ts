@@ -7,6 +7,12 @@ import type { CandidateBatch } from "./watcher.js";
 export interface RekeyedTestFile {
   readonly testFile: TestFileRef;
   readonly revision: RevisionNumber;
+  /**
+   * The move had its result, or became `unknown`, since the time asked
+   * (task 001-196): the file's news is the window's, but it owes no work.
+   * Absent while the move has no result.
+   */
+  readonly resolved?: true;
 }
 
 /** Spec 001 D7: status for agents is read from the store; the daemon reads only the revision. */
@@ -163,8 +169,16 @@ export interface Scheduler {
    * since, so a later move never hides an earlier one (task 001-194), and a
    * file with a result, or `unknown`, at its key is in no window. Not the
    * baseline's, a backlog's or a run's moves. Empty before the start.
+   * With `resolvedSince`, also the files whose last such move had its
+   * result, or became `unknown`, at or after that time (`resolved`), so a
+   * wait whose answer comes after the result keeps its news (review wave
+   * 13k, S1).
    */
-  rekeyedSince(after: RevisionNumber, upTo: RevisionNumber): readonly RekeyedTestFile[];
+  rekeyedSince(
+    after: RevisionNumber,
+    upTo: RevisionNumber,
+    resolvedSince?: EpochMs,
+  ): readonly RekeyedTestFile[];
   /**
    * Resolves once nothing is queued or running and no revision waits for its
    * runner part. Slow files that wait for a trigger or the slot (spec 004
