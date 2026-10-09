@@ -85,6 +85,8 @@ Started: 2026-10-07
 
 - 2026-10-09, 003-43 landed as 0.1.82 (gate fully green on Node 24 and 22, 2328 tests; rebased onto 001's 0.1.81 and 001-193): by agreement with the 001 lane, the growth's key moves carry 001-186's `keyedAt` as the latest revision when recorded (never below a later edit's own move), so `status --wait` holds for the regrown files. Review 003-44 dispatched; the joint hub release with the 001 lane waits for it.
 
+- 2026-10-09, review 003-44 (`reviews/wave-4.md`, FAIL at `70a99c82`, gpt-6.1-sol): the incomplete-environment publication repair holds in every route checked (store, inheritance, forced request, partial runs, policy reload, a stale refinement); the independent gate is green. One proven blocker on Node 22 and 24, B1: the growth settle's `keyedAt` at the latest revision overwrites an earlier edit's, so a wait that captured that edit's revision reports quiet while the file's re-run is pending. Repair 003-45 as agreed with the 001 lane (an existing `keyedAt` is never changed by a growth move; a file with none takes the latest revision), re-review 003-46.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.
