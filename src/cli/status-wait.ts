@@ -54,7 +54,7 @@ export interface StatusWaitOptions {
   /**
    * The harness session the wait runs in (`CLAUDE_CODE_SESSION_ID`,
    * `CODEX_SESSION_ID`): its consumers' told revision starts the window
-   * (`windowStart`). Default none.
+   * (`lastHeard`). Default none.
    */
   readonly session?: string | null;
   /** Default `syncDaemon`; tests replace it. */
@@ -136,9 +136,10 @@ export type StatusWait =
  * A store that cannot be read at the start ends the wait at once; a read that
  * fails later (a busy lock) is skipped.
  *
- * Lessons, defect 32 (task 001-186): the pass also names the test files the
- * revisions since the wait last heard (`lastHeard`, `editWindow`) up to its own re-keyed,
- * once their runner part is applied. Then quiet is none of those files
+ * Lessons, defect 32 (tasks 001-186, 001-191): the pass also names the test
+ * files every revision up to its own re-keyed, once their runner part is
+ * applied, and the window keeps those of the revisions since the wait last
+ * heard and of earlier ones not yet seen through (`lastHeard`, `editWindow`). Then quiet is none of those files
  * pending, slow ones aside, whatever else runs, and news is a transition of
  * one of their checks; until the daemon answers, neither. A daemon that
  * names no files (one before the task) or cannot sync leaves the wait as
@@ -156,6 +157,7 @@ export async function waitForStatus(
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
+  let startStates: readonly KnownState[] = [];
   // Started at the first read, which finds the root; a box, since the read is a callback.
   const syncing: { sync?: DaemonSync; heard?: RevisionNumber; window?: EditWindow } = {};
   try {
@@ -170,14 +172,21 @@ export async function waitForStatus(
         const id = worktreeIdFor(root);
         const states = store.knownStates.list(id);
         const header = readHeader(store, id, states);
-        start ??= states.map(toStartView);
+        if (start === null) {
+          start = states.map(toStartView);
+          startStates = states;
+        }
         const news = newsOf(start, states, header.revision);
         syncing.heard ??= lastHeard(store, id, header.revision, session);
         const heard = syncing.heard;
-        syncing.sync ??= startSync(root, pollMs, Math.max(0, heard - 1));
+        // Every revision's files: a told one counts while its files are not seen through (001-191).
+        syncing.sync ??= startSync(root, pollMs, 0);
         const current = syncing.sync.current();
-        if (current.state === "synced" && current.rekeyed !== null) {
-          syncing.window ??= editWindow(store, id, heard, current.revision, current.rekeyed);
+        const named = current.state === "synced" && current.rekeyed !== null;
+        const keys = named ? store.testFileKeys.list(id) : [];
+        if (named) {
+          const reads = { start: startStates, states, keys };
+          syncing.window ??= editWindow(store, id, heard, current.revision, current.rekeyed, reads);
         }
         const window = syncing.window;
         const settled = final || elapsed() >= settleMs;
@@ -188,7 +197,7 @@ export async function waitForStatus(
         let edit: StatusWaitEdit | undefined;
         if (window !== undefined) {
           const split = splitNews(window, news);
-          const pending = heldPending(window, store.testFileKeys.list(id));
+          const pending = heldPending(window, keys);
           transitions = split.own;
           quiet =
             header.revision >= window.revision && windowRefined(window, header) && pending === 0;

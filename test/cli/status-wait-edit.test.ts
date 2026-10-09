@@ -1,21 +1,23 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import { tellRevision } from "../../src/core/delivery/liveness.js";
+import { refinedMetaKey } from "../../src/core/types/index.js";
 import {
-  type CheckKey,
-  type DaemonRecord,
-  MAIN_AGENT,
-  type PendingPhase,
-  type RevisionNumber,
-  refinedMetaKey,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
-import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
+  A,
+  ADDS,
+  answering,
+  B,
+  BACKLOG,
+  C,
+  fail,
+  finish,
+  later,
+  options,
+  repoWith,
+  SLOW_FILE,
+} from "./status-wait-fixture.js";
 
 /*
  * Lessons, defect 32, decided by the human (2026-10-09, task 001-186): a
@@ -23,118 +25,6 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/he
  * results, while a backlog or a slow file still runs; only their checks'
  * transitions end it early. The daemon names the files (`SyncState.rekeyed`).
  */
-
-const NOW = Date.UTC(2026, 9, 9, 12, 0, 0);
-const A = "src/a.test.ts";
-const B = "src/b.test.ts";
-const C = "src/c.test.ts";
-const SLOW_FILE = "test/slow.test.ts";
-const ref = (path: string): TestFileRef => ({ project: "", path: path as never });
-const ADDS = check(A, "adds");
-const BACKLOG = check(B, "holds");
-
-const LIVE: DaemonRecord = {
-  socketPath: "/tmp/squeal-test.sock",
-  startedAt: NOW - 60_000,
-  heartbeatAt: NOW - 1_000,
-  heartbeatIntervalMs: 5_000,
-  squealVersion: "0.0.0-test",
-};
-
-/** A worktree at revision 4, the edit's, with `pending` test files queued and their checks pending. */
-function repoWith(pending: readonly string[], done: readonly string[] = []) {
-  const repo = fakeRepo();
-  const store = seedStore(repo);
-  store.worktrees.upsert({
-    id: repo.mainId,
-    root: repo.main,
-    commonDir: repo.commonDir,
-    isMain: true,
-    registeredAt: 1,
-    daemon: LIVE,
-  });
-  appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
-  for (const path of pending) key(store, repo.mainId, path, "queued");
-  for (const path of done) key(store, repo.mainId, path, null);
-  store.knownStates.upsertMany(
-    [...pending, ...done].map((path) =>
-      state(repo.mainId, check(path, "holds"), {
-        validity: pending.includes(path) ? "pending" : "current",
-        pendingPhase: pending.includes(path) ? "queued" : null,
-        observedAt: 3,
-      }),
-    ),
-  );
-  if (pending.includes(A) || done.includes(A)) {
-    store.knownStates.upsertMany([
-      state(repo.mainId, ADDS, {
-        validity: pending.includes(A) ? "pending" : "current",
-        pendingPhase: pending.includes(A) ? "queued" : null,
-        observedAt: 3,
-      }),
-    ]);
-  }
-  return { repo, store };
-}
-
-function key(store: Store, worktreeId: string, path: string, pending: PendingPhase | null) {
-  store.testFileKeys.upsertMany([
-    {
-      worktreeId,
-      testFile: ref(path),
-      key: `key-${path}-${pending ?? "done"}` as CheckKey,
-      revision: 4 as RevisionNumber,
-      pending,
-    },
-  ]);
-}
-
-/** The file's run ended with the outcome it had: no transition. */
-function finish(store: Store, worktreeId: string, path: string) {
-  key(store, worktreeId, path, null);
-  const checks = path === A ? [ADDS, check(A, "holds")] : [check(path, "holds")];
-  store.knownStates.upsertMany(checks.map((c) => state(worktreeId, c, { observedAt: 4 })));
-}
-
-function fail(store: Store, worktreeId: string, c: ReturnType<typeof check>) {
-  store.knownStates.upsertMany([
-    state(worktreeId, c, { outcome: "fail", observedAt: 4, fingerprint: "Error: x" }),
-  ]);
-}
-
-function later(ms: number, fn: () => void) {
-  setTimeout(fn, ms);
-}
-
-/**
- * A daemon that answers the pass at revision 4 at once, naming `rekeyed`
- * (a path re-keyed at revision 4, or a path and its revision); records the
- * asked window.
- */
-function answering(rekeyed: readonly (string | [string, number])[] | null, current?: SyncState) {
-  const asked: RevisionNumber[] = [];
-  const named = (file: string | [string, number]) => {
-    const [path, revision] = typeof file === "string" ? [file, 4] : file;
-    return { testFile: ref(path), revision: revision as RevisionNumber };
-  };
-  const state: SyncState = current ?? {
-    state: "synced",
-    revision: 4 as RevisionNumber,
-    rekeyed: rekeyed === null ? null : rekeyed.map(named),
-  };
-  const sync = (_root: unknown, _pollMs: number, after: RevisionNumber): DaemonSync => {
-    asked.push(after);
-    return { current: () => state, stop: () => {} };
-  };
-  return { asked, sync };
-}
-
-const options = (sync: ReturnType<typeof answering>["sync"], timeoutMs = 5_000) => ({
-  timeoutMs,
-  pollMs: 20,
-  now: () => NOW,
-  sync,
-});
 
 describe("status --wait holds for the edit's own test files (lessons, defect 32)", () => {
   it("returns quiet once the edited file's result is in, while a backlog runs", async () => {
@@ -239,65 +129,5 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
 
     expect(wait.outcome).toBe("news");
     expect(wait).not.toHaveProperty("edit");
-  });
-});
-
-describe("the wait's window starts where the session was last told (task 001-186)", () => {
-  it("asks for the revisions from the oldest one its consumers were told about", async () => {
-    const { repo, store } = repoWith([], [A]);
-    const told = (agentId: string, revision: number) => {
-      const consumer = { worktreeId: repo.mainId, sessionId: "s1", agentId };
-      store.consumers.register(consumer, NOW);
-      tellRevision(store, consumer, revision as RevisionNumber);
-    };
-    told(MAIN_AGENT, 3);
-    told("subagent", 2);
-    const other = { worktreeId: repo.mainId, sessionId: "s2", agentId: MAIN_AGENT };
-    store.consumers.register(other, NOW);
-    tellRevision(store, other, 1 as RevisionNumber);
-
-    const mine = answering([A]);
-    const wait = await waitForStatus(repo.main, { ...options(mine.sync), session: "s1" });
-    const unknown = answering([A]);
-    await waitForStatus(repo.main, { ...options(unknown.sync), session: "nobody" });
-
-    expect(mine.asked).toEqual([1]);
-    // Revision 4 re-keyed a file, so the window starts after the one last heard of.
-    expect(wait).toMatchObject({ edit: { since: 3 } });
-    // No consumer of the session: the window starts at the revision current when the wait did.
-    expect(unknown.asked).toEqual([3]);
-  });
-
-  // A config edit at revision 3 the session heard of, then the edit at 4: its backlog is not the edit's.
-  it("does not count the revision last heard of when a later one re-keyed a file", async () => {
-    const { repo, store } = repoWith([A, B, C]);
-    const consumer = { worktreeId: repo.mainId, sessionId: "s1", agentId: MAIN_AGENT };
-    store.consumers.register(consumer, NOW);
-    tellRevision(store, consumer, 3 as RevisionNumber);
-    later(200, () => finish(store, repo.mainId, A));
-
-    const daemon = answering([[B, 3], [C, 3], A]);
-    const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
-
-    expect(daemon.asked).toEqual([2]);
-    expect(wait.outcome).toBe("quiet");
-    expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
-  });
-
-  // The hook after the edit already told revision 4, the edit's, before its result.
-  it("counts the revision last heard of when nothing after it re-keyed a file", async () => {
-    const { repo, store } = repoWith([A, B]);
-    const consumer = { worktreeId: repo.mainId, sessionId: "s1", agentId: MAIN_AGENT };
-    store.consumers.register(consumer, NOW);
-    tellRevision(store, consumer, 4 as RevisionNumber);
-    later(300, () => finish(store, repo.mainId, A));
-
-    const daemon = answering([A]);
-    const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
-
-    expect(daemon.asked).toEqual([3]);
-    expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
-    expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
   });
 });
