@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
-import type { CheckpointRecord, DaemonPhase, RevisionNumber } from "../types/index.js";
+import type { CheckpointRecord, DaemonPhase, SyncAnswer } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -29,7 +29,7 @@ const waitingSlow = new Map<
 
 const waitingSync = new Map<
   string,
-  { resolve: (revision: RevisionNumber) => void; reject: (error: Error) => void }
+  { resolve: (answer: SyncAnswer) => void; reject: (error: Error) => void }
 >();
 
 let server: DaemonServer | null = null;
@@ -54,11 +54,11 @@ function bind(identity: DeskIdentity): void {
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
       }),
-    requestSync: () =>
+    requestSync: (after) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
         waitingSync.set(id, { resolve, reject });
-        post({ type: "sync", id });
+        post({ type: "sync", id, after });
       }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
@@ -98,7 +98,7 @@ port.on("message", (message: ToDesk) => {
     case "sync-result": {
       const entry = waitingSync.get(message.id);
       waitingSync.delete(message.id);
-      if (message.revision !== null) entry?.resolve(message.revision);
+      if (message.answer !== null) entry?.resolve(message.answer);
       else entry?.reject(new Error(message.error ?? "sync failed"));
       return;
     }

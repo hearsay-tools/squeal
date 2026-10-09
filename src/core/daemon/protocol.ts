@@ -21,9 +21,14 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "ping":
     case "nudge":
     case "run-slow":
-    case "sync":
     case "stop":
       return { type: request.type };
+    case "sync":
+      if (request.after === undefined) return { type: "sync" };
+      if (!Number.isInteger(request.after) || (request.after as number) < 0) {
+        return '"after" must be a revision number';
+      }
+      return { type: "sync", after: request.after as number };
     case "run-all":
       if (request.force !== undefined && typeof request.force !== "boolean") {
         return '"force" must be true or false';

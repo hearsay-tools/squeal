@@ -10,6 +10,8 @@ import type {
   DaemonPhase,
   DaemonResponse,
   RevisionNumber,
+  SyncAnswer,
+  TestFileRef,
 } from "../../src/core/types/index.js";
 
 /*
@@ -17,6 +19,8 @@ import type {
  * pass and decides quiet at the revision the pass stored. The request is
  * answered at once, like `run-all`, and its revision is asked for after.
  */
+
+const MATH: TestFileRef = { project: "", path: "test/math.test.ts" as never };
 
 const cleanups: (() => unknown)[] = [];
 afterEach(async () => {
@@ -52,6 +56,9 @@ function requestId(response: DaemonResponse): string {
 describe("the sync request (lessons, defect 30)", () => {
   it("parses sync and sync-status", () => {
     expect(parseRequest('{"type":"sync"}')).toEqual({ type: "sync" });
+    expect(parseRequest('{"type":"sync","after":4}')).toEqual({ type: "sync", after: 4 });
+    expect(parseRequest('{"type":"sync","after":-1}')).toBe('"after" must be a revision number');
+    expect(parseRequest('{"type":"sync","after":"4"}')).toBe('"after" must be a revision number');
     expect(parseRequest('{"type":"sync-status","requestId":"r1"}')).toEqual({
       type: "sync-status",
       requestId: "r1",
@@ -60,7 +67,7 @@ describe("the sync request (lessons, defect 30)", () => {
   });
 
   it("answers at once and reports the revision once the pass is stored", async () => {
-    let store: (revision: RevisionNumber) => void = () => {};
+    let store: (answer: SyncAnswer) => void = () => {};
     const handle = handler(() => new Promise((resolve) => (store = resolve)));
 
     const first = handle({ type: "sync" });
@@ -68,11 +75,28 @@ describe("the sync request (lessons, defect 30)", () => {
     const id = requestId(first);
     expect(handle({ type: "sync-status", requestId: id })).toMatchObject({ revision: null });
 
-    store(7 as RevisionNumber);
+    store({ revision: 7 as RevisionNumber, rekeyed: null });
     await settle();
+    const answer = handle({ type: "sync-status", requestId: id });
+    expect(answer).toMatchObject({ revision: 7, error: null });
+    expect(answer).not.toHaveProperty("rekeyed");
+  });
+
+  // Task 001-186: the files the window's revisions re-keyed, which `status --wait` holds for.
+  it("passes the window's start and answers with the files it re-keyed", async () => {
+    const asked: (RevisionNumber | null)[] = [];
+    const handle = handler((after) => {
+      asked.push(after);
+      return Promise.resolve({ revision: 9 as RevisionNumber, rekeyed: [MATH] });
+    });
+
+    const id = requestId(handle({ type: "sync", after: 6 as RevisionNumber }));
+    await settle();
+
+    expect(asked).toEqual([6]);
     expect(handle({ type: "sync-status", requestId: id })).toMatchObject({
-      revision: 7,
-      error: null,
+      revision: 9,
+      rekeyed: [MATH],
     });
   });
 
@@ -121,9 +145,12 @@ describe("sync through the front desk", () => {
         onActivity: () => {},
         requestFullSuite: () => new Promise(() => {}),
         requestSlowSuite: () => new Promise(() => {}),
-        requestSync: () => {
+        requestSync: (after) => {
           calls++;
-          return Promise.resolve(5 as RevisionNumber);
+          return Promise.resolve({
+            revision: 5 as RevisionNumber,
+            rekeyed: after === null ? null : [MATH],
+          });
         },
         onStop: () => {},
         onStepDown: () => {},
@@ -133,11 +160,12 @@ describe("sync through the front desk", () => {
     cleanups.push(() => desk.close());
     desk.setPhase("ready");
 
-    const id = requestId(await requestDaemon(socketPath, { type: "sync" }, 2_000));
+    const ask = { type: "sync", after: 3 as RevisionNumber } as const;
+    const id = requestId(await requestDaemon(socketPath, ask, 2_000));
     await settle();
     expect(calls).toBe(1);
     expect(
       await requestDaemon(socketPath, { type: "sync-status", requestId: id }, 2_000),
-    ).toMatchObject({ type: "sync", revision: 5, error: null });
+    ).toMatchObject({ type: "sync", revision: 5, error: null, rekeyed: [MATH] });
   });
 });

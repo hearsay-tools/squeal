@@ -5,6 +5,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
+import type { TestFileRef } from "./keys.js";
 import type { CheckpointRecord } from "./store-records.js";
 
 /*
@@ -77,6 +78,12 @@ export interface RunSlowStatusRequest {
  */
 export interface SyncRequest {
   readonly type: "sync";
+  /**
+   * The revision before the wait's window (task 001-186): the answer then
+   * names the test files the revisions after it re-keyed, up to the pass's
+   * (`SyncResponse.rekeyed`). A daemon from before the field ignores it.
+   */
+  readonly after?: RevisionNumber;
 }
 
 /** The revision a `sync` request's pass left, once it was stored. */
@@ -177,6 +184,19 @@ export interface SyncResponse {
   readonly requestId: string;
   readonly revision: RevisionNumber | null;
   readonly error: string | null;
+  /**
+   * With `SyncRequest.after`, once `revision` is set: the test files whose
+   * key a revision after `after` up to `revision` moved
+   * (`Scheduler.rekeyedSince`), read once the runner part of `revision` was
+   * applied. Absent without `after`, and from a daemon before task 001-186.
+   */
+  readonly rekeyed?: readonly TestFileRef[];
+}
+
+/** What a daemon's sync pass left: its revision, and the window's files when asked (`SyncRequest.after`). */
+export interface SyncAnswer {
+  readonly revision: RevisionNumber;
+  readonly rekeyed: readonly TestFileRef[] | null;
 }
 
 export interface StopResponse {
