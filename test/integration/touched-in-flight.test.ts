@@ -107,10 +107,12 @@ describe("a touch heard during a run (task 001-159)", () => {
     const lanes = withSlowLanes(h, repo.main, slotDir, async () => {});
     await touchDuringRun(h, "src/mod.ts", true);
 
-    // One slow file per run: the other ran after the touch, on an instance made after it.
+    // Spec 004 D2 as amended (004-34): an idle slow tier takes up to `slow.maxParallel` files,
+    // so both ran in the one slow run that heard the touch.
     expect(lanes.made()).toBe(1);
-    expect(stored(h)).toEqual([["", "test/other.test.ts", "current", "pass"]]);
+    expect(stored(h)).toEqual([]);
     expect(reasons(h, "test/holds.test.ts")).toEqual([expect.stringMatching(reason("src/mod.ts"))]);
+    expect(reasons(h, "test/other.test.ts")).toEqual([expect.stringMatching(reason("src/mod.ts"))]);
   });
 });
 
