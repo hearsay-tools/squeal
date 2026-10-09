@@ -312,12 +312,15 @@ class Daemon {
               around,
             })
           : null;
-      // Spec 004 D2: the slow tier's own Vitest instance, made per slow pass with `slow.maxWorkers`.
+      // Spec 004 D2: the slow tier's own Vitest instance, made per slow pass with `slow.maxWorkers`,
+      // or `slow.maxParallel` when more, so an idle tier's files run at once (task 004-34).
+      const slowWorkers = () =>
+        Math.max(this.#policy.slow.maxWorkers, this.#policy.slow.maxParallel);
       const slowVitest = () =>
         runnerModule.createRecoveringRunner({
           name: "vitest",
           adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-          create: vitestInstance(`${SLOW_LANE_PREFIX}vitest`, this.#policy.slow.maxWorkers),
+          create: vitestInstance(`${SLOW_LANE_PREFIX}vitest`, slowWorkers()),
           onFailure: (text) => this.#note(`the slow tier's ${text}`),
           around,
         });
