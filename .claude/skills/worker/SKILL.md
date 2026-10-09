@@ -33,7 +33,7 @@ If the slice would touch more than the seam the brief names, commit what is usef
 
 ## 5. Verify
 
-`npm run lint`, `npm run typecheck`, `npm run build` when your row owns the bundles, `npx vitest run`. Report the real output of every check you ran; never infer an unrun check as passing. A transient failure is reported as transient, not rerun until green. Done when the pasted output is green and every changed file is inside your ownership.
+`npm run lint`, `npm run typecheck`, `npm run build` when your row owns the bundles, and the suite through Squeal's full-suite checkpoint, `squeal run --all --wait`, whose `Known failures` line is the verdict (its exit code is 0 either way); `npx vitest run` only in the cases `CLAUDE.md` names *(Squeal, 005)*. Report the real output of every check you ran; never infer an unrun check as passing. A transient failure is reported as transient, not rerun until green. Done when the pasted output is green and every changed file is inside your ownership.
 
 ## 6. Commit
 
