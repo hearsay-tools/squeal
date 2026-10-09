@@ -117,10 +117,13 @@ export function stopTurn(
         }
         if (input.agent_id !== undefined) await finishSubagent(context);
         else if (news === null) {
-          // The turn ends at the revision decided on; a newer one is decided again.
-          const at = blocking && decision < STOP_DECISIONS ? { atRevision: header.revision } : {};
-          const ended = await context.delivery.endTurn(consumer, at);
-          if (!ended) continue;
+          // The turn ends at the revision decided on; a newer one is decided again, up to a bound.
+          const at = blocking ? { atRevision: header.revision } : {};
+          if (!(await context.delivery.endTurn(consumer, at))) {
+            if (decision < STOP_DECISIONS) continue;
+            const text = statusText(header, failures.length, deps.command);
+            return { block: `${retriesReason(header.revision)}\n\n${text}` };
+          }
         }
         return news === null ? null : { news };
       }
@@ -129,8 +132,18 @@ export function stopTurn(
   );
 }
 
-/** How many times Stop decides when a new revision keeps coming between its decision and `endTurn`. */
+/**
+ * How many times Stop decides when a new revision keeps coming between its
+ * decision and `endTurn`. Past it a blocking policy blocks: the turn never
+ * ends at a revision no decision checked (review wave 2.5, B2), and the next
+ * Stop, with `stop_hook_active`, ends it without blocking again.
+ */
 export const STOP_DECISIONS = 3;
+
+/** The block at `STOP_DECISIONS`: `decided` is the revision the last decision read. */
+function retriesReason(decided: number): string {
+  return `Squeal: the revision changed ${STOP_DECISIONS} times while Stop decided, now past revision ${decided}; stop again to decide at the newest.`;
+}
 
 /** What a Stop decision read: the header, every known failure and the reasons to block. */
 interface Decision {
