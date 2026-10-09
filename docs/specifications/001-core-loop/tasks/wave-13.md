@@ -344,3 +344,11 @@ Done when: B3 (separate config, restart and forced checkpoint), B4 (pre-scan sta
 ## 001-177 seventh review: the stale-transform slice with the optimizer off
 
 Use /reviewer on gpt-6.1-sol, after 001-176 lands. Output `reviews/wave-13h.md`. Range: from 0.1.69's landing to 001-176's. Are `reviews/wave-13f.md` B3, B4 and S1 closed; is the optimizer off in every project, environment and instance, as Vitest actually resolves it; can any cached state still run bytes other than a stored result's key names. Decided by the human: blockers go to the human.
+
+## 001-181 the optimizer note follows the config, and the slow regression discriminates
+
+Use /worker. Shape: repair. From `reviews/wave-13h.md` (001-177, PASS) S1 and S2. S1: the registration note that Squeal runs Vitest without the optimizer survives a config that turns the optimizer back off, and still says the config turns it on; the note must be recomputed from each instance's effective config at each start and cleared when no config enables it. S2: `test/integration/`'s committed slow-instance regression passes against the pre-001-176 slow adapter because the fast harness seeds the old optimizer cache; give it the reviewer's precondition (clear the cache, then build on NEW) so it fails on the old adapter and passes now. Own: `src/runners/vitest/optimizer.ts` and the note's wiring, the test. Do not run `npm run build`. Done when: a test turns the optimizer on then off and the note goes; the slow regression fails with 001-176 reverted.
+
+## 001-182 research: the revert-restore current PASS seen once in a full gate
+
+Use /researcher. From `reviews/wave-13h.md` (Verification): in the reviewer's full gate, `test/integration/revert-restore.test.ts` asserted a current PASS after its run loaded the reverted bytes; it did not reproduce alone, nor in eight instrumented runs under load (all correctly unknown). Find what sequence produces it: run the test repeatedly under the full gate's concurrency and load (`--maxWorkers=4`, other files beside it), instrument the store and the stamps, and name the cause, or bound how rare it is with evidence. If it is a real stale current PASS, propose the fix row. Output: a dated section in `tasks/001-182/notes.md`.
