@@ -20,6 +20,7 @@ import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
 import { holdsNewFailure, type NewFailure, queueReruns } from "./rerun.js";
 import { storeClosures } from "./revision.js";
+import { joinSpan, type TierSpan } from "./sharing.js";
 import { slowView } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 import { storeResults } from "./store-results.js";
@@ -88,6 +89,11 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * files of a lane in `busy`, which has a tier in flight, stay queued and
  * are not looked up (task 001-140). Whether the tier is the backlog's is
  * decided on the free lanes' files.
+ *
+ * Any other tier takes a file only beside files of a comparable last-known
+ * time (`joinSpan`, task 001-184): a tier stores its results when it ends,
+ * so a file far slower than one already taken waits for the next tier
+ * instead of holding the faster file's result (lessons, defect 31).
  */
 export function selectTier(
   context: SchedulerContext,
@@ -100,6 +106,7 @@ export function selectTier(
   const size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known = 0;
+  let span: TierSpan | null = null;
   let tookBacklog = false;
   let lane: string | null = null;
   for (const ref of ledger.ordered()) {
@@ -120,6 +127,11 @@ export function selectTier(
         ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
         continue;
       }
+    }
+    if (!backlog) {
+      const joined = joinSpan(span, file.durationMs);
+      if (joined === null) continue;
+      span = joined;
     }
     known += file.durationMs ?? 0;
     if (picked.length > 0 && known > budget) break;
