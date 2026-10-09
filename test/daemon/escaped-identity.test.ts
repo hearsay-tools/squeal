@@ -62,6 +62,21 @@ describe("terminate: a process by pid and start time (review 001-149 S2)", () =>
     expect(stopped.map((s) => s.pid)).toEqual([11]);
   });
 
+  it("checks each identity right before its own SIGTERM (review wave-13b S2)", async () => {
+    const { t, signals, reuse } = table([entry(10, 1), entry(11, 2)]);
+    // Signalling 10 lets 11's pid be reused before 11's own signal goes out.
+    const between: ProcessTable = {
+      ...t,
+      signal(pid, name) {
+        t.signal(pid, name);
+        if (pid === 10) reuse(11);
+      },
+    };
+    const stopped = await terminate([entry(10, 1), entry(11, 2)], between);
+    expect(signals).toEqual(["10 SIGTERM"]);
+    expect(stopped.map((s) => s.pid)).toEqual([10]);
+  });
+
   it("does not SIGKILL a pid reused during the grace", async () => {
     const { t, signals, reuse } = table([entry(10, 1)]);
     // Ignores SIGTERM until the grace ends, by which time its pid holds another process.
