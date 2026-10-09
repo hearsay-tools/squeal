@@ -1,7 +1,12 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { ignoredInputs, literalPrefix, reachesBelow } from "../../src/core/keys/index.js";
+import {
+  artifactGlobs,
+  ignoredInputs,
+  literalPrefix,
+  reachesBelow,
+} from "../../src/core/keys/index.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 /*
@@ -166,5 +171,29 @@ describe("reachesBelow", () => {
     expect(reachesBelow("dist/index.js", "dist/index.js")).toBe(false);
     expect(reachesBelow("src/**", "dist")).toBe(false);
     expect(reachesBelow("packages/*/dist/**", "packages/p/lib")).toBe(false);
+  });
+});
+
+describe("artifactGlobs (lessons defect 10)", () => {
+  const files = ["test/e2e/a.test.ts", "test/unit/b.test.ts", "plugins/x.js"];
+  const isSlow = (path: string) => path.startsWith("test/e2e/");
+
+  it("keeps the input globs of entries whose test-file glob selects a slow file", () => {
+    const inputs = {
+      "test/e2e/*.test.ts": ["plugins/**", "test/fixtures/e2e/**"],
+      "test/unit/**": ["test/fixtures/unit/**"],
+      "test/**/*.test.ts": ["shared/**", "plugins/**"],
+    };
+    expect(artifactGlobs(inputs, files, isSlow)).toEqual([
+      "plugins/**",
+      "test/fixtures/e2e/**",
+      "shared/**",
+    ]);
+  });
+
+  it("keeps every glob of a list once a file is slow, and none without a slow file", () => {
+    expect(artifactGlobs(["dist/**"], files, isSlow)).toEqual(["dist/**"]);
+    expect(artifactGlobs(["dist/**"], files, () => false)).toEqual([]);
+    expect(artifactGlobs({ "test/e2e/**": ["dist/**"] }, files, () => false)).toEqual([]);
   });
 });
