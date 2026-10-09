@@ -547,6 +547,9 @@ function flakyText(note) {
   return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same inputs`;
 }
 
+// src/core/state/optimizer-note.ts
+var OPTIMIZER_OFF_NOTE = "Squeal runs Vitest without its dependency optimizer";
+
 // src/core/slow/classify.ts
 function slowFiles(policy, projects) {
   const matches = createInputMatcher(policy.slow.include);
@@ -793,6 +796,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const awaiting = missing !== null;
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
+  const optimizerOff = readDaemonNotes(store, worktreeId).findLast(
+    (note) => note.text.startsWith(OPTIMIZER_OFF_NOTE)
+  )?.text;
   return {
     revision,
     counts,
@@ -808,7 +814,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
-    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
+    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
+    ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
 function readRefined(store, worktreeId) {
@@ -3580,6 +3587,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   const head = [
     `SQUEAL \xB7 registered at revision ${header.revision}`,
     ...headerLines(header, command),
+    // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
+    ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
     `Known failures: ${knownFailures.length}`
   ].join("\n");
   const blocks = knownFailures.map(
@@ -3765,7 +3774,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.71";
+  if (true) return "0.1.72";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

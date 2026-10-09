@@ -327,10 +327,6 @@ function parseAwaitingInstall(raw) {
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
-// src/core/daemon/policy.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join2 } from "node:path";
-
 // src/core/notes.ts
 function readDaemonNotes(store, worktreeId) {
   return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
@@ -351,6 +347,13 @@ function toNote(item) {
   if (revision !== null && typeof revision !== "number") return [];
   return [{ at: at2, revision, text }];
 }
+
+// src/core/state/optimizer-note.ts
+var OPTIMIZER_OFF_NOTE = "Squeal runs Vitest without its dependency optimizer";
+
+// src/core/daemon/policy.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join2 } from "node:path";
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute2, posix } from "node:path";
@@ -788,6 +791,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const awaiting = missing !== null;
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
+  const optimizerOff = readDaemonNotes(store, worktreeId).findLast(
+    (note) => note.text.startsWith(OPTIMIZER_OFF_NOTE)
+  )?.text;
   return {
     revision,
     counts,
@@ -803,7 +809,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
-    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}
+    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
+    ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
 function readRefined(store, worktreeId) {
@@ -3575,6 +3582,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   const head = [
     `SQUEAL \xB7 registered at revision ${header.revision}`,
     ...headerLines(header, command),
+    // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
+    ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
     `Known failures: ${knownFailures.length}`
   ].join("\n");
   const blocks = knownFailures.map(
@@ -3759,7 +3768,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.71";
+  if (true) return "0.1.72";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
