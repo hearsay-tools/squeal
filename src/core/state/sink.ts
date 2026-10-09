@@ -1,7 +1,10 @@
 import { testFileId } from "../keys/index.js";
+import { recordFailureKeys } from "../slow/state.js";
 import type {
+  CheckKey,
   EpochMs,
   KnownState,
+  ResultRecord,
   RevisionNumber,
   StateSink,
   Store,
@@ -25,10 +28,18 @@ export interface StateSinkOptions {
   readonly now?: () => EpochMs;
 }
 
+/** Each result's check with its key when it failed, else `null` (`recordFailureKeys`). */
+function failureKeys(results: Iterable<ResultRecord>): ReadonlyMap<string, CheckKey | null> {
+  const keys = new Map<string, CheckKey | null>();
+  for (const r of results) keys.set(checkIdentity(r.check), r.outcome === "fail" ? r.key : null);
+  return keys;
+}
+
 /**
  * The store-backed `StateSink` (spec 001 D6). Every method runs in one store
  * transaction: known states, transitions and baseline findings are written
- * together or not at all.
+ * together or not at all, with the key each failing state's result was
+ * stored under (spec 004 D8, review wave 2.5 B1).
  */
 export function createStateSink(store: Store, options: StateSinkOptions = {}): StateSink {
   const now = options.now ?? Date.now;
@@ -88,6 +99,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
         const next = results.map((r) =>
           stateFromResult(worktreeId, revision, r, keyOf(r), prior(r)),
         );
+        recordFailureKeys(store, worktreeId, failureKeys(results));
         return commit(revision, next, provenance.checkpointId);
       }),
 
@@ -108,15 +120,18 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
         const included = (file: string) => only === null || only.has(file);
         const at = now();
         const next = new Map<string, KnownState>();
+        const hits: ResultRecord[] = [];
         for (const [file, key] of keys) {
           if (!included(file)) continue;
           for (const r of store.results.byKey(key.key, at)) {
+            hits.push(r);
             next.set(
               checkIdentity(r.check),
               stateFromResult(worktreeId, revision, r, key, prior(r)),
             );
           }
         }
+        recordFailureKeys(store, worktreeId, failureKeys(hits));
         for (const [id, state] of previous) {
           const key = keyOf(state);
           if (key === undefined || next.has(id)) continue;
