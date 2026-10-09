@@ -1,0 +1,47 @@
+
+### install 0.1.62: Claude Code user scope, Codex
+✔ Successfully added marketplace: hearsay (declared in user settings)
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: user)
+Added marketplace `hearsay` from http://127.0.0.1:8791/hub.git.
+Installed plugin root: /tmp/cli-dist/q1/home/.codex/plugins/cache/hearsay/squeal/0.1.62
+   user  0.1.62
+  shim (resolving) in proj: 0.1.62
+  fixed path /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.62/dist/cli/squeal.mjs: 0.1.62
+  fixed path /tmp/cli-dist/q1/home/.codex/plugins/cache/hearsay/squeal/0.1.62/dist/cli/squeal.mjs: 0.1.62
+  shim cost, 10 calls: real	0m2.967s
+  direct cost, 10 calls: real	0m2.116s  load 86.65
+
+### hub pin moves to 0.1.72; Claude Code marketplace update; project-scope install in proj
+✔ Successfully updated marketplace: hearsay
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: project)
+  proj/.claude/settings.json: {"enabledPlugins":{"squeal@hearsay":true}}
+   user  0.1.62
+   project /tmp/cli-dist/q1/proj 0.1.72
+0.1.62
+0.1.72
+  shim (resolving) in proj: 0.1.72
+  shim (resolving) in other: 0.1.62
+
+### Claude Code: user-scope update to 0.1.72
+✔ Plugin "squeal" updated from 0.1.62 to 0.1.72 for scope user. Restart to apply changes.
+   user  0.1.72
+   project /tmp/cli-dist/q1/proj 0.1.72
+  0.1.62 dir: . .. .claude-plugin .gitignore .in_use .orphaned_at README.md bin dist hooks package.json skills 
+  shim (resolving) in other: 0.1.72
+  fixed path /tmp/cli-dist/q1/home/.claude/plugins/cache/hearsay/squeal/0.1.62/dist/cli/squeal.mjs: 0.1.62
+
+### Codex: before upgrade, then marketplace upgrade
+squeal@hearsay  installed, enabled  0.1.62   http://127.0.0.1:8791/tool.git, path `plugins/codex`, ref `squeal--v0.1.62`, sha `b7bacbabb41f169e5be2848717009743779f0e2a`
+Upgraded marketplace `hearsay` to the latest configured revision.
+Installed marketplace root: /tmp/cli-dist/q1/home/.codex/.tmp/marketplaces/hearsay
+0.1.72
+  fixed path /tmp/cli-dist/q1/home/.codex/plugins/cache/hearsay/squeal/0.1.62/dist/cli/squeal.mjs: Error: Cannot find module '/tmp/cli-dist/q1/home/.codex/plugins/cache/hearsay/squeal/0.1.62/dist/cli/squeal.mjs'
+  (Claude Code record hidden, so the shim falls to Codex)
+  shim (resolving) in other: 0.1.72
+
+### auto-update settings as written
+{"hearsay":{"source":{"source":"git","url":"http://127.0.0.1:8791/hub.git"},"installLocation":"/tmp/cli-dist/q1/home/.claude/plugins/marketplaces/hearsay","lastUpdated":"2026-10-09T17:07:06.297Z"}}
+[marketplaces.hearsay]
+source_type = "git"
+source = "http://127.0.0.1:8791/hub.git"
+

@@ -1,0 +1,48 @@
+
+### A. warm-up from the terminal with the older CLI (0.1.62 start), then a newer (0.1.72) SessionStart
+Squeal daemon spawned for /tmp/cli-dist/q2/A
+  [after start t=1469ms load 68.84] schema 1; daemon 0.1.62 started 17:15:10.610 heartbeat 1s ago; runs 0 (0 file runs); results 0
+Revision: 0
+Known failures: 0
+  [warm (status --wait) t=2901ms load 68.84] schema 1; daemon 0.1.62 started 17:15:10.610 heartbeat 2s ago; runs 0 (0 file runs); results 0
+SQUEAL · registered at revision 0\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown. The daemon has not listed this worktree's test files yet; these counts are not complete.
+  [after the 0.1.72 hook t=8719ms load 69.34] schema 1; daemon 0.1.72 started 17:15:17.649 heartbeat 1s ago; runs 1 (4 file runs); results 14
+Revision: 0
+Known failures: 0
+  [settled t=12687ms load 69.23] schema 1; daemon 0.1.72 started 17:15:17.649 heartbeat 4s ago; runs 2 (8 file runs); results 28
+  [3 s after SessionEnd t=16897ms load 68.41] schema 1; daemon none started - heartbeat 4s ago; runs 2 (8 file runs); results 28
+
+### A2. step-down while a tier runs: 0.1.62 daemon, run --all --force (one 8 s file), then a 0.1.72 hook mid-tier
+Known failures: 0
+  [warm t=1557ms load 68.41] schema 1; daemon 0.1.62 started 17:15:28.385 heartbeat 1s ago; runs 0 (0 file runs); results 0
+Checkpoint 52348ff7-87de-4b16-a150-14c14954db35 started at revision 0: 4 test files
+  [tier in flight t=3509ms load 66.86] schema 1; daemon 0.1.62 started 17:15:28.385 heartbeat 3s ago; runs 1 (4 file runs); results 0
+SQUEAL · registered at revision 0\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown.
+  [hook returned t=4072ms load 66.86] schema 1; daemon 0.1.62 started 17:15:28.385 heartbeat 4s ago; runs 1 (4 file runs); results 0
+  [successor serving t=11081ms load 66.07] schema 1; daemon 0.1.72 started 17:15:38.862 heartbeat 0s ago; runs 1 (4 file runs); results 14
+Revision: 0
+Known failures: 0
+Full-suite checkpoint: completed at revision 0
+  [settled t=20699ms load 69.35] schema 1; daemon 0.1.72 started 17:15:38.862 heartbeat 5s ago; runs 2 (8 file runs); results 28
+  2026-10-09T17:15:31.818Z, revision 0: daemon stopped: hooks at Squeal 0.1.72 are newer than this daemon (0.1.62); their daemon starts once this one exits
+
+### B. newer CLI's daemon (0.1.72 start) under an older (0.1.62) session
+Known failures: 0
+  [warm, 0.1.72 t=2514ms load 67.32] schema 1; daemon 0.1.72 started 17:15:51.089 heartbeat 1s ago; runs 0 (0 file runs); results 0
+SQUEAL · registered at revision 0\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown. Test files without checks: 4 pending, 0 unknown.
+  [after the 0.1.62 hook t=5151ms load 68.33] schema 1; daemon 0.1.72 started 17:15:51.089 heartbeat 4s ago; runs 1 (4 file runs); results 0
+Revision: 1
+Known failures: 1
+  [after an edit, 0.1.62 status t=8994ms load 68.33] schema 1; daemon 0.1.72 started 17:15:51.089 heartbeat 3s ago; runs 2 (7 file runs); results 14
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · Squeal's baseline run found 1 failing check at revision 1\nRevision 1 (changed src/money.js): 14 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for re
+  [3 s after SessionEnd t=13455ms load 67.83] schema 1; daemon none started - heartbeat 2s ago; runs 3 (10 file runs); results 24
+
+### C. a store schema newer than both (user_version + 1 on a copy of B's store)
+  user_version 1 -> 2
+  0.1.62 status: Status unavailable, store version newer than this Squeal (store 2, supported 1) 
+  0.1.72 status: Status unavailable, store version newer than this Squeal (store 2, supported 1) 
+
+
+
+### cleanup
+  no probe daemon left
