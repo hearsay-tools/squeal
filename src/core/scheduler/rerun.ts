@@ -2,6 +2,7 @@ import type { CheckKey, ResultRecord } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
+import { listPaths } from "./notes.js";
 import { priorityOf } from "./queue.js";
 
 /*
@@ -35,14 +36,49 @@ export function holdsNewFailure(
   );
 }
 
+/** A file whose run in a tier stored a new failure (`holdsNewFailure`) at `key`. */
+export interface NewFailure {
+  readonly file: FileState;
+  readonly key: CheckKey;
+  /** The tier ran it forced: `run --all --force`, or a re-run itself. */
+  readonly forced: boolean;
+}
+
 /**
- * Queues the re-run of `file`'s new failure at `key`, unless the run that
- * failed was forced (`run --all --force`, or a re-run itself), the key was
- * already re-run, or the file is slow (spec 004 D2: the slow tier runs a slow
- * file when its triggers say). Called after the results were applied.
+ * `SchedulerOptions.rerunCap`'s default: the most new failures of one tier
+ * that are re-run. Unbounded until the human decides a cap.
  */
-export function queueRerun(ledger: Ledger, file: FileState, key: CheckKey, forced: boolean): void {
-  if (forced || file.rerunKey === key || ledger.queue.isSlow(file.ref)) return;
-  file.rerunKey = key;
-  ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+export const RERUN_CAP = Number.POSITIVE_INFINITY;
+
+/**
+ * Queues the re-run of a tier's new failures, called once the tier's results
+ * are applied. A failure is not re-run when its run was forced, its key was
+ * already re-run, or its file is slow (a limit: a slow run can cost minutes
+ * to an hour; the slow tier runs it again when spec 004 D2's triggers say).
+ * When more than `rerunCap` are left, none is re-run and a note says why: a
+ * failure that wide is rarely caused by load, and re-running it doubles the
+ * tier.
+ */
+export function queueReruns(
+  context: Pick<SchedulerContext, "note" | "rerunCap">,
+  ledger: Ledger,
+  failures: readonly NewFailure[],
+): void {
+  const due = failures.filter(
+    ({ file, key, forced }) => !forced && file.rerunKey !== key && !ledger.queue.isSlow(file.ref),
+  );
+  if (due.length === 0) return;
+  if (due.length > context.rerunCap) {
+    const files = due.length === 1 ? "test file" : "test files";
+    context.note(
+      `${due.length} ${files} failed anew in one tier, above the re-run cap of ` +
+        `${context.rerunCap} per tier: none is re-run, since a failure that wide is rarely ` +
+        `caused by load (${listPaths(due.map(({ file }) => file.ref.path))})`,
+    );
+    return;
+  }
+  for (const { file, key } of due) {
+    file.rerunKey = key;
+    ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  }
 }

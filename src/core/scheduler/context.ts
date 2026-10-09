@@ -35,6 +35,8 @@ export interface SchedulerContext {
   readonly now: () => EpochMs;
   /** Records a factual note for status, for errors the scheduler worked around. */
   readonly note: (message: string) => void;
+  /** `SchedulerOptions.rerunCap`. */
+  readonly rerunCap: number;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

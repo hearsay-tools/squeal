@@ -32,6 +32,7 @@ import { Mutex } from "./mutex.js";
 import { prepareObserved } from "./observed.js";
 import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
+import { RERUN_CAP } from "./rerun.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
@@ -142,6 +143,7 @@ class TierScheduler implements Scheduler {
         head: options.head,
         now: options.now ?? Date.now,
         note: (message) => this.#note(message),
+        rerunCap: options.rerunCap ?? RERUN_CAP,
       };
       const ledger = new Ledger(context);
       // Notes written during the baseline carry its revision.

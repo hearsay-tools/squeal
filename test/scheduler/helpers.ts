@@ -218,6 +218,8 @@ export interface HarnessOptions {
    * runner part overlaps its runs (task 001-150).
    */
   readonly runnerPartBesideRun?: boolean;
+  /** `SchedulerOptions.rerunCap` (task 001-171). */
+  readonly rerunCap?: number;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -297,6 +299,7 @@ export async function openHarness(
         }),
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
+    ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
   });
   cleanups.push(async () => {
     await scheduler.close();
