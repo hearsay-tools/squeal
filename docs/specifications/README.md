@@ -19,3 +19,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 002 | Codex adapter (second harness: hooks, delivery, install) | shipped |
 | 003 | node:test runner (second runner: closure, affected selection, results) | approved |
 | 004 | Slow suites by policy (e2e and integration suites at checkpoints) | approved |
+| 005 | Agent adoption (getting agents to rely on Squeal instead of their own test runs) | draft |

@@ -448,6 +448,18 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 | 004-44 a file a rebuild adds joins the key on every interval pass | running (wave 4.7) | `reviews/wave-4.6.md` B1: 004-33's re-listing runs only on an interval pass with no other change, so steady source edits keep a stale slow pass current. | The probe and its quiet control on both Nodes; no touch from an unchanged ignored rewrite. |
 | 004-45 re-review of 004-44 | planned | `/reviewer` on gpt-6.1-sol; second and last round for 004-33. | `reviews/wave-4.7.md`. |
 
+## Feature 005: agent adoption
+
+Status and brief: `specifications/005-agent-adoption/status.md`, `research/README.md`. No spec yet (human, 2026-10-09: "The tool will have no value if agents ignore it").
+
+### Research
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 005-01 research: adoption-baseline | planned | Why agents run tests themselves today, redundant runs and runs that caught Squeal out, an adoption metric, prior art on instruction files. | `research/adoption-baseline.md` committed. |
+| 005-02 research: instruction-surfaces | planned | Which texts reach the model where; controlled sessions with and without a repository instruction block and a Squeal-aware gate; the install step's shape. | `research/instruction-surfaces.md` committed. |
+| 005-03 research: hook-levers | planned | `PreToolUse` input rewriting in Claude Code and Codex, the honest substitute, softer levers, model reactions. | `research/hook-levers.md` committed. |
+
 ## Later
 
 - 001: `squeal` is not on a user's PATH after a plugin install (the CLI is `<plugin>/dist/cli/squeal.mjs`), so the READMEs' and the migration's `squeal init` fails with "command not found" (the human, 2026-10-09). Print the absolute command from `squeal init` and the hooks (the primer already does), and make the READMEs say `node ~/.claude/plugins/cache/hearsay/squeal/<version>/dist/cli/squeal.mjs` or offer a one-line shim.
@@ -462,7 +474,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08. Sections re
 
 - 001 follow-up, filed 2026-10-08 by the 002/003 coordinator (the 001 coordinator's session had ended): tests under `test/daemon/` and `test/scheduler/` that start a daemon from the sources through tsx in a child process declare no `inputs`, so their keys do not change when the daemon code they run changes and a pass can stay current after a `src` edit (002 `lessons.md` defect 5, same shape). Declaring `src/**/*.ts` for them is correct and costs a re-run on every `src` edit: a cost trade-off for the 001 coordinator.
 
-- 005 `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share.
+- `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share. Topic 005-02 reads it as a home for the install step, so it may join spec 005.
 - 006 pytest runner adapter.
 - 007 inherited-pass re-verification policy, if dogfooding shows stale escapes.
 - 008 Pi and OpenCode adapters.
