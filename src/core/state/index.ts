@@ -4,7 +4,7 @@ export { baselineFindings } from "./baseline.js";
 export { formatCheck, parseCheck } from "./check-name.js";
 export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js";
 export { describeFailure, SUMMARY_MAX_CHARS } from "./fingerprint.js";
-export { FLAKY_META_KEY, flakyText, readFlakyNotes, recordFlips } from "./flaky.js";
+export { FLAKY_KEPT, FLAKY_META_KEY, flakyText, readFlakyNotes, recordFlips } from "./flaky.js";
 export {
   fullSuiteText,
   isFastPending,
