@@ -1,14 +1,13 @@
-import { POLICY_FILE, readPolicy } from "../daemon/policy.js";
+import { readPolicy } from "../daemon/policy.js";
 import { readAll, slot } from "../delivery/slots.js";
 import { isRecord } from "../fs/index.js";
 import { createInputMatcher } from "../keys/glob.js";
 import { isInputList, testFileId } from "../keys/index.js";
 import { slowFiles } from "../slow/classify.js";
-import { inheritsAcrossWorktrees, slowGlobs } from "../slow/inherit.js";
+import { slowGlobs } from "../slow/inherit.js";
 import { readSlowActivity, readSlowArtifacts } from "../slow/state.js";
 import type {
   CheckKey,
-  FileHash,
   KnownState,
   Policy,
   RelativePath,
@@ -21,6 +20,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import { testFileOf } from "./derive.js";
+import { artifactSources, sourcesChanged } from "./slow-sources.js";
 
 /*
  * Spec 004 D8: the slow tier as headers, status and Stop read it from the
@@ -150,9 +150,7 @@ export function readSlowTier(
     }
   }
   const globs = [...artifact].sort();
-  const testFiles = new Set(keys.map((row) => row.testFile.path));
-  const isSource = (path: RelativePath) =>
-    inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs);
+  const isSource = artifactSources(store, keys, view);
   return {
     testFiles: files.size,
     ...counts,
@@ -238,43 +236,6 @@ function consumerInTurn(store: Store, worktreeId: WorktreeId): boolean {
     const turn = turns[slot(record.consumer)];
     return isRecord(turn) && turn.turn === "in-turn";
   });
-}
-
-/**
- * Whether a source the artifact could be built from holds other bytes at
- * `revision` than at `since`: a path no artifact glob matches that
- * `isSource` admits, so neither a test file nor a slow directory's fixture
- * (as D6 tells an artifact from them; lessons defect 8a), nor Squeal's own
- * policy file. Each path's hash before its first change after `since` is
- * compared with its hash after its last, so a revert to the tested bytes and
- * a file made and removed since change nothing (lessons defect 15). Every
- * revision's adds count, whatever found them (review wave 4 B4, wave 4.5
- * B2): a worktree's first listing makes no revision, since the start walk
- * seeds the files beneath linked directories as bootstrap seeds git's (task
- * 001-166; lessons defect 8d).
- */
-function sourcesChanged(
-  store: Store,
-  worktreeId: WorktreeId,
-  since: RevisionNumber,
-  revision: RevisionNumber,
-  artifact: readonly string[],
-  isSource: (path: RelativePath) => boolean,
-): boolean {
-  if (since >= revision) return false;
-  const tested = new Map<RelativePath, FileHash | null>();
-  const now = new Map<RelativePath, FileHash | null>();
-  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
-    for (const change of changes) {
-      if (!tested.has(change.path)) tested.set(change.path, change.oldHash);
-      now.set(change.path, change.newHash);
-    }
-  }
-  const isArtifact = createInputMatcher(artifact);
-  return [...now].some(
-    ([path, hash]) =>
-      hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path),
-  );
 }
 
 /** The listed slow test files not current: pending or not run (`stop.requireSlowSuite`, D7). */

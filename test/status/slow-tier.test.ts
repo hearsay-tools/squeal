@@ -3,7 +3,12 @@ import { createDelivery, formatRegistration } from "../../src/core/delivery/inde
 import { publishSlowActivity, recordSlowArtifacts } from "../../src/core/slow/state.js";
 import { clockText, readHeader } from "../../src/core/state/index.js";
 import { readStatus } from "../../src/core/status/index.js";
-import type { Consumer, SlowTierActivity, StatusSnapshot } from "../../src/core/types/index.js";
+import type {
+  Consumer,
+  SlowTierActivity,
+  StatusSnapshot,
+  Store,
+} from "../../src/core/types/index.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import {
   FAST,
@@ -31,6 +36,18 @@ import {
  * not run at this revision.
  */
 
+/** The stored closure of `testFile` names `paths`, as its last keying found it. */
+function closes(store: Store, testFile: string, paths: string[]): void {
+  const ref = { project: "", path: testFile };
+  const closure = {
+    testFile: ref,
+    paths,
+    complete: false,
+    method: "static imports plus declared inputs",
+  } as const;
+  store.testFiles.put({ testFile: ref, closure, updatedAt: 1, updatedBy: "test" });
+}
+
 describe("the slow-tier line (spec 004 D8)", () => {
   it("is absent without slow files declared, in the header and in status", () => {
     const s = seed(null);
@@ -41,6 +58,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
 
   it("says current against the artifact at a revision, and that sources changed since", () => {
     const s = seed(SLOW_POLICY, { revisions: 3 });
+    closes(s.store, FAST, [FAST, "src/a.ts"]);
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }, {}], [SLOW_A, SLOW_B, FAST]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     const header = readHeader(s.store, s.repo.mainId);
@@ -71,6 +89,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("does not say sources changed when only test files changed since (lessons defect 8a)", () => {
     const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
     revise(s.store, s.repo, [SLOW_A, FAST, "test/e2e/fixtures/app.json"]);
+    closes(s.store, SLOW_A, [SLOW_A, FAST, "test/e2e/fixtures/app.json"]);
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
@@ -126,6 +145,8 @@ describe("the slow-tier line (spec 004 D8)", () => {
       states(s.store, s.repo, [{ observedAt: 0 }, { observedAt: 0 }], [SLOW_A, SLOW_B]);
       ran(s.store, s.repo, [SLOW_A, SLOW_B]);
       revise(s.store, s.repo, ["src/new.ts"], { added: true, trigger });
+      // Its importer's edit keyed it into a closure (lessons defect 18).
+      closes(s.store, FAST, [FAST, "src/a.ts", "src/new.ts"]);
       expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({
         currentAt: 0,
         sourcesChangedSince: true,
@@ -141,6 +162,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 1 }], [SLOW_A, SLOW_B]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     revise(s.store, s.repo, ["src/new.ts"], { added: true, trigger: "interval" });
+    closes(s.store, FAST, [FAST, "src/a.ts", "src/new.ts"]);
     expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(true);
   });
 
