@@ -16,15 +16,11 @@ export const MARKETPLACE_REPO = "hearsay-tools/marketplace";
 export const PLUGIN_ID = `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
 
 /**
- * Before the hub, this repository was its own marketplace `squeal`; `squeal
- * init` migrates a repository set up then, and the Codex trust step names its
- * hooks while they are still installed.
+ * Before the hub, this repository's own marketplace `squeal`: `squeal init`
+ * migrates a repository set up with it, `squeal remove` names it while
+ * settings hold it, and the Codex trust step names its hooks while Codex
+ * lists them. The in-repo manifests keep the name until every machine has
+ * moved to the hub (`research/probes/dev-marketplace`).
  */
 export const PREVIOUS_MARKETPLACE_NAME = "squeal";
 export const PREVIOUS_PLUGIN_ID = `${PLUGIN_NAME}@${PREVIOUS_MARKETPLACE_NAME}`;
-
-/**
- * This checkout as a marketplace, for developing Squeal: a distinct name, so
- * it can sit beside `hearsay` and installs `squeal@squeal-dev`.
- */
-export const DEV_MARKETPLACE_NAME = "squeal-dev";
