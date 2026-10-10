@@ -163,6 +163,7 @@ Started: 2026-10-02
 - 2026-10-10, release: squeal--v0.1.99 (dea3e79d) on the hub (`hearsay-tools/marketplace` 6be040c), KEY_FORMAT_VERSION 2 shipped; covered by reviews wave-13r, 13s, 13t; CI green on Node 22 and 24. A later change to the guarded sources bumps to 3.
 - 2026-10-10, 001-216 (the human's cezar session via the 005 coordinator, defect 1): D2 amended. An untracked temp-shaped path waits 5 s out of batches and passes, then counts only if it is still there.
 - 2026-10-10, coordinator: a CI failure on main is read together with CI on the integration branch's pushes; a single green main run can hide a flake (001-235's parcel-links timeout failed on the branch's run of f8addfaa while main's passed).
+- 2026-10-10, human (`reviews/wave-13u.md`, 001-233 FAIL, first round): fix B1 and B2 (001-238) with the daemon's own re-key set as the source of 001-223/224's lines, then a re-review (001-239).
 
 ## Research
 
