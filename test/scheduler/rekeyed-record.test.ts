@@ -96,6 +96,44 @@ describe("the ledger's re-key record (task 001-238)", () => {
     expect(store.meta.get(rekeyedMetaKey(WORKTREE))).toBeNull();
   });
 
+  it("resolves an entry a restarted ledger finds open once its current key has a result (review wave 13v, S1)", () => {
+    const store = open();
+    const keys = new Map([[FILE.path, key("a")]]);
+    const before = ledgerOf(store, keys);
+    before.addFile(FILE);
+    before.settle([FILE], NOTHING);
+    keys.set(FILE.path, key("b"));
+    before.settle([FILE], NOTHING, { keyedAt: 1 });
+    before.commit();
+    expect(readRekeyed(store, WORKTREE).get(ID)).toEqual({ open: 1, last: 1 });
+
+    // A new daemon: its fresh file has no attribution to restore, and its baseline records none.
+    const after = ledgerOf(store, keys);
+    const file = after.addFile(FILE);
+    after.settle([FILE], NOTHING);
+    after.commit();
+    expect(file.keyedAt).toBeNull();
+    expect(readRekeyed(store, WORKTREE).get(ID)).toEqual({ open: 1, last: 1 });
+
+    after.applyResults(file, key("b"), [], null);
+    after.commit();
+    // Only the delivery record is resolved; the live attribution is not restored.
+    expect(file.keyedAt).toBeNull();
+    expect(readRekeyed(store, WORKTREE).get(ID)).toEqual({ open: null, last: 1 });
+    pruneRekeyed(store, WORKTREE, Number.POSITIVE_INFINITY);
+    expect(store.meta.get(rekeyedMetaKey(WORKTREE))).toBeNull();
+  });
+
+  it("records nothing for a result of a file the record does not hold", () => {
+    const store = open();
+    const ledger = ledgerOf(store, new Map([[FILE.path, key("a")]]));
+    const file = ledger.addFile(FILE);
+    ledger.settle([FILE], NOTHING);
+    ledger.applyResults(file, key("a"), [], null);
+    ledger.commit();
+    expect(store.meta.get(rekeyedMetaKey(WORKTREE))).toBeNull();
+  });
+
   it("prunes only resolved entries at or before a revision", () => {
     const store = open();
     store.meta.set(

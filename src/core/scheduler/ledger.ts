@@ -452,9 +452,15 @@ export class Ledger {
     return groups;
   }
 
-  /** The file has a result, or is `unknown`, at its key: its attribution is discharged (task 001-194). */
+  /**
+   * The file has a result, or is `unknown`, at its key: its attribution is
+   * discharged (task 001-194). The store's record is resolved even with no
+   * attribution here: a restarted daemon's files start with none, while the
+   * record may hold an edit open (review wave 13v, S1). Only the record is
+   * resolved; the attribution `status --wait` reads is not restored.
+   */
   #discharge(file: FileState): void {
-    if (file.keyedAt !== null && !this.#rekeyed.has(file.id)) this.#rekeyed.set(file.id, null);
+    if (!this.#rekeyed.has(file.id)) this.#rekeyed.set(file.id, null);
     this.discharges.note(file, this.context.now());
     clearKeyedAt(file);
   }
