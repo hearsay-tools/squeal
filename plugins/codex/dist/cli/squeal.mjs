@@ -863,14 +863,14 @@ function dependencyKeys(installed, environment) {
     return { environment: fingerprint, of: () => "" };
   }
   const excluded = new Set(shared);
-  const started = (entry2) => graph.identities([{ ...entry2, manifest: true }]).join();
-  const runnerStarts = new Set((environment.runner ?? []).map(started));
+  const started2 = (entry2) => graph.identities([{ ...entry2, manifest: true }]).join();
+  const runnerStarts = new Set((environment.runner ?? []).map(started2));
   const whole = `whole:${fingerprint}`;
   return {
     environment: hash([SCOPED_ENCODING, shared, installed.patches]),
     of: (packages) => {
       if (packages === void 0 || isOpaque(packages)) return whole;
-      const own = packages.imports.filter((entry2) => !runnerStarts.has(started(entry2)));
+      const own = packages.imports.filter((entry2) => !runnerStarts.has(started2(entry2)));
       if (graph.opaque(graph.identities(own))) return whole;
       return hash([PACKAGES_ENCODING, graph.identities(packages.imports, excluded)]);
     }
@@ -6794,12 +6794,14 @@ var init_claims = __esm({
 function covers2({ since, after, upTo }, { revision, at: at2 }) {
   return at2 >= since && revision > after && revision <= upTo;
 }
-var DISCHARGE_RETENTION_MS, DISCHARGE_CAP, Discharges;
+var DISCHARGE_RETENTION_MS, DISCHARGE_CAP, HOLD_MS, INCOMPLETE_ANSWER, Discharges;
 var init_discharges = __esm({
   "src/core/scheduler/discharges.ts"() {
     "use strict";
     DISCHARGE_RETENTION_MS = 60 * 6e4;
     DISCHARGE_CAP = 1e4;
+    HOLD_MS = 60 * 6e4;
+    INCOMPLETE_ANSWER = "the sync answer's discharges were released before it was read; its files may be incomplete";
     Discharges = class {
       constructor(limits = {
         retentionMs: DISCHARGE_RETENTION_MS,
@@ -6810,11 +6812,18 @@ var init_discharges = __esm({
       limits;
       /** By file and revision, oldest discharge first. */
       #kept = /* @__PURE__ */ new Map();
+      /** Oldest first. */
       #held = /* @__PURE__ */ new Set();
       /** The last discharge's time, which a released hold prunes at. */
       #latest = null;
+      /** The latest time of a discharge a prune dropped: a window from before it may miss it. */
+      #dropped = null;
       get size() {
         return this.#kept.size;
+      }
+      /** The holds in force, as of the last call that was given a time. */
+      get holds() {
+        return this.#held.size;
       }
       /** `file`'s attribution is discharged at `at`; nothing when it had none. */
       note(file, at2) {
@@ -6825,17 +6834,29 @@ var init_discharges = __esm({
           this.#kept.set(key2, { id: file.id, ref: file.ref, revision, at: at2 });
         }
         this.#latest = at2;
+        this.#expire(at2);
         this.#prune(at2);
       }
       /**
-       * Keeps the discharges `since(since, after, upTo)` names until the
-       * returned release, which a sync answer calls once read or failed.
+       * Keeps the discharges `since(since, after, upTo)` names, from `now` until
+       * the answer's release, which a sync answer calls once read or failed, or
+       * its forget, and for `HOLD_MS` at the latest (review wave-13r B2).
        */
-      hold(since, after, upTo) {
-        const window = { since, after, upTo };
-        this.#held.add(window);
-        return () => {
-          if (this.#held.delete(window) && this.#latest !== null) this.#prune(this.#latest);
+      hold(since, after, upTo, now) {
+        this.#expire(now);
+        const hold = {
+          window: { since, after, upTo },
+          until: now + HOLD_MS,
+          lost: this.#dropped !== null && this.#dropped >= since
+        };
+        this.#held.add(hold);
+        return {
+          release: () => this.#end(hold, false),
+          forget: () => this.#end(hold, true),
+          intact: (at2) => {
+            this.#expire(at2);
+            return !hold.lost;
+          }
         };
       }
       forget(id2) {
@@ -6854,12 +6875,25 @@ var init_discharges = __esm({
         }
         return files;
       }
+      /** Ends `hold`, `early` when its answer was not read; prunes what it alone kept. */
+      #end(hold, early) {
+        if (!this.#held.delete(hold)) return;
+        if (early) hold.lost = true;
+        if (this.#latest !== null) this.#prune(this.#latest);
+      }
+      /** Releases, early, every hold past its deadline at `now`. */
+      #expire(now) {
+        for (const hold of [...this.#held]) if (hold.until <= now) this.#end(hold, true);
+      }
       #prune(now) {
         for (const [key2, discharge] of this.#kept) {
           if (this.#kept.size <= this.limits.cap && discharge.at >= now - this.limits.retentionMs) {
             return;
           }
-          if (![...this.#held].some((window) => covers2(window, discharge))) this.#kept.delete(key2);
+          if (![...this.#held].some((hold) => covers2(hold.window, discharge))) {
+            this.#kept.delete(key2);
+            this.#dropped = Math.max(this.#dropped ?? discharge.at, discharge.at);
+          }
         }
       }
     };
@@ -7998,7 +8032,7 @@ function startable(ledger, p) {
   return [{ ...p, waits }];
 }
 async function executeTier(context, tier) {
-  const started = context.now();
+  const started2 = context.now();
   try {
     return await context.runner.run(
       tier.files.map((f) => f.file.ref),
@@ -8013,7 +8047,7 @@ async function executeTier(context, tier) {
   } catch (error) {
     return {
       end: "crashed",
-      durationMs: context.now() - started,
+      durationMs: context.now() - started2,
       completedFiles: [],
       results: [],
       fileErrors: [],
@@ -9726,7 +9760,7 @@ var init_slow_tier = __esm({
         const budget = this.#budgetMs ?? slow.maxDeferMs;
         const wait = new AbortController();
         this.#wait = wait;
-        const started = performance.now();
+        const started2 = performance.now();
         try {
           const waited = await waitForCapacity({
             maxLoadPerCpu: slow.maxLoadPerCpu,
@@ -9745,7 +9779,7 @@ var init_slow_tier = __esm({
           throw error;
         } finally {
           this.#wait = null;
-          this.#budgetMs = Math.max(0, budget - (performance.now() - started));
+          this.#budgetMs = Math.max(0, budget - (performance.now() - started2));
         }
       }
       /**
@@ -9947,6 +9981,7 @@ var init_scheduler2 = __esm({
     init_bootstrap();
     init_claims();
     init_context();
+    init_discharges();
     init_environment_growth();
     init_install();
     init_install_stamp();
@@ -10193,14 +10228,26 @@ var init_scheduler2 = __esm({
         if (resolvedSince === void 0 || this.#ledger === null) return files;
         return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
       }
-      async rekeyedOnceRefined(after, upTo, resolvedSince) {
-        const release = resolvedSince === void 0 || this.#ledger === null ? () => {
-        } : this.#ledger.discharges.hold(resolvedSince, after, upTo);
+      async rekeyedOnceRefined(after, upTo, resolvedSince, signal2) {
+        if (signal2?.aborted === true) throw new Error(INCOMPLETE_ANSWER);
+        const now = this.options.now ?? Date.now;
+        const held2 = resolvedSince === void 0 || this.#ledger === null ? null : this.#ledger.discharges.hold(resolvedSince, after, upTo, now());
+        let forgotten = () => {
+        };
+        const forgetting = new Promise((_, reject) => {
+          forgotten = () => {
+            held2?.forget();
+            reject(new Error(INCOMPLETE_ANSWER));
+          };
+        });
+        signal2?.addEventListener("abort", forgotten, { once: true });
         try {
-          await this.refined();
+          await Promise.race([this.refined(), forgetting]);
+          if (held2 !== null && !held2.intact(now())) throw new Error(INCOMPLETE_ANSWER);
           return this.rekeyedSince(after, upTo, resolvedSince);
         } finally {
-          release();
+          signal2?.removeEventListener("abort", forgotten);
+          held2?.release();
         }
       }
       idle() {
@@ -15324,7 +15371,7 @@ var init_adapter = __esm({
           const exitCode = process.exitCode;
           const unsure = this.#unsure;
           const loadedSince = Date.now();
-          const started = performance.now();
+          const started2 = performance.now();
           this.#collector = collector;
           this.#running = true;
           try {
@@ -15344,7 +15391,7 @@ var init_adapter = __esm({
                 return ran2;
               });
             }
-            const built = buildReport(collector, execution, Math.round(performance.now() - started));
+            const built = buildReport(collector, execution, Math.round(performance.now() - started2));
             const observed = this.#observer.take(built.completedFiles);
             const touched = heard.sort();
             const kept2 = withoutFiles(
@@ -32402,7 +32449,7 @@ var init_report = __esm({
 import { mkdirSync as mkdirSync9, readdirSync as readdirSync10, readFileSync as readFileSync18, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join50, relative as relative10, sep as sep13 } from "node:path";
 async function runNodeTest(options) {
-  const started = performance.now();
+  const started2 = performance.now();
   const runtime = options.runtime ?? nodeTestRuntime();
   const paths = new WorktreePaths(options.root);
   const cwd = options.project.cwd ? toAbsolute(options.root, options.project.cwd) : options.root;
@@ -32473,7 +32520,7 @@ async function runNodeTest(options) {
   const { end, failure: failure2 } = ending(runs, completed.length, expired, options.timeoutMs, node);
   const report2 = {
     end,
-    durationMs: Math.round(performance.now() - started),
+    durationMs: Math.round(performance.now() - started2),
     completedFiles: completed.map((r) => r.testFile),
     results: completed.flatMap((r) => r.stream?.results ?? []),
     fileErrors: completed.flatMap((r) => r.stream?.fileError ? [r.stream.fileError] : []),
@@ -33150,13 +33197,13 @@ function createCompositeRunner(adapters) {
   };
 }
 async function runPart(adapter, testFiles, options) {
-  const started = Date.now();
+  const started2 = Date.now();
   try {
     return await adapter.run(testFiles, options);
   } catch (error) {
     return {
       end: "crashed",
-      durationMs: Date.now() - started,
+      durationMs: Date.now() - started2,
       completedFiles: [],
       results: [],
       fileErrors: [],
@@ -33273,7 +33320,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.97";
+  if (true) return "0.1.98";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34663,8 +34710,10 @@ function createHandlers(context) {
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
         const state = { revision: null, error: null, rekeyed: null };
-        remember(syncRequests, requestId, state);
-        context.requestSync(request.after ?? null, request.resolvedSince ?? null).then(
+        for (const dropped of remember(syncRequests, requestId, state)) {
+          context.forgetSync?.(dropped);
+        }
+        context.requestSync(request.after ?? null, request.resolvedSince ?? null, requestId).then(
           (answer2) => {
             state.revision = answer2.revision;
             state.rekeyed = answer2.rekeyed;
@@ -34699,10 +34748,13 @@ function createHandlers(context) {
 }
 function remember(requests, requestId, state) {
   requests.set(requestId, state);
+  const dropped = [];
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
     requests.delete(old);
+    dropped.push(old);
   }
+  return dropped;
 }
 
 // src/core/daemon/server.ts
@@ -34798,13 +34850,16 @@ function answer(socket, response) {
 }
 
 // src/core/daemon/desk.ts
-function prepareFrontDesk() {
-  const script = frontDeskScript(new URL(import.meta.url));
+function prepareFrontDesk(worker = null) {
+  const script = worker?.script ?? frontDeskScript(new URL(import.meta.url));
   if (script === null) {
     return { open: (identity, events) => inThread(identity, events), discard: () => {
     } };
   }
-  const worker = new Worker(script);
+  const execArgv = worker?.execArgv;
+  return started(new Worker(script, execArgv === void 0 ? {} : { execArgv: [...execArgv] }));
+}
+function started(worker) {
   const early = [];
   const onError = (error) => early.push(error);
   const onExit = (code) => early.push(new Error(`socket worker exited with code ${code}`));
@@ -34868,7 +34923,7 @@ async function inWorker(worker, identity, events) {
           );
           return;
         case "sync":
-          events.requestSync(message2.after, message2.resolvedSince).then(
+          events.requestSync(message2.after, message2.resolvedSince, message2.id).then(
             (answer2) => post({ type: "sync-result", id: message2.id, answer: answer2, error: null }),
             (error) => post({
               type: "sync-result",
@@ -34877,6 +34932,9 @@ async function inWorker(worker, identity, events) {
               error: error instanceof Error ? error.message : String(error)
             })
           );
+          return;
+        case "sync-forget":
+          events.forgetSync(message2.id);
           return;
         case "stop":
           events.onStop();
@@ -34931,6 +34989,7 @@ async function inThread(identity, events) {
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
+      forgetSync: events.forgetSync,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown
@@ -35033,10 +35092,16 @@ function describe(stopped, what) {
   const list2 = stopped.map(entryText).join("; ");
   return `stopped ${count} ${what}: ${list2}`;
 }
-function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed }) {
+function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed, run }) {
   const ended2 = killed ? `SIGKILL after ${GRACE_MS / 1e3} s` : "SIGTERM";
   const parentText = `parent ${ppid} ${parent2}`.trimEnd();
-  return `${`${pid} ${args}`.trimEnd()} (${parentText}, ${ageText(ageSeconds)} old, ${ended2})`;
+  const facts = [
+    parentText,
+    `${ageText(ageSeconds)} old`,
+    ended2,
+    ...run === void 0 ? [] : [run]
+  ];
+  return `${`${pid} ${args}`.trimEnd()} (${facts.join(", ")})`;
 }
 function ageText(seconds) {
   if (seconds < 60) return `${seconds.toFixed(1)} s`;
@@ -35117,20 +35182,27 @@ var EscapedChildren = class {
    * carriers of the bare mark (`env`) and the unmarked orphans of the
    * daemon's group since `alone`, a mark taken when the first of the
    * overlapping runs started. Never another lane's carrier: a run of it may
-   * have just started (review 001-149). Resolves with a note naming them and
-   * the run `runId`, whose record lists the tier's test files, or `null`.
+   * have just started (review 001-149). Resolves with a note naming them, or
+   * `null`. Each is named with its run, whose record lists the tier's test
+   * files: a lane's carrier with `runId`, a bare-mark carrier or a group
+   * orphan with every run of `overlapped`, the runs since `alone`, as `one
+   * of runs` when they are more than one (review wave-13r B1).
    */
-  async afterRun(lane, since, alone = null, runId = null) {
-    const stopped = await this.#stop({ lane, since, alone });
-    const run = runId === null ? "" : ` (run ${runId})`;
-    return describe(stopped, `a test left running after its tier${run}`);
+  async afterRun(lane, since, alone = null, runId = null, overlapped = runId === null ? [] : [runId]) {
+    const own = runId === null ? void 0 : `run ${runId}`;
+    const shared = runsText(overlapped);
+    const stopped = (await this.#stop({ lane, since, alone })).map(({ found, stopped: stopped2 }) => {
+      const run = found.own ? own : shared;
+      return run === void 0 ? stopped2 : { ...stopped2, run };
+    });
+    return describe(stopped, "a test left running after its tier");
   }
   /**
    * At exit, once the runners closed: every carrier of any lane, and every
    * other member of the group, a global setup's child among them.
    */
   async atExit() {
-    const stopped = await this.#stop(null);
+    const stopped = (await this.#stop(null)).map(({ stopped: stopped2 }) => stopped2);
     return describe(stopped, "the runners left running when the daemon exited");
   }
   /**
@@ -35161,10 +35233,14 @@ var EscapedChildren = class {
     const seen = /* @__PURE__ */ new Set();
     for (let round = 0; round < ROUNDS; round++) {
       if (round > 0) entries2 = await snapshot2();
-      const found = (await this.#find(entries2, scope)).filter((entry2) => !seen.has(key(entry2)));
+      const found = (await this.#find(entries2, scope)).filter(({ entry: entry2 }) => !seen.has(key(entry2)));
       if (found.length === 0) break;
-      for (const entry2 of found) seen.add(key(entry2));
-      stopped.push(...await terminate(found));
+      for (const { entry: entry2 } of found) seen.add(key(entry2));
+      const byPid = new Map(found.map((one) => [one.entry.pid, one]));
+      for (const one of await terminate(found.map(({ entry: entry2 }) => entry2))) {
+        const of = byPid.get(one.pid);
+        if (of !== void 0) stopped.push({ found: of, stopped: one });
+      }
     }
     return stopped;
   }
@@ -35200,12 +35276,14 @@ var EscapedChildren = class {
       others.map(({ pid, start }) => start >= since ? this.#markOf(pid) : void 0)
     );
     const orphaned = (entry2) => strangers !== null && entry2.pgrp === this.#self && !foreign.has(entry2.pid) && (scope === null || !descendants.has(entry2.pid));
-    return others.filter((entry2, i2) => {
+    return others.flatMap((entry2, i2) => {
       const mark = marks[i2];
-      if (scope === null) return mark !== void 0 || orphaned(entry2);
-      if (mark === scope.lane) return entry2.start >= scope.since;
-      if (scope.alone === null || entry2.start < scope.alone) return false;
-      return mark === null || mark === void 0 && orphaned(entry2);
+      if (scope === null)
+        return mark !== void 0 || orphaned(entry2) ? [{ entry: entry2, own: false }] : [];
+      if (mark === scope.lane) return entry2.start >= scope.since ? [{ entry: entry2, own: true }] : [];
+      if (scope.alone === null || entry2.start < scope.alone) return [];
+      const shared = mark === null || mark === void 0 && orphaned(entry2);
+      return shared ? [{ entry: entry2, own: false }] : [];
     });
   }
   /**
@@ -35226,9 +35304,14 @@ var EscapedChildren = class {
     return rest.startsWith(":") ? rest.slice(1) : void 0;
   }
 };
+function runsText(runs) {
+  if (runs.length === 0) return void 0;
+  return runs.length === 1 ? `run ${runs[0]}` : `one of runs ${runs.join(", ")}`;
+}
 function afterEachRun(runner, children, note) {
   let inFlight = 0;
   let first = 0;
+  let overlapped = [];
   const lane = runner.lane?.bind(runner);
   const releaseLane = runner.releaseLane?.bind(runner);
   const laneOf2 = (testFiles, options) => options.lane ?? (testFiles[0] === void 0 ? "" : lane?.(testFiles[0]) ?? "");
@@ -35246,7 +35329,11 @@ function afterEachRun(runner, children, note) {
     async run(testFiles, options) {
       const at2 = laneOf2(testFiles, options);
       const since = children.mark();
-      if (inFlight === 0) first = since;
+      if (inFlight === 0) {
+        first = since;
+        overlapped = [];
+      }
+      if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
       const lowering = isSlowLane(at2) ? lowerWhile(children, at2, since, settled.signal) : null;
@@ -35258,7 +35345,8 @@ function afterEachRun(runner, children, note) {
         await lowering;
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
-        const text2 = await children.afterRun(at2, since, alone, options.runId).catch(() => null);
+        const runs = [...overlapped];
+        const text2 = await children.afterRun(at2, since, alone, options.runId, runs).catch(() => null);
         if (text2 !== null) note(text2);
       }
     },
@@ -36320,6 +36408,32 @@ function message(error) {
 // src/core/daemon/daemon.ts
 init_paths4();
 init_policy2();
+
+// src/core/daemon/sync-requests.ts
+var SyncRequests = class {
+  #live = /* @__PURE__ */ new Map();
+  /** In flight now. */
+  get size() {
+    return this.#live.size;
+  }
+  /** Runs `answer` with a signal that `forget(id)` aborts until it settles. */
+  async run(id2, answer2) {
+    const controller = new AbortController();
+    this.#live.set(id2, controller);
+    try {
+      return await answer2(controller.signal);
+    } finally {
+      if (this.#live.get(id2) === controller) this.#live.delete(id2);
+    }
+  }
+  /** Aborts `id`'s answer; an unknown id, or one settled or forgotten already, is nothing. */
+  forget(id2) {
+    this.#live.get(id2)?.abort();
+    this.#live.delete(id2);
+  }
+};
+
+// src/core/daemon/daemon.ts
 async function startDaemon(options) {
   const now = options.now ?? Date.now;
   const desk = prepareFrontDesk();
@@ -36367,6 +36481,8 @@ var Daemon = class {
   #loop = null;
   /** What its tests leave running, stopped after each tier and at exit (D12). */
   #children = new EscapedChildren();
+  /** Sync requests in flight, which the socket can forget (task 001-226). */
+  #syncs = new SyncRequests();
   #starting = Promise.resolve();
   #stopTimers = () => {
   };
@@ -36614,7 +36730,8 @@ var Daemon = class {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: (after, resolvedSince) => this.#requestSync(after, resolvedSince),
+        requestSync: (after, resolvedSince, id2) => this.#syncs.run(id2, (signal2) => this.#requestSync(after, resolvedSince, signal2)),
+        forgetSync: (id2) => this.#syncs.forget(id2),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -36655,9 +36772,10 @@ var Daemon = class {
    * With `resolvedSince` (task 001-196), also those whose move had its result
    * since that time: a result before the answer does not take its file out
    * of the wait's window, kept until the answer is read whatever the prune
-   * bounds (task 001-214).
+   * bounds (task 001-214), or until `signal`, the socket forgetting the
+   * request, or an hour (task 001-226).
    */
-  async #requestSync(after, resolvedSince) {
+  async #requestSync(after, resolvedSince, signal2) {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
@@ -36668,7 +36786,12 @@ var Daemon = class {
     if (after === null) return { revision, rekeyed: null };
     return {
       revision,
-      rekeyed: await scheduler.rekeyedOnceRefined(after, revision, resolvedSince ?? void 0)
+      rekeyed: await scheduler.rekeyedOnceRefined(
+        after,
+        revision,
+        resolvedSince ?? void 0,
+        signal2
+      )
     };
   }
   /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */
@@ -37413,8 +37536,8 @@ async function waitForStatus(cwd, options) {
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
   const startSync = options.sync ?? syncDaemon;
   const session = options.session ?? null;
-  const started = performance.now();
-  const elapsed = () => performance.now() - started;
+  const started2 = performance.now();
+  const elapsed = () => performance.now() - started2;
   let start = null;
   let startedAt = now();
   const syncing = {};
