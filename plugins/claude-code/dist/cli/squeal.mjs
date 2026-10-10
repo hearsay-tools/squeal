@@ -14528,11 +14528,20 @@ var init_sources = __esm({
   }
 });
 
+// src/runners/vitest/version.ts
+var VITEST_ADAPTER_VERSION;
+var init_version = __esm({
+  "src/runners/vitest/version.ts"() {
+    "use strict";
+    VITEST_ADAPTER_VERSION = "2";
+  }
+});
+
 // src/runners/vitest/adapter.ts
 async function testSpecifications(vitest) {
   return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
 }
-var VITEST_ADAPTER_VERSION, VitestAdapter;
+var VitestAdapter;
 var init_adapter = __esm({
   "src/runners/vitest/adapter.ts"() {
     "use strict";
@@ -14556,7 +14565,7 @@ var init_adapter = __esm({
     init_run();
     init_sources();
     init_stale();
-    VITEST_ADAPTER_VERSION = "2";
+    init_version();
     VitestAdapter = class {
       /**
        * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -14972,7 +14981,7 @@ var init_vitest = __esm({
     init_adapter();
     init_load();
     init_paths5();
-    init_adapter();
+    init_version();
   }
 });
 
@@ -32249,6 +32258,15 @@ var init_adapter_project = __esm({
   }
 });
 
+// src/runners/node-test/version.ts
+var NODE_TEST_ADAPTER_VERSION;
+var init_version2 = __esm({
+  "src/runners/node-test/version.ts"() {
+    "use strict";
+    NODE_TEST_ADAPTER_VERSION = "9";
+  }
+});
+
 // src/runners/node-test/adapter.ts
 import { realpathSync as realpathSync8, statSync as statSync5 } from "node:fs";
 import { relative as relative11, sep as sep14 } from "node:path";
@@ -32331,14 +32349,13 @@ function isDirectory2(path) {
 function slashes3(path) {
   return path.split(sep14).join("/");
 }
-var NODE_TEST_ADAPTER_VERSION;
 var init_adapter2 = __esm({
   "src/runners/node-test/adapter.ts"() {
     "use strict";
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
-    NODE_TEST_ADAPTER_VERSION = "9";
+    init_version2();
   }
 });
 
@@ -32782,7 +32799,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.91";
+  if (true) return "0.1.92";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
