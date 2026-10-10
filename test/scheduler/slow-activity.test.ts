@@ -209,7 +209,9 @@ describe("the slow tier's activity when a slow run ends (review wave 2, B1)", SL
     const pendingOf = (path: string) =>
       store.testFileKeys.list(h.worktreeId).find((r) => r.testFile.path === path)?.pending;
     await expect.poll(() => h.runsOf(first).length, { timeout: 60_000 }).toBe(before + 1);
-    await expect.poll(() => pendingOf(first) !== "running", { timeout: 60_000 }).toBe(true);
+    // Recorded: its run row ended. A row an edit re-keyed during the run is already `queued` (task 001-205).
+    const runId = h.runsOf(first).at(-1)?.options.runId ?? "";
+    await expect.poll(() => store.runs.get(runId)?.end ?? null, { timeout: 60_000 }).not.toBeNull();
     expect(fast.held).toEqual([MATH]);
     const line = slowTierText(readHeader(store, h.worktreeId), "squeal") ?? "";
     return { h, store, activity, first, fast, line, pendingOf };
