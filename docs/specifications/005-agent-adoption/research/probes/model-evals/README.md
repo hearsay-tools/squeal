@@ -28,7 +28,8 @@ Run 2026-10-10 on this host (24 CPUs, Linux 6.8, Node 24.21.0) against Claude Co
 - `bin/grade.mjs <cell>/out`: the mechanical grade (`grade.json`).
 - `bin/batch.mjs <plan> [--parallel 2] [--max-load 24]`: runs a plan, holding cells while the load is high.
 - `bin/collect.mjs`: copies the trimmed evidence into `logs/` and fails if any copied text holds the provider URL or a token from the environment.
-- `plan-*.txt`: the plans run.
+- `bin/compare.mjs [--tasks a,b] <key>...`: shares of sessions per behaviour, grouped by variant, model, harness or task, and for two groups the repetitions per arm needed to separate them (`logs/compare-*.md`).
+- `plan-*.txt`: the plans run: `plan-pilot-1.txt` (16 sessions), then `plan-pilot-2.txt` (20).
 - `logs/`: `sessions.tsv` (one row per session), `summary.md` (cost, load), `cells/<id>.grade.json` and `cells/<id>.calls.txt` (tool calls, SQUEAL texts, final message), `attempts.txt` (cells that did not reach a model).
 
 ## Replay
@@ -40,3 +41,10 @@ git archive 458287d plugins .agents/plugins .claude-plugin | tar -x -C $R/pin-ba
 SQ_EVALS_ROOT=$R node bin/batch.mjs plan-pilot-1.txt
 SQ_EVALS_ROOT=$R node bin/collect.mjs
 ```
+
+## Limitations seen in the pilot
+
+- Claude Code's allow-list is 001's plus `Bash(node --test:*)`. It refused `node scripts/changelog.mjs` and chained commands mixing edits and test runs; the grader counts a refused test command as an attempt, not a run.
+- Haiku 5.5 is not served by this host's provider; `claude-haiku-4-5-20251001` stands in (`logs/attempts.txt`).
+- `squeal stop` can return while the daemon is still exiting; the leftover sweep then kills it (one cell, `t4-contract.p0.codex-gpt-6-luna.r1`). A runner should wait for the daemon's pid.
+- The grader's command matching is regular expressions over shell text: it unwraps Codex's `/bin/bash -lc '...'` and blanks quoted text, so a test command inside a heredoc or a long quoted string is not counted.
