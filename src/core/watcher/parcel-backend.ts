@@ -131,23 +131,28 @@ async function subscribeAll(
  * a signature taken within {@link RACY_NS} of its file's mtime or ctime is
  * racy, as git calls it, and also carries the content's hash (001-243). Only
  * racy signatures read the file; a later write to a settled one moves its
- * timestamps.
+ * timestamps. A racy file that could not be read, or not within
+ * {@link READ_BUDGET}, has an unknown hash: it is reported as changed, never
+ * trusted as unchanged (001-245), and the reconciler compares its content
+ * anyway.
  */
 class ErasedEvents {
   private readonly last = new Map<AbsolutePath, Signature | null>();
 
   constructor(private readonly files: Map<AbsolutePath, AbsolutePath[]>) {
-    for (const real of files.keys()) this.last.set(real, signature(real));
+    const budget = { left: READ_BUDGET };
+    for (const real of files.keys()) this.last.set(real, signature(real, budget));
   }
 
   /** The hints for the extra files that moved without an event in `named`. */
   find(named: ReadonlySet<AbsolutePath>): WatchHint[] {
     const hints: WatchHint[] = [];
+    const budget = { left: READ_BUDGET };
     for (const [real, declared] of this.files) {
       const before = this.last.get(real) ?? null;
-      const now = signature(real);
+      const now = signature(real, budget);
       this.last.set(real, now);
-      if (named.has(real) || same(real, before, now)) continue;
+      if (named.has(real) || same(real, before, now, budget)) continue;
       const kind = now === null ? "unlink" : before === null ? "add" : "change";
       for (const path of declared) hints.push({ path, kind });
     }
@@ -161,33 +166,65 @@ class ErasedEvents {
  */
 const RACY_NS = 2_000_000_000n;
 
+/**
+ * The content bytes one parent's batch, or its seed, may read. Extra files
+ * are configuration and build outputs, mostly a few kilobytes; a racy file
+ * past the rest of the budget is reported unread.
+ */
+export const READ_BUDGET = 4 * 1024 * 1024;
+
+/** The bytes a batch may still read. */
+interface Budget {
+  left: number;
+}
+
 interface Signature {
   stat: string;
-  /** The content's hash when the signature is racy, else null. */
+  size: number;
+  /** Taken within {@link RACY_NS} of the file's timestamps. */
+  racy: boolean;
+  /** A racy signature's content hash, null when it is unknown. */
   hash: string | null;
 }
 
-function signature(path: AbsolutePath): Signature | null {
+function signature(path: AbsolutePath, budget: Budget): Signature | null {
   const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
   if (!stat) return null;
   const latest = stat.mtimeNs > stat.ctimeNs ? stat.mtimeNs : stat.ctimeNs;
   const racy = latest >= BigInt(Date.now()) * 1_000_000n - RACY_NS;
+  const size = Number(stat.size);
   return {
     stat: `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`,
-    hash: racy ? contentHash(path) : null,
+    size,
+    racy,
+    hash: racy ? contentHash(path, size, budget) : null,
   };
 }
 
-/** A racy `before` is matched by content too; `now` is read for it if it settled since. */
-function same(path: AbsolutePath, before: Signature | null, now: Signature | null): boolean {
+/**
+ * A racy `before` is matched by content too, and an unknown hash matches
+ * nothing; `now` is read for it if it settled since.
+ */
+function same(
+  path: AbsolutePath,
+  before: Signature | null,
+  now: Signature | null,
+  budget: Budget,
+): boolean {
   if (before === null || now === null) return before === now;
   if (before.stat !== now.stat) return false;
-  return before.hash === null || before.hash === (now.hash ?? contentHash(path));
+  if (!before.racy) return true;
+  if (before.hash === null) return false;
+  return before.hash === (now.racy ? now.hash : contentHash(path, now.size, budget));
 }
 
-function contentHash(path: AbsolutePath): string | null {
+/** The content's hash, null when it cannot be read within `budget`: the caller reports the file. */
+function contentHash(path: AbsolutePath, size: number, budget: Budget): string | null {
+  if (size > budget.left) return null;
   try {
-    return createHash("sha1").update(readFileSync(path)).digest("hex");
+    const content = readFileSync(path);
+    budget.left -= Math.max(size, content.length);
+    return createHash("sha1").update(content).digest("hex");
   } catch {
     return null;
   }

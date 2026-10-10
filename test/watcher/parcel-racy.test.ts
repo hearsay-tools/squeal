@@ -3,12 +3,18 @@ import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchHint, WatchSubscription } from "../../src/core/types/index.js";
-import { createParcelBackend, type Parcel } from "../../src/core/watcher/parcel-backend.js";
+import {
+  createParcelBackend,
+  type Parcel,
+  READ_BUDGET,
+} from "../../src/core/watcher/parcel-backend.js";
 import { makeRepo } from "./helpers.js";
 
 /** Paths whose stat reports these mtimeNs and ctimeNs, as if every write fell in one tick. */
 const held = new Map<string, bigint>();
 const reads: string[] = [];
+/** Paths whose next read fails, as descriptor exhaustion would. */
+const failing = new Set<string>();
 
 vi.mock("node:fs", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs")>();
@@ -19,6 +25,8 @@ vi.mock("node:fs", async (importOriginal) => {
   }) as typeof real.statSync;
   const readFileSync = ((path: string, ...rest: never[]) => {
     reads.push(path);
+    if (failing.delete(path))
+      throw Object.assign(new Error("EMFILE: too many open files"), { code: "EMFILE" });
     return real.readFileSync(path, ...rest);
   }) as typeof real.readFileSync;
   return { ...real, default: { ...real, statSync, readFileSync }, statSync, readFileSync };
@@ -46,6 +54,8 @@ describe("parcel backend, an erased event inside one timestamp tick", () => {
     sub = null;
     callbacks = new Map();
     held.clear();
+    failing.clear();
+    reads.length = 0;
     mkdirSync(join(root, "real-build"));
     writeFileSync(join(root, "real-build/index.js"), "export const build = 'a';\n");
     writeFileSync(join(root, "real-build/other.js"), "export const other = 'a';\n");
@@ -111,5 +121,56 @@ describe("parcel backend, an erased event inside one timestamp tick", () => {
     deliver("other.js");
     expect(reads.filter((p) => p.endsWith("index.js"))).toEqual([]);
     expect(hints).toEqual([]);
+  });
+
+  /*
+   * 001-245, reviews/wave-13x.md B1: a failed read of a racy file is not a
+   * settled signature. It stays uncertain and is reported, so the next
+   * same-tick rewrite is not trusted away.
+   */
+  it("reports a same-tick rewrite after the seed failed to read the file", async () => {
+    held.set(index(), nowNs());
+    failing.add(index());
+    await start();
+    writeFileSync(index(), "export const build = 'b';\n");
+    deliver("other.js");
+    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
+  });
+
+  it("reports a same-tick rewrite after a recheck failed to read the file", async () => {
+    held.set(index(), nowNs());
+    await start();
+    failing.add(index());
+    deliver("other.js");
+    hints.length = 0;
+    writeFileSync(index(), "export const build = 'b';\n");
+    deliver("other.js");
+    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
+  });
+
+  it("reports an unreadable racy file conservatively, then trusts the next good read", async () => {
+    held.set(index(), nowNs());
+    await start();
+    failing.add(index());
+    deliver("other.js");
+    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
+    hints.length = 0;
+    deliver("other.js");
+    deliver("other.js");
+    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
+  });
+
+  /* S1: content reads have a budget; a file over it is hinted, not read. */
+  it("hints a racy file over the read budget without reading it", async () => {
+    writeFileSync(index(), "x".repeat(READ_BUDGET + 1));
+    held.set(index(), nowNs());
+    await start();
+    deliver("other.js");
+    deliver("other.js");
+    expect(reads.filter((p) => p.endsWith("index.js"))).toEqual([]);
+    expect(hints).toEqual([
+      { path: join(root, "dist/index.js"), kind: "change" },
+      { path: join(root, "dist/index.js"), kind: "change" },
+    ]);
   });
 });
