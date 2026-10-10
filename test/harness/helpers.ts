@@ -1,5 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { testFileId } from "../../src/core/keys/index.js";
+import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import {
   bootstrappedMetaKey,
@@ -90,6 +92,10 @@ export function squealRepo(): SquealRepo {
   const options = () => ({ key, worktreeId, revision });
   const keyRow = (pending: "queued" | null) =>
     store.testFileKeys.upsertMany([{ worktreeId, testFile: FILE, key, revision, pending }]);
+  // The scheduler's re-key record (task 001-238): open from the edit until its run lands.
+  let open: number | null = null;
+  const rekeyed = (moved: number | null) =>
+    recordRekeyed(store, worktreeId, [{ id: testFileId(FILE), open, moved }], []);
   return {
     repo,
     root: repo.main,
@@ -114,6 +120,8 @@ export function squealRepo(): SquealRepo {
       if (queued && results.length > 0) {
         queued = false;
         keyRow(null);
+        open = null;
+        rekeyed(null);
       }
       sink.applyResults(worktreeId, revision, results, { checkpointId: null });
     },
@@ -122,6 +130,8 @@ export function squealRepo(): SquealRepo {
       key = next;
       queued = true;
       keyRow("queued");
+      open ??= revision;
+      rekeyed(revision);
       sink.refresh(worktreeId, revision, { checkpointId: null });
     },
     pass: (c = ADDS) => result(c, "pass", options()),
