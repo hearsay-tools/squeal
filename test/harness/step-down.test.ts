@@ -33,6 +33,8 @@ async function daemonAt(answer: (request: DaemonRequest) => object): Promise<{
   const socketPath = join(dir, "d.sock");
   const asked: DaemonRequest[] = [];
   const server = createServer((socket) => {
+    // The caller may close before the answer is written (a fire-and-forget stop): not this stub's failure.
+    socket.on("error", () => {});
     socket.once("data", (chunk) => {
       const request = JSON.parse(chunk.toString("utf8")) as DaemonRequest;
       asked.push(request);
