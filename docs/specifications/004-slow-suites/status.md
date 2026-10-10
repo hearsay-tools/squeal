@@ -95,6 +95,8 @@ Started: 2026-10-08
 
 - 2026-10-10, `lessons.md` defect 4 (the Squeal version in the environment hash, held by the human since the first dogfood): resolved by the human's decision, carried out by the 001 lane. 001-199 (0.1.89) keys name a `KEY_FORMAT_VERSION`, not the release, so a release re-runs only what its key-relevant changes reach; 001-203 widens the guard to all of `src/` minus an exempt list. Their reviews are the 001 lane's.
 
+- 2026-10-10, 001-205, 0.1.93 (the 001 lane's derived claims, by agreement with the 002/003/004 coordinator; recorded by 001-210 for the 001 lane's `reviews/wave-13o.md` N1): D6 amended, claims gate only files that may inherit. A slow file waits on another worktree's claim of its key only when that worktree's result could stand for it: its key holds the artifact it tests and no stored fail is withheld; a slow file that may not inherit never waits and runs here. The slow tier's candidates wait on a claim without taking the slot, and a result that lands is applied there, so a drain before exit (004-29) ends with it. 001-210 (`reviews/wave-13o.md` B2) keeps D2's one permit per file: the slot shrinks to the files the start's transaction actually runs, after its lookups and claims, and the per-file notes and artifact records follow those files; a start that runs none releases the slot once and publishes no running activity.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
