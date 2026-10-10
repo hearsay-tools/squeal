@@ -1,7 +1,7 @@
-import { headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { checkName, headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
 import { formatCheck } from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
-import type { KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
+import type { CheckId, KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
 
 /*
  * Hook-specific wording. Spec 001 D6: "Wording is factual, never imperative:
@@ -11,24 +11,41 @@ import type { KnownFailure, StatusHeader, TestFileRef } from "../../core/types/i
 /** Names listed in a block reason before the rest is counted. */
 const LISTED_FAILURES = 10;
 
+/** Known failures a Stop names before pointing to `squeal status` (task 001-222). */
+const NAMED_FAILURES = 5;
+
 /**
- * Stop with no delta: the status header and the known-failure count.
+ * Stop with no delta: the status header and the known failures.
  * `command` is how the header names the CLI (spec 002 D1 as amended).
  */
 export function statusText(
   header: StatusHeader,
-  failures: number,
+  failures: readonly KnownFailure[],
   command: string = SQUEAL_COMMAND,
 ): string {
   return [
     `SQUEAL · status at revision ${header.revision}`,
     ...headerLines(header, command),
-    knownFailuresLine(failures),
+    knownFailuresLine(
+      failures.map((f) => f.check),
+      command,
+    ),
   ].join("\n");
 }
 
-export function knownFailuresLine(failures: number): string {
-  return `Known failures: ${failures}`;
+/**
+ * Task 001-222: the count, then the failures by name, or the first
+ * `NAMED_FAILURES` and where the rest are listed.
+ */
+export function knownFailuresLine(
+  failures: readonly CheckId[],
+  command: string = SQUEAL_COMMAND,
+): string {
+  if (failures.length === 0) return "Known failures: 0";
+  const named = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
+  const more = failures.length - NAMED_FAILURES;
+  const rest = more > 0 ? ` and ${more} more; \`${command} status\` lists every one` : "";
+  return `Known failures: ${failures.length} (${named}${rest})`;
 }
 
 /** Spec 001 D9: "one sentence stating that the edit was not applied and can be re-issued." */

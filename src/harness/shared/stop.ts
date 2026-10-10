@@ -119,7 +119,7 @@ export function stopTurn(
           command: deps.command,
         });
         if (reasons.length > 0) {
-          const text = news ?? statusText(header, failures.length, deps.command);
+          const text = news ?? statusText(header, failures, deps.command);
           return { block: `${reasons.join("\n")}\n\n${text}` };
         }
         if (input.agent_id !== undefined) await finishSubagent(context);
@@ -128,7 +128,7 @@ export function stopTurn(
           const at = blocking ? { atRevision: header.revision } : {};
           if (!(await context.delivery.endTurn(consumer, at))) {
             if (decision < STOP_DECISIONS) continue;
-            const text = statusText(header, failures.length, deps.command);
+            const text = statusText(header, failures, deps.command);
             return { block: `${retriesReason(header.revision)}\n\n${text}` };
           }
         }
@@ -246,8 +246,9 @@ async function newsText(
   if (delta === null) return null;
   const failures = store.knownStates
     .list(consumer.worktreeId)
-    .filter((s) => s.outcome === "fail").length;
-  return `${formatDelta(delta, command)}\n${knownFailuresLine(failures)}`;
+    .filter((s) => s.outcome === "fail")
+    .map((s) => s.check);
+  return `${formatDelta(delta, command)}\n${knownFailuresLine(failures, command)}`;
 }
 
 /**
