@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { CLAIM_RECHECK_MS } from "../../src/core/scheduler/claims.js";
+import { SLOW_RECHECK_MS } from "../../src/core/scheduler/slow-tier.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
@@ -11,8 +12,9 @@ import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
  * Task 001-205 in the slow tier, by agreement with the 002/003/004
  * coordinator: a slow file whose key another live worktree runs waits
  * without taking the slot (no slot spin), and runs here once the claim ends
- * with no result; a slow file that may not inherit (004 D6) never waits; a
- * drain before exit (004-29) ends when the claimed key's result lands.
+ * with no result, a claimant cancelled included (review wave 13o, S1); a
+ * slow file that may not inherit (004 D6) never waits; a drain before exit
+ * (004-29) ends when the claimed key's result lands.
  */
 
 const acquired = vi.hoisted(() => new Map<string, number>());
@@ -33,7 +35,11 @@ const F0 = fileName(0);
 const ARTIFACT = "dist/app.js";
 
 /** `F0` is slow; with `declared`, its declared input holds the artifact it tests, so it inherits. */
-function slowSide(root: string, declared: boolean, heartbeatMs?: number): Side {
+function slowSide(
+  root: string,
+  declared: boolean,
+  { heartbeatMs, recheckMs = 50 }: { heartbeatMs?: number; recheckMs?: number } = {},
+): Side {
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-205-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
   const policy: Partial<Policy> = {
@@ -43,7 +49,7 @@ function slowSide(root: string, declared: boolean, heartbeatMs?: number): Side {
   return side(root, {
     count: 1,
     policy,
-    slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
+    slow: { slotDir, recheckMs, load: () => [0], cpus: () => 1 },
     ...(heartbeatMs === undefined ? {} : { heartbeatMs }),
   });
 }
@@ -70,7 +76,7 @@ describe("claims in the slow tier (task 001-205)", { timeout: 30_000 }, () => {
     "a claimed slow file waits without taking the slot, and runs here when the claimant %s",
     async (_, end) => {
       const { main, other } = claimRepo(1, { [ARTIFACT]: "app\n" });
-      const a = slowSide(main, true, 1_000);
+      const a = slowSide(main, true, { heartbeatMs: 1_000 });
       const b = slowSide(other, true);
       await heldInA(a, b);
       await delay(CLAIM_RECHECK_MS * 2);
@@ -85,6 +91,27 @@ describe("claims in the slow tier (task 001-205)", { timeout: 30_000 }, () => {
       await expect.poll(() => b.passing()).toBe(1);
     },
   );
+
+  it("a claimed slow file runs here once the claimant's run is cancelled with no result, woken by the claim (wave 13o, S1)", async () => {
+    const { main, other } = claimRepo(1, { [ARTIFACT]: "app\n" });
+    const a = slowSide(main, true);
+    // No slow timer pumps `b` before the claim's wake would: only the claim wake, no batch, no request.
+    const b = slowSide(other, true, { recheckMs: SLOW_RECHECK_MS });
+    await heldInA(a, b);
+    await delay(CLAIM_RECHECK_MS * 2);
+    expect(b.runner.runs).toEqual([]);
+    expect(acquired.get(b.worktreeId) ?? 0).toBe(0);
+
+    a.runner.cancelled = true;
+    a.runner.release();
+    const released = performance.now();
+    await expect.poll(() => b.runner.ran(F0), { timeout: 10_000 }).toBe(1);
+    expect(performance.now() - released).toBeLessThan(SLOW_RECHECK_MS);
+    expect(a.phase(F0)).toBeNull();
+    expect(a.passing()).toBe(0);
+    expect(acquired.get(b.worktreeId)).toBe(1);
+    await expect.poll(() => b.passing()).toBe(1);
+  });
 
   it("a slow file that may not inherit (004 D6) never waits on a claim", async () => {
     const { main, other } = claimRepo(1, { [ARTIFACT]: "app\n" });
