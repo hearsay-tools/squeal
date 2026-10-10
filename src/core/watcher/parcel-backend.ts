@@ -11,6 +11,7 @@ import type {
   WatchSubscription,
 } from "../types/index.js";
 import { Exclusions } from "./exclusions.js";
+import { RACY_NS, RootRecheck } from "./root-recheck.js";
 
 export type Parcel = typeof import("@parcel/watcher");
 /** Loads @parcel/watcher for the worktree at `root`. */
@@ -83,7 +84,11 @@ async function subscribeAll(
   const exclusions = new Exclusions(spec);
   const main = await parcel.subscribe(
     spec.root,
-    callback(listener, (path) => (exclusions.excludes(path) ? [] : [path])),
+    callback(
+      listener,
+      (path) => (exclusions.excludes(path) ? [] : [path]),
+      new RootRecheck(exclusions),
+    ),
     { ignore: [...spec.excluded] },
   );
   const subs = [main];
@@ -159,12 +164,6 @@ class ErasedEvents {
     return hints;
   }
 }
-
-/**
- * How close to its file's timestamps a signature is racy: two seconds, the
- * coarsest common tick (FAT), well above a kernel's coarse clock (a jiffy).
- */
-const RACY_NS = 2_000_000_000n;
 
 /**
  * The content bytes one parent's batch, or its seed, may read. Extra files
@@ -259,7 +258,7 @@ function contentHash(path: AbsolutePath, size: number, budget: Budget): string |
 function callback(
   listener: WatchListener,
   report: (path: AbsolutePath) => AbsolutePath[],
-  erased?: ErasedEvents,
+  erased: ErasedEvents | RootRecheck,
 ): ParcelCallback {
   return (error, events) => {
     if (error) {
@@ -271,7 +270,7 @@ function callback(
     for (const event of events) {
       for (const path of report(event.path)) hints.push({ path, kind: KINDS[event.type] });
     }
-    if (erased) hints.push(...erased.find(new Set(events.map((e) => e.path))));
+    hints.push(...erased.find(new Set(events.map((e) => e.path))));
     if (hints.length > 0) listener.onHints(hints);
   };
 }
