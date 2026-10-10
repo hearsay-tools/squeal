@@ -111,7 +111,9 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     expect(isAlive(pidOf(worker))).toBe(true);
     expect(notes).toEqual([
       expect.stringMatching(
-        new RegExp(`^stopped 1 process a test left running after its tier: ${escaped} `),
+        new RegExp(
+          `^stopped 1 process a test left running after its tier \\(run short\\): ${escaped} `,
+        ),
       ),
     ]);
     release();

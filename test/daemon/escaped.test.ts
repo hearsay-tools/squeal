@@ -12,6 +12,7 @@ import {
   spawnCli,
   waitFor,
   waitReady,
+  withStore,
 } from "./helpers.js";
 import { resultOf } from "./scratch-helpers.js";
 import { isAlive } from "./strays.js";
@@ -24,17 +25,21 @@ import { isAlive } from "./strays.js";
  * `squeal start`, whose wait for the answer a loaded host outlasts.
  */
 
-/** A test that leaves a detached sleeper and an orphan in the daemon's group, and waits for a child of its own. */
+/**
+ * A test that leaves a detached sleeper and an orphan in the daemon's group,
+ * the orphan deaf to SIGTERM, and waits for a child of its own.
+ */
 function escapingTest(pidFile: string): string {
   return `import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
 const sleeper = ["-e", "setTimeout(() => {}, 600000)"];
+const deaf = ["-e", "process.on('SIGTERM', () => {}); setTimeout(() => {}, 600000)"];
 it("leaves two sleepers behind", async () => {
   const detached = spawn(process.execPath, sleeper, { detached: true, stdio: "ignore" });
   detached.unref();
   // No env of the worker's: only its process group says whose it is.
-  const plain = spawn(process.execPath, sleeper, { stdio: "ignore", env: { PATH: process.env.PATH } });
+  const plain = spawn(process.execPath, deaf, { stdio: "ignore", env: { PATH: process.env.PATH } });
   plain.unref();
   const own = spawn(process.execPath, ["-e", "setTimeout(() => process.exit(3), 1500)"], { stdio: "ignore" });
   expect(await new Promise((done) => own.on("exit", done))).toBe(3);
@@ -125,10 +130,20 @@ describe.runIf(process.platform === "linux")(
         10_000,
         "both sleepers gone after the tier",
       );
-      const note = readNotes(repo).find((text) => text.includes("a test left running"));
-      expect(note).toMatch(/^stopped 2 processes a test left running after its tier: /);
-      expect(note).toContain(String(detached));
-      expect(note).toContain(String(plain));
+      const note = readNotes(repo).find((text) => text.includes("a test left running")) ?? "";
+      // Task 001-212: each with its parent, its age and the signal that ended it.
+      const entry = (pid: number | undefined, ended: string) =>
+        new RegExp(`${pid} \\S+ -e .+? \\(parent \\d+ [^,]+, \\d+\\.\\d s old, ${ended}\\)`);
+      expect(note).toMatch(entry(detached, "SIGTERM"));
+      expect(note).toMatch(entry(plain, "SIGKILL after 1 s"));
+      // The run it names lists the test file that left them.
+      const runId =
+        /^stopped 2 processes a test left running after its tier \(run ([\w-]+)\): /.exec(
+          note,
+        )?.[1];
+      expect(runId, note).toBeDefined();
+      const run = withStore(repo, (store) => store.runs.get(runId ?? ""));
+      expect(run?.testFiles.map((ref) => ref.path)).toContain("test/escape.test.ts");
       // The daemon serves on.
       expect(await ping(repo.socketPath, 2_000)).not.toBeNull();
     });
@@ -166,9 +181,9 @@ describe.runIf(process.platform === "linux")(
       suite.cleanup(() => {
         if (pid > 0 && isAlive(pid)) process.kill(pid, "SIGKILL");
       });
-      expect(out).toBe(
-        `stopped 1 process a test left running after its tier: ${pid} ${process.execPath} -e setTimeout(() => {}, 600000)\n`,
-      );
+      const head = `stopped 1 process a test left running after its tier: ${pid} ${process.execPath} -e setTimeout(() => {}, 600000) (parent `;
+      expect(out.startsWith(head), out).toBe(true);
+      expect(out.slice(head.length)).toMatch(/^\d+ [^,]*, \d+\.\d s old, SIGTERM\)\n$/);
       expect(isAlive(pid)).toBe(false);
     });
   },

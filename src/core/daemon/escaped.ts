@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
@@ -9,6 +9,18 @@ import {
   type TestFileRef,
 } from "../types/index.js";
 import { lowerWhile } from "./low-priority.js";
+import {
+  describe,
+  GRACE_MS,
+  type ProcessEntry,
+  type Stopped,
+  statOf,
+  TICKS_PER_SECOND,
+  terminate,
+  uptimeTicks,
+} from "./terminate.js";
+
+export type { ProcessEntry } from "./terminate.js";
 
 /**
  * The variable every Vitest worker of a daemon carries, and with it every
@@ -18,25 +30,10 @@ import { lowerWhile } from "./low-priority.js";
  */
 export const CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 
-/** How long a process told to stop gets before it is killed. */
-const GRACE_MS = 1_000;
-/** `/proc` reports start times in USER_HZ, 100 on every Linux architecture Node supports. */
-const TICKS_PER_SECOND = 100;
 /** Scans per stop: each after the first finds the orphans of what the one before stopped. */
 const ROUNDS = 3;
 /** `/proc/<pid>/stat` files read per event-loop turn. */
 const CHUNK = 64;
-/** The longest command line a note names. */
-const COMMAND_CHARS = 120;
-
-export interface ProcessEntry {
-  readonly pid: number;
-  readonly ppid: number;
-  readonly pgrp: number;
-  /** Clock ticks since boot. */
-  readonly start: number;
-}
-
 /**
  * Finds and stops the processes a daemon's tests left behind (spec 001 D12).
  * Two kinds are a test's: a process carrying the daemon's mark, which only
@@ -92,12 +89,18 @@ export class EscapedChildren {
    * carriers of the bare mark (`env`) and the unmarked orphans of the
    * daemon's group since `alone`, a mark taken when the first of the
    * overlapping runs started. Never another lane's carrier: a run of it may
-   * have just started (review 001-149). Resolves with a note naming them, or
-   * `null`.
+   * have just started (review 001-149). Resolves with a note naming them and
+   * the run `runId`, whose record lists the tier's test files, or `null`.
    */
-  async afterRun(lane: string, since: number, alone: number | null = null): Promise<string | null> {
+  async afterRun(
+    lane: string,
+    since: number,
+    alone: number | null = null,
+    runId: string | null = null,
+  ): Promise<string | null> {
     const stopped = await this.#stop({ lane, since, alone });
-    return describe(stopped, "a test left running after its tier");
+    const run = runId === null ? "" : ` (run ${runId})`;
+    return describe(stopped, `a test left running after its tier${run}`);
   }
 
   /**
@@ -275,73 +278,12 @@ export function afterEachRun(
         await lowering;
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
-        const text = await children.afterRun(at, since, alone).catch(() => null);
+        const text = await children.afterRun(at, since, alone, options.runId).catch(() => null);
         if (text !== null) note(text);
       }
     },
     close: () => runner.close(),
   };
-}
-
-/** SIGTERM, up to the grace to go, then SIGKILL. */
-/** What `terminate` reads and signals; `PROC` on Linux, a table of its own in tests. */
-export interface ProcessTable {
-  /** The process now at `pid`, or `null` when none is. */
-  stat(pid: number): ProcessEntry | null;
-  commandLine(pid: number): Promise<string>;
-  signal(pid: number, name: NodeJS.Signals): void;
-}
-
-const PROC: ProcessTable = { stat: statOf, commandLine, signal };
-
-/**
- * SIGTERM, up to the grace to go, then SIGKILL. Each signal and the command
- * line a note names reach a process only while the pid still holds the one
- * the scan found, same start time, checked right before (review 001-149 S2):
- * a pid reused in between gets nothing and is not named. Between the check
- * and the signal the pid can still be reused; a pidfd would close that, at
- * the cost of a native call Node does not expose.
- */
-export async function terminate(
-  found: readonly ProcessEntry[],
-  table: ProcessTable = PROC,
-): Promise<Stopped[]> {
-  const same = (entry: ProcessEntry) => table.stat(entry.pid)?.start === entry.start;
-  const named: { entry: ProcessEntry; args: string }[] = [];
-  for (const entry of found) {
-    if (!same(entry)) continue;
-    named.push({ entry, args: await table.commandLine(entry.pid) });
-  }
-  // Each identity is checked right before its own signal; one signal may free the next pid (review wave-13b S2).
-  const termed: ProcessEntry[] = [];
-  for (const { entry } of named) {
-    if (!same(entry)) continue;
-    table.signal(entry.pid, "SIGTERM");
-    termed.push(entry);
-  }
-  const deadline = Date.now() + GRACE_MS;
-  let alive = termed.filter(same);
-  while (alive.length > 0 && Date.now() < deadline) {
-    await sleep(25);
-    alive = alive.filter(same);
-  }
-  for (const entry of alive) if (same(entry)) table.signal(entry.pid, "SIGKILL");
-  const stopped = new Set(termed);
-  return named
-    .filter(({ entry }) => stopped.has(entry))
-    .map(({ entry, args }) => ({ pid: entry.pid, args }));
-}
-
-export interface Stopped {
-  readonly pid: number;
-  readonly args: string;
-}
-
-function describe(stopped: readonly Stopped[], what: string): string | null {
-  if (stopped.length === 0) return null;
-  const count = stopped.length === 1 ? "1 process" : `${stopped.length} processes`;
-  const list = stopped.map(({ pid, args }) => `${pid} ${args}`.trimEnd()).join("; ");
-  return `stopped ${count} ${what}: ${list}`;
 }
 
 /**
@@ -360,19 +302,6 @@ async function snapshot(): Promise<ProcessEntry[]> {
     }
   }
   return entries;
-}
-
-function statOf(pid: number): ProcessEntry | null {
-  let text: string;
-  try {
-    text = readFileSync(`/proc/${pid}/stat`, "latin1");
-  } catch {
-    return null;
-  }
-  // The command name is in parentheses and may hold either; the fields follow the last one.
-  const fields = text.slice(text.lastIndexOf(")") + 2).split(" ");
-  if (fields[0] === "Z" || fields[0] === "X") return null;
-  return { pid, ppid: Number(fields[1]), pgrp: Number(fields[2]), start: Number(fields[19]) };
 }
 
 /** A process's identity across pid reuse. */
@@ -411,33 +340,4 @@ function descendantsOf(roots: readonly number[], entries: readonly ProcessEntry[
 /** The ones still running as the same process: same pid, same start time. */
 function survivors(entries: readonly ProcessEntry[]): ProcessEntry[] {
   return entries.filter((entry) => statOf(entry.pid)?.start === entry.start);
-}
-
-async function commandLine(pid: number): Promise<string> {
-  try {
-    const text = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text.length > COMMAND_CHARS ? `${text.slice(0, COMMAND_CHARS - 3)}...` : text;
-  } catch {
-    return "";
-  }
-}
-
-function signal(pid: number, name: NodeJS.Signals): void {
-  try {
-    process.kill(pid, name);
-  } catch {
-    // Already gone.
-  }
-}
-
-function uptimeTicks(): number {
-  if (process.platform !== "linux") return 0;
-  try {
-    // Synchronous: one small read, at construction and before each tier.
-    return Math.floor(
-      Number(readFileSync("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND,
-    );
-  } catch {
-    return 0;
-  }
 }
