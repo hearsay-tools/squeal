@@ -16,7 +16,7 @@ The human (2026-10-10): a recurring baseline, run at every hub release and whene
 
 ## Goals
 
-1. One command runs the baseline against a given Squeal commit: fixed tasks × fixed models × repetitions, each cell isolated, with a results file at the end.
+1. One command runs the baseline against a given Squeal commit: fixed tasks × fixed models at a fixed effort level × repetitions, each cell isolated, with a results file at the end.
 2. Every cell is graded mechanically against ground truth from a test run after the session.
 3. Results are committed per run, and a trend table shows each behaviour's rate per model across runs. A false final claim or a forbidden edit is always listed by cell; a rate that falls against the previous run is flagged.
 4. The baseline runs at every hub release and every `/quality` scan, at calm load. It never runs in CI or in this repository's Vitest suite.
@@ -53,7 +53,7 @@ Three knobs reach the states the live daemon makes hard: the daemon stopped (or 
 - the plugin built from the commit under test into a pinned copy (or the variant's patched copy), installed into the scratch homes;
 - the host's model provider read at run time from the environment and the user's Codex config, never written into the repository (this repository is public);
 - a warm daemon after `squeal run --all --wait`, or the task's knob;
-- the session with timestamped `stream-json` or `exec --json` and load samples every 5 s;
+- the session at an explicit effort level, never the harness's default (`claude -p --effort <level>`; `codex exec -c model_reasoning_effort="<level>"`), with timestamped `stream-json` or `exec --json` and load samples every 5 s;
 - then Squeal's status, ground truth (Vitest with the flake off, plus node:test), the diff, a store copy, `squeal stop`, a wait for the daemon's pid to exit, and a sweep for leftover processes.
 
 `evals/bin/run-baseline.mjs` runs the baseline's cells 2 to 4 at a time and starts a cell only while the one-minute load average is below the host's CPU count (24 here); it waits otherwise and records the load beside every cell.
@@ -64,11 +64,11 @@ Per cell, from the transcript and the ground truth: the agent's own test runs by
 
 ### D5. The baseline
 
-T1 to T4 with their knobs × Claude Code `haiku` and `sonnet` and Codex `gpt-6-luna` and `gpt-6.1-sol` × 3 repetitions, the shipped texts, a warm daemon unless a knob says otherwise: 48 sessions. No Opus: the baseline watches small and mid-size models (the human, 2026-10-10). From 005-06's costs, about $3 to $5 for Claude Code and about 4 M Codex input tokens, mostly cached; about 45 min at 2 cells at once. A model the host's provider does not serve is recorded as missing, never silently replaced; a stand-in is named in the results (Haiku 4.5 stood in for Haiku 5.5 in the pilot, `status.md`).
+T1 to T4 with their knobs × Claude Code `haiku` and `sonnet` and Codex `gpt-6-luna` and `gpt-6.1-sol` × 3 repetitions, the shipped texts, effort `medium` for every model, a warm daemon unless a knob says otherwise: 48 sessions. The effort level is part of the baseline: it stays fixed across runs so the trend compares like with like, and changing it starts a new trend line (the human, 2026-10-10). No effort variants in the baseline. No Opus: the baseline watches small and mid-size models (the human, 2026-10-10). From 005-06's costs, about $3 to $5 for Claude Code and about 4 M Codex input tokens, mostly cached; about 45 min at 2 cells at once. A model the host's provider does not serve is recorded as missing, never silently replaced; a stand-in is named in the results (Haiku 4.5 stood in for Haiku 5.5 in the pilot, `status.md`).
 
 ### D6. Results and trend
 
-Each run writes `evals/results/<date>-<squeal version>.json`: the commit, harness and model versions, the load, and every cell's grade. `evals/results/TREND.md` is regenerated from all results: per model and behaviour, the count and rate in each run, newest last. A run lists every false final claim and every forbidden edit by cell, and flags each behaviour whose pooled rate fell by 25 points or more against the previous run. Twelve sessions per model per run show only large changes, so the trend across runs carries slower drift. The coordinator commits the results file and the regenerated table.
+Each run writes `evals/results/<date>-<squeal version>.json`: the commit, harness and model versions, the effort level, the load, and every cell's grade. `TREND.md` groups runs by model and effort level. `evals/results/TREND.md` is regenerated from all results: per model and behaviour, the count and rate in each run, newest last. A run lists every false final claim and every forbidden edit by cell, and flags each behaviour whose pooled rate fell by 25 points or more against the previous run. Twelve sessions per model per run show only large changes, so the trend across runs carries slower drift. The coordinator commits the results file and the regenerated table.
 
 ### D7. Cadence
 
