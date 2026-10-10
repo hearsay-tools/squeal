@@ -91,6 +91,10 @@ Started: 2026-10-08
 
 - 2026-10-10, 004-57, 0.1.91 (gate: Node 24 fully green, 2366 tests; Node 22 one failure, the 001 lane's `test/daemon/scratch.test.ts` reading a daemon's working directory before it moved, passing alone 9 of 9): a declaration removes a path only from its own test file's closure. On this repository's store the clause now counts 331 `src` paths (29 before), the same 69 fixture paths and 2 docs; the 28 `src` paths still out are build entry points and type-only imports no test resolves, which recording resolved closures apart would not add either, so the store stays as it is. D8 amended again. Review 004-58 dispatched.
 
+- 2026-10-10, review 004-58 (`reviews/wave-6.5.md`, PASS at `c764599e`, gpt-6.1-sol): `reviews/wave-6.md` S1 closed on Node 22 and 24 with a private-store negative control; no new finding. Coverage stays bounded by closures, as D8 says: bundled entry points and copied runtime sources no test resolves are not sources. With it every row of spec 004 is done.
+
+- 2026-10-10, `lessons.md` defect 4 (the Squeal version in the environment hash, held by the human since the first dogfood): resolved by the human's decision, carried out by the 001 lane. 001-199 (0.1.89) keys name a `KEY_FORMAT_VERSION`, not the release, so a release re-runs only what its key-relevant changes reach; 001-203 widens the guard to all of `src/` minus an exempt list. Their reviews are the 001 lane's.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
