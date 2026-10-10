@@ -30,11 +30,12 @@ import { RecordingSink } from "./recording-sink.js";
 
 export const fileName = (i: number) => `test/f${String(i).padStart(2, "0")}.test.ts`;
 
-/** A repository of `count` test files and `extra`, and a linked worktree `other` beside it. */
+/** A repository of `count` test files and `extra`, and `linked` worktrees beside it, `other` first. */
 export function claimRepo(
   count: number,
   extra: Readonly<Record<string, string>> = {},
-): { main: string; other: string } {
+  linked = 1,
+): { main: string; other: string; others: string[] } {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-claims-")));
   onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
   const main = join(dir, "main");
@@ -47,9 +48,13 @@ export function claimRepo(
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);
   git(main, ["commit", "-qm", "fixture"]);
-  const other = join(dir, "other");
-  git(main, ["worktree", "add", "-q", "-b", "other", other]);
-  return { main, other };
+  const others = Array.from({ length: linked }, (_, i) =>
+    join(dir, i === 0 ? "other" : `other${i}`),
+  );
+  for (const [i, root] of others.entries()) {
+    git(main, ["worktree", "add", "-q", "-b", `other${i}`, root]);
+  }
+  return { main, other: join(dir, "other"), others };
 }
 
 function gate(): { shut: Promise<void>; open: () => void } {
