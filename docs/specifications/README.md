@@ -20,3 +20,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 003 | node:test runner (second runner: closure, affected selection, results) | approved |
 | 004 | Slow suites by policy (e2e and integration suites at checkpoints) | approved |
 | 005 | Agent adoption (getting agents to rely on Squeal instead of their own test runs) | approved |
+| 006 | Model evals (a recurring baseline of how models use Squeal) | draft |
