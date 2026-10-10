@@ -529,7 +529,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08, shipped 202
 
 ## Feature 005: agent adoption
 
-Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until 001-169 to 001-174 and 004-46 are done and the human says go (the host's load is this project's own work); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); the human's cezar session of 2026-10-10 folded into D3 and D6; its defects and D6's delivery proposals are 001 rows 001-216 to 001-224, which 005-18's proof needs shipped (001-217, 001-219, 001-223, 001-224); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
+Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until the other coordinators finish and the quality pass under Later runs, then the human says go (human, 2026-10-10; the host's load is this project's own work); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); the human's cezar session of 2026-10-10 folded into D3 and D6; its defects and D6's delivery proposals are 001 rows 001-216 to 001-224, which 005-18's proof needs shipped (001-217, 001-219, 001-223, 001-224); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
 ### Research (done)
 
@@ -575,7 +575,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 ## Feature 006: model evals
 
-Spec: `specifications/006-model-evals/spec.md`, draft 2026-10-10, awaiting the human's approval; sections D1 to D8. A recurring baseline of how models use Squeal, run at every hub release and with every `/quality` scan (human, 2026-10-10). Built from 005-06's prototype (`specifications/005-agent-adoption/research/probes/model-evals/`). Dispatch waits for approval and calm load.
+Spec: `specifications/006-model-evals/spec.md`, draft 2026-10-10, held with 005 until the other coordinators finish and the quality pass runs (human, 2026-10-10); sections D1 to D8; no Opus in the baseline. A recurring baseline of how models use Squeal, run at every hub release and with every `/quality` scan (human, 2026-10-10). Built from 005-06's prototype (`specifications/005-agent-adoption/research/probes/model-evals/`). Approval and dispatch after the quality pass, at calm load.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
@@ -591,7 +591,7 @@ Spec: `specifications/006-model-evals/spec.md`, draft 2026-10-10, awaiting the h
 
 - 001: `squeal` is not on a user's PATH after a plugin install: now spec 005 D3 (`install.sh`, the launcher, `squeal setup`; rows 005-14 and 005-19), decided by the human 2026-10-09.
 
-- Quality pass over specs 002 to 004 and 001's recent waves: one `/quality` scan once the 001 coordinator finishes spec 001 and 004-25 to 004-26 land (human, 2026-10-09).
+- Quality pass over specs 002 to 004 and 001's recent waves: one `/quality` scan once the 001 coordinator finishes spec 001 and 004-25 to 004-26 land (human, 2026-10-09). The new specs 005 and 006 start after it (human, 2026-10-10).
 
 - 001: `store.prune` removes a removed worktree's results but not its per-worktree `meta` rows (`slow-tier:<worktreeId>` from 004-15, `optimizer-off.<worktreeId>` from 001-181, `held-files:<worktreeId>` and `reruns:<worktreeId>` from 001-187 (`reviews/wave-13j.md` S4), `slow-artifacts:<worktreeId>` from 004-23, and `failure-keys:<worktreeId>` from 004-25 (newest 1,024 failing checks' keys, written by `src/core/state/sink.ts`), all built in `src/core/slow/state.ts`). Prune them with the worktree by those known prefixes (a registry of per-worktree prefixes), never by a `:<worktreeId>` suffix match: the shared `nodeTest.observed.<project>` and `nodeTest.observedPreloads.<project>` keys must survive, in the same short batches as 001-141. Reported by the 002/003/004 coordinator, 2026-10-09.
 
