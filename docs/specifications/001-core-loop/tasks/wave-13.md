@@ -641,3 +641,17 @@ Done when: the review's EMFILE reproducer reports the later same-tick rewrite, r
 ## 001-246 re-review of the parcel recheck
 
 Use /reviewer on gpt-6.1-sol, after 001-245 lands. Output `reviews/wave-13y.md`. Second round on `reviews/wave-13x.md` B1 and S1: can any failed or skipped read still be trusted as unchanged; is the budget bounded and its conservative hint safe. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-247 the parcel recheck's read stops at the budget
+
+Use /worker. Shape: repair. From `reviews/wave-13y.md` (001-246) S1, under the human's standing instruction (2026-10-10): fix, then a third review (001-248), release only on a pass. Read the review's growth reproducer first.
+
+Outcome: in `src/core/watcher/parcel-backend.ts`, a racy content read never reads past the remaining `READ_BUDGET`, whatever the stat said. Open the file and read through its descriptor at most the remaining budget plus one byte (or stream-hash in chunks, stopping at the budget). A file that turns out larger than the budget is hinted as `change` and stays uncertain, as 001-245 does for an over-budget stat, and is never treated as unchanged. Close the descriptor on every path. Keep B1's uncertain-on-failure behaviour, the budget constant, "settled files are never read" and "at most once per batch".
+
+Own: `src/core/watcher/parcel-backend.ts`, `test/watcher/`. The coordinator re-pins `KEY_FORMAT_VERSION` 3 and rebuilds. Do not run `npm run build`. Do not edit `docs/board.md`.
+
+Done when: the review's reproducer (a file grown from 1 KiB to 12 MiB between stat and read) reads at most the remaining budget and gets a hint, red before; the 001-245 tests still pass; parcel-racy and parcel-links pass 50 times in a row; lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+## 001-248 third review of the parcel recheck
+
+Use /reviewer on gpt-6.1-sol, after 001-247 lands. Output `reviews/wave-13z.md`. Third round on `reviews/wave-13y.md` S1 only: can any read still exceed the budget; is every descriptor closed; is a truncated read ever trusted as unchanged. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
