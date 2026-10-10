@@ -459,3 +459,15 @@ Done when: the reviewer's barrier mutation (and one in `recordsForFile`) fails t
 ## 001-204 re-review of the key-format guard
 
 Use /reviewer on gpt-6.1-sol, after 001-203 lands. Output `reviews/wave-13n.md`. Second round on `reviews/wave-13m.md`: are B1, S1, S2 closed; is each exemption truly unable to change what is stored or accepted. Decided by the human: blockers go to the human.
+
+## 001-205 worktrees split a baseline through derived claims
+
+Use /worker. Shape: slice. From `research/shared-runs.md` (001-201), decided by the human (2026-10-10). Build the recommendation as written there: a claim is another live worktree's `test_file_keys` row at the key with `pending = 'running'` and a fresh heartbeat (no table, no migration); the check and claim inside `startTier`'s `BEGIN IMMEDIATE`; the gate (only a file whose lookup would accept another worktree's result waits: not forced, not `recent`, `Ledger.inherits`, not an unconfirmed fail), in `selectTier` and the slow tier's `#pick`; the wake on `changeMarker` and at least once a second; expiry by record, two stale heartbeat intervals, or `runner.timeoutMs` plus 6 s; the two fixes (a starting daemon resets its leftover `running` rows before its first heartbeat; `running` only while `file.key === file.runningKey`); the backlog cap (remaining queued files divided by live daemons, floor `runner.tierSize`, ceiling `runner.backlogTierSize`). Amend D5, D8, D10 and 004 D6 as the research words them (004 D6 by agreement with the 002/003/004 coordinator; tell me the line).
+
+Own: `src/core/scheduler/`, `src/core/store/` (queries only, no schema change), `src/core/daemon/` start, the slow tier's `#pick` (ask the 002/003/004 coordinator first), tests under `test/scheduler/` and `test/daemon/`. 001-203 is changing `test/keys/` and the adapters' version constants; the key-format guard will ask for a re-pin of version 1 after this lands (still unreleased). Do not run `npm run build`.
+
+Done when: the research's ten tests pass over two schedulers on one real store; a four-worktree probe like its finding 5 shows each key run once.
+
+## 001-206 review of shared runs
+
+Use /reviewer on gpt-6.1-sol, after 001-205 lands. Output `reviews/wave-13o.md`. Can a claim ever leave a file unrun, run it twice, delay an edit's own file, or let a result stand that 004 D6 or 001-170 forbid; does a crashed, stepped-down or restarted daemon release its claims. Decided by the human: blockers go to the human.
