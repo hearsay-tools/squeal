@@ -565,7 +565,7 @@ Use /worker. Shape: slice. Read each row on the board first.
 - 001-223 (005 proposal a): once every test file the consumer's edits re-keyed is current, the next delivered header says so once (the set 001-186 computes). No line while any is pending.
 - 001-224 (005 proposal c, decided by the human): once per consumer session, the first delivery after its first edit says, in one line, "Squeal saw your edit and queued N test files; results arrive with later tool calls, and passing ones stay silent." It never repeats in that session, and a session that never edits gets none.
 
-Own: `src/core/delivery/`, the harness text modules (`src/harness/claude-code/text.ts` and the Codex equivalent), the Vitest adapter's failure-message extraction (`src/runners/vitest/` reporter or summary code only), tests under `test/delivery/`, `test/harness/` and the adapter's tests. Done when: each row's done-when on the board holds in a test; lint, typecheck and the full suite are green.
+Own: `src/core/delivery/`, the hook text module `src/harness/shared/text.ts` (and the Known failures call sites in `src/harness/shared/stop.ts`), `describeFailure` in `src/core/state/fingerprint.ts` (the fingerprint itself unchanged; agreed 2026-10-10), the Vitest adapter's failure-message extraction (`src/runners/vitest/` reporter or summary code only), tests under `test/delivery/`, `test/harness/` and the adapter's tests. Done when: each row's done-when on the board holds in a test; lint, typecheck and the full suite are green.
 
 ## 001-217, 001-219, 001-222 (notes): checkpoints in status and across a session's end
 
