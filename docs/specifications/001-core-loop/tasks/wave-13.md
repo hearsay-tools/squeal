@@ -537,3 +537,17 @@ Done when: B1's overlap probe (a short run's bare-marker child, a disjoint long 
 ## 001-227 re-review of wave 13r
 
 Use /reviewer on gpt-6.1-sol, after 001-226 lands. Output `reviews/wave-13s.md`. Second round on `reviews/wave-13r.md`: are B1, B2 (as the human bounded it, not full cancellation), S1 and N1 closed; can a hold still outlive its request or its deadline; can an incomplete answer ever read as quiet. Run your own independent full suite. Blockers go to the human.
+
+## 001-229 a held answer's hour ends on time while refinement stalls
+
+Use /worker. Shape: repair. From `reviews/wave-13s.md` (001-227) B2, decided by the human (2026-10-10): fix, then a third review (001-230). Read the review's reproduction and fix paragraph first.
+
+Outcome: a hold's `HOLD_MS` deadline is enforced by an independent timer (one for the earliest deadline, re-armed) or a bounded periodic sweep that runs while refinement is blocked. When expiry wins, the hold is released, the history it alone protected is pruned (by the expiry time, not only `#latest`'s discharge time, so age-only excess goes too), and the pending answer rejects `INCOMPLETE_ANSWER`. Expiry, forget and a normal answer are idempotent against each other; every end path clears its timer and listeners; a timer never keeps the daemon alive (`unref`). The socket and the CLI are unchanged.
+
+Own: `src/core/scheduler/discharges.ts`, the held-answer path in `src/core/scheduler/scheduler.ts`, `src/core/daemon/sync-requests.ts` only if it must own the timer, and their tests under `test/scheduler/` and `test/daemon/`. The key-format guard will ask for a re-pin of version 2 (unreleased); the coordinator does it. Do not run `npm run build`.
+
+Done when: the review's regression passes and is red before: stall the real refinement, exceed both age and count bounds, advance timers past one hour with no discharge, hold or read, and see zero expired holds, pruned unprotected history and an incomplete error on each retained request, while a younger hold's membership stays intact; expiry raced against forget and against a normal answer, in both orders, gives no double release and no unhandled rejection; the 40-request eviction test and the overflow and hour controls still pass; lint, typecheck and the full suite are green.
+
+## 001-230 third review of wave 13r
+
+Use /reviewer on gpt-6.1-sol, after 001-229 lands. Output `reviews/wave-13t.md`. Third round on `reviews/wave-13s.md` B2 only: does a hold now end at its deadline while refinement stalls; can expiry, forget and a normal answer ever double-release or leave a rejection unhandled; does any timer keep a daemon alive. Run your own independent full suite. Blockers go to the human.
