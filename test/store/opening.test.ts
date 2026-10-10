@@ -44,10 +44,13 @@ describe("store opened by concurrent processes (task 001-207)", () => {
       stdio: ["ignore", "pipe", "inherit"],
     });
     const released = new Promise((resolve) => holder.on("close", resolve));
-    await new Promise((resolve) => holder.stdout.once("data", resolve));
-
-    expect(inspectConnection(open(commonDir)).journalMode).toBe("wal");
-    expect(await released).toBe(0);
+    try {
+      await new Promise((resolve) => holder.stdout.once("data", resolve));
+      expect(inspectConnection(open(commonDir)).journalMode).toBe("wal");
+      expect(await released).toBe(0);
+    } finally {
+      holder.kill();
+    }
   }, 30_000);
 });
 
