@@ -347,6 +347,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-239 re-review of wave 13u | done (FAIL 0.1.103, `reviews/wave-13v.md`: the first round's B1 cases, B2, S1 and S2 closed; new B1, the settled line prints while 001-171's confirmation re-run of an edited file's new failure is queued; S1 a fresh ledger leaves a stale open attribution; to the human, second round) | Second round on `reviews/wave-13u.md`. | `reviews/wave-13v.md` committed. |
 | 001-240 the settled line waits for an edited file's confirmation re-run | running | `reviews/wave-13v.md` B1, S1; decided by the human (2026-10-10): fix, then a third review (001-241). | The review's probe (an edited file's new failure, 001-171's confirmation queued) gives no settled line until the re-run's result lands, red before, while `status --wait`'s discharge is unchanged; a fresh ledger's current-key result clears the persisted open mark. |
 | 001-241 third review of wave 13u | planned (gpt-6.1-sol) | Third round on `reviews/wave-13v.md` B1 and S1 only. | `reviews/wave-13w.md` committed. |
+| 001-242 the node:test integration test holds its time on CI | planned | CI on the coordinator's branch at 42b1aee9 (Node 24, 2026-10-10): "baselines, delivers a node:test PASS -> FAIL, keys observed paths and inherits" timed out at 10.4 s while main's run of the same commit passed. | The cause is named (a slow step or a fixed wait); the test passes repeatedly on CI. |
 
 ## Feature 002: Codex adapter
 
