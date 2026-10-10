@@ -172,19 +172,27 @@ export function selectTier(
     picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
   }
   const tier = picked.length === 0 ? null : startTier(context, ledger, picked, backlog);
-  if (tier === null) ledger.commit();
-  else ledger.queue.tierSelected(tookBacklog);
-  return tier;
+  if (tier !== null) {
+    ledger.queue.tierSelected(tookBacklog);
+    return tier;
+  }
+  ledger.commit();
+  // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
+  return picked.some((p) => !ledger.queue.has(p.file.ref)) ? selectTier(context, ledger, busy) : null;
 }
 
 /**
  * Records the start of a tier of `picked`, files still queued: in one
- * `BEGIN IMMEDIATE`, each file that `waits` is checked for another
- * worktree's claim once more and stays queued when one holds, then the
- * others leave the queue with their `running` phases, which are this
- * worktree's claims, and the run row (D8 as amended, task 001-205: a check
- * before the transaction let two daemons take one key). Then the stability
- * snapshot. `null` when every file stayed queued. `cancellable` for a
+ * `BEGIN IMMEDIATE`, each file that is not forced is looked up once more
+ * (`Ledger.probe`): a result that may stand for it is applied and it leaves
+ * the tier, as in `selectTier`; one withheld runs here (review wave 13o, B1:
+ * a tier that recorded the key since the selection released its claim too).
+ * Each file that `waits` is checked for another worktree's claim once more
+ * and stays queued when one holds, then the others leave the queue with
+ * their `running` phases, which are this worktree's claims, and the run row
+ * (D8 as amended, task 001-205: a check before the transaction let two
+ * daemons take one key). Then the stability snapshot. `null` when every file
+ * settled or stayed queued; what settled is committed. `cancellable` for a
  * backlog tier, which an edit cancels; never for an edit's or a slow tier.
  */
 export function startTier(
@@ -195,9 +203,12 @@ export function startTier(
 ): Tier | null {
   const { store, keys } = context;
   return store.transaction(() => {
-    const files = picked.filter((p) => p.waits !== true || !ledger.claims.holds(p.key));
+    const files = picked.flatMap((p) => startable(ledger, p));
     const first = files[0];
-    if (first === undefined) return null;
+    if (first === undefined) {
+      ledger.commit();
+      return null;
+    }
     const checkpointId = files.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
     const runId = randomUUID();
     const tier: Tier = {
@@ -233,6 +244,24 @@ export function startTier(
     ledger.commit();
     return tier;
   });
+}
+
+/**
+ * In `startTier`'s transaction: `[p]` when it starts, with whether it still
+ * waits; `[]` when a result now stands for it (applied) or another
+ * worktree's claim holds its key. A forced file always starts; a file only
+ * waits when it did at selection and nothing is withheld now.
+ */
+function startable(ledger: Ledger, p: TierFile): TierFile[] {
+  if (p.forced) return [p];
+  const { hits, mayWait } = ledger.probe(p.file, p.key);
+  if (hits.length > 0) {
+    ledger.applyResults(p.file, p.key, hits, p.checkpointId);
+    return [];
+  }
+  const waits = p.waits === true && mayWait;
+  if (waits && ledger.claims.holds(p.key)) return [];
+  return [{ ...p, waits }];
 }
 
 /** Runs a tier. Never rejects: a runner that throws is a crash (D12). */
