@@ -3022,7 +3022,7 @@ function editNotes(store, consumer, states, delivering) {
     const row = rows.get(id);
     if (row === void 0 || row.key === null || entry2.last <= state.since) continue;
     rekeyed.push(row);
-    owed ||= entry2.open !== null && row.pending !== null;
+    owed ||= row.pending !== null;
   }
   const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
   const editsSettled = owed ? void 0 : settled(state.since, rekeyed, states);
@@ -4101,7 +4101,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.103";
+  if (true) return "0.1.104";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
