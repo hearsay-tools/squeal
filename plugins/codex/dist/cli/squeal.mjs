@@ -5106,8 +5106,7 @@ function connect(paths, options) {
       }
     }
     if (pragmaNumber2(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
-    const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
-    if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
+    switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     const version2 = migrate(db);
     return createStore(new Connection(db), version2, paths);
@@ -5121,6 +5120,19 @@ function busyTimeout(options) {
   const ms = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(ms) || ms < 0) throw new RangeError(`busyTimeoutMs must be >= 0: ${ms}`);
   return ms;
+}
+function switchToWal(db, ms) {
+  const deadline = Date.now() + ms;
+  for (; ; ) {
+    try {
+      const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
+      if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
+      return;
+    } catch (error) {
+      if (!isBusy(error) || Date.now() >= deadline) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
+    }
+  }
 }
 function pragmaNumber2(db, name) {
   return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
@@ -33261,7 +33273,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.96";
+  if (true) return "0.1.97";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
