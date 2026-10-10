@@ -3409,10 +3409,10 @@ var init_sink = __esm({
 
 // src/core/state/slow-text.ts
 function durationText(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  const seconds2 = Math.max(0, Math.round(ms / 1e3));
+  if (seconds2 < 60) return `${seconds2} s`;
+  const rest = seconds2 % 60;
+  return `${Math.floor(seconds2 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
 }
 function clockText(at2) {
   const date = new Date(at2);
@@ -6803,13 +6803,16 @@ var init_discharges = __esm({
     HOLD_MS = 60 * 6e4;
     INCOMPLETE_ANSWER = "the sync answer's discharges were released before it was read; its files may be incomplete";
     Discharges = class {
+      /** `now` is the clock the holds' times are read from, which the timer reads when it runs. */
       constructor(limits = {
         retentionMs: DISCHARGE_RETENTION_MS,
         cap: DISCHARGE_CAP
-      }) {
+      }, now = () => Date.now()) {
         this.limits = limits;
+        this.now = now;
       }
       limits;
+      now;
       /** By file and revision, oldest discharge first. */
       #kept = /* @__PURE__ */ new Map();
       /** Oldest first. */
@@ -6910,9 +6913,10 @@ var init_discharges = __esm({
         }
         const handle = setTimeout(() => {
           this.#timer = null;
-          this.#see(at2);
-          this.#expire(at2);
-          if (this.#held.size > 0) this.#arm(at2);
+          const ran = this.now();
+          this.#see(ran);
+          this.#expire(ran);
+          if (this.#held.size > 0) this.#arm(ran);
         }, at2 - now);
         handle.unref?.();
         this.#timer = { at: at2, handle };
@@ -7281,6 +7285,7 @@ var init_ledger = __esm({
       constructor(context) {
         this.context = context;
         this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+        this.discharges = new Discharges(void 0, context.now);
         this.claims = new Claims(context);
         this.queue.setSlow((ref2) => slowView(context.policy).isSlow(ref2));
       }
@@ -7289,7 +7294,7 @@ var init_ledger = __esm({
       queue = new RunQueue();
       checkpoints;
       /** Attributions results discharged, for a wait's sync answer (task 001-196). */
-      discharges = new Discharges();
+      discharges;
       /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
       claims;
       revision = { number: 0, head: null, dirty: false };
@@ -9291,9 +9296,50 @@ var init_mutex = __esm({
   }
 });
 
+// src/core/scheduler/runner-work-bound.ts
+function runnerPartBoundMs(timeoutMs) {
+  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
+}
+function seconds(ms) {
+  return ms >= 1e3 ? `${Math.round(ms / 1e3)} s` : `${ms} ms`;
+}
+var RUNNER_PART_MARGIN_MS, RunnerPartBound;
+var init_runner_work_bound = __esm({
+  "src/core/scheduler/runner-work-bound.ts"() {
+    "use strict";
+    init_claims();
+    RUNNER_PART_MARGIN_MS = 6e4;
+    RunnerPartBound = class {
+      constructor(ms) {
+        this.ms = ms;
+      }
+      ms;
+      #abandoned = null;
+      call(call) {
+        if (this.#abandoned !== null) return Promise.reject(new Error(this.#abandoned));
+        const answer2 = call();
+        answer2.catch(() => {
+        });
+        let timer;
+        const abandoned = new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
+            reject(new Error(this.#abandoned));
+          }, this.ms);
+          timer.unref?.();
+        });
+        return Promise.race([answer2, abandoned]).finally(() => clearTimeout(timer));
+      }
+    };
+  }
+});
+
 // src/core/scheduler/refinement.ts
 async function fetchRunnerPart(context, ledger, revision, content, carried, touched = []) {
   const { keys, runner } = context;
+  const bound = new RunnerPartBound(
+    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs)
+  );
   const changes = revision.changes;
   const paths = changes.map((c) => c.path);
   const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
@@ -9306,17 +9352,17 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
   const invalidated = await tryRunner(
     context,
     `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
-    () => runner.invalidate(invalidations),
+    () => bound.call(() => runner.invalidate(invalidations)),
     (reason2) => failed(failures, null, reason2)
   );
   const recreated = new Set(invalidated?.recreatedProjects ?? []);
   const environments2 = recreated.size > 0 || content.environment || retrying ? await tryRunner(
     context,
     "environment",
-    () => runner.environment(),
+    () => bound.call(() => runner.environment()),
     (reason2) => failed(failures, null, reason2)
   ) : null;
-  const listed = structural || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => runner.testFiles()) : void 0;
+  const listed = structural || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles())) : void 0;
   const exists2 = new Set(
     listed ? listed.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
   );
@@ -9339,7 +9385,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
   const affected2 = await tryRunner(
     context,
     `affected (${listPaths(paths)})`,
-    () => runner.affected(paths)
+    () => bound.call(() => runner.affected(paths))
   );
   pick(affected2?.direct ?? []);
   pick(affected2?.transitive ?? []);
@@ -9348,7 +9394,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     const closure = await tryRunner(
       context,
       `closure of ${ref2.path}`,
-      () => runner.closure(ref2),
+      () => bound.call(() => runner.closure(ref2)),
       (reason2) => failed(failures, ref2.project, reason2)
     );
     if (closure !== null) closures.push(closure);
@@ -9401,6 +9447,7 @@ var init_refinement = __esm({
     init_failures();
     init_notes2();
     init_revision2();
+    init_runner_work_bound();
   }
 });
 
@@ -10112,9 +10159,11 @@ var init_scheduler2 = __esm({
             runsDir: options.runsDir,
             describe: options.describeFailure ?? describeFailure,
             head: options.head,
-            now: options.now ?? Date.now,
+            // Read at each call, as `rekeyedOnceRefined` reads it: the discharge timer and its holds share it.
+            now: options.now ?? (() => Date.now()),
             note: (message2) => this.#note(message2),
-            rerunCap: options.rerunCap ?? RERUN_CAP
+            rerunCap: options.rerunCap ?? RERUN_CAP,
+            ...options.runnerPartMs === void 0 ? {} : { runnerPartMs: options.runnerPartMs }
           };
           const ledger = new Ledger(context);
           this.#ledger = ledger;
@@ -33428,7 +33477,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.100";
+  if (true) return "0.1.101";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33558,9 +33607,9 @@ function shortCommit(commit) {
   return commit === null ? "no commit" : commit.slice(0, 7);
 }
 function age(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
+  const seconds2 = Math.max(0, Math.round(ms / 1e3));
+  if (seconds2 < 120) return `${seconds2} s`;
+  const minutes = Math.round(seconds2 / 60);
   if (minutes < 120) return `${minutes} min`;
   return `${Math.round(minutes / 60)} h`;
 }
@@ -35248,9 +35297,9 @@ function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed, run }
   ];
   return `${`${pid} ${args}`.trimEnd()} (${facts.join(", ")})`;
 }
-function ageText(seconds) {
-  if (seconds < 60) return `${seconds.toFixed(1)} s`;
-  const whole = Math.floor(seconds);
+function ageText(seconds2) {
+  if (seconds2 < 60) return `${seconds2.toFixed(1)} s`;
+  const whole = Math.floor(seconds2);
   if (whole < 3600) return `${Math.floor(whole / 60)} min ${whole % 60} s`;
   return `${Math.floor(whole / 3600)} h ${Math.floor(whole % 3600 / 60)} min`;
 }
