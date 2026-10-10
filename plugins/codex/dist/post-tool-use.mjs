@@ -430,8 +430,8 @@ function withDefaults(entry2) {
 function entryProblem(entry2, at2, kept) {
   if (!isRecord(entry2))
     return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
-  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
-  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  const named2 = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
   for (const key of Object.keys(entry2)) {
     if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
   }
@@ -443,8 +443,8 @@ function entryProblem(entry2, at2, kept) {
     const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
     return `"${at2}.${key}" ${why}; ${skipped}`;
   }
-  if (kept.some((project) => project.name === named)) {
-    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  if (kept.some((project) => project.name === named2)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -3941,6 +3941,49 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   );
 }
 
+// src/harness/shared/coverage.ts
+import { existsSync as existsSync4 } from "node:fs";
+import { join as join7, posix as posix3 } from "node:path";
+var VITEST_ONLY = {
+  vitestConfig: null,
+  vitestProjects: [],
+  nodeTest: [],
+  slow: null
+};
+var CONFIG_NAMES = ["vitest.config", "vite.config"];
+var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+function coverageOf(context) {
+  const policy = readPolicy(context.root);
+  const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
+  const nodeTestNames = new Set(policy.nodeTest.map((project) => project.name));
+  const vitestProjects = /* @__PURE__ */ new Set();
+  for (const { testFile } of keys) {
+    if (testFile.project !== "" && !nodeTestNames.has(testFile.project)) {
+      vitestProjects.add(testFile.project);
+    }
+  }
+  const view = slowPolicyView(policy);
+  return {
+    vitestConfig: vitestConfig(context.root),
+    vitestProjects: [...vitestProjects].sort(),
+    nodeTest: policy.nodeTest.map(({ name, cwd, include }) => ({
+      name,
+      include: include.map((glob) => cwd === void 0 ? glob : posix3.join(cwd, glob))
+    })),
+    slow: view === null ? null : {
+      files: keys.length === 0 ? null : keys.filter((row) => view.isSlow(row.testFile)).length
+    }
+  };
+}
+function vitestConfig(root) {
+  for (const name of CONFIG_NAMES) {
+    for (const extension of CONFIG_EXTENSIONS) {
+      if (existsSync4(join7(root, `${name}${extension}`))) return `${name}${extension}`;
+    }
+  }
+  return null;
+}
+
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
@@ -3989,21 +4032,21 @@ function failure(code, message) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
+import { existsSync as existsSync5, mkdirSync as mkdirSync2 } from "node:fs";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname2, isAbsolute as isAbsolute3, join as join7 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute3, join as join8 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join7(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join7(userTmpDir(), name);
+  const path = join8(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join7("/tmp", `squeal-${uid}`);
+  return join8("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -4070,7 +4113,7 @@ async function ensureDaemon(root, options = {}) {
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync4(cli)) return "unavailable";
+  if (cli === null || !existsSync5(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
@@ -4097,18 +4140,18 @@ function daemonCliEntry(cli, env = process.env) {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname3, join as join8 } from "node:path";
+import { dirname as dirname3, join as join9 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.108";
+  if (true) return "0.1.109";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join8(dir, "package.json"));
+    const version = readVersion(join9(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname3(dir);
     if (parent === dir) return null;
@@ -4289,35 +4332,72 @@ function isRegistered(context) {
 }
 
 // src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND, nodeTest = false, slow = false) {
+var PRIMER_CAP_CHARS = 1500;
+var PRIMER_OPENING = "Squeal runs this repository's ";
+function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
+  const nodeTest = coverage.nodeTest.length > 0;
   const runners = nodeTest ? "Vitest and node:test" : "Vitest";
   const run = nodeTest ? "Vitest or node:test" : "Vitest";
-  return [
-    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
+  const sentences = (covers2) => [
+    `${PRIMER_OPENING}${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
     `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...slow ? [slowSentence(command)] : [],
-    slow ? "Squeal does not cover typecheck or build." : "Squeal does not cover typecheck, build or other test suites."
+    ...coverage.slow === null ? [] : [slowSentence(command)],
+    covers2,
+    "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
+  let vitest = coverage.vitestProjects.length;
+  let node = coverage.nodeTest.length;
+  let text = sentences(coversSentence(coverage, vitest, node));
+  while (text.length > PRIMER_CAP_CHARS && vitest + node > 0) {
+    if (vitest >= node) vitest--;
+    else node--;
+    text = sentences(coversSentence(coverage, vitest, node));
+  }
+  return text;
+}
+function coversSentence(coverage, vitest, node) {
+  const projects = coverage.vitestProjects.map((name) => JSON.stringify(name));
+  const vitestDetail = [
+    ...coverage.vitestConfig === null ? [] : [coverage.vitestConfig],
+    ...projects.length === 0 ? [] : [named("project", projects, vitest)]
+  ];
+  const suites = [vitestDetail.length === 0 ? "Vitest" : `Vitest (${vitestDetail.join(", ")})`];
+  if (coverage.nodeTest.length > 0) {
+    const entries = coverage.nodeTest.map(
+      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+    );
+    const list = named("project", entries, node);
+    suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
+  }
+  const files = coverage.slow?.files;
+  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"}`;
+  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+}
+function named(noun, entries, shown) {
+  const nouns = entries.length === 1 ? noun : `${noun}s`;
+  if (shown === 0) return `${entries.length} ${nouns}`;
+  const listed = entries.slice(0, shown);
+  const rest = entries.length - shown;
+  const tail = rest > 0 ? [...listed, `${rest} more`] : listed;
+  const last = tail.pop();
+  return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
 function slowSentence(command) {
   const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";
   return `Slow test suites run when you pause between turns or on \`${command} run --slow\`, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
 }
-function primerVariants(command = SQUEAL_COMMAND) {
-  return [false, true].flatMap(
-    (nodeTest) => [false, true].map((slow) => primer(command, nodeTest, slow))
-  );
+function trailingPrimer(text) {
+  const at2 = text.lastIndexOf(`
+
+${PRIMER_OPENING}`);
+  if (at2 < 0) return "";
+  const tail = text.slice(at2);
+  return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
 }
 var PRIMER = primer();
-function coversNodeTest(root) {
-  return readPolicy(root).nodeTest.length > 0;
-}
-function coversSlowSuites(root) {
-  return slowPolicyView(readPolicy(root)) !== null;
-}
-function withPrimer(registration2, command = SQUEAL_COMMAND, nodeTest = false, slow = false) {
-  const tail = primer(command, nodeTest, slow);
+function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
+  const tail = primer(command, coverage);
   const max = MESSAGE_CAP_CHARS - tail.length - 2;
   return `${formatRegistration(registration2, max, command)}
 
@@ -4333,12 +4413,7 @@ async function deliver(context, deps, edited = true) {
       inTurn: true,
       ...startingAfter(ensured, at2)
     });
-    return withPrimer(
-      registration2,
-      deps.command,
-      coversNodeTest(context.root),
-      coversSlowSuites(context.root)
-    );
+    return withPrimer(registration2, deps.command, coverageOf(context));
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const text = delta === null ? null : formatDelta(delta, deps.command);
@@ -4361,10 +4436,7 @@ var CONTEXT_CAP_CHARS = 8e3;
 var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
 function capContext(text, command = SQUEAL_COMMAND) {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const ends = primerVariants(command).map((primer2) => `
-
-${primer2}`);
-  const tail = ends.find((end) => text.endsWith(end)) ?? "";
+  const tail = trailingPrimer(text);
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
@@ -4389,10 +4461,10 @@ import { readFileSync as readFileSync6 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join9(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join10(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
