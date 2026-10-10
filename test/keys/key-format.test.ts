@@ -174,6 +174,8 @@ describe("the guard", () => {
       // The format version, which every environment hash holds directly.
       "src/core/keys/environment.ts -> src/core/keys/key-format.ts",
       "src/core/keys/index.ts -> src/core/keys/key-format.ts",
+      // When another worktree's claim goes stale decides who runs a file, not what it records (001-205).
+      "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
       // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
       "src/core/scheduler/slow-tier.ts -> src/core/delivery/turn.ts",
       "src/core/state/slow.ts -> src/core/delivery/slots.ts",
