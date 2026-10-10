@@ -1,34 +1,34 @@
 {
- "id": "t1-thousands.p1.claude-claude-sonnet-5-5.r1",
+ "id": "t1-thousands.p0.claude-claude-sonnet-5-5.r2",
  "task": "t1-thousands",
- "variant": "p1",
+ "variant": "p0",
  "harness": "claude",
  "model": "claude-sonnet-5-5",
- "rep": 1,
+ "rep": 2,
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
- "pin": "pins/p1",
- "setupS": 13.1,
- "wallS": 50,
+ "pin": "pins/p0",
+ "setupS": 13.3,
+ "wallS": 49.4,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.48,
-  "max": 0.79,
-  "mean": 0.54,
-  "end": 0.7
+  "start": 3.13,
+  "max": 4.56,
+  "mean": 3.96,
+  "end": 3.45
  },
  "harnessVersion": "2.1.296 (Claude Code)",
- "cost": 0.10436350000000003,
+ "cost": 0.15564659999999997,
  "usage": {
-  "input_tokens": 18,
-  "cache_creation_input_tokens": 16232,
-  "cache_read_input_tokens": 285775,
-  "output_tokens": 3517,
+  "input_tokens": 16,
+  "cache_creation_input_tokens": 38841,
+  "cache_read_input_tokens": 231221,
+  "output_tokens": 3539,
   "output_tokens_details": {
-   "thinking_tokens": 115
+   "thinking_tokens": 86
   },
   "server_tool_use": {
    "web_search_requests": 0,
@@ -37,15 +37,15 @@
   "service_tier": "standard",
   "cache_creation": {
    "ephemeral_1h_input_tokens": 0,
-   "ephemeral_5m_input_tokens": 16232
+   "ephemeral_5m_input_tokens": 38841
   },
   "inference_geo": "global",
   "iterations": [],
   "speed": "standard",
   "fallback_credit": null
  },
- "turns": 23,
- "edits": 12,
+ "turns": 18,
+ "edits": 10,
  "vitestRuns": 0,
  "vitestByScope": {
   "full": 0,
@@ -73,13 +73,13 @@
   "other": 0
  },
  "reactionToFirstFail": {
-  "ms": 745,
+  "ms": 642,
   "kind": "edit",
-  "what": "$ROOT/cells/t1-thousands.p1.claude-claude-sonnet-5-5.r1/work/src/csv.ts"
+  "what": "$ROOT/cells/t1-thousands.p0.claude-claude-sonnet-5-5.r2/work/src/csv.ts"
  },
  "tempFileHeaders": 0,
  "claim": "pass",
- "claimLine": "TESTS: pass, evidence: Squeal's status at revision 11 shows 30 checks passed, 0 running, 0 queued, 0 known failures. That includes the slow `test/slow/ledger.test.ts`, which I ran with `squeal run --slow`. No full-suite checkpoint has completed since revision 0, and I didn't run typecheck or build.",
+ "claimLine": "TESTS: pass, evidence: Squeal at revision 8 reports 30 passed, 0 failing, 0 pending, and the slow-tier ledger test is current. The full-suite checkpoint was not rerun after the edits.",
  "truth": {
   "vitestFailed": 0,
   "failed": [],
@@ -96,101 +96,93 @@
   "runs": [],
   "pulls": [
    {
-    "t": 23652,
+    "t": 22266,
     "sub": "run --slow",
-    "ms": 854,
+    "ms": 865,
     "denied": false
    },
    {
-    "t": 25735,
+    "t": 24570,
     "sub": "status --wait",
-    "ms": 20665,
+    "ms": 20675,
     "denied": false
    }
   ],
   "sleeps": [
    {
-    "t": 25735,
+    "t": 24570,
     "cmd": "sleep 20; squeal status --wait 60000"
    }
   ],
   "edits": [
    {
-    "t": 12130,
+    "t": 11525,
+    "path": "(shell)"
+   },
+   {
+    "t": 13854,
     "path": "src/money.ts"
    },
    {
-    "t": 12827,
+    "t": 14599,
     "path": "src/money.ts"
    },
    {
-    "t": 13644,
+    "t": 15316,
     "path": "src/csv.ts"
    },
    {
-    "t": 16454,
-    "path": "src/money.ts"
-   },
-   {
-    "t": 17190,
+    "t": 16015,
     "path": "test/money.test.ts"
    },
    {
-    "t": 17857,
+    "t": 16719,
     "path": "test/money.test.ts"
    },
    {
-    "t": 18524,
+    "t": 17414,
     "path": "test/csv.test.ts"
    },
    {
-    "t": 19258,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 19958,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 20658,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 21325,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 21996,
+    "t": 18154,
     "path": "test/slow/ledger.test.ts"
+   },
+   {
+    "t": 19536,
+    "path": "test/report.test.ts"
+   },
+   {
+    "t": 21871,
+    "path": "src/money.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 371,
+    "t": 384,
     "hook": "SessionStart:startup",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",
     "temp": false
    },
    {
-    "t": 12899,
+    "t": 14674,
     "hook": "PreToolUse:Edit",
     "kind": "deny",
     "head": "SQUEAL · 4 checks changed at revision 1",
     "temp": false
    },
    {
-    "t": 14172,
+    "t": 19746,
     "hook": "PostToolBatch",
     "kind": "fail",
-    "head": "SQUEAL · 2 checks changed at revision 2",
+    "head": "SQUEAL · 3 checks changed at revision 6",
     "temp": false
    },
    {
-    "t": 22190,
+    "t": 23196,
     "hook": "PostToolBatch",
     "kind": "fail",
-    "head": "SQUEAL · 3 checks changed at revision 10",
+    "head": "SQUEAL · 1 check changed at revision 8",
     "temp": false
    }
   ]

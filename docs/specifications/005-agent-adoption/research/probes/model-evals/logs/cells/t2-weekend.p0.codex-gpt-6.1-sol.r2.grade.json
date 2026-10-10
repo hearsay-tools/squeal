@@ -1,36 +1,36 @@
 {
- "id": "t1-thousands.p0.codex-gpt-6-luna.r1",
- "task": "t1-thousands",
+ "id": "t2-weekend.p0.codex-gpt-6.1-sol.r2",
+ "task": "t2-weekend",
  "variant": "p0",
  "harness": "codex",
- "model": "gpt-6-luna",
- "rep": 1,
+ "model": "gpt-6.1-sol",
+ "rep": 2,
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
  "pin": "pins/p0",
- "setupS": 13.8,
- "wallS": 62.2,
+ "setupS": 14.9,
+ "wallS": 86.1,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.37,
-  "max": 0.62,
-  "mean": 0.51,
-  "end": 0.56
+  "start": 8.48,
+  "max": 22.2,
+  "mean": 16.13,
+  "end": 17.2
  },
  "harnessVersion": "codex-cli 0.160.1",
  "cost": null,
  "usage": {
-  "input_tokens": 249297,
-  "cached_input_tokens": 225536,
+  "input_tokens": 167010,
+  "cached_input_tokens": 145152,
   "cache_write_input_tokens": 0,
-  "output_tokens": 2487,
-  "reasoning_output_tokens": 434
+  "output_tokens": 1884,
+  "reasoning_output_tokens": 45
  },
  "turns": null,
- "edits": 7,
+ "edits": 5,
  "vitestRuns": 0,
  "vitestByScope": {
   "full": 0,
@@ -40,31 +40,31 @@
  "vitestMs": 0,
  "vitestAfterLastEdit": 0,
  "testAttemptsRefused": 0,
- "nodeTestRuns": 0,
- "nodeTestWanted": false,
- "squealPulls": 7,
- "squealWaits": 5,
- "squealWhy": 1,
- "squealRunAll": 0,
+ "nodeTestRuns": 1,
+ "nodeTestWanted": true,
+ "squealPulls": 6,
+ "squealWaits": 4,
+ "squealWhy": 0,
+ "squealRunAll": 1,
  "squealRunSlow": 1,
  "waitsAfterLastEdit": 3,
  "sleeps": 0,
- "skillLoads": 0,
+ "skillLoads": 1,
  "deliveries": {
   "registration": 1,
-  "fail": 3,
+  "fail": 2,
   "deny": 0,
   "resolved": 0,
   "other": 1
  },
  "reactionToFirstFail": {
-  "ms": 51,
-  "kind": "cmd",
-  "what": "node --disable-warning=ExperimentalWarning \"$ROOT/cells/t1-thousands.p0.codex-gpt-6-luna.r1/codex/plugins/c"
+  "ms": 16293,
+  "kind": "edit",
+  "what": "$ROOT/cells/t2-weekend.p0.codex-gpt-6.1-sol.r2/work/changes.json"
  },
  "tempFileHeaders": 0,
  "claim": "pass",
- "claimLine": "TESTS: pass, evidence: Squeal revision 3 reports 30 passed and 0 known failures.",
+ "claimLine": "TESTS: pass, evidence: Squeal full-suite checkpoint completed with 31 passing checks and current slow tests; both changelog tests passed.",
  "truth": {
   "vitestFailed": 0,
   "failed": [],
@@ -78,54 +78,57 @@
  },
  "claimTrue": true,
  "timeline": {
-  "runs": [],
+  "runs": [
+   {
+    "t": 43228,
+    "runner": "node:test",
+    "scope": "full",
+    "ms": 711,
+    "exit": 0,
+    "denied": false,
+    "cmd": "npm run test:scripts; npm run changelog"
+   }
+  ],
   "pulls": [
    {
-    "t": 13142,
+    "t": 25830,
     "sub": "status --wait",
-    "ms": 444,
+    "ms": 580,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 22401,
+    "t": 44304,
     "sub": "status --wait",
-    "ms": 439,
+    "ms": 483,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 25180,
-    "sub": "why",
-    "ms": 2,
+    "t": 51295,
+    "sub": "run --all",
+    "ms": 62,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 31635,
+    "t": 51840,
     "sub": "run --slow",
-    "ms": 36,
+    "ms": 382,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 34488,
+    "t": 56612,
     "sub": "status --wait",
-    "ms": 436,
+    "ms": 511,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 39505,
+    "t": 80173,
     "sub": "status --wait",
-    "ms": 439,
-    "exit": 0,
-    "denied": false
-   },
-   {
-    "t": 58460,
-    "sub": "status --wait",
-    "ms": 436,
+    "ms": 456,
     "exit": 0,
     "denied": false
    }
@@ -133,68 +136,53 @@
   "sleeps": [],
   "edits": [
    {
-    "t": 9988,
-    "path": "src/money.ts"
+    "t": 25455,
+    "path": "test/clock.test.ts"
    },
    {
-    "t": 9988,
-    "path": "test/money.test.ts"
+    "t": 42827,
+    "path": "changes.json"
    },
    {
-    "t": 9988,
-    "path": "test/slow/ledger.test.ts"
+    "t": 42827,
+    "path": "scripts/changelog.mjs"
    },
    {
-    "t": 19646,
-    "path": "src/csv.ts"
+    "t": 42827,
+    "path": "scripts/changelog.test.mjs"
    },
    {
-    "t": 19646,
-    "path": "test/csv.test.ts"
-   },
-   {
-    "t": 19646,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 29013,
-    "path": "test/report.test.ts"
+    "t": 42827,
+    "path": "src/clock.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 171,
+    "t": 2208,
     "hook": "developer",
     "kind": "other",
     "head": "",
     "temp": false
    },
    {
-    "t": 269,
+    "t": 2298,
     "hook": "developer",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",
     "temp": false
    },
    {
-    "t": 13091,
+    "t": 26534,
     "hook": "developer",
     "kind": "fail",
-    "head": "SQUEAL · 3 checks changed at revision 1",
+    "head": "SQUEAL · 1 check changed at revision 1",
     "temp": false
    },
    {
-    "t": 22905,
+    "t": 44022,
     "hook": "developer",
     "kind": "fail",
-    "head": "SQUEAL · 2 checks changed at revision 2",
-    "temp": false
-   },
-   {
-    "t": 31737,
-    "hook": "developer",
-    "kind": "fail",
-    "head": "SQUEAL · 1 check changed at revision 3",
+    "head": "SQUEAL · 1 check changed at revision 2",
     "temp": false
    }
   ]

@@ -3,14 +3,18 @@
 // the share of sessions showing each graded behaviour, and for each behaviour the repetitions
 // per arm needed to tell two arms apart at the pilot's observed rates
 // (two-sided alpha 0.05, power 0.8, normal approximation: n = 7.85 (p1 q1 + p2 q2) / (p1 - p2)^2).
-//   node compare.mjs [variant|model|harness|task]...
+//   node compare.mjs [--tasks t1-thousands,t2-weekend] [variant|model|harness|task]...
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const args = process.argv.slice(2);
+const ti = args.indexOf("--tasks");
+const only = ti >= 0 ? args.splice(ti, 2)[1].split(",") : null;
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "logs", "cells");
-const gs = readdirSync(DIR).filter((f) => f.endsWith(".grade.json")).map((f) => JSON.parse(readFileSync(join(DIR, f), "utf8")));
-const keys = process.argv.slice(2).length ? process.argv.slice(2) : ["variant", "model"];
+const gs = readdirSync(DIR).filter((f) => f.endsWith(".grade.json")).map((f) => JSON.parse(readFileSync(join(DIR, f), "utf8")))
+  .filter((g) => !only || only.includes(g.task));
+const keys = args.length ? args : ["variant", "model"];
 
 const B = {
   "own Vitest run": (g) => g.vitestRuns > 0,

@@ -1,6 +1,6 @@
 {
- "id": "t1-thousands.p0.codex-gpt-6.1-sol.r1",
- "task": "t1-thousands",
+ "id": "t4-contract.p0.codex-gpt-6.1-sol.r1",
+ "task": "t4-contract",
  "variant": "p0",
  "harness": "codex",
  "model": "gpt-6.1-sol",
@@ -8,29 +8,29 @@
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
  "pin": "pins/p0",
- "setupS": 13.7,
- "wallS": 71.7,
+ "setupS": 14.4,
+ "wallS": 59.7,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.64,
-  "max": 0.67,
-  "mean": 0.5,
-  "end": 0.37
+  "start": 13.69,
+  "max": 13.69,
+  "mean": 11.22,
+  "end": 9.5
  },
  "harnessVersion": "codex-cli 0.160.1",
  "cost": null,
  "usage": {
-  "input_tokens": 130703,
-  "cached_input_tokens": 118528,
+  "input_tokens": 122194,
+  "cached_input_tokens": 111616,
   "cache_write_input_tokens": 0,
-  "output_tokens": 1806,
-  "reasoning_output_tokens": 34
+  "output_tokens": 970,
+  "reasoning_output_tokens": 43
  },
  "turns": null,
- "edits": 6,
+ "edits": 1,
  "vitestRuns": 0,
  "vitestByScope": {
   "full": 0,
@@ -52,23 +52,29 @@
  "skillLoads": 1,
  "deliveries": {
   "registration": 1,
-  "fail": 0,
+  "fail": 1,
   "deny": 0,
   "resolved": 0,
   "other": 1
  },
- "reactionToFirstFail": null,
+ "reactionToFirstFail": {
+  "ms": 227,
+  "kind": "cmd",
+  "what": "node --disable-warning=ExperimentalWarning \"$ROOT/cells/t4-contract.p0.codex-gpt-6.1-sol.r1/codex/plugins/c"
+ },
  "tempFileHeaders": 0,
- "claim": "pass",
- "claimLine": "TESTS: pass, evidence: Squeal reports 30 passed, none pending, zero known failures; slow ledger test current at revision 1.",
+ "claim": "fail",
+ "claimLine": "TESTS: fail, evidence: Squeal reports 29 passed and 1 generated contract failure expecting `due`; no checks pending.",
  "truth": {
-  "vitestFailed": 0,
-  "failed": [],
+  "vitestFailed": 1,
+  "failed": [
+   "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields"
+  ],
   "nodeTestFailed": false,
-  "pass": true
+  "pass": false
  },
  "squealEnd": {
-  "knownFailures": 0,
+  "knownFailures": 1,
   "pending": 0,
   "slowCurrent": true
  },
@@ -77,23 +83,23 @@
   "runs": [],
   "pulls": [
    {
-    "t": 40385,
+    "t": 23539,
+    "sub": "status --wait",
+    "ms": 465,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 24307,
     "sub": "run --slow",
-    "ms": 29,
+    "ms": 44,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 45466,
+    "t": 54673,
     "sub": "status --wait",
-    "ms": 446,
-    "exit": 0,
-    "denied": false
-   },
-   {
-    "t": 66219,
-    "sub": "status --wait",
-    "ms": 434,
+    "ms": 473,
     "exit": 0,
     "denied": false
    }
@@ -101,43 +107,30 @@
   "sleeps": [],
   "edits": [
    {
-    "t": 34035,
-    "path": "src/csv.ts"
-   },
-   {
-    "t": 34035,
-    "path": "src/money.ts"
-   },
-   {
-    "t": 34035,
-    "path": "test/csv.test.ts"
-   },
-   {
-    "t": 34035,
-    "path": "test/money.test.ts"
-   },
-   {
-    "t": 34035,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 34035,
-    "path": "test/slow/ledger.test.ts"
+    "t": 18444,
+    "path": "src/invoice.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 231,
+    "t": 330,
     "hook": "developer",
     "kind": "other",
     "head": "",
     "temp": false
    },
    {
-    "t": 308,
+    "t": 487,
     "hook": "developer",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 24080,
+    "hook": "developer",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
     "temp": false
    }
   ]

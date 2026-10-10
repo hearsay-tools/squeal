@@ -39,6 +39,7 @@
  },
  "vitestMs": 0,
  "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 0,
  "nodeTestRuns": 0,
  "nodeTestWanted": false,
  "squealPulls": 6,

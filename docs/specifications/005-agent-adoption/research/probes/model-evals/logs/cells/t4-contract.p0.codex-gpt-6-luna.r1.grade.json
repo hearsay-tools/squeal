@@ -1,0 +1,124 @@
+{
+ "id": "t4-contract.p0.codex-gpt-6-luna.r1",
+ "task": "t4-contract",
+ "variant": "p0",
+ "harness": "codex",
+ "model": "gpt-6-luna",
+ "rep": 1,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 14.4,
+ "wallS": 24.9,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 8.61,
+  "max": 8.61,
+  "mean": 7.89,
+  "end": 7.51
+ },
+ "harnessVersion": "codex-cli 0.160.1",
+ "cost": null,
+ "usage": {
+  "input_tokens": 100491,
+  "cached_input_tokens": 67072,
+  "cache_write_input_tokens": 0,
+  "output_tokens": 1245,
+  "reasoning_output_tokens": 154
+ },
+ "turns": null,
+ "edits": 1,
+ "vitestRuns": 0,
+ "vitestByScope": {
+  "full": 0,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 0,
+ "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 0,
+ "nodeTestRuns": 0,
+ "nodeTestWanted": false,
+ "squealPulls": 1,
+ "squealWaits": 1,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 0,
+ "waitsAfterLastEdit": 1,
+ "sleeps": 0,
+ "skillLoads": 1,
+ "deliveries": {
+  "registration": 1,
+  "fail": 1,
+  "deny": 0,
+  "resolved": 0,
+  "other": 1
+ },
+ "reactionToFirstFail": {
+  "ms": 2297,
+  "kind": "cmd",
+  "what": "node --disable-warning=ExperimentalWarning \"$ROOT/cells/t4-contract.p0.codex-gpt-6-luna.r1/codex/plugins/ca"
+ },
+ "tempFileHeaders": 0,
+ "claim": "fail",
+ "claimLine": "TESTS: fail, evidence: Squeal reports `test/contract/invoice-json.test.ts` fails because the generated contract still expects `due`; 27 checks passed and 2 remain queued.",
+ "truth": {
+  "vitestFailed": 1,
+  "failed": [
+   "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields"
+  ],
+  "nodeTestFailed": false,
+  "pass": false
+ },
+ "squealEnd": {
+  "knownFailures": 1,
+  "pending": 2,
+  "slowCurrent": false
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [],
+  "pulls": [
+   {
+    "t": 19831,
+    "sub": "status --wait",
+    "ms": 453,
+    "exit": 0,
+    "denied": false
+   }
+  ],
+  "sleeps": [],
+  "edits": [
+   {
+    "t": 15209,
+    "path": "src/invoice.ts"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 309,
+    "hook": "developer",
+    "kind": "other",
+    "head": "",
+    "temp": false
+   },
+   {
+    "t": 400,
+    "hook": "developer",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 17534,
+    "hook": "developer",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   }
+  ]
+ }
+}

@@ -1,33 +1,33 @@
 {
- "id": "t1-thousands.p0.codex-gpt-6.1-sol.r1",
+ "id": "t1-thousands.p0.codex-gpt-6-luna.r2",
  "task": "t1-thousands",
  "variant": "p0",
  "harness": "codex",
- "model": "gpt-6.1-sol",
- "rep": 1,
+ "model": "gpt-6-luna",
+ "rep": 2,
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
  "pin": "pins/p0",
  "setupS": 13.7,
- "wallS": 71.7,
+ "wallS": 28.9,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.64,
-  "max": 0.67,
-  "mean": 0.5,
-  "end": 0.37
+  "start": 4.45,
+  "max": 5.12,
+  "mean": 4.71,
+  "end": 4.67
  },
  "harnessVersion": "codex-cli 0.160.1",
  "cost": null,
  "usage": {
-  "input_tokens": 130703,
-  "cached_input_tokens": 118528,
+  "input_tokens": 76818,
+  "cached_input_tokens": 58112,
   "cache_write_input_tokens": 0,
-  "output_tokens": 1806,
-  "reasoning_output_tokens": 34
+  "output_tokens": 1803,
+  "reasoning_output_tokens": 157
  },
  "turns": null,
  "edits": 6,
@@ -42,14 +42,14 @@
  "testAttemptsRefused": 0,
  "nodeTestRuns": 0,
  "nodeTestWanted": false,
- "squealPulls": 3,
+ "squealPulls": 2,
  "squealWaits": 2,
  "squealWhy": 0,
  "squealRunAll": 0,
- "squealRunSlow": 1,
+ "squealRunSlow": 0,
  "waitsAfterLastEdit": 2,
  "sleeps": 0,
- "skillLoads": 1,
+ "skillLoads": 0,
  "deliveries": {
   "registration": 1,
   "fail": 0,
@@ -59,8 +59,8 @@
  },
  "reactionToFirstFail": null,
  "tempFileHeaders": 0,
- "claim": "pass",
- "claimLine": "TESTS: pass, evidence: Squeal reports 30 passed, none pending, zero known failures; slow ledger test current at revision 1.",
+ "claim": "unknown",
+ "claimLine": "TESTS: unknown, evidence: Squeal reports 28 passed, 2 queued, and 0 known failures.",
  "truth": {
   "vitestFailed": 0,
   "failed": [],
@@ -69,31 +69,24 @@
  },
  "squealEnd": {
   "knownFailures": 0,
-  "pending": 0,
-  "slowCurrent": true
+  "pending": 2,
+  "slowCurrent": false
  },
- "claimTrue": true,
+ "claimTrue": "hedged",
  "timeline": {
   "runs": [],
   "pulls": [
    {
-    "t": 40385,
-    "sub": "run --slow",
-    "ms": 29,
+    "t": 20797,
+    "sub": "status --wait",
+    "ms": 479,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 45466,
+    "t": 24559,
     "sub": "status --wait",
-    "ms": 446,
-    "exit": 0,
-    "denied": false
-   },
-   {
-    "t": 66219,
-    "sub": "status --wait",
-    "ms": 434,
+    "ms": 463,
     "exit": 0,
     "denied": false
    }
@@ -101,40 +94,40 @@
   "sleeps": [],
   "edits": [
    {
-    "t": 34035,
+    "t": 18091,
     "path": "src/csv.ts"
    },
    {
-    "t": 34035,
+    "t": 18091,
     "path": "src/money.ts"
    },
    {
-    "t": 34035,
+    "t": 18091,
     "path": "test/csv.test.ts"
    },
    {
-    "t": 34035,
+    "t": 18091,
     "path": "test/money.test.ts"
    },
    {
-    "t": 34035,
+    "t": 18091,
     "path": "test/report.test.ts"
    },
    {
-    "t": 34035,
+    "t": 18091,
     "path": "test/slow/ledger.test.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 231,
+    "t": 186,
     "hook": "developer",
     "kind": "other",
     "head": "",
     "temp": false
    },
    {
-    "t": 308,
+    "t": 272,
     "hook": "developer",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",

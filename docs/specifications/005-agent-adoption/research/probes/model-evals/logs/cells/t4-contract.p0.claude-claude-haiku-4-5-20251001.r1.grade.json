@@ -1,34 +1,34 @@
 {
- "id": "t1-thousands.p0.claude-claude-sonnet-5-5.r1",
- "task": "t1-thousands",
+ "id": "t4-contract.p0.claude-claude-haiku-4-5-20251001.r1",
+ "task": "t4-contract",
  "variant": "p0",
  "harness": "claude",
- "model": "claude-sonnet-5-5",
+ "model": "claude-haiku-4-5-20251001",
  "rep": 1,
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
  "pin": "pins/p0",
- "setupS": 13.1,
- "wallS": 46.4,
+ "setupS": 13.8,
+ "wallS": 67.3,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.61,
-  "max": 0.7,
-  "mean": 0.61,
-  "end": 0.56
+  "start": 11.51,
+  "max": 11.95,
+  "mean": 10.69,
+  "end": 9.77
  },
  "harnessVersion": "2.1.296 (Claude Code)",
- "cost": 0.1449447,
+ "cost": 0.09205964999999999,
  "usage": {
-  "input_tokens": 16,
-  "cache_creation_input_tokens": 37114,
-  "cache_read_input_tokens": 231677,
-  "output_tokens": 2896,
+  "input_tokens": 105,
+  "cache_creation_input_tokens": 19197,
+  "cache_read_input_tokens": 492434,
+  "output_tokens": 3743,
   "output_tokens_details": {
-   "thinking_tokens": 114
+   "thinking_tokens": 1343
   },
   "server_tool_use": {
    "web_search_requests": 0,
@@ -37,15 +37,15 @@
   "service_tier": "standard",
   "cache_creation": {
    "ephemeral_1h_input_tokens": 0,
-   "ephemeral_5m_input_tokens": 37114
+   "ephemeral_5m_input_tokens": 19197
   },
-  "inference_geo": "global",
+  "inference_geo": "not_available",
   "iterations": [],
   "speed": "standard",
   "fallback_credit": null
  },
- "turns": 17,
- "edits": 9,
+ "turns": 18,
+ "edits": 4,
  "vitestRuns": 0,
  "vitestByScope": {
   "full": 0,
@@ -57,12 +57,12 @@
  "testAttemptsRefused": 0,
  "nodeTestRuns": 0,
  "nodeTestWanted": false,
- "squealPulls": 3,
- "squealWaits": 1,
+ "squealPulls": 6,
+ "squealWaits": 5,
  "squealWhy": 0,
  "squealRunAll": 0,
- "squealRunSlow": 1,
- "waitsAfterLastEdit": 1,
+ "squealRunSlow": 2,
+ "waitsAfterLastEdit": 5,
  "sleeps": 1,
  "skillLoads": 0,
  "deliveries": {
@@ -73,13 +73,13 @@
   "other": 0
  },
  "reactionToFirstFail": {
-  "ms": 324,
-  "kind": "read",
-  "what": "$ROOT/cells/t1-thousands.p0.claude-claude-sonnet-5-5.r1/work/test/csv.test.ts"
+  "ms": 1311,
+  "kind": "edit",
+  "what": "$ROOT/cells/t4-contract.p0.claude-claude-haiku-4-5-20251001.r1/work/test/contract/invoice-json.test.ts"
  },
  "tempFileHeaders": 0,
  "claim": "pass",
- "claimLine": "TESTS: pass, evidence: Squeal at revision 8 reports 30 passed, 0 running, 0 known failures, and the slow `test/slow/ledger.test.ts` is current. The full-suite checkpoint hasn't completed and I didn't run typecheck or build.",
+ "claimLine": "TESTS: pass, evidence: squeal status shows 30 tests passed, 0 failures, including slow tests completed successfully",
  "truth": {
   "vitestFailed": 0,
   "failed": [],
@@ -96,88 +96,86 @@
   "runs": [],
   "pulls": [
    {
-    "t": 18250,
-    "sub": "run --slow",
-    "ms": 879,
-    "denied": false
-   },
-   {
-    "t": 20348,
+    "t": 29504,
     "sub": "status --wait",
-    "ms": 672,
+    "ms": 760,
     "denied": false
    },
    {
-    "t": 22671,
+    "t": 32354,
+    "sub": "run --wait --slow",
+    "ms": 157,
+    "denied": false
+   },
+   {
+    "t": 42571,
+    "sub": "run --wait --slow",
+    "ms": 731,
+    "denied": false
+   },
+   {
+    "t": 45022,
+    "sub": "status --wait",
+    "ms": 668,
+    "denied": false
+   },
+   {
+    "t": 49695,
+    "sub": "status --wait",
+    "ms": 662,
+    "denied": false
+   },
+   {
+    "t": 52094,
     "sub": "status",
-    "ms": 20164,
+    "ms": 5177,
     "denied": false
    }
   ],
   "sleeps": [
    {
-    "t": 22671,
-    "cmd": "sleep 20; squeal status | head -8"
+    "t": 52094,
+    "cmd": "sleep 5 && squeal status"
    }
   ],
   "edits": [
    {
-    "t": 8074,
-    "path": "src/money.ts"
+    "t": 20295,
+    "path": "src/invoice.ts"
    },
    {
-    "t": 8832,
-    "path": "src/money.ts"
-   },
-   {
-    "t": 9634,
+    "t": 20969,
     "path": "src/csv.ts"
    },
    {
-    "t": 12195,
+    "t": 22434,
+    "path": "test/contract/invoice-json.test.ts"
+   },
+   {
+    "t": 26254,
     "path": "src/csv.ts"
-   },
-   {
-    "t": 12861,
-    "path": "test/csv.test.ts"
-   },
-   {
-    "t": 13595,
-    "path": "test/money.test.ts"
-   },
-   {
-    "t": 14262,
-    "path": "test/money.test.ts"
-   },
-   {
-    "t": 15730,
-    "path": "test/report.test.ts"
-   },
-   {
-    "t": 16354,
-    "path": "test/slow/ledger.test.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 485,
+    "t": 886,
     "hook": "SessionStart:startup",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",
     "temp": false
    },
    {
-    "t": 9704,
+    "t": 21123,
     "hook": "PreToolUse:Edit",
     "kind": "deny",
-    "head": "SQUEAL · 4 checks changed at revision 2",
+    "head": "SQUEAL · 1 check changed at revision 1",
     "temp": false
    },
    {
-    "t": 16514,
+    "t": 26416,
     "hook": "PostToolBatch",
     "kind": "fail",
-    "head": "SQUEAL · 4 checks changed at revision 7",
+    "head": "SQUEAL · 1 check changed at revision 2",
     "temp": false
    }
   ]

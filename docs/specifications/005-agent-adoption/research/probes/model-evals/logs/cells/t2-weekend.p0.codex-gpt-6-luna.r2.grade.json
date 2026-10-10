@@ -1,36 +1,36 @@
 {
- "id": "t1-thousands.p1.codex-gpt-6-luna.r1",
- "task": "t1-thousands",
- "variant": "p1",
+ "id": "t2-weekend.p0.codex-gpt-6-luna.r2",
+ "task": "t2-weekend",
+ "variant": "p0",
  "harness": "codex",
  "model": "gpt-6-luna",
- "rep": 1,
+ "rep": 2,
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
- "pin": "pins/p1",
- "setupS": 13.6,
- "wallS": 53.1,
+ "pin": "pins/p0",
+ "setupS": 14.5,
+ "wallS": 63.9,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.5,
-  "max": 0.72,
-  "mean": 0.55,
-  "end": 0.66
+  "start": 13.8,
+  "max": 14.16,
+  "mean": 11.68,
+  "end": 9.55
  },
  "harnessVersion": "codex-cli 0.160.1",
  "cost": null,
  "usage": {
-  "input_tokens": 175174,
-  "cached_input_tokens": 158720,
+  "input_tokens": 230775,
+  "cached_input_tokens": 191232,
   "cache_write_input_tokens": 0,
-  "output_tokens": 2585,
-  "reasoning_output_tokens": 370
+  "output_tokens": 2853,
+  "reasoning_output_tokens": 887
  },
  "turns": null,
- "edits": 6,
+ "edits": 5,
  "vitestRuns": 0,
  "vitestByScope": {
   "full": 0,
@@ -40,16 +40,16 @@
  "vitestMs": 0,
  "vitestAfterLastEdit": 0,
  "testAttemptsRefused": 0,
- "nodeTestRuns": 0,
- "nodeTestWanted": false,
- "squealPulls": 4,
- "squealWaits": 3,
+ "nodeTestRuns": 1,
+ "nodeTestWanted": true,
+ "squealPulls": 5,
+ "squealWaits": 4,
  "squealWhy": 0,
  "squealRunAll": 0,
  "squealRunSlow": 1,
  "waitsAfterLastEdit": 3,
  "sleeps": 0,
- "skillLoads": 0,
+ "skillLoads": 1,
  "deliveries": {
   "registration": 1,
   "fail": 2,
@@ -58,13 +58,13 @@
   "other": 1
  },
  "reactionToFirstFail": {
-  "ms": 5930,
+  "ms": 6610,
   "kind": "edit",
-  "what": "$ROOT/cells/t1-thousands.p1.codex-gpt-6-luna.r1/work/test/csv.test.ts"
+  "what": "$ROOT/cells/t2-weekend.p0.codex-gpt-6-luna.r2/work/changes.json"
  },
  "tempFileHeaders": 0,
  "claim": "pass",
- "claimLine": "TESTS: pass, evidence: Squeal revision 2 reports 31 passed and 0 failures",
+ "claimLine": "TESTS: pass, evidence: regression test passed and `npm run test:scripts` passed (2/2).",
  "truth": {
   "vitestFailed": 0,
   "failed": [],
@@ -73,38 +73,55 @@
  },
  "squealEnd": {
   "knownFailures": 0,
-  "pending": 0,
-  "slowCurrent": true
+  "pending": 2,
+  "slowCurrent": false
  },
  "claimTrue": true,
  "timeline": {
-  "runs": [],
+  "runs": [
+   {
+    "t": 40552,
+    "runner": "node:test",
+    "scope": "full",
+    "ms": 405,
+    "exit": 0,
+    "denied": false,
+    "cmd": "npm run test:scripts"
+   }
+  ],
   "pulls": [
    {
-    "t": 24357,
+    "t": 22356,
     "sub": "status --wait",
-    "ms": 445,
+    "ms": 450,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 28117,
+    "t": 44866,
+    "sub": "status --wait",
+    "ms": 457,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 52630,
     "sub": "run --slow",
-    "ms": 37,
+    "ms": 63,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 30347,
+    "t": 55744,
     "sub": "status --wait",
-    "ms": 440,
+    "ms": 455,
     "exit": 0,
     "denied": false
    },
    {
-    "t": 50477,
+    "t": 58711,
     "sub": "status --wait",
-    "ms": 438,
+    "ms": 459,
     "exit": 0,
     "denied": false
    }
@@ -112,57 +129,53 @@
   "sleeps": [],
   "edits": [
    {
-    "t": 13659,
-    "path": "src/csv.ts"
+    "t": 20221,
+    "path": "test/clock.test.ts"
    },
    {
-    "t": 13659,
-    "path": "src/money.ts"
+    "t": 29483,
+    "path": "changes.json"
    },
    {
-    "t": 13659,
-    "path": "test/money.test.ts"
+    "t": 29483,
+    "path": "scripts/changelog.mjs"
    },
    {
-    "t": 13659,
-    "path": "test/slow/ledger.test.ts"
+    "t": 29483,
+    "path": "scripts/changelog.test.mjs"
    },
    {
-    "t": 22000,
-    "path": "test/csv.test.ts"
-   },
-   {
-    "t": 22000,
-    "path": "test/report.test.ts"
+    "t": 29483,
+    "path": "src/clock.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 159,
+    "t": 1948,
     "hook": "developer",
     "kind": "other",
     "head": "",
     "temp": false
    },
    {
-    "t": 234,
+    "t": 2041,
     "hook": "developer",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",
     "temp": false
    },
    {
-    "t": 16070,
+    "t": 22873,
     "hook": "developer",
     "kind": "fail",
-    "head": "SQUEAL · 2 checks changed at revision 1",
+    "head": "SQUEAL · 1 check changed at revision 1",
     "temp": false
    },
    {
-    "t": 24864,
+    "t": 32074,
     "hook": "developer",
     "kind": "fail",
-    "head": "SQUEAL · 2 checks changed at revision 2",
+    "head": "SQUEAL · 1 check changed at revision 2",
     "temp": false
    }
   ]

@@ -1,34 +1,34 @@
 {
- "id": "t1-thousands.p1.claude-claude-haiku-4-5-20251001.r1",
+ "id": "t1-thousands.p0.claude-claude-haiku-4-5-20251001.r2",
  "task": "t1-thousands",
- "variant": "p1",
+ "variant": "p0",
  "harness": "claude",
  "model": "claude-haiku-4-5-20251001",
- "rep": 1,
+ "rep": 2,
  "cold": false,
  "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
- "pin": "pins/p1",
- "setupS": 13.3,
- "wallS": 103.1,
+ "pin": "pins/p0",
+ "setupS": 13.2,
+ "wallS": 115,
  "exit": {
   "code": 0,
   "signal": null
  },
  "load": {
-  "start": 0.55,
-  "max": 0.63,
-  "mean": 0.53,
-  "end": 0.53
+  "start": 2.06,
+  "max": 5.12,
+  "mean": 3.95,
+  "end": 3.83
  },
  "harnessVersion": "2.1.296 (Claude Code)",
- "cost": 0.16491160000000002,
+ "cost": 0.16881009999999996,
  "usage": {
-  "input_tokens": 193,
-  "cache_creation_input_tokens": 25460,
-  "cache_read_input_tokens": 970986,
-  "output_tokens": 7159,
+  "input_tokens": 194,
+  "cache_creation_input_tokens": 26074,
+  "cache_read_input_tokens": 988036,
+  "output_tokens": 7444,
   "output_tokens_details": {
-   "thinking_tokens": 2569
+   "thinking_tokens": 3010
   },
   "server_tool_use": {
    "web_search_requests": 0,
@@ -37,7 +37,7 @@
   "service_tier": "standard",
   "cache_creation": {
    "ephemeral_1h_input_tokens": 0,
-   "ephemeral_5m_input_tokens": 25460
+   "ephemeral_5m_input_tokens": 26074
   },
   "inference_geo": "not_available",
   "iterations": [],
@@ -57,14 +57,14 @@
  "testAttemptsRefused": 0,
  "nodeTestRuns": 0,
  "nodeTestWanted": false,
- "squealPulls": 5,
- "squealWaits": 3,
+ "squealPulls": 6,
+ "squealWaits": 4,
  "squealWhy": 0,
  "squealRunAll": 0,
  "squealRunSlow": 1,
- "waitsAfterLastEdit": 3,
+ "waitsAfterLastEdit": 4,
  "sleeps": 1,
- "skillLoads": 0,
+ "skillLoads": 1,
  "deliveries": {
   "registration": 1,
   "fail": 4,
@@ -73,13 +73,13 @@
   "other": 0
  },
  "reactionToFirstFail": {
-  "ms": 3718,
+  "ms": 9439,
   "kind": "read",
-  "what": "$ROOT/cells/t1-thousands.p1.claude-claude-haiku-4-5-20251001.r1/work/test/csv.test.ts"
+  "what": "$ROOT/cells/t1-thousands.p0.claude-claude-haiku-4-5-20251001.r2/work/test/csv.test.ts"
  },
- "tempFileHeaders": 0,
+ "tempFileHeaders": 1,
  "claim": "pass",
- "claimLine": "TESTS: pass, evidence: squeal status shows 30 passed, 0 running, 0 queued with 0 known failures; slow test verified passing after explicit run",
+ "claimLine": "TESTS: pass, evidence: squeal status shows \"30 passed, 0 running, 0 queued\" with \"Known failures: 0\" and slow tier is current",
  "truth": {
   "vitestFailed": 0,
   "failed": [],
@@ -96,113 +96,119 @@
   "runs": [],
   "pulls": [
    {
-    "t": 66429,
+    "t": 84100,
     "sub": "status --wait",
-    "ms": 688,
+    "ms": 700,
     "denied": false
    },
    {
-    "t": 70121,
+    "t": 87175,
     "sub": "run --slow",
-    "ms": 266,
+    "ms": 312,
     "denied": false
    },
    {
-    "t": 71859,
+    "t": 89392,
     "sub": "status --wait",
-    "ms": 755,
+    "ms": 726,
     "denied": false
    },
    {
-    "t": 74313,
+    "t": 92832,
     "sub": "status --wait",
-    "ms": 667,
+    "ms": 675,
     "denied": false
    },
    {
-    "t": 77472,
+    "t": 96539,
+    "sub": "status --wait",
+    "ms": 756,
+    "denied": false
+   },
+   {
+    "t": 102228,
     "sub": "status",
-    "ms": 15153,
+    "ms": 5169,
     "denied": false
    }
   ],
   "sleeps": [
    {
-    "t": 77472,
-    "cmd": "sleep 15 && squeal status"
+    "t": 102228,
+    "cmd": "sleep 5 && squeal status"
    }
   ],
   "edits": [
    {
-    "t": 23697,
+    "t": 30521,
     "path": "src/money.ts"
    },
    {
-    "t": 26426,
+    "t": 33786,
     "path": "test/money.test.ts"
    },
    {
-    "t": 43647,
+    "t": 49981,
     "path": "src/csv.ts"
    },
    {
-    "t": 51637,
-    "path": "test/money.test.ts"
-   },
-   {
-    "t": 55016,
+    "t": 55014,
     "path": "test/csv.test.ts"
    },
    {
-    "t": 60231,
+    "t": 67013,
+    "path": "test/money.test.ts"
+   },
+   {
+    "t": 73618,
     "path": "test/report.test.ts"
    },
    {
-    "t": 63654,
+    "t": 77280,
     "path": "test/slow/ledger.test.ts"
    }
   ],
   "deliveries": [
    {
-    "t": 359,
+    "t": 592,
     "hook": "SessionStart:startup",
     "kind": "registration",
     "head": "SQUEAL · registered at revision 0",
     "temp": false
    },
    {
-    "t": 26489,
+    "t": 33862,
     "hook": "PreToolUse:Edit",
     "kind": "deny",
-    "head": "SQUEAL · 4 checks changed at revision 1",
-    "temp": false
+    "head": "SQUEAL · 4 checks changed at revision 2",
+    "temp": true
    },
    {
-    "t": 48280,
+    "t": 55162,
     "hook": "PostToolBatch",
     "kind": "fail",
-    "head": "SQUEAL · 2 checks changed at revision 2",
+    "head": "SQUEAL · 2 checks changed at revision 3",
     "temp": false
    },
    {
-    "t": 55152,
-    "hook": "PostToolBatch",
-    "kind": "fail",
-    "head": "SQUEAL · 1 check changed at revision 3",
-    "temp": false
-   },
-   {
-    "t": 60378,
+    "t": 59460,
     "hook": "PostToolBatch",
     "kind": "fail",
     "head": "SQUEAL · 1 check changed at revision 4",
     "temp": false
    },
    {
-    "t": 63821,
+    "t": 69314,
     "hook": "PostToolBatch",
     "kind": "fail",
     "head": "SQUEAL · 1 check changed at revision 5",
+    "temp": false
+   },
+   {
+    "t": 77438,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 6",
     "temp": false
    }
   ]

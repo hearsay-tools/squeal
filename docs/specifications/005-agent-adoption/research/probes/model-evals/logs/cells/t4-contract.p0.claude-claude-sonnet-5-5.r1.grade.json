@@ -1,0 +1,127 @@
+{
+ "id": "t4-contract.p0.claude-claude-sonnet-5-5.r1",
+ "task": "t4-contract",
+ "variant": "p0",
+ "harness": "claude",
+ "model": "claude-sonnet-5-5",
+ "rep": 1,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 13.4,
+ "wallS": 14.6,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 7.82,
+  "max": 7.82,
+  "mean": 7.6,
+  "end": 7.51
+ },
+ "harnessVersion": "2.1.296 (Claude Code)",
+ "cost": 0.0513551,
+ "usage": {
+  "input_tokens": 12,
+  "cache_creation_input_tokens": 9425,
+  "cache_read_input_tokens": 171786,
+  "output_tokens": 1059,
+  "output_tokens_details": {
+   "thinking_tokens": 98
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 0,
+   "ephemeral_5m_input_tokens": 9425
+  },
+  "inference_geo": "global",
+  "iterations": [],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "turns": 7,
+ "edits": 1,
+ "vitestRuns": 0,
+ "vitestByScope": {
+  "full": 0,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 0,
+ "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 0,
+ "nodeTestRuns": 0,
+ "nodeTestWanted": false,
+ "squealPulls": 1,
+ "squealWaits": 1,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 0,
+ "waitsAfterLastEdit": 1,
+ "sleeps": 0,
+ "skillLoads": 0,
+ "deliveries": {
+  "registration": 1,
+  "fail": 1,
+  "deny": 0,
+  "resolved": 0,
+  "other": 0
+ },
+ "reactionToFirstFail": null,
+ "tempFileHeaders": 0,
+ "claim": "fail",
+ "claimLine": "TESTS: fail, evidence: Squeal reports `test/contract/invoice-json.test.ts` going from pass to fail at revision 1 after the edit; 27 other affected checks passed and 2 were still pending.",
+ "truth": {
+  "vitestFailed": 1,
+  "failed": [
+   "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields"
+  ],
+  "nodeTestFailed": false,
+  "pass": false
+ },
+ "squealEnd": {
+  "knownFailures": 1,
+  "pending": 2,
+  "slowCurrent": false
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [],
+  "pulls": [
+   {
+    "t": 9847,
+    "sub": "status --wait",
+    "ms": 771,
+    "denied": false
+   }
+  ],
+  "sleeps": [],
+  "edits": [
+   {
+    "t": 8580,
+    "path": "src/invoice.ts"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 480,
+    "hook": "SessionStart:startup",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 10702,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   }
+  ]
+ }
+}
