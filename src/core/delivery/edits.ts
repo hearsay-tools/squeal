@@ -22,7 +22,11 @@ import { readAll, readSlot, writeSlot } from "./slots.js";
  * keeps in the store for hooks (`readRekeyed`, review wave 13u B1, task
  * 001-238): a file whose latest re-key came after the consumer's edit state
  * began, owed while its earliest unresolved re-key has no result. A key a
- * backlog merely runs again, or a first listing, is never recorded.
+ * backlog merely runs again, or a first listing, is never recorded. The
+ * settled line waits while any of those files is queued or running again,
+ * for example 001-171's confirmation of its edit's new failure at the same
+ * key (review wave 13v, B1, task 001-240); `status --wait` holds for no such
+ * run (task 001-196).
  *
  * Each consumer keeps the revision its edits are counted from and whether
  * the 001-224 line was said, in one slot. When it leaves, "said" is parked
@@ -144,7 +148,8 @@ export function editNotes(
     // An unkeyed file has no result to come.
     if (row === undefined || row.key === null || entry.last <= state.since) continue;
     rekeyed.push(row);
-    owed ||= entry.open !== null && row.pending !== null;
+    // Pending for any reason, a confirmation of its edit's result among them (review wave 13v, B1).
+    owed ||= row.pending !== null;
   }
   // An edit that queued nothing (one made while awaiting an install) has no results to come.
   const sawEdit = state.said || rekeyed.length === 0 ? undefined : { queued: rekeyed.length };
