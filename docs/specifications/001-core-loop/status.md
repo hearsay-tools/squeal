@@ -166,6 +166,7 @@ Started: 2026-10-02
 - 2026-10-10, human (`reviews/wave-13u.md`, 001-233 FAIL, first round): fix B1 and B2 (001-238) with the daemon's own re-key set as the source of 001-223/224's lines, then a re-review (001-239).
 - 2026-10-10, human (`reviews/wave-13v.md`, 001-239 FAIL, second round): the settled line also requires no edited file to be pending again (001-240), then a third review (001-241).
 - 2026-10-10, human (`reviews/wave-13x.md`, 001-244 FAIL, first round): fix B1 and S1 in the parcel recheck (001-245), then a short re-review (001-246); the release waits for it.
+- 2026-10-10, human (standing instructions for the night): if 001-246 fails, the coordinator fixes it and runs a third review itself, releasing 0.1.106+ only if that passes; after the release it runs the next 001 wave (001-234, 236, 237, 242) end to end, with second-round blockers waiting for the human; once those land it spawns one `/quality` pass, whose findings become rows, nothing dispatched from them without the human.
 
 ## Research
 
