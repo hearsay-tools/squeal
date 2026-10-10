@@ -613,3 +613,17 @@ Done when: the review's two B1 regressions pass through delivery, red before, at
 ## 001-239 re-review of wave 13u
 
 Use /reviewer on gpt-6.1-sol, after 001-238 lands. Output `reviews/wave-13v.md`. Second round on `reviews/wave-13u.md`: are B1, B2, S1 and S2 closed; can the settled line still appear while an edit's file is pending; is the daemon-written attribution consistent with `status --wait`'s; is every new meta row bounded and pruned. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and without `CODEX_SESSION_ID`. Blockers go to the human.
+
+## 001-240 the settled line waits for an edited file's confirmation re-run
+
+Use /worker. Shape: repair. From `reviews/wave-13v.md` (001-239) B1 and S1; decided by the human (2026-10-10): fix, then a third review (001-241). Read the review's probe first.
+
+Outcome: B1: 001-223's settled line (and its merge with 001-224) is not given while any file the consumer's edits re-keyed is pending again, for example 001-171's queued confirmation of a new failure on the same key, even when the re-key record says resolved. `status --wait`'s discharge semantics stay exactly as they are. S1: a fresh ledger (a restarted daemon) that accepts a current-key result clears that file's persisted open mark in `rekeyed.<worktreeId>`, so a stale mark never survives the last consumer's pruning.
+
+Own: `src/core/delivery/edits.ts`, the scheduler's write of the `rekeyed` record (`src/core/scheduler/ledger.ts`, `rekeyed*`), and tests under `test/delivery/`, `test/scheduler/` and `test/e2e/`. The coordinator re-pins `KEY_FORMAT_VERSION` 3 and rebuilds; run `npm run build` locally for e2e, and do not commit `dist`. Do not edit `docs/board.md`.
+
+Done when: the review's probe, through the real ledger, `queueReruns`, store and delivery, gives no settled line until the confirmation's result lands, and then gives it once (red before); a `status --wait` test shows the discharge unchanged; a restart-then-current-result test clears the open mark (red before); lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+## 001-241 third review of wave 13u
+
+Use /reviewer on gpt-6.1-sol, after 001-240 lands. Output `reviews/wave-13w.md`. Third round on `reviews/wave-13v.md` B1 and S1 only: can the settled line still appear while an edited file is pending for any reason; is `status --wait` unchanged; is the open mark cleared on every path that resolves it. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
