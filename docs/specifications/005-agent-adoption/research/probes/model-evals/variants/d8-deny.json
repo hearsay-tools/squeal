@@ -1,0 +1,9 @@
+{
+  "description": "Pending: spec 005 D8's opt-in deny, policy key testCommand.denyWhenCurrent, not in 0.1.98. The runner refuses a variant whose policy key the pinned CLI reports as unknown.",
+  "plugin": true,
+  "policy": {
+    "testCommand": {
+      "denyWhenCurrent": true
+    }
+  }
+}

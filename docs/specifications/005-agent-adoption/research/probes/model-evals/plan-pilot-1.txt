@@ -1,0 +1,18 @@
+# Pilot, first repetition: 2 tasks x 2 primer variants x 4 models = 16 sessions.
+# Interleaved so that two parallel workers mostly run one Claude Code and one Codex cell.
+t1-thousands p0 claude claude-haiku-4-5-20251001 1
+t1-thousands p0 codex gpt-6-luna 1
+t1-thousands p1 claude claude-haiku-4-5-20251001 1
+t1-thousands p1 codex gpt-6-luna 1
+t1-thousands p0 claude claude-sonnet-5-5 1
+t1-thousands p0 codex gpt-6.1-sol 1
+t1-thousands p1 claude claude-sonnet-5-5 1
+t1-thousands p1 codex gpt-6.1-sol 1
+t2-weekend p0 claude claude-haiku-4-5-20251001 1
+t2-weekend p0 codex gpt-6-luna 1
+t2-weekend p1 claude claude-haiku-4-5-20251001 1
+t2-weekend p1 codex gpt-6-luna 1
+t2-weekend p0 claude claude-sonnet-5-5 1
+t2-weekend p0 codex gpt-6.1-sol 1
+t2-weekend p1 claude claude-sonnet-5-5 1
+t2-weekend p1 codex gpt-6.1-sol 1

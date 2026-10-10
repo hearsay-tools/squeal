@@ -1,0 +1,1 @@
+Move tax out of `src/invoice.ts` into a new `src/tax.ts` that holds a rate table by country (US 0%, DE 19%, GB 20%). Invoices should carry a `country` instead of a `taxPercent`. Update everything that uses it. The totals of existing invoices must not change.

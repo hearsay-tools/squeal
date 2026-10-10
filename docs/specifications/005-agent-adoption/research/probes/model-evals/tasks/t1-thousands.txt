@@ -1,0 +1,1 @@
+Finance wants amounts to be easier to read. `formatMoney` should group thousands with commas, so 123456789 cents in USD reads "$1,234,567.89" (EUR and GBP the same way). Make the change, and make sure nothing that consumes formatted amounts breaks because of it.

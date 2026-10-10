@@ -1,0 +1,21 @@
+# Pilot, second repetition of plan-pilot-1 (same cells, rep 2), then T4 (ends red) with the shipped primer on all four models.
+t1-thousands p0 claude claude-haiku-4-5-20251001 2
+t1-thousands p0 codex gpt-6-luna 2
+t1-thousands p1 claude claude-haiku-4-5-20251001 2
+t1-thousands p1 codex gpt-6-luna 2
+t1-thousands p0 claude claude-sonnet-5-5 2
+t1-thousands p0 codex gpt-6.1-sol 2
+t1-thousands p1 claude claude-sonnet-5-5 2
+t1-thousands p1 codex gpt-6.1-sol 2
+t2-weekend p0 claude claude-haiku-4-5-20251001 2
+t2-weekend p0 codex gpt-6-luna 2
+t2-weekend p1 claude claude-haiku-4-5-20251001 2
+t2-weekend p1 codex gpt-6-luna 2
+t2-weekend p0 claude claude-sonnet-5-5 2
+t2-weekend p0 codex gpt-6.1-sol 2
+t2-weekend p1 claude claude-sonnet-5-5 2
+t2-weekend p1 codex gpt-6.1-sol 2
+t4-contract p0 claude claude-haiku-4-5-20251001 1
+t4-contract p0 codex gpt-6-luna 1
+t4-contract p0 claude claude-sonnet-5-5 1
+t4-contract p0 codex gpt-6.1-sol 1
