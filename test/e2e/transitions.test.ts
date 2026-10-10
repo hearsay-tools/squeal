@@ -4,10 +4,12 @@ import { e2eSuite, HOOK_BUDGET_MS, hasNodeModulesAbove, MATH, PLUGINS } from "./
 
 /*
  * Spec 001 goals 1 to 3 and Testing, end to end: one PASS -> FAIL, then one
- * FAIL -> PASS, on PostToolBatch, and nothing for PASS -> PASS, for a failure
- * that keeps its diagnostic, or for a break and recovery between two
+ * FAIL -> PASS, on PostToolBatch, and no change for PASS -> PASS, for a
+ * failure that keeps its diagnostic, or for a break and recovery between two
  * deliveries. Every delivery agrees with `squeal status --json`. Spec 002:
- * the same for Codex, on PostToolUse.
+ * the same for Codex, on PostToolUse. The session's first edit gets the
+ * once-per-session line (tasks 001-223 and 001-224, merged once its file is
+ * current); later edits that change nothing stay silent.
  */
 
 const fixture = e2eSuite();
@@ -15,6 +17,9 @@ const ADDS = "test/math.test.ts > math > adds";
 const quiet = (s: { knownFailures: readonly unknown[] }) => s.knownFailures.length === 0;
 const failing = (s: { knownFailures: readonly { validity: string }[] }) =>
   s.knownFailures.length === 1 && s.knownFailures[0]?.validity === "current";
+/** The first delivery after the session's first edit, its one test file already current. */
+const SAW_EDIT =
+  "Squeal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.";
 
 describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
   it("delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between", async (ctx) => {
@@ -34,9 +39,17 @@ describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
     expect(registered.text).toContain("Known failures: 0");
     expectAgrees(registered.text, await e.status(e.main));
 
-    // PASS -> PASS with new content: a run, and nothing to say.
+    // PASS -> PASS with new content: a run, no changed check, only the first edit's line.
     const same = await e.edit(e.main, "math", MATH(), quiet);
     expect(e.runs(e.main).some((r) => r.revision === same.revision)).toBe(true);
+    const saw = await e.hook("post-tool-batch", e.main);
+    expect(saw).toMatchObject({ code: 0, stderr: "" });
+    expect(saw.text).toMatch(new RegExp(`^SQUEAL · revision ${same.revision}\n`));
+    expect(saw.text).toContain(SAW_EDIT);
+    expect(saw.text).not.toMatch(/PASS ->|FAIL ->/);
+    expect((await e.hook("post-tool-batch", e.main)).stdout).toBe("");
+    const again = await e.edit(e.main, "math", `${MATH()}// again\n`, quiet);
+    expect(e.runs(e.main).some((r) => r.revision === again.revision)).toBe(true);
     expect(await e.hook("post-tool-batch", e.main)).toMatchObject({ stdout: "", code: 0 });
 
     // PASS -> FAIL.
@@ -80,6 +93,9 @@ describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
     await e.settle(e.main, "a passing baseline", (s) => s.counts.current > 0 && quiet(s));
     const registered = await e.hook("post-tool-batch", e.main);
     expect(registered.text).toContain("registered at revision");
+    // The session's first edit gets its once-per-session line, so the silence below is the break's.
+    await e.edit(e.main, "math", MATH(), quiet);
+    expect((await e.hook("post-tool-batch", e.main)).text).toContain(SAW_EDIT);
 
     const broken = await e.edit(e.main, "math", MATH("-"), failing);
     const fixed = await e.edit(e.main, "math", MATH(), quiet);
