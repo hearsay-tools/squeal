@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs, Store, StoreOpenFailure } from "../types/index.js";
-import { Connection, rollback } from "./connection.js";
+import { Connection, isBusy, rollback } from "./connection.js";
 import { type StorePaths, storePaths } from "./paths.js";
 import { migrate, SCHEMA_VERSION, userVersion } from "./schema.js";
 import { connectionOf, createStore } from "./store.js";
@@ -83,8 +83,7 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     // Takes effect only before the first table exists, so only on a new file;
     // on any other it still writes the header, under the write lock (task 001-141).
     if (pragmaNumber(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
-    const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
-    if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
+    switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db);
     return createStore(new Connection(db), version, paths);
@@ -99,6 +98,27 @@ function busyTimeout(options: OpenStoreOptions): number {
   const ms = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(ms) || ms < 0) throw new RangeError(`busyTimeoutMs must be >= 0: ${ms}`);
   return ms;
+}
+
+/**
+ * Switches the file into WAL, retrying while it is busy for up to `ms`. The
+ * switch takes a read transaction and then upgrades it to a write one; SQLite
+ * skips the busy handler on that upgrade (waiting there could deadlock), so
+ * another opener holding the write lock fails it at once (task 001-207). On a
+ * file already in WAL it writes nothing.
+ */
+function switchToWal(db: DatabaseSync, ms: number): void {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    try {
+      const mode = db.prepare("PRAGMA journal_mode = WAL").get()?.journal_mode;
+      if (mode !== "wal") throw new Error(`squeal store: journal_mode is ${String(mode)}, not wal`);
+      return;
+    } catch (error) {
+      if (!isBusy(error) || Date.now() >= deadline) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
+    }
+  }
 }
 
 function pragmaNumber(db: DatabaseSync, name: string): number {
