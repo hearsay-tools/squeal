@@ -1,12 +1,12 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { onTestFinished } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
+import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
@@ -30,13 +30,20 @@ import { RecordingSink } from "./recording-sink.js";
 
 export const fileName = (i: number) => `test/f${String(i).padStart(2, "0")}.test.ts`;
 
-/** A repository of `count` test files and a linked worktree `other` beside it. */
-export function claimRepo(count: number): { main: string; other: string } {
+/** A repository of `count` test files and `extra`, and a linked worktree `other` beside it. */
+export function claimRepo(
+  count: number,
+  extra: Readonly<Record<string, string>> = {},
+): { main: string; other: string } {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-claims-")));
   onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
   const main = join(dir, "main");
   mkdirSync(join(main, "test"), { recursive: true });
   for (let i = 0; i < count; i++) writeFileSync(join(main, fileName(i)), `// file ${i}\n`);
+  for (const [path, text] of Object.entries(extra)) {
+    mkdirSync(dirname(join(main, path)), { recursive: true });
+    writeFileSync(join(main, path), text);
+  }
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);
   git(main, ["commit", "-qm", "fixture"]);
@@ -168,6 +175,8 @@ export interface SideOptions {
   readonly policy?: Partial<Policy>;
   readonly now?: () => EpochMs;
   readonly runMs?: number;
+  /** `SchedulerOptions.slow` (spec 004). */
+  readonly slow?: SchedulerOptions["slow"];
   /** `SchedulerOptions.rerunCap` (task 001-171). */
   readonly rerunCap?: number;
   /** Wraps the store the scheduler is given. */
@@ -226,6 +235,7 @@ export function side(root: string, options: SideOptions): Side {
     head: () => readHead(root),
     now,
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
+    ...(options.slow === undefined ? {} : { slow: options.slow }),
   });
   onTestFinished(async () => {
     clearInterval(beat);
