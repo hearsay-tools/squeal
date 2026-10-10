@@ -1,6 +1,6 @@
 # 006 Model evals
 
-Stage: draft 2026-10-10, awaiting the human's approval. Amendments: `status.md`. Research: `../005-agent-adoption/research/model-evals.md` (005-06, Opus, a pilot of 36 sessions), with `../005-agent-adoption/research/instruction-surfaces.md` (005-02) and `../005-agent-adoption/research/adoption-baseline.md` 3 (005-01's metric) behind it. Specs 001 to 005 hold unless a section here says otherwise.
+Stage: draft 2026-10-10, held by the human: the other coordinators finish, a quality pass runs, then new specs follow (`status.md`). Amendments: `status.md`. Research: `../005-agent-adoption/research/model-evals.md` (005-06, Opus, a pilot of 36 sessions), with `../005-agent-adoption/research/instruction-surfaces.md` (005-02) and `../005-agent-adoption/research/adoption-baseline.md` 3 (005-01's metric) behind it. Specs 001 to 005 hold unless a section here says otherwise.
 
 ## Problem
 
@@ -64,7 +64,7 @@ Per cell, from the transcript and the ground truth: the agent's own test runs by
 
 ### D5. The baseline
 
-T1 to T4 with their knobs × Claude Code `haiku`, `sonnet` and `opus` and Codex `gpt-6-luna` and `gpt-6.1-sol` × 3 repetitions, the shipped texts, a warm daemon unless a knob says otherwise: 60 sessions. From 005-06's costs, about $8 to $12 for Claude Code (Opus costs more per cell than the pilot's models) and about 5 M Codex input tokens, mostly cached; about 1 h at 2 cells at once. A model the host's provider does not serve is recorded as missing, never silently replaced; a stand-in is named in the results (Haiku 4.5 stood in for Haiku 5.5 in the pilot, `status.md`).
+T1 to T4 with their knobs × Claude Code `haiku` and `sonnet` and Codex `gpt-6-luna` and `gpt-6.1-sol` × 3 repetitions, the shipped texts, a warm daemon unless a knob says otherwise: 48 sessions. No Opus: the baseline watches small and mid-size models (the human, 2026-10-10). From 005-06's costs, about $3 to $5 for Claude Code and about 4 M Codex input tokens, mostly cached; about 45 min at 2 cells at once. A model the host's provider does not serve is recorded as missing, never silently replaced; a stand-in is named in the results (Haiku 4.5 stood in for Haiku 5.5 in the pilot, `status.md`).
 
 ### D6. Results and trend
 
@@ -87,7 +87,7 @@ One JSON file per variant in `evals/variants/`, applied to a copy of the pinned 
 ## Open questions
 
 1. The host's model proxy rejects Claude Code's `haiku` alias and `claude-haiku-5-5` ("400 unknown provider", verified 2026-10-10). Owner: the human.
-2. Whether Opus belongs in every baseline, given its cost, or only at releases. Default: in every baseline. Owner: the human.
+2. Resolved 2026-10-10 by the human: no Opus in the baseline.
 3. The Claude Code allow-list for subject sessions: 005-06's list (from 001's dogfooding) refused `node scripts/changelog.mjs` once, which confounds the uncovered-suite behaviour. Default: add `Bash(node:*)`. Owner: 006-01.
 4. Whether the 25-point flag is the right threshold, after two runs. Owner: 006-04.
 

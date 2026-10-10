@@ -66,6 +66,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-10, decided by the human: the eval suite is spec 006 (`../006-model-evals/`), run at every hub release and with every `/quality` scan; 005's proof (D7, 005-18) runs on it. The slow-policy primer defect from 005-06 is 001-234 (the 001 coordinator's own work, after the 0.1.101 gate, before 005-15): both primer variants end "Squeal does not cover typecheck, build or test suites it is not configured for; run those yourself."
 
+- 2026-10-10, the human: the order is the other coordinators finishing, then a quality pass (board, Later), then the new specs, 005 and 006. 005 stays held until then.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
