@@ -211,3 +211,48 @@ describe("which changed paths are sources (lessons defect 18)", () => {
     expect(slowLine(status(s))).toBe(clean);
   });
 });
+
+describe("a broad fast declaration keeps the sources other files load (review wave 6, S1)", () => {
+  const PLUGIN = "test/harness/plugin.test.ts";
+  const FIXTURE = "test/fixtures/node-test/README.md";
+  // This repository's shape: a fast test declares `src/**/*.ts` beside its fixtures.
+  const policy = {
+    ...SLOW_POLICY,
+    inputs: { ...SLOW_POLICY.inputs, [PLUGIN]: ["src/**/*.ts", "test/fixtures/**"] },
+  };
+
+  /** Both slow files current at revision 2; the stored closures merge imports and declared inputs. */
+  function current(): Seeded {
+    const s = seed(policy, { revisions: 2, changes: ["plugins/a.js"] });
+    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
+    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
+    keys(s.store, s.repo, { [PLUGIN]: null });
+    closes(s.store, FAST, [FAST, "src/a.ts"]);
+    closes(s.store, PLUGIN, [PLUGIN, "src/a.ts", "src/entry.ts", "src/harness.ts", FIXTURE]);
+    closes(s.store, SLOW_A, [SLOW_A, "src/harness.ts", "plugins/a.js"]);
+    closes(s.store, SLOW_B, [SLOW_B, "plugins/a.js"]);
+    return s;
+  }
+  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.`;
+
+  it.each([
+    ["a fast test imports and another declares", "src/a.ts"],
+    ["a slow file imports and a fast test declares", "src/harness.ts"],
+  ])("says sources changed for a path %s", (_, path) => {
+    const s = current();
+    change(s, path, "h-tested", "h-edited");
+    expect(slowLine(status(s))).toBe(
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.`,
+    );
+  });
+
+  it.each([
+    ["a fixture only the declaring test names", FIXTURE],
+    // No closure tells a declared path from an import: only declaring files name it (004-57).
+    ["a source only the declaring test names", "src/entry.ts"],
+  ])("leaves the clause off for %s", (_, path) => {
+    const s = current();
+    change(s, path, "h-tested", "h-edited");
+    expect(slowLine(status(s))).toBe(clean);
+  });
+});
