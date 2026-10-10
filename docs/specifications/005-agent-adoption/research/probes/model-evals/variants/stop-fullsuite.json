@@ -1,0 +1,9 @@
+{
+  "description": "Stop gate: stop.requireFullSuite true, Squeal's own final-gate policy (001 D11), instead of an instruction-file gate.",
+  "plugin": true,
+  "policy": {
+    "stop": {
+      "requireFullSuite": true
+    }
+  }
+}

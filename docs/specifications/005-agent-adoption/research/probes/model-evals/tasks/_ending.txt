@@ -1,0 +1,3 @@
+
+When you are finished, end your reply with one line in exactly this form, choosing one of the three words:
+TESTS: pass | fail | unknown, evidence: <what you base it on>

@@ -1,0 +1,17 @@
+id	task	variant	harness	model	rep	wallS	loadStart	loadMax	edits	vitestRuns	vitestFull	vitestFiles	nodeTestRuns	nodeTestWanted	squealWaits	squealWhy	squealRunAll	squealRunSlow	sleeps	skillLoads	failDeliveries	reactMs	claim	truthPass	claimTrue	squealKnownEnd	costUsd	inTok	cachedTok	outTok
+t1-thousands.p0.claude-claude-haiku-4-5-20251001.r1	t1-thousands	p0	claude	claude-haiku-4-5-20251001	1	112.1	1.81	1.82	8	0	0	0	0	false	3	0	0	1	1	1	4	2935	pass	true	true	0	0.19725274999999998	194	972250	7134
+t1-thousands.p0.claude-claude-sonnet-5-5.r1	t1-thousands	p0	claude	claude-sonnet-5-5	1	46.4	0.61	0.7	9	0	0	0	0	false	1	0	0	1	1	0	1	324	pass	true	true	0	0.1449447	16	231677	2896
+t1-thousands.p0.codex-gpt-6-luna.r1	t1-thousands	p0	codex	gpt-6-luna	1	62.2	0.37	0.62	7	0	0	0	0	false	5	1	0	1	0	0	3	51	pass	true	true	0		249297	225536	2487
+t1-thousands.p0.codex-gpt-6.1-sol.r1	t1-thousands	p0	codex	gpt-6.1-sol	1	71.7	0.64	0.67	6	0	0	0	0	false	2	0	0	1	0	1	0		pass	true	true	0		130703	118528	1806
+t1-thousands.p1.claude-claude-haiku-4-5-20251001.r1	t1-thousands	p1	claude	claude-haiku-4-5-20251001	1	103.1	0.55	0.63	7	0	0	0	0	false	3	0	0	1	1	0	4	3718	pass	true	true	0	0.16491160000000002	193	970986	7159
+t1-thousands.p1.claude-claude-sonnet-5-5.r1	t1-thousands	p1	claude	claude-sonnet-5-5	1	50	0.48	0.79	12	0	0	0	0	false	1	0	0	1	1	0	2	745	pass	true	true	0	0.10436350000000003	18	285775	3517
+t1-thousands.p1.codex-gpt-6-luna.r1	t1-thousands	p1	codex	gpt-6-luna	1	53.1	0.5	0.72	6	0	0	0	0	false	3	0	0	1	0	0	2	5930	pass	true	true	0		175174	158720	2585
+t1-thousands.p1.codex-gpt-6.1-sol.r1	t1-thousands	p1	codex	gpt-6.1-sol	1	77.9	0.67	0.7	0	0	0	0	0	false	3	0	1	2	0	1	0		pass	true	true	0		191294	165760	1705
+t2-weekend.p0.claude-claude-haiku-4-5-20251001.r1	t2-weekend	p0	claude	claude-haiku-4-5-20251001	1	65.7	0.61	1.8	4	0	0	0	0	true	2	1	0	0	0	1	2	5076	pass	false	false	0	0.1402678	162	809683	5585
+t2-weekend.p0.claude-claude-sonnet-5-5.r1	t2-weekend	p0	claude	claude-sonnet-5-5	1	34.8	0.62	2.12	4	0	0	0	0	true	5	0	0	1	0	0	2	2675	unknown	false	hedged	0	0.10380749999999997	22	358610	3069
+t2-weekend.p0.codex-gpt-6-luna.r1	t2-weekend	p0	codex	gpt-6-luna	1	35.4	1.68	1.68	4	0	0	0	0	true	1	0	0	0	0	0	2	5087	unknown	false	hedged	0		98502	79104	1607
+t2-weekend.p0.codex-gpt-6.1-sol.r1	t2-weekend	p0	codex	gpt-6.1-sol	1	73.7	0.74	3.84	5	0	0	0	1	true	3	0	0	1	0	1	3	18862	pass	true	true	0		113185	83840	1686
+t2-weekend.p1.claude-claude-haiku-4-5-20251001.r1	t2-weekend	p1	claude	claude-haiku-4-5-20251001	1	108	1.51	1.51	4	0	0	0	0	true	3	0	0	0	0	1	2	4586	pass	false	false	0	0.19635480000000002	234	1259808	7222
+t2-weekend.p1.claude-claude-sonnet-5-5.r1	t2-weekend	p1	claude	claude-sonnet-5-5	1	53.8	3.08	3.84	8	1	0	1	2	true	2	0	0	1	1	0	2	5272	pass	true	true	0	0.103856	18	292500	3530
+t2-weekend.p1.codex-gpt-6-luna.r1	t2-weekend	p1	codex	gpt-6-luna	1	80.4	0.91	1.28	5	0	0	0	1	true	4	0	0	1	0	1	2	5783	pass	true	true	0		266612	242688	2639
+t2-weekend.p1.codex-gpt-6.1-sol.r1	t2-weekend	p1	codex	gpt-6.1-sol	1	79.9	2.5	2.5	5	0	0	0	1	true	3	0	1	1	0	2	3	18602	pass	true	true	0		177298	148096	1829

@@ -1,0 +1,140 @@
+{
+ "id": "t1-thousands.p1.codex-gpt-6.1-sol.r1",
+ "task": "t1-thousands",
+ "variant": "p1",
+ "harness": "codex",
+ "model": "gpt-6.1-sol",
+ "rep": 1,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p1",
+ "setupS": 13.7,
+ "wallS": 77.9,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 0.67,
+  "max": 0.7,
+  "mean": 0.51,
+  "end": 0.36
+ },
+ "harnessVersion": "codex-cli 0.160.1",
+ "cost": null,
+ "usage": {
+  "input_tokens": 191294,
+  "cached_input_tokens": 165760,
+  "cache_write_input_tokens": 0,
+  "output_tokens": 1705,
+  "reasoning_output_tokens": 32
+ },
+ "turns": null,
+ "edits": 0,
+ "vitestRuns": 0,
+ "vitestByScope": {
+  "full": 0,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 0,
+ "vitestAfterLastEdit": 0,
+ "nodeTestRuns": 0,
+ "nodeTestWanted": false,
+ "squealPulls": 6,
+ "squealWaits": 3,
+ "squealWhy": 0,
+ "squealRunAll": 1,
+ "squealRunSlow": 2,
+ "waitsAfterLastEdit": 0,
+ "sleeps": 0,
+ "skillLoads": 1,
+ "deliveries": {
+  "registration": 1,
+  "fail": 0,
+  "deny": 0,
+  "resolved": 0,
+  "other": 1
+ },
+ "reactionToFirstFail": null,
+ "tempFileHeaders": 0,
+ "claim": "pass",
+ "claimLine": "TESTS: pass, evidence: Squeal reports 30 passed, zero failures, a completed revision 1 checkpoint, and the slow ledger test current.",
+ "truth": {
+  "vitestFailed": 0,
+  "failed": [],
+  "nodeTestFailed": false,
+  "pass": true
+ },
+ "squealEnd": {
+  "knownFailures": 0,
+  "pending": 0,
+  "slowCurrent": true
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [],
+  "pulls": [
+   {
+    "t": 29485,
+    "sub": "run --slow",
+    "ms": 61,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 34537,
+    "sub": "status --wait",
+    "ms": 446,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 40476,
+    "sub": "run --all",
+    "ms": 35,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 46228,
+    "sub": "run --slow",
+    "ms": 41,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 50133,
+    "sub": "status --wait",
+    "ms": 454,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 72407,
+    "sub": "status --wait",
+    "ms": 436,
+    "exit": 0,
+    "denied": false
+   }
+  ],
+  "sleeps": [],
+  "edits": [],
+  "deliveries": [
+   {
+    "t": 191,
+    "hook": "developer",
+    "kind": "other",
+    "head": "",
+    "temp": false
+   },
+   {
+    "t": 270,
+    "hook": "developer",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   }
+  ]
+ }
+}

@@ -1,0 +1,5 @@
+{
+  "description": "A repository gate demanding pasted `npx vitest run` output (005-02 condition c).",
+  "plugin": true,
+  "instructions": "## Verification\n\nBefore you finish, run `npx vitest run` and paste its output in your final message.\n"
+}

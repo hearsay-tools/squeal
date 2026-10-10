@@ -1,0 +1,8 @@
+{
+  "description": "The shipped plugin without its skill (skills/squeal removed from both plugins).",
+  "plugin": true,
+  "remove": [
+    "plugins/claude-code/skills/squeal",
+    "plugins/codex/skills/squeal"
+  ]
+}

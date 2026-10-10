@@ -1,0 +1,4 @@
+{
+  "inputs": { "test/slow/**": ["src/**"] },
+  "slow": { "include": ["test/slow/**"] }
+}

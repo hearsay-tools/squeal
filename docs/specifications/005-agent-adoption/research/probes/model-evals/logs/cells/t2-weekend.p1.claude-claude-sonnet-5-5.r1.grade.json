@@ -1,0 +1,222 @@
+{
+ "id": "t2-weekend.p1.claude-claude-sonnet-5-5.r1",
+ "task": "t2-weekend",
+ "variant": "p1",
+ "harness": "claude",
+ "model": "claude-sonnet-5-5",
+ "rep": 1,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p1",
+ "setupS": 13.4,
+ "wallS": 53.8,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 3.08,
+  "max": 3.84,
+  "mean": 3.08,
+  "end": 2.38
+ },
+ "harnessVersion": "2.1.296 (Claude Code)",
+ "cost": 0.103856,
+ "usage": {
+  "input_tokens": 18,
+  "cache_creation_input_tokens": 15708,
+  "cache_read_input_tokens": 292500,
+  "output_tokens": 3530,
+  "output_tokens_details": {
+   "thinking_tokens": 193
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 0,
+   "ephemeral_5m_input_tokens": 15708
+  },
+  "inference_geo": "global",
+  "iterations": [],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "turns": 15,
+ "edits": 8,
+ "vitestRuns": 1,
+ "vitestByScope": {
+  "full": 0,
+  "files": 1,
+  "name": 0
+ },
+ "vitestMs": 1173,
+ "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 2,
+ "nodeTestRuns": 2,
+ "nodeTestWanted": true,
+ "squealPulls": 3,
+ "squealWaits": 2,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 1,
+ "waitsAfterLastEdit": 2,
+ "sleeps": 1,
+ "skillLoads": 0,
+ "deliveries": {
+  "registration": 1,
+  "fail": 2,
+  "deny": 0,
+  "resolved": 0,
+  "other": 0
+ },
+ "reactionToFirstFail": {
+  "ms": 5272,
+  "kind": "cmd",
+  "what": "sed -i 's|  if (weekday(due) === \"Sat\") return addDays(due, 2);|  if (weekday(due) === \"Sat\") return addDays(due, 2);\\n "
+ },
+ "tempFileHeaders": 0,
+ "claim": "pass",
+ "claimLine": "TESTS: pass, evidence: Squeal reports 31 passed, 0 failing at revision 7, including the slow tier. The new Sunday test went from FAIL to PASS, and I ran `node --test scripts/changelog.test.mjs` separately (2 of 2 passed).",
+ "truth": {
+  "vitestFailed": 0,
+  "failed": [],
+  "nodeTestFailed": false,
+  "pass": true
+ },
+ "squealEnd": {
+  "knownFailures": 0,
+  "pending": 0,
+  "slowCurrent": true
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [
+   {
+    "t": 8263,
+    "runner": "vitest",
+    "scope": "files",
+    "ms": 1173,
+    "denied": false,
+    "cmd": "npx vitest run test/clock.test.ts 2>&1 | tail -15"
+   },
+   {
+    "t": 14795,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 96,
+    "denied": true,
+    "cmd": "sed -i 's|  if (weekday(due) === \"Sat\") return addDays(due, 2);|  if (weekday(due) === \"Sat\") return addDays(due, 2);\\n  if (weekday(due) === \"Sun\") return addD"
+   },
+   {
+    "t": 14795,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 96,
+    "denied": true,
+    "cmd": "sed -i 's|  if (weekday(due) === \"Sat\") return addDays(due, 2);|  if (weekday(due) === \"Sat\") return addDays(due, 2);\\n  if (weekday(due) === \"Sun\") return addD"
+   },
+   {
+    "t": 24041,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 797,
+    "denied": false,
+    "cmd": "squeal status --wait 60000; node --test scripts/ 2>&1 | grep -E \"^# (pass|fail)\""
+   },
+   {
+    "t": 26885,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 1019,
+    "denied": false,
+    "cmd": "node --test scripts/changelog.test.mjs 2>&1 | tail -12; squeal run --slow 2>&1 | tail -5; squeal status --wait 60000 | head -5"
+   }
+  ],
+  "pulls": [
+   {
+    "t": 24041,
+    "sub": "status --wait",
+    "ms": 797,
+    "denied": false
+   },
+   {
+    "t": 26885,
+    "sub": "run --slow",
+    "ms": 1019,
+    "denied": false
+   },
+   {
+    "t": 29354,
+    "sub": "status --wait",
+    "ms": 20678,
+    "denied": false
+   }
+  ],
+  "sleeps": [
+   {
+    "t": 29354,
+    "cmd": "sleep 20; squeal status --wait 60000 | head -6"
+   }
+  ],
+  "edits": [
+   {
+    "t": 8035,
+    "path": "test/clock.test.ts"
+   },
+   {
+    "t": 14795,
+    "path": "(shell)"
+   },
+   {
+    "t": 17267,
+    "path": "src/clock.ts"
+   },
+   {
+    "t": 18172,
+    "path": "scripts/changelog.mjs"
+   },
+   {
+    "t": 19266,
+    "path": "scripts/changelog.mjs"
+   },
+   {
+    "t": 20031,
+    "path": "scripts/changelog.test.mjs"
+   },
+   {
+    "t": 20932,
+    "path": "scripts/changelog.test.mjs"
+   },
+   {
+    "t": 21727,
+    "path": "changes.json"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 534,
+    "hook": "SessionStart:startup",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 9523,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   },
+   {
+    "t": 21878,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 6",
+    "temp": false
+   }
+  ]
+ }
+}

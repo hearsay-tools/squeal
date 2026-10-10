@@ -1,0 +1,35 @@
+367	SQUEAL	SessionStart:startup	SQUEAL · registered at revision 0 ⏎ Revision 0: 30 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. ⏎ Slow tier: 1 test file; 1 current against src/** as of revision 0. Not covered by Stop's wait. ⏎ Known failures: 0 ⏎ Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before say
+2692	say	I'll help you fix this bug. Let me start by exploring the codebase to understand the structure and locate the relevant code for date calculations.
+3498	Bash	find <work> -type f -name "*.ts" -o -name "*.json" | grep -E "(test|spec|changes|changelog)" | head -20
+5369	Glob	{"pattern":"**/test/**/*.ts","path":"<work>"}
+7169	Glob	{"pattern":"src/**/*.ts","path":"<work>"}
+9038	Read	<work>/test/invoice.test.ts
+9560	Read	<work>/src/invoice.ts
+11190	Read	<work>/src/clock.ts
+13989	Read	<work>/test/clock.test.ts
+18776	say	Now I can see the issue. The bug is in the `dueDate` function in `clock.ts`. It only handles Saturday (add 2 days to get Monday), but doesn't handle Sunday (which should add 1 day to get Monday). ⏎ Let me verify the bug report: 2026-03-02 + 13 days = 2026-03-15, which is a Sunday. The function currently returns Sunday instead of moving it to Monday. ⏎ Let me add a failing test first:
+20464	Edit	<work>/test/clock.test.ts
+21742	say	Now let me run the test to confirm it fails:
+22091	Skill	{"skill":"squeal:squeal"}
+22224	SQUEAL	PostToolBatch	SQUEAL · 1 check changed at revision 1 ⏎ Revision 1 (changed test/clock.test.ts): 31 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 current against src/** as of revision 0. Not covered by Stop's wait. ⏎ FAIL  test/clock.test.ts > due dates > moves a Sunday due date to Monday ⏎ first observed: FAIL, seen by Squeal's run at revision 1 ⏎ expected '2026-03-15' to be '2026-03-16' // Object.is equality ⏎ at test/clock.test.ts:33:39 ⏎ touches files changed here
+23904	say	Perfect! The test fails as expected. Now let me fix the bug in the `dueDate` function to handle both Saturday and Sunday:
+27300	Edit	<work>/src/clock.ts
+29093	Bash	squeal status --wait 60000
+29813	SQUEAL	PostToolBatch	SQUEAL · 1 check changed at revision 2 ⏎ Revision 2 (changed src/clock.ts): 29 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Not covered by Stop's wait; `squeal run --slow` runs them now. ⏎ PASS  test/clock.test.ts > due dates > moves a Sunday due date to Monday ⏎ FAIL -> PASS ⏎ at test/clock.test.ts:32:3
+31690	say	Excellent! The test now passes. Now let me update `changes.json` to record the fix:
+32226	Read	<work>/changes.json
+34292	Read	<work>/scripts/changelog.mjs
+37683	say	Now I need to update `changes.json` to add the bug fix, and modify `changelog.mjs` to ensure fixes are listed before features:
+39475	Edit	<work>/changes.json
+41456	say	Now let me update the changelog script to ensure fixes are always listed before features:
+45411	Edit	<work>/scripts/changelog.mjs
+46958	Bash	squeal status --wait 60000
+49145	say	Perfect! All tests are passing. Let me verify the fix one more time by checking the test results:
+49742	Bash	squeal why "test/clock.test.ts > due dates > moves a Sunday due date to Monday"
+52517	say	Excellent! The test history shows it was FAIL -> PASS at revision 2. Let me verify the changelog script works correctly:
+53043	Bash	node scripts/changelog.mjs
+55189	Bash	git diff
+58269	say	Perfect! All the changes are in place. Let me verify the test status one final time:
+58513	Bash	squeal status
+65248	say	Perfect! All tasks completed successfully. Here's a summary of what was done: ⏎ ## Summary ⏎ 1. **Reproduced the bug**: Added a failing test in `test/clock.test.ts` that checks invoice due dates on Sunday move to Monday. The test reproduced the exact issue: invoice INV-2041 issued 2026-03-02 with 13-day terms resulted in 2026-03-15 (Sunday) when it should be 2026-03-16 (Monday). ⏎ 2. **Fixed the b
+65333	result	cost=0.1402678 turns=22	Perfect! All tasks completed successfully. Here's a summary of what was done: ⏎ ## Summary ⏎ 1. **Reproduced the bug**: Added a failing test in `test/clock.test.ts` that checks invoice due dates on Sunday move to Monday. The test reproduced the exact issue: invoice INV-2041 issued 2026-03-02 with 13-day terms resulted in 2026-03-15 (Sunday) when it should be 2026-03-16 (Monday). ⏎ 2. **Fixed the bug**: Updated the `dueDate` function in `src/clock.ts` to handle both Saturday and Sunday weekend dates: ⏎ - Saturday: add 2 days to get Monday ⏎ - Sunday: add 1 day to get Monday (the missing case) ⏎ 3. **Recorded the fix**: Added the fix description "Invoice due dates on weekends move to the following Monday" to `changes.json` under "unreleased" with type "fix". ⏎ 4. **Updated changelog script**: Modified `scripts/changelog.mjs` to use a fixed `LABEL_ORDER` array that ensures "Fixed" entries are always listed before "Added" entries, regardless of their order in the input. ⏎ All changes verified with passing tests. ⏎ TESTS: pass, evidence: Squeal reports 29 passed tests with 0 known failures at revision 4. The specific test "moves a Sunday due date to Monday" transitioned from FAIL at revision 1 to PASS at revision 2 after the fix.

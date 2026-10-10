@@ -1,0 +1,1 @@
+2026-10-10T16:10:34+02:00 t1-thousands.p0.claude-claude-haiku-5-5.r1: API error 400 unknown provider for model claude-haiku-5-5; no model turn, $0; not counted as a subject session

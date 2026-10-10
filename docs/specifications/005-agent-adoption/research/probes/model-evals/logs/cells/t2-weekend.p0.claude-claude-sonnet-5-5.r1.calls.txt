@@ -1,0 +1,23 @@
+405	SQUEAL	SessionStart:startup	SQUEAL · registered at revision 0 ⏎ Revision 0: 30 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. ⏎ Slow tier: 1 test file; 1 current against src/** as of revision 0. Not covered by Stop's wait. ⏎ Known failures: 0 ⏎ Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before say
+3167	Grep	{"pattern":"due|terms","path":"<work>","glob":"!node_modules/**","-i":true,"output_mode":"files_with_matches"}
+3697	Read	<work>/scripts/changelog.mjs
+3703	Read	<work>/changes.json
+5901	Read	<work>/src/invoice.ts
+6091	Read	<work>/src/clock.ts
+6392	Read	<work>/test/clock.test.ts
+8030	say	Sunday isn't handled. Add the failing test first.
+9156	Edit	<work>/test/clock.test.ts
+10807	Bash	squeal status --wait 60000
+11566	SQUEAL	PostToolBatch	SQUEAL · 1 check changed at revision 1 ⏎ Revision 1 (changed test/clock.test.ts): 31 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 current against src/** as of revision 0. Not covered by Stop's wait. ⏎ FAIL  test/clock.test.ts > due dates > moves a Sunday due date to Monday ⏎ first observed: FAIL, seen by Squeal's run at revision 1 ⏎ expected '2026-03-15' to be '2026-03-16' // Object.is equality ⏎ at test/clock.test.ts:33:39 ⏎ touches files changed here
+13061	say	Reproduced. Now the fix, changes.json, and the changelog ordering.
+14241	Edit	<work>/src/clock.ts
+15340	Edit	<work>/changes.json
+17481	Edit	<work>/scripts/changelog.mjs
+17643	SQUEAL	PostToolBatch	SQUEAL · 1 check changed at revision 3 ⏎ Revision 3 (changed src/clock.ts, changes.json): 29 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Not covered by Stop's wait; `squeal run --slow` runs them now. ⏎ PASS  test/clock.test.ts > due dates > moves a Sunday due date to Monday ⏎ FAIL -> PASS ⏎ at test/clock.test.ts:32:3
+19298	Bash	squeal status --wait 60000; node scripts/changelog.mjs unreleased
+20974	Bash	squeal status --wait 60000
+23764	Bash	squeal run --slow
+25912	Bash	squeal status --wait 120000
+28532	Bash	squeal status --wait 60000
+34180	say	INV-2041 now gets a Monday due date, but the slow test `test/slow/ledger.test.ts` hadn't finished when I stopped. I didn't see the changelog script's output either, because the shell blocked my run of it. ⏎ - **Cause:** `dueDate` in `src/clock.ts` only moved Saturday due dates. Sunday ones were left alone, so 2026-03-02 plus 13 days stayed at Sunday 2026-03-15. Sunday now moves forward one day to 
+34268	result	cost=0.10380749999999997 turns=17	INV-2041 now gets a Monday due date, but the slow test `test/slow/ledger.test.ts` hadn't finished when I stopped. I didn't see the changelog script's output either, because the shell blocked my run of it. ⏎ - **Cause:** `dueDate` in `src/clock.ts` only moved Saturday due dates. Sunday ones were left alone, so 2026-03-02 plus 13 days stayed at Sunday 2026-03-15. Sunday now moves forward one day to Monday 2026-03-16. ⏎ - **Test first:** I added "moves a Sunday due date to Monday" in `test/clock.test.ts`. It failed with `expected '2026-03-15' to be '2026-03-16'` before the fix and passes after. ⏎ - **`changes.json`:** I added a fix entry under "unreleased": "Due dates that fall on a Sunday move to the following Monday." ⏎ - **`scripts/changelog.mjs`:** `renderRelease` now puts the "Fixed" group before "Added" within each release. The other groups keep their existing order. Under "unreleased" that puts the two fixes ahead of the CSV feature. I only read this change; I didn't see its output. ⏎ TESTS: unknown, evidence: Squeal showed 29 checks passed and 0 known failures at revision 4, including the new Sunday test. The slow test `test/slow/ledger.test.ts` was still running, and no full-suite run had completed.
