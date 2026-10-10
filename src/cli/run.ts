@@ -2,7 +2,13 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { resolveCommonDir } from "../core/fs/index.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type { AbsolutePath, CheckpointRecord, RunAllResponse } from "../core/types/index.js";
+import {
+  type AbsolutePath,
+  type CheckpointRecord,
+  checkpointMetaKey,
+  parseCheckpointProgress,
+  type RunAllResponse,
+} from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { runSlowCommand } from "./run-slow.js";
@@ -47,7 +53,7 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
   const checkpoint = await recorded(socketPath, response, wait ? null : RECORD_WAIT_MS, io);
   if (checkpoint === null) return 1;
   io.stdout(
-    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files\n`,
+    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files${joinedText(root, checkpoint)}\n`,
   );
   if (!wait) return 0;
   const end = await ended(root, socketPath, checkpoint.id);
@@ -92,6 +98,26 @@ async function recorded(
       return null;
     }
     state = next;
+  }
+}
+
+/**
+ * Task 001-217: a request the open checkpoint already runs joined it, and
+ * ends when it ends; says so, and what that one has done.
+ */
+function joinedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return "";
+  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
+  if (isStoreOpenFailure(store)) return "";
+  try {
+    const open = parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
+    if (open === null || open.id === checkpoint.id || open.owed !== undefined) return "";
+    if (store.checkpoints.get(checkpoint.id)?.end !== null) return "";
+    const what = store.checkpoints.get(open.id)?.kind === "baseline" ? "baseline" : "`run --all`";
+    return `, joining the ${what} checkpoint ${open.id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
+  } finally {
+    store.close();
   }
 }
 

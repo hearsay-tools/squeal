@@ -4,6 +4,7 @@ import type { SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
 import { readStatus } from "../../src/core/status/index.js";
 import {
+  checkpointMetaKey,
   type DaemonRecord,
   type KnownState,
   type RevisionNumber,
@@ -367,5 +368,28 @@ describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)"
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeLessThan(STATUS_WAIT_SETTLE_MS);
+  });
+});
+
+describe("squeal status --wait names a checkpoint still running (task 001-217)", () => {
+  it("says a quiet wait did not hold for it, and how to wait for it", async () => {
+    const { repo, store } = repoWith(currentPass());
+    const record = store.checkpoints.start({
+      id: "cp-1",
+      worktreeId: repo.mainId,
+      revision: 2,
+      kind: "run-all",
+      testFiles: [],
+      startedAt: NOW - 30_000,
+    });
+    const { id, kind, revision, startedAt } = record;
+    const progress = { id, kind, revision, startedAt, done: 40, total: 200 };
+    store.meta.set(checkpointMetaKey(repo.mainId), JSON.stringify(progress));
+
+    const { stdout } = await run(["status", "--wait", "5000"], repo.main);
+
+    expect(stdout.split("\n")[0]).toMatch(
+      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s; a `run --all` checkpoint is still running \(40 of 200 test files done\), which this wait does not hold for: `squeal run --all --wait` waits for it$/,
+    );
   });
 });

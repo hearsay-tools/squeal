@@ -1,12 +1,18 @@
 import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
-import { plural } from "../text.js";
+import { cap, plural } from "../text.js";
 import type {
   CommitSha,
+  DaemonNote,
   EpochMs,
   StatusResult,
   StatusSnapshot,
   StatusUnavailable,
 } from "../types/index.js";
+
+export interface StatusFormatOptions {
+  /** `squeal status --notes`: every note in full, none grouped (task 001-222). */
+  readonly allNotes?: boolean;
+}
 
 /**
  * Human rendering of `squeal status`. The first lines reproduce the vision
@@ -16,7 +22,12 @@ import type {
  * Details follow after a blank line. `command` is how the text names the CLI
  * (`SQUEAL_COMMAND`, or the Codex command under Codex).
  */
-export function formatStatus(result: StatusResult, now: EpochMs, command = "squeal"): string {
+export function formatStatus(
+  result: StatusResult,
+  now: EpochMs,
+  command = "squeal",
+  options: StatusFormatOptions = {},
+): string {
   if (!result.available) return formatUnavailable(result);
   const lines = [
     `Revision: ${result.revision}`,
@@ -34,6 +45,7 @@ export function formatStatus(result: StatusResult, now: EpochMs, command = "sque
     ]),
     `Affected checks: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    ...checkpointLine(result, now, command),
     ...slowLine(result, command),
     "",
     worktreeLine(result),
@@ -49,7 +61,7 @@ export function formatStatus(result: StatusResult, now: EpochMs, command = "sque
         ]),
     `Closure method: ${result.closureMethod}`,
     `Store schema: ${result.storeSchemaVersion}`,
-    ...notes(result),
+    ...notes(result, command, options.allNotes === true),
   ];
   return `${lines.join("\n")}\n`;
 }
@@ -70,14 +82,96 @@ function inheritedLine(s: StatusSnapshot): string {
     : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}`;
 }
 
-/** Status's own notes, then the daemon's with time and revision. */
-function notes(s: StatusSnapshot): string[] {
-  const daemon = s.daemonNotes.map((n) => {
+/**
+ * Task 001-217: the checkpoint in progress, with what it has done, and how
+ * to wait for it; task 001-219: the one a stopped daemon owes the next.
+ */
+function checkpointLine(s: StatusSnapshot, now: EpochMs, command: string): string[] {
+  const checkpoint = s.checkpoint;
+  if (checkpoint === undefined) return [];
+  const what =
+    checkpoint.kind === "run-all"
+      ? `\`run --all\` requested at revision ${checkpoint.revision}`
+      : `the baseline from revision ${checkpoint.revision}`;
+  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
+  if (checkpoint.owed) {
+    return [
+      `Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`,
+    ];
+  }
+  const started = `started ${age(now - checkpoint.startedAt)} ago`;
+  return [
+    `Checkpoint in progress: ${what}, ${started}: ${done} (\`${command} run --all --wait\` waits for it)`,
+  ];
+}
+
+/**
+ * Status's own notes, then the daemon's with time and revision. Unless
+ * `all`, two or more notes of stopped processes of one kind fold into one
+ * line counting them by command (task 001-222); 001-212's detail of each
+ * stays behind `status --notes`.
+ */
+function notes(s: StatusSnapshot, command: string, all: boolean): string[] {
+  const stamped = (n: DaemonNote) => {
     const at = new Date(n.at).toISOString();
     return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
+  };
+  const groups = new Map<string, Stopped[]>();
+  const kept: DaemonNote[] = [];
+  for (const note of s.daemonNotes) {
+    const stopped = all ? null : parseStopped(note);
+    if (stopped === null) kept.push(note);
+    else groups.set(stopped.what, [...(groups.get(stopped.what) ?? []), stopped]);
+  }
+  const folded: string[] = [];
+  for (const [what, list] of groups) {
+    const [only] = list;
+    if (list.length === 1 && only !== undefined) kept.push(only.note);
+    else folded.push(foldedText(what, list, command));
+  }
+  kept.sort((a, b) => a.at - b.at);
+  const lines = [...s.notes, ...kept.map(stamped), ...folded];
+  return lines.length === 0 ? [] : ["Notes:", ...lines.map((note) => `  ${note}`)];
+}
+
+/** A note of `describe` in `src/core/daemon/terminate.ts`: the command line of each process. */
+interface Stopped {
+  readonly note: DaemonNote;
+  readonly what: string;
+  readonly commands: readonly string[];
+}
+
+const STOPPED = /^stopped \d+ process(?:es)? (.+?): (.+)$/;
+/** How much of a command line names its group. */
+const COMMAND_CHARS = 120;
+
+function parseStopped(note: DaemonNote): Stopped | null {
+  const match = STOPPED.exec(note.text);
+  if (match === null) return null;
+  const [, what = "", list = ""] = match;
+  const commands = list.split("; ").map((entry) => {
+    const facts = entry.lastIndexOf(" (");
+    const process = facts === -1 ? entry : entry.slice(0, facts);
+    return cap(process.slice(process.indexOf(" ") + 1), COMMAND_CHARS);
   });
-  const all = [...s.notes, ...daemon];
-  return all.length === 0 ? [] : ["Notes:", ...all.map((note) => `  ${note}`)];
+  return { note, what, commands };
+}
+
+function foldedText(what: string, list: readonly Stopped[], command: string): string {
+  const counts = new Map<string, number>();
+  for (const line of list.flatMap((stopped) => stopped.commands)) {
+    counts.set(line, (counts.get(line) ?? 0) + 1);
+  }
+  const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
+  const byCommand = [...counts]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([line, n]) => `${n} × ${line}`);
+  const since = new Date(Math.min(...list.map((stopped) => stopped.note.at))).toISOString();
+  const processes = total === 1 ? "1 process" : `${total} processes`;
+  return (
+    `stopped ${processes} ${what}, in ${plural(list.length, "note")} since ${since}: ` +
+    `${byCommand.join("; ")} (\`${command} status --notes\` lists each)`
+  );
 }
 
 export function formatUnavailable(result: StatusUnavailable): string {
@@ -107,11 +201,18 @@ function affected(s: StatusSnapshot): string {
     [s.counts.unknown + currentByOutcome.unknown, "unknown"],
   ];
   for (const [count, label] of optional) if (count > 0) parts.push(`${count} ${label}`);
+  // Task 001-217: a baseline over fresh files runs them before any has a check.
+  const files = s.testFilesWithoutChecks.pending;
+  const running = Math.min(files, s.breakdown.testFilesWithoutChecksRunning ?? 0);
+  const fresh =
+    files === 0
+      ? ""
+      : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
   const runnerPart =
     s.runnerPartPending === true
       ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet`
       : "";
-  return `${parts.join(", ")}${runnerPart}`;
+  return `${parts.join(", ")}${fresh}${runnerPart}`;
 }
 
 /** Spec 001 D7 as amended: the dirty flag is labelled with its revision, not known without a daemon. */

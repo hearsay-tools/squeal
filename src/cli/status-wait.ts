@@ -298,7 +298,7 @@ export async function statusWaitCommand(
     io.stdout(json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 1;
   }
-  const line = `${waitLine(wait)}\n`;
+  const line = `${waitLine(wait, statusCommand(env))}\n`;
   if (json) {
     const payload: StatusWaitPayload = {
       outcome: wait.outcome,

@@ -10,14 +10,17 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
  * The first line of `status --wait`: why it returned. With the edit's files
  * (`StatusWaitEdit`), what it held for and what else is pending.
  */
-export function waitLine(wait: EndedWait): string {
+export function waitLine(wait: EndedWait, command = "squeal"): string {
   const { outcome, transitions, edit, result: snapshot } = wait;
   const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
   const at = `at revision ${snapshot.revision}`;
-  if (edit !== undefined && outcome !== "no-daemon") return editLine(edit, wait, at, after);
+  const running = outcome === "quiet" ? checkpointText(snapshot, command) : "";
+  if (edit !== undefined && outcome !== "no-daemon") {
+    return `${editLine(edit, wait, at, after)}${running}`;
+  }
   switch (outcome) {
     case "quiet":
-      return `Returned on quiet: nothing pending ${at} ${after}`;
+      return `Returned on quiet: nothing pending ${at} ${after}${running}`;
     case "news":
       return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
     case "no-daemon":
@@ -47,6 +50,21 @@ function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: stri
     default:
       return `Returned on timeout ${after}: ${edit.pending} of the ${files} pending ${at}${pending}${others}`;
   }
+}
+
+/**
+ * Task 001-217 (005 proposal b): a quiet wait says what it did not wait for,
+ * a checkpoint still running, and how to wait for that.
+ */
+function checkpointText(snapshot: StatusSnapshot, command: string): string {
+  const checkpoint = snapshot.checkpoint;
+  if (checkpoint === undefined || checkpoint.owed) return "";
+  const what =
+    checkpoint.kind === "run-all" ? "a `run --all` checkpoint" : "the baseline checkpoint";
+  return (
+    `; ${what} is still running (${checkpoint.done} of ${plural(checkpoint.total, "test file")} done), ` +
+    `which this wait does not hold for: \`${command} run --all --wait\` waits for it`
+  );
 }
 
 /** As delivered headers word it (spec 001 D10: "no daemon running since <time>"). */

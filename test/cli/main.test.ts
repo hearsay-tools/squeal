@@ -184,7 +184,7 @@ describe("squeal", () => {
     const { code, stdout } = run(["--help"], fakeRepo().main);
 
     expect(code).toBe(0);
-    expect(stdout).toContain("squeal status [--json]");
+    expect(stdout).toContain("squeal status [--notes] [--json]");
     expect(stdout).toContain("squeal why <check> [--include-logs] [--json]");
   });
 

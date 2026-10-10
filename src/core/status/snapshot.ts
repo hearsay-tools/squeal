@@ -6,12 +6,15 @@ import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
 import {
   type AbsolutePath,
   type CheckBreakdown,
+  type CheckpointInProgress,
+  checkpointMetaKey,
   type DaemonLiveness,
   type DaemonRecord,
   type EpochMs,
   type InheritedSource,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
+  parseCheckpointProgress,
   type StatusBuilder,
   type StatusResult,
   type StatusSnapshot,
@@ -117,7 +120,30 @@ function snapshot(
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
+    ...openCheckpoint(store, worktreeId, daemon),
   };
+}
+
+/**
+ * Task 001-217: the checkpoint in progress, while a daemon validates and its
+ * row is open; task 001-219: the one a stopped daemon owes, while none
+ * validates. A row a killed daemon left open is neither.
+ */
+function openCheckpoint(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemon: DaemonLiveness,
+): { checkpoint?: CheckpointInProgress } {
+  const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  if (progress === null) return {};
+  const { owed, ...rest } = progress;
+  if (owed !== undefined) {
+    // A daemon running again took it up, or is about to; its own progress says which.
+    if (daemon.state === "alive") return {};
+    return { checkpoint: { ...rest, owed: true } };
+  }
+  if (daemon.state !== "alive" || store.checkpoints.get(progress.id)?.end !== null) return {};
+  return { checkpoint: { ...rest, owed: false } };
 }
 
 /** With no daemon record, the heartbeat kept after `squeal stop` says since when (review wave 4.5, N5). */
@@ -193,10 +219,14 @@ function breakdown(
     if (s.validity === "pending")
       pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
   }
-  const testFilesWithoutChecks = keys.filter(
-    (k) => !filesWithChecks.has(testFileId(k.testFile)),
-  ).length;
-  return { currentByOutcome, pendingByPhase, testFiles: keys.length, testFilesWithoutChecks };
+  const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
+  return {
+    currentByOutcome,
+    pendingByPhase,
+    testFiles: keys.length,
+    testFilesWithoutChecks: without.length,
+    testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length,
+  };
 }
 
 /** Spec 001 D12: "status says the baseline was lost." */
