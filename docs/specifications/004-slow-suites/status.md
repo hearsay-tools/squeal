@@ -85,6 +85,8 @@ Started: 2026-10-08
 
 - 2026-10-10, the board's Later row done by the coordinator: this repository's `squeal.config.json` declares `test/fixtures/node-test/**` and `test/fixtures/vitest/**` again (`b70fcc2` reverted), now that the hub release 0.1.86 carries 004-47 and every daemon of this repository runs it.
 
+- 2026-10-10, review 004-56 (`reviews/wave-6.md`, PASS at `17b0c227`, gpt-6.1-sol): 004-52, 004-54 and 004-55 hold on Node 22 and 24 through real-store probes with negative controls; no blocker. One nonblocking S1: D8 as amended for 004-55 also drops executable sources a broad fast declaration selects (`src/**/*.ts` in this repository), so the clause misses source changes behind an unchanged artifact here; the amendment was the coordinator's, too broad. Row 004-57, planned: the stored closure does not separate resolved paths from declared inputs, so the fix needs a design choice. The reviewer's gate: Node 24 two integration re-run-count failures passing alone and an unhandled `write EPIPE` in `test/harness/step-down.test.ts` (the 001 lane's stub, recurring alone); Node 22 one proxy-warning stderr failure; Squeal's checkpoint 2679 passed, 0 known failures.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
