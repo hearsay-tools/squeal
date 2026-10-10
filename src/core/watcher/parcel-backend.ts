@@ -1,4 +1,5 @@
-import { statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, statSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type {
@@ -125,9 +126,15 @@ async function subscribeAll(
  * jobs (`test/watcher/parcel-links.test.ts`). The batch that erased an event
  * is delivered after its write, so each batch from the parent re-stats the
  * extra files there it does not name and reports those that moved.
+ *
+ * A same-size rewrite inside one timestamp tick leaves the stat as it was, so
+ * a signature taken within {@link RACY_NS} of its file's mtime or ctime is
+ * racy, as git calls it, and also carries the content's hash (001-243). Only
+ * racy signatures read the file; a later write to a settled one moves its
+ * timestamps.
  */
 class ErasedEvents {
-  private readonly last = new Map<AbsolutePath, string | null>();
+  private readonly last = new Map<AbsolutePath, Signature | null>();
 
   constructor(private readonly files: Map<AbsolutePath, AbsolutePath[]>) {
     for (const real of files.keys()) this.last.set(real, signature(real));
@@ -140,7 +147,7 @@ class ErasedEvents {
       const before = this.last.get(real) ?? null;
       const now = signature(real);
       this.last.set(real, now);
-      if (named.has(real) || now === before) continue;
+      if (named.has(real) || same(real, before, now)) continue;
       const kind = now === null ? "unlink" : before === null ? "add" : "change";
       for (const path of declared) hints.push({ path, kind });
     }
@@ -148,9 +155,42 @@ class ErasedEvents {
   }
 }
 
-function signature(path: AbsolutePath): string | null {
+/**
+ * How close to its file's timestamps a signature is racy: two seconds, the
+ * coarsest common tick (FAT), well above a kernel's coarse clock (a jiffy).
+ */
+const RACY_NS = 2_000_000_000n;
+
+interface Signature {
+  stat: string;
+  /** The content's hash when the signature is racy, else null. */
+  hash: string | null;
+}
+
+function signature(path: AbsolutePath): Signature | null {
   const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
-  return stat ? `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}` : null;
+  if (!stat) return null;
+  const latest = stat.mtimeNs > stat.ctimeNs ? stat.mtimeNs : stat.ctimeNs;
+  const racy = latest >= BigInt(Date.now()) * 1_000_000n - RACY_NS;
+  return {
+    stat: `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`,
+    hash: racy ? contentHash(path) : null,
+  };
+}
+
+/** A racy `before` is matched by content too; `now` is read for it if it settled since. */
+function same(path: AbsolutePath, before: Signature | null, now: Signature | null): boolean {
+  if (before === null || now === null) return before === now;
+  if (before.stat !== now.stat) return false;
+  return before.hash === null || before.hash === (now.hash ?? contentHash(path));
+}
+
+function contentHash(path: AbsolutePath): string | null {
+  try {
+    return createHash("sha1").update(readFileSync(path)).digest("hex");
+  } catch {
+    return null;
+  }
 }
 
 /** `report` names the paths an event is reported under, none to drop it. */
