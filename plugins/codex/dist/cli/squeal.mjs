@@ -4932,6 +4932,14 @@ var init_workspace = __esm({
 });
 
 // src/core/store/repos/worktrees.ts
+function editKeysOf(key2, worktreeId) {
+  try {
+    const owner2 = JSON.parse(key2.slice(EDIT_KEYS_PREFIX.length));
+    return Array.isArray(owner2) && owner2[0] === worktreeId;
+  } catch {
+    return false;
+  }
+}
 function createWorktreeRepo(conn) {
   return {
     get: (id2) => {
@@ -4990,6 +4998,18 @@ function createWorktreeRepo(conn) {
         for (const table of WORKTREE_SCOPED_TABLES) {
           conn.run(`DELETE FROM ${table} WHERE worktree_id = ?`, id2);
         }
+        for (const prefix of WORKTREE_META_PREFIXES) {
+          conn.run("DELETE FROM meta WHERE key = ?", `${prefix}${id2}`);
+        }
+        const snapshots = conn.all(
+          "SELECT key FROM meta WHERE substr(key, 1, ?) = ?",
+          EDIT_KEYS_PREFIX.length,
+          EDIT_KEYS_PREFIX
+        );
+        for (const row of snapshots) {
+          const key2 = str(row, "key");
+          if (editKeysOf(key2, id2)) conn.run("DELETE FROM meta WHERE key = ?", key2);
+        }
       });
     }
   };
@@ -5013,7 +5033,7 @@ function toRecord(row) {
     ...socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}
   };
 }
-var WORKTREE_SCOPED_TABLES;
+var WORKTREE_SCOPED_TABLES, WORKTREE_META_PREFIXES, EDIT_KEYS_PREFIX;
 var init_worktrees = __esm({
   "src/core/store/repos/worktrees.ts"() {
     "use strict";
@@ -5027,6 +5047,8 @@ var init_worktrees = __esm({
       "consumer_views",
       "consumers"
     ];
+    WORKTREE_META_PREFIXES = ["edits:", "checkpoint.", "rekeyed."];
+    EDIT_KEYS_PREFIX = "edit-keys:";
   }
 });
 
@@ -5488,6 +5510,68 @@ var init_snapshot = __esm({
     init_git_head();
     init_open2();
     HEARTBEAT_GRACE_INTERVALS = 2;
+  }
+});
+
+// src/core/scheduler/rekeyed-record.ts
+function rekeyedMetaKey(worktreeId) {
+  return `rekeyed.${worktreeId}`;
+}
+function readRekeyed(store, worktreeId) {
+  const raw = store.meta.get(rekeyedMetaKey(worktreeId));
+  const entries2 = /* @__PURE__ */ new Map();
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return entries2;
+  }
+  if (!isRecord(value)) return entries2;
+  for (const [id2, entry2] of Object.entries(value)) {
+    if (!Array.isArray(entry2) || !isRevision(entry2[1])) continue;
+    entries2.set(id2, { open: isRevision(entry2[0]) ? entry2[0] : null, last: entry2[1] });
+  }
+  return entries2;
+}
+function write(store, worktreeId, entries2) {
+  const key2 = rekeyedMetaKey(worktreeId);
+  if (entries2.size === 0) {
+    if (store.meta.get(key2) !== null) store.meta.delete(key2);
+    return;
+  }
+  const row = Object.fromEntries([...entries2].map(([id2, e]) => [id2, [e.open, e.last]]));
+  store.meta.set(key2, JSON.stringify(row));
+}
+function recordRekeyed(store, worktreeId, marks, removed) {
+  if (marks.length === 0 && removed.length === 0) return;
+  const entries2 = readRekeyed(store, worktreeId);
+  let changed = false;
+  for (const id2 of removed) changed = entries2.delete(id2) || changed;
+  for (const { id: id2, open: open3, moved } of marks) {
+    const previous = entries2.get(id2);
+    const latest = [previous?.last, moved, open3].filter(isRevision);
+    if (latest.length === 0) continue;
+    const next = { open: open3, last: Math.max(...latest) };
+    if (previous?.open === next.open && previous.last === next.last) continue;
+    entries2.set(id2, next);
+    changed = true;
+  }
+  if (changed) write(store, worktreeId, entries2);
+}
+function pruneRekeyed(store, worktreeId, upTo) {
+  const entries2 = readRekeyed(store, worktreeId);
+  const before = entries2.size;
+  for (const [id2, entry2] of entries2) {
+    if (entry2.open === null && entry2.last <= upTo) entries2.delete(id2);
+  }
+  if (entries2.size !== before) write(store, worktreeId, entries2);
+}
+var isRevision;
+var init_rekeyed_record = __esm({
+  "src/core/scheduler/rekeyed-record.ts"() {
+    "use strict";
+    init_fs();
+    isRevision = (value) => typeof value === "number" && Number.isInteger(value);
   }
 });
 
@@ -7482,6 +7566,7 @@ var init_ledger = __esm({
     init_files();
     init_held();
     init_queue();
+    init_rekeyed_record();
     init_rerun();
     init_slow3();
     MAX_DISCARDS = 3;
@@ -7522,6 +7607,12 @@ var init_ledger = __esm({
       #applied = [];
       #unknown = [];
       #retired = [];
+      /**
+       * Files whose re-key attribution moved since the last commit, with the
+       * latest revision that re-keyed one (`null`: only discharged), owed to the
+       * store's record (`recordRekeyed`, task 001-238).
+       */
+      #rekeyed = /* @__PURE__ */ new Map();
       file(ref2) {
         return this.files.get(testFileId(ref2));
       }
@@ -7575,7 +7666,10 @@ var init_ledger = __esm({
           const key2 = this.context.keys.index.key(ref2);
           if (key2 !== file.key) {
             file.key = key2;
-            if (options.keyedAt !== void 0) noteKeyedAt(file, options.keyedAt);
+            if (options.keyedAt !== void 0) {
+              noteKeyedAt(file, options.keyedAt);
+              this.#rekeyed.set(file.id, Math.max(this.#rekeyed.get(file.id) ?? 0, options.keyedAt));
+            }
             this.#dirty.add(file.id);
           }
           if (file.rerunPending && key2 !== file.rerunKey) {
@@ -7766,6 +7860,11 @@ var init_ledger = __esm({
         const revision = this.revision.number;
         const rows = [];
         const removed = this.#removed.splice(0);
+        const rekeyed = [...this.#rekeyed].flatMap(([id2, moved]) => {
+          const file = this.files.get(id2);
+          return file ? [{ id: id2, open: file.keyedAt, moved }] : [];
+        });
+        this.#rekeyed.clear();
         for (const id2 of this.#dirty) {
           const file = this.files.get(id2);
           if (!file) continue;
@@ -7782,6 +7881,7 @@ var init_ledger = __esm({
         store.transaction(() => {
           if (rows.length > 0) store.testFileKeys.upsertMany(rows);
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
+          recordRekeyed(store, worktreeId, rekeyed, removed.map(testFileId));
           for (const { results: results2, checkpointId } of mergeApplied(applied)) {
             sink.applyResults(worktreeId, revision, results2, { checkpointId });
           }
@@ -7809,6 +7909,7 @@ var init_ledger = __esm({
       }
       /** The file has a result, or is `unknown`, at its key: its attribution is discharged (task 001-194). */
       #discharge(file) {
+        if (file.keyedAt !== null && !this.#rekeyed.has(file.id)) this.#rekeyed.set(file.id, null);
         this.discharges.note(file, this.context.now());
         clearKeyedAt(file);
       }
@@ -33761,7 +33862,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.102";
+  if (true) return "0.1.103";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35981,13 +36082,14 @@ function toRegistration(value) {
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
-function park(store, consumer, at2) {
+function park(store, consumer, at2, { said } = { said: false }) {
   const key2 = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key2, consumer) !== void 0) writeSlot(store, key2, consumer, null);
   if (current2 === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2 });
+  const told = said ? { said: true } : {};
+  writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2, ...told });
 }
 function writeParked(store, consumer, at2, value) {
   const key2 = parkedMetaKey(consumer.worktreeId);
@@ -36088,18 +36190,39 @@ function planDelta(input) {
 // src/core/delivery/edits.ts
 init_fs();
 init_keys();
+init_rekeyed_record();
 init_state3();
 init_types();
 init_slots();
 function editsMetaKey(worktreeId) {
   return `edits:${worktreeId}`;
 }
-function editKeysMetaKey(consumer) {
-  return `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
+function readState(store, consumer) {
+  const value = readSlot(store, editsMetaKey(consumer.worktreeId), consumer);
+  if (!isRecord(value) || typeof value.since !== "number") return null;
+  return { since: value.since, said: value.said === true };
+}
+function writeState(store, consumer, state) {
+  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, state);
+}
+function editsSaid(store, consumer) {
+  return readState(store, consumer)?.said === true;
 }
 function forgetEdits(store, consumer) {
-  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, null);
-  store.meta.delete(editKeysMetaKey(consumer));
+  writeState(store, consumer, null);
+  const legacy = `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
+  if (store.meta.get(legacy) !== null) store.meta.delete(legacy);
+  prune2(store, consumer.worktreeId);
+}
+function prune2(store, worktreeId) {
+  const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap(
+    (v) => isRecord(v) && typeof v.since === "number" ? [v.since] : []
+  );
+  pruneRekeyed(
+    store,
+    worktreeId,
+    sinces.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...sinces)
+  );
 }
 
 // src/core/delivery/expiry.ts
@@ -36301,7 +36424,7 @@ function dropGoneHarnesses(store, worktreeId, now, options) {
   return dropped;
 }
 function drop(store, consumer, at2) {
-  park(store, consumer, at2);
+  park(store, consumer, at2, { said: editsSaid(store, consumer) });
   store.consumers.unregister(consumer);
   forget(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
@@ -36439,7 +36562,7 @@ function startTimers(context) {
     const read4 = readObserved();
     if (read4 !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read4;
   });
-  const prune2 = () => attempt("prune", () => {
+  const prune3 = () => attempt("prune", () => {
     store.prune({
       now: now(),
       retentionDays: context.policy.store.retentionDays,
@@ -36450,10 +36573,10 @@ function startTimers(context) {
     setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
     setInterval(departure, presenceMs),
-    setInterval(prune2, pruneMs),
+    setInterval(prune3, pruneMs),
     ...observedKeys.length > 0 && context.observedChanged ? [setInterval(observed, timings.observedMs ?? 5e3)] : []
   ];
-  const first = setTimeout(prune2, timings.firstPruneMs ?? 6e4);
+  const first = setTimeout(prune3, timings.firstPruneMs ?? 6e4);
   for (const timer of [...timers, first]) timer.unref();
   return () => {
     for (const timer of timers) clearInterval(timer);
