@@ -687,3 +687,21 @@ Own: those two test files and their fixtures or helpers only. Done when: each ca
 ## 001-249 review of wave 13aa
 
 Use /reviewer on gpt-6.1-sol, after the three land. Output `reviews/wave-13aa.md`. Is each row's done-when met? Does the primer list exactly what is covered and never claim coverage it lacks? Does 001-236's recovery stay within the read budget and the racy rules? Do the timing fixes keep what each test proves? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-250 repair of wave 13aa
+
+Use /worker. Shape: repair. From `reviews/wave-13aa.md` (001-249) B1, B2, B3, S1, under the human's standing instruction (2026-10-10): first-round blockers are fixed, then re-reviewed (001-251). Read the review's probes and repair scopes first.
+
+Outcome:
+- B1: the primer's coverage represents which runners are actually configured or detected, using the daemon's own selection rule (the policy and adapter discovery the daemon uses to pick Vitest and node:test). The opening instruction ("Squeal runs this repository's … tests", "do not run …") and the coverage list are both rendered from it. A node:test-only repository is never told Vitest is covered.
+- B2: coverage never infers a runner's identity by subtracting the current policy from old key rows. It uses runner-owned discovery with its provenance, or falls back to the detected config and the configured projects, so a removed node:test project is never listed under any runner.
+- B3: after folding projects, the primer's fallback compacts the fixed wording and repeated command references as needed. The coverage summary and the whole closing sentence ("Squeal does not cover typecheck, build or any other test suite: run those yourself.") always fit `PRIMER_CAP_CHARS`, with the longest valid Codex command (a long, valid `PLUGIN_ROOT`) in the slow variant; Codex's `capContext` never drops the closing sentence.
+- S1: 001-236's root recheck bounds visited directory entries separately from stat calls, leaving the rest to the reconcile pass. The 1,024-stat and zero-content limits stay.
+
+Own: `src/harness/shared/coverage.ts`, `src/harness/shared/primer.ts`, `src/harness/codex/output.ts` (the cap) only if needed, the coverage type and its callers in `src/harness/shared/session.ts`, `src/core/watcher/root-recheck.ts`, and tests under `test/harness/`, `test/watcher/` and `test/e2e/`. The coordinator re-pins `KEY_FORMAT_VERSION` 4 (unreleased) and rebuilds. Run `npm run build` locally for e2e, and do not commit `dist`. Do not edit `docs/board.md`.
+
+Done when: each of the review's probes passes and is red before (node:test-only, removed rows, long Codex path, a directory full of skipped entries); the 001-234 config matrix still passes on both harnesses; lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+## 001-251 re-review of wave 13aa
+
+Use /reviewer on gpt-6.1-sol, after 001-250 lands. Output `reviews/wave-13ab.md`. Second round on `reviews/wave-13aa.md`: are B1, B2, B3 and S1 closed; can the primer still claim a runner or project that is not configured, or omit one that is; does every primer variant keep its closing sentence within the cap. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
