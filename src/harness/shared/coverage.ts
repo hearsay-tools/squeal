@@ -1,32 +1,41 @@
 import { existsSync } from "node:fs";
 import { join, posix } from "node:path";
 import { readPolicy } from "../../core/daemon/policy.js";
+import { vitestDetected } from "../../core/daemon/runner.js";
 import { slowPolicyView } from "../../core/state/index.js";
 import type { HookContext } from "./context.js";
 
 /**
  * What Squeal covers in one worktree, for the primer to list (task 001-234):
- * read from `squeal.config.json` and the runner's own discovery, the test
- * files the daemon listed into the store.
+ * the runners the daemon builds, read from `squeal.config.json` and the root
+ * as the daemon reads them, and the slow files among the test files the
+ * daemon last listed into the store.
+ *
+ * Review wave 13aa, B2: a key row does not say which runner listed it, and a
+ * restarted daemon's previous rows stay until its own listing commits, so no
+ * runner's project is named from the rows.
  */
 export interface Coverage {
+  /**
+   * Whether the daemon builds a Vitest runner here, by its own rule (spec 003
+   * D7): Vitest detected at the root, or no node:test project configured.
+   */
+  readonly vitest: boolean;
   /** The config file Vitest finds at the root, as Vitest looks for it; `null` without one. */
   readonly vitestConfig: string | null;
-  /** Named Vitest projects among the listed test files, sorted; empty for one unnamed project. */
-  readonly vitestProjects: readonly string[];
   /** Each `nodeTest` project: its name and its include globs, relative to the root. */
   readonly nodeTest: readonly { readonly name: string; readonly include: readonly string[] }[];
   /**
-   * `null` without slow files declared (spec 004 D1); otherwise how many
-   * listed test files are slow, `null` while no test file is listed yet.
+   * `null` without slow files declared (spec 004 D1); otherwise how many test
+   * files the daemon last listed are slow, `null` while it has listed none.
    */
   readonly slow: { readonly files: number | null } | null;
 }
 
 /** A Vitest-only repository whose files are not listed yet: what `PRIMER` says. */
 export const VITEST_ONLY: Coverage = {
+  vitest: true,
   vitestConfig: null,
-  vitestProjects: [],
   nodeTest: [],
   slow: null,
 };
@@ -40,16 +49,13 @@ export function coverageOf(context: HookContext): Coverage {
   const policy = readPolicy(context.root);
   const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
   const nodeTestNames = new Set(policy.nodeTest.map((project) => project.name));
-  const vitestProjects = new Set<string>();
-  for (const { testFile } of keys) {
-    if (testFile.project !== "" && !nodeTestNames.has(testFile.project)) {
-      vitestProjects.add(testFile.project);
-    }
-  }
+  const vitest = policy.nodeTest.length === 0 || vitestDetected(context.root);
+  // A row no runner built here could have listed is not counted: without Vitest, only node:test's.
+  const listed = vitest ? keys : keys.filter((row) => nodeTestNames.has(row.testFile.project));
   const view = slowPolicyView(policy);
   return {
-    vitestConfig: vitestConfig(context.root),
-    vitestProjects: [...vitestProjects].sort(),
+    vitest,
+    vitestConfig: vitest ? vitestConfig(context.root) : null,
     nodeTest: policy.nodeTest.map(({ name, cwd, include }) => ({
       name,
       include: include.map((glob) => (cwd === undefined ? glob : posix.join(cwd, glob))),
@@ -59,7 +65,7 @@ export function coverageOf(context: HookContext): Coverage {
         ? null
         : {
             files:
-              keys.length === 0 ? null : keys.filter((row) => view.isSlow(row.testFile)).length,
+              keys.length === 0 ? null : listed.filter((row) => view.isSlow(row.testFile)).length,
           },
   };
 }
