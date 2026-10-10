@@ -2357,6 +2357,16 @@ var WORKTREE_SCOPED_TABLES = [
   "consumer_views",
   "consumers"
 ];
+var WORKTREE_META_PREFIXES = ["edits:", "checkpoint.", "rekeyed."];
+var EDIT_KEYS_PREFIX = "edit-keys:";
+function editKeysOf(key, worktreeId) {
+  try {
+    const owner = JSON.parse(key.slice(EDIT_KEYS_PREFIX.length));
+    return Array.isArray(owner) && owner[0] === worktreeId;
+  } catch {
+    return false;
+  }
+}
 function createWorktreeRepo(conn) {
   return {
     get: (id) => {
@@ -2414,6 +2424,18 @@ function createWorktreeRepo(conn) {
         conn.run("DELETE FROM worktrees WHERE id = ?", id);
         for (const table of WORKTREE_SCOPED_TABLES) {
           conn.run(`DELETE FROM ${table} WHERE worktree_id = ?`, id);
+        }
+        for (const prefix of WORKTREE_META_PREFIXES) {
+          conn.run("DELETE FROM meta WHERE key = ?", `${prefix}${id}`);
+        }
+        const snapshots = conn.all(
+          "SELECT key FROM meta WHERE substr(key, 1, ?) = ?",
+          EDIT_KEYS_PREFIX.length,
+          EDIT_KEYS_PREFIX
+        );
+        for (const row of snapshots) {
+          const key = str(row, "key");
+          if (editKeysOf(key, id)) conn.run("DELETE FROM meta WHERE key = ?", key);
         }
       });
     }
@@ -2638,6 +2660,7 @@ function tellRegistered(store, consumer, revision, { at: at2, scanned }) {
   const parked = unpark(store, consumer, at2);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
+  return parked === null ? null : { said: parked.said === true };
 }
 function fresh(since, scanned) {
   return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
@@ -2650,13 +2673,14 @@ function back(parked, revision, scanned) {
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
-function park(store, consumer, at2) {
+function park(store, consumer, at2, { said } = { said: false }) {
   const key = registeredMetaKey(consumer.worktreeId);
   const current = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
   if (current === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  writeParked(store, consumer, at2, { ...current, leftAt, leftTime: at2 });
+  const told = said ? { said: true } : {};
+  writeParked(store, consumer, at2, { ...current, leftAt, leftTime: at2, ...told });
 }
 function unpark(store, consumer, at2) {
   const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
@@ -2666,7 +2690,9 @@ function unpark(store, consumer, at2) {
   if (r === null || !isRecord(value) || !isNumber2(value.leftAt) || !isNumber2(value.leftTime)) {
     return null;
   }
-  return value.leftTime < at2 - CONSUMER_EXPIRY_MS ? null : { ...r, leftAt: value.leftAt, leftTime: value.leftTime };
+  if (value.leftTime < at2 - CONSUMER_EXPIRY_MS) return null;
+  const told = value.said === true ? { said: true } : {};
+  return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
 function writeParked(store, consumer, at2, value) {
   const key = parkedMetaKey(consumer.worktreeId);
@@ -2896,42 +2922,78 @@ function planDelta(input) {
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
+// src/core/scheduler/rekeyed-record.ts
+function rekeyedMetaKey(worktreeId) {
+  return `rekeyed.${worktreeId}`;
+}
+var isRevision = (value) => typeof value === "number" && Number.isInteger(value);
+function readRekeyed(store, worktreeId) {
+  const raw = store.meta.get(rekeyedMetaKey(worktreeId));
+  const entries = /* @__PURE__ */ new Map();
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return entries;
+  }
+  if (!isRecord(value)) return entries;
+  for (const [id, entry2] of Object.entries(value)) {
+    if (!Array.isArray(entry2) || !isRevision(entry2[1])) continue;
+    entries.set(id, { open: isRevision(entry2[0]) ? entry2[0] : null, last: entry2[1] });
+  }
+  return entries;
+}
+function write(store, worktreeId, entries) {
+  const key = rekeyedMetaKey(worktreeId);
+  if (entries.size === 0) {
+    if (store.meta.get(key) !== null) store.meta.delete(key);
+    return;
+  }
+  const row = Object.fromEntries([...entries].map(([id, e]) => [id, [e.open, e.last]]));
+  store.meta.set(key, JSON.stringify(row));
+}
+function pruneRekeyed(store, worktreeId, upTo) {
+  const entries = readRekeyed(store, worktreeId);
+  const before = entries.size;
+  for (const [id, entry2] of entries) {
+    if (entry2.open === null && entry2.last <= upTo) entries.delete(id);
+  }
+  if (entries.size !== before) write(store, worktreeId, entries);
+}
+
 // src/core/delivery/edits.ts
-var KEY_CHARS = 16;
 function editsMetaKey(worktreeId) {
   return `edits:${worktreeId}`;
-}
-function editKeysMetaKey(consumer) {
-  return `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
 }
 function readState(store, consumer) {
   const value = readSlot(store, editsMetaKey(consumer.worktreeId), consumer);
   if (!isRecord(value) || typeof value.since !== "number") return null;
   return { since: value.since, said: value.said === true };
 }
-var short = (key) => key === null ? null : key.slice(0, KEY_CHARS);
-function snapshotKeys(store, consumer, revision, keys, said = false) {
-  const snapshot2 = Object.fromEntries(keys.map((k) => [testFileId(k.testFile), short(k.key)]));
-  store.meta.set(editKeysMetaKey(consumer), JSON.stringify(snapshot2));
-  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, { since: revision, said });
+function writeState(store, consumer, state) {
+  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, state);
+}
+function startEdits(store, consumer, revision, said) {
+  writeState(store, consumer, { since: revision, said });
+}
+function editsSaid(store, consumer) {
+  return readState(store, consumer)?.said === true;
 }
 function forgetEdits(store, consumer) {
-  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, null);
-  store.meta.delete(editKeysMetaKey(consumer));
+  writeState(store, consumer, null);
+  const legacy = `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
+  if (store.meta.get(legacy) !== null) store.meta.delete(legacy);
+  prune2(store, consumer.worktreeId);
 }
-function readSnapshot(store, consumer) {
-  const raw = store.meta.get(editKeysMetaKey(consumer));
-  try {
-    const value = raw === null ? null : JSON.parse(raw);
-    if (!isRecord(value)) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(value).filter(
-        (e) => typeof e[1] === "string" || e[1] === null
-      )
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
+function prune2(store, worktreeId) {
+  const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap(
+    (v) => isRecord(v) && typeof v.since === "number" ? [v.since] : []
+  );
+  pruneRekeyed(
+    store,
+    worktreeId,
+    sinces.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...sinces)
+  );
 }
 function refined(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
@@ -2951,14 +3013,17 @@ function editNotes(store, consumer, states, delivering) {
     revision
   );
   if (changed.size === 0) return null;
-  const keys = store.testFileKeys.list(consumer.worktreeId);
-  const moved = keys.filter((k) => k.revision > state.since && k.key !== null);
-  const snapshot2 = moved.length === 0 ? /* @__PURE__ */ new Map() : readSnapshot(store, consumer);
-  const rekeyed = moved.filter((k) => {
-    const before = snapshot2.get(testFileId(k.testFile));
-    return before === void 0 ? changed.has(k.testFile.path) : before !== short(k.key);
-  });
-  const owed = rekeyed.some((k) => k.pending !== null);
+  const rows = new Map(
+    store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k])
+  );
+  const rekeyed = [];
+  let owed = false;
+  for (const [id, entry2] of readRekeyed(store, consumer.worktreeId)) {
+    const row = rows.get(id);
+    if (row === void 0 || row.key === null || entry2.last <= state.since) continue;
+    rekeyed.push(row);
+    owed ||= entry2.open !== null && row.pending !== null;
+  }
   const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
   const editsSettled = owed ? void 0 : settled(state.since, rekeyed, states);
   if (sawEdit === void 0 && editsSettled === void 0) return null;
@@ -2966,8 +3031,11 @@ function editNotes(store, consumer, states, delivering) {
     ...sawEdit === void 0 ? {} : { sawEdit },
     ...editsSettled === void 0 ? {} : { editsSettled },
     tell: () => {
-      if (editsSettled !== void 0) snapshotKeys(store, consumer, revision, keys, true);
-      else writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, { ...state, said: true });
+      writeState(store, consumer, {
+        since: editsSettled === void 0 ? state.since : revision,
+        said: true
+      });
+      if (editsSettled !== void 0) prune2(store, consumer.worktreeId);
     }
   };
 }
@@ -3347,7 +3415,7 @@ function trimmed(state, states, keys) {
 
 // src/core/delivery/expiry.ts
 function drop(store, consumer, at2) {
-  park(store, consumer, at2);
+  park(store, consumer, at2, { said: editsSaid(store, consumer) });
   store.consumers.unregister(consumer);
   forget(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
@@ -3508,17 +3576,12 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
       if (!registered) {
-        snapshotKeys(
-          store,
-          consumer,
-          header.revision,
-          store.testFileKeys.list(consumer.worktreeId)
-        );
         const alive = atStart && header.daemon?.state === "alive";
-        tellRegistered(store, consumer, header.revision, {
+        const resumed = tellRegistered(store, consumer, header.revision, {
           at: at2,
           scanned: scannedDaemon(store, consumer.worktreeId, alive)
         });
+        startEdits(store, consumer, header.revision, resumed?.said === true);
       }
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
@@ -4077,7 +4140,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.102";
+  if (true) return "0.1.103";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
