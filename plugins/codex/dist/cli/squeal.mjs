@@ -1960,8 +1960,8 @@ var init_key_index = __esm({
 import { posix as posix4 } from "node:path";
 function closuresToReresolve(changes, index, isDeclaredInput) {
   const picked = /* @__PURE__ */ new Map();
-  const pick = (refs) => {
-    for (const ref2 of refs) picked.set(testFileId(ref2), ref2);
+  const pick = (refs2) => {
+    for (const ref2 of refs2) picked.set(testFileId(ref2), ref2);
   };
   for (const change2 of changes) {
     const dir = directoryOf(change2.path);
@@ -2064,10 +2064,25 @@ function describeFailure(errors, fallback) {
   const summary = more > 0 ? `${text2} (${more} more error${more === 1 ? "" : "s"})` : text2;
   return {
     fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
-    summary: cap(summary, SUMMARY_MAX_CHARS)
+    summary: withDiff(summary, first.diff === null ? null : diffText(first.diff))
   };
 }
-var SUMMARY_MAX_CHARS, VOLATILE;
+function diffText(diff) {
+  const lines = stripVTControlCharacters(diff).split(/\r?\n/);
+  const legend = lines.slice(0, 2).map((l) => l.trim());
+  const labelled = /^- \S/.test(legend[0] ?? "") && /^\+ \S/.test(legend[1] ?? "");
+  const changed = (labelled ? lines.slice(2) : lines).filter((l) => /^[-+]/.test(l)).slice(0, DIFF_LINES).map((l) => `${l[0]} ${l.slice(1).trim().replace(/\s+/g, " ")}`);
+  if (changed.length === 0) return null;
+  return `diff${labelled ? ` (${legend.join(", ")})` : ""}: ${changed.join(" | ")}`;
+}
+function withDiff(summary, diff) {
+  if (diff === null) return cap(summary, SUMMARY_MAX_CHARS);
+  const separator = "; ";
+  const room = SUMMARY_MAX_CHARS - separator.length;
+  const shownDiff = cap(diff, room - Math.min(summary.length, LINE_MIN_CHARS));
+  return `${cap(summary, room - shownDiff.length)}${separator}${shownDiff}`;
+}
+var SUMMARY_MAX_CHARS, VOLATILE, LINE_MIN_CHARS, DIFF_LINES;
 var init_fingerprint = __esm({
   "src/core/state/fingerprint.ts"() {
     "use strict";
@@ -2087,6 +2102,8 @@ var init_fingerprint = __esm({
       // At least one letter, so a long decimal value in an assertion is kept.
       [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
     ];
+    LINE_MIN_CHARS = 120;
+    DIFF_LINES = 8;
   }
 });
 
@@ -2391,6 +2408,24 @@ function parseAwaitingInstall(raw) {
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((p) => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
+}
+function checkpointMetaKey(worktreeId) {
+  return `checkpoint.${worktreeId}`;
+}
+function parseCheckpointProgress(raw) {
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw);
+    const numbers = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed = value.owed;
+    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value;
   } catch {
     return null;
   }
@@ -5049,6 +5084,9 @@ function createMetaRepo(conn) {
     },
     set: (key2, value) => {
       conn.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", key2, value);
+    },
+    delete: (key2) => {
+      conn.run("DELETE FROM meta WHERE key = ?", key2);
     }
   };
 }
@@ -5357,8 +5395,20 @@ function snapshot(store, worktreeId, root, now) {
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes: notes2,
-    daemonNotes: readDaemonNotes(store, worktreeId)
+    daemonNotes: readDaemonNotes(store, worktreeId),
+    ...openCheckpoint(store, worktreeId, daemon)
   };
+}
+function openCheckpoint(store, worktreeId, daemon) {
+  const progress2 = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  if (progress2 === null) return {};
+  const { owed, ...rest } = progress2;
+  if (owed !== void 0) {
+    if (daemon.state === "alive") return {};
+    return { checkpoint: { ...rest, owed: true } };
+  }
+  if (daemon.state !== "alive" || store.checkpoints.get(progress2.id)?.end !== null) return {};
+  return { checkpoint: { ...rest, owed: false } };
 }
 function liveness(daemon, now, lastHeartbeatAt) {
   if (daemon === null) return { state: "down", since: lastHeartbeatAt };
@@ -5405,10 +5455,14 @@ function breakdown(states, keys) {
     if (s.validity === "pending")
       pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
   }
-  const testFilesWithoutChecks = keys.filter(
-    (k) => !filesWithChecks.has(testFileId(k.testFile))
-  ).length;
-  return { currentByOutcome, pendingByPhase, testFiles: keys.length, testFilesWithoutChecks };
+  const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
+  return {
+    currentByOutcome,
+    pendingByPhase,
+    testFiles: keys.length,
+    testFilesWithoutChecks: without.length,
+    testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length
+  };
 }
 function recoveryNote(raw) {
   if (raw === null) return null;
@@ -5996,16 +6050,16 @@ function block(ledger, failures) {
   ledger.broken = true;
 }
 function unblock(ledger) {
-  const refs = [];
+  const refs2 = [];
   for (const file of ledger.files.values()) {
     if (file.blocked === null) continue;
     file.blocked = null;
     file.unknownKey = null;
     ledger.touch(file);
-    refs.push(file.ref);
+    refs2.push(file.ref);
   }
   ledger.broken = false;
-  return refs;
+  return refs2;
 }
 var init_failures = __esm({
   "src/core/scheduler/failures.ts"() {
@@ -6077,8 +6131,8 @@ async function retryRunner(context, ledger) {
   const touched = (await readEnvironments(context, failures)).map((c) => c.testFile);
   const listed = await listTestFiles(context, ledger);
   const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
-  const refs = [...listed, ...blocked];
-  touched.push(...(await resolveClosures(context, refs, failures)).map((c) => c.testFile), ...refs);
+  const refs2 = [...listed, ...blocked];
+  touched.push(...(await resolveClosures(context, refs2, failures)).map((c) => c.testFile), ...refs2);
   ledger.settle(touched, NOTHING_CHANGED);
   settleFailures(ledger, failures, true, NOTHING_CHANGED);
 }
@@ -6107,10 +6161,10 @@ function applyListing(context, ledger, listed) {
   }
   return listed.filter((ref2) => !context.keys.index.closure(ref2));
 }
-async function resolveClosures(context, refs, failures) {
+async function resolveClosures(context, refs2, failures) {
   const changes = [];
   const resolved = [];
-  for (const ref2 of refs) {
+  for (const ref2 of refs2) {
     const keyChanges = await resolveClosure(
       context,
       ref2,
@@ -6133,10 +6187,10 @@ async function resolveClosure(context, ref2, onFailure) {
   );
   return closure === null ? null : context.keys.setClosure(closure);
 }
-function storeClosures(context, refs) {
+function storeClosures(context, refs2) {
   const { store, keys } = context;
   store.transaction(() => {
-    for (const ref2 of refs) {
+    for (const ref2 of refs2) {
       const closure = keys.index.closure(ref2);
       if (!closure) continue;
       store.testFiles.put({
@@ -6605,43 +6659,115 @@ var init_slow2 = __esm({
 });
 
 // src/core/scheduler/checkpoints.ts
+function explicit(active) {
+  return [active.record, ...active.joined].some((record) => record.kind === "run-all");
+}
+function progress(active) {
+  const { record, total, remaining } = active;
+  return {
+    id: record.id,
+    kind: explicit(active) ? "run-all" : record.kind,
+    revision: record.revision,
+    startedAt: record.startedAt,
+    done: total - remaining.size,
+    total
+  };
+}
 var Checkpoints;
 var init_checkpoints = __esm({
   "src/core/scheduler/checkpoints.ts"() {
     "use strict";
     init_keys();
+    init_types();
     Checkpoints = class {
       constructor(store, worktreeId, now) {
         this.store = store;
         this.worktreeId = worktreeId;
         this.now = now;
+        this.#left = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
       }
       store;
       worktreeId;
       now;
       #active = null;
+      /** What `meta` holds, as this tracker last wrote it; `null` before its first write. */
+      #published = null;
+      /** What the last daemon left in `meta`, read before this one records anything. */
+      #left;
+      /**
+       * Once: the checkpoint the last daemon owed (task 001-219), with its
+       * `run --all` records still open; `null` when none is. A checkpoint the
+       * last daemon left open without owing it (it was killed) is abandoned.
+       */
+      takeOwed() {
+        const left = this.#left;
+        this.#left = null;
+        if (left === null) return null;
+        const open3 = (id2) => {
+          const record = this.store.checkpoints.get(id2);
+          return record !== null && record.end === null ? [record] : [];
+        };
+        if (left.owed === void 0) {
+          for (const record of open3(left.id)) {
+            this.store.checkpoints.finish(record.id, "abandoned", this.now());
+          }
+          return null;
+        }
+        const records = left.owed.ids.flatMap(open3);
+        return records.length === 0 ? null : { owed: left.owed, records };
+      }
       get active() {
         const active = this.#active;
-        return active === null ? null : { record: active.record, remaining: active.remaining.size };
+        if (active === null) return null;
+        return { record: active.record, remaining: active.remaining.size, explicit: explicit(active) };
       }
       /** Id of the open checkpoint when it requested `ref`, else `null`. */
       idFor(ref2) {
         const active = this.#active;
         return active?.remaining.has(testFileId(ref2)) ? active.record.id : null;
       }
+      /**
+       * Whether the open checkpoint still runs every one of `refs`; with
+       * `strict`, as a forced request needs them run (task 001-217).
+       */
+      covers(refs2, strict) {
+        const active = this.#active;
+        if (active === null) return false;
+        return refs2.every((ref2) => {
+          const id2 = testFileId(ref2);
+          return active.remaining.has(id2) && (!strict || active.strict.has(id2));
+        });
+      }
       /** Records a new checkpoint, abandoning the open one. With no files it completes at once. */
       start(id2, kind, revision, testFiles, strict = false) {
         this.finish("abandoned");
-        const record = this.store.checkpoints.start({
-          id: id2,
-          worktreeId: this.worktreeId,
-          revision,
-          kind,
-          testFiles,
-          startedAt: this.now()
-        });
-        this.#active = { record, remaining: new Set(testFiles.map(testFileId)), strict, failed: false };
+        const record = this.#insert(id2, kind, revision, testFiles);
+        this.#active = {
+          record,
+          joined: [],
+          remaining: /* @__PURE__ */ new Map(),
+          strict: /* @__PURE__ */ new Set(),
+          total: 0,
+          failed: false
+        };
+        this.#add(testFiles, strict ? testFiles : []);
         this.#settle();
+        return record;
+      }
+      /**
+       * Records a request whose files the open checkpoint runs (`covers`): it
+       * ends when, and as, the open one ends (task 001-217).
+       */
+      join(id2, kind, revision, testFiles) {
+        const record = this.#insert(id2, kind, revision, testFiles);
+        this.#active?.joined.push(record);
+        this.#publish();
+        return record;
+      }
+      /** Records a request that needs nothing run, completed at once, leaving the open one be. */
+      completeAtOnce(id2, kind, revision) {
+        const record = this.#insert(id2, kind, revision, []);
+        this.store.checkpoints.finish(id2, "completed", this.now());
         return record;
       }
       /**
@@ -6651,22 +6777,40 @@ var init_checkpoints = __esm({
        */
       abandon(id2, kind, revision, testFiles) {
         this.finish("abandoned");
-        const record = this.store.checkpoints.start({
-          id: id2,
-          worktreeId: this.worktreeId,
-          revision,
-          kind,
-          testFiles,
-          startedAt: this.now()
-        });
+        const record = this.#insert(id2, kind, revision, testFiles);
         this.store.checkpoints.finish(id2, "abandoned", this.now());
         return record;
+      }
+      /**
+       * Takes up what a stopped daemon owed (task 001-219): `records` end with
+       * the open checkpoint, which also runs `testFiles` (of them, `strict` only
+       * from its own runs); with none open, they are the open checkpoint.
+       */
+      resume(records, testFiles, strict) {
+        const [first, ...rest] = records;
+        if (first === void 0) return;
+        if (this.#active === null) {
+          this.#active = {
+            record: first,
+            joined: rest,
+            remaining: /* @__PURE__ */ new Map(),
+            strict: /* @__PURE__ */ new Set(),
+            total: 0,
+            failed: false
+          };
+        } else {
+          this.#active.joined.push(...records);
+        }
+        this.#add(testFiles, strict);
+        this.#settle();
       }
       /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
       done(ref2, by) {
         const active = this.#active;
-        if (active === null || active.strict && by !== active.record.id) return;
-        active.remaining.delete(testFileId(ref2));
+        if (active === null) return;
+        const id2 = testFileId(ref2);
+        if (active.strict.has(id2) && by !== active.record.id) return;
+        if (!active.remaining.delete(id2)) return;
         this.#settle();
       }
       /** `ref` crashed or timed out: the checkpoint cannot complete. */
@@ -6676,18 +6820,78 @@ var init_checkpoints = __esm({
         active.failed = true;
         this.#settle();
       }
-      /** Ends the open checkpoint, if any. */
+      /** Ends the open checkpoint, if any, with every request joined to it. */
       finish(end) {
         const active = this.#active;
         if (active === null) return;
         this.#active = null;
-        this.store.checkpoints.finish(active.record.id, end, this.now());
+        const at2 = this.now();
+        for (const record of [active.record, ...active.joined]) {
+          this.store.checkpoints.finish(record.id, end, at2);
+        }
+        this.#publish();
+      }
+      /**
+       * The daemon stops (task 001-219): an open explicit checkpoint is owed to
+       * the next daemon, its `run --all` records left open; a baseline is
+       * abandoned, as the next daemon runs its own. A failed one is abandoned.
+       */
+      owe() {
+        const active = this.#active;
+        if (active === null) return;
+        const all = [active.record, ...active.joined];
+        const owed = all.filter((record) => record.kind === "run-all");
+        if (owed.length === 0 || active.failed) {
+          this.finish("abandoned");
+          return;
+        }
+        this.#active = null;
+        const at2 = this.now();
+        for (const record of all) {
+          if (record.kind !== "run-all") this.store.checkpoints.finish(record.id, "abandoned", at2);
+        }
+        const remaining = [...active.remaining.values()];
+        const strict = [...active.remaining].filter(([id2]) => active.strict.has(id2)).map(([, r]) => r);
+        const debt = { ids: owed.map((r) => r.id), remaining, strict };
+        this.#write({ ...progress(active), owed: debt });
+      }
+      #insert(id2, kind, revision, testFiles) {
+        return this.store.checkpoints.start({
+          id: id2,
+          worktreeId: this.worktreeId,
+          revision,
+          kind,
+          testFiles,
+          startedAt: this.now()
+        });
+      }
+      #add(testFiles, strict) {
+        const active = this.#active;
+        if (active === null) return;
+        for (const ref2 of testFiles) {
+          const id2 = testFileId(ref2);
+          if (!active.remaining.has(id2)) active.total++;
+          active.remaining.set(id2, ref2);
+        }
+        for (const ref2 of strict) active.strict.add(testFileId(ref2));
       }
       #settle() {
         const active = this.#active;
         if (active !== null && active.remaining.size === 0) {
           this.finish(active.failed ? "abandoned" : "completed");
+        } else {
+          this.#publish();
         }
+      }
+      #publish() {
+        const active = this.#active;
+        this.#write(active === null ? null : progress(active));
+      }
+      #write(value) {
+        const text2 = value === null ? "" : JSON.stringify(value);
+        if (text2 === this.#published) return;
+        this.#published = text2;
+        this.store.meta.set(checkpointMetaKey(this.worktreeId), text2);
       }
     };
   }
@@ -7360,11 +7564,11 @@ var init_ledger = __esm({
        * 001-100). An environment input is in no closure, so the files an install
        * or a config change re-keys are not.
        */
-      settle(refs, changed, options = {}) {
+      settle(refs2, changed, options = {}) {
         const misses = [];
         const seen = /* @__PURE__ */ new Set();
         const recent = this.recentOf(changed, options.direct);
-        for (const ref2 of refs) {
+        for (const ref2 of refs2) {
           const file = this.file(ref2);
           if (!file || seen.has(file.id)) continue;
           seen.add(file.id);
@@ -8211,44 +8415,6 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
   });
   return [.../* @__PURE__ */ new Set([...changedOnDisk, ...observed.changed])];
 }
-function abandonFullSuite(ledger) {
-  const files = [...ledger.files.values()].map((file) => file.ref);
-  const record = ledger.checkpoints.abandon(randomUUID3(), "run-all", ledger.revision.number, files);
-  ledger.commit();
-  return record;
-}
-function queueFullSuite(ledger, force) {
-  const id2 = randomUUID3();
-  ledger.confirmHeld();
-  const files = [...ledger.files.values()];
-  const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
-  const runnable = files.filter((file) => file.key !== null && file.blocked === null);
-  let requested;
-  if (force) {
-    requested = runnable;
-    for (const file of runnable) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
-  } else {
-    const open3 = runnable.filter((file) => classify2(file) !== "current");
-    for (const file of open3) file.unknownKey = null;
-    const pending = open3.filter((file) => file.phase !== null);
-    const misses = ledger.settle(
-      open3.filter((file) => file.phase === null).map((file) => file.ref),
-      NOTHING_CHANGED,
-      { checkpointId: id2 }
-    );
-    requested = [...pending, ...misses];
-  }
-  const record = ledger.checkpoints.start(
-    id2,
-    "run-all",
-    ledger.revision.number,
-    [...requested, ...unrunnable].map((file) => file.ref),
-    force
-  );
-  for (const file of unrunnable) ledger.checkpoints.failed(file.ref);
-  ledger.commit();
-  return record;
-}
 var init_tiers = __esm({
   "src/core/scheduler/tiers.ts"() {
     "use strict";
@@ -8257,7 +8423,6 @@ var init_tiers = __esm({
     init_backlog();
     init_context();
     init_environment_growth();
-    init_files();
     init_observed2();
     init_queue();
     init_records();
@@ -8291,8 +8456,83 @@ var init_backlog = __esm({
   }
 });
 
-// src/core/scheduler/bootstrap.ts
+// src/core/scheduler/checkpoint-requests.ts
 import { randomUUID as randomUUID4 } from "node:crypto";
+function abandonFullSuite(ledger) {
+  const files = [...ledger.files.values()].map((file) => file.ref);
+  const record = ledger.checkpoints.abandon(randomUUID4(), "run-all", ledger.revision.number, files);
+  ledger.commit();
+  return record;
+}
+function queueFullSuite(ledger, force) {
+  const id2 = randomUUID4();
+  const revision = ledger.revision.number;
+  const { checkpoints } = ledger;
+  ledger.confirmHeld();
+  const files = [...ledger.files.values()];
+  const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
+  const runnable = files.filter((file) => file.key !== null && file.blocked === null);
+  const open3 = force ? runnable : runnable.filter((file) => classify2(file) !== "current");
+  const joins = open3.length + unrunnable.length > 0 && checkpoints.covers(refs([...open3, ...unrunnable]), force);
+  const attributed = joins ? checkpoints.active?.record.id ?? id2 : id2;
+  let requested;
+  if (force) {
+    requested = runnable;
+    const queue = joins ? [] : runnable;
+    for (const file of queue) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  } else {
+    for (const file of open3) file.unknownKey = null;
+    const pending = open3.filter((file) => file.phase !== null);
+    const misses = ledger.settle(
+      refs(open3.filter((file) => file.phase === null)),
+      NOTHING_CHANGED,
+      { checkpointId: attributed }
+    );
+    requested = [...pending, ...misses];
+  }
+  const testFiles = refs([...requested, ...unrunnable]);
+  let record;
+  if (joins) {
+    record = checkpoints.join(id2, "run-all", revision, testFiles);
+  } else if (testFiles.length === 0 && checkpoints.active !== null) {
+    record = checkpoints.completeAtOnce(id2, "run-all", revision);
+  } else {
+    record = checkpoints.start(id2, "run-all", revision, testFiles, force);
+    for (const file of unrunnable) checkpoints.failed(file.ref);
+  }
+  ledger.commit();
+  return record;
+}
+function resumeOwed(ledger) {
+  const { checkpoints } = ledger;
+  const taken2 = checkpoints.takeOwed();
+  if (taken2 === null) return;
+  const listed = taken2.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []);
+  const strictIds = new Set(taken2.owed.strict.map((ref2) => ledger.file(ref2)?.id));
+  const strict = listed.filter((file) => strictIds.has(file.id) && file.key !== null);
+  const loose = listed.filter((file) => !strictIds.has(file.id) || file.key === null);
+  const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
+  const baseline2 = checkpoints.active;
+  const others = baseline2 === null ? loose.filter((file) => !unrunnable.includes(file) && classify2(file) !== "current") : [];
+  checkpoints.resume(taken2.records, refs([...strict, ...others, ...unrunnable]), refs(strict));
+  for (const file of strict) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  ledger.settle(refs(others.filter((file) => file.phase === null)), NOTHING_CHANGED);
+  for (const file of unrunnable) checkpoints.failed(file.ref);
+}
+function refs(files) {
+  return files.map((file) => file.ref);
+}
+var init_checkpoint_requests = __esm({
+  "src/core/scheduler/checkpoint-requests.ts"() {
+    "use strict";
+    init_context();
+    init_files();
+    init_queue();
+  }
+});
+
+// src/core/scheduler/bootstrap.ts
+import { randomUUID as randomUUID5 } from "node:crypto";
 async function scan(context, ledger) {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
@@ -8321,11 +8561,11 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   const previousKeys = new Map(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row])
   );
-  const refs = listed ?? [...previousKeys.values()].map((row) => row.testFile);
+  const refs2 = listed ?? [...previousKeys.values()].map((row) => row.testFile);
   const known2 = knownChecks(context);
   const fromStore = /* @__PURE__ */ new Set();
   const unresolved = [];
-  for (const ref2 of refs) {
+  for (const ref2 of refs2) {
     const file = ledger.addFile(ref2);
     restore(file, known2.get(file.id));
     const record = store.testFiles.get(ref2);
@@ -8345,9 +8585,9 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
       ledger.removeFile(gone);
     }
   }
-  const checkpointId = randomUUID4();
+  const checkpointId = randomUUID5();
   const lookup = (files) => ledger.settle(files, NOTHING_CHANGED, { checkpointId, queueMisses: false });
-  const first = lookup(refs);
+  const first = lookup(refs2);
   const recheck = first.filter((file) => fromStore.has(file.id));
   await resolveClosures(
     context,
@@ -8386,6 +8626,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
+  resumeOwed(ledger);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
   const persisted = persistedNoteTexts(store, worktreeId);
@@ -8432,6 +8673,7 @@ var init_bootstrap = __esm({
     "use strict";
     init_keys();
     init_types();
+    init_checkpoint_requests();
     init_context();
     init_failures();
     init_files();
@@ -9367,8 +9609,8 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     listed ? listed.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
   );
   const reresolve = /* @__PURE__ */ new Map();
-  const pick = (refs) => {
-    for (const ref2 of refs) {
+  const pick = (refs2) => {
+    for (const ref2 of refs2) {
       const id2 = testFileId(ref2);
       if (exists2.has(id2)) reresolve.set(id2, ref2);
     }
@@ -9414,8 +9656,8 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
   const { keys } = context;
   const changed = new Set(part.revision.changes.map((c) => c.path));
   const touched = /* @__PURE__ */ new Map();
-  const touch = (refs) => {
-    for (const ref2 of refs) touched.set(testFileId(ref2), ref2);
+  const touch = (refs2) => {
+    for (const ref2 of refs2) touched.set(testFileId(ref2), ref2);
   };
   const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
   if (part.environments !== null) touchKeys(await keys.setEnvironments(part.environments));
@@ -9747,10 +9989,10 @@ var init_slow_tier = __esm({
        */
       async next() {
         const preemptions = this.#preemptions;
-        const refs = await this.host.lock.run(() => this.#candidates());
+        const refs2 = await this.host.lock.run(() => this.#candidates());
         const { context } = this.host.started();
         const dir = this.options.slotDir ?? slowSlotDir();
-        if (refs.length === 0) {
+        if (refs2.length === 0) {
           this.#unmark(dir, context.worktreeId);
           return null;
         }
@@ -9758,7 +10000,7 @@ var init_slow_tier = __esm({
         const load = await this.#waitForCapacity(context);
         if (load === "preempted" || preemptions !== this.#preemptions) return "again";
         const { maxParallel } = context.policy.slow;
-        const want = load === null && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
+        const want = load === null && this.host.fastIdle() ? Math.min(maxParallel, refs2.length) : 1;
         const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
         const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
         const slot2 = yieldTurn ? null : acquireSlowSlot({ dir, owner: owner2, permits: maxParallel, want });
@@ -9777,7 +10019,7 @@ var init_slow_tier = __esm({
         this.#slotNoted = false;
         let run = null;
         try {
-          const selected = await this.host.lock.run(() => this.#select(refs, load, slot2));
+          const selected = await this.host.lock.run(() => this.#select(refs2, load, slot2));
           if (selected === "claimed") return null;
           if (selected === null) return "again";
           run = { ...selected, slot: slot2 };
@@ -9833,7 +10075,7 @@ var init_slow_tier = __esm({
        */
       #trigger(context, ledger) {
         const idle2 = consumersIdle(context.store, context.worktreeId, context.now());
-        const runAll = ledger.checkpoints.active?.record.kind === "run-all";
+        const runAll = ledger.checkpoints.active?.explicit === true;
         return (ref2) => idle2 || this.#requested || runAll && ledger.checkpoints.idFor(ref2) !== null;
       }
       /** The load guard (D3) with the pass's remaining budget; the load it runs under at the bound. */
@@ -9877,13 +10119,13 @@ var init_slow_tier = __esm({
        * (task 001-205). The permits, notes and artifacts follow the files the
        * tier starts.
        */
-      #select(refs, ranUnderLoad, slot2) {
+      #select(refs2, ranUnderLoad, slot2) {
         const { context, ledger } = this.host.started();
         if (this.host.editPending()) return null;
         const width = this.host.fastIdle() ? slot2.permits : 1;
         const triggered = this.#trigger(context, ledger);
         const picked = [];
-        for (const ref2 of refs) {
+        for (const ref2 of refs2) {
           if (picked.length >= width) break;
           if (!ledger.queue.has(ref2) || !ledger.queue.isSlow(ref2) || !triggered(ref2)) continue;
           const tierFile = this.#pick(ref2, context, ledger);
@@ -10057,10 +10299,12 @@ var init_scheduler2 = __esm({
     init_notes();
     init_revision();
     init_state3();
+    init_text();
     init_types();
     init_backlog();
     init_batch();
     init_bootstrap();
+    init_checkpoint_requests();
     init_claims();
     init_context();
     init_discharges();
@@ -10343,6 +10587,19 @@ var init_scheduler2 = __esm({
         if ([...this.#inFlight.keys()].some(isSlowLane)) return true;
         return this.#ledger.orderedSlow().length > 0;
       }
+      owedWork() {
+        if (this.#closed || !this.#ledger) return null;
+        const ledger = this.#ledger;
+        const owed = [];
+        const active = ledger.checkpoints.active;
+        if (active?.explicit === true) {
+          owed.push(`a \`run --all\` checkpoint (${plural(active.remaining, "test file")} left)`);
+        }
+        const reruns = [...ledger.files.values()].filter((f) => f.rerunPending && f.phase !== null);
+        if (reruns.length === 1) owed.push("a new failure's re-run");
+        if (reruns.length > 1) owed.push(`${reruns.length} new failures' re-runs`);
+        return owed.length === 0 ? null : owed.join(" and ");
+      }
       trackedPaths() {
         return this.#context?.keys.cache.paths() ?? [];
       }
@@ -10357,7 +10614,7 @@ var init_scheduler2 = __esm({
         await this.#pumping;
         this.#runnerWork.cancel();
         await this.#lock.run(() => {
-          this.#ledger?.checkpoints.finish("abandoned");
+          this.#ledger?.checkpoints.owe();
           if (this.#context) this.#retireSlow();
           if (this.#awaitingInstall) stopWaiting(this.options);
         });
@@ -30262,19 +30519,19 @@ var require_TsconfigPathsPlugin = __commonJS({
     function getAbsoluteBaseUrl(context, resolver, baseUrl) {
       return !baseUrl ? context : resolver.join(context, baseUrl);
     }
-    function buildTsconfigPathsMap(main2, mainContext, refs, fileDependencies) {
+    function buildTsconfigPathsMap(main2, mainContext, refs2, fileDependencies) {
       const allContexts = (
         /** @type {{ [context: string]: TsconfigPathsData }} */
         {
           [mainContext]: main2,
-          ...refs
+          ...refs2
         }
       );
       const contextList = Object.keys(allContexts);
       return {
         main: main2,
         mainContext,
-        refs,
+        refs: refs2,
         allContexts,
         contextList,
         fileDependencies
@@ -30503,7 +30760,7 @@ var require_TsconfigPathsPlugin = __commonJS({
               resolver,
               baseUrl
             );
-            const refs = {};
+            const refs2 = {};
             let referencesToUse = null;
             if (this.references === "auto") {
               referencesToUse = cfg.references;
@@ -30513,7 +30770,7 @@ var require_TsconfigPathsPlugin = __commonJS({
             if (!Array.isArray(referencesToUse)) {
               return callback2(
                 null,
-                buildTsconfigPathsMap(main2, mainContext, refs, fileDependencies)
+                buildTsconfigPathsMap(main2, mainContext, refs2, fileDependencies)
               );
             }
             this._loadTsconfigReferences(
@@ -30521,12 +30778,12 @@ var require_TsconfigPathsPlugin = __commonJS({
               mainContext,
               referencesToUse,
               fileDependencies,
-              refs,
+              refs2,
               (refErr) => {
                 if (refErr) return callback2(refErr);
                 callback2(
                   null,
-                  buildTsconfigPathsMap(main2, mainContext, refs, fileDependencies)
+                  buildTsconfigPathsMap(main2, mainContext, refs2, fileDependencies)
                 );
               }
             );
@@ -33477,7 +33734,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.101";
+  if (true) return "0.1.102";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33520,7 +33777,7 @@ init_state3();
 // src/core/status/format-status.ts
 init_state3();
 init_text();
-function formatStatus(result, now, command = "squeal") {
+function formatStatus(result, now, command = "squeal", options = {}) {
   if (!result.available) return formatUnavailable(result);
   const lines = [
     `Revision: ${result.revision}`,
@@ -33536,6 +33793,7 @@ function formatStatus(result, now, command = "squeal") {
     ]),
     `Affected checks: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    ...checkpointLine(result, now, command),
     ...slowLine(result, command),
     "",
     worktreeLine(result),
@@ -33549,7 +33807,7 @@ function formatStatus(result, now, command = "squeal") {
     ],
     `Closure method: ${result.closureMethod}`,
     `Store schema: ${result.storeSchemaVersion}`,
-    ...notes(result)
+    ...notes(result, command, options.allNotes === true)
   ];
   return `${lines.join("\n")}
 `;
@@ -33561,13 +33819,66 @@ function slowLine(s, command) {
 function inheritedLine(s) {
   return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}`;
 }
-function notes(s) {
-  const daemon = s.daemonNotes.map((n) => {
+function checkpointLine(s, now, command) {
+  const checkpoint = s.checkpoint;
+  if (checkpoint === void 0) return [];
+  const what = checkpoint.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint.revision}` : `the baseline from revision ${checkpoint.revision}`;
+  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
+  if (checkpoint.owed) {
+    return [
+      `Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`
+    ];
+  }
+  const started2 = `started ${age(now - checkpoint.startedAt)} ago`;
+  return [
+    `Checkpoint in progress: ${what}, ${started2}: ${done} (\`${command} run --all --wait\` waits for it)`
+  ];
+}
+function notes(s, command, all) {
+  const stamped = (n) => {
     const at2 = new Date(n.at).toISOString();
     return n.revision === null ? `${at2}: ${n.text}` : `${at2}, revision ${n.revision}: ${n.text}`;
+  };
+  const groups = /* @__PURE__ */ new Map();
+  const kept2 = [];
+  for (const note of s.daemonNotes) {
+    const stopped = all ? null : parseStopped(note);
+    if (stopped === null) kept2.push(note);
+    else groups.set(stopped.what, [...groups.get(stopped.what) ?? [], stopped]);
+  }
+  const folded = [];
+  for (const [what, list2] of groups) {
+    const [only] = list2;
+    if (list2.length === 1 && only !== void 0) kept2.push(only.note);
+    else folded.push(foldedText(what, list2, command));
+  }
+  kept2.sort((a, b) => a.at - b.at);
+  const lines = [...s.notes, ...kept2.map(stamped), ...folded];
+  return lines.length === 0 ? [] : ["Notes:", ...lines.map((note) => `  ${note}`)];
+}
+var STOPPED = /^stopped \d+ process(?:es)? (.+?): (.+)$/;
+var COMMAND_CHARS = 120;
+function parseStopped(note) {
+  const match2 = STOPPED.exec(note.text);
+  if (match2 === null) return null;
+  const [, what = "", list2 = ""] = match2;
+  const commands = list2.split("; ").map((entry2) => {
+    const facts = entry2.lastIndexOf(" (");
+    const process2 = facts === -1 ? entry2 : entry2.slice(0, facts);
+    return cap(process2.slice(process2.indexOf(" ") + 1), COMMAND_CHARS);
   });
-  const all = [...s.notes, ...daemon];
-  return all.length === 0 ? [] : ["Notes:", ...all.map((note) => `  ${note}`)];
+  return { note, what, commands };
+}
+function foldedText(what, list2, command) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const line of list2.flatMap((stopped) => stopped.commands)) {
+    counts.set(line, (counts.get(line) ?? 0) + 1);
+  }
+  const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
+  const byCommand = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([line, n]) => `${n} \xD7 ${line}`);
+  const since = new Date(Math.min(...list2.map((stopped) => stopped.note.at))).toISOString();
+  const processes = total === 1 ? "1 process" : `${total} processes`;
+  return `stopped ${processes} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
 function formatUnavailable(result) {
   return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}
@@ -33589,8 +33900,11 @@ function affected(s) {
     [s.counts.unknown + currentByOutcome.unknown, "unknown"]
   ];
   for (const [count, label2] of optional) if (count > 0) parts.push(`${count} ${label2}`);
+  const files = s.testFilesWithoutChecks.pending;
+  const running = Math.min(files, s.breakdown.testFilesWithoutChecksRunning ?? 0);
+  const fresh = running === 0 ? "" : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
   const runnerPart = s.runnerPartPending === true ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet` : "";
-  return `${parts.join(", ")}${runnerPart}`;
+  return `${parts.join(", ")}${fresh}${runnerPart}`;
 }
 function worktreeLine(s) {
   const dirty = s.dirty !== null ? `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}` : s.daemon.state === "alive" ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
@@ -35242,7 +35556,7 @@ import { readFile as readFile2 } from "node:fs/promises";
 import { setTimeout as sleep2 } from "node:timers/promises";
 var GRACE_MS = 1e3;
 var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS = 120;
+var COMMAND_CHARS2 = 120;
 var PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
 async function terminate(found, table = PROC) {
   const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
@@ -35317,7 +35631,7 @@ function statOf(pid) {
 async function commandLine(pid) {
   try {
     const text2 = (await readFile2(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+    return text2.length > COMMAND_CHARS2 ? `${text2.slice(0, COMMAND_CHARS2 - 3)}...` : text2;
   } catch {
     return "";
   }
@@ -35595,6 +35909,10 @@ import { existsSync as existsSync9 } from "node:fs";
 // src/core/delivery/index.ts
 init_state3();
 
+// src/core/delivery/collapse.ts
+init_state3();
+init_text();
+
 // src/core/delivery/consumer-version.ts
 init_slots();
 function versionMetaKey(worktreeId) {
@@ -35704,6 +36022,9 @@ function planDelta(input) {
     const prior = (before === null || before.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
     const from = before === null || prior?.outcome === "pass" ? prior : before;
     const kind = transitionKind(from, state);
+    if (kind === "to-unknown" && from?.outcome === "pass" && input.ownEdit?.(state) === true) {
+      continue;
+    }
     if (before === null || kind !== null) writes.push(toView2(state, input.toldAt));
     if (kind === null) continue;
     const baseline2 = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
@@ -35735,6 +36056,23 @@ function planDelta(input) {
   }
   const sorted2 = entries2.map((entry2, i2) => ({ entry: entry2, i: i2 })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
   return { entries: sorted2, writes, removals: [...told.values()].map((v) => v.check) };
+}
+
+// src/core/delivery/edits.ts
+init_fs();
+init_keys();
+init_state3();
+init_types();
+init_slots();
+function editsMetaKey(worktreeId) {
+  return `edits:${worktreeId}`;
+}
+function editKeysMetaKey(consumer) {
+  return `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
+}
+function forgetEdits(store, consumer) {
+  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, null);
+  store.meta.delete(editKeysMetaKey(consumer));
 }
 
 // src/core/delivery/expiry.ts
@@ -35954,6 +36292,7 @@ function forget(store, consumer) {
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
+  forgetEdits(store, consumer);
 }
 function idle(record, cutoff) {
   return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
@@ -35965,12 +36304,6 @@ init_turn();
 // src/core/delivery/format.ts
 init_state3();
 init_text();
-
-// src/core/delivery/collapse.ts
-init_state3();
-init_text();
-
-// src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 function shellWord(text2) {
   return /["$`\\]/.test(text2) ? `'${text2.replaceAll("'", "'\\''")}'` : `"${text2}"`;
@@ -36042,20 +36375,20 @@ function startTimers(context) {
     if (!countPresence(at2) || presence.lastPresentAt === null) return;
     const gone = at2 - presence.lastPresentAt;
     if (gone < graceMs) return;
-    if (context.slowPending?.() !== true) {
+    const pending = drainable(context);
+    if (pending === null) {
       context.shutdown(
         "sessions-gone",
-        presence.draining === true ? "daemon stopped: the slow files pending when its last session ended have run" : `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`
+        presence.draining === true ? drainedText(presence.drainingFor ?? SLOW_FILES) : `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`
       );
     } else if (gone >= idleMs) {
-      context.shutdown(
-        "sessions-gone",
-        `daemon stopped: slow files were still pending ${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`
-      );
+      context.shutdown("sessions-gone", boundText(pending, idleMs));
     } else if (presence.draining !== true) {
       presence.draining = true;
+      presence.drainingFor = pending;
+      const them = pending === SLOW_FILES ? "them" : "that work";
       context.note(
-        `the last session ended with slow files pending; this daemon runs them before it exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`
+        `the last session ended with ${pending} pending; this daemon runs ${them} before it exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`
       );
     }
   });
@@ -36099,6 +36432,20 @@ function startTimers(context) {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
   };
+}
+var SLOW_FILES = "slow files";
+function drainable(context) {
+  const slow = context.slowPending?.() === true ? [SLOW_FILES] : [];
+  const owed = context.owedWork?.() ?? null;
+  const all = [...slow, ...owed === null ? [] : [owed]];
+  return all.length === 0 ? null : all.join(" and ");
+}
+function drainedText(drained) {
+  return drained === SLOW_FILES ? "daemon stopped: the slow files pending when its last session ended have run" : `daemon stopped: the work pending when its last session ended is done (${drained})`;
+}
+function boundText(pending, idleMs) {
+  const after = `${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`;
+  return pending === SLOW_FILES ? `daemon stopped: slow files were still pending ${after}` : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
 }
 function stepDownNote(own, hook) {
   return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); their daemon starts once this one exits`;
@@ -36744,6 +37091,8 @@ var Daemon = class {
       observedSeen: this.#observedSeen,
       // Task 004-29: the last session's departure drains these before the exit.
       slowPending: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.slowPending(),
+      // Task 001-219: so are an explicit checkpoint and a new failure's re-run.
+      owedWork: () => this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
       note: (text2) => this.#note(text2),
       log: this.#log,
       shutdown: (reason2, text2) => void this.#shutdown(reason2, 0, text2)
@@ -37551,6 +37900,7 @@ function safeList2(dir) {
 init_fs();
 import { setTimeout as sleep9 } from "node:timers/promises";
 init_store2();
+init_types();
 
 // src/cli/run-slow.ts
 import { setTimeout as sleep8 } from "node:timers/promises";
@@ -37644,16 +37994,16 @@ function editWindow(store, worktreeId, heard, revision, rekeyed) {
   );
   const kept2 = rekeyed.filter((file) => file.revision > heard || unseen.has(file.revision));
   const first = kept2.reduce((least, file) => Math.min(least, file.revision), heard + 1);
-  const refs = kept2.map((file) => file.testFile);
+  const refs2 = kept2.map((file) => file.testFile);
   const owed = new Set(
     kept2.filter((file) => file.resolved !== true).map((file) => testFileId(file.testFile))
   );
-  const ids = new Set(refs.map(testFileId));
+  const ids = new Set(refs2.map(testFileId));
   return {
     since: kept2.length === 0 ? heard : first,
     revision,
     ids,
-    slow: new Set(refs.filter((ref2) => isSlow?.(ref2) === true).map(testFileId)),
+    slow: new Set(refs2.filter((ref2) => isSlow?.(ref2) === true).map(testFileId)),
     resolved: new Set([...ids].filter((id2) => !owed.has(id2)))
   };
 }
@@ -37675,14 +38025,17 @@ function splitNews(window, entries2) {
 // src/cli/status-wait-lines.ts
 init_state3();
 init_text();
-function waitLine(wait) {
+function waitLine(wait, command = "squeal") {
   const { outcome: outcome2, transitions, edit, result: snapshot3 } = wait;
   const after = `after ${(wait.waitedMs / 1e3).toFixed(1)} s`;
   const at2 = `at revision ${snapshot3.revision}`;
-  if (edit !== void 0 && outcome2 !== "no-daemon") return editLine(edit, wait, at2, after);
+  const running = outcome2 === "quiet" ? checkpointText(snapshot3, command) : "";
+  if (edit !== void 0 && outcome2 !== "no-daemon") {
+    return `${editLine(edit, wait, at2, after)}${running}`;
+  }
   switch (outcome2) {
     case "quiet":
-      return `Returned on quiet: nothing pending ${at2} ${after}`;
+      return `Returned on quiet: nothing pending ${at2} ${after}${running}`;
     case "news":
       return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at2} ${after}`;
     case "no-daemon":
@@ -37703,6 +38056,12 @@ function editLine(edit, wait, at2, after) {
     default:
       return `Returned on timeout ${after}: ${edit.pending} of the ${files} pending ${at2}${pending}${others}`;
   }
+}
+function checkpointText(snapshot3, command) {
+  const checkpoint = snapshot3.checkpoint;
+  if (checkpoint === void 0 || checkpoint.owed) return "";
+  const what = checkpoint.kind === "run-all" ? "a `run --all` checkpoint" : "the baseline checkpoint";
+  return `; ${what} is still running (${checkpoint.done} of ${plural(checkpoint.total, "test file")} done), which this wait does not hold for: \`${command} run --all --wait\` waits for it`;
 }
 function noDaemonText(daemon) {
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
@@ -37829,7 +38188,7 @@ async function statusWaitCommand(timeoutMs, json3, io) {
 ` : formatStatus(result, now()));
     return 1;
   }
-  const line = `${waitLine(wait)}
+  const line = `${waitLine(wait, statusCommand(env))}
 `;
   if (json3) {
     const payload = {
@@ -37968,14 +38327,16 @@ ${USAGE2}`
   const checkpoint = await recorded(socketPath, response, wait ? null : RECORD_WAIT_MS2, io);
   if (checkpoint === null) return 1;
   io.stdout(
-    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files
+    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files${joinedText(root, checkpoint)}
 `
   );
   if (!wait) return 0;
   const end = await ended(root, socketPath, checkpoint.id);
   if (end === null) {
-    io.stderr(`squeal: the daemon stopped before checkpoint ${checkpoint.id} ended
-`);
+    io.stderr(
+      `squeal: the daemon stopped before checkpoint ${checkpoint.id} ended${owedText(root, checkpoint)}
+`
+    );
     return 1;
   }
   io.stdout(`Checkpoint ${checkpoint.id} ${end}
@@ -38012,6 +38373,34 @@ async function recorded(socketPath, first, timeoutMs, io) {
       return null;
     }
     state = next;
+  }
+}
+function owedText(root, checkpoint) {
+  const owed = inStore(root, (store) => openCheckpoint2(store, checkpoint)?.owed?.ids ?? []);
+  return owed?.includes(checkpoint.id) === true ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
+}
+function joinedText(root, checkpoint) {
+  const text2 = inStore(root, (store) => {
+    const open3 = openCheckpoint2(store, checkpoint);
+    if (open3 === null || open3.id === checkpoint.id || open3.owed !== void 0) return "";
+    if (store.checkpoints.get(checkpoint.id)?.end !== null) return "";
+    const what = store.checkpoints.get(open3.id)?.kind === "baseline" ? "baseline" : "`run --all`";
+    return `, joining the ${what} checkpoint ${open3.id} already running them (${open3.done} of ${open3.total} test files done); it ends when that one ends`;
+  });
+  return text2 ?? "";
+}
+function openCheckpoint2(store, checkpoint) {
+  return parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
+}
+function inStore(root, read4) {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return null;
+  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1e3 });
+  if (isStoreOpenFailure(store)) return null;
+  try {
+    return read4(store);
+  } finally {
+    store.close();
   }
 }
 async function ended(root, socketPath, id2) {
@@ -38108,7 +38497,9 @@ async function stopCommand(args, io) {
 var HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
 Usage:
-  squeal status [--json]        Current validation state of this worktree
+  squeal status [--notes] [--json]
+                                Current validation state of this worktree; --notes
+                                lists every stopped-process note in full
   squeal status --wait <ms> [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status
@@ -38168,7 +38559,9 @@ ${HELP}`);
 function status(args, io) {
   const wait = takeWait(args);
   if (typeof wait === "string") return usage("status", wait, io);
-  const { waitMs, rest } = wait;
+  const { waitMs } = wait;
+  const allNotes = wait.rest.includes("--notes");
+  const rest = wait.rest.filter((arg) => arg !== "--notes");
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
   if (parsed.positional.length > 0) return usage("status", "takes no arguments", io);
@@ -38178,7 +38571,7 @@ function status(args, io) {
   const result = readStatus(cwd, { now });
   const env = io.env ?? process.env;
   const codex = parsed.json ? null : codexStatusLine(cwd, env);
-  const human = () => `${formatStatus(result, now(), statusCommand(env))}${codex ?? ""}`;
+  const human = () => `${formatStatus(result, now(), statusCommand(env), { allNotes })}${codex ?? ""}`;
   io.stdout(parsed.json ? json2(result) : human());
   return result.available ? 0 : 1;
 }

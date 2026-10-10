@@ -323,6 +323,24 @@ function parseAwaitingInstall(raw) {
     return null;
   }
 }
+function checkpointMetaKey(worktreeId) {
+  return `checkpoint.${worktreeId}`;
+}
+function parseCheckpointProgress(raw) {
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw);
+    const numbers = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed = value.owed;
+    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
@@ -1029,6 +1047,11 @@ function slowTierText(header, command) {
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. Not covered by Stop's wait${runs}.`;
+}
+
+// src/core/delivery/collapse.ts
+function checkName(check) {
+  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
 
 // src/core/delivery/consumer-version.ts
@@ -2443,6 +2466,9 @@ function createMetaRepo(conn) {
     },
     set: (key, value) => {
       conn.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", key, value);
+    },
+    delete: (key) => {
+      conn.run("DELETE FROM meta WHERE key = ?", key);
     }
   };
 }
@@ -2810,6 +2836,9 @@ function planDelta(input) {
     const prior = (before === null || before.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
     const from = before === null || prior?.outcome === "pass" ? prior : before;
     const kind = transitionKind(from, state);
+    if (kind === "to-unknown" && from?.outcome === "pass" && input.ownEdit?.(state) === true) {
+      continue;
+    }
     if (before === null || kind !== null) writes.push(toView2(state, input.toldAt));
     if (kind === null) continue;
     const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
@@ -2841,6 +2870,93 @@ function planDelta(input) {
   }
   const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
+}
+
+// src/core/delivery/edits.ts
+var KEY_CHARS = 16;
+function editsMetaKey(worktreeId) {
+  return `edits:${worktreeId}`;
+}
+function editKeysMetaKey(consumer) {
+  return `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
+}
+function readState(store, consumer) {
+  const value = readSlot(store, editsMetaKey(consumer.worktreeId), consumer);
+  if (!isRecord(value) || typeof value.since !== "number") return null;
+  return { since: value.since, said: value.said === true };
+}
+var short = (key) => key === null ? null : key.slice(0, KEY_CHARS);
+function snapshotKeys(store, consumer, revision, keys, said = false) {
+  const snapshot2 = Object.fromEntries(keys.map((k) => [testFileId(k.testFile), short(k.key)]));
+  store.meta.set(editKeysMetaKey(consumer), JSON.stringify(snapshot2));
+  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, { since: revision, said });
+}
+function forgetEdits(store, consumer) {
+  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, null);
+  store.meta.delete(editKeysMetaKey(consumer));
+}
+function readSnapshot(store, consumer) {
+  const raw = store.meta.get(editKeysMetaKey(consumer));
+  try {
+    const value = raw === null ? null : JSON.parse(raw);
+    if (!isRecord(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter(
+        (e) => typeof e[1] === "string" || e[1] === null
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function refined(store, worktreeId) {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : Number.POSITIVE_INFINITY;
+}
+function editNotes(store, consumer, states, delivering) {
+  const state = readState(store, consumer);
+  if (state === null || state.said && !delivering) return null;
+  const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
+  if (revision <= state.since || refined(store, consumer.worktreeId) < revision) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  const { changed } = changedAfter(
+    store,
+    consumer.worktreeId,
+    { since: state.since, gaps },
+    revision
+  );
+  if (changed.size === 0) return null;
+  const keys = store.testFileKeys.list(consumer.worktreeId);
+  const moved = keys.filter((k) => k.revision > state.since && k.key !== null);
+  const snapshot2 = moved.length === 0 ? /* @__PURE__ */ new Map() : readSnapshot(store, consumer);
+  const rekeyed = moved.filter((k) => {
+    const before = snapshot2.get(testFileId(k.testFile));
+    return before === void 0 ? changed.has(k.testFile.path) : before !== short(k.key);
+  });
+  const owed = rekeyed.some((k) => k.pending !== null);
+  const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
+  const editsSettled = owed ? void 0 : settled(state.since, rekeyed, states);
+  if (sawEdit === void 0 && editsSettled === void 0) return null;
+  return {
+    ...sawEdit === void 0 ? {} : { sawEdit },
+    ...editsSettled === void 0 ? {} : { editsSettled },
+    tell: () => {
+      if (editsSettled !== void 0) snapshotKeys(store, consumer, revision, keys, true);
+      else writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, { ...state, said: true });
+    }
+  };
+}
+function settled(since, rekeyed, states) {
+  if (rekeyed.length === 0) return void 0;
+  const unknown = new Set(
+    states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
+  );
+  return {
+    since,
+    files: rekeyed.length,
+    unknown: rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length
+  };
 }
 
 // src/core/waiter-lock/waiter-lock.ts
@@ -3005,8 +3121,20 @@ function snapshot(store, worktreeId, root, now) {
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
-    daemonNotes: readDaemonNotes(store, worktreeId)
+    daemonNotes: readDaemonNotes(store, worktreeId),
+    ...openCheckpoint(store, worktreeId, daemon)
   };
+}
+function openCheckpoint(store, worktreeId, daemon) {
+  const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  if (progress === null) return {};
+  const { owed, ...rest } = progress;
+  if (owed !== void 0) {
+    if (daemon.state === "alive") return {};
+    return { checkpoint: { ...rest, owed: true } };
+  }
+  if (daemon.state !== "alive" || store.checkpoints.get(progress.id)?.end !== null) return {};
+  return { checkpoint: { ...rest, owed: false } };
 }
 function liveness(daemon, now, lastHeartbeatAt) {
   if (daemon === null) return { state: "down", since: lastHeartbeatAt };
@@ -3053,10 +3181,14 @@ function breakdown(states, keys) {
     if (s.validity === "pending")
       pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
   }
-  const testFilesWithoutChecks = keys.filter(
-    (k) => !filesWithChecks.has(testFileId(k.testFile))
-  ).length;
-  return { currentByOutcome, pendingByPhase, testFiles: keys.length, testFilesWithoutChecks };
+  const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
+  return {
+    currentByOutcome,
+    pendingByPhase,
+    testFiles: keys.length,
+    testFilesWithoutChecks: without.length,
+    testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length
+  };
 }
 function recoveryNote(raw) {
   if (raw === null) return null;
@@ -3235,6 +3367,30 @@ function forget(store, consumer) {
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
+  forgetEdits(store, consumer);
+}
+
+// src/core/delivery/own-edit.ts
+var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: (.+) changed on disk after this run loaded it; the run may have executed bytes no check key names \(task 001-146\)$/;
+function movedPaths(reason) {
+  const match = MOVED_ONLY.exec(reason);
+  return match?.[1] === void 0 ? null : match[1].split(", ");
+}
+function ownEditUnknown(store, consumer, revision) {
+  let changed;
+  const changes = () => {
+    if (changed !== void 0) return changed;
+    const from = registration(store, consumer);
+    changed = from === null ? /* @__PURE__ */ new Set() : changedAfter(store, consumer.worktreeId, from, revision).changed;
+    return changed;
+  };
+  return (state) => {
+    if (state.outcome !== "unknown" || state.validity !== "pending" || state.summary === null) {
+      return false;
+    }
+    const paths = movedPaths(state.summary);
+    return paths?.every((p) => changes().has(p)) === true;
+  };
 }
 
 // src/core/delivery/delivery.ts
@@ -3245,18 +3401,20 @@ function createDelivery(store, options) {
   const now = options.now ?? Date.now;
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   function plan(consumer, states, toldAt, keep) {
+    const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
     const full = planDelta({
       view: store.views.list(consumer),
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
-      history: (check) => store.transitions.history(consumer.worktreeId, check)
+      revision,
+      history: (check) => store.transitions.history(consumer.worktreeId, check),
+      ownEdit: ownEditUnknown(store, consumer, revision)
     });
     return keep === null ? full : restrictPlan(full, keep);
   }
-  function deliver(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false }) {
+  function deliver(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false, stop = false }) {
     const select = (states) => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
@@ -3289,7 +3447,9 @@ function createDelivery(store, options) {
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(store, consumer, at2) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
-      const delivered = delta.entries.length > 0 || changed !== null;
+      const news = delta.entries.length > 0 || changed !== null;
+      const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
+      const delivered = news || liveness2 && !stop && notes?.sawEdit !== void 0;
       if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
       if (!delivered) {
         if (selection.trim !== null) writeTurn(store, consumer, selection.trim);
@@ -3307,6 +3467,7 @@ function createDelivery(store, options) {
         live,
         states
       );
+      notes?.tell();
       const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -3315,7 +3476,9 @@ function createDelivery(store, options) {
         label,
         entries,
         stillFailing,
-        ...changed === null ? {} : { liveness: changed }
+        ...changed === null ? {} : { liveness: changed },
+        ...notes?.sawEdit === void 0 ? {} : { sawEdit: notes.sawEdit },
+        ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled }
       };
     });
   }
@@ -3351,6 +3514,12 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
       if (!registered) {
+        snapshotKeys(
+          store,
+          consumer,
+          header.revision,
+          store.testFileKeys.list(consumer.worktreeId)
+        );
         const alive = atStart && header.daemon?.state === "alive";
         tellRegistered(store, consumer, header.revision, {
           at: at2,
@@ -3371,7 +3540,7 @@ function createDelivery(store, options) {
     unregister: async (consumer) => {
       store.transaction(() => drop(store, consumer, now()));
     },
-    onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    onToolBoundary: async (consumer, { stop = false } = {}) => deliver(consumer, { heardFrom: true, liveness: true, stop }),
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);
       return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
@@ -3403,11 +3572,6 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-}
-
-// src/core/delivery/collapse.ts
-function checkName(check) {
-  return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
 
 // src/core/delivery/provenance.ts
@@ -3573,10 +3737,10 @@ function requestDaemon(socketPath, request, timeoutMs) {
   return new Promise((resolve3, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
-    let settled = false;
+    let settled2 = false;
     const settle2 = (error, response) => {
-      if (settled) return;
-      settled = true;
+      if (settled2) return;
+      settled2 = true;
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
@@ -3728,7 +3892,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.101";
+  if (true) return "0.1.102";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
