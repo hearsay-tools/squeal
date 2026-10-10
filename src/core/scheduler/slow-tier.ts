@@ -30,6 +30,7 @@ import {
   type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
+import { claimOf } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
 import type { Ledger } from "./ledger.js";
@@ -172,6 +173,8 @@ export class SlowTier {
     let run: SlowRun | null = null;
     try {
       const selected = await this.host.lock.run(() => this.#select(refs, load, slot));
+      // Every file another worktree runs: the pump waits on the claims, not the slot (task 001-205).
+      if (selected === "claimed") return null;
       if (selected === null) return "again";
       run = { ...selected, slot };
       return run;
@@ -188,7 +191,10 @@ export class SlowTier {
 
   /**
    * Under the lock: the slow files a trigger lets run now, in order, all of
-   * the first one's lane and runner (`runnerOf`); none when none may.
+   * the first one's lane and runner (`runnerOf`); none when none may. A file
+   * whose key another worktree runs is none (`claimOf`, task 001-205): the
+   * pump waits on the claim without taking the slot, and a result that
+   * landed is applied here, so a drain before exit (004-29) ends with it.
    */
   #candidates(): TestFileRef[] {
     const { context, ledger } = this.host.started();
@@ -205,11 +211,16 @@ export class SlowTier {
       return [];
     }
     const triggered = queued.filter(this.#trigger(context, ledger));
-    const first = triggered[0];
+    const claims = new Map(triggered.map((ref) => [ref, claimOf(ledger, ref)]));
+    const free = triggered.filter((ref) => claims.get(ref) === "free");
+    const first = free[0];
     if (first !== undefined) {
       const runner = runnerOf(context, first);
-      return triggered.filter((ref) => runnerOf(context, ref) === runner);
+      return free.filter((ref) => runnerOf(context, ref) === runner);
     }
+    // A result applied left the queue: what is left decides.
+    if ([...claims.values()].includes("settled")) return this.#candidates();
+    if ([...claims.values()].includes("waits")) return [];
     this.#publish({ kind: "waiting", for: "idle" });
     this.#arm();
     return [];
@@ -262,13 +273,14 @@ export class SlowTier {
    * work arrived meanwhile. A file is passed over when it left the queue or
    * class, its trigger is gone (a consumer entered a turn during the wait;
    * the file stays queued and the pass keeps its budget), or the store now
-   * holds a result that may stand for it (`Ledger.lookup`).
+   * holds a result that may stand for it (`Ledger.lookup`). `"claimed"` when
+   * no file runs because other worktrees run their keys (task 001-205).
    */
   #select(
     refs: readonly TestFileRef[],
     ranUnderLoad: number | null,
     slot: SlowSlot,
-  ): { tier: Tier; artifacts: ReadonlyMap<string, readonly string[]> } | null {
+  ): { tier: Tier; artifacts: ReadonlyMap<string, readonly string[]> } | "claimed" | null {
     const { context, ledger } = this.host.started();
     if (this.host.editPending()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;
@@ -280,11 +292,9 @@ export class SlowTier {
       const tierFile = this.#pick(ref, context, ledger);
       if (tierFile !== null) picked.push(tierFile);
     }
-    const first = picked[0];
-    if (first === undefined) return null;
+    if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
     slot.shrinkTo(picked.length);
     for (const { file } of picked) {
-      ledger.queue.remove(file.ref);
       if (ranUnderLoad === null) continue;
       context.note(
         `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above ` +
@@ -297,11 +307,13 @@ export class SlowTier {
     const artifacts = new Map(
       picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
     );
-    const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
-    const paths = picked.map(({ file }) => file.ref.path);
     // The activity names the files in the transaction that marks them running (review wave 2, B1; 004-35).
-    return context.store.transaction(() => {
+    const started = context.store.transaction(() => {
       const tier = startTier(context, ledger, picked, false);
+      const first = tier?.files[0];
+      if (tier === null || first === undefined) return null;
+      const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
+      const paths = tier.files.map(({ file }) => file.ref.path);
       this.#publish({
         kind: "running",
         path: first.file.ref.path,
@@ -311,12 +323,14 @@ export class SlowTier {
       });
       return { tier, artifacts };
     });
+    return started ?? "claimed";
   }
 
   /**
    * Under the lock: `ref` as a file of the tier, or `null` when it has no key
-   * or is blocked (it leaves the queue), or when another worktree's result
-   * stands for it (applied).
+   * or is blocked (it leaves the queue), when another worktree's result
+   * stands for it (applied), or when another worktree runs its key and its
+   * result could stand for it (it stays queued, task 001-205).
    */
   #pick(ref: TestFileRef, context: SchedulerContext, ledger: Ledger): TierFile | null {
     const file = ledger.file(ref);
@@ -329,13 +343,16 @@ export class SlowTier {
       ledger.commit();
       return null;
     }
-    const hits = forced ? [] : ledger.lookup(file, key);
+    const { hits, mayWait } = forced ? { hits: [], mayWait: false } : ledger.probe(file, key);
     if (hits.length > 0) {
       ledger.applyResults(file, key, hits, checkpointId);
       ledger.commit();
       return null;
     }
-    return { file, key, inputs: context.keys.stabilityPaths(ref), checkpointId, forced };
+    const waits = mayWait && !ledger.queue.isRecent(ref);
+    if (waits && ledger.claims.holds(key)) return null;
+    const inputs = context.keys.stabilityPaths(ref);
+    return { file, key, inputs, checkpointId, forced, waits };
   }
 
   /**
