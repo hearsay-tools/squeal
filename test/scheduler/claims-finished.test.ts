@@ -1,7 +1,9 @@
-import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
-import type { CheckKey, Store } from "../../src/core/types/index.js";
-import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, onTestFinished } from "vitest";
+import { DEFAULT_POLICY, type Policy, type Store } from "../../src/core/types/index.js";
+import { claimRepo, fileName, recordedBy, type Side, side } from "./claims-fixture.js";
 
 /*
  * Review wave 13o, B1 (task 001-210), beside research test 9: another
@@ -13,49 +15,18 @@ import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 const COUNT = 4;
 const all = Array.from({ length: COUNT }, (_, i) => fileName(i));
-
-/** `a`'s finished tier of `path` at `key`, in one transaction of its own connection: run, result, row. */
-function recordIn(a: Side, path: string, key: CheckKey): void {
-  const { store, worktreeId } = a;
-  const at = Date.now();
-  const runId = randomUUID();
-  const testFile = { project: "", path };
-  store.transaction(() => {
-    store.runs.start({
-      id: runId,
-      worktreeId,
-      revision: 1,
-      testFiles: [testFile],
-      checkpointId: null,
-      logDir: `/tmp/squeal-001-210-${runId}`,
-      startedAt: at,
-    });
-    store.results.putMany([
-      {
-        check: { kind: "test", project: "", testPath: path, fullName: "passes" },
-        key,
-        outcome: "pass",
-        durationMs: 1,
-        location: null,
-        fingerprint: null,
-        summary: null,
-        errors: [],
-        provenance: { worktreeId, revision: 1, commit: "0".repeat(40), dirty: false, runId, recordedAt: at },
-      },
-    ]);
-    store.runs.finish(runId, "completed", at);
-    store.testFileKeys.upsertMany([{ worktreeId, testFile, key, revision: 1, pending: null }]);
-  });
-}
+const ARTIFACT = "dist/app.js";
 
 /**
  * `b`'s store, where `a` records each key of `finishing` as `b`'s selection
- * checks its claim, outside a transaction, after its lookup missed; `starts`
- * counts the run rows `b` opens.
+ * checks its claim, outside a transaction, after its lookup missed: at the
+ * key's `at`th such check, as a slow file's candidates check it before its
+ * pick does. `starts` counts the run rows `b` opens.
  */
-function racing(a: () => Side, finishing: ReadonlySet<string>) {
+function racing(a: () => Side, finishing: ReadonlySet<string>, at = 1) {
   let inTransaction = 0;
   const recorded: string[] = [];
+  const checks = new Map<string, number>();
   const counts = { starts: 0 };
   const wrap = (store: Store): Store =>
     new Proxy(store, {
@@ -85,13 +56,14 @@ function racing(a: () => Side, finishing: ReadonlySet<string>) {
           ...target.testFileKeys,
           claimed: (...args: Parameters<Store["testFileKeys"]["claimed"]>) => {
             const [worktreeId, key] = args;
-            const path = target.testFileKeys
-              .list(worktreeId)
-              .find((row) => row.key === key)?.testFile.path;
+            const path = target.testFileKeys.list(worktreeId).find((row) => row.key === key)
+              ?.testFile.path;
             if (inTransaction === 0 && path !== undefined && finishing.has(path)) {
-              if (!recorded.includes(path)) {
+              checks.set(path, (checks.get(path) ?? 0) + 1);
+              if (checks.get(path) === at) {
                 recorded.push(path);
-                recordIn(a(), path, key);
+                const { store, worktreeId } = a();
+                store.transaction(() => recordedBy(store, worktreeId, path, key));
               }
             }
             return target.testFileKeys.claimed(...args);
@@ -102,7 +74,9 @@ function racing(a: () => Side, finishing: ReadonlySet<string>) {
   return { wrap, recorded, counts };
 }
 
-describe("claims: a key recorded between selection and start (review wave 13o, B1)", { timeout: 30_000 }, () => {
+describe("claims: a key recorded between selection and start (review wave 13o, B1)", {
+  timeout: 30_000,
+}, () => {
   it("every selected file settles in the start: no run, no run row, the checkpoint completes", async () => {
     const { main, other } = claimRepo(COUNT);
     const a = side(main, { count: COUNT });
@@ -131,5 +105,26 @@ describe("claims: a key recorded between selection and start (review wave 13o, B
     expect(race.counts.starts).toBe(1);
     expect(b.passing()).toBe(COUNT);
     expect(b.store.checkpoints.lastCompleted(b.worktreeId)?.end).toBe("completed");
+  });
+
+  it("every slow pick settles in the start: the pump plans again and the next slow file runs", async () => {
+    const slow = all.slice(0, 3);
+    const { main, other } = claimRepo(3, { [ARTIFACT]: "app\n" });
+    const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-210-slot-"));
+    onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
+    const policy: Partial<Policy> = {
+      slow: { ...DEFAULT_POLICY.slow, include: slow, maxParallel: 2 },
+      inputs: Object.fromEntries(slow.map((path) => [path, [ARTIFACT]])),
+    };
+    const a = side(main, { count: 3, policy });
+    const finishing = new Set(slow.slice(0, 2));
+    const race = racing(() => a, finishing, 2);
+    const slowOptions = { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 };
+    const b = side(other, { count: 3, policy, slow: slowOptions, wrap: race.wrap });
+    await b.scheduler.start();
+    await expect.poll(() => b.passing(), { timeout: 10_000 }).toBe(3);
+    expect(race.recorded).toEqual([...finishing]);
+    expect(b.runner.runs.map((files) => files.map((f) => f.path))).toEqual([[slow[2]]]);
+    expect(race.counts.starts).toBe(1);
   });
 });
