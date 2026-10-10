@@ -178,7 +178,8 @@ export function selectTier(
   }
   ledger.commit();
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
-  return picked.some((p) => !ledger.queue.has(p.file.ref)) ? selectTier(context, ledger, busy) : null;
+  const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
+  return settled ? selectTier(context, ledger, busy) : null;
 }
 
 /**
