@@ -35,6 +35,11 @@ export interface SchedulerOptions {
    */
   readonly rerunCap?: number;
   /**
+   * The longest one runner-part call is awaited before it is abandoned (task
+   * 001-228). Defaults to `runnerPartBoundMs` of policy `runner.timeoutMs`.
+   */
+  readonly runnerPartMs?: number;
+  /**
    * The full extra-file list whenever it grows. Called while a batch is being
    * handled: hand it to `ChangeFeed.setExtraFiles` without awaiting, because
    * the feed delivers the next batch only after this one.
