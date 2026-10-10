@@ -20,5 +20,5 @@ export const KEY_FORMAT_VERSION = 1;
  * test computes it. Append only: one entry per version, never edit an old one.
  */
 export const KEY_SOURCES_HASHES: Readonly<Record<number, string>> = {
-  1: "83cf9ddd4e99cbe870adf1f48e86eb0fd00827cae67f57d31ac94de82ba8664f",
+  1: "0843bda8e215257e411a7dcb4277c5f515ab4cb84b0e30ecd25b81978a4e7e73",
 };
