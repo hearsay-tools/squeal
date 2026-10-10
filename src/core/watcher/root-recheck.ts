@@ -16,6 +16,13 @@ export const RACY_NS = 2_000_000_000n;
 export const ENTRY_BUDGET = 1024;
 
 /**
+ * The directory entries one root batch may read, skipped ones included: a
+ * directory of thousands of subdirectories or excluded files is left, past
+ * this, to the reconciliation pass too (review wave 13aa, S1).
+ */
+export const READ_BUDGET = 4096;
+
+/**
  * Finds the events @parcel/watcher erased from the root watch (001-236).
  *
  * Its Watcher::triggerCallbacks copies the pending events, then clears them,
@@ -33,7 +40,7 @@ export const ENTRY_BUDGET = 1024;
  *
  * What it cannot see is left to the reconciliation pass (D2): an erased
  * removal, an erased event in a directory the batch does not name, and the
- * entries past {@link ENTRY_BUDGET}.
+ * entries past {@link ENTRY_BUDGET} stats or {@link READ_BUDGET} reads.
  */
 export class RootRecheck {
   private since: bigint;
@@ -48,7 +55,8 @@ export class RootRecheck {
     this.since = nowNs();
     const dirs = new Set([...named].map((path) => dirname(path)));
     const hints: WatchHint[] = [];
-    let budget = ENTRY_BUDGET;
+    let stats = ENTRY_BUDGET;
+    let reads = READ_BUDGET;
     for (const dir of dirs) {
       if (this.exclusions.excludes(dir)) continue;
       let handle: Dir;
@@ -58,11 +66,14 @@ export class RootRecheck {
         continue;
       }
       try {
-        for (let entry = handle.readSync(); entry && budget > 0; entry = handle.readSync()) {
+        while (stats > 0 && reads > 0) {
+          const entry = handle.readSync();
+          reads--;
+          if (entry === null) break;
           if (entry.isDirectory()) continue;
           const path = join(dir, entry.name);
           if (named.has(path) || this.exclusions.excludes(path)) continue;
-          budget--;
+          stats--;
           if (written(path, after)) hints.push({ path, kind: "change" });
         }
       } catch {
@@ -72,7 +83,7 @@ export class RootRecheck {
           handle.closeSync();
         } catch {}
       }
-      if (budget === 0) break;
+      if (stats === 0 || reads === 0) break;
     }
     return hints;
   }

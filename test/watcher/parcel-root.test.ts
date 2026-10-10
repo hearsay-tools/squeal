@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchHint, WatchSubscription } from "../../src/core/types/index.js";
 import { createParcelBackend, type Parcel } from "../../src/core/watcher/parcel-backend.js";
-import { ENTRY_BUDGET } from "../../src/core/watcher/root-recheck.js";
+import { ENTRY_BUDGET, READ_BUDGET } from "../../src/core/watcher/root-recheck.js";
 import { makeRepo } from "./helpers.js";
 
 /** Paths whose stat reports these mtimeNs and ctimeNs; the rest report this host's. */
@@ -12,6 +12,8 @@ const held = new Map<string, bigint>();
 /** The paths the backend stat'ed, and those whose content it opened. */
 const stats: string[] = [];
 const opened: string[] = [];
+/** How many directory entries the backend read. */
+let reads = 0;
 /** Paths whose stat fails, as a permission error would. */
 const denied = new Set<string>();
 
@@ -38,7 +40,16 @@ vi.mock("node:fs", async (importOriginal) => {
     opened.push(path);
     return real.readFileSync(path, ...rest);
   }) as typeof real.readFileSync;
-  const fakes = { statSync, openSync, readFileSync };
+  const opendirSync = ((path: string, options?: fs.OpenDirOptions) => {
+    const dir = real.opendirSync(path, options);
+    const readSync = dir.readSync.bind(dir);
+    dir.readSync = () => {
+      reads++;
+      return readSync();
+    };
+    return dir;
+  }) as typeof real.opendirSync;
+  const fakes = { statSync, openSync, readFileSync, opendirSync };
   return { ...real, default: { ...real, ...fakes }, ...fakes };
 });
 
@@ -69,6 +80,7 @@ describe("parcel backend, an event @parcel/watcher erased from the root watch", 
     denied.clear();
     stats.length = 0;
     opened.length = 0;
+    reads = 0;
     clock = Date.now();
     vi.spyOn(Date, "now").mockImplementation(() => clock);
     // The fixture's files were written long ago, as far as the backend can tell.
@@ -195,5 +207,18 @@ describe("parcel backend, an event @parcel/watcher erased from the root watch", 
     expect(stats.length).toBeLessThanOrEqual(ENTRY_BUDGET);
     expect(hints.length).toBeLessThanOrEqual(ENTRY_BUDGET + 2);
     expect(hints.length).toBeGreaterThan(ENTRY_BUDGET / 2);
+  });
+
+  it(`reads at most ${READ_BUDGET} entries of the named directories per batch, however many it skips`, async () => {
+    mkdirSync(join(root, "gen"));
+    for (let i = 0; i < READ_BUDGET + 500; i++) mkdirSync(join(root, `gen/d${i}`));
+    write("gen/out.js");
+    await start();
+    stats.length = 0;
+    reads = 0;
+    deliver("gen/out.js", "src/a.ts");
+    expect(reads).toBeLessThanOrEqual(READ_BUDGET);
+    expect(stats.length).toBeLessThanOrEqual(ENTRY_BUDGET);
+    expect(opened).toEqual([]);
   });
 });
