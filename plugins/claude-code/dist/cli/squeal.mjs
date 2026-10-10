@@ -1000,7 +1000,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 1;
+    KEY_FORMAT_VERSION = 2;
   }
 });
 
@@ -6257,11 +6257,11 @@ var init_batch = __esm({
 });
 
 // src/core/scheduler/workspaces.ts
-import { readdir as readdir4, readFile as readFile3 } from "node:fs/promises";
+import { readdir as readdir4, readFile as readFile4 } from "node:fs/promises";
 import { join as join24 } from "node:path";
 async function readManifest2(dir) {
   try {
-    return JSON.parse(await readFile3(join24(dir, "package.json"), "utf8"));
+    return JSON.parse(await readFile4(join24(dir, "package.json"), "utf8"));
   } catch (error) {
     if (isMissing(error) || error instanceof SyntaxError) return null;
     throw error;
@@ -6452,7 +6452,7 @@ import { setTimeout as delay } from "node:timers/promises";
 async function waitForCapacity(wait) {
   const load = wait.load ?? loadavg;
   const cpus = wait.cpus ?? availableParallelism;
-  const sleep11 = wait.sleep ?? delay;
+  const sleep12 = wait.sleep ?? delay;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu = () => (load()[0] ?? 0) / Math.max(1, cpus());
@@ -6463,7 +6463,7 @@ async function waitForCapacity(wait) {
     if (current2 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current2 };
-    await sleep11(Math.min(recheckMs, left));
+    await sleep12(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -13511,7 +13511,7 @@ var init_broken = __esm({
 
 // src/runners/vitest/stamp.ts
 import { createHash as createHash16 } from "node:crypto";
-import { lstat as lstat8, readFile as readFile4 } from "node:fs/promises";
+import { lstat as lstat8, readFile as readFile5 } from "node:fs/promises";
 function changedBefore(stat7, at2) {
   const wholeSeconds = stat7.ctimeMs % 1e3 === 0 && stat7.mtimeMs % 1e3 === 0;
   return stat7.ctimeMs < at2 - (wholeSeconds ? RACY_WINDOW_MS : COARSE_TICK_MS);
@@ -13522,7 +13522,7 @@ async function readStamp(file) {
   try {
     return {
       stat: stat7,
-      hash: createHash16("sha1").update(await readFile4(file)).digest("hex")
+      hash: createHash16("sha1").update(await readFile5(file)).digest("hex")
     };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -14276,7 +14276,7 @@ var init_lexer = __esm({
 });
 
 // src/runners/vitest/packages.ts
-import { readFile as readFile5 } from "node:fs/promises";
+import { readFile as readFile6 } from "node:fs/promises";
 import { dirname as dirname18, isAbsolute as isAbsolute8 } from "node:path";
 function closurePackages(graph, paths) {
   const imports = [];
@@ -14372,7 +14372,7 @@ function configModules(config) {
 async function loadsOf(file) {
   let source;
   try {
-    source = await readFile5(file, "utf8");
+    source = await readFile6(file, "utf8");
   } catch {
     return { specifiers: [], unnamed: false };
   }
@@ -21573,10 +21573,10 @@ var init_identity = __esm({
 });
 
 // src/runners/node-test/enumerate.ts
-import { readFile as readFile6 } from "node:fs/promises";
+import { readFile as readFile7 } from "node:fs/promises";
 import { stripTypeScriptTypes } from "node:module";
 async function enumerate(file, testFile) {
-  return enumerateSource(await readFile6(file, "utf8"), testFile);
+  return enumerateSource(await readFile7(file, "utf8"), testFile);
 }
 function enumerateSource(source, testFile) {
   const program = parseStripped(source);
@@ -23302,9 +23302,9 @@ var require_CachedInputFileSystem = __commonJS({
           this.fileSystem.readFileSync,
           this.fileSystem
         );
-        const readFile7 = this._readFileBackend.provide;
+        const readFile8 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
-        readFile7;
+        readFile8;
         const readFileSync22 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
         readFileSync22;
@@ -23889,8 +23889,8 @@ var require_graceful_fs = __commonJS({
       fs3.createReadStream = createReadStream;
       fs3.createWriteStream = createWriteStream;
       var fs$readFile = fs3.readFile;
-      fs3.readFile = readFile7;
-      function readFile7(path, options, cb) {
+      fs3.readFile = readFile8;
+      function readFile8(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path, options, cb);
@@ -33230,7 +33230,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.94";
+  if (true) return "0.1.95";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34904,9 +34904,9 @@ async function inThread(identity, events) {
 // src/core/daemon/escaped.ts
 init_types();
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { readdirSync as readdirSync4, readFileSync as readFileSync10 } from "node:fs";
-import { readFile as readFile2 } from "node:fs/promises";
-import { setTimeout as sleep2 } from "node:timers/promises";
+import { readdirSync as readdirSync4 } from "node:fs";
+import { readFile as readFile3 } from "node:fs/promises";
+import { setTimeout as sleep3 } from "node:timers/promises";
 
 // src/core/daemon/low-priority.ts
 import { execFile } from "node:child_process";
@@ -34940,13 +34940,107 @@ function lower(pids) {
   }).unref();
 }
 
-// src/core/daemon/escaped.ts
-var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+// src/core/daemon/terminate.ts
+import { readFileSync as readFileSync10 } from "node:fs";
+import { readFile as readFile2 } from "node:fs/promises";
+import { setTimeout as sleep2 } from "node:timers/promises";
 var GRACE_MS = 1e3;
 var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+var PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
+async function terminate(found, table = PROC) {
+  const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
+  const named = [];
+  for (const entry2 of found) {
+    const now = table.stat(entry2.pid);
+    if (now?.start !== entry2.start) continue;
+    const args = await table.commandLine(entry2.pid);
+    const parent2 = await table.commandLine(now.ppid);
+    const after = table.stat(entry2.pid);
+    const kept2 = after?.start === entry2.start && after.ppid === now.ppid;
+    named.push({ entry: entry2, args, ppid: now.ppid, parent: kept2 ? parent2 : "" });
+  }
+  const ages = /* @__PURE__ */ new Map();
+  for (const { entry: entry2 } of named) {
+    if (!same(entry2)) continue;
+    ages.set(entry2, Math.max(0, table.uptime() - entry2.start) / TICKS_PER_SECOND);
+    table.signal(entry2.pid, "SIGTERM");
+  }
+  const deadline = Date.now() + GRACE_MS;
+  let alive = [...ages.keys()].filter(same);
+  while (alive.length > 0 && Date.now() < deadline) {
+    await sleep2(25);
+    alive = alive.filter(same);
+  }
+  const killed = /* @__PURE__ */ new Set();
+  for (const entry2 of alive) {
+    if (!same(entry2)) continue;
+    table.signal(entry2.pid, "SIGKILL");
+    killed.add(entry2);
+  }
+  return named.flatMap(({ entry: entry2, args, ppid, parent: parent2 }) => {
+    const ageSeconds = ages.get(entry2);
+    if (ageSeconds === void 0) return [];
+    return [{ pid: entry2.pid, args, ppid, parent: parent2, ageSeconds, killed: killed.has(entry2) }];
+  });
+}
+function describe(stopped, what) {
+  if (stopped.length === 0) return null;
+  const count = stopped.length === 1 ? "1 process" : `${stopped.length} processes`;
+  const list2 = stopped.map(entryText).join("; ");
+  return `stopped ${count} ${what}: ${list2}`;
+}
+function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed }) {
+  const ended2 = killed ? `SIGKILL after ${GRACE_MS / 1e3} s` : "SIGTERM";
+  const parentText = `parent ${ppid} ${parent2}`.trimEnd();
+  return `${`${pid} ${args}`.trimEnd()} (${parentText}, ${ageText(ageSeconds)} old, ${ended2})`;
+}
+function ageText(seconds) {
+  if (seconds < 60) return `${seconds.toFixed(1)} s`;
+  const whole = Math.floor(seconds);
+  if (whole < 3600) return `${Math.floor(whole / 60)} min ${whole % 60} s`;
+  return `${Math.floor(whole / 3600)} h ${Math.floor(whole % 3600 / 60)} min`;
+}
+function statOf(pid) {
+  let text2;
+  try {
+    text2 = readFileSync10(`/proc/${pid}/stat`, "latin1");
+  } catch {
+    return null;
+  }
+  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
+  if (fields[0] === "Z" || fields[0] === "X") return null;
+  return { pid, ppid: Number(fields[1]), pgrp: Number(fields[2]), start: Number(fields[19]) };
+}
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile2(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function signal(pid, name) {
+  try {
+    process.kill(pid, name);
+  } catch {
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync10("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 var ROUNDS = 3;
 var CHUNK = 64;
-var COMMAND_CHARS = 120;
 var EscapedChildren = class {
   /** The daemon's mark with no lane: what a runner that is told no lane gives its processes. */
   env;
@@ -34980,12 +35074,13 @@ var EscapedChildren = class {
    * carriers of the bare mark (`env`) and the unmarked orphans of the
    * daemon's group since `alone`, a mark taken when the first of the
    * overlapping runs started. Never another lane's carrier: a run of it may
-   * have just started (review 001-149). Resolves with a note naming them, or
-   * `null`.
+   * have just started (review 001-149). Resolves with a note naming them and
+   * the run `runId`, whose record lists the tier's test files, or `null`.
    */
-  async afterRun(lane, since, alone = null) {
+  async afterRun(lane, since, alone = null, runId = null) {
     const stopped = await this.#stop({ lane, since, alone });
-    return describe(stopped, "a test left running after its tier");
+    const run = runId === null ? "" : ` (run ${runId})`;
+    return describe(stopped, `a test left running after its tier${run}`);
   }
   /**
    * At exit, once the runners closed: every carrier of any lane, and every
@@ -35047,7 +35142,7 @@ var EscapedChildren = class {
     if (alive.length === 0) return false;
     const deadline = Date.now() + GRACE_MS;
     while (alive.length > 0 && Date.now() < deadline) {
-      await sleep2(25);
+      await sleep3(25);
       alive = survivors(alive);
     }
     return true;
@@ -35077,7 +35172,7 @@ var EscapedChildren = class {
   async #markOf(pid) {
     let environ;
     try {
-      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}\0`;
+      environ = `\0${await readFile3(`/proc/${pid}/environ`, "latin1")}\0`;
     } catch {
       return void 0;
     }
@@ -35120,42 +35215,12 @@ function afterEachRun(runner, children, note) {
         await lowering;
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
-        const text2 = await children.afterRun(at2, since, alone).catch(() => null);
+        const text2 = await children.afterRun(at2, since, alone, options.runId).catch(() => null);
         if (text2 !== null) note(text2);
       }
     },
     close: () => runner.close()
   };
-}
-var PROC = { stat: statOf, commandLine, signal };
-async function terminate(found, table = PROC) {
-  const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
-  const named = [];
-  for (const entry2 of found) {
-    if (!same(entry2)) continue;
-    named.push({ entry: entry2, args: await table.commandLine(entry2.pid) });
-  }
-  const termed = [];
-  for (const { entry: entry2 } of named) {
-    if (!same(entry2)) continue;
-    table.signal(entry2.pid, "SIGTERM");
-    termed.push(entry2);
-  }
-  const deadline = Date.now() + GRACE_MS;
-  let alive = termed.filter(same);
-  while (alive.length > 0 && Date.now() < deadline) {
-    await sleep2(25);
-    alive = alive.filter(same);
-  }
-  for (const entry2 of alive) if (same(entry2)) table.signal(entry2.pid, "SIGKILL");
-  const stopped = new Set(termed);
-  return named.filter(({ entry: entry2 }) => stopped.has(entry2)).map(({ entry: entry2, args }) => ({ pid: entry2.pid, args }));
-}
-function describe(stopped, what) {
-  if (stopped.length === 0) return null;
-  const count = stopped.length === 1 ? "1 process" : `${stopped.length} processes`;
-  const list2 = stopped.map(({ pid, args }) => `${pid} ${args}`.trimEnd()).join("; ");
-  return `stopped ${count} ${what}: ${list2}`;
 }
 async function snapshot2() {
   const names = readdirSync4("/proc").filter((name) => /^\d+$/.test(name));
@@ -35168,17 +35233,6 @@ async function snapshot2() {
     }
   }
   return entries2;
-}
-function statOf(pid) {
-  let text2;
-  try {
-    text2 = readFileSync10(`/proc/${pid}/stat`, "latin1");
-  } catch {
-    return null;
-  }
-  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
-  if (fields[0] === "Z" || fields[0] === "X") return null;
-  return { pid, ppid: Number(fields[1]), pgrp: Number(fields[2]), start: Number(fields[19]) };
 }
 function key({ pid, start }) {
   return `${pid}:${start}`;
@@ -35208,30 +35262,6 @@ function descendantsOf(roots, entries2) {
 }
 function survivors(entries2) {
   return entries2.filter((entry2) => statOf(entry2.pid)?.start === entry2.start);
-}
-async function commandLine(pid) {
-  try {
-    const text2 = (await readFile2(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
-  } catch {
-    return "";
-  }
-}
-function signal(pid, name) {
-  try {
-    process.kill(pid, name);
-  } catch {
-  }
-}
-function uptimeTicks() {
-  if (process.platform !== "linux") return 0;
-  try {
-    return Math.floor(
-      Number(readFileSync10("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
-    );
-  } catch {
-    return 0;
-  }
 }
 
 // src/core/daemon/lifecycle.ts
@@ -35937,7 +35967,7 @@ init_store2();
 import { mkdirSync as mkdirSync6 } from "node:fs";
 import { dirname as dirname9 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-import { setTimeout as sleep3 } from "node:timers/promises";
+import { setTimeout as sleep4 } from "node:timers/promises";
 function acquireDaemonLock(path) {
   const db = lockDatabase(path);
   let lock2;
@@ -35962,7 +35992,7 @@ async function awaitDaemonLock(path, wait) {
       checkAt = at2 + (wait.checkMs ?? 250);
     }
     if (at2 >= deadline) return "timed-out";
-    await sleep3(Math.min(wait.pollMs ?? 10, deadline - at2));
+    await sleep4(Math.min(wait.pollMs ?? 10, deadline - at2));
   }
 }
 function lockDatabase(path) {
@@ -36930,7 +36960,7 @@ function readSettings(path) {
 // src/cli/remove.ts
 import { existsSync as existsSync18, lstatSync as lstatSync5, readdirSync as readdirSync12, readFileSync as readFileSync21, rmSync as rmSync10 } from "node:fs";
 import { basename as basename14, dirname as dirname24, join as join54 } from "node:path";
-import { setTimeout as sleep4 } from "node:timers/promises";
+import { setTimeout as sleep5 } from "node:timers/promises";
 init_paths4();
 init_fs();
 init_open();
@@ -37111,7 +37141,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held2) lock3.release();
         return { held: name.slice(0, -".sqlite".length), lockPath };
       }
-      await sleep4(50);
+      await sleep5(50);
     }
   }
   return held2;
@@ -37159,15 +37189,15 @@ function safeList2(dir) {
 
 // src/cli/run.ts
 init_fs();
-import { setTimeout as sleep8 } from "node:timers/promises";
+import { setTimeout as sleep9 } from "node:timers/promises";
 init_store2();
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep7 } from "node:timers/promises";
+import { setTimeout as sleep8 } from "node:timers/promises";
 init_text();
 
 // src/cli/status-wait.ts
-import { setTimeout as sleep6 } from "node:timers/promises";
+import { setTimeout as sleep7 } from "node:timers/promises";
 init_fs();
 init_state3();
 
@@ -37189,7 +37219,7 @@ function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
 }
 
 // src/cli/status-sync.ts
-import { setTimeout as sleep5 } from "node:timers/promises";
+import { setTimeout as sleep6 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
 function syncDaemon(root, pollMs, after = null, resolvedSince = null) {
   let current2 = { state: "pending" };
@@ -37227,7 +37257,7 @@ async function syncOnce(root, pollMs, { after, resolvedSince }, stopped) {
       return { state: "synced", revision: state.revision, rekeyed: state.rekeyed ?? null };
     }
     if (state.error !== null) return UNSUPPORTED;
-    await sleep5(pollMs, void 0, { ref: false });
+    await sleep6(pollMs, void 0, { ref: false });
     if (stopped()) return UNSUPPORTED;
     const next = await askDaemon(socketPath, {
       type: "sync-status",
@@ -37405,7 +37435,7 @@ async function waitForStatus(cwd, options) {
         return { ...read4, waitedMs: elapsed() };
       }
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep6(Math.min(pollMs, remaining));
+      if (remaining > 0) await sleep7(Math.min(pollMs, remaining));
     }
   } finally {
     syncing.sync?.stop();
@@ -37532,7 +37562,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    await sleep7(POLL_MS);
+    await sleep8(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -37612,7 +37642,7 @@ async function recorded(socketPath, first, timeoutMs, io) {
       );
       return null;
     }
-    await sleep8(POLL_MS2);
+    await sleep9(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -37638,12 +37668,12 @@ async function ended(root, socketPath, id2) {
     }
     if (end !== null) return end;
     if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) return null;
-    await sleep8(250);
+    await sleep9(250);
   }
 }
 
 // src/cli/start.ts
-import { setTimeout as sleep9 } from "node:timers/promises";
+import { setTimeout as sleep10 } from "node:timers/promises";
 var SPAWN_WAIT_MS = 1e4;
 async function startCommand(args, io) {
   if (args.length > 1 || args[0]?.startsWith("-")) {
@@ -37667,7 +37697,7 @@ async function startCommand(args, io) {
 `);
         return 1;
       }
-      await sleep9(50);
+      await sleep10(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}
@@ -37679,7 +37709,7 @@ async function startCommand(args, io) {
 }
 
 // src/cli/stop.ts
-import { setTimeout as sleep10 } from "node:timers/promises";
+import { setTimeout as sleep11 } from "node:timers/promises";
 var STOP_WAIT_MS2 = 6e4;
 async function stopCommand(args, io) {
   if (args.length > 1 || args[0]?.startsWith("-")) {
@@ -37707,7 +37737,7 @@ async function stopCommand(args, io) {
 `);
       return 0;
     }
-    await sleep10(50);
+    await sleep11(50);
   }
   io.stdout(`Squeal daemon stopped for ${root}
 `);
