@@ -269,8 +269,15 @@ describe("a repository with a Vitest suite and two node:test projects", () => {
       from = runs(main, main).length;
       at = status(main).revision;
       writeFileSync(join(main, "packages/a/src/one.ts"), "export const one = () => 0;\n");
-      await settle(main, "the edit of one.ts", (s) => s.knownFailures.length === 1, at);
-      // Its new fail is re-run once (task 001-171).
+      // Its new fail is re-run once (task 001-171). The forced re-run keeps the FAIL current
+      // while it waits (D5), so nothing reads pending until its run is stored: wait for both
+      // runs, or a fast poll reads one (task 001-242, CI on Node 24).
+      await settle(
+        main,
+        "the edit of one.ts and its re-run",
+        (s) => s.knownFailures.length === 1 && ranSince(main, main, from).length >= 2,
+        at,
+      );
       expect(ranSince(main, main, from)).toEqual([
         "packages/a/test/one.test.ts",
         "packages/a/test/one.test.ts",
