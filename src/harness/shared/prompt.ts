@@ -1,9 +1,10 @@
 import { formatDelta } from "../../core/delivery/index.js";
 import { daemonLiveness } from "../../core/delivery/liveness.js";
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
+import { coverageOf } from "./coverage.js";
 import { ensureToRegister } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { coversNodeTest, coversSlowSuites, withPrimer } from "./primer.js";
+import { withPrimer } from "./primer.js";
 
 /**
  * A user prompt (task 001-47; lessons, defects 8 and 10). A prompt starts a
@@ -49,11 +50,6 @@ export function submitPrompt(
       inTurn: true,
       ...(startingSince === undefined ? {} : { startingSince }),
     });
-    return withPrimer(
-      registration,
-      deps.command,
-      coversNodeTest(location.root),
-      coversSlowSuites(location.root),
-    );
+    return withPrimer(registration, deps.command, coverageOf(context));
   });
 }
