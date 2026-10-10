@@ -50,6 +50,6 @@ Use /worker.
 
 ## 004-56 review of 004-52, 004-54 and 004-55
 
-Outcome: `reviews/wave-6.md`, committed. Range: the three rows' commits and their bundle on main (pinned at landing). First round. Questions: does 004-52 drop only what 004-47's rule rejects, never a closure, environment, lockfile or observed path; can 004-54's fallback take a duration from a result that is not this file's, or change `resultKey`; does 004-55 keep the clause on for every path a slow file's key holds, including a declared artifact's sources outside `plugins/**`? Rules as for 004-14.
+Outcome: `reviews/wave-6.md`, committed. Range: `git log --oneline 3040e11d^..17b0c227` on main, 0.1.88 (004-52, 004-54, 004-55, the D8 amendment and the bundles). The gate's load-sensitive failures at load 79 to 136 passed alone on both Nodes; 001-196 (0.1.87) underneath is out of scope. First round. Questions: does 004-52 drop only what 004-47's rule rejects, never a closure, environment, lockfile or observed path; can 004-54's fallback take a duration from a result that is not this file's, or change `resultKey`; does 004-55 keep the clause on for every path a slow file's key holds, including a declared artifact's sources outside `plugins/**`? Rules as for 004-14.
 
 Use /reviewer.
