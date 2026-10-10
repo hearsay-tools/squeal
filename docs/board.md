@@ -553,6 +553,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-14 install and the terminal setup | planned | D3: `install.sh` and `--uninstall`, the launcher in both plugins, `squeal setup` (questions, apply, warm-up, `--yes`), `squeal update`, the READMEs. | `install.sh` idempotent in a scratch home with each harness; `squeal setup --yes` leaves every test file current; `squeal update` brings two versions to one. |
 | 005-19 the setup skill | planned | D3: `skills/setup/SKILL.md` in both plugins and its references, on top of `squeal setup`. | Both copies identical; a `-p` session with answers in the prompt sets a fixture up. |
 | 005-15 texts | planned | D6: the primer's per-file wait, `skills/squeal` steps and references; this repository's gate drops its exit-code caveat (coordinator). | Primer and skill tests; the 10,000-character cap holds. |
+| 005-20 the opt-in test-command deny | planned | D8: `testCommand.denyWhenCurrent` in the policy and loader, the `Bash` command in both entries' input parsers, recognition and resolution (resolve or fall through), the once-per-consumer record, the reason; the 001 coordinator is told before dispatch (open question 9). | Each recognized form and fall-through case a test; resolution matches Vitest's own file listing on fixtures; off by default. |
 | 005-16 review of wave 2 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-2.md`. |
 
 ### Wave 3: proof
