@@ -11,7 +11,7 @@ import {
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { recordVersion } from "./consumer-version.js";
-import { forgetEdits } from "./edits.js";
+import { editsSaid, forgetEdits } from "./edits.js";
 import {
   harnessGone,
   harnessOf,
@@ -136,7 +136,7 @@ export function dropGoneHarnesses(
  * stamps the worktree's last departure. Call inside a transaction.
  */
 export function drop(store: Store, consumer: Consumer, at: EpochMs): void {
-  park(store, consumer, at);
+  park(store, consumer, at, { said: editsSaid(store, consumer) });
   store.consumers.unregister(consumer);
   forget(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at));
@@ -159,7 +159,7 @@ export function lastDeparture(store: Store, worktreeId: WorktreeId): EpochMs | n
 
 /**
  * Drops what an unregistered consumer was told, its turn state, its harness
- * process, its version and its edit snapshot, beside its view.
+ * process, its version and its edit state, beside its view.
  */
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);

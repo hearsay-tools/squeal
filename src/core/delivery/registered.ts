@@ -39,6 +39,13 @@ export interface Registration {
 interface Parked extends Registration {
   readonly leftAt: RevisionNumber;
   readonly leftTime: EpochMs;
+  /** The 001-224 line was said in the session (review wave 13u, B2); absent when not. */
+  readonly said?: true;
+}
+
+/** What a parked registration taken up brings back beside its revisions. */
+export interface Resumed {
+  readonly said: boolean;
 }
 
 /** `meta` key of a worktree's registration revisions. */
@@ -101,17 +108,19 @@ export function seesEveryChange(store: Store, worktreeId: WorktreeId, r: Registr
  * Records where a newly registered `consumer`'s changes start: after
  * `revision`, or after its parked registration with `(leftAt, revision]`
  * left out, with `scanned` (`scannedDaemon`). Call inside the registration's
- * transaction, and only for a consumer not registered before.
+ * transaction, and only for a consumer not registered before. Returns what
+ * a parked registration brings back, `null` when none was kept.
  */
 export function tellRegistered(
   store: Store,
   consumer: Consumer,
   revision: RevisionNumber,
   { at, scanned }: { readonly at: EpochMs; readonly scanned: EpochMs | null },
-): void {
+): Resumed | null {
   const parked = unpark(store, consumer, at);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
+  return parked === null ? null : { said: parked.said === true };
 }
 
 function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
@@ -134,16 +143,23 @@ function back(parked: Parked, revision: RevisionNumber, scanned: EpochMs | null)
 
 /**
  * Forgets `consumer`'s registration and parks it, with the revision it left
- * at, for a registration of the same session and agent to take up (N4).
- * Call inside the unregistration's transaction.
+ * at and whether it was `said` the 001-224 line, for a registration of the
+ * same session and agent to take up (N4, review wave 13u B2). Call inside
+ * the unregistration's transaction.
  */
-export function park(store: Store, consumer: Consumer, at: EpochMs): void {
+export function park(
+  store: Store,
+  consumer: Consumer,
+  at: EpochMs,
+  { said }: Resumed = { said: false },
+): void {
   const key = registeredMetaKey(consumer.worktreeId);
   const current = registration(store, consumer);
   if (readSlot(store, key, consumer) !== undefined) writeSlot(store, key, consumer, null);
   if (current === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  writeParked(store, consumer, at, { ...current, leftAt, leftTime: at });
+  const told = said ? { said: true as const } : {};
+  writeParked(store, consumer, at, { ...current, leftAt, leftTime: at, ...told });
 }
 
 /** Takes `consumer`'s parked registration out of the row; `null` when none is kept. */
@@ -155,9 +171,9 @@ function unpark(store: Store, consumer: Consumer, at: EpochMs): Parked | null {
   if (r === null || !isRecord(value) || !isNumber(value.leftAt) || !isNumber(value.leftTime)) {
     return null;
   }
-  return value.leftTime < at - CONSUMER_EXPIRY_MS
-    ? null
-    : { ...r, leftAt: value.leftAt, leftTime: value.leftTime };
+  if (value.leftTime < at - CONSUMER_EXPIRY_MS) return null;
+  const told = value.said === true ? { said: true as const } : {};
+  return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
 
 /** Writes `consumer`'s parked value, `null` to drop it; drops every entry older than the expiry. */

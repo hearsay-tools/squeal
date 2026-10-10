@@ -1,8 +1,8 @@
 import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
+import { pruneRekeyed, readRekeyed } from "../scheduler/rekeyed-record.js";
 import { testFileKeyOf } from "../state/index.js";
 import {
-  type CheckKey,
   type Consumer,
   type EditsSettled,
   type KnownState,
@@ -13,38 +13,30 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { changedAfter, registration } from "./registered.js";
-import { readSlot, writeSlot } from "./slots.js";
+import { readAll, readSlot, writeSlot } from "./slots.js";
 
 /*
  * Tasks 001-223 and 001-224 (spec 005 D6, proposals a and c): what a
- * delivery says about the consumer's own edits. The daemon's set of files a
- * revision re-keyed (task 001-186) lives in its memory; a hook reads the
- * store. So each consumer keeps a snapshot of the worktree's test-file keys,
- * taken when it registers and again when the settled line is said, and the
- * files its edits re-keyed are those whose key moved since: a key a backlog
- * merely runs again does not move. A test file with no key in the snapshot
- * counts only when the consumer's changes name it (it added the file), so a
- * first listing is not its edit.
+ * delivery says about the consumer's own edits. The files they re-keyed are
+ * those the scheduler's attribution names (task 001-186), which the daemon
+ * keeps in the store for hooks (`readRekeyed`, review wave 13u B1, task
+ * 001-238): a file whose latest re-key came after the consumer's edit state
+ * began, owed while its earliest unresolved re-key has no result. A key a
+ * backlog merely runs again, or a first listing, is never recorded.
  *
- * The snapshot is a row of its own, written once per registration and once
- * per settled line, never per delivery, and deleted with the consumer.
+ * Each consumer keeps the revision its edits are counted from and whether
+ * the 001-224 line was said, in one slot. When it leaves, "said" is parked
+ * with its registration (`park`) and restored if the same session comes back
+ * (review wave 13u B2).
  */
 
-/** Characters of a key the snapshot keeps: enough that two keys of one file never collide. */
-const KEY_CHARS = 16;
-
-/** `meta` key of the consumers' edit state: the revision their snapshot is of, and whether 001-224 was said. */
-function editsMetaKey(worktreeId: WorktreeId): string {
+/** `meta` key of the consumers' edit state: the revision their edits count from, and whether 001-224 was said. */
+export function editsMetaKey(worktreeId: WorktreeId): string {
   return `edits:${worktreeId}`;
 }
 
-/** `meta` key of `consumer`'s key snapshot, a row of its own. */
-export function editKeysMetaKey(consumer: Consumer): string {
-  return `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
-}
-
 interface EditState {
-  /** The revision the snapshot is of; edits after it are the ones not settled yet. */
+  /** Edits after this revision are the ones not settled yet. */
   readonly since: RevisionNumber;
   /** Whether the 001-224 line was said. */
   readonly said: boolean;
@@ -56,43 +48,48 @@ function readState(store: Store, consumer: Consumer): EditState | null {
   return { since: value.since, said: value.said === true };
 }
 
-const short = (key: CheckKey | null) => (key === null ? null : key.slice(0, KEY_CHARS));
+function writeState(store: Store, consumer: Consumer, state: EditState | null): void {
+  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, state);
+}
 
 /**
- * Records `consumer`'s snapshot of `keys` at `revision`. Call inside the
- * registration's or the delivery's transaction.
+ * Counts `consumer`'s edits from after `revision`; `said` when a parked
+ * registration of the same session had the 001-224 line said. Call inside
+ * the registration's transaction.
  */
-export function snapshotKeys(
+export function startEdits(
   store: Store,
   consumer: Consumer,
   revision: RevisionNumber,
-  keys: readonly TestFileKeyRecord[],
-  said = false,
+  said: boolean,
 ): void {
-  const snapshot = Object.fromEntries(keys.map((k) => [testFileId(k.testFile), short(k.key)]));
-  store.meta.set(editKeysMetaKey(consumer), JSON.stringify(snapshot));
-  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, { since: revision, said });
+  writeState(store, consumer, { since: revision, said });
 }
 
-/** Drops `consumer`'s edit state and snapshot. Call inside the unregistration's transaction. */
+/** Whether `consumer` was said the 001-224 line, for `park`. */
+export function editsSaid(store: Store, consumer: Consumer): boolean {
+  return readState(store, consumer)?.said === true;
+}
+
+/** Drops `consumer`'s edit state. Call inside the unregistration's transaction. */
 export function forgetEdits(store: Store, consumer: Consumer): void {
-  writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, null);
-  store.meta.delete(editKeysMetaKey(consumer));
+  writeState(store, consumer, null);
+  // The key snapshot squeal 0.1.100 to 0.1.102 kept per consumer.
+  const legacy = `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
+  if (store.meta.get(legacy) !== null) store.meta.delete(legacy);
+  prune(store, consumer.worktreeId);
 }
 
-function readSnapshot(store: Store, consumer: Consumer): ReadonlyMap<string, string | null> {
-  const raw = store.meta.get(editKeysMetaKey(consumer));
-  try {
-    const value: unknown = raw === null ? null : JSON.parse(raw);
-    if (!isRecord(value)) return new Map();
-    return new Map(
-      Object.entries(value).filter(
-        (e): e is [string, string | null] => typeof e[1] === "string" || e[1] === null,
-      ),
-    );
-  } catch {
-    return new Map();
-  }
+/** Drops the record's resolved entries no registered consumer's edits can count. */
+function prune(store: Store, worktreeId: WorktreeId): void {
+  const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap((v) =>
+    isRecord(v) && typeof v.since === "number" ? [v.since] : [],
+  );
+  pruneRekeyed(
+    store,
+    worktreeId,
+    sinces.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...sinces),
+  );
 }
 
 /** The revision whose runner part the daemon applied last; with none recorded, every one. */
@@ -106,12 +103,12 @@ function refined(store: Store, worktreeId: WorktreeId): number {
 export interface EditNotes {
   readonly sawEdit?: { readonly queued: number };
   readonly editsSettled?: EditsSettled;
-  /** Records what was said: 001-224 once, and a new snapshot after a settled line. */
+  /** Records what was said: 001-224 once, and after a settled line, edits count from the revision it settled. */
   readonly tell: () => void;
 }
 
 /**
- * The notes on `consumer`'s edits since its snapshot, once the runner part
+ * The notes on `consumer`'s edits since its edit state's revision, once the runner part
  * of the latest revision is applied (`refinedMetaKey`): until then the files
  * it adds have no key. `null` with nothing to say, before any edit, or for a
  * consumer registered before these notes (no edit state). `delivering`
@@ -137,15 +134,17 @@ export function editNotes(
     revision,
   );
   if (changed.size === 0) return null;
-  const keys = store.testFileKeys.list(consumer.worktreeId);
-  // A key that moved after the snapshot was written at a later revision.
-  const moved = keys.filter((k) => k.revision > state.since && k.key !== null);
-  const snapshot = moved.length === 0 ? new Map() : readSnapshot(store, consumer);
-  const rekeyed = moved.filter((k) => {
-    const before = snapshot.get(testFileId(k.testFile));
-    return before === undefined ? changed.has(k.testFile.path) : before !== short(k.key);
-  });
-  const owed = rekeyed.some((k) => k.pending !== null);
+  const rows = new Map(
+    store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k]),
+  );
+  const rekeyed: TestFileKeyRecord[] = [];
+  let owed = false;
+  for (const [id, entry] of readRekeyed(store, consumer.worktreeId)) {
+    const row = rows.get(id);
+    if (row === undefined || entry.last <= state.since) continue;
+    rekeyed.push(row);
+    owed ||= entry.open !== null && row.pending !== null;
+  }
   // An edit that queued nothing (one made while awaiting an install) has no results to come.
   const sawEdit = state.said || rekeyed.length === 0 ? undefined : { queued: rekeyed.length };
   const editsSettled = owed ? undefined : settled(state.since, rekeyed, states);
@@ -154,8 +153,11 @@ export function editNotes(
     ...(sawEdit === undefined ? {} : { sawEdit }),
     ...(editsSettled === undefined ? {} : { editsSettled }),
     tell: () => {
-      if (editsSettled !== undefined) snapshotKeys(store, consumer, revision, keys, true);
-      else writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, { ...state, said: true });
+      writeState(store, consumer, {
+        since: editsSettled === undefined ? state.since : revision,
+        said: true,
+      });
+      if (editsSettled !== undefined) prune(store, consumer.worktreeId);
     },
   };
 }
