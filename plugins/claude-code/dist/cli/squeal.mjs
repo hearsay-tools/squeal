@@ -6438,33 +6438,55 @@ var init_checkpoints = __esm({
 });
 
 // src/core/scheduler/discharges.ts
-var Discharges;
+var DISCHARGE_RETENTION_MS, DISCHARGE_CAP, Discharges;
 var init_discharges = __esm({
   "src/core/scheduler/discharges.ts"() {
     "use strict";
+    DISCHARGE_RETENTION_MS = 60 * 6e4;
+    DISCHARGE_CAP = 1e4;
     Discharges = class {
-      #last = /* @__PURE__ */ new Map();
+      constructor(limits = {
+        retentionMs: DISCHARGE_RETENTION_MS,
+        cap: DISCHARGE_CAP
+      }) {
+        this.limits = limits;
+      }
+      limits;
+      /** By file and revision, oldest discharge first. */
+      #kept = /* @__PURE__ */ new Map();
+      get size() {
+        return this.#kept.size;
+      }
       /** `file`'s attribution is discharged at `at`; nothing when it had none. */
       note(file, at2) {
         if (file.keyedAt === null || file.lastKeyedAt === null) return;
-        const revisions = [.../* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])];
-        this.#last.set(file.id, { ref: file.ref, revisions, at: at2 });
+        for (const revision of /* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])) {
+          const key2 = `${file.id}\0${revision}`;
+          this.#kept.delete(key2);
+          this.#kept.set(key2, { id: file.id, ref: file.ref, revision, at: at2 });
+        }
+        this.#prune(at2);
       }
       forget(id2) {
-        this.#last.delete(id2);
+        for (const [key2, discharge] of this.#kept) {
+          if (discharge.id === id2) this.#kept.delete(key2);
+        }
       }
       /** Files discharged at or after `since`, at their revisions after `after` up to `upTo`. */
       since(since, after, upTo) {
         const files = [];
-        for (const { ref: ref2, revisions, at: at2 } of this.#last.values()) {
-          if (at2 < since) continue;
-          for (const revision of revisions) {
-            if (revision > after && revision <= upTo) {
-              files.push({ testFile: ref2, revision, resolved: true });
-            }
+        for (const { ref: ref2, revision, at: at2 } of this.#kept.values()) {
+          if (at2 >= since && revision > after && revision <= upTo) {
+            files.push({ testFile: ref2, revision, resolved: true });
           }
         }
         return files;
+      }
+      #prune(now) {
+        for (const [key2, { at: at2 }] of this.#kept) {
+          if (this.#kept.size <= this.limits.cap && at2 >= now - this.limits.retentionMs) return;
+          this.#kept.delete(key2);
+        }
       }
     };
   }
@@ -32762,7 +32784,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.89";
+  if (true) return "0.1.90";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
