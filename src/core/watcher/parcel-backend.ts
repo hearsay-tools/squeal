@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type {
@@ -98,10 +99,11 @@ async function subscribeAll(
   }
   for (const [parent, files] of hidden) {
     try {
+      // Seeded before the subscription: a write in between is found by the first batch.
       subs.push(
         await parcel.subscribe(
           parent,
-          callback(listener, (path) => files.get(path) ?? []),
+          callback(listener, (path) => files.get(path) ?? [], new ErasedEvents(files)),
         ),
       );
     } catch (error) {
@@ -113,10 +115,49 @@ async function subscribeAll(
   return subs;
 }
 
+/**
+ * Finds the events @parcel/watcher erased for one parent's extra files.
+ *
+ * Its Watcher::triggerCallbacks copies the pending events, then clears them,
+ * and an event its backend thread adds between the two is never delivered
+ * (2.6.0, every platform). A rebuild writing `other.js`, then `index.js` lost
+ * `index.js` in 1-2 % of fresh processes locally and in a quarter of CI's
+ * jobs (`test/watcher/parcel-links.test.ts`). The batch that erased an event
+ * is delivered after its write, so each batch from the parent re-stats the
+ * extra files there it does not name and reports those that moved.
+ */
+class ErasedEvents {
+  private readonly last = new Map<AbsolutePath, string | null>();
+
+  constructor(private readonly files: Map<AbsolutePath, AbsolutePath[]>) {
+    for (const real of files.keys()) this.last.set(real, signature(real));
+  }
+
+  /** The hints for the extra files that moved without an event in `named`. */
+  find(named: ReadonlySet<AbsolutePath>): WatchHint[] {
+    const hints: WatchHint[] = [];
+    for (const [real, declared] of this.files) {
+      const before = this.last.get(real) ?? null;
+      const now = signature(real);
+      this.last.set(real, now);
+      if (named.has(real) || now === before) continue;
+      const kind = now === null ? "unlink" : before === null ? "add" : "change";
+      for (const path of declared) hints.push({ path, kind });
+    }
+    return hints;
+  }
+}
+
+function signature(path: AbsolutePath): string | null {
+  const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
+  return stat ? `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}` : null;
+}
+
 /** `report` names the paths an event is reported under, none to drop it. */
 function callback(
   listener: WatchListener,
   report: (path: AbsolutePath) => AbsolutePath[],
+  erased?: ErasedEvents,
 ): ParcelCallback {
   return (error, events) => {
     if (error) {
@@ -128,6 +169,7 @@ function callback(
     for (const event of events) {
       for (const path of report(event.path)) hints.push({ path, kind: KINDS[event.type] });
     }
+    if (erased) hints.push(...erased.find(new Set(events.map((e) => e.path))));
     if (hints.length > 0) listener.onHints(hints);
   };
 }
