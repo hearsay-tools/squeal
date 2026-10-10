@@ -136,6 +136,7 @@ A gate line is a line of a committed instruction file that runs the test command
 - The checkpoint and status units follow D1.
 - The primer says that passing results are silent and a message means a check changed. After its first edit's 148 test files all passed, an agent with only the primer said "either the push messages aren't reaching me" (`status.md`, 2026-10-10). The skill says it, but Claude Code agents did not load the skill (005-02: 0 of 19).
 - The skill says a new failure is re-run once by Squeal (001-171), so the agent waits for that re-run instead of running the test itself. In the cezar session the agent proposed re-running a timeout itself, and Squeal's re-run answered 54 s later as a flake.
+- Reassurance is event-driven, never on a timer (the human, 2026-10-10). A periodic status would push non-news every interval, against vision principle 1, and a dead daemon is already said at the next delivery after an edit (001 D6, `notValidatedLine`), so silence without that line means a live daemon. What the cezar agent lacked was knowing its edit had been seen and when it was settled. So, besides the primer sentence above and (a) below: (c) once per session, the first delivery after the consumer's first edit says Squeal saw it, how many test files it queued, and that results arrive with later tool calls and passing ones are silent.
 - Proposed to 001, whose headers and status these are (001 D6, D7; open question 8). (a) A header says when every test file the consumer's edits re-keyed is current, the set 001-186 already computes, so an agent that never waits still learns it is settled; in the cezar session it concluded "0 failures" by elimination. (b) When a checkpoint is running, the quiet line of `status --wait` names it and `run --all --wait`; after `run --all` it returned "on quiet" in 0.8 s with 651 files pending.
 - The primer stays the main surface: it reached main agents and subagents in both harnesses and came back after compaction (005-02).
 - Every text change keeps the 10,000-character cap and is measured in the proof sessions, not assumed.
@@ -184,7 +185,7 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
 5. Whether a user-scope install satisfies a repository that enables Squeal in its project settings; which version a Claude Code session loads when user and project scope differ (005-05 open question 1); which version the launcher should run when the harnesses differ. Owner: 005-04.
 6. Resolved 2026-10-10 by the 001 coordinator: the recorder may report ignored paths under D3's conditions, owned by 001. The 001 coordinator files the row when 005 resumes, and 005-12 consumes it.
 7. How precise the static slow-input rules are: run against this repository and a cezarion copy, do they propose what was declared by hand (this repository's `test/e2e` inputs; `packages/cezar/dist/**` in 004's dogfooding)? Owner: 005-04.
-8. D6's two header proposals ((a) settled, (b) the quiet line naming a running checkpoint). Owner: the 001 coordinator, asked 2026-10-10.
+8. D6's delivery proposals: (a) settled, (b) the quiet line naming a running checkpoint, asked 2026-10-10; (c) the one-time acknowledgement after the first edit, to be asked with them. Owner: the 001 coordinator.
 
 ## References
 
