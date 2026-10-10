@@ -2115,9 +2115,37 @@ function createTestFileKeyRepo(conn) {
           t.path
         );
       }
-    })
+    }),
+    releaseRunning: (worktreeId) => {
+      conn.run(
+        "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
+        worktreeId
+      );
+    },
+    claimed: (worktreeId, key, live) => conn.get(
+      `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+         WHERE k.key = ? AND k.pending = 'running' AND k.worktree_id <> ? AND ${LIVE} LIMIT 1`,
+      key,
+      worktreeId,
+      live.now,
+      live.graceIntervals
+    ) !== null,
+    sharers: (worktreeId, live) => {
+      const row = conn.get(
+        `SELECT COUNT(DISTINCT k.worktree_id) AS n FROM test_file_keys own
+         JOIN test_file_keys k ON k.key = own.key AND k.worktree_id <> own.worktree_id
+         JOIN worktrees w ON w.id = k.worktree_id
+         WHERE own.worktree_id = ? AND own.pending = 'queued' AND k.pending IS NOT NULL AND ${LIVE}`,
+        worktreeId,
+        live.now,
+        live.graceIntervals
+      );
+      return row === null ? 0 : num(row, "n");
+    }
   };
 }
+var LIVE = `w.daemon_socket IS NOT NULL
+  AND w.daemon_heartbeat_at >= ? - ? * w.daemon_heartbeat_interval_ms`;
 function toTestFileKey(row) {
   return {
     worktreeId: str(row, "worktree_id"),
@@ -3640,7 +3668,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.92";
+  if (true) return "0.1.93";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

@@ -4706,7 +4706,33 @@ function createTestFileKeyRepo(conn) {
           t.path
         );
       }
-    })
+    }),
+    releaseRunning: (worktreeId) => {
+      conn.run(
+        "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
+        worktreeId
+      );
+    },
+    claimed: (worktreeId, key2, live) => conn.get(
+      `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+         WHERE k.key = ? AND k.pending = 'running' AND k.worktree_id <> ? AND ${LIVE} LIMIT 1`,
+      key2,
+      worktreeId,
+      live.now,
+      live.graceIntervals
+    ) !== null,
+    sharers: (worktreeId, live) => {
+      const row = conn.get(
+        `SELECT COUNT(DISTINCT k.worktree_id) AS n FROM test_file_keys own
+         JOIN test_file_keys k ON k.key = own.key AND k.worktree_id <> own.worktree_id
+         JOIN worktrees w ON w.id = k.worktree_id
+         WHERE own.worktree_id = ? AND own.pending = 'queued' AND k.pending IS NOT NULL AND ${LIVE}`,
+        worktreeId,
+        live.now,
+        live.graceIntervals
+      );
+      return row === null ? 0 : num(row, "n");
+    }
   };
 }
 function toTestFileKey(row) {
@@ -4748,13 +4774,15 @@ function toCheck(row) {
     firstSeenAt: num(row, "first_seen_at")
   };
 }
-var METHODS, PENDING2;
+var METHODS, PENDING2, LIVE;
 var init_test_files = __esm({
   "src/core/store/repos/test-files.ts"() {
     "use strict";
     init_codec();
     METHODS = ["static imports plus declared inputs"];
     PENDING2 = ["queued", "running"];
+    LIVE = `w.daemon_socket IS NOT NULL
+  AND w.daemon_heartbeat_at >= ? - ? * w.daemon_heartbeat_interval_ms`;
   }
 });
 
@@ -5176,6 +5204,224 @@ var init_store2 = __esm({
     init_paths3();
     init_schema();
     init_store();
+  }
+});
+
+// src/core/status/open.ts
+function unavailable(reason2, detail) {
+  return {
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    available: false,
+    reason: reason2,
+    message: `status unavailable, ${detail}`
+  };
+}
+function withStatusStore(cwd, options, fn) {
+  const root = findWorktreeRoot(cwd);
+  const commonDir = root === null ? null : resolveCommonDir(root);
+  if (root === null || commonDir === null) {
+    return unavailable("no-store", `${cwd} is not inside a git worktree`);
+  }
+  const busyTimeoutMs = options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS;
+  let store;
+  try {
+    const opened = openStore(commonDir, { create: false, busyTimeoutMs });
+    if (isStoreOpenFailure(opened)) {
+      switch (opened.reason) {
+        case "missing":
+          return unavailable("no-store", `no Squeal store at ${storePaths(commonDir).database}`);
+        case "newer-schema":
+          return unavailable(
+            "store-newer",
+            `store version newer than this Squeal (store ${opened.found}, supported ${opened.supported})`
+          );
+        case "corrupt":
+          return unavailable(
+            "store-unreadable",
+            `store at ${storePaths(commonDir).database} is corrupt`
+          );
+      }
+    }
+    store = opened;
+    const context = { store, root, commonDir };
+    return readTransaction(store, () => fn(context));
+  } catch (error) {
+    if (isBusy(error)) {
+      return unavailable("timeout", `store busy for more than ${busyTimeoutMs} ms`);
+    }
+    return unavailable("store-unreadable", `store unreadable: ${String(error)}`);
+  } finally {
+    store?.close();
+  }
+}
+var STATUS_BUSY_TIMEOUT_MS;
+var init_open2 = __esm({
+  "src/core/status/open.ts"() {
+    "use strict";
+    init_fs();
+    init_store2();
+    init_types();
+    STATUS_BUSY_TIMEOUT_MS = 1e3;
+  }
+});
+
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync7 } from "node:fs";
+import { join as join14 } from "node:path";
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join14(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read3(join14(gitDir, ref2)) ?? read3(join14(commonDir, ref2)) ?? packed(commonDir, ref2);
+  }
+  return null;
+}
+function packed(commonDir, ref2) {
+  for (const line of (read3(join14(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name] = line.split(" ");
+    if (name === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync7(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SHA, MAX_REF_DEPTH;
+var init_git_head = __esm({
+  "src/core/status/git-head.ts"() {
+    "use strict";
+    init_fs();
+    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+    MAX_REF_DEPTH = 5;
+  }
+});
+
+// src/core/status/snapshot.ts
+function readStatus(cwd, options = {}) {
+  const now = options.now ?? Date.now;
+  return withStatusStore(cwd, options, ({ store, root }) => buildSnapshot(store, root, now()));
+}
+function buildSnapshot(store, root, now) {
+  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now));
+}
+function snapshot(store, worktreeId, root, now) {
+  const worktree = store.worktrees.get(worktreeId);
+  const revision = store.revisions.latest(worktreeId);
+  const states = store.knownStates.list(worktreeId);
+  const keys = store.testFileKeys.list(worktreeId);
+  const header = readHeader(store, worktreeId, states, keys);
+  const notes2 = [];
+  if (worktree === null) {
+    notes2.push("this worktree is not registered in the store; no daemon has run here");
+  }
+  if (revision === null) notes2.push("no revision recorded for this worktree yet");
+  const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
+  if (recovered !== null) notes2.push(recovered);
+  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+  const observed = daemon.state === "alive" ? revision : null;
+  return {
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    available: true,
+    worktreeId,
+    worktreeRoot: worktree?.root ?? root,
+    ...header,
+    head: revision === null ? readGitHead(root) : revision.head,
+    dirty: observed?.dirty ?? null,
+    dirtyObservedAt: observed?.number ?? null,
+    daemon,
+    knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
+    inherited: inheritedSources(store, states),
+    breakdown: breakdown(states, keys),
+    closureMethod: CLOSURE_METHOD,
+    storeSchemaVersion: store.schemaVersion,
+    notes: notes2,
+    daemonNotes: readDaemonNotes(store, worktreeId)
+  };
+}
+function liveness(daemon, now, lastHeartbeatAt) {
+  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
+  const age2 = now - daemon.heartbeatAt;
+  if (age2 <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
+    return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
+  }
+  return { state: "down", since: daemon.heartbeatAt };
+}
+function inheritedSources(store, states) {
+  const groups = /* @__PURE__ */ new Map();
+  let count = 0;
+  for (const s of states) {
+    if (s.validity !== "current" || s.origin?.kind !== "inherited") continue;
+    count++;
+    const id2 = JSON.stringify([s.origin.worktreeId, s.origin.commit]);
+    const group = groups.get(id2) ?? {
+      worktreeId: s.origin.worktreeId,
+      commit: s.origin.commit,
+      count: 0
+    };
+    group.count++;
+    groups.set(id2, group);
+  }
+  const sources = [...groups.values()].map((g2) => ({ ...g2, worktreeRoot: store.worktrees.get(g2.worktreeId)?.root ?? null })).sort(
+    (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
+  ).map(({ worktreeId, worktreeRoot: worktreeRoot2, commit, count: count2 }) => ({
+    worktreeId,
+    worktreeRoot: worktreeRoot2,
+    commit,
+    count: count2
+  }));
+  return { count, sources };
+}
+function breakdown(states, keys) {
+  const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
+  const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
+  const pendingByPhase = { queued: 0, running: 0 };
+  const filesWithChecks = /* @__PURE__ */ new Set();
+  for (const s of states) {
+    const file = testFileKeyOf(s.check);
+    filesWithChecks.add(file);
+    if (s.validity === "current") currentByOutcome[s.outcome]++;
+    if (s.validity === "pending")
+      pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
+  }
+  const testFilesWithoutChecks = keys.filter(
+    (k) => !filesWithChecks.has(testFileId(k.testFile))
+  ).length;
+  return { currentByOutcome, pendingByPhase, testFiles: keys.length, testFilesWithoutChecks };
+}
+function recoveryNote(raw) {
+  if (raw === null) return null;
+  try {
+    const { at: at2, movedTo } = JSON.parse(raw);
+    const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
+    const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
+    return `store was recovered from corruption${when}; the baseline was lost${where2}`;
+  } catch {
+    return `store was recovered from corruption; the baseline was lost (${raw})`;
+  }
+}
+var HEARTBEAT_GRACE_INTERVALS;
+var init_snapshot = __esm({
+  "src/core/status/snapshot.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    init_notes();
+    init_state3();
+    init_store2();
+    init_types();
+    init_git_head();
+    init_open2();
+    HEARTBEAT_GRACE_INTERVALS = 2;
   }
 });
 
@@ -6435,6 +6681,103 @@ var init_checkpoints = __esm({
   }
 });
 
+// src/core/scheduler/claims.ts
+import { setTimeout as delay2 } from "node:timers/promises";
+function claimOf(ledger, ref2) {
+  const file = ledger.file(ref2);
+  const key2 = file?.key ?? null;
+  if (!file || key2 === null || file.blocked !== null) return "free";
+  if (ledger.queue.isForced(ref2) || ledger.queue.isRecent(ref2)) return "free";
+  const { hits, mayWait } = ledger.probe(file, key2);
+  if (hits.length > 0) {
+    ledger.applyResults(file, key2, hits, ledger.checkpoints.idFor(ref2));
+    ledger.commit();
+    return "settled";
+  }
+  return mayWait && ledger.claims.holds(key2) ? "waits" : "free";
+}
+async function claimWake(store, signal2) {
+  const before = changeMarker(store);
+  const until = performance.now() + CLAIM_RECHECK_MS;
+  try {
+    while (performance.now() < until) {
+      await delay2(CLAIM_POLL_MS, void 0, { signal: signal2 });
+      const now = changeMarker(store);
+      if (now?.others !== before?.others || now?.own !== before?.own) return;
+    }
+  } catch (error) {
+    if (!signal2.aborted) throw error;
+  }
+}
+var CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS, CLAIM_RECHECK_MS, CLAIM_POLL_MS, Claims;
+var init_claims = __esm({
+  "src/core/scheduler/claims.ts"() {
+    "use strict";
+    init_snapshot();
+    init_store2();
+    CLAIM_GRACE_MS = 6e3;
+    CLAIM_UNBOUNDED_MS = 6e5;
+    CLAIM_RECHECK_MS = 1e3;
+    CLAIM_POLL_MS = 250;
+    Claims = class {
+      constructor(context) {
+        this.context = context;
+      }
+      context;
+      /** When this worktree first found each key claimed: the waiter's bound runs from it. */
+      #seen = /* @__PURE__ */ new Map();
+      #waiting = false;
+      /** Some queued file waited on a claim since `begin`: the pump looks again (`claimWake`). */
+      get waiting() {
+        return this.#waiting;
+      }
+      /** A scheduling pass starts. */
+      begin() {
+        this.#waiting = false;
+      }
+      /** Whether a file at `key` waits: another live worktree runs it, and the waiter's bound holds. */
+      holds(key2) {
+        const { store, worktreeId, now } = this.context;
+        if (!store.testFileKeys.claimed(worktreeId, key2, this.#live())) {
+          this.#seen.delete(key2);
+          return false;
+        }
+        const at2 = now();
+        const since = this.#seen.get(key2) ?? at2;
+        this.#seen.set(key2, since);
+        if (at2 - since > this.#boundMs()) return false;
+        this.#waiting = true;
+        return true;
+      }
+      /** `key` runs here: a later claim on it starts a new bound. */
+      taken(key2) {
+        this.#seen.delete(key2);
+      }
+      /**
+       * D5 step 5 as amended: a backlog tier's file count while other live
+       * daemons have this worktree's queued keys pending too. The queued files
+       * divided by those daemons and this one, rounded up, at least
+       * `runner.tierSize` and at most `runner.backlogTierSize`; with none, the
+       * latter.
+       */
+      backlogSize(queued) {
+        const { store, worktreeId, policy } = this.context;
+        const { tierSize, backlogTierSize } = policy.runner;
+        const sharers = store.testFileKeys.sharers(worktreeId, this.#live());
+        if (sharers === 0) return backlogTierSize;
+        return Math.min(backlogTierSize, Math.max(tierSize, Math.ceil(queued / (sharers + 1))));
+      }
+      #live() {
+        return { now: this.context.now(), graceIntervals: HEARTBEAT_GRACE_INTERVALS };
+      }
+      #boundMs() {
+        const { timeoutMs } = this.context.policy.runner;
+        return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
+      }
+    };
+  }
+});
+
 // src/core/scheduler/discharges.ts
 var DISCHARGE_RETENTION_MS, DISCHARGE_CAP, Discharges;
 var init_discharges = __esm({
@@ -6823,6 +7166,7 @@ var init_ledger = __esm({
     init_state3();
     init_types();
     init_checkpoints();
+    init_claims();
     init_context();
     init_discharges();
     init_files();
@@ -6835,6 +7179,7 @@ var init_ledger = __esm({
       constructor(context) {
         this.context = context;
         this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+        this.claims = new Claims(context);
         this.queue.setSlow((ref2) => slowView(context.policy).isSlow(ref2));
       }
       context;
@@ -6843,6 +7188,8 @@ var init_ledger = __esm({
       checkpoints;
       /** Attributions results discharged, for a wait's sync answer (task 001-196). */
       discharges = new Discharges();
+      /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
+      claims;
       revision = { number: 0, head: null, dirty: false };
       /**
        * One set per tier in flight (`Tier.changes`): each collects the paths
@@ -6958,11 +7305,24 @@ var init_ledger = __esm({
        * so a mixed set is never partly this worktree's own.
        */
       lookup(file, key2) {
+        return this.probe(file, key2).hits;
+      }
+      /**
+       * `lookup`, and whether a miss may wait on another worktree's claim of
+       * `key` (task 001-205): only when another worktree's result could stand
+       * for the file, so it may inherit (004 D6) and no stored fail was withheld
+       * (001-170).
+       */
+      probe(file, key2) {
         const { store, worktreeId, now } = this.context;
         const hits = store.results.byKey(key2, now());
-        if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
-        if (!this.inherits(file.ref)) return [];
-        return heldFailure(store, worktreeId, hits) === void 0 ? hits : [];
+        if (hits.length === 0) return { hits, mayWait: this.inherits(file.ref) };
+        if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
+          return { hits, mayWait: false };
+        }
+        if (!this.inherits(file.ref)) return { hits: [], mayWait: false };
+        const held2 = heldFailure(store, worktreeId, hits) !== void 0;
+        return { hits: held2 ? [] : hits, mayWait: false };
       }
       /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
       inherits(ref2) {
@@ -7141,9 +7501,15 @@ var init_ledger = __esm({
         this.discharges.note(file, this.context.now());
         clearKeyedAt(file);
       }
-      /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
+      /**
+       * Phase follows the queue and the tier in flight; a change is owed to
+       * `test_file_keys`. `running` only while the tier runs the file's key: the
+       * row is another worktree's claim on that key (task 001-205), and a key an
+       * edit moved during the run is not running.
+       */
       #syncPhase(file) {
-        const phase = file.runningKey !== null ? "running" : this.queue.has(file.ref) ? "queued" : null;
+        const running = file.runningKey !== null && file.runningKey === file.key;
+        const phase = running ? "running" : this.queue.has(file.ref) ? "queued" : null;
         if (phase === file.phase) return;
         file.phase = phase;
         this.#dirty.add(file.id);
@@ -7486,8 +7852,9 @@ function laneOf(context, ref2) {
 function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   const { keys, policy } = context;
   const picked = [];
+  ledger.claims.begin();
   const backlog = !ledger.queue.hasRecent((ref2) => !busy.has(laneOf(context, ref2)));
-  let size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+  let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known2 = 0;
   let span = null;
@@ -7505,12 +7872,16 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
       continue;
     }
     const forced = ledger.queue.isForced(ref2);
+    const recent = ledger.queue.isRecent(ref2);
+    let waits = false;
     if (!forced) {
-      const hits = ledger.lookup(file, key2);
+      const { hits, mayWait } = ledger.probe(file, key2);
       if (hits.length > 0) {
         ledger.applyResults(file, key2, hits, ledger.checkpoints.idFor(ref2));
         continue;
       }
+      waits = mayWait && !recent;
+      if (waits && ledger.claims.holds(key2)) continue;
     }
     const cap2 = Math.min(size, file.tierCap ?? size);
     if (picked.length >= cap2) continue;
@@ -7521,57 +7892,59 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     }
     known2 += file.durationMs ?? 0;
     if (picked.length > 0 && known2 > budget) break;
-    const recent = ledger.queue.isRecent(ref2);
     tookBacklog ||= !recent;
     lane = at2;
     size = cap2;
-    ledger.queue.remove(ref2);
     const checkpointId = ledger.checkpoints.idFor(ref2);
-    picked.push({ file, key: key2, inputs: keys.stabilityPaths(ref2), checkpointId, forced, recent });
+    const inputs2 = keys.stabilityPaths(ref2);
+    picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits });
   }
-  if (picked.length === 0) {
-    ledger.commit();
-    return null;
-  }
-  ledger.queue.tierSelected(tookBacklog);
-  return startTier(context, ledger, picked, backlog);
+  const tier = picked.length === 0 ? null : startTier(context, ledger, picked, backlog);
+  if (tier === null) ledger.commit();
+  else ledger.queue.tierSelected(tookBacklog);
+  return tier;
 }
 function startTier(context, ledger, picked, cancellable) {
   const { store, keys } = context;
-  const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
-  const runId = randomUUID3();
-  const first = picked[0];
-  if (first === void 0) throw new Error("squeal scheduler: a tier of no files");
-  const tier = {
-    runId,
-    logDir: join28(context.runsDir, runId),
-    lane: laneOf(context, first.file.ref),
-    run: keys.beginRun(),
-    changes: /* @__PURE__ */ new Set(),
-    revision: ledger.revision,
-    checkpointId,
-    files: picked,
-    snapshot: snapshotInputs(
-      keys.cache,
-      picked.flatMap((p) => p.inputs)
-    ),
-    cancel: cancellable ? new AbortController() : null
-  };
-  for (const { file, key: key2 } of picked) ledger.setRunning(file, key2);
-  ledger.tierChanges.add(tier.changes);
-  store.transaction(() => {
+  return store.transaction(() => {
+    const files = picked.filter((p) => p.waits !== true || !ledger.claims.holds(p.key));
+    const first = files[0];
+    if (first === void 0) return null;
+    const checkpointId = files.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
+    const runId = randomUUID3();
+    const tier = {
+      runId,
+      logDir: join28(context.runsDir, runId),
+      lane: laneOf(context, first.file.ref),
+      run: keys.beginRun(),
+      changes: /* @__PURE__ */ new Set(),
+      revision: ledger.revision,
+      checkpointId,
+      files,
+      snapshot: snapshotInputs(
+        keys.cache,
+        files.flatMap((p) => p.inputs)
+      ),
+      cancel: cancellable ? new AbortController() : null
+    };
+    for (const { file, key: key2 } of files) {
+      ledger.queue.remove(file.ref);
+      ledger.claims.taken(key2);
+      ledger.setRunning(file, key2);
+    }
+    ledger.tierChanges.add(tier.changes);
     store.runs.start({
       id: runId,
       worktreeId: context.worktreeId,
       revision: tier.revision.number,
-      testFiles: picked.map((p) => p.file.ref),
+      testFiles: files.map((p) => p.file.ref),
       checkpointId,
       logDir: tier.logDir,
       startedAt: context.now()
     });
     ledger.commit();
+    return tier;
   });
-  return tier;
 }
 async function executeTier(context, tier) {
   const started = context.now();
@@ -9095,7 +9468,7 @@ var init_runner_work = __esm({
 });
 
 // src/core/scheduler/slow-tier.ts
-import { setTimeout as delay2 } from "node:timers/promises";
+import { setTimeout as delay3 } from "node:timers/promises";
 function runnerOf(context, ref2) {
   const lane = laneOf(context, ref2);
   const nodeTest = context.policy.nodeTest.some((project) => project.name === ref2.project);
@@ -9151,6 +9524,7 @@ var init_slow_tier = __esm({
     init_state2();
     init_state3();
     init_types();
+    init_claims();
     init_context();
     init_files();
     init_notes2();
@@ -9237,6 +9611,7 @@ var init_slow_tier = __esm({
         let run = null;
         try {
           const selected = await this.host.lock.run(() => this.#select(refs, load, slot2));
+          if (selected === "claimed") return null;
           if (selected === null) return "again";
           run = { ...selected, slot: slot2 };
           return run;
@@ -9251,7 +9626,10 @@ var init_slow_tier = __esm({
       }
       /**
        * Under the lock: the slow files a trigger lets run now, in order, all of
-       * the first one's lane and runner (`runnerOf`); none when none may.
+       * the first one's lane and runner (`runnerOf`); none when none may. A file
+       * whose key another worktree runs is none (`claimOf`, task 001-205): the
+       * pump waits on the claim without taking the slot, and a result that
+       * landed is applied here, so a drain before exit (004-29) ends with it.
        */
       #candidates() {
         const { context, ledger } = this.host.started();
@@ -9268,11 +9646,15 @@ var init_slow_tier = __esm({
           return [];
         }
         const triggered = queued.filter(this.#trigger(context, ledger));
-        const first = triggered[0];
+        const claims = new Map(triggered.map((ref2) => [ref2, claimOf(ledger, ref2)]));
+        const free = triggered.filter((ref2) => claims.get(ref2) === "free");
+        const first = free[0];
         if (first !== void 0) {
           const runner = runnerOf(context, first);
-          return triggered.filter((ref2) => runnerOf(context, ref2) === runner);
+          return free.filter((ref2) => runnerOf(context, ref2) === runner);
         }
+        if ([...claims.values()].includes("settled")) return this.#candidates();
+        if ([...claims.values()].includes("waits")) return [];
         this.#publish({ kind: "waiting", for: "idle" });
         this.#arm();
         return [];
@@ -9301,7 +9683,7 @@ var init_slow_tier = __esm({
             recheckMs: this.#recheckMs(),
             sleep: (ms) => {
               this.#publish({ kind: "waiting", for: "load" });
-              return delay2(ms, void 0, { signal: wait.signal });
+              return delay3(ms, void 0, { signal: wait.signal });
             },
             ...this.options.load === void 0 ? {} : { load: this.options.load },
             ...this.options.cpus === void 0 ? {} : { cpus: this.options.cpus }
@@ -9322,7 +9704,8 @@ var init_slow_tier = __esm({
        * work arrived meanwhile. A file is passed over when it left the queue or
        * class, its trigger is gone (a consumer entered a turn during the wait;
        * the file stays queued and the pass keeps its budget), or the store now
-       * holds a result that may stand for it (`Ledger.lookup`).
+       * holds a result that may stand for it (`Ledger.lookup`). `"claimed"` when
+       * no file runs because other worktrees run their keys (task 001-205).
        */
       #select(refs, ranUnderLoad, slot2) {
         const { context, ledger } = this.host.started();
@@ -9336,11 +9719,9 @@ var init_slow_tier = __esm({
           const tierFile = this.#pick(ref2, context, ledger);
           if (tierFile !== null) picked.push(tierFile);
         }
-        const first = picked[0];
-        if (first === void 0) return null;
+        if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
         slot2.shrinkTo(picked.length);
         for (const { file } of picked) {
-          ledger.queue.remove(file.ref);
           if (ranUnderLoad === null) continue;
           context.note(
             `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)`
@@ -9351,10 +9732,12 @@ var init_slow_tier = __esm({
         const artifacts = new Map(
           picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []])
         );
-        const lastDurationMs = longest(picked.map(({ file }) => file.durationMs));
-        const paths = picked.map(({ file }) => file.ref.path);
-        return context.store.transaction(() => {
+        const started = context.store.transaction(() => {
           const tier = startTier(context, ledger, picked, false);
+          const first = tier?.files[0];
+          if (tier === null || first === void 0) return null;
+          const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
+          const paths = tier.files.map(({ file }) => file.ref.path);
           this.#publish({
             kind: "running",
             path: first.file.ref.path,
@@ -9364,11 +9747,13 @@ var init_slow_tier = __esm({
           });
           return { tier, artifacts };
         });
+        return started ?? "claimed";
       }
       /**
        * Under the lock: `ref` as a file of the tier, or `null` when it has no key
-       * or is blocked (it leaves the queue), or when another worktree's result
-       * stands for it (applied).
+       * or is blocked (it leaves the queue), when another worktree's result
+       * stands for it (applied), or when another worktree runs its key and its
+       * result could stand for it (it stays queued, task 001-205).
        */
       #pick(ref2, context, ledger) {
         const file = ledger.file(ref2);
@@ -9381,13 +9766,16 @@ var init_slow_tier = __esm({
           ledger.commit();
           return null;
         }
-        const hits = forced ? [] : ledger.lookup(file, key2);
+        const { hits, mayWait } = forced ? { hits: [], mayWait: false } : ledger.probe(file, key2);
         if (hits.length > 0) {
           ledger.applyResults(file, key2, hits, checkpointId);
           ledger.commit();
           return null;
         }
-        return { file, key: key2, inputs: context.keys.stabilityPaths(ref2), checkpointId, forced };
+        const waits = mayWait && !ledger.queue.isRecent(ref2);
+        if (waits && ledger.claims.holds(key2)) return null;
+        const inputs2 = context.keys.stabilityPaths(ref2);
+        return { file, key: key2, inputs: inputs2, checkpointId, forced, waits };
       }
       /**
        * Under the lock, in the transaction that records `run` (D5, D8, review
@@ -9500,6 +9888,7 @@ var init_scheduler2 = __esm({
     init_backlog();
     init_batch();
     init_bootstrap();
+    init_claims();
     init_context();
     init_environment_growth();
     init_install();
@@ -9858,6 +10247,10 @@ var init_scheduler2 = __esm({
                   continue;
                 }
               }
+              if (this.#started().ledger.claims.waiting) {
+                await this.#claimWake();
+                continue;
+              }
               if (this.#inFlight.size === 0 && !this.#woken) break;
               await this.#nextEvent();
             }
@@ -9950,6 +10343,20 @@ var init_scheduler2 = __esm({
           this.#draining = null;
           this.#notify();
         });
+      }
+      /**
+       * Queued files wait on other worktrees' claims (task 001-205): the pump
+       * looks again on `#notify`, when the store moves, or after
+       * `CLAIM_RECHECK_MS`, never in a tight loop.
+       */
+      async #claimWake() {
+        const { context } = this.#started();
+        const stop = new AbortController();
+        try {
+          await Promise.race([this.#nextEvent(), claimWake(context.store, stop.signal)]);
+        } finally {
+          stop.abort();
+        }
       }
       /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
       #nextEvent() {
@@ -32799,7 +33206,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.92";
+  if (true) return "0.1.93";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33098,57 +33505,8 @@ function upper(outcome2) {
   return outcome2.toUpperCase();
 }
 
-// src/core/status/open.ts
-init_fs();
-init_store2();
-init_types();
-var STATUS_BUSY_TIMEOUT_MS = 1e3;
-function unavailable(reason2, detail) {
-  return {
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    available: false,
-    reason: reason2,
-    message: `status unavailable, ${detail}`
-  };
-}
-function withStatusStore(cwd, options, fn) {
-  const root = findWorktreeRoot(cwd);
-  const commonDir = root === null ? null : resolveCommonDir(root);
-  if (root === null || commonDir === null) {
-    return unavailable("no-store", `${cwd} is not inside a git worktree`);
-  }
-  const busyTimeoutMs = options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS;
-  let store;
-  try {
-    const opened = openStore(commonDir, { create: false, busyTimeoutMs });
-    if (isStoreOpenFailure(opened)) {
-      switch (opened.reason) {
-        case "missing":
-          return unavailable("no-store", `no Squeal store at ${storePaths(commonDir).database}`);
-        case "newer-schema":
-          return unavailable(
-            "store-newer",
-            `store version newer than this Squeal (store ${opened.found}, supported ${opened.supported})`
-          );
-        case "corrupt":
-          return unavailable(
-            "store-unreadable",
-            `store at ${storePaths(commonDir).database} is corrupt`
-          );
-      }
-    }
-    store = opened;
-    const context = { store, root, commonDir };
-    return readTransaction(store, () => fn(context));
-  } catch (error) {
-    if (isBusy(error)) {
-      return unavailable("timeout", `store busy for more than ${busyTimeoutMs} ms`);
-    }
-    return unavailable("store-unreadable", `store unreadable: ${String(error)}`);
-  } finally {
-    store?.close();
-  }
-}
+// src/core/status/index.ts
+init_open2();
 
 // src/core/status/run-log.ts
 init_run_log();
@@ -33239,153 +33597,8 @@ function capped(lines) {
   };
 }
 
-// src/core/status/snapshot.ts
-init_fs();
-init_keys();
-init_notes();
-init_state3();
-init_store2();
-init_types();
-
-// src/core/status/git-head.ts
-init_fs();
-import { readFileSync as readFileSync7 } from "node:fs";
-import { join as join14 } from "node:path";
-var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-var MAX_REF_DEPTH = 5;
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join14(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref2 === void 0) return null;
-    value = read3(join14(gitDir, ref2)) ?? read3(join14(commonDir, ref2)) ?? packed(commonDir, ref2);
-  }
-  return null;
-}
-function packed(commonDir, ref2) {
-  for (const line of (read3(join14(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name] = line.split(" ");
-    if (name === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync7(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
-// src/core/status/snapshot.ts
-var HEARTBEAT_GRACE_INTERVALS = 2;
-function readStatus(cwd, options = {}) {
-  const now = options.now ?? Date.now;
-  return withStatusStore(cwd, options, ({ store, root }) => buildSnapshot(store, root, now()));
-}
-function buildSnapshot(store, root, now) {
-  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now));
-}
-function snapshot(store, worktreeId, root, now) {
-  const worktree = store.worktrees.get(worktreeId);
-  const revision = store.revisions.latest(worktreeId);
-  const states = store.knownStates.list(worktreeId);
-  const keys = store.testFileKeys.list(worktreeId);
-  const header = readHeader(store, worktreeId, states, keys);
-  const notes2 = [];
-  if (worktree === null) {
-    notes2.push("this worktree is not registered in the store; no daemon has run here");
-  }
-  if (revision === null) notes2.push("no revision recorded for this worktree yet");
-  const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
-  if (recovered !== null) notes2.push(recovered);
-  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
-  const observed = daemon.state === "alive" ? revision : null;
-  return {
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    available: true,
-    worktreeId,
-    worktreeRoot: worktree?.root ?? root,
-    ...header,
-    head: revision === null ? readGitHead(root) : revision.head,
-    dirty: observed?.dirty ?? null,
-    dirtyObservedAt: observed?.number ?? null,
-    daemon,
-    knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
-    inherited: inheritedSources(store, states),
-    breakdown: breakdown(states, keys),
-    closureMethod: CLOSURE_METHOD,
-    storeSchemaVersion: store.schemaVersion,
-    notes: notes2,
-    daemonNotes: readDaemonNotes(store, worktreeId)
-  };
-}
-function liveness(daemon, now, lastHeartbeatAt) {
-  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
-  const age2 = now - daemon.heartbeatAt;
-  if (age2 <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
-    return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
-  }
-  return { state: "down", since: daemon.heartbeatAt };
-}
-function inheritedSources(store, states) {
-  const groups = /* @__PURE__ */ new Map();
-  let count = 0;
-  for (const s of states) {
-    if (s.validity !== "current" || s.origin?.kind !== "inherited") continue;
-    count++;
-    const id2 = JSON.stringify([s.origin.worktreeId, s.origin.commit]);
-    const group = groups.get(id2) ?? {
-      worktreeId: s.origin.worktreeId,
-      commit: s.origin.commit,
-      count: 0
-    };
-    group.count++;
-    groups.set(id2, group);
-  }
-  const sources = [...groups.values()].map((g2) => ({ ...g2, worktreeRoot: store.worktrees.get(g2.worktreeId)?.root ?? null })).sort(
-    (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
-  ).map(({ worktreeId, worktreeRoot: worktreeRoot2, commit, count: count2 }) => ({
-    worktreeId,
-    worktreeRoot: worktreeRoot2,
-    commit,
-    count: count2
-  }));
-  return { count, sources };
-}
-function breakdown(states, keys) {
-  const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
-  const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
-  const pendingByPhase = { queued: 0, running: 0 };
-  const filesWithChecks = /* @__PURE__ */ new Set();
-  for (const s of states) {
-    const file = testFileKeyOf(s.check);
-    filesWithChecks.add(file);
-    if (s.validity === "current") currentByOutcome[s.outcome]++;
-    if (s.validity === "pending")
-      pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
-  }
-  const testFilesWithoutChecks = keys.filter(
-    (k) => !filesWithChecks.has(testFileId(k.testFile))
-  ).length;
-  return { currentByOutcome, pendingByPhase, testFiles: keys.length, testFilesWithoutChecks };
-}
-function recoveryNote(raw) {
-  if (raw === null) return null;
-  try {
-    const { at: at2, movedTo } = JSON.parse(raw);
-    const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
-    const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}; the baseline was lost${where2}`;
-  } catch {
-    return `store was recovered from corruption; the baseline was lost (${raw})`;
-  }
-}
+// src/core/status/index.ts
+init_snapshot();
 
 // src/core/status/why.ts
 init_fs();
@@ -33393,6 +33606,7 @@ init_keys();
 init_state3();
 init_store2();
 init_types();
+init_open2();
 var WHY_RESULT_LIMIT = 20;
 var WHY_CANDIDATE_LIMIT = 20;
 function readWhy(cwd, query, options = {}) {
@@ -35256,6 +35470,7 @@ function toHarness(value) {
 init_fs();
 init_keys();
 init_state3();
+init_snapshot();
 init_slots();
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -36158,10 +36373,16 @@ var Daemon = class {
   #heartbeatMs() {
     return this.options.timings?.heartbeatMs ?? 5e3;
   }
-  /** Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the socket and a heartbeat. */
+  /**
+   * Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the
+   * socket and a heartbeat. A predecessor's `running` rows become `queued`
+   * first: with this heartbeat they would read as live claims until the
+   * baseline rewrites them (D10 as amended, task 001-205).
+   */
   #register() {
     const { store, worktreeId: id2, root, commonDir } = this.opened;
     store.transaction(() => {
+      store.testFileKeys.releaseRunning(id2);
       const existing = store.worktrees.get(id2);
       store.worktrees.upsert({
         id: id2,
