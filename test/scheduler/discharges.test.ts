@@ -15,6 +15,23 @@ function moved(path: string, revision: number): FileState {
   return { ...newFileState(ref(path)), keyedAt: revision, lastKeyedAt: revision };
 }
 
+/** Fake timers, and the clock `Discharges` reads; `advance` moves both, setting `clock.at` alone is a pause. */
+function fakeClock(): { at: number; now: () => number; advance: (ms: number) => void } {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const clock = {
+    at: 0,
+    now: () => clock.at,
+    advance: (ms: number) => {
+      clock.at += ms;
+      vi.advanceTimersByTime(ms);
+    },
+  };
+  return clock;
+}
+
 describe("discharges (task 001-202)", () => {
   it("keeps an earlier move's discharge through a later one", () => {
     const discharges = new Discharges();
@@ -142,24 +159,21 @@ describe("discharges (task 001-202)", () => {
   });
 
   it("ends a hold at its deadline with no later call, prunes by that time, keeps a younger hold (task 001-229)", () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    onTestFinished(() => {
-      vi.useRealTimers();
-    });
-    const discharges = new Discharges({ retentionMs: HOLD_MS / 2, cap: 3 });
+    const clock = fakeClock();
+    const discharges = new Discharges({ retentionMs: HOLD_MS / 2, cap: 3 }, clock.now);
     const expired: string[] = [];
     discharges.note(moved(math.path, 3), 0);
     discharges.note(moved("test/strings.test.ts", 3), 0);
     discharges.note(moved("test/upper.test.ts", 3), 0);
     const old = discharges.hold(0, 2, 4, 0, () => expired.push("old"));
-    vi.advanceTimersByTime(HOLD_MS / 2);
+    clock.advance(HOLD_MS / 2);
     const young = discharges.hold(HOLD_MS / 2, 2, 4, HOLD_MS / 2, () => expired.push("young"));
     discharges.note(moved("test/young.test.ts", 4), HOLD_MS / 2);
     // Past the cap, every discharge kept: the old hold covers them all.
     expect(discharges.size).toBe(4);
 
     // No discharge, hold or read: the old hold's hour ends on time.
-    vi.advanceTimersByTime(HOLD_MS / 2);
+    clock.advance(HOLD_MS / 2);
     expect(expired).toEqual(["old"]);
     expect(discharges.holds).toBe(1);
     // Pruned at the deadline, not at the last discharge: the hour-old ones go too.
@@ -172,18 +186,15 @@ describe("discharges (task 001-202)", () => {
     // Released, forgotten or expired again is nothing.
     old.forget();
     old.release();
-    vi.advanceTimersByTime(HOLD_MS / 2);
+    clock.advance(HOLD_MS / 2);
     expect(expired).toEqual(["old", "young"]);
     expect(discharges.holds).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
 
   it("clears its timer once no hold is left (task 001-229)", () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    onTestFinished(() => {
-      vi.useRealTimers();
-    });
-    const discharges = new Discharges();
+    const clock = fakeClock();
+    const discharges = new Discharges(undefined, clock.now);
     let expired = 0;
     const first = discharges.hold(0, 0, 1, 0, () => {
       expired += 1;
@@ -195,7 +206,49 @@ describe("discharges (task 001-202)", () => {
     first.release();
     second.forget();
     expect(vi.getTimerCount()).toBe(0);
-    vi.advanceTimersByTime(2 * HOLD_MS);
+    clock.advance(2 * HOLD_MS);
     expect(expired).toBe(0);
+  });
+
+  it("releases every hold overdue when a paused callback runs, prunes and re-arms from then (task 001-232)", () => {
+    const clock = fakeClock();
+    const minute = HOLD_MS / 60;
+    const discharges = new Discharges({ retentionMs: HOLD_MS, cap: 100 }, clock.now);
+    const expired: string[] = [];
+    discharges.hold(0, 2, 4, clock.now(), () => expired.push("old"));
+    clock.advance(31 * minute);
+    discharges.hold(clock.now(), 4, 6, clock.now(), () => expired.push("young"));
+    clock.advance(19 * minute);
+    // Kept by the old hold, and by age until minute 110.
+    discharges.note(moved(math.path, 3), clock.now());
+
+    // The process pauses from minute 50 to 132: the callback due at 60 runs then.
+    clock.at = 132 * minute;
+    vi.advanceTimersByTime(10 * minute);
+    expect(expired).toEqual(["old", "young"]);
+    expect(discharges.holds).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    // Pruned at the callback's own time, not at the old deadline.
+    expect(discharges.since(0, 0, 6)).toEqual([]);
+  });
+
+  it("re-arms a younger hold from the time a late callback runs (task 001-232)", () => {
+    const clock = fakeClock();
+    const minute = HOLD_MS / 60;
+    const discharges = new Discharges(undefined, clock.now);
+    const expired: string[] = [];
+    discharges.hold(0, 0, 1, clock.now(), () => expired.push("old"));
+    clock.advance(31 * minute);
+    discharges.hold(0, 0, 1, clock.now(), () => expired.push("young"));
+
+    // Paused past the old deadline only: the young one is due at minute 91.
+    clock.at = 70 * minute;
+    vi.advanceTimersByTime(29 * minute);
+    expect(expired).toEqual(["old"]);
+    clock.advance(21 * minute - 1);
+    expect(expired).toEqual(["old"]);
+    clock.advance(1);
+    expect(expired).toEqual(["old", "young"]);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
