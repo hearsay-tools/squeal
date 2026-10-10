@@ -201,11 +201,12 @@ function affected(s: StatusSnapshot): string {
     [s.counts.unknown + currentByOutcome.unknown, "unknown"],
   ];
   for (const [count, label] of optional) if (count > 0) parts.push(`${count} ${label}`);
-  // Task 001-217: a baseline over fresh files runs them before any has a check.
+  // Task 001-217: a baseline over fresh files runs them before any has a check; the
+  // detail line below counts them when none runs.
   const files = s.testFilesWithoutChecks.pending;
   const running = Math.min(files, s.breakdown.testFilesWithoutChecksRunning ?? 0);
   const fresh =
-    files === 0
+    running === 0
       ? ""
       : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
   const runnerPart =
