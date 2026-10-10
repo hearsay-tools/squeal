@@ -1,6 +1,6 @@
 {
   "name": "squeal",
-  "version": "0.1.105",
+  "version": "0.1.106",
   "description": "Continuous validation for coding agents: test transitions at tool boundaries, honest status on demand.",
   "author": {
     "name": "Hearsay"

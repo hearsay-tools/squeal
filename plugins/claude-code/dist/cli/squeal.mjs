@@ -12970,24 +12970,32 @@ async function subscribeAll(parcel, spec, listener) {
   }
   return subs;
 }
-function signature(path) {
+function signature(path, budget) {
   const stat7 = statSync3(path, { bigint: true, throwIfNoEntry: false });
   if (!stat7) return null;
   const latest = stat7.mtimeNs > stat7.ctimeNs ? stat7.mtimeNs : stat7.ctimeNs;
   const racy = latest >= BigInt(Date.now()) * 1000000n - RACY_NS;
+  const size = Number(stat7.size);
   return {
     stat: `${stat7.ino}:${stat7.size}:${stat7.mtimeNs}:${stat7.ctimeNs}`,
-    hash: racy ? contentHash(path) : null
+    size,
+    racy,
+    hash: racy ? contentHash(path, size, budget) : null
   };
 }
-function same(path, before, now) {
+function same(path, before, now, budget) {
   if (before === null || now === null) return before === now;
   if (before.stat !== now.stat) return false;
-  return before.hash === null || before.hash === (now.hash ?? contentHash(path));
+  if (!before.racy) return true;
+  if (before.hash === null) return false;
+  return before.hash === (now.racy ? now.hash : contentHash(path, now.size, budget));
 }
-function contentHash(path) {
+function contentHash(path, size, budget) {
+  if (size > budget.left) return null;
   try {
-    return createHash16("sha1").update(readFileSync13(path)).digest("hex");
+    const content = readFileSync13(path);
+    budget.left -= Math.max(size, content.length);
+    return createHash16("sha1").update(content).digest("hex");
   } catch {
     return null;
   }
@@ -13007,7 +13015,7 @@ function callback(listener, report2, erased) {
     if (hints.length > 0) listener.onHints(hints);
   };
 }
-var KINDS3, DROPPED, parcelBackend, ErasedEvents, RACY_NS;
+var KINDS3, DROPPED, parcelBackend, ErasedEvents, RACY_NS, READ_BUDGET;
 var init_parcel_backend = __esm({
   "src/core/watcher/parcel-backend.ts"() {
     "use strict";
@@ -13018,18 +13026,20 @@ var init_parcel_backend = __esm({
     ErasedEvents = class {
       constructor(files) {
         this.files = files;
-        for (const real2 of files.keys()) this.last.set(real2, signature(real2));
+        const budget = { left: READ_BUDGET };
+        for (const real2 of files.keys()) this.last.set(real2, signature(real2, budget));
       }
       files;
       last = /* @__PURE__ */ new Map();
       /** The hints for the extra files that moved without an event in `named`. */
       find(named) {
         const hints = [];
+        const budget = { left: READ_BUDGET };
         for (const [real2, declared] of this.files) {
           const before = this.last.get(real2) ?? null;
-          const now = signature(real2);
+          const now = signature(real2, budget);
           this.last.set(real2, now);
-          if (named.has(real2) || same(real2, before, now)) continue;
+          if (named.has(real2) || same(real2, before, now, budget)) continue;
           const kind = now === null ? "unlink" : before === null ? "add" : "change";
           for (const path of declared) hints.push({ path, kind });
         }
@@ -13037,6 +13047,7 @@ var init_parcel_backend = __esm({
       }
     };
     RACY_NS = 2000000000n;
+    READ_BUDGET = 4 * 1024 * 1024;
   }
 });
 
@@ -33888,7 +33899,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.105";
+  if (true) return "0.1.106";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
