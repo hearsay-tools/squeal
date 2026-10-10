@@ -655,3 +655,35 @@ Done when: the review's reproducer (a file grown from 1 KiB to 12 MiB between st
 ## 001-248 third review of the parcel recheck
 
 Use /reviewer on gpt-6.1-sol, after 001-247 lands. Output `reviews/wave-13z.md`. Third round on `reviews/wave-13y.md` S1 only: can any read still exceed the budget; is every descriptor closed; is a truncated read ever trusted as unchanged. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## Wave 13aa (after the 0.1.107 hub release; the human's standing instruction, 2026-10-10)
+
+Three workers, disjoint ownership, then one review (001-249). Each: Do not edit `docs/board.md`. Do not run `npm run build` except locally for e2e (do not commit `dist`). `KEY_FORMAT_VERSION` 3 shipped in 0.1.107, so a change to a guarded source asks the coordinator for a bump to 4 at landing. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset; a test that runs `git commit` sets its own identity, and no test depends on this host's timing, caches or harness environment.
+
+## 001-234 the primer lists what Squeal covers, so the agent knows what is left
+
+Use /worker. Shape: slice. Read row 001-234 on the board (the human's design, 2026-10-10) and `005-agent-adoption/research/model-evals.md` sections 4 and 6. Today the slow variant's last sentence drops "or other test suites" (`src/harness/shared/primer.ts`), and every false "pass" claim in 005's pilot came from an uncovered node:test suite. The human asked for the primer to list what Squeal covers, so the agent can work out what is left; "suites it is not configured for" asks for something the agent cannot see.
+
+Outcome: the primer names each covered suite briefly, read from `squeal.config.json` and the runner's own discovery: the runner (Vitest, node:test), the Vitest config or projects, the node:test projects' names or globs, and the slow files as a count. Then one sentence says typecheck, build and any other test suite are not covered, and to run those yourself. It stays within the primer's length cap, with a fallback that keeps the "not covered" sentence whole when the list is long (for example "and N more projects"). The structure is the same in the slow and non-slow variants and under both harnesses. Amend 001 D9's primer summary and 004 D8/D9's sentence about the primer. The sentence 005-15 will add later is not this row's.
+
+Own: `src/harness/shared/primer.ts`, `src/harness/shared/session.ts` only where it passes the coverage in, tests under `test/harness/` and `test/e2e/` that assert primer text, and the D9 and 004 D8/D9 sentences. Done when: a test matrix writes a real `squeal.config.json` for Vitest only, Vitest + node:test, Vitest + slow files, and all three. It runs SessionStart under both harnesses and asserts that the primer lists exactly the configured suites and slow-file count and says the rest is not covered, within the cap. A long-list case keeps the "not covered" sentence. Lint, typecheck and the full suite are green.
+
+## 001-236 the parcel watch on the root recovers an event `@parcel/watcher` erased
+
+Use /worker. Shape: defect. Read rows 001-235, 001-236 and `reviews/wave-13x.md` to `wave-13z.md`. `@parcel/watcher` 2.6.0 copies its pending events and then clears them in two separately locked steps, so an event added between the two is erased. 001-235 to 001-247 recover it for the watched extra files. The same race can drop an event from the root watch, where parcel is the real backend on macOS, and today only the periodic reconcile pass finds it.
+
+Outcome: show the loss on the root watch with a fake parcel, as 001-235's tests do. Then either recover it within a stated bound (for example a scoped recheck of the directories named in a batch, within the 001-245/247 read budget and with the racy-signature rules) or name the reconcile interval as the bound in D2. Record whether to file an upstream issue against `@parcel/watcher`: write the issue text into the notes, and the coordinator files it.
+
+Own: `src/core/watcher/parcel-backend.ts`, `test/watcher/`, the D2 sentence. Done when: a deterministic test shows the root-watch loss and its recovery (or its stated bound); the existing parcel tests pass 50 times; lint, typecheck and the full suite are green.
+
+## 001-237 and 001-242 two CI timing tests hold
+
+Use /worker. Shape: defect. Read rows 001-237 and 001-242. `test/runners/node-test/graph-cost.test.ts` "re-resolves no slower than a cold build and re-parses an edit in under 5 % of it" compares two timings and fails on CI and under local load. The node:test integration test "baselines, delivers a node:test PASS -> FAIL, keys observed paths and inherits" timed out at 10.4 s on CI's Node 24.
+
+Outcome: name each cause, a slow step or a fixed wait. Make each test robust to a slow or loaded runner without losing what it proves. For example: a ratio over repeated samples with a median, a warm-up, a budget scaled by a calibration step, or moving a pure timing claim to the slow lane. Do not just raise a timeout.
+
+Own: those two test files and their fixtures or helpers only. Done when: each cause is named in the notes; each test passes 20 times in a row beside a CPU load (one busy loop per core) and under `GIT_CONFIG_GLOBAL=/dev/null`; lint, typecheck and the full suite are green.
+
+## 001-249 review of wave 13aa
+
+Use /reviewer on gpt-6.1-sol, after the three land. Output `reviews/wave-13aa.md`. Is each row's done-when met? Does the primer list exactly what is covered and never claim coverage it lacks? Does 001-236's recovery stay within the read budget and the racy rules? Do the timing fixes keep what each test proves? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
