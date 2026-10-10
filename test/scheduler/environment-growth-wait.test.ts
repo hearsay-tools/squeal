@@ -86,6 +86,7 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
     const rerun = gate();
     let runs = 0;
     let held = null as RunReport | null;
+    let firstRunId = "";
     let holdClosures = false;
     let heldClosures = 0;
     const runner: RunnerAdapter = {
@@ -104,6 +105,7 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
         if (run === 2) await rerun.shut;
         const report = await adapter.run(files, options);
         if (run !== 1) return report;
+        firstRunId = options.runId;
         held = report;
         await firstReport.shut;
         if (grows) return report;
@@ -174,9 +176,12 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
     // 5. The held run is recorded; 6. then the runner part is applied while the re-run is held.
     const phase = () =>
       store.testFileKeys.list(worktreeId).find((row) => row.testFile.path === TEST)?.pending;
-    expect(phase()).toBe("running");
+    // The edit re-keyed the file during its run: its row is queued at the new key (task 001-205).
+    expect(phase()).toBe("queued");
     firstReport.open();
-    await expect.poll(phase, { timeout: 60_000 }).toBe("queued");
+    await expect
+      .poll(() => store.runs.get(firstRunId)?.end ?? null, { timeout: 60_000 })
+      .not.toBeNull();
     refinement.open();
     await expect.poll(() => runs, { timeout: 60_000 }).toBe(2);
     await expect.poll(() => synced, { timeout: 60_000 }).toBe(true);
