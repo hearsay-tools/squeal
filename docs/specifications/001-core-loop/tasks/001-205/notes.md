@@ -24,6 +24,18 @@ Built from `research/shared-runs.md` (001-201) as its recommendation words it: n
 
 Each fix was checked to discriminate: without the claim check test 1 runs keys twice; without the `#syncPhase` fix test 8 fails; without the re-check in `startTier` test 9 fails; without `releaseRunning` test 7 fails.
 
+## Four-worktree probe with real daemons
+
+`probe.mjs` (throwaway, run from outside the repository): a generated repository of N Vitest files, each sleeping 300 ms, with three linked worktrees, inside `test/fixtures/vitest/.tmp` so it resolves Vitest; four `squeal daemon` processes from a checkout's sources (`node --import tsx src/cli/index.ts`) start together with only `HOME`, `PATH`, `USER`, `LANG` and a private `XDG_RUNTIME_DIR`; it polls the store until every baseline checkpoint ended with nothing pending, then counts file runs per path from `runs`. Run 2026-10-10 09:10 to 09:11, load 4 to 10 on 24 CPUs:
+
+| Arm | Files | File runs | Most runs of one file | File runs per worktree | Current checks per worktree |
+|---|---|---|---|---|---|
+| base `bc0c9543` | 40 | 160 | 4 | 40, 40, 40, 40 | 80 each |
+| 001-205 | 40 | 40 | 1 | 20, 14, 6 (one inherited all) | 80 each |
+| 001-205 | 120 | 120 | 1 | 60, 60 (two inherited all) | 240 each |
+
+The poll is every 2 s and every arm ended by the second poll, so these runs give no wall time.
+
 ## Decisions the research left open
 
 - **Backlog split, "while claims by other live daemons are visible".** The divisor counts other live daemons that hold a `queued` or `running` row at a key this worktree has queued (`sharers`), not only those with a `running` row. With `running` only, the first of several daemons starting together sees no claim and takes the full 200-file tier, the case the research measured as the problem. An idle worktree, or one on another commit, shares no queued key and does not shrink the tier.
@@ -35,6 +47,6 @@ Each fix was checked to discriminate: without the claim check test 1 runs keys t
 
 - `Claims` remembers a claimed key until it is seen unclaimed or taken. A key abandoned while claimed (the file re-keyed by an edit) keeps its entry for the daemon's life: a few bytes per such key.
 - Sharing 001-179's `tierCap` across worktrees, claims for forced runs, and a status line naming the worktree that runs a file are deferred, as the research says.
-- No real-daemon four-worktree probe: the host was at load 74 to 86 on 24 CPUs throughout, and the research's cezar-scale probe would have added four Vitest daemons. The in-process probe above shows each key run once.
+- The research's cezar-scale probe (243 files, four real daemons for minutes) was not rerun: the host was at load 74 to 86 on 24 CPUs for most of the slice.
 - `plugins/*/dist` is not rebuilt (the brief said not to run `npm run build`).
 - The key-format guard (001-203) will ask for a re-pin of version 1 after this lands.
