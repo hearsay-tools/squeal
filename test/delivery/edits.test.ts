@@ -217,13 +217,28 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
     );
   });
 
-  it("can be said in the same delivery as the first edit's line", async () => {
+  it("merges with the first edit's line when both land in one delivery", async () => {
     await delivery.register(C1);
     edit(["src/a.ts"]);
     finishA();
     const said = await text();
-    expect(said).toMatch(SAW);
-    expect(said).toMatch(SETTLED);
+    expect(said).toContain(
+      "Squeal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.",
+    );
+    expect(said).not.toMatch(SAW);
+    expect(said).not.toMatch(SETTLED);
+    otherNews("b2");
+    expect(await text()).not.toMatch(/Squeal saw your edit|re-keyed/);
+  });
+
+  it("names the merged line's files with no result", async () => {
+    await delivery.register(C1);
+    edit(["src/a.ts"]);
+    key(FILE, `k${revision + 1}`);
+    sink.markUnknown(WT, revision, [FILE], "runner crashed");
+    expect(await text()).toContain(
+      "Squeal saw your edit; of the 1 test file it re-keyed, 0 current and 1 with no result (unknown); passing results stay silent.",
+    );
   });
 });
 
