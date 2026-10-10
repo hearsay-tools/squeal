@@ -20,6 +20,7 @@ export {
 export {
   readWhy,
   WHY_CANDIDATE_LIMIT,
+  WHY_CHANGED_LIMIT,
   WHY_RESULT_LIMIT,
   type WhyOptions,
 } from "./why.js";

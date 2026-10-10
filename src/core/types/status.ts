@@ -426,6 +426,31 @@ export interface WhyReport {
   readonly heldFailure?: ResultRecord;
   /** The check's flaky note: its stored outcome flipped under one key (task 001-170). Absent when none. */
   readonly flaky?: FlakyNote;
+  /**
+   * The paths changed after the revision the known state was observed at,
+   * when that revision is older than the current one (task 001-225, 005 D6).
+   * Absent for a known state at the current revision, or with none.
+   */
+  readonly changedSince?: WhyChangedSince;
+}
+
+/** What changed in this worktree since an older result's revision. Task 001-225. */
+export interface WhyChangedSince {
+  /** The revision the known state was observed at. */
+  readonly revision: RevisionNumber;
+  /** Each changed path in the order of its first change, at most `WHY_CHANGED_LIMIT`. */
+  readonly paths: readonly WhyChangedPath[];
+  /** Paths changed in all; more than `paths.length` when capped. */
+  readonly total: number;
+}
+
+/** One path changed since an older result's revision. */
+export interface WhyChangedPath {
+  readonly path: RelativePath;
+  /** The revisions that changed it, oldest first, at most `WHY_CHANGED_LIMIT`. */
+  readonly revisions: readonly RevisionNumber[];
+  /** Revisions that changed it in all; more than `revisions.length` when capped. */
+  readonly revisionCount: number;
 }
 
 /**

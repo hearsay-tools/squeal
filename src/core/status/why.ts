@@ -19,6 +19,8 @@ import {
   type ResultRecord,
   type RevisionNumber,
   type Store,
+  type WhyChangedPath,
+  type WhyChangedSince,
   type WhyNoMatch,
   type WhyReport,
   type WhyResult,
@@ -32,6 +34,9 @@ export const WHY_RESULT_LIMIT = 20;
 
 /** Most candidates listed when a name matches several checks. */
 export const WHY_CANDIDATE_LIMIT = 20;
+
+/** Most paths, and most revisions of one path, the changed-since line lists (task 001-225). */
+export const WHY_CHANGED_LIMIT = 20;
 
 export interface WhyOptions extends StatusStoreOptions {
   /** Also read the check's test file's console lines from its run log (`--include-logs`). */
@@ -137,13 +142,15 @@ function report(
   const shown = shownResult(worktreeId, knownState, key, all, heldFailure, since);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
+  const revision = store.revisions.latest(worktreeId)?.number ?? null;
+  const changed = changedSince(store, worktreeId, knownState?.observedAt ?? null, revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     found: true,
     worktreeId,
     worktreeRoot: worktreeRoots[worktreeId] ?? root,
-    revision: store.revisions.latest(worktreeId)?.number ?? null,
+    revision,
     check,
     worktreeRoots,
     knownState,
@@ -152,7 +159,39 @@ function report(
     runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
+    ...(changed === undefined ? {} : { changedSince: changed }),
   };
+}
+
+/**
+ * Task 001-225 (005 D6): each path the revision records name after
+ * `observedAt`, with the revisions that changed it, when `observedAt` is
+ * older than `current`. Paths in the order of their first change.
+ */
+function changedSince(
+  store: Store,
+  worktreeId: WorktreeId,
+  observedAt: RevisionNumber | null,
+  current: RevisionNumber | null,
+): WhyChangedSince | undefined {
+  if (observedAt === null || current === null || observedAt >= current) return undefined;
+  const byPath = new Map<string, RevisionNumber[]>();
+  for (const revision of store.revisions.range(worktreeId, observedAt, current)) {
+    for (const { path } of revision.changes) {
+      const numbers = byPath.get(path) ?? [];
+      if (numbers.at(-1) !== revision.number) numbers.push(revision.number);
+      byPath.set(path, numbers);
+    }
+  }
+  if (byPath.size === 0) return undefined;
+  const paths: WhyChangedPath[] = [...byPath]
+    .slice(0, WHY_CHANGED_LIMIT)
+    .map(([path, numbers]) => ({
+      path,
+      revisions: numbers.slice(0, WHY_CHANGED_LIMIT),
+      revisionCount: numbers.length,
+    }));
+  return { revision: observedAt, paths, total: byPath.size };
 }
 
 /**

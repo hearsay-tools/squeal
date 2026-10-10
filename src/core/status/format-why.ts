@@ -6,6 +6,7 @@ import type {
   KnownOutcome,
   KnownState,
   Transition,
+  WhyChangedSince,
   WhyReport,
   WhyResult,
   WhyResultEntry,
@@ -42,7 +43,30 @@ export function formatWhy(why: WhyResult): string {
 }
 
 function knownState(why: WhyReport, s: KnownState | null): string[] {
-  return [...stateLines(why, s), ...heldLine(why), ...flakyLine(why)];
+  return [
+    ...stateLines(why, s),
+    ...changedLine(why.changedSince),
+    ...heldLine(why),
+    ...flakyLine(why),
+  ];
+}
+
+/**
+ * Task 001-225 (005 D6): what changed since the known state's revision, when
+ * that is older than the current one, so a reader need not guess at the gap.
+ */
+function changedLine(since: WhyChangedSince | undefined): string[] {
+  if (since === undefined) return [];
+  const paths = since.paths.map(({ path, revisions, revisionCount }) => {
+    const numbers = `${revisionCount === 1 ? "revision" : "revisions"} ${revisions.join(", ")}`;
+    const capped = revisionCount > revisions.length;
+    return `${path} (${numbers}${capped ? ` (first ${revisions.length} of ${revisionCount} revisions)` : ""})`;
+  });
+  const capped =
+    since.total > since.paths.length
+      ? ` (first ${since.paths.length} of ${since.total} paths)`
+      : "";
+  return [`  Changed since revision ${since.revision}${capped}: ${paths.join(", ")}`];
 }
 
 /** Task 001-170: another worktree's fail this worktree has not confirmed yet. */
