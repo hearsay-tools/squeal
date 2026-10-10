@@ -56,15 +56,15 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
     const b = side(other, { count: 6 });
     await Promise.all([a.scheduler.start(), b.scheduler.start()]);
     await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
-    const before = (s: typeof a) => s.runner.runs.flat().length;
-    const [ranA, ranB] = [before(a), before(b)];
+    const fileRuns = (s: typeof a) => s.runner.runs.flat().length;
+    const [ranA, ranB] = [fileRuns(a), fileRuns(b)];
     await Promise.all([
       a.scheduler.requestFullSuite({ force: true }),
       b.scheduler.requestFullSuite({ force: true }),
     ]);
     await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
-    expect(before(a) - ranA).toBe(6);
-    expect(before(b) - ranB).toBe(6);
+    expect(fileRuns(a) - ranA).toBe(6);
+    expect(fileRuns(b) - ranB).toBe(6);
   });
 
   it.each([
