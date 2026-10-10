@@ -1,0 +1,200 @@
+{
+ "id": "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1",
+ "task": "t2-weekend",
+ "variant": "p0",
+ "harness": "claude",
+ "model": "claude-haiku-5-5",
+ "effort": "medium",
+ "rep": 1,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 13.5,
+ "wallS": 73.8,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 8.08,
+  "max": 8.08,
+  "mean": 6.31,
+  "end": 6.87
+ },
+ "harnessVersion": "2.1.296 (Claude Code)",
+ "cost": 0.012973155,
+ "usage": {
+  "input_tokens": 30,
+  "cache_creation_input_tokens": 24245,
+  "cache_read_input_tokens": 580053,
+  "output_tokens": 8278,
+  "output_tokens_details": {
+   "thinking_tokens": 3367
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 0,
+   "ephemeral_5m_input_tokens": 24245
+  },
+  "inference_geo": "global",
+  "iterations": [],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "turns": 21,
+ "effortReported": "medium",
+ "edits": 5,
+ "forbiddenEdit": false,
+ "vitestRuns": 2,
+ "vitestByScope": {
+  "full": 2,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 25668,
+ "vitestAfterLastEdit": 2,
+ "testAttemptsRefused": 1,
+ "nodeTestRuns": 1,
+ "nodeTestWanted": true,
+ "squealPulls": 3,
+ "squealWaits": 3,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 0,
+ "waitsAfterLastEdit": 2,
+ "sleeps": 0,
+ "skillLoads": 0,
+ "deliveries": {
+  "registration": 1,
+  "fail": 2,
+  "deny": 0,
+  "resolved": 0,
+  "other": 0
+ },
+ "reactionToFirstFail": {
+  "ms": 1810,
+  "kind": "edit",
+  "what": "$ROOT/cells/t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1/work/src/clock.ts"
+ },
+ "tempFileHeaders": 0,
+ "claim": "pass",
+ "claimLine": "TESTS: pass, evidence: full `npm test` run passed 24/24 on the rerun (first run failed only on the cold calendar-cache budget), and `npm run test:scripts` passed 2/2.",
+ "truth": {
+  "vitestFailed": 0,
+  "failed": [],
+  "nodeTestFailed": false,
+  "pass": true
+ },
+ "squealEnd": {
+  "knownFailures": 0,
+  "pending": 2,
+  "slowCurrent": false
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [
+   {
+    "t": 30233,
+    "runner": "node:test",
+    "scope": "full",
+    "ms": 123,
+    "denied": true,
+    "cmd": "npm run test:scripts 2>&1 | tail -15; node scripts/changelog.mjs"
+   },
+   {
+    "t": 32459,
+    "runner": "node:test",
+    "scope": "full",
+    "ms": 463,
+    "denied": false,
+    "cmd": "npm run test:scripts"
+   },
+   {
+    "t": 37688,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 12813,
+    "denied": false,
+    "cmd": "npm test 2>&1 | tail -40"
+   },
+   {
+    "t": 52507,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 12855,
+    "denied": false,
+    "cmd": "npm test 2>&1 | tail -8"
+   }
+  ],
+  "pulls": [
+   {
+    "t": 16759,
+    "sub": "status --wait",
+    "ms": 677,
+    "denied": false
+   },
+   {
+    "t": 30505,
+    "sub": "status --wait",
+    "ms": 689,
+    "denied": false
+   },
+   {
+    "t": 34891,
+    "sub": "status --wait",
+    "ms": 688,
+    "denied": false
+   }
+  ],
+  "sleeps": [],
+  "edits": [
+   {
+    "t": 14841,
+    "path": "test/clock.test.ts"
+   },
+   {
+    "t": 19318,
+    "path": "src/clock.ts"
+   },
+   {
+    "t": 19942,
+    "path": "changes.json"
+   },
+   {
+    "t": 27053,
+    "path": "scripts/changelog.mjs"
+   },
+   {
+    "t": 28287,
+    "path": "scripts/changelog.test.mjs"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 413,
+    "hook": "SessionStart:startup",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 17508,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   },
+   {
+    "t": 20568,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 2",
+    "temp": false
+   }
+  ]
+ }
+}

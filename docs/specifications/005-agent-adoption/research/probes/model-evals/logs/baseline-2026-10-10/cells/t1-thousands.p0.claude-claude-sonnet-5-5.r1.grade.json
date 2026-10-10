@@ -1,0 +1,196 @@
+{
+ "id": "t1-thousands.p0.claude-claude-sonnet-5-5.r1",
+ "task": "t1-thousands",
+ "variant": "p0",
+ "harness": "claude",
+ "model": "claude-sonnet-5-5",
+ "rep": 1,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 13.6,
+ "wallS": 58.6,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 19.56,
+  "max": 21.57,
+  "mean": 19.81,
+  "end": 21.57
+ },
+ "harnessVersion": "2.1.296 (Claude Code)",
+ "effort": "default",
+ "cost": 0.1543601,
+ "usage": {
+  "input_tokens": 18,
+  "cache_creation_input_tokens": 37665,
+  "cache_read_input_tokens": 263116,
+  "output_tokens": 3385,
+  "output_tokens_details": {
+   "thinking_tokens": 83
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 0,
+   "ephemeral_5m_input_tokens": 37665
+  },
+  "inference_geo": "global",
+  "iterations": [],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "turns": 20,
+ "effortReported": "medium",
+ "edits": 11,
+ "forbiddenEdit": false,
+ "vitestRuns": 0,
+ "vitestByScope": {
+  "full": 0,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 0,
+ "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 0,
+ "nodeTestRuns": 0,
+ "nodeTestWanted": false,
+ "squealPulls": 3,
+ "squealWaits": 1,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 1,
+ "waitsAfterLastEdit": 1,
+ "sleeps": 1,
+ "skillLoads": 0,
+ "deliveries": {
+  "registration": 1,
+  "fail": 1,
+  "deny": 1,
+  "resolved": 0,
+  "other": 0
+ },
+ "reactionToFirstFail": {
+  "ms": 699,
+  "kind": "edit",
+  "what": "$ROOT/cells/t1-thousands.p0.claude-claude-sonnet-5-5.r1/work/src/csv.ts"
+ },
+ "tempFileHeaders": 0,
+ "claim": "pass",
+ "claimLine": "TESTS: pass, evidence: Squeal reported 30 of 30 checks passing at revision 10, 0 known failures, and the slow-tier ledger test current. I didn't run typecheck or a full-suite checkpoint.",
+ "truth": {
+  "vitestFailed": 0,
+  "failed": [],
+  "nodeTestFailed": false,
+  "pass": true
+ },
+ "squealEnd": {
+  "knownFailures": 0,
+  "pending": 0,
+  "slowCurrent": true
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [],
+  "pulls": [
+   {
+    "t": 28098,
+    "sub": "run --slow",
+    "ms": 1694,
+    "denied": false
+   },
+   {
+    "t": 31202,
+    "sub": "status --wait",
+    "ms": 818,
+    "denied": false
+   },
+   {
+    "t": 33723,
+    "sub": "status",
+    "ms": 20259,
+    "denied": false
+   }
+  ],
+  "sleeps": [
+   {
+    "t": 33723,
+    "cmd": "sleep 20; squeal status | head -8"
+   }
+  ],
+  "edits": [
+   {
+    "t": 18097,
+    "path": "src/money.ts"
+   },
+   {
+    "t": 18753,
+    "path": "src/money.ts"
+   },
+   {
+    "t": 19554,
+    "path": "src/csv.ts"
+   },
+   {
+    "t": 20253,
+    "path": "test/money.test.ts"
+   },
+   {
+    "t": 20956,
+    "path": "test/money.test.ts"
+   },
+   {
+    "t": 21653,
+    "path": "test/report.test.ts"
+   },
+   {
+    "t": 22353,
+    "path": "test/report.test.ts"
+   },
+   {
+    "t": 23053,
+    "path": "test/report.test.ts"
+   },
+   {
+    "t": 23754,
+    "path": "test/report.test.ts"
+   },
+   {
+    "t": 24454,
+    "path": "test/csv.test.ts"
+   },
+   {
+    "t": 25142,
+    "path": "test/slow/ledger.test.ts"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 1014,
+    "hook": "SessionStart:startup",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 18855,
+    "hook": "PreToolUse:Edit",
+    "kind": "deny",
+    "head": "SQUEAL · 4 checks changed at revision 1",
+    "temp": false
+   },
+   {
+    "t": 25782,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 4 checks changed at revision 9",
+    "temp": false
+   }
+  ]
+ }
+}

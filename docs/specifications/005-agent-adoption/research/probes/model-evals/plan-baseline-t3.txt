@@ -1,0 +1,7 @@
+# Baseline 005-07, T3 (cross-module refactor), joined only after a check cell showed its expected events.
+# Budget: 7 default-effort cells + 36 + these 4 = 47 of 48 subject sessions, so one repetition per model.
+# First line is the check cell; the other three run only if it shows T3's events (edits across modules, Squeal deliveries, a wait before done).
+t3-tax p0 claude claude-sonnet-5-5 1
+t3-tax p0 claude claude-haiku-5-5 1
+t3-tax p0 codex gpt-6-luna 1
+t3-tax p0 codex gpt-6.1-sol 1

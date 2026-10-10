@@ -1,0 +1,245 @@
+{
+ "id": "t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2",
+ "task": "t2-weekend",
+ "variant": "p0",
+ "harness": "claude",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "rep": 2,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 13.3,
+ "wallS": 61.4,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 3.26,
+  "max": 16.6,
+  "mean": 10.64,
+  "end": 12.37
+ },
+ "harnessVersion": "2.1.296 (Claude Code)",
+ "cost": 0.10262550000000001,
+ "usage": {
+  "input_tokens": 18,
+  "cache_creation_input_tokens": 14958,
+  "cache_read_input_tokens": 291245,
+  "output_tokens": 3607,
+  "output_tokens_details": {
+   "thinking_tokens": 237
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 0,
+   "ephemeral_5m_input_tokens": 14958
+  },
+  "inference_geo": "global",
+  "iterations": [],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "turns": 18,
+ "effortReported": "medium",
+ "edits": 7,
+ "forbiddenEdit": false,
+ "vitestRuns": 4,
+ "vitestByScope": {
+  "full": 2,
+  "files": 2,
+  "name": 0
+ },
+ "vitestMs": 29000,
+ "vitestAfterLastEdit": 3,
+ "testAttemptsRefused": 4,
+ "nodeTestRuns": 3,
+ "nodeTestWanted": true,
+ "squealPulls": 0,
+ "squealWaits": 0,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 0,
+ "waitsAfterLastEdit": 0,
+ "sleeps": 0,
+ "skillLoads": 0,
+ "deliveries": {
+  "registration": 1,
+  "fail": 2,
+  "deny": 0,
+  "resolved": 0,
+  "other": 0
+ },
+ "reactionToFirstFail": {
+  "ms": 2920,
+  "kind": "edit",
+  "what": "$ROOT/cells/t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2/work/src/clock.ts"
+ },
+ "tempFileHeaders": 0,
+ "claim": "pass",
+ "claimLine": "TESTS: pass, evidence: the full `npx vitest run` passed 24 of 24 after the cache warmed, and `node --test scripts/changelog.test.mjs` passed 2 of 2. The slow-tier file was still pending in Squeal when I stopped.",
+ "truth": {
+  "vitestFailed": 0,
+  "failed": [],
+  "nodeTestFailed": false,
+  "pass": true
+ },
+ "squealEnd": {
+  "knownFailures": 0,
+  "pending": 2,
+  "slowCurrent": false
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [
+   {
+    "t": 7982,
+    "runner": "vitest",
+    "scope": "files",
+    "ms": 1654,
+    "denied": false,
+    "cmd": "npx vitest run test/clock.test.ts 2>&1 | tail -20"
+   },
+   {
+    "t": 19069,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 13301,
+    "denied": false,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests|Test Files\"; node --test scripts/ 2>&1 | grep -E \"^# (pass|fail)\""
+   },
+   {
+    "t": 19069,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 13301,
+    "denied": false,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests|Test Files\"; node --test scripts/ 2>&1 | grep -E \"^# (pass|fail)\""
+   },
+   {
+    "t": 35037,
+    "runner": "vitest",
+    "scope": "files",
+    "ms": 1270,
+    "denied": false,
+    "cmd": "node --test scripts/ 2>&1 | tail -12; cat test/support/calendar-cache.ts | head -20; git stash -q; npx vitest run test/clock.test.ts 2>&1 | grep -E \"FAIL|Tests "
+   },
+   {
+    "t": 35037,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 1270,
+    "denied": false,
+    "cmd": "node --test scripts/ 2>&1 | tail -12; cat test/support/calendar-cache.ts | head -20; git stash -q; npx vitest run test/clock.test.ts 2>&1 | grep -E \"FAIL|Tests "
+   },
+   {
+    "t": 38678,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 80,
+    "denied": true,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests \"; node --test scripts/changelog.test.mjs 2>&1 | grep -E \"^ℹ (pass|fail)\"; node scripts/changelog.mjs"
+   },
+   {
+    "t": 38678,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 80,
+    "denied": true,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests \"; node --test scripts/changelog.test.mjs 2>&1 | grep -E \"^ℹ (pass|fail)\"; node scripts/changelog.mjs"
+   },
+   {
+    "t": 40709,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 81,
+    "denied": true,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests \"; node --test scripts/changelog.test.mjs 2>&1 | tail -9; node scripts/changelog.mjs"
+   },
+   {
+    "t": 40709,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 81,
+    "denied": true,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests \"; node --test scripts/changelog.test.mjs 2>&1 | tail -9; node scripts/changelog.mjs"
+   },
+   {
+    "t": 42942,
+    "runner": "vitest",
+    "scope": "full",
+    "ms": 12775,
+    "denied": false,
+    "cmd": "npx vitest run 2>&1 | grep -E \"FAIL|Tests \""
+   },
+   {
+    "t": 43214,
+    "runner": "node:test",
+    "scope": "files",
+    "ms": 12714,
+    "denied": false,
+    "cmd": "node --test scripts/changelog.test.mjs 2>&1 | tail -9"
+   }
+  ],
+  "pulls": [],
+  "sleeps": [],
+  "edits": [
+   {
+    "t": 7796,
+    "path": "test/clock.test.ts"
+   },
+   {
+    "t": 12656,
+    "path": "src/clock.ts"
+   },
+   {
+    "t": 13853,
+    "path": "changes.json"
+   },
+   {
+    "t": 15400,
+    "path": "scripts/changelog.mjs"
+   },
+   {
+    "t": 16600,
+    "path": "scripts/changelog.mjs"
+   },
+   {
+    "t": 17470,
+    "path": "scripts/changelog.test.mjs"
+   },
+   {
+    "t": 18672,
+    "path": "scripts/changelog.test.mjs"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 390,
+    "hook": "SessionStart:startup",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 9736,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   },
+   {
+    "t": 32451,
+    "hook": "PostToolBatch",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 7",
+    "temp": false
+   }
+  ]
+ }
+}

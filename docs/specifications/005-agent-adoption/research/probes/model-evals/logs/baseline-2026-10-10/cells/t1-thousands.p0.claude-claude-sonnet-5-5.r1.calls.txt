@@ -1,0 +1,25 @@
+1014	SQUEAL	SessionStart:startup	SQUEAL · registered at revision 0 ⏎ Revision 0: 30 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. ⏎ Slow tier: 1 test file; 1 current against src/** as of revision 0. Not covered by Stop's wait. ⏎ Known failures: 0 ⏎ Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before say
+3926	Grep	{"pattern":"formatMoney|toFixed|parseMoney|\\d,\\d","path":"<work>","glob":"!node_modules","output_mode":"content"}
+5841	Read	<work>/src/money.ts
+6004	Read	<work>/src/csv.ts
+13293	Bash	ls src test test/*; grep -rn "csv\|Csv\|\\$[0-9]" test src --include=*.ts | grep -v "^src/csv.ts" | head -30
+15258	Grep	{"pattern":"toCsv|\\$\\d|[€£]\\d","path":"<work>","glob":"!node_modules/**","output_mode":"content"}
+16718	say	Now make the edits: format, CSV quoting, and the tests.
+18097	Edit	<work>/src/money.ts
+18753	Edit	<work>/src/money.ts
+18855	SQUEAL	PreToolUse:Edit	{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"SQUEAL · 4 checks changed at revision 1\nRevision 1 (changed src/money.ts): 28 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one).\nSlow tier: 1 test file; 1 pending. Not covered by Stop's wait; `squeal run --slow` runs them now.\n\nFAIL  test/csv.test.ts > every row has the header's four fields\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected [ 'INV-2038', 
+19554	Edit	<work>/src/csv.ts
+20253	Edit	<work>/test/money.test.ts
+20956	Edit	<work>/test/money.test.ts
+21653	Edit	<work>/test/report.test.ts
+22353	Edit	<work>/test/report.test.ts
+23053	Edit	<work>/test/report.test.ts
+23754	Edit	<work>/test/report.test.ts
+24454	Edit	<work>/test/csv.test.ts
+25142	Edit	<work>/test/slow/ledger.test.ts
+25782	SQUEAL	PostToolBatch	SQUEAL · 4 checks changed at revision 9 ⏎ Revision 9 (changed src/csv.ts, test/money.test.ts, test/report.test.ts and 1 more): 28 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 9; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Not covered by Stop's wait; `squeal run --slow` runs them now. ⏎ PASS  test/csv.test.ts > every row has the header's four fields ⏎ FAIL -> PASS ⏎ at test/csv.test.ts:6:1 ⏎ PASS  test/csv.test.ts > exports the formatted total ⏎ FAIL -> PASS 
+28098	Bash	squeal run --slow >/dev/null 2>&1; squeal status --wait 60000
+31202	Bash	squeal status --wait 60000 | head -8
+33723	Bash	sleep 20; squeal status | head -8
+57462	say	`formatMoney` now groups thousands with commas, so 123456789 cents in USD reads "$1,234,567.89". EUR and GBP follow the same path, and negatives still read like "-$1,200.00". ⏎ **CSV export:** `toCsv` wrote the formatted total as a bare field. With commas in the amount, the row would have split into five columns instead of four. I wrapped the amount in `field()` so it gets quoted like the customer
+57585	result	cost=0.1543601 turns=20	`formatMoney` now groups thousands with commas, so 123456789 cents in USD reads "$1,234,567.89". EUR and GBP follow the same path, and negatives still read like "-$1,200.00". ⏎ **CSV export:** `toCsv` wrote the formatted total as a bare field. With commas in the amount, the row would have split into five columns instead of four. I wrapped the amount in `field()` so it gets quoted like the customer name already is. The cell reads `"$1,650.00"`, and a CSV parser still returns `$1,650.00`. ⏎ **Tests:** I updated the expected strings in the money, report, csv and slow ledger tests to the comma form. I didn't touch `test/contract/`. ⏎ The one-line change is in `src/money.ts`, and the quoting fix is in `src/csv.ts`. ⏎ TESTS: pass, evidence: Squeal reported 30 of 30 checks passing at revision 10, 0 known failures, and the slow-tier ledger test current. I didn't run typecheck or a full-suite checkpoint.

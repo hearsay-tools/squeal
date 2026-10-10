@@ -1,0 +1,27 @@
+773	SQUEAL	SessionStart:startup	SQUEAL · registered at revision 0 ⏎ Revision 0: 30 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. ⏎ Slow tier: 1 test file; 1 current against src/** as of revision 0. Not covered by Stop's wait. ⏎ Known failures: 0 ⏎ Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before say
+3864	Grep	{"pattern":"formatMoney|toFixed|\\d,\\d{3}|\\$\\d","output_mode":"content","glob":"**/*.ts","head_limit":80}
+5982	Read	<work>/src/money.ts
+6431	Read	<work>/src/csv.ts
+6892	Bash	cd <work>; ls test test/contract; grep -rn "\\$\|money\|amount" test/contract | head -20
+12505	Bash	cd <work> ⏎ sed -i 's|`${sign}${SYMBOL\[currency\]}${whole}.${frac}`|`${sign}${SYMBOL[currency]}${grouped}.${frac}`|; s|^  const frac = .
+13962	say	I'll use the Edit tool instead.
+15061	Edit	<work>/src/money.ts
+15759	Edit	<work>/src/money.ts
+15870	SQUEAL	PreToolUse:Edit	{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"SQUEAL · 4 checks changed at revision 1\nRevision 1 (changed src/money.ts): 25 current, 5 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one).\nSlow tier: 1 test file; 1 pending. Not covered by Stop's wait; `squeal run --slow` runs them now.\n\nFAIL  test/csv.test.ts > every row has the header's four fields\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected [ 'INV-2038', 
+16624	Edit	<work>/src/csv.ts
+17359	Edit	<work>/test/money.test.ts
+18091	Edit	<work>/test/money.test.ts
+18592	Read	<work>/test/report.test.ts
+19067	Read	<work>/test/csv.test.ts
+19481	Read	<work>/test/slow/ledger.test.ts
+19670	SQUEAL	PostToolBatch	SQUEAL · 3 checks changed at revision 4 ⏎ Revision 4 (changed src/csv.ts, test/money.test.ts): 28 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 4; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Not covered by Stop's wait; `squeal run --slow` runs them now. ⏎ FAIL  test/csv.test.ts > exports the formatted total ⏎ FAIL -> FAIL, failure changed, seen by Squeal's run at revision 2 ⏎ expected [ 'INV-2038', 'Acme Ltd', …(2) ] to deeply equal [ 'INV-2038', 'Acme Ltd', 
+21854	Edit	<work>/src/money.ts
+22623	Edit	<work>/test/csv.test.ts
+24297	Edit	<work>/test/report.test.ts
+24997	Edit	<work>/test/slow/ledger.test.ts
+25167	SQUEAL	PostToolBatch	SQUEAL · 2 checks changed at revision 7 ⏎ Revision 7 (changed src/money.ts, test/csv.test.ts, test/report.test.ts): 28 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 0 (the counts are for revision 7; `squeal run --all` requests one). ⏎ Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Not covered by Stop's wait; `squeal run --slow` runs them now. ⏎ PASS  test/csv.test.ts > exports the formatted total ⏎ FAIL -> PASS ⏎ at test/csv.test.ts:16:1 ⏎ PASS  test/report.test.ts > summarises one month's invoices ⏎ FAIL -> PASS ⏎ at test/repo
+26432	say	The slow test is pending; I'll run it now.
+26998	Bash	squeal run --slow && squeal status --wait 60000
+30406	Bash	sleep 20; squeal status --wait 60000
+54769	say	`formatMoney` now groups thousands with commas, so 123456789 cents in USD reads "$1,234,567.89". EUR and GBP are grouped the same way. The change is in `src/money.ts`, and I updated its doc comment. ⏎ The CSV export (`src/csv.ts`) was the consumer that would have broken. A comma in an unquoted amount splits it into two fields, which gave rows five fields instead of four. I wrapped the amount in th
+54858	result	cost=0.10938070000000001 turns=20	`formatMoney` now groups thousands with commas, so 123456789 cents in USD reads "$1,234,567.89". EUR and GBP are grouped the same way. The change is in `src/money.ts`, and I updated its doc comment. ⏎ The CSV export (`src/csv.ts`) was the consumer that would have broken. A comma in an unquoted amount splits it into two fields, which gave rows five fields instead of four. I wrapped the amount in the existing `field()` helper, so amounts of $1,000 or more come out quoted, for example `"$1,650.00"`. Anyone reading that CSV with a proper parser is unaffected. A naive split on commas would still break, as it already did for customer names like "Brindle, Hart & Co". ⏎ I updated the expected strings in the money, report, CSV and slow ledger tests to the comma-grouped form. I didn't touch `test/contract/`. ⏎ TESTS: pass, evidence: Squeal status at revision 8 shows 30 passed, 0 failing, and the slow ledger test is current. I did not run `squeal run --all`, so there is no full-suite checkpoint.

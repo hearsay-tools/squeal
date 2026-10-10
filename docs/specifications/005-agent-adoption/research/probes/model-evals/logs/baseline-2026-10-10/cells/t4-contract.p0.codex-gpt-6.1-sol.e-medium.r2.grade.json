@@ -1,0 +1,169 @@
+{
+ "id": "t4-contract.p0.codex-gpt-6.1-sol.e-medium.r2",
+ "task": "t4-contract",
+ "variant": "p0",
+ "harness": "codex",
+ "model": "gpt-6.1-sol",
+ "effort": "medium",
+ "rep": 2,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 13.7,
+ "wallS": 49.4,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 3.53,
+  "max": 3.8,
+  "mean": 3.39,
+  "end": 3.64
+ },
+ "harnessVersion": "codex-cli 0.160.1",
+ "cost": null,
+ "usage": {
+  "input_tokens": 128391,
+  "cached_input_tokens": 115840,
+  "cache_write_input_tokens": 0,
+  "output_tokens": 1362,
+  "reasoning_output_tokens": 68
+ },
+ "turns": null,
+ "effortReported": "medium",
+ "edits": 2,
+ "forbiddenEdit": false,
+ "vitestRuns": 0,
+ "vitestByScope": {
+  "full": 0,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 0,
+ "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 0,
+ "nodeTestRuns": 1,
+ "nodeTestWanted": false,
+ "squealPulls": 5,
+ "squealWaits": 3,
+ "squealWhy": 1,
+ "squealRunAll": 0,
+ "squealRunSlow": 1,
+ "waitsAfterLastEdit": 3,
+ "sleeps": 0,
+ "skillLoads": 1,
+ "deliveries": {
+  "registration": 1,
+  "fail": 1,
+  "deny": 0,
+  "resolved": 0,
+  "other": 1
+ },
+ "reactionToFirstFail": {
+  "ms": 103,
+  "kind": "cmd",
+  "what": "git diff --check && git diff"
+ },
+ "tempFileHeaders": 0,
+ "claim": "fail",
+ "claimLine": "TESTS: fail, evidence: Squeal reports 30 passed and 1 outdated contract failure; both script tests pass.",
+ "truth": {
+  "vitestFailed": 1,
+  "failed": [
+   "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields"
+  ],
+  "nodeTestFailed": false,
+  "pass": false
+ },
+ "squealEnd": {
+  "knownFailures": 1,
+  "pending": 0,
+  "slowCurrent": true
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [
+   {
+    "t": 39928,
+    "runner": "node:test",
+    "scope": "full",
+    "ms": 249,
+    "exit": 0,
+    "denied": false,
+    "cmd": "npm run test:scripts"
+   }
+  ],
+  "pulls": [
+   {
+    "t": 26278,
+    "sub": "status --wait",
+    "ms": 438,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 32875,
+    "sub": "run --slow",
+    "ms": 45,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 33204,
+    "sub": "status --wait",
+    "ms": 443,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 40429,
+    "sub": "why",
+    "ms": 1,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 45147,
+    "sub": "status --wait",
+    "ms": 448,
+    "exit": 0,
+    "denied": false
+   }
+  ],
+  "sleeps": [],
+  "edits": [
+   {
+    "t": 21246,
+    "path": "src/invoice.ts"
+   },
+   {
+    "t": 21246,
+    "path": "test/invoice.test.ts"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 173,
+    "hook": "developer",
+    "kind": "other",
+    "head": "",
+    "temp": false
+   },
+   {
+    "t": 253,
+    "hook": "developer",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 26783,
+    "hook": "developer",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   }
+  ]
+ }
+}

@@ -2,8 +2,10 @@
 // Throwaway probe for 005-06 (model-evals). Not product code.
 //
 // Runs one cell (task x variant x harness x model x repetition) end to end, isolated:
-//   node run-cell.mjs <task> <variant> <claude|codex> <model> [rep] [--cold] [--dry] [--max-load 24] [--timeout-s 900]
+//   node run-cell.mjs <task> <variant> <claude|codex> <model> [rep] [--cold] [--dry] [--max-load 24] [--timeout-s 900] [--effort medium]
 // --dry builds the cell and warms it, then stops the daemon without a session.
+// --effort pins the reasoning effort (005-07): `claude -p --effort <level>`, `codex exec -c model_reasoning_effort="<level>"`.
+// The 005-06 pilot ran before this option, at each model's unrecorded default.
 //
 // Everything lives under $SQ_EVALS_ROOT (default /tmp/sq-evals-2a41):
 //   pin-base/            `git archive` of this repository's plugins at the pinned commit (prepare.sh)
@@ -38,6 +40,8 @@ const dry = argv.includes("--dry") ? (argv.splice(argv.indexOf("--dry"), 1), tru
 const cold = argv.includes("--cold") ? (argv.splice(argv.indexOf("--cold"), 1), true) : false;
 const maxLoad = Number(flag("--max-load", "24"));
 const timeoutS = Number(flag("--timeout-s", "900"));
+const effort = flag("--effort", "medium");
+if (!/^(low|medium|high|xhigh|max)$/.test(effort)) throw new Error(`--effort ${effort}: not a level both harnesses take`);
 const [task, variantName, harness, model, rep = "1"] = argv;
 if (!task || !variantName || !["claude", "codex"].includes(harness) || !model) {
   console.error("usage: run-cell.mjs <task> <variant> <claude|codex> <model> [rep] [--cold] [--max-load 24] [--timeout-s 900]");
@@ -46,7 +50,7 @@ if (!task || !variantName || !["claude", "codex"].includes(harness) || !model) {
 if (/fable/i.test(model)) throw new Error("never Fable (brief)");
 
 const variant = JSON.parse(readFileSync(join(PROBE, "variants", `${variantName}.json`), "utf8"));
-const id = `${task}.${variantName}.${harness}-${model.replace(/[^\w.-]/g, "_")}.r${rep}${cold ? ".cold" : ""}`;
+const id = `${task}.${variantName}.${harness}-${model.replace(/[^\w.-]/g, "_")}.e-${effort}.r${rep}${cold ? ".cold" : ""}`;
 const CELL = join(ROOT, "cells", id);
 const OUT = join(CELL, "out");
 if (existsSync(join(OUT, "grade.json"))) {
@@ -210,14 +214,14 @@ writeFileSync(join(OUT, "prompt.txt"), prompt);
 let cmd, args;
 if (harness === "claude") {
   cmd = "claude";
-  args = ["-p", prompt, "--model", model, "--output-format", "stream-json", "--verbose", "--include-hook-events",
+  args = ["-p", prompt, "--model", model, "--effort", effort, "--output-format", "stream-json", "--verbose", "--include-hook-events",
     "--setting-sources", "project", "--strict-mcp-config", "--permission-mode", "acceptEdits",
     ...(variant.plugin === false ? [] : ["--plugin-dir", join(PIN, "plugins/claude-code")]),
     "--allowedTools", "Bash(git:*)", "Bash(grep:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(npx vitest:*)", "Bash(npm test:*)",
     "Bash(npm run:*)", "Bash(node --test:*)", "Bash(squeal:*)", "Bash(sleep:*)", "Read", "Edit", "Write", "Glob", "Grep"];
 } else {
   cmd = "codex";
-  args = ["exec", "--json", "-s", "danger-full-access", "-m", model, prompt];
+  args = ["exec", "--json", "-s", "danger-full-access", "-m", model, "-c", `model_reasoning_effort="${effort}"`, prompt];
 }
 
 const samples = [];
@@ -230,7 +234,7 @@ const T0 = Date.now();
 writeFileSync(join(OUT, "t0"), String(T0));
 sample();
 const timer = setInterval(sample, 5000);
-log(`session ${cmd} ${model} start, load ${load1().toFixed(1)}`);
+log(`session ${cmd} ${model} effort ${effort} start, load ${load1().toFixed(1)}`);
 const child = spawn(cmd, args, { cwd: WORK, env, stdio: ["ignore", "pipe", "pipe"] });
 let buf = "";
 child.stdout.on("data", (d) => {
@@ -287,7 +291,7 @@ if (ps.length) {
 }
 
 const meta = {
-  id, task, variant: variantName, harness, model, rep: Number(rep), cold, head, pin: relative(ROOT, PIN),
+  id, task, variant: variantName, harness, model, effort, rep: Number(rep), cold, head, pin: relative(ROOT, PIN),
   setupS: +setupS.toFixed(1), wallS: +((T1 - T0) / 1000).toFixed(1), exit,
   load: { start: samples[0], max: Math.max(...samples), mean: +(samples.reduce((a, b) => a + b, 0) / samples.length).toFixed(2), end: samples.at(-1) },
   harnessVersion: spawnSync(cmd, ["--version"], { encoding: "utf8", env }).stdout.trim(),

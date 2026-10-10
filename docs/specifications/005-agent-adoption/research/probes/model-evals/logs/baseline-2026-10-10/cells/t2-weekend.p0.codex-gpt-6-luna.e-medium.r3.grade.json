@@ -1,0 +1,172 @@
+{
+ "id": "t2-weekend.p0.codex-gpt-6-luna.e-medium.r3",
+ "task": "t2-weekend",
+ "variant": "p0",
+ "harness": "codex",
+ "model": "gpt-6-luna",
+ "effort": "medium",
+ "rep": 3,
+ "cold": false,
+ "head": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",
+ "pin": "pins/p0",
+ "setupS": 17.5,
+ "wallS": 44.6,
+ "exit": {
+  "code": 0,
+  "signal": null
+ },
+ "load": {
+  "start": 16.6,
+  "max": 30.18,
+  "mean": 25.94,
+  "end": 26.89
+ },
+ "harnessVersion": "codex-cli 0.160.1",
+ "cost": null,
+ "usage": {
+  "input_tokens": 171951,
+  "cached_input_tokens": 154624,
+  "cache_write_input_tokens": 0,
+  "output_tokens": 2203,
+  "reasoning_output_tokens": 510
+ },
+ "turns": null,
+ "effortReported": "medium",
+ "edits": 5,
+ "forbiddenEdit": false,
+ "vitestRuns": 0,
+ "vitestByScope": {
+  "full": 0,
+  "files": 0,
+  "name": 0
+ },
+ "vitestMs": 0,
+ "vitestAfterLastEdit": 0,
+ "testAttemptsRefused": 0,
+ "nodeTestRuns": 1,
+ "nodeTestWanted": true,
+ "squealPulls": 3,
+ "squealWaits": 3,
+ "squealWhy": 0,
+ "squealRunAll": 0,
+ "squealRunSlow": 0,
+ "waitsAfterLastEdit": 2,
+ "sleeps": 0,
+ "skillLoads": 1,
+ "deliveries": {
+  "registration": 1,
+  "fail": 2,
+  "deny": 0,
+  "resolved": 0,
+  "other": 1
+ },
+ "reactionToFirstFail": {
+  "ms": 5398,
+  "kind": "edit",
+  "what": "$ROOT/cells/t2-weekend.p0.codex-gpt-6-luna.e-medium.r3/work/changes.json"
+ },
+ "tempFileHeaders": 0,
+ "claim": "pass",
+ "claimLine": "TESTS: pass, evidence: Sunday regression passed in Squeal and `npm run test:scripts` passed; 2 Squeal checks remain queued.",
+ "truth": {
+  "vitestFailed": 0,
+  "failed": [],
+  "nodeTestFailed": false,
+  "pass": true
+ },
+ "squealEnd": {
+  "knownFailures": 0,
+  "pending": 2,
+  "slowCurrent": false
+ },
+ "claimTrue": true,
+ "timeline": {
+  "runs": [
+   {
+    "t": 38155,
+    "runner": "node:test",
+    "scope": "full",
+    "ms": 353,
+    "exit": 0,
+    "denied": false,
+    "cmd": "npm run test:scripts"
+   }
+  ],
+  "pulls": [
+   {
+    "t": 21687,
+    "sub": "status --wait",
+    "ms": 544,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 31467,
+    "sub": "status --wait",
+    "ms": 549,
+    "exit": 0,
+    "denied": false
+   },
+   {
+    "t": 41540,
+    "sub": "status --wait",
+    "ms": 448,
+    "exit": 0,
+    "denied": false
+   }
+  ],
+  "sleeps": [],
+  "edits": [
+   {
+    "t": 17900,
+    "path": "test/clock.test.ts"
+   },
+   {
+    "t": 27825,
+    "path": "changes.json"
+   },
+   {
+    "t": 27825,
+    "path": "scripts/changelog.mjs"
+   },
+   {
+    "t": 27825,
+    "path": "scripts/changelog.test.mjs"
+   },
+   {
+    "t": 27825,
+    "path": "src/clock.ts"
+   }
+  ],
+  "deliveries": [
+   {
+    "t": 1029,
+    "hook": "developer",
+    "kind": "other",
+    "head": "",
+    "temp": false
+   },
+   {
+    "t": 1231,
+    "hook": "developer",
+    "kind": "registration",
+    "head": "SQUEAL · registered at revision 0",
+    "temp": false
+   },
+   {
+    "t": 22427,
+    "hook": "developer",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 1",
+    "temp": false
+   },
+   {
+    "t": 31459,
+    "hook": "developer",
+    "kind": "fail",
+    "head": "SQUEAL · 1 check changed at revision 2",
+    "temp": false
+   }
+  ]
+ }
+}
