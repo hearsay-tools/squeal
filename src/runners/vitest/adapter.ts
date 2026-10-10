@@ -42,12 +42,7 @@ import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
-
-/**
- * Bumped when the adapter changes what a result, closure or environment means,
- * so the environment hash re-keys every check (D3).
- */
-export const VITEST_ADAPTER_VERSION = "2";
+import { VITEST_ADAPTER_VERSION } from "./version.js";
 
 /**
  * Vitest adapter over one warm `vitest/node` instance per worktree.
