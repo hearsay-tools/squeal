@@ -95,17 +95,22 @@ describe.runIf(process.platform === "linux")(
       expect(readdirSync(tempDir).some((name) => name.startsWith("x-"))).toBe(true);
       expect(readdirSync(callerTmp)).toEqual([]);
 
+      // Between runner calls the daemon sits in the store's directory; a call
+      // still starting under load moves it to the root, so the working
+      // directory is waited on with the rest, not read after (001-208).
       const outside = await waitFor(
         () => {
           const paths = held(pid);
-          return paths.every((p) => !inside(p, repo.root) && !inside(p, callerTmp)) ? paths : null;
+          const moved =
+            safe(() => readlinkSync(`/proc/${pid}/cwd`), "") === storePaths(repo.commonDir).dir;
+          const clear = paths.every((p) => !inside(p, repo.root) && !inside(p, callerTmp));
+          return moved && clear ? paths : null;
         },
         30_000,
-        "nothing held inside the root or the caller's TMPDIR",
+        "the working directory in the store's directory and nothing held inside the root or the caller's TMPDIR",
       ).catch((error: Error) => {
         throw new Error(`${error.message}: ${JSON.stringify(held(pid))}`);
       });
-      expect(readlinkSync(`/proc/${pid}/cwd`)).toBe(storePaths(repo.commonDir).dir);
       expect(outside.length).toBeGreaterThan(1);
 
       // Review wave 7.6, N5: the harness's own removal, which also drops
