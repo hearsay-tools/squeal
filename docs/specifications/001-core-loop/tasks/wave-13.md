@@ -487,3 +487,7 @@ Done when: a deterministic finished-tier race beside research test 9 (A records 
 ## 001-211 re-review of shared runs
 
 Use /reviewer on gpt-6.1-sol, after 001-210 lands. Output `reviews/wave-13p.md`. Second round on `reviews/wave-13o.md`: are B1, B2, S1, N1 closed; does the in-transaction re-probe keep every gate (forced, recent, 004 D6, 001-170) and settle without a run row. Decided by the human: blockers go to the human.
+
+## 001-213 review of the per-revision discharges
+
+Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13q.md`. Range: `b7c0206a^..f8f99207` (001-202 and its 0.1.90 rebuild), read on today's main, since later rows (001-205, 001-210) changed the scheduler around it. Is `reviews/wave-13l.md` S1 closed: can a later discharge still erase an earlier wait's own news; do the 1 h and 10,000-entry bounds ever drop a discharge a live wait still needs; does anything since 0.1.90 break it. Decided by the human (2026-10-10): reviewed before the 0.1.94 hub release; blockers go to the human.
