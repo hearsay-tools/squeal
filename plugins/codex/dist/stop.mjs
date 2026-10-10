@@ -3864,7 +3864,17 @@ function settledLine({ since, files, unknown }) {
   if (unknown === 0) return `${which} ${files === 1 ? "is" : "are"} current.`;
   return `${which} finished: ${files - unknown} current, ${unknown} with no result (unknown).`;
 }
+function sawSettledLine({ files, unknown }) {
+  const head = "Squeal saw your edit; ";
+  const tail = "passing results stay silent.";
+  if (unknown === 0) {
+    const which = files === 1 ? "the 1 test file" : `all ${files} test files`;
+    return `${head}${which} it re-keyed ${files === 1 ? "is" : "are"} current, and ${tail}`;
+  }
+  return `${head}of the ${plural(files, "test file")} it re-keyed, ${files - unknown} current and ${unknown} with no result (unknown); ${tail}`;
+}
 function editLines({ sawEdit, editsSettled }) {
+  if (sawEdit !== void 0 && editsSettled !== void 0) return [sawSettledLine(editsSettled)];
   return [
     ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued)],
     ...editsSettled === void 0 ? [] : [settledLine(editsSettled)]
