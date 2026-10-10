@@ -1,45 +1,86 @@
 import type { EpochMs, RekeyedTestFile, RevisionNumber, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
 
-/** A file's last discharged attribution: the revisions its key move had, and when it had its result. */
+/**
+ * How long a discharge stays answerable: a wait's sync answer names
+ * discharges since the wait started, so one older than the longest wait
+ * is asked for by none (task 001-202).
+ */
+export const DISCHARGE_RETENTION_MS = 60 * 60_000;
+/** At most this many discharges are kept, the oldest dropped first, whatever the session's length. */
+export const DISCHARGE_CAP = 10_000;
+
+/** One key move of a file that had its result, or `unknown`, at `at`. */
 interface Discharge {
+  readonly id: string;
   readonly ref: TestFileRef;
-  readonly revisions: readonly RevisionNumber[];
+  readonly revision: RevisionNumber;
   readonly at: EpochMs;
+}
+
+export interface DischargeLimits {
+  readonly retentionMs: number;
+  readonly cap: number;
 }
 
 /**
  * Review wave 13k, S1 (task 001-196): the attribution a result, or
  * `unknown`, at a file's key discharged, so a wait whose sync answer comes
- * after it still names the file (`Scheduler.rekeyedSince`). Only the last
- * per file: it never comes back as `keyedAt`, which would hold a later
- * growth's wait for a file that has its result (003 wave-4.5 B1).
+ * after it still names the file (`Scheduler.rekeyedSince`). Kept per file
+ * and revision (review wave 13l, S1, task 001-202): a later move discharged
+ * before the answer, a cached result's included, does not replace the
+ * earlier one the wait's captured revision still covers. It never comes back
+ * as `keyedAt`, which would hold a later growth's wait for a file that has
+ * its result (003 wave-4.5 B1).
  */
 export class Discharges {
-  readonly #last = new Map<string, Discharge>();
+  /** By file and revision, oldest discharge first. */
+  readonly #kept = new Map<string, Discharge>();
+
+  constructor(
+    private readonly limits: DischargeLimits = {
+      retentionMs: DISCHARGE_RETENTION_MS,
+      cap: DISCHARGE_CAP,
+    },
+  ) {}
+
+  get size(): number {
+    return this.#kept.size;
+  }
 
   /** `file`'s attribution is discharged at `at`; nothing when it had none. */
   note(file: FileState, at: EpochMs): void {
     if (file.keyedAt === null || file.lastKeyedAt === null) return;
-    const revisions = [...new Set([file.keyedAt, file.lastKeyedAt])];
-    this.#last.set(file.id, { ref: file.ref, revisions, at });
+    for (const revision of new Set([file.keyedAt, file.lastKeyedAt])) {
+      const key = `${file.id}\0${revision}`;
+      // Re-inserted, so the map stays in discharge order.
+      this.#kept.delete(key);
+      this.#kept.set(key, { id: file.id, ref: file.ref, revision, at });
+    }
+    this.#prune(at);
   }
 
   forget(id: string): void {
-    this.#last.delete(id);
+    for (const [key, discharge] of this.#kept) {
+      if (discharge.id === id) this.#kept.delete(key);
+    }
   }
 
   /** Files discharged at or after `since`, at their revisions after `after` up to `upTo`. */
   since(since: EpochMs, after: RevisionNumber, upTo: RevisionNumber): RekeyedTestFile[] {
     const files: RekeyedTestFile[] = [];
-    for (const { ref, revisions, at } of this.#last.values()) {
-      if (at < since) continue;
-      for (const revision of revisions) {
-        if (revision > after && revision <= upTo) {
-          files.push({ testFile: ref, revision, resolved: true });
-        }
+    for (const { ref, revision, at } of this.#kept.values()) {
+      if (at >= since && revision > after && revision <= upTo) {
+        files.push({ testFile: ref, revision, resolved: true });
       }
     }
     return files;
+  }
+
+  #prune(now: EpochMs): void {
+    for (const [key, { at }] of this.#kept) {
+      if (this.#kept.size <= this.limits.cap && at >= now - this.limits.retentionMs) return;
+      this.#kept.delete(key);
+    }
   }
 }
