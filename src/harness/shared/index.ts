@@ -14,16 +14,16 @@ export {
   openContext,
   usesSqueal,
 } from "./context.js";
+export { type Coverage, coverageOf, VITEST_ONLY } from "./coverage.js";
 export { deliver, mayEdit } from "./deliver.js";
 export { denyOnRegression } from "./deny.js";
 export { ensure, ensureIfStale, SOCKET_TIMEOUT_MS, SPAWN_SETTLE_MS, settle } from "./ensure.js";
 export { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 export {
-  coversNodeTest,
-  coversSlowSuites,
   PRIMER,
+  PRIMER_CAP_CHARS,
   primer,
-  primerVariants,
+  trailingPrimer,
   withPrimer,
 } from "./primer.js";
 export { submitPrompt } from "./prompt.js";
