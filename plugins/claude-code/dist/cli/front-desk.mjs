@@ -181,8 +181,10 @@ function createHandlers(context) {
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
         const state = { revision: null, error: null, rekeyed: null };
-        remember(syncRequests, requestId, state);
-        context.requestSync(request.after ?? null, request.resolvedSince ?? null).then(
+        for (const dropped of remember(syncRequests, requestId, state)) {
+          context.forgetSync?.(dropped);
+        }
+        context.requestSync(request.after ?? null, request.resolvedSince ?? null, requestId).then(
           (answer2) => {
             state.revision = answer2.revision;
             state.rekeyed = answer2.rekeyed;
@@ -217,10 +219,13 @@ function createHandlers(context) {
 }
 function remember(requests, requestId, state) {
   requests.set(requestId, state);
+  const dropped = [];
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
     requests.delete(old);
+    dropped.push(old);
   }
+  return dropped;
 }
 
 // src/core/daemon/server.ts
@@ -341,11 +346,12 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestSync: (after, resolvedSince) => new Promise((resolve, reject) => {
-      const id = randomUUID2();
+    // By the socket's own id, which a forget names; the main thread still answers it.
+    requestSync: (after, resolvedSince, id) => new Promise((resolve, reject) => {
       waitingSync.set(id, { resolve, reject });
       post({ type: "sync", id, after, resolvedSince });
     }),
+    forgetSync: (id) => post({ type: "sync-forget", id }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version })
