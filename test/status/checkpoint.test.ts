@@ -24,7 +24,8 @@ function snapshotOf(result: StatusResult): StatusSnapshot {
 }
 
 function worktree(repo: FakeRepo, store: Store, alive: boolean): void {
-  if (store.revisions.latest(repo.mainId) === null) appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
+  if (store.revisions.latest(repo.mainId) === null)
+    appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
   store.worktrees.upsert({
     id: repo.mainId,
     root: repo.main,
