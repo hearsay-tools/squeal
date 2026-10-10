@@ -103,14 +103,14 @@ function refined(store: Store, worktreeId: WorktreeId): number {
 export interface EditNotes {
   readonly sawEdit?: { readonly queued: number };
   readonly editsSettled?: EditsSettled;
-  /** Records what was said: 001-224 once, and after a settled line, edits count from the revision it settled. */
+  /** Records what was said: 001-224 once, and after a settled line, edits count from its revision. */
   readonly tell: () => void;
 }
 
 /**
- * The notes on `consumer`'s edits since its edit state's revision, once the runner part
- * of the latest revision is applied (`refinedMetaKey`): until then the files
- * it adds have no key. `null` with nothing to say, before any edit, or for a
+ * The notes on `consumer`'s edits after its edit state's revision, once the
+ * runner part of the latest revision is applied (`refinedMetaKey`): until
+ * then the files it adds have no key. `null` with nothing to say, before any edit, or for a
  * consumer registered before these notes (no edit state). `delivering`
  * says the delivery has other news; without it, and with 001-224 said, only
  * the edit state is read.
@@ -141,7 +141,8 @@ export function editNotes(
   let owed = false;
   for (const [id, entry] of readRekeyed(store, consumer.worktreeId)) {
     const row = rows.get(id);
-    if (row === undefined || entry.last <= state.since) continue;
+    // An unkeyed file has no result to come.
+    if (row === undefined || row.key === null || entry.last <= state.since) continue;
     rekeyed.push(row);
     owed ||= entry.open !== null && row.pending !== null;
   }
