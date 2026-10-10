@@ -133,14 +133,16 @@ describe.runIf(process.platform === "linux")(
       const note = readNotes(repo).find((text) => text.includes("a test left running")) ?? "";
       // Task 001-212: each with its parent, its age and the signal that ended it.
       const entry = (pid: number | undefined, ended: string) =>
-        new RegExp(`${pid} \\S+ -e .+? \\(parent \\d+ [^,]+, \\d+\\.\\d s old, ${ended}\\)`);
+        new RegExp(
+          `${pid} \\S+ -e .+? \\(parent \\d+ [^,]+, \\d+\\.\\d s old, ${ended}, run [\\w-]+\\)`,
+        );
       expect(note).toMatch(entry(detached, "SIGTERM"));
       expect(note).toMatch(entry(plain, "SIGKILL after 1 s"));
-      // The run it names lists the test file that left them.
-      const runId =
-        /^stopped 2 processes a test left running after its tier \(run ([\w-]+)\): /.exec(
-          note,
-        )?.[1];
+      // The run it names for each lists the test file that left them (review wave-13r B1).
+      const runIds = [...note.matchAll(/, run ([\w-]+)\)/g)].map((match) => match[1]);
+      expect(runIds, note).toHaveLength(2);
+      expect(new Set(runIds).size, note).toBe(1);
+      const runId = runIds[0];
       expect(runId, note).toBeDefined();
       const run = withStore(repo, (store) => store.runs.get(runId ?? ""));
       expect(run?.testFiles.map((ref) => ref.path)).toContain("test/escape.test.ts");

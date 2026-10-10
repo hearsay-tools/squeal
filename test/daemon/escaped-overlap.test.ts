@@ -1,7 +1,9 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { getPriority } from "node:os";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { afterEachRun, EscapedChildren, type RunSweeper } from "../../src/core/daemon/escaped.js";
+import { statOf } from "../../src/core/daemon/terminate.js";
 import type {
   RunnerAdapter,
   RunOptions,
@@ -112,7 +114,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     expect(notes).toEqual([
       expect.stringMatching(
         new RegExp(
-          `^stopped 1 process a test left running after its tier \\(run short\\): ${escaped} `,
+          `^stopped 1 process a test left running after its tier: ${escaped} .*, run short\\)$`,
         ),
       ),
     ]);
@@ -220,3 +222,166 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     await slow;
   });
 });
+
+/**
+ * Leads a process group of its own and, per line on stdin, leaves an
+ * unmarked sleeper orphaned in it, printing its pid: a daemon's group orphan
+ * as `squeal daemon` spawned detached would hold it.
+ */
+const GROUP_LEADER = `const { spawn } = require("node:child_process");
+const leaves = "const c = require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 600000)'], { stdio: 'ignore' }); console.log(c.pid); c.unref()";
+process.stdin.on("data", () => {
+  const parent = spawn(process.execPath, ["-e", leaves], { stdio: ["ignore", "pipe", "ignore"] });
+  parent.stdout.on("data", (pid) => process.stdout.write(pid));
+});
+`;
+
+/** A group leader with no mark in its env, killed with its group when the test ends. */
+async function groupLeader(): Promise<{ pid: number; orphan: () => Promise<number> }> {
+  const env = { ...process.env };
+  delete env.SQUEAL_DAEMON_CHILD;
+  const leader = spawn(process.execPath, ["-e", GROUP_LEADER], {
+    env,
+    stdio: ["pipe", "pipe", "ignore"],
+    detached: true,
+  });
+  const pid = pidOf(leader);
+  onTestFinished(() => {
+    try {
+      process.kill(-pid, "SIGKILL");
+    } catch {
+      // Already gone.
+    }
+  });
+  const pids: number[] = [];
+  leader.stdout?.on("data", (data: Buffer) => {
+    pids.push(...String(data).trim().split(/\s+/).map(Number));
+  });
+  // The group's strangers are read at construction; nothing but the leader is in it yet.
+  await expect.poll(() => isAlive(pid)).toBe(true);
+  return {
+    pid,
+    async orphan() {
+      const before = pids.length;
+      leader.stdin?.write("\n");
+      await expect.poll(() => pids.length, { timeout: 10_000 }).toBeGreaterThan(before);
+      const orphan = pids[before] ?? -1;
+      // Its parent exited: it no longer descends from the leader.
+      await expect.poll(() => statOf(orphan)?.ppid !== pid, { timeout: 10_000 }).toBe(true);
+      return orphan;
+    },
+  };
+}
+
+describe.runIf(process.platform === "linux")(
+  "afterEachRun, whose run a stop's process was (review wave-13r B1)",
+  () => {
+    /** A long run held open and a short run that settles inside it, through `afterEachRun`. */
+    function overlapping(children: RunSweeper, short: (options: RunOptions) => Promise<void>) {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let running = false;
+      const notes: string[] = [];
+      const runner = afterEachRun(
+        fakeRunner(async (testFiles, runOptions) => {
+          if (testFiles.includes(LONG)) {
+            running = true;
+            await held;
+          } else {
+            await short(runOptions);
+          }
+          return completed(testFiles);
+        }),
+        children,
+        (text) => notes.push(text),
+      );
+      onTestFinished(() => release());
+      return { runner, notes, release, running: () => running };
+    }
+
+    it("names both overlapping runs, uncertain, for a short run's bare-marker child", async () => {
+      const children = new EscapedChildren();
+      let leftover: ChildProcess | null = null;
+      const { runner, notes, release, running } = overlapping(children, async () => {
+        const child = spawn(process.execPath, SLEEPER, {
+          env: { ...process.env, ...children.env },
+          stdio: "ignore",
+          detached: true,
+        });
+        child.unref();
+        started.push(child);
+        leftover = child;
+      });
+      const long = runner.run([LONG], options("long-run"));
+      await expect.poll(running).toBe(true);
+      await runner.run([SHORT], options("short-run"));
+      const escaped = pidOf(leftover);
+      // Left running while the other lane's run is in flight.
+      expect(isAlive(escaped)).toBe(true);
+      expect(notes).toEqual([]);
+      release();
+      await long;
+      expect(isAlive(escaped)).toBe(false);
+      expect(notes).toEqual([
+        expect.stringMatching(
+          new RegExp(
+            `^stopped 1 process a test left running after its tier: ${escaped} .*, one of runs long-run, short-run\\)$`,
+          ),
+        ),
+      ]);
+    });
+
+    it("names both overlapping runs, uncertain, for an unmarked orphan of the group", async () => {
+      const leader = await groupLeader();
+      const children = new EscapedChildren(randomUUID(), leader.pid);
+      let orphan = -1;
+      const { runner, notes, release, running } = overlapping(children, async () => {
+        orphan = await leader.orphan();
+      });
+      const long = runner.run([LONG], options("long-run"));
+      await expect.poll(running).toBe(true);
+      await runner.run([SHORT], options("short-run"));
+      expect(isAlive(orphan)).toBe(true);
+      release();
+      await long;
+      expect(isAlive(orphan)).toBe(false);
+      expect(notes).toEqual([
+        expect.stringMatching(
+          new RegExp(
+            `^stopped 1 process a test left running after its tier: ${orphan} .*, one of runs long-run, short-run\\)$`,
+          ),
+        ),
+      ]);
+    });
+
+    it("names its own run alone for a lane carrier, and for a shared leftover of a run that overlapped none", async () => {
+      const children = new EscapedChildren();
+      const pids: number[] = [];
+      const notes: string[] = [];
+      const runner = afterEachRun(
+        fakeRunner(async (testFiles, runOptions) => {
+          pids.push(pidOf(carrier(runOptions, true)));
+          const bare = spawn(process.execPath, SLEEPER, {
+            env: { ...process.env, ...children.env },
+            stdio: "ignore",
+            detached: true,
+          });
+          bare.unref();
+          started.push(bare);
+          pids.push(pidOf(bare));
+          return completed(testFiles);
+        }),
+        children,
+        (text) => notes.push(text),
+      );
+      await runner.run([SHORT], options("only-run"));
+      expect(notes).toHaveLength(1);
+      const [lane, bare] = pids;
+      expect(notes[0]).toMatch(new RegExp(`${lane} [^;]*, run only-run\\)`));
+      expect(notes[0]).toMatch(new RegExp(`${bare} [^;]*, run only-run\\)`));
+      expect(notes[0]).not.toMatch(/one of runs/);
+    });
+  },
+);

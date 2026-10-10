@@ -111,8 +111,13 @@ describe("what a stop's note says of each process (task 001-212)", () => {
     expect(stopped).toEqual([
       { pid: 10, args: "node 10", ppid: 5, parent: "node 5", ageSeconds: 4.2, killed: false },
     ]);
-    expect(note(stopped, "a test left running after its tier (run r1)")).toBe(
-      "stopped 1 process a test left running after its tier (run r1): 10 node 10 (parent 5 node 5, 4.2 s old, SIGTERM)",
+    expect(note(stopped, "a test left running after its tier")).toBe(
+      "stopped 1 process a test left running after its tier: 10 node 10 (parent 5 node 5, 4.2 s old, SIGTERM)",
+    );
+    const [one] = stopped;
+    if (one === undefined) throw new Error("nothing stopped");
+    expect(note([{ ...one, run: "one of runs r1, r2" }], "a test left running")).toBe(
+      "stopped 1 process a test left running: 10 node 10 (parent 5 node 5, 4.2 s old, SIGTERM, one of runs r1, r2)",
     );
   });
 
