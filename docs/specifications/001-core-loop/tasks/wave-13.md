@@ -551,3 +551,51 @@ Done when: the review's regression passes and is red before: stall the real refi
 ## 001-230 third review of wave 13r
 
 Use /reviewer on gpt-6.1-sol, after 001-229 lands. Output `reviews/wave-13t.md`. Third round on `reviews/wave-13s.md` B2 only: does a hold now end at its deadline while refinement stalls; can expiry, forget and a normal answer ever double-release or leave a rejection unhandled; does any timer keep a daemon alive. Run your own independent full suite. Blockers go to the human.
+
+## Wave 13u (after the 0.1.99 hub release)
+
+Five workers, disjoint ownership, then one review (001-233). The rows come from the human's cezar test session (via the 005 coordinator), 005's header proposals the human decided, and two review notes. Each: Do not edit `docs/board.md`. Do not run `npm run build`. `KEY_FORMAT_VERSION` 2 shipped in 0.1.99, so a change to a guarded source asks the coordinator for a bump to 3 at landing; the coordinator does it once for the wave. CI on main is read before every landing: a test that runs `git commit` sets its own identity, and no test may depend on this host's timing or caches.
+
+## 001-220, 001-221, 001-222 (known failures), 001-223, 001-224: what a delivery says
+
+Use /worker. Shape: slice. Read each row on the board first.
+- 001-220 (decided by the human): a PASS -> UNKNOWN whose only cause is the consumer's own edit landing during the file's run (the 001-146 stamps) is not delivered. Any other cause of UNKNOWN still is. The silenced state is never recorded as delivered, so the next delivery compares against PASS.
+- 001-221: the delivered summary of an assertion failure keeps the first lines of Vitest's diff (expected vs received), within the existing size cap, so a truncated `…(1)` object never hides the field that differs.
+- 001-222, the delivery half: `Known failures: N` names them, or the first few and then `squeal status`.
+- 001-223 (005 proposal a): once every test file the consumer's edits re-keyed is current, the next delivered header says so once (the set 001-186 computes). No line while any is pending.
+- 001-224 (005 proposal c, decided by the human): once per consumer session, the first delivery after its first edit says, in one line, "Squeal saw your edit and queued N test files; results arrive with later tool calls, and passing ones stay silent." It never repeats in that session, and a session that never edits gets none.
+
+Own: `src/core/delivery/`, the harness text modules (`src/harness/claude-code/text.ts` and the Codex equivalent), the Vitest adapter's failure-message extraction (`src/runners/vitest/` reporter or summary code only), tests under `test/delivery/`, `test/harness/` and the adapter's tests. Done when: each row's done-when on the board holds in a test; lint, typecheck and the full suite are green.
+
+## 001-217, 001-219, 001-222 (notes): checkpoints in status and across a session's end
+
+Use /worker. Shape: slice.
+- 001-217: status names a checkpoint in progress (its kind, its start, and files done of total) and counts files running that have no checks yet. `status --wait`'s quiet line names a running checkpoint and points to `run --all --wait` (005 proposal b). A `run --all` while an equivalent checkpoint runs joins it rather than abandoning it.
+- 001-219: an explicit checkpoint either finishes before the idle exit (bounded, like 004-29's drain) or resumes in the next daemon. A first-seen failure's 001-171 re-run happens before exit or is owed by the next daemon.
+- 001-222, the status half: status groups stopped-process notes by command, with counts, keeping 001-212's per-process detail reachable (for example `squeal status --notes`).
+
+Own: `src/core/status/format-status.ts`, `src/core/status/snapshot.ts`, the checkpoint code in `src/core/scheduler/` (`checkpoint*`, the 001-171 re-run's owed state), the daemon's idle exit in `src/core/daemon/lifecycle.ts`, `src/cli/run.ts`, `src/cli/status-wait-lines.ts`, tests under `test/status/`, `test/scheduler/`, `test/daemon/`, `test/cli/`. Done when: each row's done-when on the board holds in a test, including a session ending mid-checkpoint and the checkpoint completing; lint, typecheck and the full suite are green.
+
+## 001-216 an atomic save's temp file never becomes a revision of its own
+
+Use /worker. Shape: defect. Read row 001-216: Claude Code's `<file>.tmp.<pid>.<random>` landed alone in revisions when create and rename fell ~550 ms apart, in separate 100 ms batches. Find the least change that keeps D2's promise ("an atomic save's temp file is never known") across batches. For example, a create whose path is gone by the time its batch is hashed, or that matches the atomic-save shape and is renamed within a bounded window, yields no revision. A real add must not be delayed past that window.
+
+Own: `src/core/watcher/`, tests under `test/watcher/`. Done when: a save whose create and rename land in different batches, at load, makes exactly one revision naming the real file; a real file added alone still makes its revision within the bound; lint, typecheck and the full suite are green.
+
+## 001-228 and 001-232: two scheduler timers
+
+Use /worker. Shape: defect.
+- 001-228 (`reviews/wave-13r.md` B2): a runner-part call (`invalidate`/`affected`) has no maximum duration, so one that stalls holds every `status --wait` to its own timeout and delays the revision's results. Bound it: past the bound it is abandoned with a note and the revision proceeds (or the runner restarts), with the bound named in D5.
+- 001-232 (`reviews/wave-13t.md` S1): after a runtime pause, the hold-expiry callback sweeps at its scheduled time and re-arms from it, so a younger overdue hold waits another delay. Sweep at the real now and re-arm from it.
+
+Own: the runner-work code in `src/core/scheduler/` (`runner-work*`, the runner-part call sites), `src/core/scheduler/discharges.ts`, tests under `test/scheduler/`, D5. Done when: a test stalls a runner part and the next revision's results land past the bound; a simulated pause releases every overdue hold in one callback; lint, typecheck and the full suite are green.
+
+## 001-225 `squeal why` names what changed since an older result's revision
+
+Use /worker. Shape: slice. Read row 001-225 (005 D6, decided by the human). When a check's result ran at a revision older than the current one, `squeal why` adds `Changed since revision 8: src/a.ts (revision 9), src/b.ts (revisions 10, 12)`, built from the stored revision records, capped like the other `why` lists. The result's own line names its revision (the 005 coordinator agreed). The primer sentence defining a revision is 005-15's, not this row's.
+
+Own: `src/core/status/why.ts`, `src/core/status/format-why.ts`, the store queries they need (no schema change), tests under `test/status/`. Done when: the line appears exactly when the result's revision is older, lists each changed path with its revisions, is capped, and is absent for a current-revision result; lint, typecheck and the full suite are green.
+
+## 001-233 review of wave 13u
+
+Use /reviewer on gpt-6.1-sol, after the five land. Output `reviews/wave-13u.md`. Is each row's done-when met? Does 001-220 ever silence an UNKNOWN with another cause, or lose a later PASS -> FAIL? Can a joined or resumed checkpoint run a file twice or never? Can 001-216 delay or drop a real add? Does 001-228's bound ever abandon a runner part that would have finished, and what does a revision do then? Run your own independent full suite. Blockers go to the human.
