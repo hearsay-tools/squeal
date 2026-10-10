@@ -7,7 +7,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { createScheduler } from "../../src/core/scheduler/index.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
   type EpochMs,
@@ -20,7 +20,6 @@ import {
   type TestFileRef,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
-import { openRepoStore } from "./helpers.js";
 import { RecordingSink } from "./recording-sink.js";
 
 /*
@@ -32,7 +31,7 @@ import { RecordingSink } from "./recording-sink.js";
 export const fileName = (i: number) => `test/f${String(i).padStart(2, "0")}.test.ts`;
 
 /** A repository of `count` test files and a linked worktree `other` beside it. */
-export function claimRepo(count: number): { main: string; other: string; store: Store } {
+export function claimRepo(count: number): { main: string; other: string } {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-claims-")));
   onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
   const main = join(dir, "main");
@@ -43,8 +42,7 @@ export function claimRepo(count: number): { main: string; other: string; store: 
   git(main, ["commit", "-qm", "fixture"]);
   const other = join(dir, "other");
   git(main, ["worktree", "add", "-q", "-b", "other", other]);
-  const store = openRepoStore(join(main, ".git"));
-  return { main, other, store };
+  return { main, other };
 }
 
 function gate(): { shut: Promise<void>; open: () => void } {
@@ -144,6 +142,8 @@ export class FakeRunner implements RunnerAdapter {
 }
 
 export interface Side {
+  /** This side's own connection to the shared store, as a daemon's. */
+  readonly store: Store;
   readonly root: string;
   readonly worktreeId: string;
   readonly runner: FakeRunner;
@@ -168,10 +168,18 @@ export interface SideOptions {
   readonly policy?: Partial<Policy>;
   readonly now?: () => EpochMs;
   readonly runMs?: number;
+  /** `SchedulerOptions.rerunCap` (task 001-171). */
+  readonly rerunCap?: number;
+  /** Wraps the store the scheduler is given. */
+  readonly wrap?: (store: Store) => Store;
 }
 
 /** A scheduler of the worktree at `root`, its daemon live in the store while it beats. */
-export function side(store: Store, root: string, options: SideOptions): Side {
+export function side(root: string, options: SideOptions): Side {
+  const commonDir = realpathSync(join(root, "..", "main", ".git"));
+  const opened = openStore(commonDir, { busyTimeoutMs: 10_000 });
+  if (isStoreOpenFailure(opened)) throw new Error(`store: ${JSON.stringify(opened)}`);
+  const store: Store = opened;
   const worktreeId = worktreeIdFor(root);
   const now = options.now ?? Date.now;
   const interval = options.heartbeatMs ?? 60_000;
@@ -206,11 +214,10 @@ export function side(store: Store, root: string, options: SideOptions): Side {
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     },
   };
-  const commonDir = realpathSync(join(root, "..", "main", ".git"));
   const scheduler = createScheduler({
     root,
     worktreeId,
-    store,
+    store: options.wrap?.(store) ?? store,
     runner,
     sink: new RecordingSink(store, worktreeId),
     policy,
@@ -218,16 +225,19 @@ export function side(store: Store, root: string, options: SideOptions): Side {
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
     now,
+    ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
   });
   onTestFinished(async () => {
     clearInterval(beat);
     runner.release();
     await scheduler.close();
+    store.close();
   });
   const row = (path: string) =>
     store.testFileKeys.list(worktreeId).find((r) => r.testFile.path === path);
   const hasher = createFsHasher(root, "sha1");
   return {
+    store,
     root,
     worktreeId,
     runner,
