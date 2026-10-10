@@ -35,7 +35,13 @@ describe("a worktree with a linked directory starts at revision 0", SLOW, () => 
     mkdirSync(join(root, ".agents/skills"), { recursive: true });
     symlinkSync("../../.claude/skills/w", join(root, ".agents/skills/w"));
     execFileSync("git", ["add", "-A"], { cwd: root });
-    execFileSync("git", ["commit", "-qm", "skills"], { cwd: root });
+    execFileSync(
+      "git",
+      ["-c", "user.email=squeal@example.com", "-c", "user.name=squeal", "commit", "-qm", "skills"],
+      {
+        cwd: root,
+      },
+    );
     const store = openRepoStore(repo.commonDir);
     return { root, store, worktreeId: worktreeIdFor(root), commonDir: repo.commonDir };
   }
