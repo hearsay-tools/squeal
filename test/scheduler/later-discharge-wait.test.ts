@@ -5,6 +5,7 @@ import {
   DISCHARGE_CAP,
   DISCHARGE_RETENTION_MS,
   Discharges,
+  HOLD_MS,
 } from "../../src/core/scheduler/discharges.js";
 import { newFileState } from "../../src/core/scheduler/files.js";
 import type { EpochMs, RevisionNumber } from "../../src/core/types/index.js";
@@ -22,6 +23,8 @@ import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
  * daemon's `rekeyedOnceRefined` at the captured revision. The control
  * differs only in the second, cached edit or the later discharges, which
  * are synthetic, noted to the live instance after the captured revision.
+ * Review wave-13r B2 (task 001-226): no hold outlives the hour, so past it
+ * the answer fails and the wait falls back to any check's news.
  */
 
 const MATH = "src/math.ts";
@@ -40,6 +43,8 @@ describe("status --wait over a later cached discharge of its file (task 001-202)
     },
     { name: "a later discharge past the hour", cached: false, later: [DISCHARGE_RETENTION_MS + 1] },
   ])("returns on the edit's own news with $name", SLOW, async ({ cached, later }) => {
+    // Task 001-226: no hold outlives the hour; that answer fails, and the wait falls back.
+    const incomplete = later.some((delay) => delay > HOLD_MS);
     // The live instance, and when it last discharged.
     let discharges: Discharges | null = null;
     let lastAt = 0;
@@ -154,7 +159,11 @@ describe("status --wait over a later cached discharge of its file (task 001-202)
           discharges?.note(moved, at + delay);
         });
         releaseRefinement();
-        state = { state: "synced", revision, rekeyed: await answer };
+        // As `syncDaemon` reads a failed answer: the daemon cannot sync.
+        state = await answer.then(
+          (rekeyed): SyncState => ({ state: "synced", revision, rekeyed }),
+          (): SyncState => ({ state: "unsupported" }),
+        );
       })();
       return { current: () => state, stop: () => {} };
     };
@@ -162,6 +171,12 @@ describe("status --wait over a later cached discharge of its file (task 001-202)
     const wait = await waitForStatus(h.root, { timeoutMs: 60_000, pollMs: 20, sync });
 
     expect(wait.outcome).toBe("news");
+    if (incomplete) {
+      // Never quiet: without the edit's files, any check's news ends the wait.
+      expect(wait).toMatchObject({ transitions: 1 });
+      expect(wait).not.toHaveProperty("edit");
+      return;
+    }
     expect(wait).toMatchObject({
       transitions: 1,
       edit: { testFiles: 3, otherTransitions: 0 },

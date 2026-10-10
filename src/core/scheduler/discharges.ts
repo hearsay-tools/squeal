@@ -12,6 +12,25 @@ export const DISCHARGE_RETENTION_MS = 60 * 60_000;
  * the session's length, beside those a held answer covers (task 001-214).
  */
 export const DISCHARGE_CAP = 10_000;
+/**
+ * At most this many answers hold discharges at once, the oldest released
+ * first (review wave-13r B2, task 001-226); also how many `sync` requests
+ * the daemon's socket remembers (`handlers.ts`). The two match by order, not
+ * by a link: each sync a current CLI sends takes one hold, in the order the
+ * socket remembers them, so the request a 33rd evicts is the one whose hold
+ * a 33rd releases. A sync without `after` or `resolvedSince` takes no hold,
+ * and then the two drift; the cap still bounds the holds.
+ */
+export const MAX_HELD_ANSWERS = 32;
+/** The longest a held answer keeps its discharges, whether or not it is read (task 001-226). */
+export const HOLD_MS = 60 * 60_000;
+/**
+ * Why an answer that is not intact fails: the wait takes the fallback of a
+ * daemon that cannot sync, any check's news and nothing pending at all,
+ * never the edit window's quiet (task 001-226).
+ */
+export const INCOMPLETE_ANSWER =
+  "the sync answer's discharges were released before it was read; its files may be incomplete";
 
 /** One key move of a file that had its result, or `unknown`, at `at`. */
 interface Discharge {
@@ -26,6 +45,27 @@ interface Window {
   readonly since: EpochMs;
   readonly after: RevisionNumber;
   readonly upTo: RevisionNumber;
+}
+
+/** A held answer's window, its deadline, and whether its discharges may be gone. */
+interface Hold {
+  readonly window: Window;
+  readonly until: EpochMs;
+  /** Released before its answer was read, or a discharge it covers dropped before it was taken. */
+  lost: boolean;
+}
+
+/** What `Discharges.hold` returns to the answer that reads it. */
+export interface HeldAnswer {
+  /** Ends the hold, once the answer is read or failed; again is nothing. */
+  release(): void;
+  /**
+   * At `now`, whether every discharge the window covers is still kept: the
+   * hold was not released early, by the count or its deadline, and none was
+   * dropped before it was taken. An answer that is not intact may miss its
+   * own news, and is not given (task 001-226).
+   */
+  intact(now: EpochMs): boolean;
 }
 
 export interface DischargeLimits {
@@ -44,15 +84,20 @@ export interface DischargeLimits {
  * its result (003 wave-4.5 B1). Neither bound drops one an answer held
  * between its captured revision and its read still covers (review wave 13q,
  * S1, task 001-214): that answer would end quiet where its file's news
- * landed. What a held answer covers is fixed by its window, so the hold
- * bounds retention too.
+ * landed. What a held answer covers is fixed by its window, and at most
+ * `MAX_HELD_ANSWERS` holds last `HOLD_MS` at most, so the holds bound
+ * retention too (review wave-13r B2): an answer whose hold ended before it
+ * was read is not intact, and the wait falls back rather than ends quiet.
  */
 export class Discharges {
   /** By file and revision, oldest discharge first. */
   readonly #kept = new Map<string, Discharge>();
-  readonly #held = new Set<Window>();
+  /** Oldest first. */
+  readonly #held = new Set<Hold>();
   /** The last discharge's time, which a released hold prunes at. */
   #latest: EpochMs | null = null;
+  /** The latest time of a discharge a prune dropped: a window from before it may miss it. */
+  #dropped: EpochMs | null = null;
 
   constructor(
     private readonly limits: DischargeLimits = {
@@ -65,6 +110,11 @@ export class Discharges {
     return this.#kept.size;
   }
 
+  /** The holds in force, as of the last call that was given a time. */
+  get holds(): number {
+    return this.#held.size;
+  }
+
   /** `file`'s attribution is discharged at `at`; nothing when it had none. */
   note(file: FileState, at: EpochMs): void {
     if (file.keyedAt === null || file.lastKeyedAt === null) return;
@@ -75,18 +125,34 @@ export class Discharges {
       this.#kept.set(key, { id: file.id, ref: file.ref, revision, at });
     }
     this.#latest = at;
+    this.#expire(at);
     this.#prune(at);
   }
 
   /**
-   * Keeps the discharges `since(since, after, upTo)` names until the
-   * returned release, which a sync answer calls once read or failed.
+   * Keeps the discharges `since(since, after, upTo)` names, from `now` until
+   * the answer's release, which a sync answer calls once read or failed, and
+   * for `HOLD_MS` at the latest; the oldest of more than
+   * `MAX_HELD_ANSWERS` holds is released at once (review wave-13r B2).
    */
-  hold(since: EpochMs, after: RevisionNumber, upTo: RevisionNumber): () => void {
-    const window: Window = { since, after, upTo };
-    this.#held.add(window);
-    return () => {
-      if (this.#held.delete(window) && this.#latest !== null) this.#prune(this.#latest);
+  hold(since: EpochMs, after: RevisionNumber, upTo: RevisionNumber, now: EpochMs): HeldAnswer {
+    this.#expire(now);
+    const hold: Hold = {
+      window: { since, after, upTo },
+      until: now + HOLD_MS,
+      lost: this.#dropped !== null && this.#dropped >= since,
+    };
+    this.#held.add(hold);
+    for (const oldest of this.#held) {
+      if (this.#held.size <= MAX_HELD_ANSWERS) break;
+      this.#end(oldest, true);
+    }
+    return {
+      release: () => this.#end(hold, false),
+      intact: (at) => {
+        this.#expire(at);
+        return !hold.lost;
+      },
     };
   }
 
@@ -108,12 +174,27 @@ export class Discharges {
     return files;
   }
 
+  /** Ends `hold`, `early` when its answer was not read; prunes what it alone kept. */
+  #end(hold: Hold, early: boolean): void {
+    if (!this.#held.delete(hold)) return;
+    if (early) hold.lost = true;
+    if (this.#latest !== null) this.#prune(this.#latest);
+  }
+
+  /** Releases, early, every hold past its deadline at `now`. */
+  #expire(now: EpochMs): void {
+    for (const hold of [...this.#held]) if (hold.until <= now) this.#end(hold, true);
+  }
+
   #prune(now: EpochMs): void {
     for (const [key, discharge] of this.#kept) {
       if (this.#kept.size <= this.limits.cap && discharge.at >= now - this.limits.retentionMs) {
         return;
       }
-      if (![...this.#held].some((window) => covers(window, discharge))) this.#kept.delete(key);
+      if (![...this.#held].some((hold) => covers(hold.window, discharge))) {
+        this.#kept.delete(key);
+        this.#dropped = Math.max(this.#dropped ?? discharge.at, discharge.at);
+      }
     }
   }
 }

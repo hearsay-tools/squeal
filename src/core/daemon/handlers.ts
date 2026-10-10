@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { MAX_HELD_ANSWERS } from "../scheduler/discharges.js";
 import {
   type AbsolutePath,
   type CheckpointRecord,
@@ -19,8 +20,13 @@ import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
 
-/** `run-all`, `run-slow` and `sync` requests remembered for their status requests; older ones are dropped. */
-const MAX_REQUESTS = 32;
+/**
+ * `run-all`, `run-slow` and `sync` requests remembered for their status
+ * requests; older ones are dropped. As many as the held answers, so a sync
+ * dropped here has its hold released by the one that dropped it (review
+ * wave-13r B2; see `MAX_HELD_ANSWERS` for where the two can drift).
+ */
+const MAX_REQUESTS = MAX_HELD_ANSWERS;
 
 export interface HandlerContext {
   readonly worktreeId: WorktreeId;

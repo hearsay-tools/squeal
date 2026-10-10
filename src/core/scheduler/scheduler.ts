@@ -21,6 +21,7 @@ import { baseline, scan } from "./bootstrap.js";
 import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
+import { INCOMPLETE_ANSWER } from "./discharges.js";
 import { rekeyEnvironments } from "./environment-growth.js";
 import {
   missingInstall,
@@ -329,15 +330,17 @@ class TierScheduler implements Scheduler {
     upTo: RevisionNumber,
     resolvedSince?: EpochMs,
   ): Promise<readonly RekeyedTestFile[]> {
-    const release =
+    const now = this.options.now ?? Date.now;
+    const held =
       resolvedSince === undefined || this.#ledger === null
-        ? () => {}
-        : this.#ledger.discharges.hold(resolvedSince, after, upTo);
+        ? null
+        : this.#ledger.discharges.hold(resolvedSince, after, upTo, now());
     try {
       await this.refined();
+      if (held !== null && !held.intact(now())) throw new Error(INCOMPLETE_ANSWER);
       return this.rekeyedSince(after, upTo, resolvedSince);
     } finally {
-      release();
+      held?.release();
     }
   }
 
