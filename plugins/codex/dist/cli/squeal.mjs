@@ -1000,7 +1000,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 2;
+    KEY_FORMAT_VERSION = 3;
   }
 });
 
@@ -6168,7 +6168,7 @@ function snapshotInputs(cache, paths) {
   }
   return snapshot3;
 }
-async function changedSince(snapshot3, paths, hasher) {
+async function changedSince2(snapshot3, paths, hasher) {
   const candidates = await statCandidates(paths, hasher);
   const diff = await diffCandidates(candidates, snapshot3, hasher);
   return {
@@ -7758,7 +7758,7 @@ async function prepareObserved(context, report2, run) {
     for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
   }
   const snapshot3 = snapshotInputs(context.keys.cache, paths);
-  return { growth, ...await changedSince(snapshot3, paths, context.hasher) };
+  return { growth, ...await changedSince2(snapshot3, paths, context.hasher) };
 }
 var NOTHING_OBSERVED;
 var init_observed2 = __esm({
@@ -8096,7 +8096,7 @@ function endTier(context, ledger, tier) {
 function unstableInputs(context, tier) {
   const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
   for (const path of inputs2) if (listedDirectory(path) !== null) inputs2.delete(path);
-  return changedSince(tier.snapshot, inputs2, context.hasher);
+  return changedSince2(tier.snapshot, inputs2, context.hasher);
 }
 function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved = false, observed = NOTHING_OBSERVED) {
   const { store, worktreeId } = context;
@@ -12608,6 +12608,66 @@ var init_backend = __esm({
   }
 });
 
+// src/core/watcher/atomic-save.ts
+function isAtomicSaveTemp(path) {
+  return TEMP_SHAPE.test(path);
+}
+var TEMP_SHAPE, ATOMIC_SAVE_HOLD_MS, TempHold;
+var init_atomic_save = __esm({
+  "src/core/watcher/atomic-save.ts"() {
+    "use strict";
+    TEMP_SHAPE = /\.tmp\.\d+\.[0-9a-z]+$/i;
+    ATOMIC_SAVE_HOLD_MS = 5e3;
+    TempHold = class {
+      constructor(holdMs, onRelease) {
+        this.holdMs = holdMs;
+        this.onRelease = onRelease;
+      }
+      holdMs;
+      onRelease;
+      held = /* @__PURE__ */ new Map();
+      released = /* @__PURE__ */ new Set();
+      /** The candidates without the temp files under hold. */
+      filter(paths, trackedPaths) {
+        let tracked = null;
+        return paths.filter(({ path, stat: stat7 }) => {
+          if (!isAtomicSaveTemp(path)) return true;
+          if (stat7 === null) {
+            this.forget(path);
+            return true;
+          }
+          if (this.released.delete(path)) return true;
+          if (this.held.has(path)) return false;
+          tracked ??= new Set(trackedPaths());
+          if (tracked.has(path)) return true;
+          this.hold(path);
+          return false;
+        });
+      }
+      close() {
+        for (const timer of this.held.values()) clearTimeout(timer);
+        this.held.clear();
+        this.released.clear();
+      }
+      hold(path) {
+        const timer = setTimeout(() => {
+          this.held.delete(path);
+          this.released.add(path);
+          this.onRelease(path);
+        }, this.holdMs);
+        timer.unref();
+        this.held.set(path, timer);
+      }
+      forget(path) {
+        const timer = this.held.get(path);
+        if (timer) clearTimeout(timer);
+        this.held.delete(path);
+        this.released.delete(path);
+      }
+    };
+  }
+});
+
 // src/core/watcher/debounce.ts
 var Debouncer;
 var init_debounce = __esm({
@@ -12728,7 +12788,9 @@ var SPEC_INPUTS, Feed;
 var init_change_feed = __esm({
   "src/core/watcher/change-feed.ts"() {
     "use strict";
+    init_fs();
     init_types();
+    init_atomic_save();
     init_backend();
     init_candidates();
     init_debounce();
@@ -12742,9 +12804,16 @@ var init_change_feed = __esm({
         this.options = options;
         this.root = options.root;
         this.backend = options.backend ?? createWatcherBackend(process.platform);
-        this.timings = { ...WATCHER_TIMINGS, ...options.timings };
+        this.timings = {
+          ...WATCHER_TIMINGS,
+          atomicSaveHoldMs: ATOMIC_SAVE_HOLD_MS,
+          ...options.timings
+        };
         this.extraFiles = [...options.extraFiles ?? []];
         this.debouncer = new Debouncer((paths) => this.onDebounced(paths), this.timings);
+        this.tempHold = new TempHold(this.timings.atomicSaveHoldMs, (path) => {
+          if (!this.closed) this.debouncer.push([toAbsolute(this.root, path)]);
+        });
       }
       options;
       spec = null;
@@ -12752,6 +12821,7 @@ var init_change_feed = __esm({
       backend;
       timings;
       debouncer;
+      tempHold;
       extraFiles;
       sub = null;
       linked = null;
@@ -12788,6 +12858,7 @@ var init_change_feed = __esm({
       async close() {
         this.closed = true;
         this.debouncer.cancel();
+        this.tempHold.close();
         if (this.idleTimer) clearTimeout(this.idleTimer);
         await this.sub?.close();
         await this.queue;
@@ -12810,7 +12881,8 @@ var init_change_feed = __esm({
           let widened = specChanged ? await this.rebuildSpec() : false;
           const hinted = await candidatesFromHints(this.context(), paths);
           if (hinted.ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
-          if (hinted.paths.length > 0) await this.emit({ trigger: "watch", paths: hinted.paths });
+          const kept2 = this.tempHold.filter(hinted.paths, this.trackedPaths);
+          if (kept2.length > 0) await this.emit({ trigger: "watch", paths: kept2 });
           if (widened || await this.relinked(hinted)) await this.reconcileNow("watch");
         });
       }
@@ -12820,7 +12892,7 @@ var init_change_feed = __esm({
         const { paths, linkedDirs: linkedDirs2, links } = await candidatesForReconcile(this.context(), status2.paths);
         this.linkTargets = new Map(links);
         await this.linked?.update(linkedDirs2);
-        await this.emit({ trigger, paths });
+        await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) });
       }
       /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
       async relinked(hinted) {
@@ -12854,9 +12926,10 @@ var init_change_feed = __esm({
           root: this.root,
           exclusions: new Exclusions(spec),
           extraFiles: new Set(this.extraFiles),
-          trackedPaths: this.options.trackedPaths ?? (() => [])
+          trackedPaths: this.trackedPaths
         };
       }
+      trackedPaths = () => this.options.trackedPaths?.() ?? [];
       async emit(batch) {
         if (this.closed) return;
         await this.options.onBatch(batch);
@@ -33355,7 +33428,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.99";
+  if (true) return "0.1.100";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -33526,7 +33599,22 @@ function formatWhy(why2) {
 `;
 }
 function knownState(why2, s) {
-  return [...stateLines(why2, s), ...heldLine(why2), ...flakyLine(why2)];
+  return [
+    ...stateLines(why2, s),
+    ...changedLine(why2.changedSince),
+    ...heldLine(why2),
+    ...flakyLine(why2)
+  ];
+}
+function changedLine(since) {
+  if (since === void 0) return [];
+  const paths = since.paths.map(({ path, revisions, revisionCount }) => {
+    const numbers = `${revisionCount === 1 ? "revision" : "revisions"} ${revisions.join(", ")}`;
+    const capped3 = revisionCount > revisions.length;
+    return `${path} (${numbers}${capped3 ? ` (first ${revisions.length} of ${revisionCount} revisions)` : ""})`;
+  });
+  const capped2 = since.total > since.paths.length ? ` (first ${since.paths.length} of ${since.total} paths)` : "";
+  return [`  Changed since revision ${since.revision}${capped2}: ${paths.join(", ")}`];
 }
 function heldLine(why2) {
   const held2 = why2.heldFailure;
@@ -33758,6 +33846,7 @@ init_types();
 init_open2();
 var WHY_RESULT_LIMIT = 20;
 var WHY_CANDIDATE_LIMIT = 20;
+var WHY_CHANGED_LIMIT = 20;
 function readWhy(cwd, query, options = {}) {
   const includeLogs = options.includeLogs ?? false;
   return withStatusStore(cwd, options, (context) => {
@@ -33822,13 +33911,15 @@ function report({ store, root, commonDir }, check, includeLogs) {
   const shown = shownResult(worktreeId, knownState2, key2, all, heldFailure2, since);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
+  const revision = store.revisions.latest(worktreeId)?.number ?? null;
+  const changed = changedSince(store, worktreeId, knownState2?.observedAt ?? null, revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     found: true,
     worktreeId,
     worktreeRoot: worktreeRoots[worktreeId] ?? root,
-    revision: store.revisions.latest(worktreeId)?.number ?? null,
+    revision,
     check,
     worktreeRoots,
     knownState: knownState2,
@@ -33836,8 +33927,27 @@ function report({ store, root, commonDir }, check, includeLogs) {
     results: results2,
     runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
     ...heldFailure2 === void 0 ? {} : { heldFailure: heldFailure2 },
-    ...flaky === void 0 ? {} : { flaky }
+    ...flaky === void 0 ? {} : { flaky },
+    ...changed === void 0 ? {} : { changedSince: changed }
   };
+}
+function changedSince(store, worktreeId, observedAt, current2) {
+  if (observedAt === null || current2 === null || observedAt >= current2) return void 0;
+  const byPath = /* @__PURE__ */ new Map();
+  for (const revision of store.revisions.range(worktreeId, observedAt, current2)) {
+    for (const { path } of revision.changes) {
+      const numbers = byPath.get(path) ?? [];
+      if (numbers.at(-1) !== revision.number) numbers.push(revision.number);
+      byPath.set(path, numbers);
+    }
+  }
+  if (byPath.size === 0) return void 0;
+  const paths = [...byPath].slice(0, WHY_CHANGED_LIMIT).map(([path, numbers]) => ({
+    path,
+    revisions: numbers.slice(0, WHY_CHANGED_LIMIT),
+    revisionCount: numbers.length
+  }));
+  return { revision: observedAt, paths, total: byPath.size };
 }
 function observedSince(store, worktreeId, revision) {
   if (revision === null) return null;
