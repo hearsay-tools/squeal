@@ -273,8 +273,11 @@ export class SlowTier {
    * work arrived meanwhile. A file is passed over when it left the queue or
    * class, its trigger is gone (a consumer entered a turn during the wait;
    * the file stays queued and the pass keeps its budget), or the store now
-   * holds a result that may stand for it (`Ledger.lookup`). `"claimed"` when
-   * no file runs because other worktrees run their keys (task 001-205).
+   * holds a result that may stand for it (`Ledger.lookup`), here or in the
+   * start's transaction (`startTier`; then `null`, so the pump plans again).
+   * `"claimed"` when no file runs because other worktrees run their keys
+   * (task 001-205). The permits, notes and artifacts follow the files the
+   * tier starts.
    */
   #select(
     refs: readonly TestFileRef[],
@@ -293,22 +296,9 @@ export class SlowTier {
       if (tierFile !== null) picked.push(tierFile);
     }
     if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
-    slot.shrinkTo(picked.length);
-    for (const { file } of picked) {
-      if (ranUnderLoad === null) continue;
-      context.note(
-        `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above ` +
-          `slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had ` +
-          `waited slow.maxDeferMs for this slow pass (spec 004 D3)`,
-      );
-    }
     const since = context.now();
-    const view = slowPolicyView(context.policy);
-    const artifacts = new Map(
-      picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
-    );
     // The activity names the files in the transaction that marks them running (review wave 2, B1; 004-35).
-    const started = context.store.transaction(() => {
+    const tier = context.store.transaction(() => {
       const tier = startTier(context, ledger, picked, false);
       const first = tier?.files[0];
       if (tier === null || first === undefined) return null;
@@ -321,9 +311,27 @@ export class SlowTier {
         since,
         lastDurationMs,
       });
-      return { tier, artifacts };
+      return tier;
     });
-    return started ?? "claimed";
+    if (tier === null) {
+      // A result recorded since the pick settled one: the queue moved (review wave 13o, B1).
+      return picked.some(({ file }) => !ledger.queue.has(file.ref)) ? null : "claimed";
+    }
+    // One permit per file the tier runs, after the start's lookups and claims (review wave 13o, B2).
+    slot.shrinkTo(tier.files.length);
+    for (const { file } of tier.files) {
+      if (ranUnderLoad === null) continue;
+      context.note(
+        `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above ` +
+          `slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had ` +
+          `waited slow.maxDeferMs for this slow pass (spec 004 D3)`,
+      );
+    }
+    const view = slowPolicyView(context.policy);
+    const artifacts = new Map(
+      tier.files.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
+    );
+    return { tier, artifacts };
   }
 
   /**

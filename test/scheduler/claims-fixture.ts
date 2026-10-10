@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,6 +10,7 @@ import { statCandidates } from "../../src/core/revision/index.js";
 import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
+  type CheckKey,
   DEFAULT_POLICY,
   type EpochMs,
   type Policy,
@@ -269,4 +271,38 @@ export function side(root: string, options: SideOptions): Side {
         .filter((s) => s.check.kind === "test" && s.outcome === "pass" && s.validity === "current")
         .length,
   };
+}
+
+/**
+ * `worktreeId`'s finished tier of `path` at `key`, written through `store`:
+ * its run, a passing result, and its row at the key no longer running.
+ */
+export function recordedBy(store: Store, worktreeId: string, path: string, key: CheckKey): void {
+  const at = Date.now();
+  const runId = randomUUID();
+  const testFile = { project: "", path };
+  const run = { id: runId, worktreeId, revision: 1, testFiles: [testFile], checkpointId: null };
+  store.runs.start({ ...run, logDir: `/tmp/squeal-claims-${runId}`, startedAt: at });
+  store.results.putMany([
+    {
+      check: { kind: "test", project: "", testPath: path, fullName: "passes" },
+      key,
+      outcome: "pass",
+      durationMs: 1,
+      location: null,
+      fingerprint: null,
+      summary: null,
+      errors: [],
+      provenance: {
+        worktreeId,
+        revision: 1,
+        commit: "0".repeat(40),
+        dirty: false,
+        runId,
+        recordedAt: at,
+      },
+    },
+  ]);
+  store.runs.finish(runId, "completed", at);
+  store.testFileKeys.upsertMany([{ worktreeId, testFile, key, revision: 1, pending: null }]);
 }
