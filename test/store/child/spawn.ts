@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const register = fileURLToPath(new URL("./register-ts.mjs", import.meta.url));
 const worker = fileURLToPath(new URL("./worker.ts", import.meta.url));
+const opener = fileURLToPath(new URL("./opener.ts", import.meta.url));
 
 export interface Finished {
   readonly code: number | null;
@@ -20,9 +21,18 @@ export interface Worker {
 
 /** Starts `worker.ts` in a plain Node process, the way hooks and daemons run. */
 export function spawnWorker(args: readonly string[]): Worker {
+  return spawnChild(worker, args);
+}
+
+/** Starts `opener.ts`, which opens stores in rounds alongside other openers. */
+export function spawnOpener(args: readonly string[]): Worker {
+  return spawnChild(opener, args);
+}
+
+function spawnChild(script: string, args: readonly string[]): Worker {
   const child = spawn(
     process.execPath,
-    ["--disable-warning=ExperimentalWarning", "--import", register, worker, ...args],
+    ["--disable-warning=ExperimentalWarning", "--import", register, script, ...args],
     { stdio: ["ignore", "pipe", "pipe"] },
   );
   let stdout = "";
