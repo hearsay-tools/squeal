@@ -60,6 +60,8 @@ export interface Presence {
    * Cleared when a consumer is counted again.
    */
   draining?: boolean;
+  /** What the drain started for, as its note named it (task 001-219). */
+  drainingFor?: string;
 }
 
 /**
@@ -102,6 +104,12 @@ export interface TimerContext {
    * false: the daemon exits at the grace.
    */
   readonly slowPending?: () => boolean;
+  /**
+   * What the worktree is owed (`Scheduler.owedWork`): an explicit checkpoint
+   * or a new failure's re-run, drained as slow files are (task 001-219).
+   * Absent or `null`: nothing.
+   */
+  readonly owedWork?: () => string | null;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
@@ -129,6 +137,9 @@ export interface TimerContext {
  * activity for the idle period, and a consumer that registers during it
  * cancels the exit: the daemon serves on, its slow files still behind the
  * consumer's fast work (spec 004 D2).
+ * Task 001-219: an explicit checkpoint left open and a new failure's re-run
+ * queued are drained the same way, within the same bound; past it the
+ * scheduler leaves them owed to the next daemon.
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
  *
@@ -202,23 +213,22 @@ export function startTimers(context: TimerContext): () => void {
       if (!countPresence(at) || presence.lastPresentAt === null) return;
       const gone = at - presence.lastPresentAt;
       if (gone < graceMs) return;
-      if (context.slowPending?.() !== true) {
+      const pending = drainable(context);
+      if (pending === null) {
         context.shutdown(
           "sessions-gone",
           presence.draining === true
-            ? "daemon stopped: the slow files pending when its last session ended have run"
+            ? drainedText(presence.drainingFor ?? SLOW_FILES)
             : `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`,
         );
       } else if (gone >= idleMs) {
-        context.shutdown(
-          "sessions-gone",
-          `daemon stopped: slow files were still pending ${duration(idleMs)} after its last ` +
-            "session ended (daemon.idleExitMinutes)",
-        );
+        context.shutdown("sessions-gone", boundText(pending, idleMs));
       } else if (presence.draining !== true) {
         presence.draining = true;
+        presence.drainingFor = pending;
+        const them = pending === SLOW_FILES ? "them" : "that work";
         context.note(
-          "the last session ended with slow files pending; this daemon runs them before it " +
+          `the last session ended with ${pending} pending; this daemon runs ${them} before it ` +
             `exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`,
         );
       }
@@ -269,6 +279,29 @@ export function startTimers(context: TimerContext): () => void {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
   };
+}
+
+const SLOW_FILES = "slow files";
+
+/** What the departure drains, as its notes name it; `null` with nothing pending. */
+function drainable(context: TimerContext): string | null {
+  const slow = context.slowPending?.() === true ? [SLOW_FILES] : [];
+  const owed = context.owedWork?.() ?? null;
+  const all = [...slow, ...(owed === null ? [] : [owed])];
+  return all.length === 0 ? null : all.join(" and ");
+}
+
+function drainedText(drained: string): string {
+  return drained === SLOW_FILES
+    ? "daemon stopped: the slow files pending when its last session ended have run"
+    : `daemon stopped: the work pending when its last session ended is done (${drained})`;
+}
+
+function boundText(pending: string, idleMs: number): string {
+  const after = `${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`;
+  return pending === SLOW_FILES
+    ? `daemon stopped: slow files were still pending ${after}`
+    : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
 }
 
 /**

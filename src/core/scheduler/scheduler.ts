@@ -2,6 +2,7 @@ import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
 import { statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
+import { plural } from "../text.js";
 import {
   type CandidateBatch,
   type CheckpointRecord,
@@ -367,6 +368,20 @@ class TierScheduler implements Scheduler {
     if (this.#closed || !this.#ledger) return false;
     if ([...this.#inFlight.keys()].some(isSlowLane)) return true;
     return this.#ledger.orderedSlow().length > 0;
+  }
+
+  owedWork(): string | null {
+    if (this.#closed || !this.#ledger) return null;
+    const ledger = this.#ledger;
+    const owed: string[] = [];
+    const active = ledger.checkpoints.active;
+    if (active?.explicit === true) {
+      owed.push(`a \`run --all\` checkpoint (${plural(active.remaining, "test file")} left)`);
+    }
+    const reruns = [...ledger.files.values()].filter((f) => f.rerunPending && f.phase !== null);
+    if (reruns.length === 1) owed.push("a new failure's re-run");
+    if (reruns.length > 1) owed.push(`${reruns.length} new failures' re-runs`);
+    return owed.length === 0 ? null : owed.join(" and ");
   }
 
   trackedPaths(): Iterable<RelativePath> {

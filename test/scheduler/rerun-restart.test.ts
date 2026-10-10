@@ -111,3 +111,20 @@ describe("a pending re-run survives a daemon restart", SLOW, () => {
     expect(second.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
   });
 });
+
+describe("a re-run is owed work the last session's departure drains (task 001-219)", SLOW, () => {
+  it("names the re-run while it is queued or running, and nothing once it ran", async () => {
+    const repo = flakyRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir);
+    const seen: (string | null)[] = [];
+    h.runner.beforeRun = (files) => {
+      if (files.some((f) => f.path === FLAKY)) seen.push(h.scheduler.owedWork());
+    };
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    // The baseline is no explicit checkpoint; its new failure's re-run is owed.
+    expect(seen).toEqual([null, "a new failure's re-run"]);
+    expect(h.scheduler.owedWork()).toBeNull();
+  });
+});
