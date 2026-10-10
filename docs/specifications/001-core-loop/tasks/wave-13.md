@@ -627,3 +627,17 @@ Done when: the review's probe, through the real ledger, `queueReruns`, store and
 ## 001-241 third review of wave 13u
 
 Use /reviewer on gpt-6.1-sol, after 001-240 lands. Output `reviews/wave-13w.md`. Third round on `reviews/wave-13v.md` B1 and S1 only: can the settled line still appear while an edited file is pending for any reason; is `status --wait` unchanged; is the open mark cleared on every path that resolves it. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-245 the parcel recheck stays uncertain after a failed read, within a read budget
+
+Use /worker. Shape: repair. From `reviews/wave-13x.md` (001-244) B1 and S1; decided by the human (2026-10-10): fix, then a short re-review (001-246). Read the review's reproductions first.
+
+Outcome: B1: in `ErasedEvents` (`src/core/watcher/parcel-backend.ts`), an unreadable racy hash is represented separately from a settled, intentionally unhashed signature. A failed content read (EMFILE, ENOENT or any other error) never becomes a trusted baseline: the recheck keeps the file uncertain and reports it conservatively (a `change` hint, which the reconciler verifies by content anyway) or routes it through the existing lost-event or reconciliation path. A missing file is never declared equal. S1: content work has a budget, as one constant or a few: a byte cap per file and per batch, or a time cap. A file over the budget is hinted conservatively, never treated as unchanged. Already-settled files are still never read, and a file is never read twice in one batch.
+
+Own: `src/core/watcher/parcel-backend.ts`, `test/watcher/`. The coordinator re-pins `KEY_FORMAT_VERSION` 3 and rebuilds. Do not run `npm run build`. Do not edit `docs/board.md`.
+
+Done when: the review's EMFILE reproducer reports the later same-tick rewrite, red before; a test shows a file over the budget is hinted, not read in full; the settled-file test still reads nothing; parcel-racy and parcel-links pass 50 times in a row; lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+## 001-246 re-review of the parcel recheck
+
+Use /reviewer on gpt-6.1-sol, after 001-245 lands. Output `reviews/wave-13y.md`. Second round on `reviews/wave-13x.md` B1 and S1: can any failed or skipped read still be trusted as unchanged; is the budget bounded and its conservative hint safe. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
