@@ -1,4 +1,5 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, type ChildProcessByStdio, spawn } from "node:child_process";
+import type { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 
 const register = fileURLToPath(new URL("./register-ts.mjs", import.meta.url));
@@ -24,17 +25,21 @@ export function spawnWorker(args: readonly string[]): Worker {
   return spawnChild(worker, args);
 }
 
-/** Starts `opener.ts`, which opens stores in rounds alongside other openers. */
+/** Starts `opener.ts`, which opens stores in rounds alongside other openers, each on a stdin line. */
 export function spawnOpener(args: readonly string[]): Worker {
-  return spawnChild(opener, args);
+  return spawnChild(opener, args, "pipe");
 }
 
-function spawnChild(script: string, args: readonly string[]): Worker {
+function spawnChild(
+  script: string,
+  args: readonly string[],
+  stdin: "ignore" | "pipe" = "ignore",
+): Worker {
   const child = spawn(
     process.execPath,
     ["--disable-warning=ExperimentalWarning", "--import", register, script, ...args],
-    { stdio: ["ignore", "pipe", "pipe"] },
-  );
+    { stdio: [stdin, "pipe", "pipe"] },
+  ) as ChildProcessByStdio<Writable | null, Readable, Readable>;
   let stdout = "";
   let stderr = "";
   const waiters: { text: string; resolve: () => void }[] = [];
