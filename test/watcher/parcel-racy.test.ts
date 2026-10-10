@@ -15,6 +15,22 @@ const held = new Map<string, bigint>();
 const reads: string[] = [];
 /** Paths whose next read fails, as descriptor exhaustion would. */
 const failing = new Set<string>();
+/** Writes to run just before a path's next content read, between its stat and its read. */
+const beforeRead = new Map<string, () => void>();
+/** The content bytes each read returned, and the descriptors still open. */
+const bytes: number[] = [];
+const open = new Set<number>();
+/** Whether the next read through a descriptor fails, as an I/O error would. */
+let readFails = false;
+
+/** The start of a content read: either way the backend may read, so reverting to a whole-file read is caught too. */
+function reading(path: string): void {
+  reads.push(path);
+  beforeRead.get(path)?.();
+  beforeRead.delete(path);
+  if (failing.delete(path))
+    throw Object.assign(new Error("EMFILE: too many open files"), { code: "EMFILE" });
+}
 
 vi.mock("node:fs", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs")>();
@@ -24,12 +40,32 @@ vi.mock("node:fs", async (importOriginal) => {
     return stat && time !== undefined ? { ...stat, mtimeNs: time, ctimeNs: time } : stat;
   }) as typeof real.statSync;
   const readFileSync = ((path: string, ...rest: never[]) => {
-    reads.push(path);
-    if (failing.delete(path))
-      throw Object.assign(new Error("EMFILE: too many open files"), { code: "EMFILE" });
-    return real.readFileSync(path, ...rest);
+    reading(path);
+    const content = real.readFileSync(path, ...rest);
+    bytes.push(content.length);
+    return content;
   }) as typeof real.readFileSync;
-  return { ...real, default: { ...real, statSync, readFileSync }, statSync, readFileSync };
+  const openSync = ((path: string, ...rest: never[]) => {
+    reading(path);
+    const fd = real.openSync(path, ...rest);
+    open.add(fd);
+    return fd;
+  }) as typeof real.openSync;
+  const readSync = ((...args: never[]) => {
+    if (readFails) {
+      readFails = false;
+      throw Object.assign(new Error("EIO: i/o error, read"), { code: "EIO" });
+    }
+    const n = (real.readSync as (...a: never[]) => number)(...args);
+    bytes.push(n);
+    return n;
+  }) as typeof real.readSync;
+  const closeSync = ((fd: number) => {
+    open.delete(fd);
+    real.closeSync(fd);
+  }) as typeof real.closeSync;
+  const fakes = { statSync, readFileSync, openSync, readSync, closeSync };
+  return { ...real, default: { ...real, ...fakes }, ...fakes };
 });
 
 /*
@@ -55,7 +91,10 @@ describe("parcel backend, an erased event inside one timestamp tick", () => {
     callbacks = new Map();
     held.clear();
     failing.clear();
+    beforeRead.clear();
+    readFails = false;
     reads.length = 0;
+    bytes.length = 0;
     mkdirSync(join(root, "real-build"));
     writeFileSync(join(root, "real-build/index.js"), "export const build = 'a';\n");
     writeFileSync(join(root, "real-build/other.js"), "export const other = 'a';\n");
@@ -64,6 +103,7 @@ describe("parcel backend, an erased event inside one timestamp tick", () => {
   afterEach(async () => {
     await sub?.close();
     cleanup();
+    expect(open).toEqual(new Set());
   });
 
   const index = () => join(root, "real-build/index.js");
@@ -172,5 +212,43 @@ describe("parcel backend, an erased event inside one timestamp tick", () => {
       { path: join(root, "dist/index.js"), kind: "change" },
       { path: join(root, "dist/index.js"), kind: "change" },
     ]);
+  });
+
+  /*
+   * 001-247, reviews/wave-13y.md B1: the size is the stat's, and a builder may
+   * grow the file before it is read. The read stops at the budget whatever
+   * the stat said, and the file is hinted.
+   */
+  it("reads a file grown between stat and read no further than the budget, and hints it", async () => {
+    writeFileSync(index(), "x".repeat(1024));
+    held.set(index(), nowNs());
+    await start();
+    bytes.length = 0;
+    beforeRead.set(index(), () => writeFileSync(index(), "x".repeat(12 * 1024 * 1024)));
+    deliver("other.js");
+    expect(reads.filter((p) => p.endsWith("index.js"))).toEqual([index(), index()]);
+    expect(bytes.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(READ_BUDGET + 1);
+    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
+  });
+
+  it("hashes a racy file of exactly the budget and reports nothing while it is unchanged", async () => {
+    writeFileSync(index(), "x".repeat(READ_BUDGET));
+    held.set(index(), nowNs());
+    await start();
+    bytes.length = 0;
+    deliver("other.js");
+    expect(bytes.reduce((a, b) => a + b, 0)).toBe(READ_BUDGET);
+    expect(hints).toEqual([]);
+  });
+
+  it("closes the descriptor and hints the file when a read fails after the open", async () => {
+    held.set(index(), nowNs());
+    await start();
+    beforeRead.set(index(), () => {
+      readFails = true;
+    });
+    deliver("other.js");
+    expect(readFails).toBe(false);
+    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
   });
 });
