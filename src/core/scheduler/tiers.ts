@@ -2,19 +2,12 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
-import type {
-  CheckKey,
-  CheckpointRecord,
-  Provenance,
-  RelativePath,
-  RunReport,
-  TestFileRef,
-} from "../types/index.js";
+import type { CheckKey, Provenance, RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { SLOW_LANE_PREFIX } from "../types/index.js";
 import { backlogBudget } from "./backlog.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { rerunGrown } from "./environment-growth.js";
-import { classify, type FileState } from "./files.js";
+import type { FileState } from "./files.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
@@ -467,58 +460,4 @@ export function recordTier(
     ledger.commit();
   });
   return [...new Set([...changedOnDisk, ...observed.changed])];
-}
-
-/**
- * Spec 001 D5: "`squeal run --all` queues every test file whose key has no
- * result, or every test file when `--force` is given." One checkpoint of kind
- * `run-all` over those files (D7). Files already queued or running belong to
- * it too; a file that crashed at its key is queued again. "An unkeyed or
- * `unknown` file is always work to do": an unkeyed file, or one blocked by a
- * runner failure, is requested too and ends the checkpoint `abandoned`.
- */
-/**
- * `run --all` while the worktree waits for an install: nothing can be listed
- * or keyed, so the checkpoint over the files an earlier daemon listed is
- * abandoned at once and never claims a full suite (review wave 11, B1).
- */
-export function abandonFullSuite(ledger: Ledger): CheckpointRecord {
-  const files = [...ledger.files.values()].map((file) => file.ref);
-  const record = ledger.checkpoints.abandon(randomUUID(), "run-all", ledger.revision.number, files);
-  ledger.commit();
-  return record;
-}
-
-export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord {
-  const id = randomUUID();
-  // A file another worktree's heal left held here is not done (review wave 13i, B1).
-  ledger.confirmHeld();
-  const files = [...ledger.files.values()];
-  const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
-  const runnable = files.filter((file) => file.key !== null && file.blocked === null);
-  let requested: FileState[];
-  if (force) {
-    requested = runnable;
-    for (const file of runnable) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
-  } else {
-    const open = runnable.filter((file) => classify(file) !== "current");
-    for (const file of open) file.unknownKey = null;
-    const pending = open.filter((file) => file.phase !== null);
-    const misses = ledger.settle(
-      open.filter((file) => file.phase === null).map((file) => file.ref),
-      NOTHING_CHANGED,
-      { checkpointId: id },
-    );
-    requested = [...pending, ...misses];
-  }
-  const record = ledger.checkpoints.start(
-    id,
-    "run-all",
-    ledger.revision.number,
-    [...requested, ...unrunnable].map((file) => file.ref),
-    force,
-  );
-  for (const file of unrunnable) ledger.checkpoints.failed(file.ref);
-  ledger.commit();
-  return record;
 }
