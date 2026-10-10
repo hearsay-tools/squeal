@@ -76,6 +76,8 @@ export class FakeRunner implements RunnerAdapter {
   /** Runs in flight. */
   active = 0;
   end: RunEnd = "completed";
+  /** Runs end `completed` with no file completed, as a cancelled run reports. */
+  cancelled = false;
   readonly failing = new Set<string>();
   /** Called with a run's files while it is in flight. */
   during: ((files: readonly TestFileRef[]) => void | Promise<void>) | null = null;
@@ -128,7 +130,7 @@ export class FakeRunner implements RunnerAdapter {
     } finally {
       this.active -= 1;
     }
-    const completed = this.end === "completed";
+    const completed = this.end === "completed" && !this.cancelled;
     return {
       end: this.end,
       durationMs: this.runMs,
@@ -150,7 +152,7 @@ export class FakeRunner implements RunnerAdapter {
           }))
         : [],
       fileErrors: [],
-      failure: completed ? null : `run ${this.end}`,
+      failure: this.end === "completed" ? null : `run ${this.end}`,
     };
   }
 }
