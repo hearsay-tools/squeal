@@ -12902,7 +12902,8 @@ var init_chokidar_backend = __esm({
 });
 
 // src/core/watcher/parcel-backend.ts
-import { statSync as statSync3 } from "node:fs";
+import { createHash as createHash16 } from "node:crypto";
+import { readFileSync as readFileSync13, statSync as statSync3 } from "node:fs";
 import { realpath as realpath6 } from "node:fs/promises";
 import { basename as basename7, dirname as dirname15, join as join33 } from "node:path";
 async function loadOwnParcel() {
@@ -12971,7 +12972,25 @@ async function subscribeAll(parcel, spec, listener) {
 }
 function signature(path) {
   const stat7 = statSync3(path, { bigint: true, throwIfNoEntry: false });
-  return stat7 ? `${stat7.ino}:${stat7.size}:${stat7.mtimeNs}:${stat7.ctimeNs}` : null;
+  if (!stat7) return null;
+  const latest = stat7.mtimeNs > stat7.ctimeNs ? stat7.mtimeNs : stat7.ctimeNs;
+  const racy = latest >= BigInt(Date.now()) * 1000000n - RACY_NS;
+  return {
+    stat: `${stat7.ino}:${stat7.size}:${stat7.mtimeNs}:${stat7.ctimeNs}`,
+    hash: racy ? contentHash(path) : null
+  };
+}
+function same(path, before, now) {
+  if (before === null || now === null) return before === now;
+  if (before.stat !== now.stat) return false;
+  return before.hash === null || before.hash === (now.hash ?? contentHash(path));
+}
+function contentHash(path) {
+  try {
+    return createHash16("sha1").update(readFileSync13(path)).digest("hex");
+  } catch {
+    return null;
+  }
 }
 function callback(listener, report2, erased) {
   return (error, events) => {
@@ -12988,7 +13007,7 @@ function callback(listener, report2, erased) {
     if (hints.length > 0) listener.onHints(hints);
   };
 }
-var KINDS3, DROPPED, parcelBackend, ErasedEvents;
+var KINDS3, DROPPED, parcelBackend, ErasedEvents, RACY_NS;
 var init_parcel_backend = __esm({
   "src/core/watcher/parcel-backend.ts"() {
     "use strict";
@@ -13010,13 +13029,14 @@ var init_parcel_backend = __esm({
           const before = this.last.get(real2) ?? null;
           const now = signature(real2);
           this.last.set(real2, now);
-          if (named.has(real2) || now === before) continue;
+          if (named.has(real2) || same(real2, before, now)) continue;
           const kind = now === null ? "unlink" : before === null ? "add" : "change";
           for (const path of declared) hints.push({ path, kind });
         }
         return hints;
       }
     };
+    RACY_NS = 2000000000n;
   }
 });
 
@@ -13492,7 +13512,7 @@ var init_daemon_loop = __esm({
 });
 
 // src/runners/vitest/loads.ts
-import { readFileSync as readFileSync13 } from "node:fs";
+import { readFileSync as readFileSync14 } from "node:fs";
 function sourceLoads(source) {
   const requires = [];
   for (const pattern2 of [REQUIRE, RESOLVE_RELATIVE]) {
@@ -13508,7 +13528,7 @@ function moduleLoads(file, transform) {
   if (loads === void 0) {
     let source = null;
     try {
-      source = readFileSync13(file, "utf8");
+      source = readFileSync14(file, "utf8");
     } catch {
     }
     loads = source === null ? { requires: [], unnamed: true, environment: null } : sourceLoads(source);
@@ -14148,7 +14168,7 @@ var init_broken = __esm({
 });
 
 // src/runners/vitest/stamp.ts
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash17 } from "node:crypto";
 import { lstat as lstat8, readFile as readFile5 } from "node:fs/promises";
 function changedBefore(stat7, at2) {
   const wholeSeconds = stat7.ctimeMs % 1e3 === 0 && stat7.mtimeMs % 1e3 === 0;
@@ -14160,7 +14180,7 @@ async function readStamp(file) {
   try {
     return {
       stat: stat7,
-      hash: createHash16("sha1").update(await readFile5(file)).digest("hex")
+      hash: createHash17("sha1").update(await readFile5(file)).digest("hex")
     };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -14506,7 +14526,7 @@ var init_inputs = __esm({
 });
 
 // src/runners/observe/read.ts
-import { readdirSync as readdirSync7, readFileSync as readFileSync14, rmSync as rmSync7 } from "node:fs";
+import { readdirSync as readdirSync7, readFileSync as readFileSync15, rmSync as rmSync7 } from "node:fs";
 import { join as join41 } from "node:path";
 function takeRecorded(dir) {
   const recorded2 = /* @__PURE__ */ new Map();
@@ -14520,7 +14540,7 @@ function takeRecorded(dir) {
     const file = join41(dir, name);
     let text2;
     try {
-      text2 = readFileSync14(file, "utf8");
+      text2 = readFileSync15(file, "utf8");
       rmSync7(file, { force: true });
     } catch {
       continue;
@@ -15190,7 +15210,7 @@ var init_run = __esm({
 });
 
 // src/runners/vitest/dynamic.ts
-import { readFileSync as readFileSync15 } from "node:fs";
+import { readFileSync as readFileSync16 } from "node:fs";
 function expandsFromDisk(file, transform) {
   let found = scanned2.get(transform);
   if (found === void 0) {
@@ -15202,7 +15222,7 @@ function expandsFromDisk(file, transform) {
 }
 function readSource(file) {
   try {
-    return readFileSync15(file, "utf8");
+    return readFileSync16(file, "utf8");
   } catch {
     return null;
   }
@@ -15217,7 +15237,7 @@ var init_dynamic = __esm({
 });
 
 // src/runners/vitest/stale.ts
-import { existsSync as existsSync15, readFileSync as readFileSync16 } from "node:fs";
+import { existsSync as existsSync15, readFileSync as readFileSync17 } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename as basename11, dirname as dirname19, join as join44 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
@@ -15336,7 +15356,7 @@ function packageEntries(manifest) {
 }
 function readManifest3(manifest) {
   try {
-    const fields = JSON.parse(readFileSync16(manifest, "utf8"));
+    const fields = JSON.parse(readFileSync17(manifest, "utf8"));
     return isRecord(fields) ? fields : null;
   } catch {
     return null;
@@ -22861,7 +22881,7 @@ var init_parse = __esm({
 });
 
 // src/runners/node-test/graph/modules.ts
-import { readFileSync as readFileSync17 } from "node:fs";
+import { readFileSync as readFileSync18 } from "node:fs";
 import { dirname as dirname21, relative as relative8, sep as sep10 } from "node:path";
 function sameEdges(a, b) {
   return sameSet(a.deps, b.deps) && sameSet(a.reads, b.reads) && sameSet(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n") && a.pairs.flat().join("\n") === b.pairs.flat().join("\n");
@@ -22923,7 +22943,7 @@ var init_modules = __esm({
           parsed = NO_PARSE;
           if (PARSED_EXTENSION.test(file)) {
             try {
-              parsed = parseModule(readFileSync17(file, "utf8"), relative8(this.root, file));
+              parsed = parseModule(readFileSync18(file, "utf8"), relative8(this.root, file));
             } catch {
             }
           }
@@ -23943,9 +23963,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile8 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile8;
-        const readFileSync22 = this._readFileBackend.provideSync;
+        const readFileSync23 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync22;
+        readFileSync23;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -32994,7 +33014,7 @@ var init_report = __esm({
 });
 
 // src/runners/node-test/run/run.ts
-import { mkdirSync as mkdirSync9, readdirSync as readdirSync10, readFileSync as readFileSync18, writeFileSync as writeFileSync5 } from "node:fs";
+import { mkdirSync as mkdirSync9, readdirSync as readdirSync10, readFileSync as readFileSync19, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join50, relative as relative10, sep as sep13 } from "node:path";
 async function runNodeTest(options) {
   const started2 = performance.now();
@@ -33115,14 +33135,14 @@ function describeExit(exit2, node) {
 }
 function readEvents(logDir, index) {
   try {
-    return parseEvents(readFileSync18(join50(logDir, `events-${index}.ndjson`), "utf8"));
+    return parseEvents(readFileSync19(join50(logDir, `events-${index}.ndjson`), "utf8"));
   } catch {
     return [];
   }
 }
 function graphs(logDir, index) {
   const prefix = `graph-${index}-`;
-  return readdirSync10(logDir).filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson")).map((name) => readFileSync18(join50(logDir, name), "utf8"));
+  return readdirSync10(logDir).filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson")).map((name) => readFileSync19(join50(logDir, name), "utf8"));
 }
 function writeRunLog2(logDir, log) {
   const files = log.runs.map((r) => ({
@@ -33434,7 +33454,7 @@ __export(runner_exports, {
   createRecoveringRunner: () => createRecoveringRunner,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync11, readFileSync as readFileSync19 } from "node:fs";
+import { readdirSync as readdirSync11, readFileSync as readFileSync20 } from "node:fs";
 import { join as join52 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters4 } from "node:util";
 function createRecoveringRunner(options) {
@@ -33528,7 +33548,7 @@ function vitestDetected(root) {
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync19(join52(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync20(join52(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -33868,7 +33888,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.104";
+  if (true) return "0.1.105";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35693,7 +35713,7 @@ var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS2 = 120;
 var PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
 async function terminate(found, table = PROC) {
-  const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
+  const same2 = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
   const named = [];
   for (const entry2 of found) {
     const now = table.stat(entry2.pid);
@@ -35706,19 +35726,19 @@ async function terminate(found, table = PROC) {
   }
   const ages = /* @__PURE__ */ new Map();
   for (const { entry: entry2 } of named) {
-    if (!same(entry2)) continue;
+    if (!same2(entry2)) continue;
     ages.set(entry2, Math.max(0, table.uptime() - entry2.start) / TICKS_PER_SECOND);
     table.signal(entry2.pid, "SIGTERM");
   }
   const deadline = Date.now() + GRACE_MS;
-  let alive = [...ages.keys()].filter(same);
+  let alive = [...ages.keys()].filter(same2);
   while (alive.length > 0 && Date.now() < deadline) {
     await sleep2(25);
-    alive = alive.filter(same);
+    alive = alive.filter(same2);
   }
   const killed = /* @__PURE__ */ new Set();
   for (const entry2 of alive) {
-    if (!same(entry2)) continue;
+    if (!same2(entry2)) continue;
     table.signal(entry2.pid, "SIGKILL");
     killed.add(entry2);
   }
@@ -37625,7 +37645,7 @@ function lockWait(options) {
 // src/cli/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync17, mkdirSync as mkdirSync10, readFileSync as readFileSync20, rmSync as rmSync9, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync17, mkdirSync as mkdirSync10, readFileSync as readFileSync21, rmSync as rmSync9, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join53 } from "node:path";
 var MARKETPLACE_SOURCE = {
   source: { source: "github", repo: MARKETPLACE_REPO }
@@ -37791,7 +37811,7 @@ function initClaudeCode(io) {
 var SEEDED = "seeded nodeTest project";
 function lacksNodeTest(path) {
   try {
-    const value = JSON.parse(readFileSync20(path, "utf8"));
+    const value = JSON.parse(readFileSync21(path, "utf8"));
     return isRecord(value) && !("nodeTest" in value);
   } catch {
     return false;
@@ -37811,7 +37831,7 @@ function reason(error) {
 }
 function readSettings(path) {
   if (!existsSync17(path)) return { value: {}, text: null, indent: 2 };
-  const text2 = readFileSync20(path, "utf8");
+  const text2 = readFileSync21(path, "utf8");
   let value;
   try {
     value = JSON.parse(text2);
@@ -37823,7 +37843,7 @@ function readSettings(path) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync18, lstatSync as lstatSync5, readdirSync as readdirSync12, readFileSync as readFileSync21, rmSync as rmSync10 } from "node:fs";
+import { existsSync as existsSync18, lstatSync as lstatSync5, readdirSync as readdirSync12, readFileSync as readFileSync22, rmSync as rmSync10 } from "node:fs";
 import { basename as basename14, dirname as dirname24, join as join54 } from "node:path";
 import { setTimeout as sleep5 } from "node:timers/promises";
 init_paths4();
@@ -37945,7 +37965,7 @@ ${removed.map((line) => `  ${line}
 function pluginLine(root) {
   let settings = null;
   try {
-    settings = JSON.parse(readFileSync21(join54(root, ".claude", "settings.json"), "utf8"));
+    settings = JSON.parse(readFileSync22(join54(root, ".claude", "settings.json"), "utf8"));
   } catch {
   }
   const keys = (field, names) => {
