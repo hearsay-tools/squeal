@@ -179,18 +179,20 @@ export function keySourcesHash(root = ROOT, overlay: Overlay = {}): string {
 /**
  * Each relative import of a guarded source that lands on an exempt one, as
  * `from -> to`: the places where exempt code could reach a key or a result.
+ * `GUARDED_WITHIN` is scanned too, so a helper extracted from the daemon's
+ * start or a build into an exempt file shows up (review wave 13n, S3).
  */
-export function guardedImportsOfExempt(root = ROOT): string[] {
+export function guardedImportsOfExempt(root = ROOT, overlay: Overlay = {}): string[] {
   const edges: string[] = [];
-  // `GUARDED_WITHIN`'s CLI entry dispatches to every command; only `squeal daemon` runs a daemon.
-  const sources = guardedFiles(root).filter(
-    (path) => /^src\/.*\.(ts|mjs|cjs)$/.test(path) && GUARDED_WITHIN[path] === undefined,
+  const sources = guardedFiles(root, overlay).filter((path) =>
+    /^src\/.*\.(ts|mjs|cjs)$/.test(path),
   );
   for (const from of sources) {
-    const text = readFileSync(join(root, from), "utf8");
+    const text = textOf(root, from, overlay);
     for (const match of text.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*["'](\.\.?\/[^"']+)["']/g)) {
       const target = posix.join(dirname(from), match[1] ?? "").replace(/\.js$/, ".ts");
-      const to = existsSync(join(root, target)) ? target : `${target}/index.ts`;
+      const present = typeof overlay[target] === "string" || existsSync(join(root, target));
+      const to = present ? target : `${target}/index.ts`;
       if (isExempt(to)) edges.push(`${from} -> ${to}`);
     }
   }

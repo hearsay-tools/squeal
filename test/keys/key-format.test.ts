@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { describe, expect, it } from "vitest";
+import { compare } from "../../src/core/fs/index.js";
 import {
   environmentHash,
   KEY_FORMAT_VERSION,
@@ -13,6 +14,7 @@ import {
   GUARDED_WITHIN,
   guardedFiles,
   guardedImportsOfExempt,
+  isExempt,
   keySourcesHash,
   type Overlay,
   ROOT,
@@ -31,6 +33,37 @@ function edited(path: string, edit: (text: string) => string): Overlay {
 
 const replaced = (path: string, from: string, to: string) =>
   edited(path, (text) => text.replace(from, to));
+
+/** The relative imports from guarded sources into exempt ones, each with why it keys, runs or records nothing. */
+const SEAMS = [
+  // The dispatcher's commands, none of which keys, runs or records; `squeal daemon` is guarded.
+  "src/cli/main.ts -> src/cli/codex/status.ts", // the Codex status line: renders the store
+  "src/cli/main.ts -> src/cli/init.ts", // `squeal init`: writes the user's config files
+  "src/cli/main.ts -> src/cli/remove.ts", // `squeal remove`: stops daemons, deletes the store
+  "src/cli/main.ts -> src/cli/run.ts", // `squeal run`: asks a daemon for a checkpoint or the slow tier
+  "src/cli/main.ts -> src/cli/start.ts", // `squeal start`: starts a daemon through core/daemon/ensure.ts
+  "src/cli/main.ts -> src/cli/status-command.ts", // `squeal status`: reads the store
+  "src/cli/main.ts -> src/cli/status-wait.ts", // `squeal status --wait`: polls the store
+  "src/cli/main.ts -> src/cli/stop.ts", // `squeal stop`: asks a daemon to exit
+  "src/cli/main.ts -> src/cli/wait-arg.ts", // parses `--wait <ms>`
+  "src/cli/main.ts -> src/core/status/index.ts", // `squeal status` and `why`: read the store and render it
+  // Whether a daemon is alive, to start one: never what it stores.
+  "src/core/daemon/ensure.ts -> src/core/delivery/liveness.ts",
+  // Consumer expiry and departed harnesses.
+  "src/core/daemon/lifecycle.ts -> src/core/delivery/index.ts",
+  // The format version, which every environment hash holds directly.
+  "src/core/keys/environment.ts -> src/core/keys/key-format.ts",
+  "src/core/keys/index.ts -> src/core/keys/key-format.ts",
+  // When another worktree's claim goes stale decides who runs a file, not what it records (001-205).
+  "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
+  // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
+  "src/core/scheduler/slow-tier.ts -> src/core/delivery/turn.ts",
+  "src/core/state/slow.ts -> src/core/delivery/slots.ts",
+  // The adapters' own versions (D4).
+  "src/runners/node-test/adapter.ts -> src/runners/node-test/version.ts",
+  "src/runners/vitest/adapter.ts -> src/runners/vitest/version.ts",
+  "src/runners/vitest/index.ts -> src/runners/vitest/version.ts",
+];
 
 describe("KEY_FORMAT_VERSION", () => {
   it("is bumped whenever the guarded sources change", () => {
@@ -166,25 +199,24 @@ describe("the guard", () => {
 
   // An exempt file stays exempt only while no guarded file needs it to key, run or record.
   it("lets guarded sources import exempt ones only through these named seams", () => {
-    expect(guardedImportsOfExempt()).toEqual([
-      // Whether a daemon is alive, to start one: never what it stores.
-      "src/core/daemon/ensure.ts -> src/core/delivery/liveness.ts",
-      // Consumer expiry and departed harnesses.
-      "src/core/daemon/lifecycle.ts -> src/core/delivery/index.ts",
-      // The format version, which every environment hash holds directly.
-      "src/core/keys/environment.ts -> src/core/keys/key-format.ts",
-      "src/core/keys/index.ts -> src/core/keys/key-format.ts",
-      // When another worktree's claim goes stale decides who runs a file, not what it records (001-205).
-      "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
-      // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
-      "src/core/scheduler/slow-tier.ts -> src/core/delivery/turn.ts",
-      "src/core/state/slow.ts -> src/core/delivery/slots.ts",
-      // The adapters' own versions (D4).
-      "src/runners/node-test/adapter.ts -> src/runners/node-test/version.ts",
-      "src/runners/vitest/adapter.ts -> src/runners/vitest/version.ts",
-      "src/runners/vitest/index.ts -> src/runners/vitest/version.ts",
-    ]);
+    expect(guardedImportsOfExempt()).toEqual(SEAMS);
   });
+
+  // Review wave 13n, S3: the daemon's start and the builds are scanned too.
+  it.each(Object.keys(GUARDED_WITHIN))(
+    "catches a helper %s newly imports from an exempt file",
+    (from) => {
+      const helper = posix.join(posix.dirname(from), "extracted-helper.ts");
+      const overlay: Overlay = {
+        ...edited(from, (text) => `import "./extracted-helper.js";\n${text}`),
+        [helper]: "export {};\n",
+      };
+      expect(isExempt(helper)).toBe(true);
+      expect(guardedImportsOfExempt(ROOT, overlay)).toEqual(
+        [...SEAMS, `${from} -> ${helper}`].sort(compare),
+      );
+    },
+  );
 });
 
 // Review wave 13m, S1: an adapter bump alone re-keys its own runner and passes the guard.
