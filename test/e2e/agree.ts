@@ -43,6 +43,6 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
   const failing = new Set(status.knownFailures.map((f) => formatCheck(f.check)));
   for (const name of blocks(text, "FAIL")) expect(failing, text).toContain(name);
   for (const name of blocks(text, "PASS")) expect(failing, text).not.toContain(name);
-  const known = /^Known failures: (\d+)$/m.exec(text);
+  const known = /^Known failures: (\d+)(?: \(.*\))?$/m.exec(text);
   if (known !== null) expect(Number(known[1]), text).toBe(status.knownFailures.length);
 }

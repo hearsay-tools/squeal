@@ -234,7 +234,8 @@ describe("Stop and SubagentStop", () => {
       /^SQUEAL · 1 check changed at revision 2\nRevision 2 \(changed src\/math\.ts\): /,
     );
     expect(text).toContain("PASS -> FAIL");
-    expect(text).toMatch(/\nKnown failures: 1$/);
+    // Task 001-222: the count names the failures.
+    expect(text).toMatch(/\nKnown failures: 1 \(src\/math\.test\.ts > math > \w+\)$/);
   });
 
   it("blocks on known failures when stop.blockOnKnownFailures is on", async () => {
@@ -251,7 +252,7 @@ describe("Stop and SubagentStop", () => {
         "Squeal policy stop.blockOnKnownFailures is on and 1 known failure exists at revision 1: src/math.test.ts > math > subtracts.\n\n" +
         "SQUEAL · status at revision 1\n" +
         "Revision 1 (changed src/math.ts): 2 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one).\n" +
-        "Known failures: 1",
+        "Known failures: 1 (src/math.test.ts > math > subtracts)",
     });
   });
 

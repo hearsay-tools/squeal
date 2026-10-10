@@ -2,6 +2,7 @@
 
 /** The shared header reader lives with the known state; hooks import it from here too. */
 export { readHeader } from "../state/index.js";
+export { checkName } from "./collapse.js";
 export { otherSessionVersions, recordVersion, versionMetaKey } from "./consumer-version.js";
 export {
   createDelivery,
