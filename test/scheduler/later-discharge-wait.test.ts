@@ -1,6 +1,12 @@
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
+import {
+  DISCHARGE_CAP,
+  DISCHARGE_RETENTION_MS,
+  Discharges,
+} from "../../src/core/scheduler/discharges.js";
+import { newFileState } from "../../src/core/scheduler/files.js";
 import type { EpochMs, RevisionNumber } from "../../src/core/types/index.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -10,9 +16,12 @@ import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
  * the wait's sync awaited an unrelated refinement replaced the first; the
  * answer, bounded by the captured revision, no longer named the file, and
  * the wait ended quiet with the edit's failure counted as another check's.
- * The scheduler, adapter, store and sink are real; the sync is the daemon's
- * sequence: capture the revision, `refined()`, then `rekeyedSince`. The
- * control differs only in the second, cached edit.
+ * Review wave 13q, S1 (task 001-214): later discharges past the default cap,
+ * or one past the hour, evicted the first the same way; the answer now holds
+ * it. The scheduler, adapter, store and sink are real; the sync is the
+ * daemon's `rekeyedOnceRefined` at the captured revision. The control
+ * differs only in the second, cached edit or the later discharges, which
+ * are synthetic, noted to the live instance after the captured revision.
  */
 
 const MATH = "src/math.ts";
@@ -22,9 +31,27 @@ const TARGET = "export const add = (a: number, b: number) => a - b; // target\n"
 
 describe("status --wait over a later cached discharge of its file (task 001-202)", () => {
   it.each([
-    { name: "a later cached discharge", cached: true },
-    { name: "the one-discharge control", cached: false },
-  ])("returns on the edit's own news with $name", SLOW, async ({ cached }) => {
+    { name: "a later cached discharge", cached: true, later: [] },
+    { name: "the one-discharge control", cached: false, later: [] },
+    {
+      name: "a full cap of later discharges",
+      cached: false,
+      later: Array.from({ length: DISCHARGE_CAP }, () => 1),
+    },
+    { name: "a later discharge past the hour", cached: false, later: [DISCHARGE_RETENTION_MS + 1] },
+  ])("returns on the edit's own news with $name", SLOW, async ({ cached, later }) => {
+    // The live instance, and when it last discharged.
+    let discharges: Discharges | null = null;
+    let lastAt = 0;
+    const note = Discharges.prototype.note;
+    vi.spyOn(Discharges.prototype, "note").mockImplementation(function (this: Discharges, ...args) {
+      discharges = this;
+      lastAt = args[1];
+      note.apply(this, args);
+    });
+    onTestFinished(() => {
+      vi.restoreAllMocks();
+    });
     const repo = createRepo();
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       runnerPartBesideRun: true,
@@ -101,7 +128,7 @@ describe("status --wait over a later cached discharge of its file (task 001-202)
     ): DaemonSync => {
       void (async () => {
         const revision = h.scheduler.status().revision;
-        const refined = h.scheduler.refined();
+        const answer = h.scheduler.rekeyedOnceRefined(after, revision, resolvedSince);
         // Math's failure lands while the pass waits for strings' refinement.
         releaseRun();
         await expect.poll(mathFails, { timeout: 60_000 }).toBe(true);
@@ -120,13 +147,14 @@ describe("status --wait over a later cached discharge of its file (task 001-202)
             })
             .toContainEqual(expect.objectContaining({ revision: latest, resolved: true }));
         }
+        const at = lastAt;
+        later.forEach((delay, n) => {
+          const file = newFileState({ project: "", path: `test/later-${n}.test.ts` });
+          const moved = { ...file, keyedAt: revision + 1, lastKeyedAt: revision + 1 };
+          discharges?.note(moved, at + delay);
+        });
         releaseRefinement();
-        await refined;
-        state = {
-          state: "synced",
-          revision,
-          rekeyed: h.scheduler.rekeyedSince(after, revision, resolvedSince),
-        };
+        state = { state: "synced", revision, rekeyed: await answer };
       })();
       return { current: () => state, stop: () => {} };
     };

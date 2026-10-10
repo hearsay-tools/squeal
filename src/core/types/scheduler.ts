@@ -180,6 +180,16 @@ export interface Scheduler {
     resolvedSince?: EpochMs,
   ): readonly RekeyedTestFile[];
   /**
+   * `rekeyedSince` once `refined()`, as a sync answer reads it: the
+   * discharges it would name are kept from the call until it resolves or
+   * rejects, whatever the prune bounds (review wave 13q, S1, task 001-214).
+   */
+  rekeyedOnceRefined(
+    after: RevisionNumber,
+    upTo: RevisionNumber,
+    resolvedSince?: EpochMs,
+  ): Promise<readonly RekeyedTestFile[]>;
+  /**
    * Resolves once nothing is queued or running and no revision waits for its
    * runner part. Slow files that wait for a trigger or the slot (spec 004
    * D2) do not count; a slow file running or waiting for load does.

@@ -324,6 +324,23 @@ class TierScheduler implements Scheduler {
     return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
   }
 
+  async rekeyedOnceRefined(
+    after: RevisionNumber,
+    upTo: RevisionNumber,
+    resolvedSince?: EpochMs,
+  ): Promise<readonly RekeyedTestFile[]> {
+    const release =
+      resolvedSince === undefined || this.#ledger === null
+        ? () => {}
+        : this.#ledger.discharges.hold(resolvedSince, after, upTo);
+    try {
+      await this.refined();
+      return this.rekeyedSince(after, upTo, resolvedSince);
+    } finally {
+      release();
+    }
+  }
+
   idle(): Promise<void> {
     if (this.#isIdle()) return Promise.resolve();
     return new Promise((resolve) => this.#idle.push(resolve));
