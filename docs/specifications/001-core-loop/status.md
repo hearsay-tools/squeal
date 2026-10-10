@@ -165,6 +165,7 @@ Started: 2026-10-02
 - 2026-10-10, coordinator: a CI failure on main is read together with CI on the integration branch's pushes; a single green main run can hide a flake (001-235's parcel-links timeout failed on the branch's run of f8addfaa while main's passed).
 - 2026-10-10, human (`reviews/wave-13u.md`, 001-233 FAIL, first round): fix B1 and B2 (001-238) with the daemon's own re-key set as the source of 001-223/224's lines, then a re-review (001-239).
 - 2026-10-10, human (`reviews/wave-13v.md`, 001-239 FAIL, second round): the settled line also requires no edited file to be pending again (001-240), then a third review (001-241).
+- 2026-10-10, human (`reviews/wave-13x.md`, 001-244 FAIL, first round): fix B1 and S1 in the parcel recheck (001-245), then a short re-review (001-246); the release waits for it.
 
 ## Research
 
