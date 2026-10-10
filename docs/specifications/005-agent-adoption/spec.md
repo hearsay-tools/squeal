@@ -29,10 +29,11 @@ A first look by the human at a repository nobody had set up (a fresh cezar workt
 4. Setup can write a managed instruction block into the file each harness reads, between versioned markers. It replaces the block on upgrade and `squeal remove` takes it out. Two files that resolve to one file get one block.
 5. Setup finds instruction lines that run the test command and offers each a rewording to Squeal's checkpoint, shown as a diff, written only on its own yes.
 6. Adoption is measured. On a cold, slow fixture in both harnesses, controlled sessions under the reworded gate run the full suite through Squeal and not Vitest, and every final claim about the tests is true, also for sessions that end red. In this repository, agent-run Vitest outside a gate falls to at most half the baseline of 9.0 runs per editing session, and workers' full-suite Vitest runs to near zero. The targets were set by the human, 2026-10-09, as the coordinator proposed.
+7. Opt-in, an agent's own test command whose every test file Squeal validates and holds a current result for is answered once with those results instead of running (D8). A command Squeal cannot resolve completely always runs, and the deny never names a test file the command would not run or one Squeal does not run.
 
 ## Non-goals
 
-- **Hooks that take over, deny or annotate an agent's test command** (`research/hook-levers.md`). A rewrite routes around the user's permission rules in Claude Code and needs `allow` in Codex. Context before or after the run changed nothing in 8 of 8 sessions. A deny stopped the run and left the check undone. Revisit with this spec's proof data once goals 1 and 2 hold; the researcher's proposed key is `testCommand.reuseResults`.
+- **Hooks that rewrite or annotate an agent's test command, and any test-command deny by default** (`research/hook-levers.md`). A rewrite routes around the user's permission rules in Claude Code and needs `allow` in Codex. Context before or after the run changed nothing in 8 of 8 sessions. A deny that could not answer stopped the run and left the check undone. The one exception is D8's opt-in deny, which fires only when it carries the answer (the human, 2026-10-10).
 - **Removing the independent run.** The agent's own runs caught Squeal wrong 5 times, each through an input outside the key. Reviewers, the coordinator's landing check and CI keep `npx vitest run`, and every text keeps "when you doubt a Squeal result".
 - **Editing an instruction file, a gate or a skill without the human's yes**, and committing anything.
 - **A second full copy of the CLI** (an npm package, a single binary, Homebrew) and publishing to npm (`research/cli-distribution.md` 2). An npm package holding only the launcher and setup could come later; publishing is the human's call.
@@ -153,6 +154,21 @@ A gate line is a line of a committed instruction file that runs the test command
 
 Dogfooding copies a worktree's store before the worktree is removed, since pruning lost the named record's rows.
 
+### D8. A one-time deny of a test run Squeal has already answered
+
+Opt-in, decided by the human 2026-10-10. Amends 001 D9 and 002 D2, where `Bash` is never denied: it still never is by default. Policy key `testCommand.denyWhenCurrent` (001 D11), default `false`. The deny lives in the `PreToolUse` entries both plugins already run on every tool call behind the `sh` gate (001 D9, 002 D2), so it starts no new process. It reads the `Bash` tool's command, which the entries' input parsers do not read today.
+
+The rule is resolve or fall through. Anything the hook cannot resolve completely runs as normal.
+
+1. **Recognize the command, narrowly.** `vitest run` or `npx vitest run`, with test paths or filename filters and only flags that change output (`--silent`, `--reporter`). `npm test` or `npm run <script>` only when that script in the root `package.json` is exactly one such Vitest command. `node --test ...` only when it is a configured `nodeTest` project's own command (003 D1; `src/cli/node-test-seed.ts` derives those from scripts), optionally narrowed to that project's files. Everything else falls through: chains, pipes, redirects, subshells, leading assignments, a working directory other than the worktree root, workspace flags, other runners, and flags that change what runs (`--project`, `--config`, `-t`, `--changed`, `--related`, `--coverage`, `-u`, `--watch`, `--outputFile`).
+2. **Resolve the test files it would run** from Squeal's own listing of the project's configuration, with Vitest's filter rule (a filter matches the test files whose path contains it). A filter that matches no listed file falls through.
+3. **Deny only when every one of those files is a file Squeal validates and has a current result at the current revision** (001 D5, as `squeal status` counts it). One file pending, stale, unknown, unlisted or outside Squeal's runners, and the command runs.
+4. **At most once per consumer.** After one deny, every test command of that session or subagent runs, so a repository gate that needs the real output is met by running it again, and the agent's own run stays the independent check that caught Squeal wrong 5 times (005-01).
+
+The reason is factual, as 001 D6 asks, with one sentence saying the command did not run and will run if issued again. It names what it covers and nothing more: the number of test files the command runs and their names (grouped by directory past ten), the revision, every known failure among them in full, and how many of the results are inherited and from where. Then what it does not cover: typecheck, build, and suites Squeal does not run. Example: `The command did not run. Squeal holds current results at revision 12 for the 3 test files it runs (src/git-refs.test.ts, ...): 41 checks passed, no known failures, none inherited. Squeal does not cover typecheck, build, or test suites it is not configured for. Run the command again to run it anyway; it will not be stopped again this session.`
+
+Its reach today is small: 22% of store-checked runs were redundant at start (005-01), and a warm-up (D3) raises it. Whether agents accept the answer, rerun at once, or distrust it during real editing is not measured (005-03 tested only sessions told to run one exact command); the proof measures it.
+
 ## Testing
 
 - **Unit**:
@@ -164,6 +180,7 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
   - D4: block insert, upgrade, removal, symlinked files and broken markers.
   - D5: gate detection and rewording.
   - Both plugins' skill copies identical, as the existing skill test does.
+  - D8: each recognized form and each fall-through case; the resolved file set against Vitest's own file listing for the same arguments on fixtures; no deny with one file pending, stale, unknown or outside Squeal's runners; once per consumer; off by default; the reason names only the command's files.
 - **Integration**: a real daemon on a Vitest fixture. A failing checkpoint exits 1. A deadline exits 3 and names the pending count. A wait on a named file that is current returns at once, and one on a pending file returns when that file's result lands, not when the rest of a running backlog ends.
 - **End to end**, on fresh fixtures shaped like this repository and like cezarion:
   - `install.sh` in a scratch `HOME` and `CODEX_HOME` with both harnesses and with each alone: plugins installed, the launcher on the PATH, a second run changing nothing, `--uninstall` leaving nothing.
@@ -172,7 +189,7 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
   - `squeal setup --yes` with every choice: the files written match the plan, the warm-up leaves every test file current, a first session runs nothing more, and a second setup reports nothing outdated.
   - The setup skill in `claude -p` and `codex exec` with the answers given in the prompt.
 - **Proof**: dogfooding, `lessons.md`, at calm load: no other coordinator's waves running, with the load average recorded per session.
-  - Controlled sessions on a cold, slow fixture, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone and the reworded gate.
+  - Controlled sessions on a cold, slow fixture, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone, the reworded gate, and `testCommand.denyWhenCurrent` on: how often it fires, whether the agent accepts the answer or reruns at once, and whether any claim after a deny is false.
   - One fresh worktree of a large repository set up with `squeal setup`, against the cezar session of 2026-10-10 that had no setup: time until every test file is current, results reused, and the agent's claims about silence and about being done.
   - The metric over this repository's sessions since `97144d9` and since the release.
 
@@ -186,10 +203,11 @@ Dogfooding copies a worktree's store before the worktree is removed, since pruni
 6. Resolved 2026-10-10 by the 001 coordinator: the recorder may report ignored paths under D3's conditions, owned by 001. The 001 coordinator files the row when 005 resumes, and 005-12 consumes it.
 7. How precise the static slow-input rules are: run against this repository and a cezarion copy, do they propose what was declared by hand (this repository's `test/e2e` inputs; `packages/cezar/dist/**` in 004's dogfooding)? Owner: 005-04.
 8. Resolved 2026-10-10 by the 001 coordinator: D6's (a), (b) and (c) are 001 rows 001-223, 001-217 and 001-224, planned for 001's next wave.
+9. D8 adds a test-command deny to the `PreToolUse` entries 001 and 002 own. Owner: the 001 coordinator, told before 005-20 dispatches.
 
 ## References
 
 - Research: `research/README.md` and the four findings files above; board rows 005-01 to 005-03 and 005-05.
-- Specs 001 (D4 to D7, D9, D11), 002 (D1 to D3), 004 (D1 to D3, D8).
+- Specs 001 (D4 to D7, D9, D11), 002 (D1 to D3), 003 (D1), 004 (D1 to D3, D8).
 - `status.md`: the human's two proposals, the gate rewording (`97144d9`) and the baseline it is measured against.
 - Prior art: beads `bd setup` and Nx `configure-ai-agents` (versioned markers, `--check`, `--remove`, a file per harness), in `research/adoption-baseline.md` 4; beads, Nx and Serena's CLI distribution and version checks, in `research/cli-distribution.md` 4.
