@@ -4,10 +4,12 @@ import { formatStatus, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import {
   type AbsolutePath,
+  type CheckpointProgress,
   type CheckpointRecord,
   checkpointMetaKey,
   parseCheckpointProgress,
   type RunAllResponse,
+  type Store,
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
@@ -58,7 +60,9 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
   if (!wait) return 0;
   const end = await ended(root, socketPath, checkpoint.id);
   if (end === null) {
-    io.stderr(`squeal: the daemon stopped before checkpoint ${checkpoint.id} ended\n`);
+    io.stderr(
+      `squeal: the daemon stopped before checkpoint ${checkpoint.id} ended${owedText(root, checkpoint)}\n`,
+    );
     return 1;
   }
   io.stdout(`Checkpoint ${checkpoint.id} ${end}\n\n`);
@@ -101,21 +105,42 @@ async function recorded(
   }
 }
 
+/** Task 001-219: a checkpoint the stopped daemon owes resumes in the next one. */
+function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
+  const owed = inStore(root, (store) => openCheckpoint(store, checkpoint)?.owed?.ids ?? []);
+  return owed?.includes(checkpoint.id) === true
+    ? "; the next daemon resumes it, and `run --all --wait` then waits for it"
+    : "";
+}
+
 /**
  * Task 001-217: a request the open checkpoint already runs joined it, and
  * ends when it ends; says so, and what that one has done.
  */
 function joinedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
-  const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return "";
-  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
-  if (isStoreOpenFailure(store)) return "";
-  try {
-    const open = parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
+  const text = inStore(root, (store) => {
+    const open = openCheckpoint(store, checkpoint);
     if (open === null || open.id === checkpoint.id || open.owed !== undefined) return "";
     if (store.checkpoints.get(checkpoint.id)?.end !== null) return "";
     const what = store.checkpoints.get(open.id)?.kind === "baseline" ? "baseline" : "`run --all`";
     return `, joining the ${what} checkpoint ${open.id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
+  });
+  return text ?? "";
+}
+
+/** The worktree's open checkpoint as the store holds it (`checkpointMetaKey`). */
+function openCheckpoint(store: Store, checkpoint: CheckpointRecord): CheckpointProgress | null {
+  return parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
+}
+
+/** `read` over the worktree's store, or `null` when it cannot be opened. */
+function inStore<T>(root: AbsolutePath, read: (store: Store) => T): T | null {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return null;
+  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
+  if (isStoreOpenFailure(store)) return null;
+  try {
+    return read(store);
   } finally {
     store.close();
   }

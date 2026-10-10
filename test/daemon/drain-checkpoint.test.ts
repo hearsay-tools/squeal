@@ -2,7 +2,6 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { askDaemon } from "../../src/cli/daemon-access.js";
 import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
@@ -15,6 +14,7 @@ import {
   ping,
   readNotes,
   SLOW,
+  spawnCli,
   waitFor,
   withStore,
 } from "./helpers.js";
@@ -79,26 +79,21 @@ describe.runIf(process.platform === "linux")(
           throw new Error(`${error.message}\n${diagnose(repo, spawned)}`);
         });
 
-        const asked = await askDaemon(repo.socketPath, { type: "run-all", force: false });
-        expect(asked).toMatchObject({ ok: true, type: "run-all" });
-        const id = await waitFor(
-          async () => {
-            if (asked === null || !asked.ok || asked.type !== "run-all") return null;
-            const state = await askDaemon(repo.socketPath, {
-              type: "run-all-status",
-              requestId: asked.requestId,
-            });
-            return state?.ok && state.type === "run-all" ? (state.checkpoint?.id ?? null) : null;
-          },
-          30_000,
-          "the checkpoint recorded",
-        );
+        // The session asks for a full suite while the baseline runs the held file.
+        const cli = spawnCli(suite.cli, ["run", "--all"], { cwd: repo.root, env: repo.env });
+        expect(await cli.exited, cli.stderr()).toEqual({ code: 0, signal: null });
+        const said =
+          /^Checkpoint (\S+) started at revision \d+: \d+ test files?, joining the baseline checkpoint (\S+) already running them \(\d+ of \d+ test files done\); it ends when that one ends$/m.exec(
+            cli.stdout(),
+          );
+        expect(said, cli.stdout()).not.toBeNull();
+        const id = said?.[1] ?? "";
         const open = withStore(repo, (store) =>
           parseCheckpointProgress(store.meta.get(checkpointMetaKey(repo.worktreeId))),
         );
         // Joined: the baseline stays the open checkpoint, now explicit.
         expect(open).toMatchObject({ kind: "run-all" });
-        expect(open?.id).not.toBe(id);
+        expect(open?.id).toBe(said?.[2]);
         const ends = () =>
           withStore(repo, (store) => ({
             request: store.checkpoints.get(id)?.end ?? null,
