@@ -571,7 +571,18 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 005-17 e2e for setup | planned | Testing: `install.sh`, the launcher across an update, `squeal setup --yes` (proposing the known slow inputs) and the skill, in both harnesses on fixtures shaped like this repository and like cezarion. | Node 22 and 24. |
-| 005-18 dogfooding | planned, after 001-217, 001-219, 001-223 and 001-224 ship | Goal 6: controlled sessions on a cold, slow fixture in both harnesses (at most 40), and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
+| 005-18 dogfooding | planned, after 001-217, 001-219, 001-223, 001-224 and 006-01 ship | Goal 6: controlled sessions on a cold, slow fixture in both harnesses (at most 40), and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
+
+## Feature 006: model evals
+
+Spec: `specifications/006-model-evals/spec.md`, draft 2026-10-10, awaiting the human's approval; sections D1 to D8. A recurring baseline of how models use Squeal, run at every hub release and with every `/quality` scan (human, 2026-10-10). Built from 005-06's prototype (`specifications/005-agent-adoption/research/probes/model-evals/`). Dispatch waits for approval and calm load.
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 006-01 the suite in `evals/` | planned | D1 to D6, D8: move the prototype, the grader's fixes (Codex wrapper, refused and chained commands), the three knobs, the runner waiting for the daemon's pid, the load gate, the baseline runner, the results file and `TREND.md`; grader and trend tests in the Vitest suite. | Grader and trend unit tests on recorded transcripts; one smoke cell per harness end to end, leaving no credential, daemon or process behind. |
+| 006-02 the cadence | planned (coordinator, after 006-01) | D7: the baseline step in `docs/process.md` 6a and the coordinator skill's "Quality" section. | Both texts say when the baseline runs and who reads a flagged drop. |
+| 006-03 review of 006-01 | planned | `/reviewer` on gpt-6.1-sol: isolation, credentials, grading honesty. | `reviews/wave-1.md`. |
+| 006-04 first baseline | planned, at calm load | Proof: the baseline twice on one release commit; results and `TREND.md` committed. | Both runs committed; rates within what 12 sessions per model allow; open question 4 settled. |
 
 ## Later
 
@@ -591,7 +602,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 - 001 follow-up, filed 2026-10-08 by the 002/003 coordinator (the 001 coordinator's session had ended): tests under `test/daemon/` and `test/scheduler/` that start a daemon from the sources through tsx in a child process declare no `inputs`, so their keys do not change when the daemon code they run changes and a pass can stay current after a `src` edit (002 `lessons.md` defect 5, same shape). Declaring `src/**/*.ts` for them is correct and costs a re-run on every `src` edit: a cost trade-off for the 001 coordinator.
 
 - `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share. Topic 005-02 reads it as a home for the install step, so it may join spec 005.
-- 006 pytest runner adapter.
+- pytest runner adapter (it was to be 006; 006 went to model evals, 2026-10-10).
 - 007 inherited-pass re-verification policy, if dogfooding shows stale escapes.
 - 008 Pi and OpenCode adapters.
 - 009 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.

@@ -146,7 +146,7 @@ A gate line is a line of a committed instruction file that runs the test command
 
 ### D7. Measurement
 
-`research/probes/adoption-baseline/metric.mjs` is the proof's instrument. Per session it counts:
+The proof's controlled sessions run on spec 006's eval suite (`evals/`, built from 005-06's prototype), which grades each session against ground truth and adds a variant for each text or lever 005 changes. `research/probes/adoption-baseline/metric.mjs` stays the instrument for real sessions in this repository. Per session they count:
 
 - own runs by scope and position;
 - redundant runs, against a store copy;
@@ -191,7 +191,7 @@ Its reach today is small: 22% of store-checked runs were redundant at start (005
   - `squeal setup --yes` with every choice: the files written match the plan, the warm-up leaves every test file current, a first session runs nothing more, and a second setup reports nothing outdated.
   - The setup skill in `claude -p` and `codex exec` with the answers given in the prompt.
 - **Proof**: dogfooding, `lessons.md`, at calm load: no other coordinator's waves running, with the load average recorded per session.
-  - Controlled sessions on a cold, slow fixture, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone, the reworded gate, and `testCommand.denyWhenCurrent` on: how often it fires, whether the agent accepts the answer or reruns at once, and whether any claim after a deny is false.
+  - Controlled sessions on spec 006's suite, its fixture made cold and slow, in both harnesses and within a 40-session budget, covering what 005-02 could not: Squeal slower than the agent, and sessions that end red. Conditions: the plugin alone, the reworded gate, and `testCommand.denyWhenCurrent` on: how often it fires, whether the agent accepts the answer or reruns at once, and whether any claim after a deny is false.
   - One fresh worktree of a large repository set up with `squeal setup`, against the cezar session of 2026-10-10 that had no setup: time until every test file is current, results reused, and the agent's claims about silence and about being done.
   - The metric over this repository's sessions since `97144d9` and since the release.
 
