@@ -45,6 +45,8 @@ export interface TierFile {
   readonly forced: boolean;
   /** Queued as work an edit caused (D5 step 4): a re-queue after a timeout keeps it so (task 001-179). */
   readonly recent?: boolean;
+  /** Another worktree's result could stand for it: it waits on a claim of its key (`claimOf`, task 001-205). */
+  readonly waits?: boolean;
 }
 
 export interface Tier {
@@ -108,6 +110,12 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * A file a timed-out tier left incomplete joins a tier of at most its
  * `tierCap` files; one that does not fit stays queued and leads a later tier
  * (task 001-179).
+ *
+ * A missed file another worktree's result could stand for, whose key another
+ * live worktree is running, stays queued in its place and does not count
+ * against the budget (`Claims`, D5 step 4 as amended, task 001-205); a
+ * backlog tier is split with the other daemons that have its keys pending
+ * (`Claims.backlogSize`).
  */
 export function selectTier(
   context: SchedulerContext,
@@ -116,8 +124,9 @@ export function selectTier(
 ): Tier | null {
   const { keys, policy } = context;
   const picked: TierFile[] = [];
+  ledger.claims.begin();
   const backlog = !ledger.queue.hasRecent((ref) => !busy.has(laneOf(context, ref)));
-  let size = backlog ? policy.runner.backlogTierSize : policy.runner.tierSize;
+  let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known = 0;
   let span: TierSpan | null = null;
@@ -135,12 +144,16 @@ export function selectTier(
       continue;
     }
     const forced = ledger.queue.isForced(ref);
+    const recent = ledger.queue.isRecent(ref);
+    let waits = false;
     if (!forced) {
-      const hits = ledger.lookup(file, key);
+      const { hits, mayWait } = ledger.probe(file, key);
       if (hits.length > 0) {
         ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
         continue;
       }
+      waits = mayWait && !recent;
+      if (waits && ledger.claims.holds(key)) continue;
     }
     const cap = Math.min(size, file.tierCap ?? size);
     if (picked.length >= cap) continue;
@@ -151,25 +164,27 @@ export function selectTier(
     }
     known += file.durationMs ?? 0;
     if (picked.length > 0 && known > budget) break;
-    const recent = ledger.queue.isRecent(ref);
     tookBacklog ||= !recent;
     lane = at;
     size = cap;
-    ledger.queue.remove(ref);
     const checkpointId = ledger.checkpoints.idFor(ref);
-    picked.push({ file, key, inputs: keys.stabilityPaths(ref), checkpointId, forced, recent });
+    const inputs = keys.stabilityPaths(ref);
+    picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
   }
-  if (picked.length === 0) {
-    ledger.commit();
-    return null;
-  }
-  ledger.queue.tierSelected(tookBacklog);
-  return startTier(context, ledger, picked, backlog);
+  const tier = picked.length === 0 ? null : startTier(context, ledger, picked, backlog);
+  if (tier === null) ledger.commit();
+  else ledger.queue.tierSelected(tookBacklog);
+  return tier;
 }
 
 /**
- * Records the start of a tier of `picked`, files already off the queue: the
- * stability snapshot, `running` phases and the run row. `cancellable` for a
+ * Records the start of a tier of `picked`, files still queued: in one
+ * `BEGIN IMMEDIATE`, each file that `waits` is checked for another
+ * worktree's claim once more and stays queued when one holds, then the
+ * others leave the queue with their `running` phases, which are this
+ * worktree's claims, and the run row (D8 as amended, task 001-205: a check
+ * before the transaction let two daemons take one key). Then the stability
+ * snapshot. `null` when every file stayed queued. `cancellable` for a
  * backlog tier, which an edit cancels; never for an edit's or a slow tier.
  */
 export function startTier(
@@ -177,42 +192,47 @@ export function startTier(
   ledger: Ledger,
   picked: readonly TierFile[],
   cancellable: boolean,
-): Tier {
+): Tier | null {
   const { store, keys } = context;
-  const checkpointId = picked.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
-  const runId = randomUUID();
-  const first = picked[0];
-  if (first === undefined) throw new Error("squeal scheduler: a tier of no files");
-  const tier: Tier = {
-    runId,
-    logDir: join(context.runsDir, runId),
-    lane: laneOf(context, first.file.ref),
-    run: keys.beginRun(),
-    changes: new Set(),
-    revision: ledger.revision,
-    checkpointId,
-    files: picked,
-    snapshot: snapshotInputs(
-      keys.cache,
-      picked.flatMap((p) => p.inputs),
-    ),
-    cancel: cancellable ? new AbortController() : null,
-  };
-  for (const { file, key } of picked) ledger.setRunning(file, key);
-  ledger.tierChanges.add(tier.changes);
-  store.transaction(() => {
+  return store.transaction(() => {
+    const files = picked.filter((p) => p.waits !== true || !ledger.claims.holds(p.key));
+    const first = files[0];
+    if (first === undefined) return null;
+    const checkpointId = files.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
+    const runId = randomUUID();
+    const tier: Tier = {
+      runId,
+      logDir: join(context.runsDir, runId),
+      lane: laneOf(context, first.file.ref),
+      run: keys.beginRun(),
+      changes: new Set(),
+      revision: ledger.revision,
+      checkpointId,
+      files,
+      snapshot: snapshotInputs(
+        keys.cache,
+        files.flatMap((p) => p.inputs),
+      ),
+      cancel: cancellable ? new AbortController() : null,
+    };
+    for (const { file, key } of files) {
+      ledger.queue.remove(file.ref);
+      ledger.claims.taken(key);
+      ledger.setRunning(file, key);
+    }
+    ledger.tierChanges.add(tier.changes);
     store.runs.start({
       id: runId,
       worktreeId: context.worktreeId,
       revision: tier.revision.number,
-      testFiles: picked.map((p) => p.file.ref),
+      testFiles: files.map((p) => p.file.ref),
       checkpointId,
       logDir: tier.logDir,
       startedAt: context.now(),
     });
     ledger.commit();
+    return tier;
   });
-  return tier;
 }
 
 /** Runs a tier. Never rejects: a runner that throws is a crash (D12). */
