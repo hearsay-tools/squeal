@@ -13,17 +13,17 @@ describe(
       const repo = createRepo();
       const store = openRepoStore(repo.commonDir);
       const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
-      let request: CheckpointRecord | null = null;
+      const asked: { request?: CheckpointRecord } = {};
       h.runner.beforeRun = async () => {
-        if (request !== null) return;
         h.runner.beforeRun = null;
-        request = await h.scheduler.requestFullSuite();
+        asked.request = await h.scheduler.requestFullSuite();
       };
       await h.scheduler.start();
       await h.scheduler.idle();
 
       const baseline = store.runs.get(h.runner.runs[0]?.options.runId ?? "")?.checkpointId ?? "";
       expect(store.checkpoints.get(baseline)).toMatchObject({ kind: "baseline", end: "completed" });
+      const { request } = asked;
       expect(request).toMatchObject({ kind: "run-all" });
       expect(store.checkpoints.get(request?.id ?? "")?.end).toBe("completed");
       expect(request?.testFiles.length).toBeGreaterThan(0);
@@ -38,9 +38,12 @@ describe(
       await first.scheduler.idle();
       const baselineRuns = first.runner.runs.length;
       let closing: Promise<void> | null = null;
+      const owed: (string | null)[] = [];
       first.runner.beforeRun = () => {
         // The session ends while the second forced tier runs.
-        if (first.runner.runs.length === baselineRuns + 1) closing = first.scheduler.close();
+        if (first.runner.runs.length !== baselineRuns + 1) return;
+        owed.push(first.scheduler.owedWork());
+        closing = first.scheduler.close();
       };
       const checkpoint = await first.scheduler.requestFullSuite({ force: true });
       await first.scheduler.idle();
@@ -48,6 +51,7 @@ describe(
       const forcedFirst = ran(first.runner.runs.slice(baselineRuns));
       expect(forcedFirst).toHaveLength(4);
       expect(store.checkpoints.get(checkpoint.id)?.end).toBeNull();
+      expect(owed).toEqual(["a `run --all` checkpoint (3 test files left)"]);
 
       const second = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
       await second.scheduler.start();

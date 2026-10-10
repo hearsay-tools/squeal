@@ -36,6 +36,7 @@ interface Timed {
   readonly presence: Presence;
   advance(ms: number): void;
   pending(value: boolean): void;
+  owed(value: string | null): void;
   /** Activity the idle timer saw. */
   readonly lastActive: () => number;
 }
@@ -47,6 +48,7 @@ function timed(): Timed {
   let clock = 1_000_000;
   let lastActive = clock;
   let pending = true;
+  let owed: string | null = null;
   const exits: Timed["exits"] = [];
   const notes: string[] = [];
   const presence: Presence = { since: clock, lastPresentAt: null };
@@ -67,6 +69,7 @@ function timed(): Timed {
         lastActive = at;
       },
       slowPending: () => pending,
+      owedWork: () => owed,
       note: (text) => notes.push(text),
       log: () => {},
       shutdown: (reason, text) => exits.push({ reason, text }),
@@ -82,6 +85,9 @@ function timed(): Timed {
     },
     pending: (value) => {
       pending = value;
+    },
+    owed: (value) => {
+      owed = value;
     },
     lastActive: () => lastActive,
   };
@@ -165,5 +171,50 @@ describe("the departure drains pending slow files (task 004-29)", () => {
         "(daemon.idleExitMinutes)",
     });
     expect(t.lastActive()).toBe(active);
+  });
+});
+
+describe("the departure drains what Squeal owes (task 001-219)", () => {
+  const CHECKPOINT = "a `run --all` checkpoint (3 test files left)";
+
+  it("runs on past the grace while an explicit checkpoint is open, and exits once it ended", async () => {
+    const t = timed();
+    t.pending(false);
+    t.owed(CHECKPOINT);
+    await leave(t);
+    t.advance(3_100);
+    await waitFor(() => t.notes.length > 0, 2_000, "the drain note");
+    expect(t.notes).toEqual([
+      `the last session ended with ${CHECKPOINT} pending; this daemon runs that work before ` +
+        "it exits, for at most 60 min (daemon.idleExitMinutes)",
+    ]);
+    t.advance(10 * 60_000);
+    await delay(60);
+    expect(t.exits).toEqual([]);
+
+    t.owed(null);
+    await waitFor(() => t.exits.length > 0, 2_000, "the drained exit");
+    expect(t.exits[0]).toEqual({
+      reason: "sessions-gone",
+      text: `daemon stopped: the work pending when its last session ended is done (${CHECKPOINT})`,
+    });
+  });
+
+  it("names slow files and owed work together, and leaves the rest owed at the bound", async () => {
+    const t = timed();
+    t.owed("a new failure's re-run");
+    await leave(t);
+    t.advance(3_100);
+    await waitFor(() => t.notes.length > 0, 2_000, "the drain note");
+    expect(t.notes[0]).toMatch(
+      /^the last session ended with slow files and a new failure's re-run pending/,
+    );
+    t.advance(60 * 60_000);
+    await waitFor(() => t.exits.length > 0, 2_000, "the bound");
+    expect(t.exits[0]?.text).toBe(
+      "daemon stopped: still pending 60 min after its last session ended " +
+        "(daemon.idleExitMinutes): slow files and a new failure's re-run; " +
+        "the next daemon resumes what is owed",
+    );
   });
 });

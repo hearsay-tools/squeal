@@ -259,6 +259,13 @@ export interface Scheduler {
    * 004-29). False before the scheduler started and once it closed.
    */
   slowPending(): boolean;
+  /**
+   * What the worktree is owed and the last session's departure drains
+   * before the exit, as the drain's notes name it: an explicit checkpoint
+   * open, or a new failure's re-run queued or running (task 001-219).
+   * `null` with nothing owed, before the scheduler started and once it closed.
+   */
+  owedWork(): string | null;
   /** Paths the stat cache holds, for `ChangeFeed` reconciliation passes. */
   trackedPaths(): Iterable<RelativePath>;
   /**

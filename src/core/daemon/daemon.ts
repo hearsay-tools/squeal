@@ -209,6 +209,9 @@ class Daemon {
       // Task 004-29: the last session's departure drains these before the exit.
       slowPending: () =>
         this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.slowPending(),
+      // Task 001-219: so are an explicit checkpoint and a new failure's re-run.
+      owedWork: () =>
+        this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
       note: (text) => this.#note(text),
       log: this.#log,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
