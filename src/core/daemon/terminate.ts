@@ -41,6 +41,11 @@ export interface Stopped {
   readonly ageSeconds: number;
   /** Whether it outlived the grace and got SIGKILL. */
   readonly killed: boolean;
+  /**
+   * The run or runs it is attributed to, `run <id>` or, when no lane's mark
+   * says which, `one of runs <id>, <id>` (review wave-13r B1); absent at exit.
+   */
+  readonly run?: string;
 }
 
 /**
@@ -96,8 +101,8 @@ export async function terminate(
 
 /**
  * One line naming what a stop stopped, or `null` for nothing: per process
- * its pid and command line, its parent's, its age and the signal that ended
- * it (task 001-212).
+ * its pid and command line, its parent's, its age, the signal that ended it
+ * (task 001-212) and its run (review wave-13r B1).
  */
 export function describe(stopped: readonly Stopped[], what: string): string | null {
   if (stopped.length === 0) return null;
@@ -106,10 +111,16 @@ export function describe(stopped: readonly Stopped[], what: string): string | nu
   return `stopped ${count} ${what}: ${list}`;
 }
 
-function entryText({ pid, args, ppid, parent, ageSeconds, killed }: Stopped): string {
+function entryText({ pid, args, ppid, parent, ageSeconds, killed, run }: Stopped): string {
   const ended = killed ? `SIGKILL after ${GRACE_MS / 1_000} s` : "SIGTERM";
   const parentText = `parent ${ppid} ${parent}`.trimEnd();
-  return `${`${pid} ${args}`.trimEnd()} (${parentText}, ${ageText(ageSeconds)} old, ${ended})`;
+  const facts = [
+    parentText,
+    `${ageText(ageSeconds)} old`,
+    ended,
+    ...(run === undefined ? [] : [run]),
+  ];
+  return `${`${pid} ${args}`.trimEnd()} (${facts.join(", ")})`;
 }
 
 /** `4.2 s`, `3 min 5 s`, `2 h 10 min`. */

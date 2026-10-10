@@ -89,18 +89,26 @@ export class EscapedChildren {
    * carriers of the bare mark (`env`) and the unmarked orphans of the
    * daemon's group since `alone`, a mark taken when the first of the
    * overlapping runs started. Never another lane's carrier: a run of it may
-   * have just started (review 001-149). Resolves with a note naming them and
-   * the run `runId`, whose record lists the tier's test files, or `null`.
+   * have just started (review 001-149). Resolves with a note naming them, or
+   * `null`. Each is named with its run, whose record lists the tier's test
+   * files: a lane's carrier with `runId`, a bare-mark carrier or a group
+   * orphan with every run of `overlapped`, the runs since `alone`, as `one
+   * of runs` when they are more than one (review wave-13r B1).
    */
   async afterRun(
     lane: string,
     since: number,
     alone: number | null = null,
     runId: string | null = null,
+    overlapped: readonly string[] = runId === null ? [] : [runId],
   ): Promise<string | null> {
-    const stopped = await this.#stop({ lane, since, alone });
-    const run = runId === null ? "" : ` (run ${runId})`;
-    return describe(stopped, `a test left running after its tier${run}`);
+    const own = runId === null ? undefined : `run ${runId}`;
+    const shared = runsText(overlapped);
+    const stopped = (await this.#stop({ lane, since, alone })).map(({ found, stopped }) => {
+      const run = found.own ? own : shared;
+      return run === undefined ? stopped : { ...stopped, run };
+    });
+    return describe(stopped, "a test left running after its tier");
   }
 
   /**
@@ -108,7 +116,7 @@ export class EscapedChildren {
    * other member of the group, a global setup's child among them.
    */
   async atExit(): Promise<string | null> {
-    const stopped = await this.#stop(null);
+    const stopped = (await this.#stop(null)).map(({ stopped }) => stopped);
     return describe(stopped, "the runners left running when the daemon exited");
   }
 
@@ -135,20 +143,25 @@ export class EscapedChildren {
   }
 
   /** `scope` `null` is the exit. */
-  async #stop(scope: Scope | null): Promise<Stopped[]> {
+  async #stop(scope: Scope | null): Promise<{ found: Found; stopped: Stopped }[]> {
     if (process.platform !== "linux") return [];
     let entries = await snapshot();
     if (await this.#workersGone(entries, scope)) entries = await snapshot();
-    const stopped: Stopped[] = [];
+    const stopped: { found: Found; stopped: Stopped }[] = [];
     // By identity, pid and start time, through every round (review 001-149 S2).
     const seen = new Set<string>();
     // A round's kills orphan the children of what it killed, which the next finds in the group.
     for (let round = 0; round < ROUNDS; round++) {
       if (round > 0) entries = await snapshot();
-      const found = (await this.#find(entries, scope)).filter((entry) => !seen.has(key(entry)));
+      const found = (await this.#find(entries, scope)).filter(({ entry }) => !seen.has(key(entry)));
       if (found.length === 0) break;
-      for (const entry of found) seen.add(key(entry));
-      stopped.push(...(await terminate(found)));
+      for (const { entry } of found) seen.add(key(entry));
+      // A round's pids are distinct, so its stopped are found by pid.
+      const byPid = new Map(found.map((one) => [one.entry.pid, one]));
+      for (const one of await terminate(found.map(({ entry }) => entry))) {
+        const of = byPid.get(one.pid);
+        if (of !== undefined) stopped.push({ found: of, stopped: one });
+      }
     }
     return stopped;
   }
@@ -176,7 +189,7 @@ export class EscapedChildren {
     return true;
   }
 
-  async #find(entries: readonly ProcessEntry[], scope: Scope | null): Promise<ProcessEntry[]> {
+  async #find(entries: readonly ProcessEntry[], scope: Scope | null): Promise<Found[]> {
     const strangers = await this.#strangers.catch(() => null);
     const descendants = descendantsOf([this.#self], entries);
     const foreign = strangers === null ? new Set<number>() : lineOf(strangers, entries);
@@ -191,12 +204,14 @@ export class EscapedChildren {
       entry.pgrp === this.#self &&
       !foreign.has(entry.pid) &&
       (scope === null || !descendants.has(entry.pid));
-    return others.filter((entry, i) => {
+    return others.flatMap((entry, i): Found[] => {
       const mark = marks[i];
-      if (scope === null) return mark !== undefined || orphaned(entry);
-      if (mark === scope.lane) return entry.start >= scope.since;
-      if (scope.alone === null || entry.start < scope.alone) return false;
-      return mark === null || (mark === undefined && orphaned(entry));
+      if (scope === null)
+        return mark !== undefined || orphaned(entry) ? [{ entry, own: false }] : [];
+      if (mark === scope.lane) return entry.start >= scope.since ? [{ entry, own: true }] : [];
+      if (scope.alone === null || entry.start < scope.alone) return [];
+      const shared = mark === null || (mark === undefined && orphaned(entry));
+      return shared ? [{ entry, own: false }] : [];
     });
   }
 
@@ -227,6 +242,18 @@ interface Scope {
   readonly alone: number | null;
 }
 
+/** A process a stop reaches; `own`, by the mark of the run's lane. */
+interface Found {
+  readonly entry: ProcessEntry;
+  readonly own: boolean;
+}
+
+/** `run a`, `one of runs a, b`, or nothing for no run. */
+function runsText(runs: readonly string[]): string | undefined {
+  if (runs.length === 0) return undefined;
+  return runs.length === 1 ? `run ${runs[0]}` : `one of runs ${runs.join(", ")}`;
+}
+
 /** What `afterEachRun` needs of `EscapedChildren`. */
 export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | "carriers">;
 
@@ -238,8 +265,8 @@ export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | 
  * lane in flight, which overlap (001 D5 as amended, task 001-140). What no
  * lane's mark says is whose, the bare mark and the group's orphans, is
  * stopped when the last overlapping run settles, looking back to the mark of
- * the first. A slow lane's processes run at low priority (`lowerWhile`,
- * spec 004 D2).
+ * the first, and named with every overlapping run (review wave-13r B1). A
+ * slow lane's processes run at low priority (`lowerWhile`, spec 004 D2).
  */
 export function afterEachRun(
   runner: RunnerAdapter,
@@ -248,6 +275,8 @@ export function afterEachRun(
 ): RunnerAdapter {
   let inFlight = 0;
   let first = 0;
+  // The runs since `first`, in start order: whose a shared leftover may be.
+  let overlapped: string[] = [];
   const lane = runner.lane?.bind(runner);
   const releaseLane = runner.releaseLane?.bind(runner);
   const laneOf = (testFiles: readonly TestFileRef[], options: RunOptions): string =>
@@ -266,7 +295,11 @@ export function afterEachRun(
     async run(testFiles, options) {
       const at = laneOf(testFiles, options);
       const since = children.mark();
-      if (inFlight === 0) first = since;
+      if (inFlight === 0) {
+        first = since;
+        overlapped = [];
+      }
+      if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
       const lowering = isSlowLane(at) ? lowerWhile(children, at, since, settled.signal) : null;
@@ -278,7 +311,10 @@ export function afterEachRun(
         await lowering;
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
-        const text = await children.afterRun(at, since, alone, options.runId).catch(() => null);
+        const runs = [...overlapped];
+        const text = await children
+          .afterRun(at, since, alone, options.runId, runs)
+          .catch(() => null);
         if (text !== null) note(text);
       }
     },
