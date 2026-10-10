@@ -523,3 +523,17 @@ Own: `src/core/scheduler/discharges.ts`, the wait's sync path in `src/core/sched
 ## 001-215 review of wave 13r
 
 Use /reviewer on gpt-6.1-sol, after 001-207, 001-208/209, 001-212 and 001-214 land. Output `reviews/wave-13r.md`. Is each row's done-when met; does 001-207 keep 001-141 and 001-161; does 001-212's note ever signal or name a process that is not the test's; can 001-214's retention grow without bound. Blockers go to the human.
+
+## 001-226 repair of wave 13r
+
+Use /worker. Shape: repair. From `reviews/wave-13r.md` (001-215) B1, B2, S1, N1; decided by the human (2026-10-10): B2 bounded, then a re-review (001-227). Read the review's reproductions first.
+
+Outcome: B1: a stop's entries carry their attribution. A lane-marked carrier names its own run. A bare-marker carrier or an unmarked group orphan, stopped at the end of an overlapping interval, names every run that overlapped that interval and says the attribution is uncertain (for example `(one of runs a, b)`); each named run's record lists its test files. Lane isolation and every identity check stay as they are. B2, bounded (no protocol change): a sync request's hold is released when `remember` drops the request from the 32-entry map, and after 1 h at the latest (one constant), idempotently and even while refinement is blocked; an answer whose hold was released before it was read reports incomplete (the CLI's existing fallback for an unsupported sync, or a distinct state if the wait needs one), never quiet. At most 32 holds can exist. S1: `test/store/opening.test.ts` keeps the deterministic 500 ms write-lock case as the default discriminator, and replaces the 100-round spinning stress with a small concurrent create/reopen smoke test that uses a blocking rendezvous, gives its barrier a deadline, and kills and awaits every child on every exit. N1: D12 describes the note's parent, age, signal and run attribution; D7 the held answer's lifetime and `Scheduler.rekeyedOnceRefined`; dated entries for 001-212 and 001-214 (and this repair) in `status.md`.
+
+Own: `src/core/daemon/escaped.ts`, `src/core/daemon/terminate.ts`, `src/core/daemon/handlers.ts` (the sync map and `remember`), `src/core/scheduler/discharges.ts`, `src/core/scheduler/scheduler.ts` (`rekeyedOnceRefined`), `src/cli/status-wait.ts` only for the incomplete answer, tests under `test/daemon/`, `test/scheduler/`, `test/store/opening.test.ts` and its child helpers, D7, D12 and `status.md`. The key-format guard will ask for a re-pin of version 2 (unreleased); the coordinator does it. Do not run `npm run build`.
+
+Done when: B1's overlap probe (a short run's bare-marker child, a disjoint long run) and an unmarked-orphan case name both candidate runs, red before; B2's probe (refinement suspended, 40 real sync requests) holds at most 32 at once and none past the deadline (time simulated), with entries pruned back once released, red before; a request evicted mid-wait gives an incomplete answer, not quiet; the opening test's deterministic case still fails without 001-207's retry; lint, typecheck and the full suite are green.
+
+## 001-227 re-review of wave 13r
+
+Use /reviewer on gpt-6.1-sol, after 001-226 lands. Output `reviews/wave-13s.md`. Second round on `reviews/wave-13r.md`: are B1, B2 (as the human bounded it, not full cancellation), S1 and N1 closed; can a hold still outlive its request or its deadline; can an incomplete answer ever read as quiet. Run your own independent full suite. Blockers go to the human.
