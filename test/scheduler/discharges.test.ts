@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Discharges } from "../../src/core/scheduler/discharges.js";
+import { Discharges, HOLD_MS, MAX_HELD_ANSWERS } from "../../src/core/scheduler/discharges.js";
 import { type FileState, newFileState } from "../../src/core/scheduler/files.js";
 import { ref } from "./helpers.js";
 
@@ -57,24 +57,25 @@ describe("discharges (task 001-202)", () => {
   ])("keeps what a live answer needs past the $name bound (task 001-214)", ({ limits, at }) => {
     const discharges = new Discharges(limits);
     discharges.note(moved(math.path, 3), 0);
-    const release = discharges.hold(0, 2, 4);
+    const held = discharges.hold(0, 2, 4, 0);
     for (let n = 0; n < 4; n += 1) discharges.note(moved(`test/f${n}.test.ts`, 5), at);
 
     expect(discharges.since(0, 2, 4)).toEqual([{ testFile: math, revision: 3, resolved: true }]);
-    release();
+    expect(held.intact(at)).toBe(true);
+    held.release();
     discharges.note(moved("test/next.test.ts", 5), at);
     expect(discharges.since(0, 2, 4)).toEqual([]);
   });
 
   it("returns to its cap once the answer that held more is released (task 001-214)", () => {
     const discharges = new Discharges({ retentionMs: Number.POSITIVE_INFINITY, cap: 1 });
-    const release = discharges.hold(0, 2, 4);
+    const held = discharges.hold(0, 2, 4, 0);
     discharges.note(moved(math.path, 3), 0);
     discharges.note(moved("test/strings.test.ts", 4), 1);
     discharges.note(moved("test/late.test.ts", 5), 2);
     expect(discharges.since(0, 0, 5).map((file) => file.revision)).toEqual([3, 4]);
 
-    release();
+    held.release();
     expect(discharges.since(0, 0, 5).map((file) => file.revision)).toEqual([4]);
   });
 
@@ -87,10 +88,55 @@ describe("discharges (task 001-202)", () => {
     discharges.note(moved("test/early.test.ts", 3), 0);
     discharges.note(moved("test/old.test.ts", 2), 500);
     discharges.note(moved("test/late.test.ts", 5), 500);
-    discharges.hold(500, 2, 4);
+    discharges.hold(500, 2, 4, 500);
     for (let n = 0; n < 3; n += 1) discharges.note(moved(`test/f${n}.test.ts`, 6), at);
 
     expect(discharges.since(0, 0, 5)).toEqual([]);
     expect(discharges.size).toBe(3);
+  });
+
+  it("releases the oldest of 33 holds, whose answer is then not intact (review wave-13r B2)", () => {
+    const discharges = new Discharges({ retentionMs: Number.POSITIVE_INFINITY, cap: 2 });
+    discharges.note(moved(math.path, 3), 0);
+    const holds = Array.from({ length: MAX_HELD_ANSWERS }, () => discharges.hold(0, 2, 4, 1));
+    discharges.note(moved("test/strings.test.ts", 5), 2);
+    expect(discharges.since(0, 2, 4)).toHaveLength(1);
+
+    const newest = discharges.hold(0, 2, 4, 3);
+    expect(discharges.holds).toBe(MAX_HELD_ANSWERS);
+    expect(holds[0]?.intact(3)).toBe(false);
+    expect(holds.slice(1).every((held) => held.intact(3))).toBe(true);
+    expect(newest.intact(3)).toBe(true);
+    // A release after an early one is nothing.
+    holds[0]?.release();
+    expect(discharges.holds).toBe(MAX_HELD_ANSWERS);
+    for (const held of [...holds, newest]) held.release();
+    expect(discharges.holds).toBe(0);
+    discharges.note(moved("test/late.test.ts", 6), 4);
+    expect(discharges.since(0, 0, 6).map((file) => file.revision)).toEqual([5, 6]);
+  });
+
+  it("releases every hold at its deadline, read or not, and prunes what it kept (review wave-13r B2)", () => {
+    const discharges = new Discharges({ retentionMs: 1_000, cap: 100 });
+    discharges.note(moved(math.path, 3), 0);
+    const held = discharges.hold(0, 2, 4, 10);
+    discharges.note(moved("test/strings.test.ts", 5), 5_000);
+    expect(discharges.since(0, 2, 4)).toHaveLength(1);
+    expect(held.intact(5_000)).toBe(true);
+
+    discharges.note(moved("test/late.test.ts", 6), 10 + HOLD_MS);
+    expect(discharges.holds).toBe(0);
+    expect(discharges.since(0, 0, 6).map((file) => file.revision)).toEqual([6]);
+    expect(held.intact(10 + HOLD_MS)).toBe(false);
+  });
+
+  it("is not intact when a discharge its window covers was dropped before it was taken", () => {
+    const discharges = new Discharges({ retentionMs: Number.POSITIVE_INFINITY, cap: 1 });
+    discharges.note(moved(math.path, 3), 100);
+    discharges.note(moved("test/strings.test.ts", 4), 200);
+    // An evicted wait asks again with its own start: math's discharge is gone.
+    expect(discharges.hold(50, 0, 4, 300).intact(300)).toBe(false);
+    // A wait that started after it lost nothing.
+    expect(discharges.hold(150, 0, 4, 300).intact(300)).toBe(true);
   });
 });
