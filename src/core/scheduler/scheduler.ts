@@ -333,25 +333,26 @@ class TierScheduler implements Scheduler {
   ): Promise<readonly RekeyedTestFile[]> {
     if (signal?.aborted === true) throw new Error(INCOMPLETE_ANSWER);
     const now = this.options.now ?? Date.now;
-    const held =
-      resolvedSince === undefined || this.#ledger === null
-        ? null
-        : this.#ledger.discharges.hold(resolvedSince, after, upTo, now());
-    // A forget releases the hold at once, while the refinement may still be stalled.
-    let forgotten = () => {};
-    const forgetting = new Promise<never>((_, reject) => {
-      forgotten = () => {
+    // A forget, or the hold's deadline, ends the answer at once, while the
+    // refinement may still be stalled (task 001-229).
+    let end = () => {};
+    const ending = new Promise<never>((_, reject) => {
+      end = () => {
         held?.forget();
         reject(new Error(INCOMPLETE_ANSWER));
       };
     });
-    signal?.addEventListener("abort", forgotten, { once: true });
+    const held =
+      resolvedSince === undefined || this.#ledger === null
+        ? null
+        : this.#ledger.discharges.hold(resolvedSince, after, upTo, now(), () => end());
+    signal?.addEventListener("abort", end, { once: true });
     try {
-      await Promise.race([this.refined(), forgetting]);
+      await Promise.race([this.refined(), ending]);
       if (held !== null && !held.intact(now())) throw new Error(INCOMPLETE_ANSWER);
       return this.rekeyedSince(after, upTo, resolvedSince);
     } finally {
-      signal?.removeEventListener("abort", forgotten);
+      signal?.removeEventListener("abort", end);
       held?.release();
     }
   }

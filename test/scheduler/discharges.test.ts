@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { Discharges, HOLD_MS } from "../../src/core/scheduler/discharges.js";
 import { type FileState, newFileState } from "../../src/core/scheduler/files.js";
 import { ref } from "./helpers.js";
@@ -139,5 +139,63 @@ describe("discharges (task 001-202)", () => {
     expect(discharges.hold(50, 0, 4, 300).intact(300)).toBe(false);
     // A wait that started after it lost nothing.
     expect(discharges.hold(150, 0, 4, 300).intact(300)).toBe(true);
+  });
+
+  it("ends a hold at its deadline with no later call, prunes by that time, keeps a younger hold (task 001-229)", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    const discharges = new Discharges({ retentionMs: HOLD_MS / 2, cap: 3 });
+    const expired: string[] = [];
+    discharges.note(moved(math.path, 3), 0);
+    discharges.note(moved("test/strings.test.ts", 3), 0);
+    discharges.note(moved("test/upper.test.ts", 3), 0);
+    const old = discharges.hold(0, 2, 4, 0, () => expired.push("old"));
+    vi.advanceTimersByTime(HOLD_MS / 2);
+    const young = discharges.hold(HOLD_MS / 2, 2, 4, HOLD_MS / 2, () => expired.push("young"));
+    discharges.note(moved("test/young.test.ts", 4), HOLD_MS / 2);
+    // Past the cap, every discharge kept: the old hold covers them all.
+    expect(discharges.size).toBe(4);
+
+    // No discharge, hold or read: the old hold's hour ends on time.
+    vi.advanceTimersByTime(HOLD_MS / 2);
+    expect(expired).toEqual(["old"]);
+    expect(discharges.holds).toBe(1);
+    // Pruned at the deadline, not at the last discharge: the hour-old ones go too.
+    expect(discharges.since(0, 0, 4).map((file) => file.testFile.path)).toEqual([
+      "test/young.test.ts",
+    ]);
+    expect(young.intact(HOLD_MS)).toBe(true);
+    expect(old.intact(HOLD_MS)).toBe(false);
+
+    // Released, forgotten or expired again is nothing.
+    old.forget();
+    old.release();
+    vi.advanceTimersByTime(HOLD_MS / 2);
+    expect(expired).toEqual(["old", "young"]);
+    expect(discharges.holds).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("clears its timer once no hold is left (task 001-229)", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    const discharges = new Discharges();
+    let expired = 0;
+    const first = discharges.hold(0, 0, 1, 0, () => {
+      expired += 1;
+    });
+    const second = discharges.hold(0, 0, 1, 10, () => {
+      expired += 1;
+    });
+    expect(vi.getTimerCount()).toBe(1);
+    first.release();
+    second.forget();
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(2 * HOLD_MS);
+    expect(expired).toBe(0);
   });
 });
