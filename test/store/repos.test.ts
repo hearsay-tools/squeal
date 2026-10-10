@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { editsMetaKey } from "../../src/core/delivery/edits.js";
+import { rekeyedMetaKey } from "../../src/core/scheduler/rekeyed-record.js";
+import { WORKTREE_META_PREFIXES } from "../../src/core/store/repos/worktrees.js";
 import { connectionOf } from "../../src/core/store/store.js";
-import type {
-  CheckRecord,
-  Consumer,
-  FileCheckId,
-  TestFileKeyRecord,
-  TestFileRecord,
-  Transition,
+import {
+  type CheckRecord,
+  type Consumer,
+  checkpointMetaKey,
+  type FileCheckId,
+  nodeTestObservedMetaKey,
+  type TestFileKeyRecord,
+  type TestFileRecord,
+  type Transition,
 } from "../../src/core/types/index.js";
 import { fakeCommonDir, knownState, open, result, testCheck, worktree } from "./helpers.js";
 
@@ -94,6 +99,43 @@ describe("worktrees", () => {
     expect(store.transitions.history("stay", testCheck("t"))).toHaveLength(1);
     expect(store.consumers.list("stay")).toHaveLength(1);
     expect(store.views.list(keep)).toHaveLength(1);
+  });
+});
+
+describe("worktree removal and its meta rows (review wave 13u, S1)", () => {
+  const snapshot = (id: string) => `edit-keys:${JSON.stringify([id, "s", "main"])}`;
+
+  it("names each owner's key", () => {
+    expect(WORKTREE_META_PREFIXES.map((prefix) => `${prefix}w`).sort()).toEqual(
+      [editsMetaKey("w"), checkpointMetaKey("w"), rekeyedMetaKey("w")].sort(),
+    );
+  });
+
+  it("drops the removed worktree's rows, and keeps a live one's and shared ones", () => {
+    const store = open(fakeCommonDir());
+    for (const id of ["gone", "stay"]) {
+      store.worktrees.upsert(worktree(id, `/${id}`));
+      for (const key of [
+        editsMetaKey(id),
+        checkpointMetaKey(id),
+        rekeyedMetaKey(id),
+        snapshot(id),
+      ]) {
+        store.meta.set(key, "{}");
+      }
+    }
+    // Shared, and named with a removed worktree's id as a suffix: never matched.
+    store.meta.set(nodeTestObservedMetaKey("gone"), "{}");
+    store.meta.set("edit-keys:not json", "{}");
+
+    store.worktrees.remove("gone");
+
+    for (const key of [editsMetaKey, checkpointMetaKey, rekeyedMetaKey, snapshot]) {
+      expect(store.meta.get(key("gone"))).toBeNull();
+      expect(store.meta.get(key("stay"))).toBe("{}");
+    }
+    expect(store.meta.get(nodeTestObservedMetaKey("gone"))).toBe("{}");
+    expect(store.meta.get("edit-keys:not json")).toBe("{}");
   });
 });
 

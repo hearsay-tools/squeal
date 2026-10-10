@@ -18,6 +18,31 @@ export const WORKTREE_SCOPED_TABLES = [
   "consumers",
 ] as const;
 
+/**
+ * `meta` rows named `<prefix><worktreeId>` that belong to one worktree and go
+ * with it (review wave 13u, S1): the consumers' edit state (`editsMetaKey`),
+ * the open checkpoint (`checkpointMetaKey`) and the re-key record
+ * (`rekeyedMetaKey`). Removed by exact name, never by a suffix match, so a
+ * row shared across worktrees, a node:test observation's, stays.
+ */
+export const WORKTREE_META_PREFIXES = ["edits:", "checkpoint.", "rekeyed."] as const;
+
+/**
+ * Prefix of the per-consumer key snapshots squeal 0.1.100 to 0.1.102 kept,
+ * `edit-keys:` and the JSON `[worktreeId, sessionId, agentId]`.
+ */
+const EDIT_KEYS_PREFIX = "edit-keys:";
+
+/** Whether `key` is a key snapshot of `worktreeId`'s consumers. */
+function editKeysOf(key: string, worktreeId: string): boolean {
+  try {
+    const owner: unknown = JSON.parse(key.slice(EDIT_KEYS_PREFIX.length));
+    return Array.isArray(owner) && owner[0] === worktreeId;
+  } catch {
+    return false;
+  }
+}
+
 export function createWorktreeRepo(conn: Connection): WorktreeRepo {
   return {
     get: (id) => {
@@ -75,6 +100,18 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
         conn.run("DELETE FROM worktrees WHERE id = ?", id);
         for (const table of WORKTREE_SCOPED_TABLES) {
           conn.run(`DELETE FROM ${table} WHERE worktree_id = ?`, id);
+        }
+        for (const prefix of WORKTREE_META_PREFIXES) {
+          conn.run("DELETE FROM meta WHERE key = ?", `${prefix}${id}`);
+        }
+        const snapshots = conn.all(
+          "SELECT key FROM meta WHERE substr(key, 1, ?) = ?",
+          EDIT_KEYS_PREFIX.length,
+          EDIT_KEYS_PREFIX,
+        );
+        for (const row of snapshots) {
+          const key = str(row, "key");
+          if (editKeysOf(key, id)) conn.run("DELETE FROM meta WHERE key = ?", key);
         }
       });
     },

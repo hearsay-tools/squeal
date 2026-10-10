@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { statusCommand } from "../../src/cli/status-command.js";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
 import { readStatus } from "../../src/core/status/index.js";
@@ -23,7 +24,8 @@ const NOW = Date.UTC(2026, 9, 6, 12, 0, 0);
 const ADDS = check("src/a.test.ts", "adds");
 const SUBTRACTS = check("src/a.test.ts", "subtracts");
 
-async function run(argv: string[], cwd: string) {
+/** `env` replaces the process's environment; without it the CLI reads `process.env`. */
+async function run(argv: string[], cwd: string, env?: CliIo["env"]) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
@@ -35,6 +37,7 @@ async function run(argv: string[], cwd: string) {
     },
     cwd,
     now: () => NOW,
+    ...(env === undefined ? {} : { env }),
   };
   const started = performance.now();
   const code = await main(argv, io);
@@ -372,7 +375,7 @@ describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)"
 });
 
 describe("squeal status --wait names a checkpoint still running (task 001-217)", () => {
-  it("says a quiet wait did not hold for it, and how to wait for it", async () => {
+  function runningCheckpoint() {
     const { repo, store } = repoWith(currentPass());
     const record = store.checkpoints.start({
       id: "cp-1",
@@ -385,11 +388,30 @@ describe("squeal status --wait names a checkpoint still running (task 001-217)",
     const { id, kind, revision, startedAt } = record;
     const progress = { id, kind, revision, startedAt, done: 40, total: 200 };
     store.meta.set(checkpointMetaKey(repo.mainId), JSON.stringify(progress));
+    return repo;
+  }
 
-    const { stdout } = await run(["status", "--wait", "5000"], repo.main);
+  it("says a quiet wait did not hold for it, and how to wait for it", async () => {
+    const repo = runningCheckpoint();
+
+    // Review wave 13u, S2: outside a Codex shell whatever runs this test.
+    const { stdout } = await run(["status", "--wait", "5000"], repo.main, {});
 
     expect(stdout.split("\n")[0]).toMatch(
       /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s; a `run --all` checkpoint is still running \(40 of 200 test files done\), which this wait does not hold for: `squeal run --all --wait` waits for it$/,
+    );
+  });
+
+  it("names the command a Codex shell runs", async () => {
+    const repo = runningCheckpoint();
+    const env = { CODEX_SESSION_ID: "thread-1" };
+
+    const { stdout } = await run(["status", "--wait", "5000"], repo.main, env);
+
+    const command = statusCommand(env);
+    expect(command).not.toBe("squeal");
+    expect(stdout.split("\n")[0]).toContain(
+      `which this wait does not hold for: \`${command} run --all --wait\` waits for it`,
     );
   });
 });
