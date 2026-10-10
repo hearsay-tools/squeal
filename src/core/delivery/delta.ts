@@ -41,6 +41,11 @@ export interface PlanInput {
    * was never told about; without it such a check is first observed.
    */
   readonly history?: (check: CheckId) => readonly Transition[];
+  /**
+   * Whether a PASS -> UNKNOWN is the consumer's own edit landing mid-run
+   * (task 001-220): neither delivered nor written, so the view keeps PASS.
+   */
+  readonly ownEdit?: (state: KnownState) => boolean;
 }
 
 /**
@@ -122,6 +127,9 @@ export function toView(state: KnownState, toldAt: EpochMs): ViewEntry {
  * between two deliveries, or a failure that was skipped and came back
  * unchanged, produces nothing.
  *
+ * A PASS -> UNKNOWN that `ownEdit` accepts is left out the same way (task
+ * 001-220).
+ *
  * A view entry with no known state is a retired check. D6: one told as
  * `fail` "is delivered once to that consumer as resolved"; every other one
  * leaves the view silently.
@@ -143,6 +151,9 @@ export function planDelta(input: PlanInput): DeltaPlan {
         : null;
     const from = before === null || prior?.outcome === "pass" ? prior : before;
     const kind = transitionKind(from, state);
+    if (kind === "to-unknown" && from?.outcome === "pass" && input.ownEdit?.(state) === true) {
+      continue;
+    }
     if (before === null || kind !== null) writes.push(toView(state, input.toldAt));
     if (kind === null) continue;
     const baseline =

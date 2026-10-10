@@ -28,6 +28,7 @@ import {
   toldRevision,
   withTold,
 } from "./liveness.js";
+import { ownEditUnknown } from "./own-edit.js";
 import { scannedDaemon, tellRegistered } from "./registered.js";
 import {
   currentKeys,
@@ -100,14 +101,16 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     toldAt: EpochMs,
     keep: ((entry: DeltaEntry) => boolean) | null,
   ): DeltaPlan {
+    const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
     const full = planDelta({
       view: store.views.list(consumer),
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-      revision: store.revisions.latest(consumer.worktreeId)?.number ?? 0,
+      revision,
       history: (check) => store.transitions.history(consumer.worktreeId, check),
+      ownEdit: ownEditUnknown(store, consumer, revision),
     });
     return keep === null ? full : restrictPlan(full, keep);
   }
