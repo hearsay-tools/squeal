@@ -83,7 +83,8 @@ function where(location: SourceLocation | null): string {
  * `errors[0].message`, prefixed with the error name; the location is
  * `errors[0].location`, else `fallback` (the test's own location). Later
  * errors and lines are left out, so a changed stack or diff alone is not a
- * changed failure.
+ * changed failure. The summary adds the diff's first changed lines (task
+ * 001-221); the fingerprint does not.
  */
 export function describeFailure(
   errors: readonly CheckError[],
@@ -100,6 +101,39 @@ export function describeFailure(
   const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;
   return {
     fingerprint: `${first.name}: ${normalize(line)} @ ${where(location)}`,
-    summary: cap(summary, SUMMARY_MAX_CHARS),
+    summary: withDiff(summary, first.diff === null ? null : diffText(first.diff)),
   };
+}
+
+/** Room the first line keeps beside a diff, so a long assertion still says what failed. */
+const LINE_MIN_CHARS = 120;
+
+/** Changed lines of a diff a summary keeps; the cap usually ends them first. */
+const DIFF_LINES = 8;
+
+/**
+ * Task 001-221: Vitest prints both sides of a deep equality truncated
+ * (`{ commands: [ 'npm ci' ], …(1) }`), so a first line alone can hide the
+ * field that differs. The diff's legend and its first changed lines, one
+ * line, `null` for a diff with no changed line.
+ */
+function diffText(diff: string): string | null {
+  const lines = stripVTControlCharacters(diff).split(/\r?\n/);
+  const legend = lines.slice(0, 2).map((l) => l.trim());
+  const labelled = /^- \S/.test(legend[0] ?? "") && /^\+ \S/.test(legend[1] ?? "");
+  const changed = (labelled ? lines.slice(2) : lines)
+    .filter((l) => /^[-+]/.test(l))
+    .slice(0, DIFF_LINES)
+    .map((l) => `${l[0]} ${l.slice(1).trim().replace(/\s+/g, " ")}`);
+  if (changed.length === 0) return null;
+  return `diff${labelled ? ` (${legend.join(", ")})` : ""}: ${changed.join(" | ")}`;
+}
+
+/** `summary` and then `diff`, within `SUMMARY_MAX_CHARS`: the line keeps at least `LINE_MIN_CHARS`. */
+function withDiff(summary: string, diff: string | null): string {
+  if (diff === null) return cap(summary, SUMMARY_MAX_CHARS);
+  const separator = "; ";
+  const room = SUMMARY_MAX_CHARS - separator.length;
+  const shownDiff = cap(diff, room - Math.min(summary.length, LINE_MIN_CHARS));
+  return `${cap(summary, room - shownDiff.length)}${separator}${shownDiff}`;
 }

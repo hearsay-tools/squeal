@@ -175,4 +175,52 @@ describe("describeFailure summary", () => {
     expect(summary.length).toBe(SUMMARY_MAX_CHARS);
     expect(summary.endsWith("...")).toBe(true);
   });
+
+  // Task 001-221: Vitest truncates both objects, so only its diff names the field that differs.
+  const truncated =
+    "expected { commands: [ 'npm ci' ], …(2) } to deeply equal { commands: [ 'npm ci' ], …(2) }";
+  const vitestDiff =
+    '- Expected\n+ Received\n\n@@ -14,7 +14,7 @@\n      ],\n    },\n    "commands": [\n' +
+    '      "npm ci",\n    ],\n-   "timeoutSeconds": 1,\n+   "timeoutSeconds": 900,\n  }';
+
+  it("keeps the first changed lines of the assertion's diff", () => {
+    const { summary } = describeFailure([error(truncated, { diff: vitestDiff })], null);
+    expect(summary).toBe(
+      `${truncated}; diff (- Expected, + Received): - "timeoutSeconds": 1, | + "timeoutSeconds": 900,`,
+    );
+  });
+
+  it("keeps the diff within the cap when the first line is long", () => {
+    const { summary } = describeFailure(
+      [error(`expected ${"x".repeat(1_000)}`, { diff: vitestDiff })],
+      null,
+    );
+    expect(summary.length).toBeLessThanOrEqual(SUMMARY_MAX_CHARS);
+    expect(summary).toContain('- "timeoutSeconds": 1, | + "timeoutSeconds": 900,');
+  });
+
+  it("caps a long diff", () => {
+    const lines = Array.from({ length: 40 }, (_, i) => `-   "field${i}": ${i},`);
+    const { summary } = describeFailure(
+      [error("expected a to equal b", { diff: `- Expected\n+ Received\n\n${lines.join("\n")}` })],
+      null,
+    );
+    expect(summary.length).toBeLessThanOrEqual(SUMMARY_MAX_CHARS);
+    expect(summary).toContain('- "field0": 0,');
+  });
+
+  it("does not change the fingerprint", () => {
+    const plain = describeFailure([error(truncated)], null);
+    const diffed = describeFailure([error(truncated, { diff: vitestDiff })], null);
+    expect(diffed.fingerprint).toBe(plain.fingerprint);
+    expect(plain.summary).toBe(truncated);
+  });
+
+  it("keeps the further-errors count before the diff", () => {
+    const { summary } = describeFailure(
+      [error("boom", { diff: "- Expected\n+ Received\n\n- 1\n+ 2" }), error("bang")],
+      null,
+    );
+    expect(summary).toBe("boom (1 more error); diff (- Expected, + Received): - 1 | + 2");
+  });
 });
