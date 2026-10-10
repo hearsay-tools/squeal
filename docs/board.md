@@ -520,7 +520,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08, shipped 202
 
 ## Feature 005: agent adoption
 
-Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until 001-169 to 001-174 and 004-46 are done and the human says go (the host's load is this project's own work); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); the human's cezar session of 2026-10-10 folded into D3 and D6, seven defects sent to the 001 coordinator, and two header proposals open with it (open question 8); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
+Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until 001-169 to 001-174 and 004-46 are done and the human says go (the host's load is this project's own work); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); the human's cezar session of 2026-10-10 folded into D3 and D6; its defects and D6's delivery proposals are 001 rows 001-216 to 001-224, which 005-18's proof needs shipped (001-217, 001-219, 001-223, 001-224); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
 ### Research (done)
 
@@ -560,7 +560,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 005-17 e2e for setup | planned | Testing: `install.sh`, the launcher across an update, `squeal setup --yes` (proposing the known slow inputs) and the skill, in both harnesses on fixtures shaped like this repository and like cezarion. | Node 22 and 24. |
-| 005-18 dogfooding | planned | Goal 6: controlled sessions on a cold, slow fixture in both harnesses (at most 40), and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
+| 005-18 dogfooding | planned, after 001-217, 001-219, 001-223 and 001-224 ship | Goal 6: controlled sessions on a cold, slow fixture in both harnesses (at most 40), and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
 
 ## Later
 
