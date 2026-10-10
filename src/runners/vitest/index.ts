@@ -4,7 +4,7 @@ import { VitestAdapter } from "./adapter.js";
 import { loadVitest } from "./load.js";
 import { WorktreePaths } from "./paths.js";
 
-export { VITEST_ADAPTER_VERSION } from "./adapter.js";
+export { VITEST_ADAPTER_VERSION } from "./version.js";
 
 export interface VitestAdapterOptions {
   /** Worktree root. Spec 001 D4: one Vitest instance per worktree. */
