@@ -56,6 +56,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-10, decided by the human (the human's concern, not an agent's): agents may not know what a revision is. D6 defines the word once in the primer and proposes to 001 a `Changed since revision N:` line in `squeal why` for a result older than the current revision (open question 10). No standalone lookup command, since agents do not load the skill that would teach it; if the proof shows misreads, the line moves into the FAIL report for old results only.
 
+- 2026-10-10, the 001 coordinator accepted the `squeal why` changed-since line as row 001-225, with the result's own line naming its revision; 005-15 adds the primer's revision sentence. Open question 10 resolved.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
