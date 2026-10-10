@@ -53,3 +53,19 @@ Use /worker.
 Outcome: `reviews/wave-6.md`, committed. Range: `git log --oneline 3040e11d^..17b0c227` on main, 0.1.88 (004-52, 004-54, 004-55, the D8 amendment and the bundles). The gate's load-sensitive failures at load 79 to 136 passed alone on both Nodes; 001-196 (0.1.87) underneath is out of scope. First round. Questions: does 004-52 drop only what 004-47's rule rejects, never a closure, environment, lockfile or observed path; can 004-54's fallback take a duration from a result that is not this file's, or change `resultKey`; does 004-55 keep the clause on for every path a slow file's key holds, including a declared artifact's sources outside `plugins/**`? Rules as for 004-14.
 
 Use /reviewer.
+
+## 004-57 "sources changed since" keeps executable sources a broad fast declaration selects (`reviews/wave-6.md` S1)
+
+Outcome: a changed source behind an unchanged artifact turns the clause on even when some fast test declares it (`src/**/*.ts` in this repository), while a fixture-only or docs edit still leaves it off.
+
+Read: `reviews/wave-6.md` S1 and its probe, `lessons.md` defect 18, spec 004 D8 (as amended for 004-55), `src/core/state/slow-sources.ts` (`artifactSources`, `listedClosures`). Shape: survey, then repair. The stored closure (`test_files.closure_paths`, `Closure.paths`) merges a file's resolved imports with its declared inputs, so no read can tell them apart for one file. Lead, no store change: subtract per file instead of globally. A path counts if some test file's stored closure names it and that file's own declared `inputs` do not select it (unit tests import `src` without declaring it; fixtures are named only by the tests that declare them); keep the test-file, slow-directory, policy-file and artifact exclusions and the content comparison. Measure the lead on this repository's real store (read-only) for `src/**`, `test/fixtures/**` and `docs/**` paths before committing to it. If it cannot separate them and only recording resolved paths apart would, stop and send me that design: the store, `storeClosures` and `src/core/keys` are the 001 lane's and sit under the key-format guard.
+
+Owns: `src/core/state/slow-sources.ts`, `src/core/state/slow.ts`, `test/status/slow-tier.test.ts`, `test/status/slow-tier-truth.test.ts`. Do not edit `spec.md`; I amend D8 at integration. Done when: the review's overlapping-input case (a fast declaration `src/**/*.ts` and a changed source a closure names: clause on) and its fixture-only control (clause off) pass, red before the fix; 004-55's cases still pass; lint, typecheck, full suite.
+
+Use /worker.
+
+## 004-58 review of 004-57
+
+Outcome: `reviews/wave-6.5.md`. Range: 004-57's commits and their bundle on main, pinned at landing. First round. Questions: does the clause now show for every source a slow file's artifact may be built from in this repository and in a dist-only end-to-end layout, and stay off for fixtures and docs; can any path a test loads be dropped because another file declares it? Rules as for 004-14.
+
+Use /reviewer.

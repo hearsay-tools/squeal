@@ -87,6 +87,8 @@ Started: 2026-10-08
 
 - 2026-10-10, review 004-56 (`reviews/wave-6.md`, PASS at `17b0c227`, gpt-6.1-sol): 004-52, 004-54 and 004-55 hold on Node 22 and 24 through real-store probes with negative controls; no blocker. One nonblocking S1: D8 as amended for 004-55 also drops executable sources a broad fast declaration selects (`src/**/*.ts` in this repository), so the clause misses source changes behind an unchanged artifact here; the amendment was the coordinator's, too broad. Row 004-57, planned: the stored closure does not separate resolved paths from declared inputs, so the fix needs a design choice. The reviewer's gate: Node 24 two integration re-run-count failures passing alone and an unhandled `write EPIPE` in `test/harness/step-down.test.ts` (the 001 lane's stub, recurring alone); Node 22 one proxy-warning stderr failure; Squeal's checkpoint 2679 passed, 0 known failures.
 
+- 2026-10-10, decided by the human: fix 004-57 now, then one review (004-58). The brief's lead needs no store change: subtract each test file's own declared inputs from its own stored closure, not every fast declaration from all of them.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
