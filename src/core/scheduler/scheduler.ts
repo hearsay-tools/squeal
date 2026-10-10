@@ -147,7 +147,8 @@ class TierScheduler implements Scheduler {
         runsDir: options.runsDir,
         describe: options.describeFailure ?? describeFailure,
         head: options.head,
-        now: options.now ?? Date.now,
+        // Read at each call, as `rekeyedOnceRefined` reads it: the discharge timer and its holds share it.
+        now: options.now ?? (() => Date.now()),
         note: (message) => this.#note(message),
         rerunCap: options.rerunCap ?? RERUN_CAP,
         ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),

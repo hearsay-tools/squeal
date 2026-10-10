@@ -74,7 +74,7 @@ export class Ledger {
   readonly queue = new RunQueue();
   readonly checkpoints: Checkpoints;
   /** Attributions results discharged, for a wait's sync answer (task 001-196). */
-  readonly discharges = new Discharges();
+  readonly discharges: Discharges;
   /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
   readonly claims: Claims;
   revision: RevisionState = { number: 0, head: null, dirty: false };
@@ -102,6 +102,8 @@ export class Ledger {
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+    // The clock its holds are taken at (`Scheduler.rekeyedOnceRefined`), for its timer (task 001-232).
+    this.discharges = new Discharges(undefined, context.now);
     this.claims = new Claims(context);
     // Read at every query: a reload replaces `context.policy`.
     this.queue.setSlow((ref) => slowView(context.policy).isSlow(ref));
