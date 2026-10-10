@@ -465,7 +465,8 @@ class Daemon {
    * is applied too, with the test files the revisions after `after` re-keyed.
    * With `resolvedSince` (task 001-196), also those whose move had its result
    * since that time: a result before the answer does not take its file out
-   * of the wait's window.
+   * of the wait's window, kept until the answer is read whatever the prune
+   * bounds (task 001-214).
    */
   async #requestSync(
     after: RevisionNumber | null,
@@ -479,10 +480,9 @@ class Daemon {
     const scheduler = this.#loop.scheduler;
     const revision = scheduler.status().revision;
     if (after === null) return { revision, rekeyed: null };
-    await scheduler.refined();
     return {
       revision,
-      rekeyed: scheduler.rekeyedSince(after, revision, resolvedSince ?? undefined),
+      rekeyed: await scheduler.rekeyedOnceRefined(after, revision, resolvedSince ?? undefined),
     };
   }
 
