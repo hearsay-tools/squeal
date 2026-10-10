@@ -445,3 +445,17 @@ Use /reviewer on gpt-6.1-sol, after 001-199 lands. Output `reviews/wave-13m.md`.
 ## 001-202 a later discharge never erases an earlier wait's own news
 
 Use /worker. Shape: fix. From `reviews/wave-13l.md` (001-197, PASS) S1: `discharges.ts` keeps only the last discharge per file, so a later cache-hit result beyond the wait's captured revision overwrites an earlier one before the sync answers, and the wait reports quiet with the edit's news counted as another check's. Outcome: discharges are kept per (file, revision) for as long as any wait could still ask (bounded by the wait's longest timeout or a cap), and `rekeyedSince(..., resolvedSince)` names every discharge inside the window. Read: `reviews/wave-13l.md` (its exact sequence and control), `tasks/001-196/notes.md`, D7. Own: `src/core/scheduler/discharges.ts` and its callers, tests. Do not run `npm run build`. Done when: the reviewer's sequence is a regression on Node 22 and 24, failing without the fix; memory stays bounded under a long session.
+
+## 001-203 the key-format guard covers everything that can affect a stored result, minus an explicit exempt list
+
+Use /worker. Shape: repair. From `reviews/wave-13m.md` (001-200) B1, S1, S2. Decided by the human (2026-10-10): invert the guard, then a re-review (001-204).
+
+Outcome: `test/keys/key-format.test.ts` hashes all of `src/` and the build inputs (`src/harness/build.ts` and whatever decides which runtime files ship) plus a version-independent fingerprint of the plugin's bundled runtime dependencies (`package-lock.json` entries of the packages the build embeds, not the root version), minus a short, named exempt list of paths that cannot affect what is stored or accepted (CLI wording, delivery and status formatting, hook entry text, skills, docs). Every exemption carries a one-line reason in the test. The adapter version constants move to small files of their own that the guard exempts, so an adapter-only bump moves only that runner's keys (S1). Forgetting an exemption costs a re-key, never a false pass.
+
+Read: `reviews/wave-13m.md` (B1's probe, the "Inputs to a result that the key does not directly name" inventory, S1, S2), `src/core/keys/key-format.ts`, D3, D4, `docs/process.md` 6a. Own: `test/keys/`, `src/core/keys/key-format.ts`, the adapters' version constants (new files), D3, D4. Re-pin `KEY_FORMAT_VERSION` 1's hash in place (still unreleased). Do not run `npm run build`.
+
+Done when: the reviewer's barrier mutation (and one in `recordsForFile`) fails the guard; a change to an exempt file does not; a version-only `package.json` change does not; a bundled dependency's lock entry change does; an adapter-only bump keeps the global pin and moves only that runner's keys.
+
+## 001-204 re-review of the key-format guard
+
+Use /reviewer on gpt-6.1-sol, after 001-203 lands. Output `reviews/wave-13n.md`. Second round on `reviews/wave-13m.md`: are B1, S1, S2 closed; is each exemption truly unable to change what is stored or accepted. Decided by the human: blockers go to the human.
