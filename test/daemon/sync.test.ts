@@ -1,5 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
@@ -170,6 +171,7 @@ describe("sync through the front desk", () => {
             rekeyed: after === null ? null : [MATH],
           });
         },
+        forgetSync: () => {},
         onStop: () => {},
         onStepDown: () => {},
         onFailure: () => {},
@@ -186,5 +188,98 @@ describe("sync through the front desk", () => {
     expect(
       await requestDaemon(socketPath, { type: "sync-status", requestId: id }, 2_000),
     ).toMatchObject({ type: "sync", revision: 5, error: null, rekeyed: [MATH] });
+  });
+});
+
+/*
+ * Review wave-13r B2 (task 001-226): the socket remembers 32 sync requests,
+ * and the main thread hears which it drops, by the id the request was
+ * answered with, so their answers' holds are released at once.
+ */
+describe("a sync request the socket drops", () => {
+  it("is forgotten on the main thread by its id, once each, the others never", async () => {
+    const forgotten: string[] = [];
+    const asked: string[] = [];
+    const handle = createHandlers({
+      worktreeId: "0123456789abcdef" as never,
+      root: "/" as never,
+      squealVersion: "0.0.0-test",
+      startedAt: 1 as never,
+      phase: () => "ready",
+      requestFullSuite: () => new Promise(() => {}),
+      requestSync: (_after, _since, id) => {
+        asked.push(id);
+        return new Promise(() => {});
+      },
+      forgetSync: (id) => forgotten.push(id),
+      onActivity: () => {},
+      onStop: () => {},
+      onStepDown: () => {},
+    });
+    const ids: string[] = [];
+    for (let n = 0; n < 40; n += 1) {
+      ids.push(requestId(handle({ type: "sync", after: 0 as RevisionNumber, resolvedSince: 1 })));
+    }
+    expect(asked).toEqual(ids);
+    expect(forgotten).toEqual(ids.slice(0, 8));
+    expect(handle({ type: "sync-status", requestId: ids[7] ?? "" })).toMatchObject({ ok: false });
+    expect(handle({ type: "sync-status", requestId: ids[8] ?? "" })).toMatchObject({ ok: true });
+    // Other requests' drops forget no sync.
+    for (let n = 0; n < 40; n += 1) handle({ type: "run-all" });
+    expect(forgotten).toHaveLength(8);
+  });
+
+  it.each([
+    { name: "in the worker thread", worker: true },
+    { name: "on the main thread", worker: false },
+  ])("reaches the daemon's forgetSync through the front desk $name", async ({ worker }) => {
+    const dir = mkdtempSync("/tmp/sq-sync-");
+    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+    const socketPath = join(dir, "d.sock") as AbsolutePath;
+    const asked: string[] = [];
+    const forgotten: string[] = [];
+    const prepared = prepareFrontDesk(
+      worker
+        ? {
+            script: fileURLToPath(new URL("../../src/core/daemon/front-desk.ts", import.meta.url)),
+            execArgv: [
+              "--disable-warning=ExperimentalWarning",
+              "--import",
+              fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url)),
+            ],
+          }
+        : null,
+    );
+    const desk = await prepared.open(
+      {
+        socketPath,
+        worktreeId: "0123456789abcdef" as never,
+        root: "/",
+        squealVersion: "0.0.0-test",
+        startedAt: 1 as never,
+      },
+      {
+        onActivity: () => {},
+        requestFullSuite: () => new Promise(() => {}),
+        requestSlowSuite: () => new Promise(() => {}),
+        requestSync: (_after, _since, id) => {
+          asked.push(id);
+          return new Promise(() => {});
+        },
+        forgetSync: (id) => forgotten.push(id),
+        onStop: () => {},
+        onStepDown: () => {},
+        onFailure: () => {},
+      },
+    );
+    cleanups.push(() => desk.close());
+    desk.setPhase("ready");
+
+    const ask = { type: "sync", after: 3 as RevisionNumber, resolvedSince: 1700 } as const;
+    const ids: string[] = [];
+    for (let n = 0; n < 33; n += 1)
+      ids.push(requestId(await requestDaemon(socketPath, ask, 2_000)));
+    await expect.poll(() => asked).toEqual(ids);
+    await expect.poll(() => forgotten).toEqual([ids[0]]);
   });
 });

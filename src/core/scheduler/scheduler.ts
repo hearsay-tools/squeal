@@ -329,17 +329,29 @@ class TierScheduler implements Scheduler {
     after: RevisionNumber,
     upTo: RevisionNumber,
     resolvedSince?: EpochMs,
+    signal?: AbortSignal,
   ): Promise<readonly RekeyedTestFile[]> {
+    if (signal?.aborted === true) throw new Error(INCOMPLETE_ANSWER);
     const now = this.options.now ?? Date.now;
     const held =
       resolvedSince === undefined || this.#ledger === null
         ? null
         : this.#ledger.discharges.hold(resolvedSince, after, upTo, now());
+    // A forget releases the hold at once, while the refinement may still be stalled.
+    let forgotten = () => {};
+    const forgetting = new Promise<never>((_, reject) => {
+      forgotten = () => {
+        held?.forget();
+        reject(new Error(INCOMPLETE_ANSWER));
+      };
+    });
+    signal?.addEventListener("abort", forgotten, { once: true });
     try {
-      await this.refined();
+      await Promise.race([this.refined(), forgetting]);
       if (held !== null && !held.intact(now())) throw new Error(INCOMPLETE_ANSWER);
       return this.rekeyedSince(after, upTo, resolvedSince);
     } finally {
+      signal?.removeEventListener("abort", forgotten);
       held?.release();
     }
   }

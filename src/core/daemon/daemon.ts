@@ -39,6 +39,7 @@ import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./pol
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
+import { SyncRequests } from "./sync-requests.js";
 import { squealVersion } from "./version.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
@@ -126,6 +127,8 @@ class Daemon {
   #loop: DaemonLoop | null = null;
   /** What its tests leave running, stopped after each tier and at exit (D12). */
   readonly #children = new EscapedChildren();
+  /** Sync requests in flight, which the socket can forget (task 001-226). */
+  readonly #syncs = new SyncRequests();
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
@@ -417,7 +420,9 @@ class Daemon {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: (after, resolvedSince) => this.#requestSync(after, resolvedSince),
+        requestSync: (after, resolvedSince, id) =>
+          this.#syncs.run(id, (signal) => this.#requestSync(after, resolvedSince, signal)),
+        forgetSync: (id) => this.#syncs.forget(id),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -466,11 +471,13 @@ class Daemon {
    * With `resolvedSince` (task 001-196), also those whose move had its result
    * since that time: a result before the answer does not take its file out
    * of the wait's window, kept until the answer is read whatever the prune
-   * bounds (task 001-214).
+   * bounds (task 001-214), or until `signal`, the socket forgetting the
+   * request, or an hour (task 001-226).
    */
   async #requestSync(
     after: RevisionNumber | null,
     resolvedSince: EpochMs | null,
+    signal: AbortSignal,
   ): Promise<SyncAnswer> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
@@ -482,7 +489,12 @@ class Daemon {
     if (after === null) return { revision, rekeyed: null };
     return {
       revision,
-      rekeyed: await scheduler.rekeyedOnceRefined(after, revision, resolvedSince ?? undefined),
+      rekeyed: await scheduler.rekeyedOnceRefined(
+        after,
+        revision,
+        resolvedSince ?? undefined,
+        signal,
+      ),
     };
   }
 

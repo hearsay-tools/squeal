@@ -182,12 +182,16 @@ export interface Scheduler {
   /**
    * `rekeyedSince` once `refined()`, as a sync answer reads it: the
    * discharges it would name are kept from the call until it resolves or
-   * rejects, whatever the prune bounds (review wave 13q, S1, task 001-214).
+   * rejects, whatever the prune bounds (review wave 13q, S1, task 001-214),
+   * until `signal` aborts (the socket forgot the request), or for an hour
+   * at most (task 001-226). It rejects when what it held ended before it
+   * was read, so a wait never reads fewer files as quiet.
    */
   rekeyedOnceRefined(
     after: RevisionNumber,
     upTo: RevisionNumber,
     resolvedSince?: EpochMs,
+    signal?: AbortSignal,
   ): Promise<readonly RekeyedTestFile[]>;
   /**
    * Resolves once nothing is queued or running and no revision waits for its

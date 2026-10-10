@@ -25,11 +25,14 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
-  /** A `status --wait` reconciliation pass (lessons, defect 30). */
+  /** A `status --wait` reconciliation pass (lessons, defect 30), by the socket's request id. */
   readonly requestSync: (
     after: RevisionNumber | null,
     resolvedSince: EpochMs | null,
+    id: string,
   ) => Promise<SyncAnswer>;
+  /** The socket dropped sync `id`, whose answer is never read (task 001-226); any id, any number of times. */
+  readonly forgetSync: (id: string) => void;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
@@ -54,14 +57,21 @@ export interface PreparedDesk {
  * opens the store and takes the lock.
  *
  * Run from TypeScript sources, where no compiled worker script exists, the
- * socket is served on the main thread instead.
+ * socket is served on the main thread instead; a test may name the worker
+ * script and the Node options that load it (`worker`).
  */
-export function prepareFrontDesk(): PreparedDesk {
-  const script = frontDeskScript(new URL(import.meta.url));
+export function prepareFrontDesk(
+  worker: { readonly script: string; readonly execArgv?: readonly string[] } | null = null,
+): PreparedDesk {
+  const script = worker?.script ?? frontDeskScript(new URL(import.meta.url));
   if (script === null) {
     return { open: (identity, events) => inThread(identity, events), discard: () => {} };
   }
-  const worker = new Worker(script);
+  const execArgv = worker?.execArgv;
+  return started(new Worker(script, execArgv === undefined ? {} : { execArgv: [...execArgv] }));
+}
+
+function started(worker: Worker): PreparedDesk {
   // A worker that dies before `open` fails it; a discarded worker's errors do not matter.
   const early: Error[] = [];
   const onError = (error: Error) => early.push(error);
@@ -141,7 +151,7 @@ async function inWorker(
           );
           return;
         case "sync":
-          events.requestSync(message.after, message.resolvedSince).then(
+          events.requestSync(message.after, message.resolvedSince, message.id).then(
             (answer) => post({ type: "sync-result", id: message.id, answer, error: null }),
             (error: unknown) =>
               post({
@@ -151,6 +161,9 @@ async function inWorker(
                 error: error instanceof Error ? error.message : String(error),
               }),
           );
+          return;
+        case "sync-forget":
+          events.forgetSync(message.id);
           return;
         case "stop":
           events.onStop();
@@ -205,6 +218,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
+      forgetSync: events.forgetSync,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown,

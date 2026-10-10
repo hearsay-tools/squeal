@@ -12,16 +12,6 @@ export const DISCHARGE_RETENTION_MS = 60 * 60_000;
  * the session's length, beside those a held answer covers (task 001-214).
  */
 export const DISCHARGE_CAP = 10_000;
-/**
- * At most this many answers hold discharges at once, the oldest released
- * first (review wave-13r B2, task 001-226); also how many `sync` requests
- * the daemon's socket remembers (`handlers.ts`). The two match by order, not
- * by a link: each sync a current CLI sends takes one hold, in the order the
- * socket remembers them, so the request a 33rd evicts is the one whose hold
- * a 33rd releases. A sync without `after` or `resolvedSince` takes no hold,
- * and then the two drift; the cap still bounds the holds.
- */
-export const MAX_HELD_ANSWERS = 32;
 /** The longest a held answer keeps its discharges, whether or not it is read (task 001-226). */
 export const HOLD_MS = 60 * 60_000;
 /**
@@ -51,17 +41,19 @@ interface Window {
 interface Hold {
   readonly window: Window;
   readonly until: EpochMs;
-  /** Released before its answer was read, or a discharge it covers dropped before it was taken. */
+  /** Ended before its answer was read, or a discharge it covers dropped before it was taken. */
   lost: boolean;
 }
 
 /** What `Discharges.hold` returns to the answer that reads it. */
 export interface HeldAnswer {
-  /** Ends the hold, once the answer is read or failed; again is nothing. */
+  /** Ends the hold, once the answer is read or failed; again, or after `forget`, is nothing. */
   release(): void;
+  /** Ends the hold early: its answer will not be read (the socket forgot the request). */
+  forget(): void;
   /**
    * At `now`, whether every discharge the window covers is still kept: the
-   * hold was not released early, by the count or its deadline, and none was
+   * hold was not ended early, forgotten or past its deadline, and none was
    * dropped before it was taken. An answer that is not intact may miss its
    * own news, and is not given (task 001-226).
    */
@@ -84,9 +76,10 @@ export interface DischargeLimits {
  * its result (003 wave-4.5 B1). Neither bound drops one an answer held
  * between its captured revision and its read still covers (review wave 13q,
  * S1, task 001-214): that answer would end quiet where its file's news
- * landed. What a held answer covers is fixed by its window, and at most
- * `MAX_HELD_ANSWERS` holds last `HOLD_MS` at most, so the holds bound
- * retention too (review wave-13r B2): an answer whose hold ended before it
+ * landed. What a held answer covers is fixed by its window, and a hold
+ * ends when its answer is read, when the socket forgets its request (one of
+ * 32 it remembers), or after `HOLD_MS`, so the holds bound retention too
+ * (review wave-13r B2, task 001-226): an answer whose hold ended before it
  * was read is not intact, and the wait falls back rather than ends quiet.
  */
 export class Discharges {
@@ -131,9 +124,8 @@ export class Discharges {
 
   /**
    * Keeps the discharges `since(since, after, upTo)` names, from `now` until
-   * the answer's release, which a sync answer calls once read or failed, and
-   * for `HOLD_MS` at the latest; the oldest of more than
-   * `MAX_HELD_ANSWERS` holds is released at once (review wave-13r B2).
+   * the answer's release, which a sync answer calls once read or failed, or
+   * its forget, and for `HOLD_MS` at the latest (review wave-13r B2).
    */
   hold(since: EpochMs, after: RevisionNumber, upTo: RevisionNumber, now: EpochMs): HeldAnswer {
     this.#expire(now);
@@ -143,12 +135,9 @@ export class Discharges {
       lost: this.#dropped !== null && this.#dropped >= since,
     };
     this.#held.add(hold);
-    for (const oldest of this.#held) {
-      if (this.#held.size <= MAX_HELD_ANSWERS) break;
-      this.#end(oldest, true);
-    }
     return {
       release: () => this.#end(hold, false),
+      forget: () => this.#end(hold, true),
       intact: (at) => {
         this.#expire(at);
         return !hold.lost;

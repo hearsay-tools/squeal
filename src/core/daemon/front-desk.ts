@@ -54,12 +54,13 @@ function bind(identity: DeskIdentity): void {
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
       }),
-    requestSync: (after, resolvedSince) =>
+    // By the socket's own id, which a forget names; the main thread still answers it.
+    requestSync: (after, resolvedSince, id) =>
       new Promise((resolve, reject) => {
-        const id = randomUUID();
         waitingSync.set(id, { resolve, reject });
         post({ type: "sync", id, after, resolvedSince });
       }),
+    forgetSync: (id) => post({ type: "sync-forget", id }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
