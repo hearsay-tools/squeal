@@ -45,9 +45,9 @@ vi.mock("node:fs", async (importOriginal) => {
     bytes.push(content.length);
     return content;
   }) as typeof real.readFileSync;
-  const openSync = ((path: string, ...rest: never[]) => {
+  const openSync = ((path: string, flags: fs.OpenMode) => {
     reading(path);
-    const fd = real.openSync(path, ...rest);
+    const fd = real.openSync(path, flags);
     open.add(fd);
     return fd;
   }) as typeof real.openSync;
