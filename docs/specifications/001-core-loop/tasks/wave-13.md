@@ -471,3 +471,5 @@ Done when: the research's ten tests pass over two schedulers on one real store; 
 ## 001-206 review of shared runs
 
 Use /reviewer on gpt-6.1-sol, after 001-205 lands. Output `reviews/wave-13o.md`. Can a claim ever leave a file unrun, run it twice, delay an edit's own file, or let a result stand that 004 D6 or 001-170 forbid; does a crashed, stepped-down or restarted daemon release its claims. Decided by the human: blockers go to the human.
+
+The 002/003/004 coordinator's conditions on the slow tier's `#pick` (`src/core/state/slow-tier.ts`), each an explicit question: (a) no hot spin: does a queue holding only claimed slow files make `next()` return null, and does a claim's end (a result, the claimant dying or cancelling) wake the pump through an event so the file then runs here, with a test for each; (b) is there no second slot release and no `#publish` when `startTier` returns null; (c) does the 004-29 drain end when the claimed key's result lands.
