@@ -491,3 +491,35 @@ Use /reviewer on gpt-6.1-sol, after 001-210 lands. Output `reviews/wave-13p.md`.
 ## 001-213 review of the per-revision discharges
 
 Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13q.md`. Range: `b7c0206a^..f8f99207` (001-202 and its 0.1.90 rebuild), read on today's main, since later rows (001-205, 001-210) changed the scheduler around it. Is `reviews/wave-13l.md` S1 closed: can a later discharge still erase an earlier wait's own news; do the 1 h and 10,000-entry bounds ever drop a discharge a live wait still needs; does anything since 0.1.90 break it. Decided by the human (2026-10-10): reviewed before the 0.1.94 hub release; blockers go to the human.
+
+## Wave 13r (after the 0.1.94 hub release)
+
+Four workers, disjoint ownership, then one review (001-215). Each: Do not edit `docs/board.md`. Do not run `npm run build`. The key-format guard will ask the coordinator for a bump of `KEY_FORMAT_VERSION` to 2 (version 1 shipped in 0.1.94) if a row changes a guarded source; the coordinator does it at landing.
+
+## 001-207 a store opening beside concurrent openers never fails on `database is locked`
+
+Use /worker. Shape: defect. From the 0.1.92 gate: `test/store/concurrency.test.ts` "4 writers and 4 readers lose no updates" failed when a child exited before ready, `PRAGMA journal_mode = WAL` at `src/core/store/open.ts:86` throwing `database is locked` though `busy_timeout` is set (load ~47; passed alone 3 of 3). Find the holder or path first (SQLite skips the busy handler on some lock upgrades; the `auto_vacuum` line before it also writes), then fix with the least change: a bounded retry of the open's writes, or doing them under one `BEGIN IMMEDIATE`, keeping 001-141 (opening writes nothing on an existing file) and 001-161 (a starting daemon waits 120 s, 5 s once ready).
+
+Own: `src/core/store/open.ts`, `test/store/`. Done when: the cause is named in the notes; a repeated test of 8 processes opening one new store at once (and one existing store) opens every time, red without the fix; lint, typecheck and the full suite are green.
+
+## 001-208 and 001-209 two test fixes
+
+Use /worker. Shape: defect (test-only). 001-208: `test/daemon/scratch.test.ts:108` reads `/proc/<pid>/cwd` outside the `waitFor` above it, so under load it saw `<repo>/linked` before the daemon moved to `<common-dir>/squeal` (Node 22, load ~30; 9 of 9 alone): wait for the move. 001-209 (`reviews/wave-13n.md` S3): `test/keys/key-sources.ts:187` skips `src/cli/daemon.ts`, the dispatcher and the three build modules when scanning imports: scan them too, allowlist the dispatcher's present command edges by name with a one-line reason each, and add a regression that a new daemon- or build-to-exempt import fails.
+
+Own: `test/daemon/scratch.test.ts`, `test/keys/`. Done when: the scratch test passes 20 times in a row beside a CPU load (say `--maxWorkers` saturated or a busy loop per core); 001-209's regression fails on an injected edge and passes without it; the guard's pin is unchanged (test files are not guarded); lint, typecheck and the full suite are green.
+
+## 001-212 a stopped-process note says enough to find the test that left it
+
+Use /worker. Shape: slice. From the human (2026-10-10): a note like `stopped 1 process a test left running after its tier: 1591510 claude auth status --json` names only a pid and command line, both gone when read. Each stopped process's entry adds its parent's command line (read at the scan, before signalling), its age when stopped, and whether it needed SIGKILL after the grace; the note names the tier's run ID, and `squeal why`/the run's log reaches that run's test files. Keep the note one line per stop, the 120-character command cap, and the pid-and-start-time identity check before every signal (review 001-149 S2).
+
+Own: `src/core/daemon/escaped.ts`, where the note is recorded and shown (`afterEachRun`'s caller, the status note formatter), tests under `test/daemon/`. Done when: a test whose fixture leaves a child running (one that exits on SIGTERM, one that ignores it) gets a note with all four facts, and the run ID leads to its test file; lint, typecheck and the full suite are green.
+
+## 001-214 a discharge a live wait still needs is never evicted
+
+Use /worker. Shape: defect. From `reviews/wave-13q.md` S1 (read its probe table): `src/core/scheduler/discharges.ts:80` drops the oldest entry past 10,000 entries or one hour even when an outstanding captured `status --wait` answer still needs it, and the wait then reports quiet where its own file's news landed. Keep entries a live captured answer needs (for example, the prune skips entries at or after the oldest outstanding answer's captured revision, with that answer's own end or expiry as the bound), while entries no live answer needs are still pruned by the same limits; memory stays bounded when no wait is outstanding.
+
+Own: `src/core/scheduler/discharges.ts`, the wait's sync path in `src/core/scheduler/scheduler.ts` only where it registers or ends an answer, `test/scheduler/`. Done when: the review's probe at both bounds keeps the wait's news (red before); a test shows unneeded entries still pruned at both bounds; lint, typecheck and the full suite are green.
+
+## 001-215 review of wave 13r
+
+Use /reviewer on gpt-6.1-sol, after 001-207, 001-208/209, 001-212 and 001-214 land. Output `reviews/wave-13r.md`. Is each row's done-when met; does 001-207 keep 001-141 and 001-161; does 001-212's note ever signal or name a process that is not the test's; can 001-214's retention grow without bound. Blockers go to the human.
