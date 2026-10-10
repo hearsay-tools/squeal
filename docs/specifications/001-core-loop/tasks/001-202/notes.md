@@ -15,8 +15,8 @@ No caller changed: `Ledger.#discharge` and `Scheduler.rekeyedSince` call the sam
 
 ## Decisions the brief left open
 
-- The retention is a fixed hour rather than tracking each outstanding sync request: a request can still be on the wire when its file is discharged, and the daemon does not know about it yet. A sync answered more than an hour after a discharge could again miss it. Waits that long are outside today's use (the skills cap waits at 10 minutes).
-- Waits never end when the control's news arrives while strings is still pending, so the test does not assert `pending`.
+- The retention is a fixed hour rather than tracking each outstanding sync request: a request can still be on the wire when its file is discharged, and the daemon does not know about it yet. A sync answered more than an hour after a discharge could again miss it. Waits that long are outside today's use (the documented waits run up to 10 minutes).
+- The wait returns news as math's failure lands, possibly while strings' files are still pending, so the regression does not assert `pending`.
 
 ## Not done here
 
