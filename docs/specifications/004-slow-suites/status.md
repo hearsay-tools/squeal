@@ -89,6 +89,8 @@ Started: 2026-10-08
 
 - 2026-10-10, decided by the human: fix 004-57 now, then one review (004-58). The brief's lead needs no store change: subtract each test file's own declared inputs from its own stored closure, not every fast declaration from all of them.
 
+- 2026-10-10, 004-57, 0.1.91 (gate: Node 24 fully green, 2366 tests; Node 22 one failure, the 001 lane's `test/daemon/scratch.test.ts` reading a daemon's working directory before it moved, passing alone 9 of 9): a declaration removes a path only from its own test file's closure. On this repository's store the clause now counts 331 `src` paths (29 before), the same 69 fixture paths and 2 docs; the 28 `src` paths still out are build entry points and type-only imports no test resolves, which recording resolved closures apart would not add either, so the store stays as it is. D8 amended again. Review 004-58 dispatched.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.

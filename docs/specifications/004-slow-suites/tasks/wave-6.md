@@ -66,6 +66,6 @@ Use /worker.
 
 ## 004-58 review of 004-57
 
-Outcome: `reviews/wave-6.5.md`. Range: 004-57's commits and their bundle on main, pinned at landing. First round. Questions: does the clause now show for every source a slow file's artifact may be built from in this repository and in a dist-only end-to-end layout, and stay off for fixtures and docs; can any path a test loads be dropped because another file declares it? Rules as for 004-14.
+Outcome: `reviews/wave-6.5.md`. Range: `git log --oneline 003248a8^..c764599e` on main, 0.1.91 (004-57, the D8 amendment, the bundles). First round. Questions: does the clause now show for every source a slow file's artifact may be built from in this repository and in a dist-only end-to-end layout, and stay off for fixtures and docs; can any path a test loads be dropped because another file declares it? Rules as for 004-14.
 
 Use /reviewer.
