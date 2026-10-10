@@ -689,25 +689,23 @@ function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) 
 function artifactSources(store, keys, view) {
   const testFiles = new Set(keys.map((row) => row.testFile.path));
   let closures;
-  const isFastInput = createInputMatcher([
-    ...new Set(
-      keys.filter((row) => !view.isSlow(row.testFile)).flatMap((row) => view.artifactFor(row.testFile.path))
-    )
-  ]);
   return (path) => {
-    if (isFastInput(path)) return false;
     if (!inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs)) {
       return false;
     }
-    closures ??= listedClosures(store, keys);
+    closures ??= undeclaredClosures(store, keys, view);
     return closures.has(path);
   };
 }
-function listedClosures(store, keys) {
+function undeclaredClosures(store, keys, view) {
   const listed = new Set(keys.map((row) => testFileId(row.testFile)));
-  return new Set(
-    store.testFiles.list().filter((record) => listed.has(testFileId(record.testFile))).flatMap((record) => record.closure.paths)
-  );
+  const paths = /* @__PURE__ */ new Set();
+  for (const record of store.testFiles.list()) {
+    if (!listed.has(testFileId(record.testFile))) continue;
+    const declared = createInputMatcher(view.artifactFor(record.testFile.path));
+    for (const path of record.closure.paths) if (!declared(path)) paths.add(path);
+  }
+  return paths;
 }
 
 // src/core/state/slow.ts
@@ -3243,7 +3241,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.90";
+  if (true) return "0.1.91";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
