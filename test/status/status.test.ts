@@ -179,6 +179,7 @@ describe("readStatus", () => {
         pendingByPhase: { queued: 1, running: 1 },
         testFiles: 5,
         testFilesWithoutChecks: 2,
+        testFilesWithoutChecksRunning: 0,
       },
       closureMethod: "static imports plus declared inputs",
       storeSchemaVersion: SCHEMA_VERSION,
