@@ -6814,14 +6814,16 @@ var init_discharges = __esm({
       #kept = /* @__PURE__ */ new Map();
       /** Oldest first. */
       #held = /* @__PURE__ */ new Set();
-      /** The last discharge's time, which a released hold prunes at. */
+      /** The latest time a call was given or a deadline passed, which an ended hold prunes at. */
       #latest = null;
+      /** Due at the earliest deadline, or earlier; none while nothing is held. Never keeps the process alive. */
+      #timer = null;
       /** The latest time of a discharge a prune dropped: a window from before it may miss it. */
       #dropped = null;
       get size() {
         return this.#kept.size;
       }
-      /** The holds in force, as of the last call that was given a time. */
+      /** The holds in force. */
       get holds() {
         return this.#held.size;
       }
@@ -6833,27 +6835,33 @@ var init_discharges = __esm({
           this.#kept.delete(key2);
           this.#kept.set(key2, { id: file.id, ref: file.ref, revision, at: at2 });
         }
-        this.#latest = at2;
+        this.#see(at2);
         this.#expire(at2);
         this.#prune(at2);
       }
       /**
        * Keeps the discharges `since(since, after, upTo)` names, from `now` until
        * the answer's release, which a sync answer calls once read or failed, or
-       * its forget, and for `HOLD_MS` at the latest (review wave-13r B2).
+       * its forget, and for `HOLD_MS` at the latest (review wave-13r B2), when
+       * `expired` is called, once, whatever else the daemon is doing (task
+       * 001-229). Not after a release or forget.
        */
-      hold(since, after, upTo, now) {
+      hold(since, after, upTo, now, expired) {
+        this.#see(now);
         this.#expire(now);
         const hold = {
           window: { since, after, upTo },
           until: now + HOLD_MS,
-          lost: this.#dropped !== null && this.#dropped >= since
+          lost: this.#dropped !== null && this.#dropped >= since,
+          expired
         };
         this.#held.add(hold);
+        this.#arm(now);
         return {
           release: () => this.#end(hold, false),
           forget: () => this.#end(hold, true),
           intact: (at2) => {
+            this.#see(at2);
             this.#expire(at2);
             return !hold.lost;
           }
@@ -6879,11 +6887,38 @@ var init_discharges = __esm({
       #end(hold, early) {
         if (!this.#held.delete(hold)) return;
         if (early) hold.lost = true;
+        if (this.#held.size === 0 && this.#timer !== null) {
+          clearTimeout(this.#timer.handle);
+          this.#timer = null;
+        }
         if (this.#latest !== null) this.#prune(this.#latest);
       }
-      /** Releases, early, every hold past its deadline at `now`. */
+      /** Releases, early, every hold past its deadline at `now`, and tells its answer. */
       #expire(now) {
-        for (const hold of [...this.#held]) if (hold.until <= now) this.#end(hold, true);
+        for (const hold of [...this.#held]) {
+          if (hold.until > now) continue;
+          this.#end(hold, true);
+          hold.expired?.();
+        }
+      }
+      /** Due at the earliest deadline, from `now`; a timer due no later is left. */
+      #arm(now) {
+        const at2 = Math.min(...[...this.#held].map((hold) => hold.until));
+        if (this.#timer !== null) {
+          if (this.#timer.at <= at2) return;
+          clearTimeout(this.#timer.handle);
+        }
+        const handle = setTimeout(() => {
+          this.#timer = null;
+          this.#see(at2);
+          this.#expire(at2);
+          if (this.#held.size > 0) this.#arm(at2);
+        }, at2 - now);
+        handle.unref?.();
+        this.#timer = { at: at2, handle };
+      }
+      #see(at2) {
+        this.#latest = Math.max(this.#latest ?? at2, at2);
       }
       #prune(now) {
         for (const [key2, discharge] of this.#kept) {
@@ -10231,22 +10266,22 @@ var init_scheduler2 = __esm({
       async rekeyedOnceRefined(after, upTo, resolvedSince, signal2) {
         if (signal2?.aborted === true) throw new Error(INCOMPLETE_ANSWER);
         const now = this.options.now ?? Date.now;
-        const held2 = resolvedSince === void 0 || this.#ledger === null ? null : this.#ledger.discharges.hold(resolvedSince, after, upTo, now());
-        let forgotten = () => {
+        let end = () => {
         };
-        const forgetting = new Promise((_, reject) => {
-          forgotten = () => {
+        const ending2 = new Promise((_, reject) => {
+          end = () => {
             held2?.forget();
             reject(new Error(INCOMPLETE_ANSWER));
           };
         });
-        signal2?.addEventListener("abort", forgotten, { once: true });
+        const held2 = resolvedSince === void 0 || this.#ledger === null ? null : this.#ledger.discharges.hold(resolvedSince, after, upTo, now(), () => end());
+        signal2?.addEventListener("abort", end, { once: true });
         try {
-          await Promise.race([this.refined(), forgetting]);
+          await Promise.race([this.refined(), ending2]);
           if (held2 !== null && !held2.intact(now())) throw new Error(INCOMPLETE_ANSWER);
           return this.rekeyedSince(after, upTo, resolvedSince);
         } finally {
-          signal2?.removeEventListener("abort", forgotten);
+          signal2?.removeEventListener("abort", end);
           held2?.release();
         }
       }
@@ -33320,7 +33355,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.98";
+  if (true) return "0.1.99";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
