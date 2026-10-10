@@ -54,6 +54,8 @@ export type FromDesk =
       readonly after: RevisionNumber | null;
       readonly resolvedSince: EpochMs | null;
     }
+  /** The socket dropped sync `id`; its answer is never read (task 001-226). */
+  | { readonly type: "sync-forget"; readonly id: string }
   | { readonly type: "stop" }
   | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };

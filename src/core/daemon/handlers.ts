@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { MAX_HELD_ANSWERS } from "../scheduler/discharges.js";
 import {
   type AbsolutePath,
   type CheckpointRecord,
@@ -22,11 +21,9 @@ import { isNewerVersion } from "./version.js";
 
 /**
  * `run-all`, `run-slow` and `sync` requests remembered for their status
- * requests; older ones are dropped. As many as the held answers, so a sync
- * dropped here has its hold released by the one that dropped it (review
- * wave-13r B2; see `MAX_HELD_ANSWERS` for where the two can drift).
+ * requests; older ones are dropped, a sync's with `forgetSync`.
  */
-const MAX_REQUESTS = MAX_HELD_ANSWERS;
+const MAX_REQUESTS = 32;
 
 export interface HandlerContext {
   readonly worktreeId: WorktreeId;
@@ -49,11 +46,19 @@ export interface HandlerContext {
    * resolves with the worktree's revision once the pass is stored, like
    * `requestFullSuite`; with `after`, also with the files the revisions after
    * it re-keyed (task 001-186). Absent: this daemon answers that it cannot sync.
+   * `requestId` is the id its status requests ask with, and `forgetSync`'s.
    */
   readonly requestSync?: (
     after: RevisionNumber | null,
     resolvedSince: EpochMs | null,
+    requestId: string,
   ) => Promise<SyncAnswer>;
+  /**
+   * The sync `requestId` was dropped from the remembered requests, so its
+   * answer is never read: what it holds can go (review wave-13r B2, task
+   * 001-226).
+   */
+  readonly forgetSync?: (requestId: string) => void;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
@@ -182,8 +187,10 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
         const state: SyncState = { revision: null, error: null, rekeyed: null };
-        remember(syncRequests, requestId, state);
-        context.requestSync(request.after ?? null, request.resolvedSince ?? null).then(
+        for (const dropped of remember(syncRequests, requestId, state)) {
+          context.forgetSync?.(dropped);
+        }
+        context.requestSync(request.after ?? null, request.resolvedSince ?? null, requestId).then(
           (answer) => {
             state.revision = answer.revision;
             state.rekeyed = answer.rekeyed;
@@ -217,10 +224,14 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   };
 }
 
-function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {
+/** Remembers `requestId`; the ids of the oldest, dropped past `MAX_REQUESTS`. */
+function remember<T>(requests: Map<string, T>, requestId: string, state: T): string[] {
   requests.set(requestId, state);
+  const dropped: string[] = [];
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
     requests.delete(old);
+    dropped.push(old);
   }
+  return dropped;
 }

@@ -1,11 +1,11 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { createHandlers } from "../../src/core/daemon/handlers.js";
+import { SyncRequests } from "../../src/core/daemon/sync-requests.js";
 import {
   DISCHARGE_CAP,
   Discharges,
   HOLD_MS,
   INCOMPLETE_ANSWER,
-  MAX_HELD_ANSWERS,
 } from "../../src/core/scheduler/discharges.js";
 import { newFileState } from "../../src/core/scheduler/files.js";
 import type { DaemonResponse, EpochMs, SyncResponse } from "../../src/core/types/index.js";
@@ -16,13 +16,18 @@ import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
  * The reviewer's probe: the real adapter, store and scheduler, a runner part
  * held before the real `invalidate`, and `sync` requests through the real
  * socket handlers into `Scheduler.rekeyedOnceRefined`, as the daemon routes
- * them (its reconciliation pass aside). 40 holds stayed, none released, and
- * past the cap and the hour every discharge they covered stayed too. Now at
- * most `MAX_HELD_ANSWERS` hold, the oldest released as its request leaves
- * the handlers' map, none past `HOLD_MS`, and an answer whose hold ended
- * before it was read fails instead of naming fewer files. Discharge times
- * and files are synthetic; the hour is simulated through their times.
+ * them (its reconciliation pass aside), through its `SyncRequests`. 40 holds
+ * stayed, none released, and past the cap and the hour every discharge they
+ * covered stayed too. Now a request the handlers drop from their 32 is
+ * forgotten and its hold released at once, while the refinement is still
+ * held; none outlives `HOLD_MS`; and an answer whose hold ended before it
+ * was read fails instead of naming fewer files. Holds are counted at the
+ * scheduler's own `Discharges`. Discharge times and files are synthetic; the
+ * hour is simulated through their times.
  */
+
+/** How many sync requests the socket remembers. */
+const REMEMBERED = 32;
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -33,7 +38,7 @@ function asSync(response: DaemonResponse): SyncResponse {
 
 describe("held sync answers are bounded (review wave-13r B2)", () => {
   it(
-    "holds at most 32 while refinement is held, none past the deadline, and fails the released answers",
+    "releases a dropped request's hold at once, holds at most 32 while refinement is stalled, none past the deadline",
     SLOW,
     async () => {
       const instance: { discharges?: Discharges } = {};
@@ -68,6 +73,9 @@ describe("held sync answers are bounded (review wave-13r B2)", () => {
       await h.batch("src/strings.ts");
       const revision = h.scheduler.status().revision;
 
+      // As the daemon wires its socket: each answer under its request id, forgotten when dropped.
+      const syncs = new SyncRequests();
+      const ended = new Map<string, string>();
       const handle = createHandlers({
         worktreeId: h.worktreeId,
         root: h.root as never,
@@ -75,34 +83,55 @@ describe("held sync answers are bounded (review wave-13r B2)", () => {
         startedAt: 1 as never,
         phase: () => "ready",
         requestFullSuite: () => new Promise(() => {}),
-        // As the daemon's `#requestSync`, once its reconciliation pass is stored.
-        requestSync: async (after, resolvedSince) => {
-          const upTo = h.scheduler.status().revision;
-          if (after === null) return { revision: upTo, rekeyed: null };
-          const rekeyed = await h.scheduler.rekeyedOnceRefined(
-            after,
-            upTo,
-            resolvedSince ?? undefined,
+        requestSync: (after, resolvedSince, id) => {
+          const answer = syncs.run(id, async (signal) => {
+            const upTo = h.scheduler.status().revision;
+            if (after === null) return { revision: upTo, rekeyed: null };
+            const rekeyed = await h.scheduler.rekeyedOnceRefined(
+              after,
+              upTo,
+              resolvedSince ?? undefined,
+              signal,
+            );
+            return { revision: upTo, rekeyed };
+          });
+          answer.then(
+            () => ended.set(id, "answered"),
+            (error: Error) => ended.set(id, error.message),
           );
-          return { revision: upTo, rekeyed };
+          return answer;
         },
+        forgetSync: (id) => syncs.forget(id),
         onActivity: () => {},
         onStop: () => {},
         onStepDown: () => {},
       });
       const status = (requestId: string) => handle({ type: "sync-status", requestId });
+      const holds = () => instance.discharges?.holds ?? 0;
 
       const since = Date.now() as EpochMs;
       const ids: string[] = [];
       for (let n = 0; n < 40; n += 1) {
         ids.push(asSync(handle({ type: "sync", after: 0, resolvedSince: since })).requestId);
         await settle();
-        expect(instance.discharges?.holds ?? 0).toBeLessThanOrEqual(MAX_HELD_ANSWERS);
+        expect(holds()).toBeLessThanOrEqual(REMEMBERED);
       }
-      expect(instance.discharges?.holds).toBe(MAX_HELD_ANSWERS);
-      // The first 8 left the map with their holds.
-      expect(status(ids[0] ?? "")).toMatchObject({ ok: false });
+      expect(holds()).toBe(REMEMBERED);
+      expect(syncs.size).toBe(REMEMBERED);
+      // The first 8 left the map; their answers failed at once, the refinement still held.
+      const evicted = ids.slice(0, 8);
+      for (const id of evicted) {
+        expect(status(id)).toMatchObject({ ok: false });
+        expect(ended.get(id)).toBe(INCOMPLETE_ANSWER);
+      }
+      expect(ended.size).toBe(evicted.length);
       expect(asSync(status(ids[8] ?? ""))).toMatchObject({ revision: null, error: null });
+
+      // A forget of an unknown or already released id is nothing.
+      syncs.forget("no-such-request");
+      syncs.forget(evicted[0] ?? "");
+      expect(holds()).toBe(REMEMBERED);
+      expect(ended.size).toBe(evicted.length);
 
       // A full cap of the window's discharges, then one past the hour: no hold outlives it.
       const live = instance.discharges;
@@ -112,7 +141,9 @@ describe("held sync answers are bounded (review wave-13r B2)", () => {
         keyedAt: revision,
         lastKeyedAt: revision,
       });
-      for (let n = 0; n < DISCHARGE_CAP + 50; n += 1) live.note(moved(`test/f${n}.test.ts`), since);
+      for (let n = 0; n < DISCHARGE_CAP + 50; n += 1) {
+        live.note(moved(`test/f${n}.test.ts`), since);
+      }
       expect(live.size).toBe(DISCHARGE_CAP + 50);
       // Every hold was taken by now, so an hour after now is past each one's deadline.
       const later = (Date.now() + HOLD_MS + 1) as EpochMs;
@@ -140,6 +171,7 @@ describe("held sync answers are bounded (review wave-13r B2)", () => {
       await expect.poll(() => asSync(status(fresh)).revision, { timeout: 30_000 }).toBe(revision);
       expect(asSync(status(fresh)).error).toBeNull();
       expect(live.holds).toBe(0);
+      expect(syncs.size).toBe(0);
     },
   );
 });

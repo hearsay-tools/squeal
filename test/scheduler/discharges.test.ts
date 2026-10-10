@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Discharges, HOLD_MS, MAX_HELD_ANSWERS } from "../../src/core/scheduler/discharges.js";
+import { Discharges, HOLD_MS } from "../../src/core/scheduler/discharges.js";
 import { type FileState, newFileState } from "../../src/core/scheduler/files.js";
 import { ref } from "./helpers.js";
 
@@ -95,22 +95,23 @@ describe("discharges (task 001-202)", () => {
     expect(discharges.size).toBe(3);
   });
 
-  it("releases the oldest of 33 holds, whose answer is then not intact (review wave-13r B2)", () => {
+  it("releases a forgotten hold at once, idempotently, and its answer is not intact (task 001-226)", () => {
     const discharges = new Discharges({ retentionMs: Number.POSITIVE_INFINITY, cap: 2 });
     discharges.note(moved(math.path, 3), 0);
-    const holds = Array.from({ length: MAX_HELD_ANSWERS }, () => discharges.hold(0, 2, 4, 1));
+    const forgotten = discharges.hold(0, 2, 4, 1);
+    const kept = discharges.hold(0, 2, 4, 1);
     discharges.note(moved("test/strings.test.ts", 5), 2);
-    expect(discharges.since(0, 2, 4)).toHaveLength(1);
+    expect(discharges.holds).toBe(2);
 
-    const newest = discharges.hold(0, 2, 4, 3);
-    expect(discharges.holds).toBe(MAX_HELD_ANSWERS);
-    expect(holds[0]?.intact(3)).toBe(false);
-    expect(holds.slice(1).every((held) => held.intact(3))).toBe(true);
-    expect(newest.intact(3)).toBe(true);
-    // A release after an early one is nothing.
-    holds[0]?.release();
-    expect(discharges.holds).toBe(MAX_HELD_ANSWERS);
-    for (const held of [...holds, newest]) held.release();
+    forgotten.forget();
+    expect(discharges.holds).toBe(1);
+    expect(forgotten.intact(3)).toBe(false);
+    expect(kept.intact(3)).toBe(true);
+    // Again, or released after, is nothing.
+    forgotten.forget();
+    forgotten.release();
+    expect(discharges.holds).toBe(1);
+    kept.release();
     expect(discharges.holds).toBe(0);
     discharges.note(moved("test/late.test.ts", 6), 4);
     expect(discharges.since(0, 0, 6).map((file) => file.revision)).toEqual([5, 6]);
