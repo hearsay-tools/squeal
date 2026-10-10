@@ -15,7 +15,9 @@ import { takeWait } from "./wait-arg.js";
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
 Usage:
-  squeal status [--json]        Current validation state of this worktree
+  squeal status [--notes] [--json]
+                                Current validation state of this worktree; --notes
+                                lists every stopped-process note in full
   squeal status --wait <ms> [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status
@@ -100,7 +102,9 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
 function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const wait = takeWait(args);
   if (typeof wait === "string") return usage("status", wait, io);
-  const { waitMs, rest } = wait;
+  const { waitMs } = wait;
+  const allNotes = wait.rest.includes("--notes");
+  const rest = wait.rest.filter((arg) => arg !== "--notes");
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
   if (parsed.positional.length > 0) return usage("status", "takes no arguments", io);
@@ -110,7 +114,8 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const result = readStatus(cwd, { now });
   const env = io.env ?? process.env;
   const codex = parsed.json ? null : codexStatusLine(cwd, env);
-  const human = () => `${formatStatus(result, now(), statusCommand(env))}${codex ?? ""}`;
+  const human = () =>
+    `${formatStatus(result, now(), statusCommand(env), { allNotes })}${codex ?? ""}`;
   io.stdout(parsed.json ? json(result) : human());
   return result.available ? 0 : 1;
 }

@@ -20,7 +20,7 @@ import type {
   Transition,
   Validity,
 } from "./state.js";
-import type { ResultRecord } from "./store-records.js";
+import type { CheckpointKind, ResultRecord } from "./store-records.js";
 
 /** Tally of checks by validity class at the current revision (D5). */
 export type ValidityCounts = Readonly<Record<Validity, number>>;
@@ -59,6 +59,25 @@ export interface SlowPendingCounts {
   readonly checks: number;
   /** Slow test files queued or running without checks, a part of `testFilesWithoutChecks.pending`. */
   readonly testFilesWithoutChecks: number;
+}
+
+/**
+ * The open checkpoint status names (task 001-217), read from
+ * `checkpointMetaKey`: running while a daemon validates, or owed to the next
+ * daemon when the last one stopped first (task 001-219).
+ */
+export interface CheckpointInProgress {
+  readonly id: string;
+  /** `run-all` once a `run --all` request is among its records. */
+  readonly kind: CheckpointKind;
+  /** Revision it was requested at. */
+  readonly revision: RevisionNumber;
+  readonly startedAt: EpochMs;
+  /** Test files with a result, of `total` requested. */
+  readonly done: number;
+  readonly total: number;
+  /** The daemon stopped before it ended; the next daemon resumes it. */
+  readonly owed: boolean;
 }
 
 /**
@@ -295,6 +314,11 @@ export interface CheckBreakdown {
    * checks are not in any count. The sum of `StatusHeader.testFilesWithoutChecks`.
    */
   readonly testFilesWithoutChecks: number;
+  /**
+   * Of those, the ones running now (task 001-217): a baseline over fresh
+   * files runs them before any has a check. Absent reads as 0.
+   */
+  readonly testFilesWithoutChecksRunning?: number;
 }
 
 /**
@@ -347,6 +371,8 @@ export interface StatusSnapshot extends StatusHeader {
    * `revision` is `null` when the note belongs to no revision.
    */
   readonly daemonNotes: readonly DaemonNote[];
+  /** The open checkpoint, running or owed (tasks 001-217, 001-219). Absent when none is. */
+  readonly checkpoint?: CheckpointInProgress;
 }
 
 /**
