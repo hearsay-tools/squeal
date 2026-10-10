@@ -441,3 +441,7 @@ Done when: two builds that differ only in `package.json` version give the same k
 ## 001-200 review of 001-199
 
 Use /reviewer on gpt-6.1-sol, after 001-199 lands. Output `reviews/wave-13m.md`. Can a release now keep a result whose meaning changed: list every input to a result's outcome that is not in the key (Squeal's own code paths: transforms, stamps, the recorder, reporters) and check the guard test covers it; is the step-down unaffected. Decided by the human: blockers go to the human.
+
+## 001-202 a later discharge never erases an earlier wait's own news
+
+Use /worker. Shape: fix. From `reviews/wave-13l.md` (001-197, PASS) S1: `discharges.ts` keeps only the last discharge per file, so a later cache-hit result beyond the wait's captured revision overwrites an earlier one before the sync answers, and the wait reports quiet with the edit's news counted as another check's. Outcome: discharges are kept per (file, revision) for as long as any wait could still ask (bounded by the wait's longest timeout or a cap), and `rekeyedSince(..., resolvedSince)` names every discharge inside the window. Read: `reviews/wave-13l.md` (its exact sequence and control), `tasks/001-196/notes.md`, D7. Own: `src/core/scheduler/discharges.ts` and its callers, tests. Do not run `npm run build`. Done when: the reviewer's sequence is a regression on Node 22 and 24, failing without the fix; memory stays bounded under a long session.
