@@ -408,8 +408,8 @@ function withDefaults(entry2) {
 function entryProblem(entry2, at, kept) {
   if (!isRecord(entry2))
     return `"${at}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
-  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
-  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  const named2 = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
   for (const key of Object.keys(entry2)) {
     if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
@@ -421,8 +421,8 @@ function entryProblem(entry2, at, kept) {
     const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
     return `"${at}.${key}" ${why}; ${skipped}`;
   }
-  if (kept.some((project) => project.name === named)) {
-    return `"${at}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  if (kept.some((project) => project.name === named2)) {
+    return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -3566,6 +3566,14 @@ function openContext(input, location2, options = {}) {
   }
 }
 
+// src/harness/shared/coverage.ts
+var VITEST_ONLY = {
+  vitestConfig: null,
+  vitestProjects: [],
+  nodeTest: [],
+  slow: null
+};
+
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync5 } from "node:fs";
 import { dirname as dirname2, join as join8 } from "node:path";
@@ -3573,7 +3581,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.108";
+  if (true) return "0.1.109";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3650,16 +3658,56 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
 }
 
 // src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND, nodeTest = false, slow = false) {
+var PRIMER_CAP_CHARS = 1500;
+var PRIMER_OPENING = "Squeal runs this repository's ";
+function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
+  const nodeTest = coverage.nodeTest.length > 0;
   const runners = nodeTest ? "Vitest and node:test" : "Vitest";
   const run = nodeTest ? "Vitest or node:test" : "Vitest";
-  return [
-    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
+  const sentences = (covers2) => [
+    `${PRIMER_OPENING}${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
     `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...slow ? [slowSentence(command)] : [],
-    slow ? "Squeal does not cover typecheck or build." : "Squeal does not cover typecheck, build or other test suites."
+    ...coverage.slow === null ? [] : [slowSentence(command)],
+    covers2,
+    "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
+  let vitest = coverage.vitestProjects.length;
+  let node = coverage.nodeTest.length;
+  let text = sentences(coversSentence(coverage, vitest, node));
+  while (text.length > PRIMER_CAP_CHARS && vitest + node > 0) {
+    if (vitest >= node) vitest--;
+    else node--;
+    text = sentences(coversSentence(coverage, vitest, node));
+  }
+  return text;
+}
+function coversSentence(coverage, vitest, node) {
+  const projects = coverage.vitestProjects.map((name) => JSON.stringify(name));
+  const vitestDetail = [
+    ...coverage.vitestConfig === null ? [] : [coverage.vitestConfig],
+    ...projects.length === 0 ? [] : [named("project", projects, vitest)]
+  ];
+  const suites = [vitestDetail.length === 0 ? "Vitest" : `Vitest (${vitestDetail.join(", ")})`];
+  if (coverage.nodeTest.length > 0) {
+    const entries = coverage.nodeTest.map(
+      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+    );
+    const list = named("project", entries, node);
+    suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
+  }
+  const files = coverage.slow?.files;
+  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"}`;
+  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+}
+function named(noun, entries, shown) {
+  const nouns = entries.length === 1 ? noun : `${noun}s`;
+  if (shown === 0) return `${entries.length} ${nouns}`;
+  const listed = entries.slice(0, shown);
+  const rest = entries.length - shown;
+  const tail = rest > 0 ? [...listed, `${rest} more`] : listed;
+  const last = tail.pop();
+  return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
 function slowSentence(command) {
   const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";

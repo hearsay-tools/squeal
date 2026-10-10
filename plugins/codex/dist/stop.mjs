@@ -430,8 +430,8 @@ function withDefaults(entry2) {
 function entryProblem(entry2, at2, kept) {
   if (!isRecord(entry2))
     return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
-  const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
-  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  const named2 = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
   for (const key of Object.keys(entry2)) {
     if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
   }
@@ -443,8 +443,8 @@ function entryProblem(entry2, at2, kept) {
     const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
     return `"${at2}.${key}" ${why}; ${skipped}`;
   }
-  if (kept.some((project) => project.name === named)) {
-    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  if (kept.some((project) => project.name === named2)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -3976,6 +3976,14 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   );
 }
 
+// src/harness/shared/coverage.ts
+var VITEST_ONLY = {
+  vitestConfig: null,
+  vitestProjects: [],
+  nodeTest: [],
+  slow: null
+};
+
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
@@ -4137,7 +4145,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.108";
+  if (true) return "0.1.109";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4325,25 +4333,68 @@ function isRegistered(context) {
 }
 
 // src/harness/shared/primer.ts
-function primer(command = SQUEAL_COMMAND, nodeTest = false, slow = false) {
+var PRIMER_CAP_CHARS = 1500;
+var PRIMER_OPENING = "Squeal runs this repository's ";
+function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
+  const nodeTest = coverage.nodeTest.length > 0;
   const runners = nodeTest ? "Vitest and node:test" : "Vitest";
   const run = nodeTest ? "Vitest or node:test" : "Vitest";
-  return [
-    `Squeal runs this repository's ${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
+  const sentences = (covers2) => [
+    `${PRIMER_OPENING}${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
     `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...slow ? [slowSentence(command)] : [],
-    slow ? "Squeal does not cover typecheck or build." : "Squeal does not cover typecheck, build or other test suites."
+    ...coverage.slow === null ? [] : [slowSentence(command)],
+    covers2,
+    "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
+  let vitest = coverage.vitestProjects.length;
+  let node = coverage.nodeTest.length;
+  let text = sentences(coversSentence(coverage, vitest, node));
+  while (text.length > PRIMER_CAP_CHARS && vitest + node > 0) {
+    if (vitest >= node) vitest--;
+    else node--;
+    text = sentences(coversSentence(coverage, vitest, node));
+  }
+  return text;
+}
+function coversSentence(coverage, vitest, node) {
+  const projects = coverage.vitestProjects.map((name) => JSON.stringify(name));
+  const vitestDetail = [
+    ...coverage.vitestConfig === null ? [] : [coverage.vitestConfig],
+    ...projects.length === 0 ? [] : [named("project", projects, vitest)]
+  ];
+  const suites = [vitestDetail.length === 0 ? "Vitest" : `Vitest (${vitestDetail.join(", ")})`];
+  if (coverage.nodeTest.length > 0) {
+    const entries = coverage.nodeTest.map(
+      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+    );
+    const list2 = named("project", entries, node);
+    suites.push(node === 0 ? `node:test (${list2})` : `node:test ${list2}`);
+  }
+  const files = coverage.slow?.files;
+  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"}`;
+  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+}
+function named(noun, entries, shown) {
+  const nouns = entries.length === 1 ? noun : `${noun}s`;
+  if (shown === 0) return `${entries.length} ${nouns}`;
+  const listed = entries.slice(0, shown);
+  const rest = entries.length - shown;
+  const tail = rest > 0 ? [...listed, `${rest} more`] : listed;
+  const last = tail.pop();
+  return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
 function slowSentence(command) {
   const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";
   return `Slow test suites run when you pause between turns or on \`${command} run --slow\`, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
 }
-function primerVariants(command = SQUEAL_COMMAND) {
-  return [false, true].flatMap(
-    (nodeTest) => [false, true].map((slow) => primer(command, nodeTest, slow))
-  );
+function trailingPrimer(text) {
+  const at2 = text.lastIndexOf(`
+
+${PRIMER_OPENING}`);
+  if (at2 < 0) return "";
+  const tail = text.slice(at2);
+  return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
 }
 var PRIMER = primer();
 
@@ -4362,10 +4413,10 @@ function statusText(header, failures, command = SQUEAL_COMMAND) {
 }
 function knownFailuresLine(failures, command = SQUEAL_COMMAND) {
   if (failures.length === 0) return "Known failures: 0";
-  const named = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
+  const named2 = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
   const more = failures.length - NAMED_FAILURES;
   const rest = more > 0 ? ` and ${more} more; \`${command} status\` lists every one` : "";
-  return `Known failures: ${failures.length} (${named}${rest})`;
+  return `Known failures: ${failures.length} (${named2}${rest})`;
 }
 function list(names) {
   const shown = names.slice(0, LISTED_FAILURES);
@@ -4377,18 +4428,18 @@ function knownFailuresReason(revision, current, earlier2 = []) {
   const sentences = [
     `Squeal policy stop.blockOnKnownFailures is on and ${plural(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
   ];
-  const named = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
+  const named2 = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
   const pending = earlier2.filter((f) => f.validity === "pending");
   if (pending.length > 0) {
     const its = pending.length === 1 ? "its re-run" : "their re-runs";
     sentences.push(
-      `${plural(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named(pending)}.`
+      `${plural(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named2(pending)}.`
     );
   }
   const unrun = earlier2.filter((f) => f.validity !== "pending");
   if (unrun.length > 0) {
     sentences.push(
-      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named(unrun)}.`
+      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named2(unrun)}.`
     );
   }
   return sentences.join(" ");
@@ -4533,10 +4584,7 @@ var CONTEXT_CAP_CHARS = 8e3;
 var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
 function capContext(text, command = SQUEAL_COMMAND) {
   if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const ends = primerVariants(command).map((primer2) => `
-
-${primer2}`);
-  const tail = ends.find((end) => text.endsWith(end)) ?? "";
+  const tail = trailingPrimer(text);
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
   const head = text.slice(0, text.length - tail.length).slice(0, room);
