@@ -6779,6 +6779,9 @@ var init_claims = __esm({
 });
 
 // src/core/scheduler/discharges.ts
+function covers2({ since, after, upTo }, { revision, at: at2 }) {
+  return at2 >= since && revision > after && revision <= upTo;
+}
 var DISCHARGE_RETENTION_MS, DISCHARGE_CAP, Discharges;
 var init_discharges = __esm({
   "src/core/scheduler/discharges.ts"() {
@@ -6795,6 +6798,9 @@ var init_discharges = __esm({
       limits;
       /** By file and revision, oldest discharge first. */
       #kept = /* @__PURE__ */ new Map();
+      #held = /* @__PURE__ */ new Set();
+      /** The last discharge's time, which a released hold prunes at. */
+      #latest = null;
       get size() {
         return this.#kept.size;
       }
@@ -6806,7 +6812,19 @@ var init_discharges = __esm({
           this.#kept.delete(key2);
           this.#kept.set(key2, { id: file.id, ref: file.ref, revision, at: at2 });
         }
+        this.#latest = at2;
         this.#prune(at2);
+      }
+      /**
+       * Keeps the discharges `since(since, after, upTo)` names until the
+       * returned release, which a sync answer calls once read or failed.
+       */
+      hold(since, after, upTo) {
+        const window = { since, after, upTo };
+        this.#held.add(window);
+        return () => {
+          if (this.#held.delete(window) && this.#latest !== null) this.#prune(this.#latest);
+        };
       }
       forget(id2) {
         for (const [key2, discharge] of this.#kept) {
@@ -6816,17 +6834,20 @@ var init_discharges = __esm({
       /** Files discharged at or after `since`, at their revisions after `after` up to `upTo`. */
       since(since, after, upTo) {
         const files = [];
-        for (const { ref: ref2, revision, at: at2 } of this.#kept.values()) {
-          if (at2 >= since && revision > after && revision <= upTo) {
-            files.push({ testFile: ref2, revision, resolved: true });
+        const window = { since, after, upTo };
+        for (const discharge of this.#kept.values()) {
+          if (covers2(window, discharge)) {
+            files.push({ testFile: discharge.ref, revision: discharge.revision, resolved: true });
           }
         }
         return files;
       }
       #prune(now) {
-        for (const [key2, { at: at2 }] of this.#kept) {
-          if (this.#kept.size <= this.limits.cap && at2 >= now - this.limits.retentionMs) return;
-          this.#kept.delete(key2);
+        for (const [key2, discharge] of this.#kept) {
+          if (this.#kept.size <= this.limits.cap && discharge.at >= now - this.limits.retentionMs) {
+            return;
+          }
+          if (![...this.#held].some((window) => covers2(window, discharge))) this.#kept.delete(key2);
         }
       }
     };
@@ -10159,6 +10180,16 @@ var init_scheduler2 = __esm({
         }
         if (resolvedSince === void 0 || this.#ledger === null) return files;
         return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
+      }
+      async rekeyedOnceRefined(after, upTo, resolvedSince) {
+        const release = resolvedSince === void 0 || this.#ledger === null ? () => {
+        } : this.#ledger.discharges.hold(resolvedSince, after, upTo);
+        try {
+          await this.refined();
+          return this.rekeyedSince(after, upTo, resolvedSince);
+        } finally {
+          release();
+        }
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
@@ -33230,7 +33261,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.95";
+  if (true) return "0.1.96";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -36611,7 +36642,8 @@ var Daemon = class {
    * is applied too, with the test files the revisions after `after` re-keyed.
    * With `resolvedSince` (task 001-196), also those whose move had its result
    * since that time: a result before the answer does not take its file out
-   * of the wait's window.
+   * of the wait's window, kept until the answer is read whatever the prune
+   * bounds (task 001-214).
    */
   async #requestSync(after, resolvedSince) {
     await this.#starting;
@@ -36622,10 +36654,9 @@ var Daemon = class {
     const scheduler = this.#loop.scheduler;
     const revision = scheduler.status().revision;
     if (after === null) return { revision, rekeyed: null };
-    await scheduler.refined();
     return {
       revision,
-      rekeyed: scheduler.rekeyedSince(after, revision, resolvedSince ?? void 0)
+      rekeyed: await scheduler.rekeyedOnceRefined(after, revision, resolvedSince ?? void 0)
     };
   }
   /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */

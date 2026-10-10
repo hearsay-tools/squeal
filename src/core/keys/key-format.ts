@@ -23,5 +23,5 @@ export const KEY_FORMAT_VERSION = 2;
  */
 export const KEY_SOURCES_HASHES: Readonly<Record<number, string>> = {
   1: "9faeccfc3507c724afa22c9a320b54ef9fc235c2ac0b1ca9491e2ae5496cc88b",
-  2: "f309e31d8f023d57ec6cd5d256c09780be3f0cc29e54b36e281c6556d1368841",
+  2: "61b24f59104e9b1bcbb20dd7070b709b029d68f46990cd4a00ea1fb66912a79f",
 };
