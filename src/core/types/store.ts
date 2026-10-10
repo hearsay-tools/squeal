@@ -70,6 +70,26 @@ export interface TestFileKeyRepo {
   withKey(key: CheckKey): readonly TestFileKeyRecord[];
   upsertMany(records: readonly TestFileKeyRecord[]): void;
   remove(worktreeId: WorktreeId, testFiles: readonly TestFileRef[]): void;
+  /** Spec 001 D10 as amended (task 001-205): a starting daemon's leftover `running` rows become `queued`. */
+  releaseRunning(worktreeId: WorktreeId): void;
+  /**
+   * Spec 001 D8 as amended (task 001-205): another worktree whose daemon is
+   * `live` holds a row at `key` with `pending = 'running'`, its claim on the
+   * key. Derived, so nothing is written to take or release a claim.
+   */
+  claimed(worktreeId: WorktreeId, key: CheckKey, live: Liveness): boolean;
+  /**
+   * How many other worktrees whose daemon is `live` hold a queued or running
+   * row at a key `worktreeId` has queued: the daemons a backlog is split
+   * with (D5 step 5 as amended, task 001-205).
+   */
+  sharers(worktreeId: WorktreeId, live: Liveness): number;
+}
+
+/** A daemon is live while its heartbeat is at most `graceIntervals` of its intervals before `now`. */
+export interface Liveness {
+  readonly now: EpochMs;
+  readonly graceIntervals: number;
 }
 
 export interface CheckRepo {

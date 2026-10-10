@@ -246,10 +246,16 @@ class Daemon {
     return this.options.timings?.heartbeatMs ?? 5_000;
   }
 
-  /** Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the socket and a heartbeat. */
+  /**
+   * Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the
+   * socket and a heartbeat. A predecessor's `running` rows become `queued`
+   * first: with this heartbeat they would read as live claims until the
+   * baseline rewrites them (D10 as amended, task 001-205).
+   */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
     store.transaction(() => {
+      store.testFileKeys.releaseRunning(id);
       const existing = store.worktrees.get(id);
       store.worktrees.upsert({
         id,

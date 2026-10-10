@@ -13,6 +13,7 @@ import {
   type TestFileRef,
 } from "../types/index.js";
 import { Checkpoints } from "./checkpoints.js";
+import { Claims } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { Discharges } from "./discharges.js";
 import {
@@ -74,6 +75,8 @@ export class Ledger {
   readonly checkpoints: Checkpoints;
   /** Attributions results discharged, for a wait's sync answer (task 001-196). */
   readonly discharges = new Discharges();
+  /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
+  readonly claims: Claims;
   revision: RevisionState = { number: 0, head: null, dirty: false };
   /**
    * One set per tier in flight (`Tier.changes`): each collects the paths
@@ -99,6 +102,7 @@ export class Ledger {
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
+    this.claims = new Claims(context);
     // Read at every query: a reload replaces `context.policy`.
     this.queue.setSlow((ref) => slowView(context.policy).isSlow(ref));
   }
@@ -215,11 +219,25 @@ export class Ledger {
    * so a mixed set is never partly this worktree's own.
    */
   lookup(file: FileState, key: CheckKey): readonly ResultRecord[] {
+    return this.probe(file, key).hits;
+  }
+
+  /**
+   * `lookup`, and whether a miss may wait on another worktree's claim of
+   * `key` (task 001-205): only when another worktree's result could stand
+   * for the file, so it may inherit (004 D6) and no stored fail was withheld
+   * (001-170).
+   */
+  probe(file: FileState, key: CheckKey): { hits: readonly ResultRecord[]; mayWait: boolean } {
     const { store, worktreeId, now } = this.context;
     const hits = store.results.byKey(key, now());
-    if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return hits;
-    if (!this.inherits(file.ref)) return [];
-    return heldFailure(store, worktreeId, hits) === undefined ? hits : [];
+    if (hits.length === 0) return { hits, mayWait: this.inherits(file.ref) };
+    if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
+      return { hits, mayWait: false };
+    }
+    if (!this.inherits(file.ref)) return { hits: [], mayWait: false };
+    const held = heldFailure(store, worktreeId, hits) !== undefined;
+    return { hits: held ? [] : hits, mayWait: false };
   }
 
   /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
@@ -422,9 +440,15 @@ export class Ledger {
     clearKeyedAt(file);
   }
 
-  /** Phase follows the queue and the tier in flight; a change is owed to `test_file_keys`. */
+  /**
+   * Phase follows the queue and the tier in flight; a change is owed to
+   * `test_file_keys`. `running` only while the tier runs the file's key: the
+   * row is another worktree's claim on that key (task 001-205), and a key an
+   * edit moved during the run is not running.
+   */
   #syncPhase(file: FileState): void {
-    const phase = file.runningKey !== null ? "running" : this.queue.has(file.ref) ? "queued" : null;
+    const running = file.runningKey !== null && file.runningKey === file.key;
+    const phase = running ? "running" : this.queue.has(file.ref) ? "queued" : null;
     if (phase === file.phase) return;
     file.phase = phase;
     this.#dirty.add(file.id);

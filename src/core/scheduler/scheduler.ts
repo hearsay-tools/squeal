@@ -18,6 +18,7 @@ import {
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
+import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { rekeyEnvironments } from "./environment-growth.js";
@@ -444,6 +445,10 @@ class TierScheduler implements Scheduler {
               continue;
             }
           }
+          if (this.#started().ledger.claims.waiting) {
+            await this.#claimWake();
+            continue;
+          }
           if (this.#inFlight.size === 0 && !this.#woken) break;
           await this.#nextEvent();
         }
@@ -553,6 +558,21 @@ class TierScheduler implements Scheduler {
         this.#draining = null;
         this.#notify();
       });
+  }
+
+  /**
+   * Queued files wait on other worktrees' claims (task 001-205): the pump
+   * looks again on `#notify`, when the store moves, or after
+   * `CLAIM_RECHECK_MS`, never in a tight loop.
+   */
+  async #claimWake(): Promise<void> {
+    const { context } = this.#started();
+    const stop = new AbortController();
+    try {
+      await Promise.race([this.#nextEvent(), claimWake(context.store, stop.signal)]);
+    } finally {
+      stop.abort();
+    }
   }
 
   /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
