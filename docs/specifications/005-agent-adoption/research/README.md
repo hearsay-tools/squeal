@@ -72,3 +72,15 @@ Added 2026-10-10 on the human's direction. So far Squeal was tested for working 
 Recommendation: the fixture, the task set, the variant mechanism, the metrics and grading, the runner, the matrix with repetitions and its cost per run, where it lives, and the rows a spec needs.
 
 Budget and load: at most 40 subject sessions; record the cost. Subject models are `haiku`, `sonnet` and `opus` in Claude Code and `gpt-6-luna` and `gpt-6.1-sol` in Codex; never Fable. Build first. Run the pilot only while the one-minute load average is below 24 (this host's CPUs), and record it beside every session: the host's load is this project's own coordinators. If it stays above that, commit what is built and report the pilot as pending. Never commit a credential or a private URL: this repository is public, and a host provider URL leaked from a probe script once.
+
+## Topic: model-evals-baseline
+
+Added 2026-10-10 on the human's request: run 005-06's prototype (`probes/model-evals/`) once as a baseline on the current Squeal, now that the host's model proxy serves Haiku 5.5 (verified by the coordinator: `--model haiku` answers as `claude-haiku-5-5`). The question is only where agent behaviour stands today, as the first point of spec 006's trend; no variants, no product changes.
+
+- Squeal: the plugins built from this worktree's commit (0.1.100 or later), pinned as 005-06 pinned 0.1.98. Shipped texts only (`p0`).
+- Models: Claude Code `claude-haiku-5-5` and `claude-sonnet-5-5`; Codex `gpt-6-luna` and `gpt-6.1-sol`. Never Opus or Fable.
+- Tasks: T1, T2 and T4, 3 repetitions each (36 sessions). T3 joins only if one check cell first shows its expected events; at most 48 subject sessions in all.
+- Everything else as in the pilot (allow-list, warm daemon, ground truth, grading), so a difference comes from Squeal's version and Haiku 5.5, not from the setup. Fix the runner only where it blocks the run, and say so.
+- Start a cell only while the one-minute load average is below 24, 2 cells at a time at most, and record the load per cell. 001's wave 13u is running, so expect waits.
+
+Deliverable: `research/model-evals-baseline.md`, one to two pages: the per-model behaviour table in the pilot's format, the comparison with the pilot's `p0` cells (Haiku 4.5 against Haiku 5.5 named apart), every false claim and forbidden edit by cell, cost, and load; logs under `probes/model-evals/logs/baseline-2026-10-10/`. Never commit a credential or a private URL.

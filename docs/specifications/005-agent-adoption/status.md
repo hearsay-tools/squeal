@@ -68,6 +68,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-10, the human: the order is the other coordinators finishing, then a quality pass (board, Later), then the new specs, 005 and 006. 005 stays held until then.
 
+- 2026-10-10, the human: Haiku 5.5 checked again and now served by the host's proxy (`--model haiku` and `claude-haiku-5-5` both answer as `claude-haiku-5-5`). The human asked to run 005-06's prototype once as a baseline on the current Squeal (topic `model-evals-baseline`, row 005-07), an exception to the hold on new work.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
