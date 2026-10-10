@@ -12795,6 +12795,7 @@ var init_chokidar_backend = __esm({
 });
 
 // src/core/watcher/parcel-backend.ts
+import { statSync as statSync3 } from "node:fs";
 import { realpath as realpath6 } from "node:fs/promises";
 import { basename as basename7, dirname as dirname15, join as join33 } from "node:path";
 async function loadOwnParcel() {
@@ -12850,7 +12851,7 @@ async function subscribeAll(parcel, spec, listener) {
       subs.push(
         await parcel.subscribe(
           parent2,
-          callback(listener, (path) => files.get(path) ?? [])
+          callback(listener, (path) => files.get(path) ?? [], new ErasedEvents(files))
         )
       );
     } catch (error) {
@@ -12861,7 +12862,11 @@ async function subscribeAll(parcel, spec, listener) {
   }
   return subs;
 }
-function callback(listener, report2) {
+function signature(path) {
+  const stat7 = statSync3(path, { bigint: true, throwIfNoEntry: false });
+  return stat7 ? `${stat7.ino}:${stat7.size}:${stat7.mtimeNs}:${stat7.ctimeNs}` : null;
+}
+function callback(listener, report2, erased) {
   return (error, events) => {
     if (error) {
       if (DROPPED.test(error.message)) listener.onDropped(error.message);
@@ -12872,10 +12877,11 @@ function callback(listener, report2) {
     for (const event2 of events) {
       for (const path of report2(event2.path)) hints.push({ path, kind: KINDS3[event2.type] });
     }
+    if (erased) hints.push(...erased.find(new Set(events.map((e) => e.path))));
     if (hints.length > 0) listener.onHints(hints);
   };
 }
-var KINDS3, DROPPED, parcelBackend;
+var KINDS3, DROPPED, parcelBackend, ErasedEvents;
 var init_parcel_backend = __esm({
   "src/core/watcher/parcel-backend.ts"() {
     "use strict";
@@ -12883,6 +12889,27 @@ var init_parcel_backend = __esm({
     KINDS3 = { create: "add", update: "change", delete: "unlink" };
     DROPPED = /re-?scanned|dropped/i;
     parcelBackend = createParcelBackend(() => loadOwnParcel());
+    ErasedEvents = class {
+      constructor(files) {
+        this.files = files;
+        for (const real2 of files.keys()) this.last.set(real2, signature(real2));
+      }
+      files;
+      last = /* @__PURE__ */ new Map();
+      /** The hints for the extra files that moved without an event in `named`. */
+      find(named) {
+        const hints = [];
+        for (const [real2, declared] of this.files) {
+          const before = this.last.get(real2) ?? null;
+          const now = signature(real2);
+          this.last.set(real2, now);
+          if (named.has(real2) || now === before) continue;
+          const kind = now === null ? "unlink" : before === null ? "add" : "change";
+          for (const path of declared) hints.push({ path, kind });
+        }
+        return hints;
+      }
+    };
   }
 });
 
@@ -13406,7 +13433,7 @@ var init_loads = __esm({
 });
 
 // src/runners/vitest/graph.ts
-import { existsSync as existsSync12, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync12, statSync as statSync4 } from "node:fs";
 import { builtinModules } from "node:module";
 import { basename as basename9, dirname as dirname16, extname as extname2, join as join37, resolve as resolve7 } from "node:path";
 async function importClosure(project, entries2) {
@@ -13500,7 +13527,7 @@ function isRelative(specifier) {
 }
 function requireTarget(importer, specifier) {
   const path = resolve7(dirname16(importer), specifier);
-  const kind = (candidate) => statSync3(candidate, { throwIfNoEntry: false });
+  const kind = (candidate) => statSync4(candidate, { throwIfNoEntry: false });
   if (kind(path)?.isFile()) return path;
   for (const ext of REQUIRE_EXTENSIONS) if (kind(`${path}${ext}`)?.isFile()) return `${path}${ext}`;
   if (!kind(path)?.isDirectory()) return path;
@@ -14326,14 +14353,14 @@ var init_moved = __esm({
 });
 
 // src/runners/observe/inputs.ts
-import { statSync as statSync4 } from "node:fs";
+import { statSync as statSync5 } from "node:fs";
 function observedInputs(recorded2, completed, paths) {
   const out = [];
   const directories = /* @__PURE__ */ new Map();
   const isDirectory3 = (abs) => {
     let known2 = directories.get(abs);
     if (known2 === void 0) {
-      known2 = statSync4(abs, { throwIfNoEntry: false })?.isDirectory() === true;
+      known2 = statSync5(abs, { throwIfNoEntry: false })?.isDirectory() === true;
       directories.set(abs, known2);
     }
     return known2;
@@ -23785,9 +23812,9 @@ var require_CachedInputFileSystem = __commonJS({
         const stat7 = this._statBackend.provide;
         this.stat = /** @type {FileSystem["stat"]} */
         stat7;
-        const statSync6 = this._statBackend.provideSync;
+        const statSync7 = this._statBackend.provideSync;
         this.statSync = /** @type {SyncFileSystem["statSync"]} */
-        statSync6;
+        statSync7;
         this._readdirBackend = createBackend(
           duration2,
           this.fileSystem.readdir,
@@ -33203,7 +33230,7 @@ var init_version2 = __esm({
 });
 
 // src/runners/node-test/adapter.ts
-import { realpathSync as realpathSync8, statSync as statSync5 } from "node:fs";
+import { realpathSync as realpathSync8, statSync as statSync6 } from "node:fs";
 import { relative as relative11, sep as sep14 } from "node:path";
 async function createNodeTestAdapter(project, options) {
   const root = realpathSync8(options.root);
@@ -33276,7 +33303,7 @@ async function createNodeTestAdapter(project, options) {
 }
 function isDirectory2(path) {
   try {
-    return statSync5(path).isDirectory();
+    return statSync6(path).isDirectory();
   } catch {
     return false;
   }
