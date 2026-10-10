@@ -71,9 +71,9 @@ async function sweepsOwnSleepers(ready: (pool: string) => Promise<void>): Promis
     expect(isAlive(pid)).toBe(true);
     await ready(pool);
     const note = await children.afterRun("vitest", since, since);
-    expect(note).toBe(
-      `stopped 1 process a test left running after its tier: ${pid} ${process.execPath} -e setTimeout(() => {}, 600000)`,
-    );
+    // Then its parent, its age and the signal that ended it (task 001-212).
+    const head = `stopped 1 process a test left running after its tier: ${pid} ${process.execPath} -e setTimeout(() => {}, 600000) (parent `;
+    expect(note?.startsWith(head), String(note)).toBe(true);
     expect(isAlive(pid)).toBe(false);
   }
   expect(new Set(sleepers).size).toBe(2);
