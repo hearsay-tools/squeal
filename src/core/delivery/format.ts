@@ -10,6 +10,7 @@ import type {
   CheckId,
   DaemonLiveness,
   Delta,
+  EditsSettled,
   KnownFailure,
   KnownOutcome,
   Registration,
@@ -310,7 +311,9 @@ export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): str
   const retired = entries.filter((e): e is RetiredEntry => e.kind === "fail-retired");
   const title =
     entries.length === 0
-      ? livenessTitle(delta.liveness, header.revision)
+      ? delta.liveness === undefined
+        ? `SQUEAL · revision ${header.revision}`
+        : livenessTitle(delta.liveness, header.revision)
       : delta.label === "baseline"
         ? `SQUEAL · Squeal's baseline run found ${plural(entries.length, "failing check")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
@@ -334,12 +337,35 @@ export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): str
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
   return assemble(
-    [title, ...headerLines(header, command)].join("\n"),
+    [title, ...headerLines(header, command), ...editLines(delta)].join("\n"),
     blocks,
     overflow,
     tail,
     MESSAGE_CAP_CHARS,
   );
+}
+
+/** Task 001-224, decided by the human: said once per consumer, after its first edit. */
+export function sawEditLine(queued: number): string {
+  return (
+    `Squeal saw your edit and queued ${plural(queued, "test file")}; ` +
+    "results arrive with later tool calls, and passing ones stay silent."
+  );
+}
+
+/** Task 001-223: once none of the test files the consumer's edits re-keyed is pending. */
+export function settledLine({ since, files, unknown }: EditsSettled): string {
+  const which = `${files === 1 ? "The test file" : `All ${files} test files`} your edits since revision ${since} re-keyed`;
+  if (unknown === 0) return `${which} ${files === 1 ? "is" : "are"} current.`;
+  return `${which} finished: ${files - unknown} current, ${unknown} with no result (unknown).`;
+}
+
+/** The lines on the consumer's own edits, after the header (tasks 001-223, 001-224). */
+function editLines({ sawEdit, editsSettled }: Delta): string[] {
+  return [
+    ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued)]),
+    ...(editsSettled === undefined ? [] : [settledLine(editsSettled)]),
+  ];
 }
 
 /** The title of a delta that carries only a change of daemon liveness. */

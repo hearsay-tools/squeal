@@ -93,5 +93,8 @@ function createMetaRepo(conn: Connection): MetaRepo {
     set: (key, value) => {
       conn.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", key, value);
     },
+    delete: (key) => {
+      conn.run("DELETE FROM meta WHERE key = ?", key);
+    },
   };
 }

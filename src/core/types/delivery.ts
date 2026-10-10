@@ -174,6 +174,31 @@ export interface Delta {
    * recovered list is shown.
    */
   readonly stillFailing?: readonly CheckId[];
+  /**
+   * Task 001-224, once per consumer: the first delivery after its first edit
+   * says how many test files its edits queued. Tool boundaries and turn
+   * starts deliver for it alone; a Stop only beside other news.
+   */
+  readonly sawEdit?: { readonly queued: number };
+  /** Task 001-223: set once every test file the consumer's edits re-keyed is no longer pending. */
+  readonly editsSettled?: EditsSettled;
+}
+
+/** The test files the consumer's edits after revision `since` re-keyed, none pending any more. */
+export interface EditsSettled {
+  readonly since: RevisionNumber;
+  readonly files: number;
+  /** Of `files`, those with an unknown check: no result. */
+  readonly unknown: number;
+}
+
+/** Options of `HarnessDelivery.onToolBoundary`. */
+export interface ToolBoundaryOptions {
+  /**
+   * A Stop: news there costs a continuation, so the 001-224 line rides only
+   * on a delivery that has other news.
+   */
+  readonly stop?: boolean;
 }
 
 /**
@@ -280,7 +305,7 @@ export interface HarnessDelivery {
    * nothing is notable. Spec 001 D6: "A check that broke and recovered between
    * two deliveries produces nothing."
    */
-  onToolBoundary(consumer: Consumer): Promise<Delta | null>;
+  onToolBoundary(consumer: Consumer, options?: ToolBoundaryOptions): Promise<Delta | null>;
 
   /**
    * Like `onToolBoundary`, restricted to entries of `options.kinds`: only

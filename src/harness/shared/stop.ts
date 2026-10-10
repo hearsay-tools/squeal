@@ -242,7 +242,8 @@ async function newsText(
       ? formatRegistration(registration, undefined, command)
       : null;
   }
-  const delta = await delivery.onToolBoundary(consumer);
+  // Task 001-224: news at Stop costs a continuation, so the edit line only rides on other news.
+  const delta = await delivery.onToolBoundary(consumer, { stop: true });
   if (delta === null) return null;
   const failures = store.knownStates
     .list(consumer.worktreeId)
