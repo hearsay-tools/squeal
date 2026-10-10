@@ -995,6 +995,15 @@ var init_hidden_lockfile = __esm({
   }
 });
 
+// src/core/keys/key-format.ts
+var KEY_FORMAT_VERSION;
+var init_key_format = __esm({
+  "src/core/keys/key-format.ts"() {
+    "use strict";
+    KEY_FORMAT_VERSION = 1;
+  }
+});
+
 // src/core/keys/environment.ts
 import { createHash as createHash6 } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -1011,7 +1020,7 @@ function environmentHash(core, runner, hashOf2) {
   });
   const encoded = JSON.stringify([
     ENVIRONMENT_ENCODING,
-    core.squealVersion,
+    KEY_FORMAT_VERSION,
     core.nodeVersion,
     core.platform,
     core.arch,
@@ -1121,6 +1130,7 @@ var init_environment = __esm({
     "use strict";
     init_fs();
     init_hidden_lockfile();
+    init_key_format();
     init_packages();
     ENVIRONMENT_ENCODING = "squeal-environment/1";
     LOCKFILES = [
@@ -1990,6 +2000,7 @@ var init_keys = __esm({
     init_environment();
     init_glob();
     init_ignored_inputs();
+    init_key_format();
     init_key_index();
     init_observed();
     init_package_scans();
@@ -32751,7 +32762,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.88";
+  if (true) return "0.1.89";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
