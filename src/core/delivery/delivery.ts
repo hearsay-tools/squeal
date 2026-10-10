@@ -17,6 +17,7 @@ import {
 import { annotate, withDependencies } from "./attribution.js";
 import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
+import { editNotes, snapshotKeys } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import {
@@ -70,6 +71,7 @@ interface DeliverOptions {
   readonly keep?: ((entry: DeltaEntry) => boolean) | null;
   readonly liveness?: boolean;
   readonly idle?: boolean;
+  readonly stop?: boolean;
 }
 
 interface Selection {
@@ -127,11 +129,14 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    * starts a turn, since it wakes the agent. A consumer heard from is in a
    * turn, delivered to or not (task 001-89, review wave 10 S2): a tool call
    * corrects an idle state a Stop that was not the last word, or a failed
-   * UserPromptSubmit, left behind.
+   * UserPromptSubmit, left behind. A liveness or idle delivery also says
+   * what the consumer's edits did (`editNotes`, tasks 001-223 and 001-224);
+   * the 001-224 line delivers on its own at a liveness delivery that is not
+   * a `stop`, and rides on the waiter's news.
    */
   function deliver(
     consumer: Consumer,
-    { heardFrom, keep = null, liveness = false, idle = false }: DeliverOptions,
+    { heardFrom, keep = null, liveness = false, idle = false, stop = false }: DeliverOptions,
   ): Delta | null {
     /** What to deliver, and for the waiter the turn state trimmed of what is no longer owed. */
     const select = (states: readonly KnownState[]): Selection | "silent" => {
@@ -167,7 +172,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness ? livenessChange(store, consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
-      const delivered = delta.entries.length > 0 || changed !== null;
+      const news = delta.entries.length > 0 || changed !== null;
+      const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
+      const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
         if (selection.trim !== null) writeTurn(store, consumer, selection.trim);
@@ -185,6 +192,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         live,
         states,
       );
+      notes?.tell();
       const label =
         delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
           ? "baseline"
@@ -197,6 +205,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         entries,
         stillFailing,
         ...(changed === null ? {} : { liveness: changed }),
+        ...(notes?.sawEdit === undefined ? {} : { sawEdit: notes.sawEdit }),
+        ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
       };
     });
   }
@@ -248,6 +258,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
         tellRevision(store, consumer, header.revision);
         if (!registered) {
+          // Tasks 001-223 and 001-224: the keys the consumer's edits are measured from.
+          snapshotKeys(
+            store,
+            consumer,
+            header.revision,
+            store.testFileKeys.list(consumer.worktreeId),
+          );
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
           const alive = atStart && header.daemon?.state === "alive";
           tellRegistered(store, consumer, header.revision, {
@@ -271,7 +288,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.transaction(() => drop(store, consumer, now()));
     },
 
-    onToolBoundary: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    onToolBoundary: async (consumer, { stop = false } = {}) =>
+      deliver(consumer, { heardFrom: true, liveness: true, stop }),
 
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);

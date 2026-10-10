@@ -73,7 +73,8 @@ describe("changed paths in a delivered header (review wave 10, S4 (b))", () => {
     edit(["src/a.ts"], "pass");
     await delivery.register(C1);
     edit(["src/b.ts"]);
-    expect(await delivery.onToolBoundary(C1)).toBeNull();
+    // At a Stop, so the line of task 001-224 does not deliver on its own.
+    expect(await delivery.onToolBoundary(C1, { stop: true })).toBeNull();
     edit(["src/c.ts"], "fail");
     expect((await delivery.onToolBoundary(C1))?.header.changedPaths).toEqual([
       "src/b.ts",

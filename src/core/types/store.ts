@@ -196,6 +196,8 @@ export interface ViewRepo {
 export interface MetaRepo {
   get(key: string): string | null;
   set(key: string, value: string): void;
+  /** Removes the row; a missing key is a no-op (task 001-223: a consumer's key snapshot). */
+  delete(key: string): void;
 }
 
 /** What pruning removed. Spec 001 D8 "Pruning". */

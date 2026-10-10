@@ -409,8 +409,8 @@ describe("the revisions since registration (review wave 10b, N3)", () => {
     const elapsed = performance.now() - started;
     expect(entry.changesInClosure).toEqual(["src/x.ts"]);
     expect(get).not.toHaveBeenCalled();
-    // The attribution's and the header's changed paths, one query each.
-    expect(range).toHaveBeenCalledTimes(2);
+    // The attribution's, the header's and the edit notes' changed paths, one query each.
+    expect(range).toHaveBeenCalledTimes(3);
     console.log(`N3: delivery with 3,002 revisions since registration: ${elapsed.toFixed(1)} ms`);
   });
 });

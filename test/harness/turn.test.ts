@@ -158,7 +158,10 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     // Squeal's Stop is silent, but another Stop hook blocks: the agent works on.
     expect(await hook("stop", r)).toEqual(SILENT);
     expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
-    expect(await hook("post-tool-batch", r)).toEqual(SILENT);
+    // The first tool boundary after the edit says only that Squeal saw it (task 001-224).
+    expect(context(await hook("post-tool-batch", r))).toMatch(
+      /\nSqueal saw your edit and queued 1 test file;/,
+    );
     expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
 
     const waiter = await waiterAround(r, () => r.apply(r.fail()));

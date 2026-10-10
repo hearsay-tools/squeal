@@ -61,9 +61,10 @@ function edit(paths: readonly string[]): number {
   return revision;
 }
 
-async function kinds(): Promise<DeltaKind[] | null> {
+/** The kinds a tool boundary delivers; the first one after the edit also carries 001-224's line. */
+async function kinds(): Promise<DeltaKind[]> {
   const delta = await delivery.onToolBoundary(C1);
-  return delta === null ? null : delta.entries.map((e) => e.kind);
+  return delta?.entries.map((e) => e.kind) ?? [];
 }
 
 /** A told PASS, then the consumer's edit of `src/a.ts` re-queues the file at a new key. */
@@ -78,17 +79,17 @@ describe("a PASS -> UNKNOWN from the consumer's own edit landing mid-run (task 0
   it("is not delivered while the file is pending again", async () => {
     await passThenOwnEdit();
     sink.markUnknown(WT, revision, [FILE], moved("src/a.ts"));
-    expect(await kinds()).toBeNull();
+    expect(await kinds()).toEqual([]);
     expect(store.knownStates.list(WT)).toMatchObject([{ outcome: "unknown", validity: "pending" }]);
   });
 
   it("is never told, so a later failure reads PASS -> FAIL and a later pass stays quiet", async () => {
     await passThenOwnEdit();
     sink.markUnknown(WT, revision, [FILE], moved("src/a.ts"));
-    expect(await kinds()).toBeNull();
+    expect(await kinds()).toEqual([]);
     setKey(store, "k2");
     apply(result(A, "pass", { key: "k2" }));
-    expect(await kinds()).toBeNull();
+    expect(await kinds()).toEqual([]);
     setKey(store, "k3");
     apply(result(A, "fail", { key: "k3" }));
     expect((await delivery.onToolBoundary(C1))?.entries).toMatchObject([

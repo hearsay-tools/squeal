@@ -11,6 +11,7 @@ import {
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { recordVersion } from "./consumer-version.js";
+import { forgetEdits } from "./edits.js";
 import {
   harnessGone,
   harnessOf,
@@ -156,13 +157,17 @@ export function lastDeparture(store: Store, worktreeId: WorktreeId): EpochMs | n
   return Number.isFinite(at) ? at : null;
 }
 
-/** Drops what an unregistered consumer was told, its turn state, its harness process and its version, beside its view. */
+/**
+ * Drops what an unregistered consumer was told, its turn state, its harness
+ * process, its version and its edit snapshot, beside its view.
+ */
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
+  forgetEdits(store, consumer);
 }
 
 /** `ConsumerRepo.idleSince` for one record. */
