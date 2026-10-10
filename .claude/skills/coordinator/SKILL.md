@@ -47,6 +47,8 @@ git push origin <branch> && git push origin HEAD:main && git -C <main checkout> 
 
 A rejected push means another session landed first: inspect their commits, rebase, re-run the checks, push again. Board rows read `done`.
 
+Before each landing, read the CI result of main's last landing (`gh run list --branch main --limit 3`). A red or failed run blocks the next landing until its cause is understood: fixed first, or named in a board row the human has seen. A local full suite is not CI: GitHub's runners have no git identity, no warm caches and other timing, so a test can pass here and fail there *(Squeal)*.
+
 ## 7. Retire
 
 `worker destroy <id>`. On `incomplete` with nothing of the worker left on disk or in `git worktree list`: `git worktree remove --force <path>`, `git branch -D cez/<id8>`, destroy again *(Squeal)*.
