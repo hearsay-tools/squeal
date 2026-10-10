@@ -86,7 +86,9 @@ export interface DischargeLimits {
  * The deadline is kept by a timer for the earliest one, not by the next
  * call, so it ends on time while no discharge comes and the runner part the
  * answer waits for is stalled; it prunes at the deadline, so what was kept
- * only by age goes too (review wave-13s B2, task 001-229).
+ * only by age goes too (review wave-13s B2, task 001-229). The timer reads
+ * the holds' clock when it runs, so after a pause it ends every hold overdue
+ * by then and prunes at that time (review wave-13t S1, task 001-232).
  */
 export class Discharges {
   /** By file and revision, oldest discharge first. */
@@ -100,11 +102,13 @@ export class Discharges {
   /** The latest time of a discharge a prune dropped: a window from before it may miss it. */
   #dropped: EpochMs | null = null;
 
+  /** `now` is the clock the holds' times are read from, which the timer reads when it runs. */
   constructor(
     private readonly limits: DischargeLimits = {
       retentionMs: DISCHARGE_RETENTION_MS,
       cap: DISCHARGE_CAP,
     },
+    private readonly now: () => EpochMs = () => Date.now(),
   ) {}
 
   get size(): number {
@@ -210,11 +214,14 @@ export class Discharges {
       if (this.#timer.at <= at) return;
       clearTimeout(this.#timer.handle);
     }
+    // Run late, after a pause, it sweeps at the time it runs, not the time it was due, and
+    // re-arms from then: a younger hold overdue by then ends in this callback (task 001-232).
     const handle = setTimeout(() => {
       this.#timer = null;
-      this.#see(at);
-      this.#expire(at);
-      if (this.#held.size > 0) this.#arm(at);
+      const ran = this.now();
+      this.#see(ran);
+      this.#expire(ran);
+      if (this.#held.size > 0) this.#arm(ran);
     }, at - now);
     handle.unref?.();
     this.#timer = { at, handle };
