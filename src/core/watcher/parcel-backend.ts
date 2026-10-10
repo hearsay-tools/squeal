@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type {
@@ -218,15 +218,40 @@ function same(
   return before.hash === (now.racy ? now.hash : contentHash(path, now.size, budget));
 }
 
-/** The content's hash, null when it cannot be read within `budget`: the caller reports the file. */
+/** The bytes one read takes from a file's descriptor. */
+const CHUNK = 64 * 1024;
+
+/**
+ * The content's hash, null when it cannot be read within `budget`: the caller
+ * reports the file. `size` is the stat's and the file may have grown since, so
+ * the read stops one byte past the budget (001-247); that byte spends it all,
+ * and the batch reads no more than {@link READ_BUDGET} plus one.
+ */
 function contentHash(path: AbsolutePath, size: number, budget: Budget): string | null {
   if (size > budget.left) return null;
+  let fd: number;
   try {
-    const content = readFileSync(path);
-    budget.left -= Math.max(size, content.length);
-    return createHash("sha1").update(content).digest("hex");
+    fd = openSync(path, "r");
   } catch {
     return null;
+  }
+  try {
+    const hash = createHash("sha1");
+    const chunk = Buffer.allocUnsafe(Math.min(CHUNK, budget.left + 1));
+    for (;;) {
+      const read = readSync(fd, chunk, 0, Math.min(chunk.length, budget.left + 1), null);
+      if (read === 0) return hash.digest("hex");
+      budget.left -= read;
+      if (budget.left < 0) return null;
+      hash.update(chunk.subarray(0, read));
+    }
+  } catch {
+    return null;
+  } finally {
+    // A failed close must not throw out of parcel's callback; the hash, if any, was read.
+    try {
+      closeSync(fd);
+    } catch {}
   }
 }
 
