@@ -55,11 +55,14 @@ export function sourcesChanged(
 
 /**
  * Whether a path is a source the artifact could be built from: one some
- * listed test file's stored closure names, fast or slow, so a `src` file
- * only fast tests import counts for an e2e that reads only the build
- * output; and neither a test file nor under a slow directory (D6; lessons
- * defect 8a) nor selected by a fast test file's declared inputs, its
- * fixtures (lessons defect 18). A doc or a path no closure names is none.
+ * listed test file's stored closure names, fast or slow, where that file's
+ * own declared inputs do not select it, so a `src` file only fast tests
+ * import counts for an e2e that reads only the build output; and neither a
+ * test file nor under a slow directory (D6; lessons defect 8a). A stored
+ * closure merges imports with declared inputs, so a fixture only the tests
+ * declaring it name is none (lessons defect 18), while a broad declaration
+ * of every `src` file hides no path another file loads (review wave 6, S1).
+ * A doc or a path no closure names is none.
  */
 export function artifactSources(
   store: Store,
@@ -68,31 +71,28 @@ export function artifactSources(
 ): (path: RelativePath) => boolean {
   const testFiles = new Set(keys.map((row) => row.testFile.path));
   let closures: ReadonlySet<RelativePath> | undefined;
-  const isFastInput = createInputMatcher([
-    ...new Set(
-      keys
-        .filter((row) => !view.isSlow(row.testFile))
-        .flatMap((row) => view.artifactFor(row.testFile.path)),
-    ),
-  ]);
   return (path) => {
-    if (isFastInput(path)) return false;
     if (!inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs)) {
       return false;
     }
     // Read only once a changed path gets this far, as a header without one reads none.
-    closures ??= listedClosures(store, keys);
+    closures ??= undeclaredClosures(store, keys, view);
     return closures.has(path);
   };
 }
 
-/** Every path the stored closures of the listed test files name. */
-function listedClosures(store: Store, keys: readonly TestFileKeyRecord[]): Set<RelativePath> {
+/** Every path a listed test file's stored closure names that its own declared inputs do not select. */
+function undeclaredClosures(
+  store: Store,
+  keys: readonly TestFileKeyRecord[],
+  view: SlowPolicyView,
+): Set<RelativePath> {
   const listed = new Set(keys.map((row) => testFileId(row.testFile)));
-  return new Set(
-    store.testFiles
-      .list()
-      .filter((record) => listed.has(testFileId(record.testFile)))
-      .flatMap((record) => record.closure.paths),
-  );
+  const paths = new Set<RelativePath>();
+  for (const record of store.testFiles.list()) {
+    if (!listed.has(testFileId(record.testFile))) continue;
+    const declared = createInputMatcher(view.artifactFor(record.testFile.path));
+    for (const path of record.closure.paths) if (!declared(path)) paths.add(path);
+  }
+  return paths;
 }
