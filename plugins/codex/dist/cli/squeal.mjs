@@ -12916,12 +12916,13 @@ function written(path, after) {
     return true;
   }
 }
-var RACY_NS, ENTRY_BUDGET, RootRecheck;
+var RACY_NS, ENTRY_BUDGET, READ_BUDGET, RootRecheck;
 var init_root_recheck = __esm({
   "src/core/watcher/root-recheck.ts"() {
     "use strict";
     RACY_NS = 2000000000n;
     ENTRY_BUDGET = 1024;
+    READ_BUDGET = 4096;
     RootRecheck = class {
       constructor(exclusions) {
         this.exclusions = exclusions;
@@ -12935,7 +12936,8 @@ var init_root_recheck = __esm({
         this.since = nowNs();
         const dirs = new Set([...named].map((path) => dirname15(path)));
         const hints = [];
-        let budget = ENTRY_BUDGET;
+        let stats = ENTRY_BUDGET;
+        let reads = READ_BUDGET;
         for (const dir of dirs) {
           if (this.exclusions.excludes(dir)) continue;
           let handle;
@@ -12945,11 +12947,14 @@ var init_root_recheck = __esm({
             continue;
           }
           try {
-            for (let entry2 = handle.readSync(); entry2 && budget > 0; entry2 = handle.readSync()) {
+            while (stats > 0 && reads > 0) {
+              const entry2 = handle.readSync();
+              reads--;
+              if (entry2 === null) break;
               if (entry2.isDirectory()) continue;
               const path = join33(dir, entry2.name);
               if (named.has(path) || this.exclusions.excludes(path)) continue;
-              budget--;
+              stats--;
               if (written(path, after)) hints.push({ path, kind: "change" });
             }
           } catch {
@@ -12959,7 +12964,7 @@ var init_root_recheck = __esm({
             } catch {
             }
           }
-          if (budget === 0) break;
+          if (stats === 0 || reads === 0) break;
         }
         return hints;
       }
@@ -13102,7 +13107,7 @@ function callback(listener, report2, erased) {
     if (hints.length > 0) listener.onHints(hints);
   };
 }
-var KINDS3, DROPPED, parcelBackend, ErasedEvents, READ_BUDGET, CHUNK2;
+var KINDS3, DROPPED, parcelBackend, ErasedEvents, READ_BUDGET2, CHUNK2;
 var init_parcel_backend = __esm({
   "src/core/watcher/parcel-backend.ts"() {
     "use strict";
@@ -13114,7 +13119,7 @@ var init_parcel_backend = __esm({
     ErasedEvents = class {
       constructor(files) {
         this.files = files;
-        const budget = { left: READ_BUDGET };
+        const budget = { left: READ_BUDGET2 };
         for (const real2 of files.keys()) this.last.set(real2, signature(real2, budget));
       }
       files;
@@ -13122,7 +13127,7 @@ var init_parcel_backend = __esm({
       /** The hints for the extra files that moved without an event in `named`. */
       find(named) {
         const hints = [];
-        const budget = { left: READ_BUDGET };
+        const budget = { left: READ_BUDGET2 };
         for (const [real2, declared] of this.files) {
           const before = this.last.get(real2) ?? null;
           const now = signature(real2, budget);
@@ -13134,7 +13139,7 @@ var init_parcel_backend = __esm({
         return hints;
       }
     };
-    READ_BUDGET = 4 * 1024 * 1024;
+    READ_BUDGET2 = 4 * 1024 * 1024;
     CHUNK2 = 64 * 1024;
   }
 });
@@ -33987,7 +33992,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.109";
+  if (true) return "0.1.110";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

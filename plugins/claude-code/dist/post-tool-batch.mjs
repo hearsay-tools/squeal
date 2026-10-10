@@ -3943,10 +3943,37 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 
 // src/harness/shared/coverage.ts
 import { existsSync as existsSync4 } from "node:fs";
-import { join as join7, posix as posix3 } from "node:path";
+import { join as join8, posix as posix3 } from "node:path";
+
+// src/core/daemon/runner.ts
+import { readdirSync, readFileSync as readFileSync5 } from "node:fs";
+import { join as join7 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync5(join7(root, "package.json"), "utf8"));
+  } catch {
+    return false;
+  }
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+
+// src/harness/shared/coverage.ts
 var VITEST_ONLY = {
+  vitest: true,
   vitestConfig: null,
-  vitestProjects: [],
   nodeTest: [],
   slow: null
 };
@@ -3956,29 +3983,25 @@ function coverageOf(context) {
   const policy = readPolicy(context.root);
   const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
   const nodeTestNames = new Set(policy.nodeTest.map((project) => project.name));
-  const vitestProjects = /* @__PURE__ */ new Set();
-  for (const { testFile } of keys) {
-    if (testFile.project !== "" && !nodeTestNames.has(testFile.project)) {
-      vitestProjects.add(testFile.project);
-    }
-  }
+  const vitest = policy.nodeTest.length === 0 || vitestDetected(context.root);
+  const listed = vitest ? keys : keys.filter((row) => nodeTestNames.has(row.testFile.project));
   const view = slowPolicyView(policy);
   return {
-    vitestConfig: vitestConfig(context.root),
-    vitestProjects: [...vitestProjects].sort(),
+    vitest,
+    vitestConfig: vitest ? vitestConfig(context.root) : null,
     nodeTest: policy.nodeTest.map(({ name, cwd, include }) => ({
       name,
       include: include.map((glob) => cwd === void 0 ? glob : posix3.join(cwd, glob))
     })),
     slow: view === null ? null : {
-      files: keys.length === 0 ? null : keys.filter((row) => view.isSlow(row.testFile)).length
+      files: keys.length === 0 ? null : listed.filter((row) => view.isSlow(row.testFile)).length
     }
   };
 }
 function vitestConfig(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync4(join7(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync4(join8(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
@@ -4035,18 +4058,18 @@ import { spawn } from "node:child_process";
 import { existsSync as existsSync5, mkdirSync as mkdirSync2 } from "node:fs";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname2, isAbsolute as isAbsolute3, join as join8 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute3, join as join9 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join8(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
+  const path = join9(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join9(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join8("/tmp", `squeal-${uid}`);
+  return join9("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -4139,19 +4162,19 @@ function daemonCliEntry(cli, env = process.env) {
 }
 
 // src/core/daemon/version.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname3, join as join9 } from "node:path";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname3, join as join10 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.109";
+  if (true) return "0.1.110";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join9(dir, "package.json"));
+    const version = readVersion(join10(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname3(dir);
     if (parent === dir) return null;
@@ -4160,7 +4183,7 @@ function manifestVersion(module) {
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync5(path, "utf8"));
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -4335,34 +4358,30 @@ function isRegistered(context) {
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const nodeTest = coverage.nodeTest.length > 0;
-  const runners = nodeTest ? "Vitest and node:test" : "Vitest";
-  const run = nodeTest ? "Vitest or node:test" : "Vitest";
-  const sentences = (covers2) => [
-    `${PRIMER_OPENING}${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+  const names = runnerNames(coverage);
+  const sentences = (covers2, naming) => [
+    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...coverage.slow === null ? [] : [slowSentence(command)],
+    ...coverage.slow === null ? [] : [slowSentence(command, naming)],
     covers2,
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
-  let vitest = coverage.vitestProjects.length;
-  let node = coverage.nodeTest.length;
-  let text = sentences(coversSentence(coverage, vitest, node));
-  while (text.length > PRIMER_CAP_CHARS && vitest + node > 0) {
-    if (vitest >= node) vitest--;
-    else node--;
-    text = sentences(coversSentence(coverage, vitest, node));
+  let text = "";
+  for (const naming of ["every", "first", "none"]) {
+    for (let node = coverage.nodeTest.length; node >= 0; node--) {
+      text = sentences(coversSentence(coverage, node), naming);
+      if (text.length <= PRIMER_CAP_CHARS) return text;
+    }
   }
   return text;
 }
-function coversSentence(coverage, vitest, node) {
-  const projects = coverage.vitestProjects.map((name) => JSON.stringify(name));
-  const vitestDetail = [
-    ...coverage.vitestConfig === null ? [] : [coverage.vitestConfig],
-    ...projects.length === 0 ? [] : [named("project", projects, vitest)]
-  ];
-  const suites = [vitestDetail.length === 0 ? "Vitest" : `Vitest (${vitestDetail.join(", ")})`];
+function runnerNames(coverage) {
+  const nodeTest = coverage.nodeTest.length > 0;
+  return [...coverage.vitest || !nodeTest ? ["Vitest"] : [], ...nodeTest ? ["node:test"] : []];
+}
+function coversSentence(coverage, node) {
+  const suites = runnerNames(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
   if (coverage.nodeTest.length > 0) {
     const entries = coverage.nodeTest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
@@ -4371,7 +4390,7 @@ function coversSentence(coverage, vitest, node) {
     suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
   }
   const files = coverage.slow?.files;
-  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"}`;
+  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${suites.join(" and ")}${slow}.`;
 }
 function named(noun, entries, shown) {
@@ -4383,9 +4402,10 @@ function named(noun, entries, shown) {
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
-function slowSentence(command) {
+function slowSentence(command, naming) {
   const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";
-  return `Slow test suites run when you pause between turns or on \`${command} run --slow\`, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
+  const run = naming === "every" ? `\`${command} run --slow\`` : "the CLI's `run --slow`";
+  return `Slow test suites run when you pause between turns or on ${run}, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
 }
 var PRIMER = primer();
 function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
@@ -4464,7 +4484,7 @@ var postToolBatch = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/claude-code/input.ts
@@ -4533,7 +4553,7 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync6(0, "utf8");
+    stdin = readFileSync7(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {

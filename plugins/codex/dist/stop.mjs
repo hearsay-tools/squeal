@@ -3978,8 +3978,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 
 // src/harness/shared/coverage.ts
 var VITEST_ONLY = {
+  vitest: true,
   vitestConfig: null,
-  vitestProjects: [],
   nodeTest: [],
   slow: null
 };
@@ -4145,7 +4145,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.109";
+  if (true) return "0.1.110";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4336,34 +4336,30 @@ function isRegistered(context) {
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const nodeTest = coverage.nodeTest.length > 0;
-  const runners = nodeTest ? "Vitest and node:test" : "Vitest";
-  const run = nodeTest ? "Vitest or node:test" : "Vitest";
-  const sentences = (covers2) => [
-    `${PRIMER_OPENING}${runners} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${run} to learn whether your edits broke something.`,
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: \`${command} status --wait 60000\`.`,
+  const names = runnerNames(coverage);
+  const sentences = (covers2, naming) => [
+    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...coverage.slow === null ? [] : [slowSentence(command)],
+    ...coverage.slow === null ? [] : [slowSentence(command, naming)],
     covers2,
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
-  let vitest = coverage.vitestProjects.length;
-  let node = coverage.nodeTest.length;
-  let text = sentences(coversSentence(coverage, vitest, node));
-  while (text.length > PRIMER_CAP_CHARS && vitest + node > 0) {
-    if (vitest >= node) vitest--;
-    else node--;
-    text = sentences(coversSentence(coverage, vitest, node));
+  let text = "";
+  for (const naming of ["every", "first", "none"]) {
+    for (let node = coverage.nodeTest.length; node >= 0; node--) {
+      text = sentences(coversSentence(coverage, node), naming);
+      if (text.length <= PRIMER_CAP_CHARS) return text;
+    }
   }
   return text;
 }
-function coversSentence(coverage, vitest, node) {
-  const projects = coverage.vitestProjects.map((name) => JSON.stringify(name));
-  const vitestDetail = [
-    ...coverage.vitestConfig === null ? [] : [coverage.vitestConfig],
-    ...projects.length === 0 ? [] : [named("project", projects, vitest)]
-  ];
-  const suites = [vitestDetail.length === 0 ? "Vitest" : `Vitest (${vitestDetail.join(", ")})`];
+function runnerNames(coverage) {
+  const nodeTest = coverage.nodeTest.length > 0;
+  return [...coverage.vitest || !nodeTest ? ["Vitest"] : [], ...nodeTest ? ["node:test"] : []];
+}
+function coversSentence(coverage, node) {
+  const suites = runnerNames(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
   if (coverage.nodeTest.length > 0) {
     const entries = coverage.nodeTest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
@@ -4372,7 +4368,7 @@ function coversSentence(coverage, vitest, node) {
     suites.push(node === 0 ? `node:test (${list2})` : `node:test ${list2}`);
   }
   const files = coverage.slow?.files;
-  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"}`;
+  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${suites.join(" and ")}${slow}.`;
 }
 function named(noun, entries, shown) {
@@ -4384,9 +4380,10 @@ function named(noun, entries, shown) {
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
-function slowSentence(command) {
+function slowSentence(command, naming) {
   const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";
-  return `Slow test suites run when you pause between turns or on \`${command} run --slow\`, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
+  const run = naming === "every" ? `\`${command} run --slow\`` : "the CLI's `run --slow`";
+  return `Slow test suites run when you pause between turns or on ${run}, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
 }
 function trailingPrimer(text) {
   const at2 = text.lastIndexOf(`
