@@ -1,0 +1,48 @@
+id	task	variant	harness	model	effort	effortReported	rep	wallS	loadStart	loadMax	edits	vitestRuns	vitestFull	vitestFiles	nodeTestRuns	nodeTestWanted	squealWaits	squealWhy	squealRunAll	squealRunSlow	sleeps	skillLoads	failDeliveries	reactMs	claim	truthPass	claimTrue	squealKnownEnd	costUsd	inTok	cachedTok	outTok
+t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1	t1-thousands	p0	claude	claude-haiku-5-5	medium	medium	1	56.5	20.07	20.3	7	0	0	0	0	false	2	0	0	1	1	0	3	962	pass	true	true	0	0.010245680000000002	24	433903	6300
+t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r2	t1-thousands	p0	claude	claude-haiku-5-5	medium	medium	2	64.8	2.93	3.06	9	0	0	0	2	false	3	1	0	1	1	0	2	851	pass	true	true	0	0.01195354	24	459414	8256
+t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3	t1-thousands	p0	claude	claude-haiku-5-5	medium	medium	3	54.3	3.45	3.64	8	0	0	0	0	false	2	0	0	1	1	0	2	912	pass	true	true	0	0.009999155000000001	24	441988	5700
+t1-thousands.p0.claude-claude-haiku-5-5.r1	t1-thousands	p0	claude	claude-haiku-5-5	default	medium	1	135.6	17.29	30.68	7	4	1	3	0	false	2	0	0	1	0	0	2	937	unknown	true	hedged	0	0.015293265000000002	30	561064	7840
+t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r1	t1-thousands	p0	claude	claude-sonnet-5-5	medium	medium	1	55.5	19.37	20.55	10	0	0	0	0	false	1	0	0	1	1	0	2	754	pass	true	true	0	0.10938070000000001	16	258987	4015
+t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r2	t1-thousands	p0	claude	claude-sonnet-5-5	medium	medium	2	49.9	3.1	3.17	10	0	0	0	0	false	2	0	0	1	1	0	2	1001	pass	true	true	0	0.10235349999999999	18	290175	3271
+t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r3	t1-thousands	p0	claude	claude-sonnet-5-5	medium	medium	3	55	2.38	3.25	9	0	0	0	0	false	1	0	0	1	1	0	2	1439	pass	true	true	0	0.12189590000000002	20	336434	4264
+t1-thousands.p0.claude-claude-sonnet-5-5.r1	t1-thousands	p0	claude	claude-sonnet-5-5	default	medium	1	58.6	19.56	21.57	11	0	0	0	0	false	1	0	0	1	1	0	1	699	pass	true	true	0	0.1543601	18	263116	3385
+t1-thousands.p0.codex-gpt-6-luna.e-medium.r1	t1-thousands	p0	codex	gpt-6-luna	medium	medium	1	45.9	18.34	29.44	7	0	0	0	0	false	3	0	1	1	0	1	2	3603	pass	true	true	0		224386	183040	2543
+t1-thousands.p0.codex-gpt-6-luna.e-medium.r2	t1-thousands	p0	codex	gpt-6-luna	medium	medium	2	79.7	2.33	3.28	8	0	0	0	0	false	4	0	0	1	0	0	4	2825	pass	true	true	0		274944	249600	3442
+t1-thousands.p0.codex-gpt-6-luna.e-medium.r3	t1-thousands	p0	codex	gpt-6-luna	medium	medium	3	54.5	2.87	2.87	10	0	0	0	0	false	4	0	0	1	0	0	3	1744	pass	true	true	0		244275	220160	2631
+t1-thousands.p0.codex-gpt-6-luna.r1	t1-thousands	p0	codex	gpt-6-luna	default	null	1	78.9	21.37	30.68	7	0	0	0	0	false	4	0	0	1	0	1	2	2439	unknown	true	hedged	0		205377	172032	2671
+t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r1	t1-thousands	p0	codex	gpt-6.1-sol	medium	medium	1	65.9	19.76	19.86	6	0	0	0	0	false	2	0	1	1	0	1	0		pass	true	true	0		134817	121472	2043
+t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r2	t1-thousands	p0	codex	gpt-6.1-sol	medium	medium	2	73.5	2.61	3.1	6	0	0	0	1	false	2	0	1	1	0	1	0		pass	true	true	0		155666	120960	2255
+t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r3	t1-thousands	p0	codex	gpt-6.1-sol	medium	medium	3	77.8	2.83	3.67	6	0	0	0	1	false	2	0	1	1	0	1	0		pass	true	true	0		181565	142848	2449
+t1-thousands.p0.codex-gpt-6.1-sol.r1	t1-thousands	p0	codex	gpt-6.1-sol	default	null	1	87.3	20.54	21.85	6	0	0	0	0	false	2	0	1	1	0	1	0		pass	true	true	0		147335	135296	1986
+t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1	t2-weekend	p0	claude	claude-haiku-5-5	medium	medium	1	73.8	8.08	8.08	5	2	2	0	1	true	3	0	0	0	0	0	2	1810	pass	true	true	0	0.012973155	30	580053	8278
+t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r2	t2-weekend	p0	claude	claude-haiku-5-5	medium	medium	2	57.7	2.61	3.1	7	4	1	3	4	true	0	0	0	0	0	0	2	2379	pass	true	true	0	0.011792909999999998	22	417596	8873
+t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3	t2-weekend	p0	claude	claude-haiku-5-5	medium	medium	3	85.4	1.81	23.14	5	2	1	1	1	true	4	1	2	0	0	0	2	1748	pass	true	true	0	0.014588	34	652135	9613
+t2-weekend.p0.claude-claude-haiku-5-5.r1	t2-weekend	p0	claude	claude-haiku-5-5	default	medium	1	67.9	19.98	21.85	5	2	2	0	1	true	2	0	1	0	0	0	2	1713	pass	true	true	0	0.010933769999999999	24	448537	7327
+t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1	t2-weekend	p0	claude	claude-sonnet-5-5	medium	medium	1	55.1	6.67	6.67	6	1	0	1	2	true	3	0	0	1	1	0	2	2931	pass	true	true	0	0.09534959999999999	18	289661	3034
+t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2	t2-weekend	p0	claude	claude-sonnet-5-5	medium	medium	2	61.4	3.26	16.6	7	4	2	2	3	true	0	0	0	0	0	0	2	2920	pass	true	true	0	0.10262550000000001	18	291245	3607
+t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3	t2-weekend	p0	claude	claude-sonnet-5-5	medium	medium	3	36.2	21.55	22.5	7	2	0	2	2	true	1	0	0	0	0	0	2	2367	pass	true	true	0	0.1042323	18	291063	3602
+t2-weekend.p0.claude-claude-sonnet-5-5.r1	t2-weekend	p0	claude	claude-sonnet-5-5	default	medium	1	112	30.97	73.62	8	1	0	1	3	true	3	0	0	1	0	0	2	2477	unknown	true	hedged	0	0.10656650000000001	18	295255	3717
+t2-weekend.p0.codex-gpt-6-luna.e-medium.r1	t2-weekend	p0	codex	gpt-6-luna	medium	medium	1	32.6	5.58	6.42	5	0	0	0	1	true	2	0	0	0	0	0	2	6541	unknown	true	hedged	0		108601	95232	2364
+t2-weekend.p0.codex-gpt-6-luna.e-medium.r2	t2-weekend	p0	codex	gpt-6-luna	medium	medium	2	32	3.31	8.45	4	0	0	0	0	true	1	0	0	0	0	0	2	9482	unknown	false	hedged	0		99712	81152	1249
+t2-weekend.p0.codex-gpt-6-luna.e-medium.r3	t2-weekend	p0	codex	gpt-6-luna	medium	medium	3	44.6	16.6	30.18	5	0	0	0	1	true	3	0	0	0	0	1	2	5398	pass	true	true	0		171951	154624	2203
+t2-weekend.p0.codex-gpt-6-luna.r1	t2-weekend	p0	codex	gpt-6-luna	default	null	1	33.8	19.26	30.97	5	0	0	0	1	true	3	0	0	0	0	1	2	6100	unknown	true	hedged	0		128008	112384	2116
+t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r1	t2-weekend	p0	codex	gpt-6.1-sol	medium	medium	1	87.7	5.63	5.63	5	0	0	0	1	true	4	0	0	1	0	1	2	20684	pass	true	true	0		178147	132992	1990
+t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r2	t2-weekend	p0	codex	gpt-6.1-sol	medium	medium	2	91.4	12.92	12.92	5	0	0	0	1	true	4	0	0	1	0	1	3	23719	pass	true	true	0		181066	164992	2163
+t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r3	t2-weekend	p0	codex	gpt-6.1-sol	medium	medium	3	100.1	21.74	22.5	5	0	0	0	1	true	4	1	0	1	0	1	2	24108	pass	true	true	0		204353	187392	2410
+t3-tax.p0.claude-claude-haiku-5-5.e-medium.r1	t3-tax	p0	claude	claude-haiku-5-5	medium	medium	1	105.5	14.56	14.56	13	0	0	0	0	false	3	1	0	1	1	0	4	381	pass	true	true	0	0.014663629999999999	22	409218	8910
+t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r1	t3-tax	p0	claude	claude-sonnet-5-5	medium	medium	1	230.9	4.54	83.19	12	0	0	0	0	false	2	0	0	2	0	0	1	2431	unknown	true	hedged	0	0.14464	28	491640	4989
+t3-tax.p0.codex-gpt-6-luna.e-medium.r1	t3-tax	p0	codex	gpt-6-luna	medium	medium	1	32.7	12.32	12.32	5	0	0	0	0	false	3	0	1	0	0	0	2	4768	unknown	true	hedged	0		147114	131584	1991
+t3-tax.p0.codex-gpt-6.1-sol.e-medium.r1	t3-tax	p0	codex	gpt-6.1-sol	medium	medium	1	87.7	5.65	5.65	6	0	0	0	0	false	2	0	1	1	0	1	0		pass	true	true	0		197600	181760	2801
+t4-contract.p0.claude-claude-haiku-5-5.e-medium.r1	t4-contract	p0	claude	claude-haiku-5-5	medium	medium	1	78.9	2.64	3.04	1	0	0	0	0	false	2	0	0	1	1	0	1	1985	fail	false	true	1	0.00526773	14	219758	2630
+t4-contract.p0.claude-claude-haiku-5-5.e-medium.r2	t4-contract	p0	claude	claude-haiku-5-5	medium	medium	2	80.9	7.75	7.75	1	0	0	0	0	false	3	0	0	0	1	0	1	1804	fail	false	true	1	0.005367375000000001	14	219635	2829
+t4-contract.p0.claude-claude-haiku-5-5.e-medium.r3	t4-contract	p0	claude	claude-haiku-5-5	medium	medium	3	42.1	13.48	15.76	1	0	0	0	0	false	2	0	0	1	1	0	1	2044	fail	false	true	1	0.006373415	16	265994	3152
+t4-contract.p0.claude-claude-sonnet-5-5.e-medium.r1	t4-contract	p0	claude	claude-sonnet-5-5	medium	medium	1	18.3	3.36	3.36	1	0	0	0	0	false	1	0	0	0	0	0	1		fail	false	true	1	0.0525856	10	142156	1339
+t4-contract.p0.claude-claude-sonnet-5-5.e-medium.r2	t4-contract	p0	claude	claude-sonnet-5-5	medium	medium	2	17.4	4.09	4.09	1	0	0	0	0	false	1	0	0	0	0	0	1		fail	false	true	1	0.0543418	10	142068	1454
+t4-contract.p0.claude-claude-sonnet-5-5.e-medium.r3	t4-contract	p0	claude	claude-sonnet-5-5	medium	medium	3	17.9	10.83	10.83	1	0	0	0	0	false	1	0	0	0	0	0	1		fail	false	true	1	0.0550085	10	142910	1456
+t4-contract.p0.codex-gpt-6-luna.e-medium.r1	t4-contract	p0	codex	gpt-6-luna	medium	medium	1	20.4	1.64	1.9	1	0	0	0	0	false	1	0	0	0	0	0	1		fail	false	true	1		83444	65024	1049
+t4-contract.p0.codex-gpt-6-luna.e-medium.r2	t4-contract	p0	codex	gpt-6-luna	medium	medium	2	20.1	4.37	4.42	1	0	0	0	0	false	1	0	0	0	0	0	1		fail	false	true	1		71595	60928	856
+t4-contract.p0.codex-gpt-6-luna.e-medium.r3	t4-contract	p0	codex	gpt-6-luna	medium	medium	3	20	11.82	11.82	1	0	0	0	0	false	1	0	0	0	0	0	1		fail	false	true	1		69566	47872	936
+t4-contract.p0.codex-gpt-6.1-sol.e-medium.r1	t4-contract	p0	codex	gpt-6.1-sol	medium	medium	1	81.4	3.17	3.54	2	0	0	0	1	false	3	1	0	1	0	1	1	6641	fail	false	true	1		211152	194304	1684
+t4-contract.p0.codex-gpt-6.1-sol.e-medium.r2	t4-contract	p0	codex	gpt-6.1-sol	medium	medium	2	49.4	3.53	3.8	2	0	0	0	1	false	3	1	0	1	0	1	1	103	fail	false	true	1		128391	115840	1362
+t4-contract.p0.codex-gpt-6.1-sol.e-medium.r3	t4-contract	p0	codex	gpt-6.1-sol	medium	medium	3	59.7	8.37	8.37	2	0	0	0	0	false	3	0	0	1	0	1	1	5564	fail	false	true	1		107323	88320	1142
