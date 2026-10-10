@@ -83,6 +83,8 @@ Started: 2026-10-08
 
 - 2026-10-10, wave 6, 0.1.88 (gate at load 79 to 136: Node 24 four and Node 22 six timing failures in files this wave does not touch, all ten passing alone on both Nodes): 004-52, a path bootstrap tracks again only because a saved closure names it is dropped once nothing current needs it (`keying.ts`; the brief's lead sat in 004-54's file); 004-54, a missed slow file whose stored key has no results takes its duration from its own newest results under any key, `resultKey` untouched (`lessons.md` defect 17); 004-55, D8 amended by the coordinator: a source is a path some test file's stored closure names, fast or slow, minus test files, slow directories, fast tests' declared inputs, the policy file and declared artifacts. The slow files' closures alone, the brief's lead, would have hidden the clause where the end-to-end tests read only the build output (`lessons.md` defect 18). Rebased onto the 001 lane's 0.1.87 (001-196), so this lands as 0.1.88. Review 004-56 dispatched.
 
+- 2026-10-10, the board's Later row done by the coordinator: this repository's `squeal.config.json` declares `test/fixtures/node-test/**` and `test/fixtures/vitest/**` again (`b70fcc2` reverted), now that the hub release 0.1.86 carries 004-47 and every daemon of this repository runs it.
+
 ## Research
 
 Complete 2026-10-08: `research/slow-suite-policy.md` (Opus), `research/slow-suite-runtime.md` (Astra). Every question tagged; measurements at load 5 to 36 on this shared host, none at calm load. The spec is written from these files.
