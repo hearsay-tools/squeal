@@ -37,6 +37,8 @@ export interface SchedulerContext {
   readonly note: (message: string) => void;
   /** `SchedulerOptions.rerunCap`. */
   readonly rerunCap: number;
+  /** `SchedulerOptions.runnerPartMs`; absent, `runnerPartBoundMs` of the policy's run timeout. */
+  readonly runnerPartMs?: number;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

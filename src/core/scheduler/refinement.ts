@@ -14,6 +14,7 @@ import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 import { applyListing, type ContentRekey, storeClosures, toInvalidatedPath } from "./revision.js";
+import { RunnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
 
 /**
  * What the runner said about one revision: the runner phase of its
@@ -58,6 +59,11 @@ export interface RunnerPart {
  *   files, every file of a recreated project, every blocked file, and the
  *   files an earlier refinement found changed while it ran (`carried`).
  *
+ * Each call is bounded (`RunnerPartBound`, task 001-228): one past the
+ * bound is abandoned as if it failed, with a note, and the calls after it
+ * are not made, so a stalled runner holds a revision's results and every
+ * wait for them no longer than the bound.
+ *
  * Refinements run one at a time and in revision order, so each sees the
  * runner as every earlier one left it. They run beside the tiers in flight
  * (task 001-140), whose stability check covers what changes meanwhile.
@@ -71,6 +77,9 @@ export async function fetchRunnerPart(
   touched: readonly RelativePath[] = [],
 ): Promise<RunnerPart> {
   const { keys, runner } = context;
+  const bound = new RunnerPartBound(
+    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs),
+  );
   const changes = revision.changes;
   const paths = changes.map((c) => c.path);
   const structural = changes.some((c) => c.oldHash === null || c.newHash === null);
@@ -84,7 +93,7 @@ export async function fetchRunnerPart(
   const invalidated = await tryRunner(
     context,
     `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
-    () => runner.invalidate(invalidations),
+    () => bound.call(() => runner.invalidate(invalidations)),
     (reason) => failed(failures, null, reason),
   );
   const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);
@@ -93,13 +102,13 @@ export async function fetchRunnerPart(
       ? await tryRunner(
           context,
           "environment",
-          () => runner.environment(),
+          () => bound.call(() => runner.environment()),
           (reason) => failed(failures, null, reason),
         )
       : null;
   const listed =
     structural || recreated.size > 0 || ledger.listingFailed
-      ? await tryRunner(context, "testFiles", () => runner.testFiles())
+      ? await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles()))
       : undefined;
 
   // Test files as the listing leaves them: the ones to re-resolve are among these.
@@ -126,7 +135,7 @@ export async function fetchRunnerPart(
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
   const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>
-    runner.affected(paths),
+    bound.call(() => runner.affected(paths)),
   );
   pick(affected?.direct ?? []);
   pick(affected?.transitive ?? []);
@@ -136,7 +145,7 @@ export async function fetchRunnerPart(
     const closure = await tryRunner(
       context,
       `closure of ${ref.path}`,
-      () => runner.closure(ref),
+      () => bound.call(() => runner.closure(ref)),
       (reason) => failed(failures, ref.project, reason),
     );
     if (closure !== null) closures.push(closure);
