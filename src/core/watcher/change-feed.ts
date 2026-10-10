@@ -1,5 +1,6 @@
 import { realpath } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { toAbsolute } from "../fs/index.js";
 import {
   type AbsolutePath,
   type CandidateBatch,
@@ -11,6 +12,7 @@ import {
   type WatchSpec,
   type WatchSubscription,
 } from "../types/index.js";
+import { ATOMIC_SAVE_HOLD_MS, TempHold } from "./atomic-save.js";
 import { createWatcherBackend } from "./backend.js";
 import {
   type CandidateContext,
@@ -45,7 +47,10 @@ export interface ChangeFeedOptions {
   readonly timings?: Partial<WatcherTimings>;
 }
 
-export type WatcherTimings = { -readonly [K in keyof typeof WATCHER_TIMINGS]: number };
+export type WatcherTimings = { -readonly [K in keyof typeof WATCHER_TIMINGS]: number } & {
+  /** How long an atomic save's temp file is held out of batches (`TempHold`). */
+  atomicSaveHoldMs: number;
+};
 
 export interface ChangeFeed {
   /** The spec the backend currently watches; `null` before `start`. */
@@ -84,6 +89,7 @@ class Feed implements ChangeFeed {
   private readonly backend: WatcherBackend;
   private readonly timings: WatcherTimings;
   private readonly debouncer: Debouncer<AbsolutePath>;
+  private readonly tempHold: TempHold;
   private extraFiles: RelativePath[];
   private sub: WatchSubscription | null = null;
   private linked: LinkedWatches | null = null;
@@ -99,9 +105,16 @@ class Feed implements ChangeFeed {
   constructor(private readonly options: ChangeFeedOptions) {
     this.root = options.root;
     this.backend = options.backend ?? createWatcherBackend(process.platform);
-    this.timings = { ...WATCHER_TIMINGS, ...options.timings };
+    this.timings = {
+      ...WATCHER_TIMINGS,
+      atomicSaveHoldMs: ATOMIC_SAVE_HOLD_MS,
+      ...options.timings,
+    };
     this.extraFiles = [...(options.extraFiles ?? [])];
     this.debouncer = new Debouncer((paths) => this.onDebounced(paths), this.timings);
+    this.tempHold = new TempHold(this.timings.atomicSaveHoldMs, (path) => {
+      if (!this.closed) this.debouncer.push([toAbsolute(this.root, path)]);
+    });
   }
 
   async start(): Promise<void> {
@@ -135,6 +148,7 @@ class Feed implements ChangeFeed {
   async close(): Promise<void> {
     this.closed = true;
     this.debouncer.cancel();
+    this.tempHold.close();
     if (this.idleTimer) clearTimeout(this.idleTimer);
     await this.sub?.close();
     await this.queue;
@@ -160,7 +174,8 @@ class Feed implements ChangeFeed {
       let widened = specChanged ? await this.rebuildSpec() : false;
       const hinted = await candidatesFromHints(this.context(), paths);
       if (hinted.ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
-      if (hinted.paths.length > 0) await this.emit({ trigger: "watch", paths: hinted.paths });
+      const kept = this.tempHold.filter(hinted.paths, this.trackedPaths);
+      if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept });
       // Paths that were excluded until now were never watched; git status finds them. So does
       // the walk of a linked directory, which appeared, went or moved with a link of this batch.
       if (widened || (await this.relinked(hinted))) await this.reconcileNow("watch");
@@ -173,7 +188,7 @@ class Feed implements ChangeFeed {
     const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), status.paths);
     this.linkTargets = new Map(links);
     await this.linked?.update(linkedDirs);
-    await this.emit({ trigger, paths });
+    await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) });
   }
 
   /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
@@ -210,9 +225,11 @@ class Feed implements ChangeFeed {
       root: this.root,
       exclusions: new Exclusions(spec),
       extraFiles: new Set(this.extraFiles),
-      trackedPaths: this.options.trackedPaths ?? (() => []),
+      trackedPaths: this.trackedPaths,
     };
   }
+
+  private readonly trackedPaths = (): Iterable<RelativePath> => this.options.trackedPaths?.() ?? [];
 
   private async emit(batch: CandidateBatch): Promise<void> {
     if (this.closed) return;
