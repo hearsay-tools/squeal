@@ -360,8 +360,26 @@ export function settledLine({ since, files, unknown }: EditsSettled): string {
   return `${which} finished: ${files - unknown} current, ${unknown} with no result (unknown).`;
 }
 
+/**
+ * Tasks 001-223 and 001-224 in one delivery: the edit's files are already
+ * settled, so "results arrive with later tool calls" would contradict them.
+ */
+export function sawSettledLine({ files, unknown }: EditsSettled): string {
+  const head = "Squeal saw your edit; ";
+  const tail = "passing results stay silent.";
+  if (unknown === 0) {
+    const which = files === 1 ? "the 1 test file" : `all ${files} test files`;
+    return `${head}${which} it re-keyed ${files === 1 ? "is" : "are"} current, and ${tail}`;
+  }
+  return (
+    `${head}of the ${plural(files, "test file")} it re-keyed, ${files - unknown} current and ` +
+    `${unknown} with no result (unknown); ${tail}`
+  );
+}
+
 /** The lines on the consumer's own edits, after the header (tasks 001-223, 001-224). */
 function editLines({ sawEdit, editsSettled }: Delta): string[] {
+  if (sawEdit !== undefined && editsSettled !== undefined) return [sawSettledLine(editsSettled)];
   return [
     ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued)]),
     ...(editsSettled === undefined ? [] : [settledLine(editsSettled)]),
