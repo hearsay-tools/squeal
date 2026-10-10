@@ -26,6 +26,7 @@ import {
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
+import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
 import { slowView } from "./slow.js";
 
@@ -99,6 +100,12 @@ export class Ledger {
   #applied: Applied[] = [];
   #unknown: { testFiles: TestFileRef[]; reason: string }[] = [];
   #retired: CheckId[] = [];
+  /**
+   * Files whose re-key attribution moved since the last commit, with the
+   * latest revision that re-keyed one (`null`: only discharged), owed to the
+   * store's record (`recordRekeyed`, task 001-238).
+   */
+  readonly #rekeyed = new Map<string, RevisionNumber | null>();
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
@@ -172,7 +179,10 @@ export class Ledger {
       const key = this.context.keys.index.key(ref);
       if (key !== file.key) {
         file.key = key;
-        if (options.keyedAt !== undefined) noteKeyedAt(file, options.keyedAt);
+        if (options.keyedAt !== undefined) {
+          noteKeyedAt(file, options.keyedAt);
+          this.#rekeyed.set(file.id, Math.max(this.#rekeyed.get(file.id) ?? 0, options.keyedAt));
+        }
         this.#dirty.add(file.id);
       }
       // A re-run queued for another key is no re-run here: the new key runs as any miss (S1).
@@ -389,6 +399,11 @@ export class Ledger {
     const revision = this.revision.number;
     const rows: TestFileKeyRecord[] = [];
     const removed = this.#removed.splice(0);
+    const rekeyed = [...this.#rekeyed].flatMap(([id, moved]) => {
+      const file = this.files.get(id);
+      return file ? [{ id, open: file.keyedAt, moved }] : [];
+    });
+    this.#rekeyed.clear();
     for (const id of this.#dirty) {
       const file = this.files.get(id);
       if (!file) continue;
@@ -407,6 +422,7 @@ export class Ledger {
     store.transaction(() => {
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
+      recordRekeyed(store, worktreeId, rekeyed, removed.map(testFileId));
       for (const { results, checkpointId } of mergeApplied(applied)) {
         sink.applyResults(worktreeId, revision, results, { checkpointId });
       }
@@ -438,6 +454,7 @@ export class Ledger {
 
   /** The file has a result, or is `unknown`, at its key: its attribution is discharged (task 001-194). */
   #discharge(file: FileState): void {
+    if (file.keyedAt !== null && !this.#rekeyed.has(file.id)) this.#rekeyed.set(file.id, null);
     this.discharges.note(file, this.context.now());
     clearKeyedAt(file);
   }

@@ -17,7 +17,7 @@ import {
 import { annotate, withDependencies } from "./attribution.js";
 import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { editNotes, snapshotKeys } from "./edits.js";
+import { editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import {
@@ -258,19 +258,14 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
         tellRevision(store, consumer, header.revision);
         if (!registered) {
-          // Tasks 001-223 and 001-224: the keys the consumer's edits are measured from.
-          snapshotKeys(
-            store,
-            consumer,
-            header.revision,
-            store.testFileKeys.list(consumer.worktreeId),
-          );
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
           const alive = atStart && header.daemon?.state === "alive";
-          tellRegistered(store, consumer, header.revision, {
+          const resumed = tellRegistered(store, consumer, header.revision, {
             at,
             scanned: scannedDaemon(store, consumer.worktreeId, alive),
           });
+          // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
+          startEdits(store, consumer, header.revision, resumed?.said === true);
         }
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);

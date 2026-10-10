@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { editKeysMetaKey } from "../../src/core/delivery/edits.js";
+import { editsMetaKey } from "../../src/core/delivery/edits.js";
+import { drop } from "../../src/core/delivery/expiry.js";
 import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
+import { testFileId } from "../../src/core/keys/index.js";
+import { readRekeyed, recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import {
+  CONSUMER_EXPIRY_MS,
   type Consumer,
   type HarnessDelivery,
   refinedMetaKey,
@@ -22,8 +26,10 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
  */
 
 const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
+const OTHER: Consumer = { worktreeId: WT, sessionId: "s3", agentId: "main" };
 const OTHER_FILE: TestFileRef = { project: "", path: "src/b.test.ts" };
 const BACKLOG: TestFileRef = { project: "", path: "src/c.test.ts" };
+const NEVER_RUN: TestFileRef = { project: "", path: "src/d.test.ts" };
 const A = check("a");
 const B = check("b", OTHER_FILE);
 const NONE = { checkpointId: null };
@@ -52,6 +58,19 @@ function key(file: TestFileRef, k: string, pending: TestFileKeyRecord["pending"]
   store.testFileKeys.upsertMany([{ worktreeId: WT, testFile: file, key: k, revision, pending }]);
 }
 
+/**
+ * The scheduler's record that the current revision's change re-keyed `file`
+ * (`recordRekeyed`): `open` stays the earliest revision with no result.
+ */
+function moved(file: TestFileRef, open = revision): void {
+  recordRekeyed(store, WT, [{ id: testFileId(file), open, moved: revision }], []);
+}
+
+/** The scheduler's record that `file` has its result, or `unknown`, at its key. */
+function resolved(file: TestFileRef): void {
+  recordRekeyed(store, WT, [{ id: testFileId(file), open: null, moved: null }], []);
+}
+
 /** A watched revision changing `paths`; the runner part is applied unless `refinedTo` says. */
 function edit(paths: readonly string[], refinedTo = Number.NaN): void {
   revision = store.revisions.append({
@@ -69,12 +88,14 @@ function edit(paths: readonly string[], refinedTo = Number.NaN): void {
 function editA(): void {
   edit(["src/a.ts"]);
   key(FILE, `k${revision + 1}`, "queued");
+  moved(FILE);
 }
 
 /** `FILE`'s result at its current key lands. */
 function finishA(): void {
   key(FILE, `k${revision + 1}`);
   sink.applyResults(WT, revision, [result(A, "pass", { key: `k${revision + 1}` })], NONE);
+  resolved(FILE);
 }
 
 /** Another check fails anew at its unchanged key: news that delivers anyway. */
@@ -115,6 +136,8 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
     key(FILE, "k9", "queued");
     key(OTHER_FILE, "b9", "running");
     key(BACKLOG, "c1", "running");
+    moved(FILE);
+    moved(OTHER_FILE);
     expect((await text())?.match(SAW)?.[1]).toBe("2");
   });
 
@@ -123,6 +146,17 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
     edit(["src/new.test.ts"]);
     key({ project: "", path: "src/new.test.ts" }, "n1", "queued");
     key({ project: "", path: "src/listed.test.ts" }, "l1", "queued");
+    moved({ project: "", path: "src/new.test.ts" });
+    expect((await text())?.match(SAW)?.[1]).toBe("1");
+  });
+
+  it("counts a file first listed after registration once a source edit re-keys it (review wave 13u, B1)", async () => {
+    const listed: TestFileRef = { project: "", path: "src/listed.test.ts" };
+    await delivery.register(C1);
+    key(listed, "l0", "queued");
+    edit(["src/listed.ts"]);
+    key(listed, "l1", "queued");
+    moved(listed);
     expect((await text())?.match(SAW)?.[1]).toBe("1");
   });
 
@@ -140,6 +174,7 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
     expect(await text()).toBeNull();
     store.meta.set(refinedMetaKey(WT), String(revision));
     key(FILE, "k9", "queued");
+    moved(FILE);
     expect(await text()).toMatch(SAW);
   });
 
@@ -185,6 +220,30 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
     expect(await text()).not.toMatch(SETTLED);
   });
 
+  it("is held by a file the edits re-keyed and moved back before its result (review wave 13u, B1)", async () => {
+    key(NEVER_RUN, "d0", "queued");
+    await delivery.register(C1);
+    edit(["src/a.ts", "src/d.ts"]);
+    key(FILE, `k${revision + 1}`, "queued");
+    key(NEVER_RUN, "d1", "queued");
+    moved(FILE);
+    moved(NEVER_RUN);
+    expect((await text())?.match(SAW)?.[1]).toBe("2");
+    const first = revision;
+    edit(["src/d.ts"]);
+    key(NEVER_RUN, "d0", "queued");
+    moved(NEVER_RUN, first);
+    finishA();
+    otherNews("b2");
+    expect(await text()).not.toMatch(SETTLED);
+    key(NEVER_RUN, "d0");
+    resolved(NEVER_RUN);
+    otherNews("b3");
+    expect(await text()).toContain(
+      "All 2 test files your edits since revision 0 re-keyed are current.",
+    );
+  });
+
   it("is not held by a backlog file whose key the edits did not move", async () => {
     await sawEdit();
     key(BACKLOG, "c1", "running");
@@ -211,6 +270,7 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
     await sawEdit();
     key(FILE, `k${revision + 1}`);
     sink.markUnknown(WT, revision, [FILE], "runner crashed");
+    resolved(FILE);
     otherNews("b2");
     expect(await text()).toContain(
       "The test file your edits since revision 0 re-keyed finished: 0 current, 1 with no result (unknown).",
@@ -220,6 +280,7 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
   it("merges with the first edit's line when both land in one delivery", async () => {
     await delivery.register(C1);
     edit(["src/a.ts"]);
+    moved(FILE);
     finishA();
     const said = await text();
     expect(said).toContain(
@@ -234,42 +295,123 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
   it("names the merged line's files with no result", async () => {
     await delivery.register(C1);
     edit(["src/a.ts"]);
+    moved(FILE);
     key(FILE, `k${revision + 1}`);
     sink.markUnknown(WT, revision, [FILE], "runner crashed");
+    resolved(FILE);
     expect(await text()).toContain(
       "Squeal saw your edit; of the 1 test file it re-keyed, 0 current and 1 with no result (unknown); passing results stay silent.",
     );
   });
 });
 
-describe("the consumer's key snapshot", () => {
-  it("is written once per registration and once per settled line, never per delivery", async () => {
+describe("the consumer's edit state", () => {
+  const ALSO: Consumer = { ...C1, sessionId: "s2" };
+  const FIRST_LINE = /Squeal saw your edit and queued/;
+
+  async function saidOnce(): Promise<void> {
+    await delivery.register(C1);
+    editA();
+    expect(await text()).toMatch(FIRST_LINE);
+  }
+
+  /** The next edit's delivery, with other news so it delivers either way. */
+  async function nextEdit(consumer: Consumer = C1): Promise<string | null> {
+    editA();
+    otherNews(`b${revision}`);
+    const delta = await delivery.onToolBoundary(consumer);
+    return delta === null ? null : formatDelta(delta);
+  }
+
+  it("is written once per registration and per said line, never per quiet delivery", async () => {
     const set = vi.spyOn(store.meta, "set");
-    const writes = () => set.mock.calls.filter(([k]) => k === editKeysMetaKey(C1)).length;
+    const writes = () => set.mock.calls.filter(([k]) => k === editsMetaKey(WT)).length;
     await delivery.register(C1);
     expect(writes()).toBe(1);
     editA();
     await text();
+    expect(writes()).toBe(2);
     otherNews("b2");
     await text();
-    expect(writes()).toBe(1);
-    finishA();
-    otherNews("b3");
-    await text();
     expect(writes()).toBe(2);
     await delivery.register(C1);
     expect(writes()).toBe(2);
   });
 
-  it("is a map from test file to a short key", async () => {
-    await delivery.register(C1);
-    const snapshot = JSON.parse(store.meta.get(editKeysMetaKey(C1)) ?? "null");
-    expect(Object.values(snapshot)).toEqual(["k1", "b1", "c1"]);
+  it("keeps no key snapshot", async () => {
+    await saidOnce();
+    expect(Object.keys(JSON.parse(store.meta.get(editsMetaKey(WT)) ?? "{}"))).toHaveLength(1);
+    expect(store.meta.get(`edit-keys:${JSON.stringify([WT, "s1", "main"])}`)).toBeNull();
   });
 
-  it("is deleted when the consumer unregisters", async () => {
-    await delivery.register(C1);
+  it("keeps the first edit's line said across unregister and resume (review wave 13u, B2)", async () => {
+    await saidOnce();
     await delivery.unregister(C1);
-    expect(store.meta.get(editKeysMetaKey(C1))).toBeNull();
+    expect(store.meta.get(editsMetaKey(WT))).toBe("{}");
+    await delivery.register(C1);
+    expect(await nextEdit()).not.toMatch(FIRST_LINE);
+  });
+
+  it("keeps it across a waiterless expiry and resume within the parked lifetime (B2)", async () => {
+    await saidOnce();
+    store.transaction(() => drop(store, C1, Date.now()));
+    expect(store.consumers.get(C1)).toBeNull();
+    await delivery.register(C1);
+    expect(await nextEdit()).not.toMatch(FIRST_LINE);
+  });
+
+  it("says it again once the parked registration is past its lifetime (B2)", async () => {
+    let now = 1_000;
+    delivery = createDelivery(store, { status: fixedStatus(), now: () => now });
+    await saidOnce();
+    await delivery.unregister(C1);
+    now += CONSUMER_EXPIRY_MS + 1;
+    await delivery.register(C1);
+    expect(await nextEdit()).toMatch(FIRST_LINE);
+  });
+
+  it("gives a new session its own line (B2)", async () => {
+    await saidOnce();
+    await delivery.unregister(C1);
+    await delivery.register(ALSO);
+    expect(await nextEdit(ALSO)).toMatch(FIRST_LINE);
+  });
+
+  it("drops the legacy key snapshot when the consumer unregisters", async () => {
+    const legacy = `edit-keys:${JSON.stringify([WT, "s1", "main"])}`;
+    await delivery.register(C1);
+    store.meta.set(legacy, "{}");
+    await delivery.unregister(C1);
+    expect(store.meta.get(legacy)).toBeNull();
+  });
+});
+
+describe("the scheduler's re-key record, as delivery prunes it", () => {
+  it("drops resolved entries every consumer's edits are past, and keeps open ones", async () => {
+    await delivery.register(C1);
+    editA();
+    key(NEVER_RUN, "d1", "queued");
+    moved(NEVER_RUN);
+    await text();
+    finishA();
+    key(NEVER_RUN, "d1");
+    resolved(NEVER_RUN);
+    otherNews("b2");
+    expect(await text()).toMatch(SETTLED);
+    expect(readRekeyed(store, WT).size).toBe(0);
+    editA();
+    await delivery.unregister(C1);
+    expect([...readRekeyed(store, WT).keys()]).toEqual([testFileId(FILE)]);
+  });
+
+  it("keeps a resolved entry another consumer's edits have not settled", async () => {
+    await delivery.register(C1);
+    await delivery.register(OTHER);
+    editA();
+    finishA();
+    expect(await text()).toMatch(/Squeal saw your edit;/);
+    expect([...readRekeyed(store, WT).keys()]).toEqual([testFileId(FILE)]);
+    await delivery.unregister(OTHER);
+    expect(readRekeyed(store, WT).size).toBe(0);
   });
 });
