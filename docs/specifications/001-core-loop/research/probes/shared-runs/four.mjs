@@ -46,10 +46,18 @@ while (Date.now() - t0 < 30 * 60_000) {
   } catch (e) { console.log("poll error", String(e)); } finally { db?.close(); }
 }
 console.log(`ARM ${arm} wall ${done === null ? "timeout" : (done / 1000).toFixed(1) + " s"}`);
-for (const k of kids) k.child.kill("SIGTERM");
-const hard = setTimeout(() => { for (const k of kids) k.child.kill("SIGKILL"); execFileSync("pkill", ["-KILL", "-f", "sr201/cz/[a-z0-9]*/node_modules/vitest"]); }, 60_000);
+// `time` execs nothing itself: its child is `nice`, which execs node, so the daemon is time's direct child.
+// SIGTERM goes to the daemon (D10: it ends its tier, closes the runner, reaps its workers), so `time`
+// reports the CPU of the daemon and every worker it reaped. SIGKILL to the whole tree after 60 s.
+const childOf = (pid) => readFileSync(`/proc/${pid}/task/${pid}/children`, "utf8").trim().split(/\s+/).filter(Boolean).map(Number);
+const tree = (pid) => { const out = [pid]; try { for (const c of childOf(pid)) out.push(...tree(c)); } catch {} return out; };
+const daemons = kids.map((k) => { try { return childOf(k.child.pid)[0]; } catch { return undefined; } });
+const everything = kids.flatMap((k) => tree(k.child.pid));
+for (const pid of daemons) if (pid !== undefined) try { process.kill(pid, "SIGTERM"); } catch {}
+const hard = setTimeout(() => { for (const pid of everything) try { process.kill(pid, "SIGKILL"); } catch {} }, 60_000);
 await Promise.all(kids.map((k) => k.exited));
 clearTimeout(hard);
+for (const pid of everything) try { process.kill(pid, "SIGKILL"); console.log(`killed leftover ${pid}`); } catch {}
 const load = readFileSync("/proc/loadavg", "utf8").trim();
 console.log(`loadavg at end ${load}`);
 const db = new DatabaseSync(store, { readOnly: true });
@@ -65,3 +73,4 @@ roots.forEach((root, i) => {
   if (m) { cpu += Number(m[2]) + Number(m[3]); console.log(`${root}: wall ${m[1]} user ${m[2]} sys ${m[3]} maxrss ${m[4]}KB`); }
 });
 console.log(`ARM ${arm} total CPU ${cpu.toFixed(1)} s`);
+db.exec(`VACUUM INTO '/tmp/sr201/probe/store-${arm}.sqlite'`);
