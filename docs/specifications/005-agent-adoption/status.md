@@ -64,7 +64,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-10, the human on model evals: the aim for now is not primer variants (keep the option, for improving texts later) but a recurring baseline, run every now and then as changes land, that shows agent behaviour holding or improving over time. The human expects Haiku 5.5 on the host. Checked by the coordinator the same day: in these sessions Claude Code reaches models through a proxy (`ANTHROPIC_BASE_URL` is set), which answered `--model sonnet` with `claude-sonnet-5-5` and rejected `--model haiku` and `claude-haiku-5-5` with "API Error: 400 unknown provider for model claude-haiku-5-5", the same error 005-06's runner logged. So the pilot's Haiku 4.5 stand-in came from the proxy's routing, not from Claude Code; the proxy is the human's to check.
 
-- 2026-10-10, decided by the human: the eval suite is spec 006 (`../006-model-evals/`), run at every hub release and with every `/quality` scan; 005's proof (D7, 005-18) runs on it. The slow-policy primer defect from 005-06 went to the 001 coordinator as a row for its next wave.
+- 2026-10-10, decided by the human: the eval suite is spec 006 (`../006-model-evals/`), run at every hub release and with every `/quality` scan; 005's proof (D7, 005-18) runs on it. The slow-policy primer defect from 005-06 is 001-234 (the 001 coordinator's own work, after the 0.1.101 gate, before 005-15): both primer variants end "Squeal does not cover typecheck, build or test suites it is not configured for; run those yourself."
 
 ## Dogfooding
 
