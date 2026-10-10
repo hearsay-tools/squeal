@@ -7900,16 +7900,23 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits });
   }
   const tier = picked.length === 0 ? null : startTier(context, ledger, picked, backlog);
-  if (tier === null) ledger.commit();
-  else ledger.queue.tierSelected(tookBacklog);
-  return tier;
+  if (tier !== null) {
+    ledger.queue.tierSelected(tookBacklog);
+    return tier;
+  }
+  ledger.commit();
+  const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
+  return settled ? selectTier(context, ledger, busy) : null;
 }
 function startTier(context, ledger, picked, cancellable) {
   const { store, keys } = context;
   return store.transaction(() => {
-    const files = picked.filter((p) => p.waits !== true || !ledger.claims.holds(p.key));
+    const files = picked.flatMap((p) => startable(ledger, p));
     const first = files[0];
-    if (first === void 0) return null;
+    if (first === void 0) {
+      ledger.commit();
+      return null;
+    }
     const checkpointId = files.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
     const runId = randomUUID3();
     const tier = {
@@ -7945,6 +7952,17 @@ function startTier(context, ledger, picked, cancellable) {
     ledger.commit();
     return tier;
   });
+}
+function startable(ledger, p) {
+  if (p.forced) return [p];
+  const { hits, mayWait } = ledger.probe(p.file, p.key);
+  if (hits.length > 0) {
+    ledger.applyResults(p.file, p.key, hits, p.checkpointId);
+    return [];
+  }
+  const waits = p.waits === true && mayWait;
+  if (waits && ledger.claims.holds(p.key)) return [];
+  return [{ ...p, waits }];
 }
 async function executeTier(context, tier) {
   const started = context.now();
@@ -9704,8 +9722,11 @@ var init_slow_tier = __esm({
        * work arrived meanwhile. A file is passed over when it left the queue or
        * class, its trigger is gone (a consumer entered a turn during the wait;
        * the file stays queued and the pass keeps its budget), or the store now
-       * holds a result that may stand for it (`Ledger.lookup`). `"claimed"` when
-       * no file runs because other worktrees run their keys (task 001-205).
+       * holds a result that may stand for it (`Ledger.lookup`), here or in the
+       * start's transaction (`startTier`; then `null`, so the pump plans again).
+       * `"claimed"` when no file runs because other worktrees run their keys
+       * (task 001-205). The permits, notes and artifacts follow the files the
+       * tier starts.
        */
       #select(refs, ranUnderLoad, slot2) {
         const { context, ledger } = this.host.started();
@@ -9720,24 +9741,13 @@ var init_slow_tier = __esm({
           if (tierFile !== null) picked.push(tierFile);
         }
         if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
-        slot2.shrinkTo(picked.length);
-        for (const { file } of picked) {
-          if (ranUnderLoad === null) continue;
-          context.note(
-            `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)`
-          );
-        }
         const since = context.now();
-        const view = slowPolicyView(context.policy);
-        const artifacts = new Map(
-          picked.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []])
-        );
-        const started = context.store.transaction(() => {
-          const tier = startTier(context, ledger, picked, false);
-          const first = tier?.files[0];
-          if (tier === null || first === void 0) return null;
-          const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
-          const paths = tier.files.map(({ file }) => file.ref.path);
+        const tier = context.store.transaction(() => {
+          const tier2 = startTier(context, ledger, picked, false);
+          const first = tier2?.files[0];
+          if (tier2 === null || first === void 0) return null;
+          const lastDurationMs = longest(tier2.files.map(({ file }) => file.durationMs));
+          const paths = tier2.files.map(({ file }) => file.ref.path);
           this.#publish({
             kind: "running",
             path: first.file.ref.path,
@@ -9745,9 +9755,23 @@ var init_slow_tier = __esm({
             since,
             lastDurationMs
           });
-          return { tier, artifacts };
+          return tier2;
         });
-        return started ?? "claimed";
+        if (tier === null) {
+          return picked.some(({ file }) => !ledger.queue.has(file.ref)) ? null : "claimed";
+        }
+        slot2.shrinkTo(tier.files.length);
+        for (const { file } of tier.files) {
+          if (ranUnderLoad === null) continue;
+          context.note(
+            `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${context.policy.slow.maxLoadPerCpu}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)`
+          );
+        }
+        const view = slowPolicyView(context.policy);
+        const artifacts = new Map(
+          tier.files.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []])
+        );
+        return { tier, artifacts };
       }
       /**
        * Under the lock: `ref` as a file of the tier, or `null` when it has no key
@@ -33206,7 +33230,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.93";
+  if (true) return "0.1.94";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
