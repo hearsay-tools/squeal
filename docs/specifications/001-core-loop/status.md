@@ -169,6 +169,7 @@ Started: 2026-10-02
 - 2026-10-10, human (standing instructions for the night): if 001-246 fails, the coordinator fixes it and runs a third review itself, releasing 0.1.106+ only if that passes; after the release it runs the next 001 wave (001-234, 236, 237, 242) end to end, with second-round blockers waiting for the human; once those land it spawns one `/quality` pass, whose findings become rows, nothing dispatched from them without the human. Extended the same night: if 001-248 fails too, one more fix and review round (a fourth) is allowed; past that, the blocker waits for the human.
 - 2026-10-10, release: squeal--v0.1.107 (3089a609) on the hub (`hearsay-tools/marketplace` 28ae0ba), KEY_FORMAT_VERSION 3 shipped; covered by reviews wave-13u to wave-13z; CI green on Node 22 and 24. A later change to the guarded sources bumps to 4.
 - 2026-10-11, 001-250 (`reviews/wave-13aa.md` B1 to B3, S1; recorded for `reviews/wave-13ab.md` N1): D9 amended, the primer names only the runners the daemon builds, projects by their configured identity, and compacts to keep its closing sentence within the cap. D2 amended, the root recheck reads at most 4,096 directory entries beside its 1,024 stats.
+- 2026-10-11, release: squeal--v0.1.110 (903600d8) on the hub (`hearsay-tools/marketplace` c9571a3), KEY_FORMAT_VERSION 4 shipped; covered by reviews wave-13aa and wave-13ab; CI green on Node 22 and 24. A later change to the guarded sources bumps to 5.
 
 ## Research
 
