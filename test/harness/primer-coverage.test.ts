@@ -1,16 +1,16 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { PolicyFile, TestFileRef } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { codexCommand } from "../../src/harness/codex/command.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import type { PolicyFile } from "../../src/core/types/index.js";
 import { CONTEXT_CAP_CHARS, capContext } from "../../src/harness/codex/output.js";
-import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER, PRIMER_CAP_CHARS, primer } from "../../src/harness/shared/primer.js";
-import { setKey } from "../state/helpers.js";
-import { codexRecorded } from "./codex/helpers.js";
-import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import {
+  CODEX,
+  HARNESSES,
+  NOT_COVERED,
+  primerOf,
+  type RepoCase,
+  repoFor,
+  sessionStart,
+} from "./primer-helpers.js";
 
 /*
  * Task 001-234: the primer lists what Squeal covers, read from
@@ -23,21 +23,10 @@ import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * when a slow failure arrives, which differs by harness.
  */
 
-const NOT_COVERED =
-  "Squeal does not cover typecheck, build or any other test suite: run those yourself.";
-const CODEX = codexCommand(
-  { PLUGIN_ROOT: "/home/someone/.codex/plugins/cache/squeal/squeal/0.1.107" },
-  "/unused.mjs",
-);
-const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
-
-interface Case {
-  readonly policy: PolicyFile;
-  /** Test files the runner listed beside `FILE`, or in its place with `replace`. */
-  readonly files: readonly TestFileRef[];
-  readonly replace?: boolean;
+interface Case extends RepoCase {
   readonly covers: string;
-  readonly nodeTest: boolean;
+  /** The runners the opening names, "A and B"; "do not run A or B". */
+  readonly runners: string;
   readonly slow: boolean;
 }
 
@@ -49,7 +38,7 @@ const MATRIX: Record<string, Case> = {
     policy: {},
     files: [],
     covers: "Squeal covers Vitest (vitest.config.ts).",
-    nodeTest: false,
+    runners: "Vitest",
     slow: false,
   },
   "Vitest and node:test": {
@@ -57,7 +46,17 @@ const MATRIX: Record<string, Case> = {
     files: [{ project: "scripts", path: "scripts/changelog.test.mjs" }],
     covers:
       'Squeal covers Vitest (vitest.config.ts) and node:test project "scripts" (scripts/*.test.mjs).',
-    nodeTest: true,
+    runners: "Vitest and node:test",
+    slow: false,
+  },
+  // B1: the daemon builds no Vitest runner here (spec 003 D7), so the primer names none.
+  "node:test only": {
+    policy: { nodeTest: [SCRIPTS] },
+    vitestConfig: false,
+    replace: true,
+    files: [{ project: "scripts", path: "scripts/changelog.test.mjs" }],
+    covers: 'Squeal covers node:test project "scripts" (scripts/*.test.mjs).',
+    runners: "node:test",
     slow: false,
   },
   "Vitest and slow files": {
@@ -66,10 +65,12 @@ const MATRIX: Record<string, Case> = {
       { project: "", path: "test/slow/ledger.test.ts" },
       { project: "", path: "test/slow/import.test.ts" },
     ],
-    covers: "Squeal covers Vitest (vitest.config.ts), with 2 slow test files.",
-    nodeTest: false,
+    covers:
+      "Squeal covers Vitest (vitest.config.ts), with 2 slow test files at the daemon's last listing.",
+    runners: "Vitest",
     slow: true,
   },
+  // Listed Vitest projects are not named: a key row does not say which runner listed it (B2).
   "all three, with Vitest projects": {
     policy: { nodeTest: [SCRIPTS, E2E], slow: { include: ["test/slow/**/*.test.ts"] } },
     replace: true,
@@ -80,44 +81,14 @@ const MATRIX: Record<string, Case> = {
       { project: "e2e", path: "e2e/flow.test.mjs" },
     ],
     covers:
-      'Squeal covers Vitest (vitest.config.ts, projects "browser" and "unit") and node:test projects "scripts" (scripts/*.test.mjs) and "e2e" (e2e/**/*.test.mjs), with 2 slow test files.',
-    nodeTest: true,
+      'Squeal covers Vitest (vitest.config.ts) and node:test projects "scripts" (scripts/*.test.mjs) and "e2e" (e2e/**/*.test.mjs), with 2 slow test files at the daemon\'s last listing.',
+    runners: "Vitest and node:test",
     slow: true,
   },
 };
 
-function repoFor(c: Pick<Case, "policy" | "files" | "replace">): SquealRepo {
-  const r = squealRepo();
-  r.apply(r.pass());
-  r.policy(c.policy);
-  writeFileSync(join(r.root, "vitest.config.ts"), "export default {};\n");
-  if (c.replace === true) r.store.testFileKeys.remove(r.worktreeId, [FILE]);
-  c.files.forEach((file, i) => {
-    setKey(r.store, `k-extra-${i}`, { file, worktreeId: r.worktreeId });
-  });
-  return r;
-}
-
-/** The hook's additionalContext, and the primer: its last paragraph. */
-function primerOf(stdout: string): { context: string; primer: string } {
-  const parsed = JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } };
-  const context = parsed.hookSpecificOutput.additionalContext;
-  return { context, primer: context.slice(context.lastIndexOf("\n\n") + 2) };
-}
-
-async function sessionStart(r: SquealRepo, harness: "claude-code" | "codex"): Promise<string> {
-  const out =
-    harness === "claude-code"
-      ? await runHook("session-start", recorded("session-start", r.root), deps)
-      : await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root), {
-          ...deps,
-          command: CODEX,
-        });
-  return out.stdout;
-}
-
 const runs = Object.keys(MATRIX).flatMap((name) =>
-  (["claude-code", "codex"] as const).map((harness) => [name, harness] as const),
+  HARNESSES.map((harness) => [name, harness] as const),
 );
 
 describe("SessionStart's primer lists exactly what the policy and the runner cover (001-234)", () => {
@@ -126,11 +97,9 @@ describe("SessionStart's primer lists exactly what the policy and the runner cov
     const text = primerOf(await sessionStart(repoFor(c), harness)).primer;
     const command = harness === "claude-code" ? "squeal" : CODEX;
     expect(text.startsWith("Squeal runs this repository's ")).toBe(true);
-    expect(text).toContain(
-      c.nodeTest
-        ? "Vitest and node:test tests in the background"
-        : "Vitest tests in the background",
-    );
+    expect(text).toContain(`this repository's ${c.runners} tests in the background`);
+    expect(text).toContain(`do not run ${c.runners.replace(" and ", " or ")} to learn`);
+    expect(text.includes("Vitest")).toBe(c.runners.includes("Vitest"));
     // The list, then what is left, as the primer's last two sentences.
     expect(text.endsWith(` ${c.covers} ${NOT_COVERED}`)).toBe(true);
     expect(text.match(/Squeal covers /g)).toHaveLength(1);
@@ -163,16 +132,16 @@ describe("a long coverage list (001-234)", () => {
   };
   const files = many.map((name) => ({ project: `web-${name}`, path: `web/${name}.test.ts` }));
 
-  it.each(["claude-code", "codex"] as const)(
+  it.each(HARNESSES)(
     "folds projects into 'and N more' and keeps the not-covered sentence whole, under %s",
     async (harness) => {
       const out = primerOf(await sessionStart(repoFor({ policy, files, replace: true }), harness));
       expect(out.primer.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
       expect(out.primer.endsWith(NOT_COVERED)).toBe(true);
       expect(out.primer).toMatch(
-        /Squeal covers Vitest \(vitest\.config\.ts, projects "web-suite-00"/,
+        /Squeal covers Vitest \(vitest\.config\.ts\) and node:test projects "suite-00" \(/,
       );
-      expect(out.primer).toMatch(/ and \d+ more\) and node:test projects "suite-00" \(/);
+      expect(out.primer).not.toContain("web-suite");
       expect(out.primer).toMatch(/ and \d+ more\. Squeal does not cover/);
     },
   );
@@ -189,7 +158,7 @@ describe("a long coverage list (001-234)", () => {
 });
 
 describe("the slow sentence by harness (spec 004 D8, D9)", () => {
-  const slow = { vitestConfig: null, vitestProjects: [], nodeTest: [], slow: { files: 3 } };
+  const slow = { vitest: true, vitestConfig: null, nodeTest: [], slow: { files: 3 } };
 
   it("is absent without slow files, under both harnesses", () => {
     for (const command of ["squeal", CODEX]) expect(primer(command)).not.toMatch(/slow/i);
