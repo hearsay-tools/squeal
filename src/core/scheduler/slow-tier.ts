@@ -233,7 +233,7 @@ export class SlowTier {
    */
   #trigger(context: SchedulerContext, ledger: Ledger): (ref: TestFileRef) => boolean {
     const idle = consumersIdle(context.store, context.worktreeId, context.now());
-    const runAll = ledger.checkpoints.active?.record.kind === "run-all";
+    const runAll = ledger.checkpoints.active?.explicit === true;
     return (ref) => idle || this.#requested || (runAll && ledger.checkpoints.idFor(ref) !== null);
   }
 

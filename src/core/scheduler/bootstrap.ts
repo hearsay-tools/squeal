@@ -10,6 +10,7 @@ import {
   type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
+import { resumeOwed } from "./checkpoint-requests.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
@@ -175,6 +176,7 @@ export async function baseline(
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
+  resumeOwed(ledger);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
   const persisted = persistedNoteTexts(store, worktreeId);

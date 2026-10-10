@@ -1,6 +1,6 @@
 import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { TestFileRef } from "./keys.js";
-import type { CheckpointRecord } from "./store-records.js";
+import type { CheckpointKind, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
 /** A test file and a revision whose move of its key has no result yet (`Scheduler.rekeyedSince`). */
@@ -85,6 +85,60 @@ export function parseAwaitingInstall(raw: string | null): readonly string[] | nu
   try {
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `meta` key of a worktree's open checkpoint and its progress, a JSON
+ * `CheckpointProgress` (task 001-217): status names a checkpoint in progress
+ * from it. Written by the scheduler's checkpoint tracker as its files get
+ * results; `""` once it ended. With `owed`, the daemon stopped before an
+ * explicit checkpoint ended and the next daemon resumes it (task 001-219).
+ */
+export function checkpointMetaKey(worktreeId: WorktreeId): string {
+  return `checkpoint.${worktreeId}`;
+}
+
+/** The open checkpoint of a worktree, as `checkpointMetaKey` holds it. */
+export interface CheckpointProgress {
+  /** The checkpoint whose id its results carry. */
+  readonly id: string;
+  /** `run-all` when a `run --all` request is among the records that end with it. */
+  readonly kind: CheckpointKind;
+  /** Revision it was requested at. */
+  readonly revision: RevisionNumber;
+  readonly startedAt: EpochMs;
+  /** Test files with a result, of `total` requested. */
+  readonly done: number;
+  readonly total: number;
+  /** Set when the daemon stopped first: what the next daemon resumes (task 001-219). */
+  readonly owed?: OwedCheckpoint;
+}
+
+/** An explicit checkpoint a stopped daemon left for the next one (task 001-219). */
+export interface OwedCheckpoint {
+  /** The `run --all` records that end once it ends. */
+  readonly ids: readonly string[];
+  /** Test files still without a result. */
+  readonly remaining: readonly TestFileRef[];
+  /** Of `remaining`, those only a run of its own counts for (`run --all --force`). */
+  readonly strict: readonly TestFileRef[];
+}
+
+/** The `checkpointMetaKey` value, or `null` when absent, ended or not readable. */
+export function parseCheckpointProgress(raw: string | null): CheckpointProgress | null {
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<CheckpointProgress>;
+    const numbers = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed = value.owed;
+    const lists = owed === undefined ? [] : [owed.ids, owed.remaining, owed.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value as CheckpointProgress;
   } catch {
     return null;
   }

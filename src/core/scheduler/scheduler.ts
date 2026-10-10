@@ -18,6 +18,7 @@ import {
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
+import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
@@ -44,11 +45,9 @@ import { RunnerWork } from "./runner-work.js";
 import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { withheldForTouch } from "./stability.js";
 import {
-  abandonFullSuite,
   endTier,
   executeTier,
   laneOf,
-  queueFullSuite,
   recordTier,
   selectTier,
   type Tier,
@@ -386,7 +385,8 @@ class TierScheduler implements Scheduler {
     await this.#pumping;
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
-      this.#ledger?.checkpoints.finish("abandoned");
+      // Task 001-219: an explicit checkpoint left open is the next daemon's to resume.
+      this.#ledger?.checkpoints.owe();
       // Spec 004 D8: a daemon that is gone runs no slow file (review wave 2, B1).
       if (this.#context) this.#retireSlow();
       // A daemon that is gone waits for nothing; the next one decides again.
