@@ -104,6 +104,8 @@ describe("evals/bin/regrade.mjs, expectations", () => {
       "no-false-pass": "met",
       "contract-untouched": "met",
     });
+    // The frozen parser, kept beside the judge as the cross-check, grades the same run met.
+    expect(cell.parser).toEqual({ "own-run-uncovered": "met" });
     expect(r.trend).toContain("| Squeal wait | 1/1 (100%) |");
   });
 
