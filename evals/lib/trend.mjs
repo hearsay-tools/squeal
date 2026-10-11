@@ -1,19 +1,74 @@
-// evals/results/TREND.md from every baseline results file (spec 006 D6, as amended): runs grouped
-// into trend lines by their conditions fingerprint, per model each behaviour's count and rate per
-// run, oldest first; a flag where a rate is 25 points or more worse than the same model's
-// previous run in the same line; every false pass and forbidden edit by cell, and apart from
+// evals/results/TREND.md from every baseline results file (spec 006 D6, as rewritten 2026-10-11):
+// runs grouped into trend lines by their conditions fingerprint; per model, a headline of
+// expectations met over expectations that applied, each expectation's met count over the
+// sessions where it applied, a per-task breakdown and the context counts with no direction, per
+// run, oldest first. A flag marks an expectation's rate 25 points or more below the same model's
+// previous run in the line. Every false pass and forbidden edit is listed by cell, and apart from
 // them every false fail, marked where it matches Squeal's end verdict (006-12).
-import { BEHAVIOURS, dropped, falseClaim, rate } from "./behaviours.mjs";
+import { createHash } from "node:crypto";
+import {
+  CONTEXT,
+  declarations,
+  dropped,
+  EXPECTATIONS,
+  expectationsOf,
+  falseClaim,
+  metRate,
+  notGraded,
+  rate,
+} from "./behaviours.mjs";
 
 const pct = (r) => (r ? `${r.k}/${r.n} (${Math.round((r.k / r.n) * 100)}%)` : "-");
 const modelKey = (c) => `${c.harness} ${c.model}`;
 
+/** The revision of a set of declarations: the first 12 hex digits of their expectations' hash. */
+export function expectationsRevision(declared) {
+  return createHash("sha256")
+    .update(JSON.stringify(declared.expectations))
+    .digest("hex")
+    .slice(0, 12);
+}
+
+/** One model's scores in one run, from its cells and their expectation grades. */
+function scoresOf(cells, grades, declared) {
+  const tasks = [...new Set(cells.map((c) => c.task))].sort();
+  const declaredIds = (t) => (declared.expectations[t] ?? []).map((e) => e.id);
+  const ids = Object.keys(EXPECTATIONS).filter((id) =>
+    tasks.some((t) => declaredIds(t).includes(id)),
+  );
+  const all = grades.flatMap((g) => Object.values(g ?? {}));
+  return {
+    headline: rate(all.map((v) => (v === "met" ? true : v === "missed" ? false : null))),
+    expectations: Object.fromEntries(ids.map((id) => [id, metRate(grades, id)])),
+    byTask: Object.fromEntries(
+      tasks.map((t) => [
+        t,
+        Object.fromEntries(
+          declaredIds(t).map((id) => [
+            id,
+            metRate(
+              grades.filter((_, i) => cells[i].task === t),
+              id,
+            ),
+          ]),
+        ),
+      ]),
+    ),
+    notComputable: all.filter((v) => v === "not computable").length,
+    context: Object.fromEntries(
+      CONTEXT.map((x) => [x.key, rate(cells.map((c) => x.of(c, declaredIds(c.task))))]),
+    ),
+  };
+}
+
 /**
  * Trend lines from `runs` (`[{ name, data }]`, `data` a results file): baseline runs only, in
  * date then name order, grouped by `conditions.fingerprint` in order of first appearance. Each
- * line's runs carry per-model rates and the flags against the previous run of that line.
+ * cell is graded under `declared` (evals/tasks/tasks.json by default). Each line's runs carry
+ * per-model scores, the flags against the previous run of that line, and the tasks whose cells
+ * were not graded under expectations, with why.
  */
-export function trendLines(runs) {
+export function trendLines(runs, declared = declarations()) {
   const baseline = runs
     .filter((r) => r.data.kind === "baseline")
     .sort((a, b) => a.data.date.localeCompare(b.data.date) || a.name.localeCompare(b.name));
@@ -26,44 +81,48 @@ export function trendLines(runs) {
       lines.push(line);
     }
     const cells = run.data.cells.filter((c) => c.reachedModel !== false);
+    const grades = cells.map((c) => expectationsOf(c, run.data.conditions, declared));
     const models = [...new Set(run.data.cells.map(modelKey))];
-    const rates = Object.fromEntries(
-      models.map((m) => [
-        m,
-        Object.fromEntries(
-          BEHAVIOURS.map((b) => [
-            b.key,
-            rate(
-              cells.filter((c) => modelKey(c) === m),
-              b,
-            ),
-          ]),
-        ),
-      ]),
+    const scores = Object.fromEntries(
+      models.map((m) => {
+        const mine = cells.map((c, i) => [c, grades[i]]).filter(([c]) => modelKey(c) === m);
+        return [
+          m,
+          scoresOf(
+            mine.map(([c]) => c),
+            mine.map(([, g]) => g),
+            declared,
+          ),
+        ];
+      }),
     );
+    const ungraded = {};
+    for (const c of cells) {
+      const why = notGraded(c, run.data.conditions, declared);
+      if (why !== null) ungraded[c.task] = { why, n: (ungraded[c.task]?.n ?? 0) + 1 };
+    }
     const previous = line.runs.at(-1);
     const flags = [];
-    for (const m of models) {
-      for (const b of BEHAVIOURS) {
-        const before = previous?.rates[m]?.[b.key];
-        if (dropped(b, before, rates[m][b.key]))
-          flags.push({ model: m, behaviour: b.key, before, now: rates[m][b.key] });
+    for (const m of models)
+      for (const [id, now] of Object.entries(scores[m].expectations)) {
+        const before = previous?.scores[m]?.expectations[id] ?? null;
+        if (dropped(before, now)) flags.push({ model: m, expectation: id, before, now });
       }
-    }
-    line.runs.push({ name: run.name, data: run.data, models, rates, flags });
+    line.runs.push({ name: run.name, data: run.data, models, scores, flags, ungraded });
   }
   return lines;
 }
 
-/** The whole of TREND.md. */
-export function trendMarkdown(runs) {
-  const lines = trendLines(runs);
+/** The whole of TREND.md, every cell graded under `declared`. */
+export function trendMarkdown(runs, declared = declarations()) {
+  const lines = trendLines(runs, declared);
+  const revision = expectationsRevision(declared);
   const out = [
     "# Model evals: trend",
     "",
     "Generated by `node evals/bin/trend.mjs` from `evals/results/*.json` (spec 006 D6); do not edit.",
     "Runs with the same conditions (fixture commit, each task's prompt and knobs, variant, effort) form one trend line; a new fingerprint starts a new line, and runs are compared only within a line.",
-    `Each cell is sessions showing the behaviour / sessions it applies to. ⚑ marks a rate at least 25 points worse than the model's previous run in the line. Twelve sessions per model show only large changes.`,
+    `Every score is an expectation a task declares in \`evals/tasks/tasks.json\` (spec 006 D4): the right behaviour at the right moment. Each cell is sessions that met it / sessions where it applied, graded here under expectations revision \`${revision}\`. ⚑ marks a rate at least 25 points below the model's previous run in the line. Context counts have no direction and are never flagged. Twelve sessions per model show only large changes.`,
     "",
   ];
   lines.forEach((line, i) => {
@@ -75,8 +134,8 @@ export function trendMarkdown(runs) {
       );
     out.push(describe(line.conditions), "");
     out.push(
-      "| Run | Date | Squeal | Commit | Sessions | Missing models | Load at start |",
-      "| --- | --- | --- | --- | --- | --- | --- |",
+      "| Run | Date | Squeal | Commit | Sessions | Missing models | Load at start | Expectations in the file |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- |",
     );
     for (const r of line.runs) {
       const loads = r.data.cells.map((c) => c.loadStart).filter((x) => typeof x === "number");
@@ -86,32 +145,29 @@ export function trendMarkdown(runs) {
       const load = loads.length
         ? `${Math.min(...loads).toFixed(1)} to ${Math.max(...loads).toFixed(1)}`
         : "-";
+      const stored = r.data.expectationsRevision;
+      const rev = !stored
+        ? "none (not regraded)"
+        : stored === revision
+          ? `\`${stored}\``
+          : `\`${stored}\`, stale: run \`regrade.mjs\``;
       out.push(
-        `| ${r.name} | ${r.data.date} | ${r.data.squealVersion} | \`${String(r.data.commit).slice(0, 8)}\` | ${r.data.cells.length} | ${missing.join(", ") || "none"} | ${load} |`,
+        `| ${r.name} | ${r.data.date} | ${r.data.squealVersion} | \`${String(r.data.commit).slice(0, 8)}\` | ${r.data.cells.length} | ${missing.join(", ") || "none"} | ${load} | ${rev} |`,
       );
     }
     out.push("");
+    const ungraded = line.runs.flatMap((r) =>
+      Object.entries(r.ungraded).map(([t, u]) => `- ${r.name}, ${t} (${u.n} sessions): ${u.why}.`),
+    );
+    if (ungraded.length) out.push("Not graded under expectations:", "", ...ungraded, "");
     const models = [...new Set(line.runs.flatMap((r) => r.models))];
-    for (const m of models) {
-      out.push(`### ${m}, effort ${line.conditions.effort}`, "");
-      out.push(`| Behaviour | Better | ${line.runs.map((r) => r.name).join(" | ")} |`);
-      out.push(`| --- | --- | ${line.runs.map(() => "---").join(" | ")} |`);
-      for (const b of BEHAVIOURS) {
-        const row = line.runs.map((r) => {
-          if (!r.models.includes(m)) return "not run";
-          const flagged = r.flags.some((f) => f.model === m && f.behaviour === b.key);
-          return `${pct(r.rates[m][b.key])}${flagged ? " ⚑" : ""}`;
-        });
-        out.push(`| ${b.label} | ${b.better ?? ""} | ${row.join(" | ")} |`);
-      }
-      out.push("");
-    }
+    for (const m of models) out.push(...modelSection(line, m));
     out.push("### Flags, false passes and forbidden edits", "");
     for (const r of line.runs) out.push(...alarms(r));
     out.push(
       "### False fails",
       "",
-      "Claimed `fail` while ground truth passes. Those that match Squeal reported its end verdict, as a flake Squeal still holds as a failure does.",
+      "Claimed `fail` while ground truth passes: context, not a miss. Those that match Squeal reported its end verdict, as a flake Squeal still holds as a failure does.",
       "",
     );
     for (const r of line.runs) out.push(...falseFails(r));
@@ -119,11 +175,53 @@ export function trendMarkdown(runs) {
   return `${out.join("\n").trimEnd()}\n`;
 }
 
+function modelSection(line, m) {
+  const runs = line.runs;
+  const head = (first) => [
+    `| ${first} | ${runs.map((r) => r.name).join(" | ")} |`,
+    `| --- | ${runs.map(() => "---").join(" | ")} |`,
+  ];
+  const cell = (r, get, flagged = false) =>
+    r.models.includes(m) ? `${pct(get(r.scores[m]))}${flagged ? " ⚑" : ""}` : "not run";
+  const ids = Object.keys(EXPECTATIONS).filter((id) =>
+    runs.some((r) => r.scores[m]?.expectations[id] !== undefined),
+  );
+  const tasks = [...new Set(runs.flatMap((r) => Object.keys(r.scores[m]?.byTask ?? {})))].sort();
+  const out = [`### ${m}, effort ${line.conditions.effort}`, "", ...head("Expectation")];
+  out.push(`| **met / applied** | ${runs.map((r) => cell(r, (s) => s.headline)).join(" | ")} |`);
+  for (const id of ids) {
+    const row = runs.map((r) =>
+      cell(
+        r,
+        (s) => s.expectations[id],
+        r.flags.some((f) => f.model === m && f.expectation === id),
+      ),
+    );
+    out.push(`| \`${id}\`: ${EXPECTATIONS[id]} | ${row.join(" | ")} |`);
+  }
+  if (runs.some((r) => r.scores[m]?.notComputable))
+    out.push(
+      `| not computable | ${runs.map((r) => (r.models.includes(m) ? r.scores[m].notComputable : "not run")).join(" | ")} |`,
+    );
+  out.push("", ...head("Per task"));
+  for (const t of tasks) {
+    const declared = [...new Set(runs.flatMap((r) => Object.keys(r.scores[m]?.byTask[t] ?? {})))];
+    for (const id of declared)
+      out.push(
+        `| ${t} \`${id}\` | ${runs.map((r) => cell(r, (s) => s.byTask[t]?.[id] ?? null)).join(" | ")} |`,
+      );
+  }
+  out.push("", ...head("Context, no direction"));
+  for (const x of CONTEXT)
+    out.push(`| ${x.label} | ${runs.map((r) => cell(r, (s) => s.context[x.key])).join(" | ")} |`);
+  out.push("");
+  return out;
+}
+
 function alarms(r) {
-  const label = (key) => BEHAVIOURS.find((b) => b.key === key)?.label ?? key;
   return notes(r, [
     ...r.flags.map(
-      (f) => `- ⚑ ${f.model}: ${label(f.behaviour)} from ${pct(f.before)} to ${pct(f.now)}`,
+      (f) => `- ⚑ ${f.model}: \`${f.expectation}\` from ${pct(f.before)} to ${pct(f.now)}`,
     ),
     ...r.data.cells
       .filter((c) => falseClaim(c, "pass"))

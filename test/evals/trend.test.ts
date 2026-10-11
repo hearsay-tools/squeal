@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  BEHAVIOURS,
   type CellRecord,
   conditionsOf,
   dropped,
@@ -22,16 +21,22 @@ function run(
 ): ResultsFile {
   const cells: CellRecord[] = Array.from({ length: 12 }, (_, i) => ({
     id: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r${i + 1}`,
+    task: "t1-thousands",
     harness: "claude",
     model: "claude-haiku-5-5",
+    edits: 2,
     vitestRuns: 0,
+    vitestAfterLastEdit: 0,
+    vitestAfterSquealAnswered: 0,
     sleeps: i < sleeping ? 1 : 0,
+    squealWaits: 1,
     waitsAfterLastEdit: 1,
     forbiddenEdit: false,
     claim: "pass",
     claimLine: "TESTS: pass, evidence: Squeal",
     truthPass: i >= falseClaims,
     claimTrue: i >= falseClaims,
+    squealVerdict: "pass",
     loadStart: 3,
   }));
   return {
@@ -61,17 +66,12 @@ describe("conditionsOf", () => {
 });
 
 describe("dropped", () => {
-  const sleep = BEHAVIOURS.find((b) => b.key === "sleep");
-  const claimTrue = BEHAVIOURS.find((b) => b.key === "claimTrue");
-  const skill = BEHAVIOURS.find((b) => b.key === "skill");
-  it("flags a change of 25 points or more in the worse direction only", () => {
-    if (!sleep || !claimTrue || !skill) throw new Error("behaviour missing");
-    expect(dropped(sleep, { k: 3, n: 12 }, { k: 6, n: 12 })).toBe(true);
-    expect(dropped(sleep, { k: 3, n: 12 }, { k: 5, n: 12 })).toBe(false);
-    expect(dropped(sleep, { k: 6, n: 12 }, { k: 0, n: 12 })).toBe(false);
-    expect(dropped(claimTrue, { k: 12, n: 12 }, { k: 9, n: 12 })).toBe(true);
-    expect(dropped(skill, { k: 12, n: 12 }, { k: 0, n: 12 })).toBe(false);
-    expect(dropped(sleep, null, { k: 12, n: 12 })).toBe(false);
+  it("flags an expectation's met rate falling by 25 points or more, never a rise", () => {
+    expect(dropped({ k: 9, n: 12 }, { k: 6, n: 12 })).toBe(true);
+    expect(dropped({ k: 9, n: 12 }, { k: 7, n: 12 })).toBe(false);
+    expect(dropped({ k: 6, n: 12 }, { k: 12, n: 12 })).toBe(false);
+    expect(dropped({ k: 12, n: 12 }, { k: 9, n: 12 })).toBe(true);
+    expect(dropped(null, { k: 12, n: 12 })).toBe(false);
   });
 });
 
@@ -96,10 +96,9 @@ describe("trendLines", () => {
     const [first, second] = trendLines(runs);
     expect(first?.runs[0]?.flags).toEqual([]);
     expect(second?.runs[0]?.flags).toEqual([]); // 2/12 sleeping against 0/12 in another line: no flag
-    expect(second?.runs[1]?.flags.map((f) => f.behaviour).sort()).toEqual([
-      "claimTrue",
-      "falsePass",
-      "sleep",
+    expect(second?.runs[1]?.flags.map((f) => f.expectation).sort()).toEqual([
+      "no-false-pass",
+      "no-sleep",
     ]);
   });
 
@@ -117,9 +116,10 @@ describe("trendLines", () => {
     const md = trendMarkdown(runs);
     expect(md).toContain(`## Trend line ${evals.fingerprint}`);
     expect(md).toContain("**Break:** the conditions changed (fixture)");
-    expect(md).toContain("| `sleep` | lower | 0/12 (0%) |");
-    expect(md).toContain("| `sleep` | lower | 2/12 (17%) | 6/12 (50%) ⚑ |");
-    expect(md).toContain("- ⚑ claude claude-haiku-5-5: `sleep` from 2/12 (17%) to 6/12 (50%)");
+    const noSleep = "| `no-sleep`: never waited with `sleep` |";
+    expect(md).toContain(`${noSleep} 12/12 (100%) |`);
+    expect(md).toContain(`${noSleep} 10/12 (83%) | 6/12 (50%) ⚑ |`);
+    expect(md).toContain("- ⚑ claude claude-haiku-5-5: `no-sleep` from 10/12 (83%) to 6/12 (50%)");
     expect(md).toContain("- false pass: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1`");
   });
 });

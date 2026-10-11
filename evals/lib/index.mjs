@@ -1,6 +1,17 @@
 // The suite's library, for its scripts and for this repository's tests (test/evals/).
 
-export { BEHAVIOURS, dropped, rate } from "./behaviours.mjs";
+export {
+  CONTEXT,
+  declarations,
+  dropped,
+  EXPECTATIONS,
+  expectationsOf,
+  falseClaim,
+  metRate,
+  notGraded,
+  RULES,
+  rate,
+} from "./behaviours.mjs";
 export { parseClaim } from "./claim.mjs";
 export { classifyShell } from "./commands.mjs";
 export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";
@@ -26,5 +37,5 @@ export {
 } from "./session.mjs";
 export { simpleCommands } from "./shell.mjs";
 export { claudeTimeline, codexTimeline, reportedEffort } from "./transcript.mjs";
-export { trendLines, trendMarkdown } from "./trend.mjs";
+export { expectationsRevision, trendLines, trendMarkdown } from "./trend.mjs";
 export { applyPatch, patchPlugins } from "./variant.mjs";

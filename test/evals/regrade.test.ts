@@ -8,6 +8,9 @@ import {
   cellRecord,
   codexTimeline,
   conditionsOf,
+  declarations,
+  expectationsOf,
+  expectationsRevision,
   gradeCell,
 } from "../../evals/lib/index.mjs";
 import { settled } from "./status-snapshot.js";
@@ -134,6 +137,17 @@ const results = (cells: CellRecord[]) => ({
   cells,
 });
 
+// 006-14: the regrade also grades every cell's expectations from its kept fields.
+const declared = declarations();
+const revision = expectationsRevision(declared);
+const graded = (cells: CellRecord[]) =>
+  cells.map((c) => ({ ...c, expectations: expectationsOf(c, conditions, declared) }));
+const regradedResults = (cells: CellRecord[]) => ({
+  ...results(graded(cells)),
+  expectationsRevision: revision,
+});
+const expectationsNote = expect.objectContaining({ by: "expectations", revision });
+
 function regrade(cells: CellRecord[]) {
   const dir = join(root, `r${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir);
@@ -152,9 +166,9 @@ describe("evals/bin/regrade.mjs", () => {
     const out = r.run();
     expect(out.status, out.stderr).toBe(0);
     const data = r.read();
-    expect(data.cells).toEqual(fresh);
+    expect(data.cells).toEqual(graded(fresh));
     const { regraded, ...rest } = data;
-    expect(rest).toEqual(results(fresh));
+    expect(rest).toEqual(regradedResults(fresh));
     expect(fresh[0]).toMatchObject({ claim: "pass", claimTrue: true, claimMatchesSqueal: false });
     expect(fresh[2]).toMatchObject({ claim: "fail", claimTrue: false, claimMatchesSqueal: true });
     expect(fresh[7]?.claim).toBeNull();
@@ -167,6 +181,7 @@ describe("evals/bin/regrade.mjs", () => {
         ),
         note: expect.stringMatching(/`command -p`.*no transcripts/s),
       },
+      expectationsNote,
     ]);
   });
 
@@ -174,8 +189,11 @@ describe("evals/bin/regrade.mjs", () => {
     const r = regrade(fresh);
     expect(r.run().status).toBe(0);
     const { regraded, ...rest } = r.read();
-    expect(rest).toEqual(results(fresh));
-    expect(regraded).toEqual([expect.objectContaining({ by: "006-12", changed: [] })]);
+    expect(rest).toEqual(regradedResults(fresh));
+    expect(regraded).toEqual([
+      expect.objectContaining({ by: "006-12", changed: [] }),
+      expectationsNote,
+    ]);
   });
 
   it("regenerates TREND.md with the false fails apart", () => {
