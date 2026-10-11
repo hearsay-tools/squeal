@@ -97,6 +97,8 @@ T2 has no `no-overclaim`. Its knob keeps the flake failing in Squeal while groun
 
 Expectations are declared for a task's knobs. A cell whose run had other knobs for that task is not graded on them: they are "not computable" for that run, never met or missed. A situation is never graded under expectations written for another (006-14, 2026-10-11; this applies to 005-07's T2 and T4).
 
+**Who grades what** (the human, 2026-10-11, after seven review rounds that each found a shell, glob or Squeal-wording form the parser misread). A judge (D9) grades the four expectations that need reading the transcript: `no-rerun-answered`, `own-run-uncovered`, `current-before-claim` and `no-overclaim`. The rest stay mechanical: `no-false-pass` (claim line and ground truth), `contract-untouched` (the diff and the recorded edits), `no-sleep`, and the claim line itself. The deterministic parser is frozen and kept as a cross-check, not the grade of record for those four.
+
 **A new task must declare its expectations**, with the moment each applies, and a reference session for it (Testing). A task without them is not part of the baseline.
 
 ### D5. The baseline
@@ -110,6 +112,19 @@ Each run writes `evals/results/<date>-<squeal version>.json`: the commit, harnes
 ### D7. Cadence
 
 At every hub release, before the hub commit: the baseline on the release commit (`docs/process.md` 6a), with a flagged drop reported to the human, who decides whether the release goes ahead. With every `/quality` scan: the coordinator runs the baseline on the scanned range's last commit beside it (`.claude/skills/coordinator/SKILL.md`, "Quality"). Decided by the human 2026-10-10. Both edits land with the row that makes the suite runnable, not before.
+
+### D9. The judge
+
+The four judged expectations of D4 are graded by a model, run through Claude Code, never the raw API, so the provider's credential stays with the CLI as it does for subject sessions.
+
+- **Isolation.** Each judge call is `claude -p` from a scratch directory, with a scratch `HOME` (no user plugins, hooks, `CLAUDE.md` or memory), the parent's `CLAUDE*` and `CEZ_*` variables removed, and these flags: `--tools ""`, `--system-prompt <rubric>`, `--json-schema <verdicts>`, `--no-session-persistence`, `--disable-slash-commands`, `--strict-mcp-config` and `--output-format json`. The transcript goes on stdin. `--bare` is not used, because it accepts only `ANTHROPIC_API_KEY` or an `apiKeyHelper`. This was verified by the coordinator on Claude Code 2.1.296: one call, about 1k tokens, $0.0003.
+- **Model.** Claude Code `claude-haiku-5-5` at a pinned effort. If it fails calibration, `claude-sonnet-5-5`. Never Opus or Fable. The judge's identity (model, effort, Claude Code version, rubric revision) is recorded with every verdict.
+- **Input.** One call per cell grades every judged expectation that applies to its task. The cell keeps a numbered, trimmed transcript, secret-scanned like the results: each command with its exit code, each output (runner summary lines whole, other output trimmed), each Squeal message whole, each edit with its path, and the final message. The rubric is D4's expectation text, with each one's moment.
+- **Verdicts.** For each expectation the judge returns `met`, `missed`, `n/a` or `cannot tell`, the step numbers it relies on, and one sentence of reason. `cannot tell`, a verdict citing no step, and a verdict citing a step that does not exist are all graded `not computable`, which a mechanical check enforces.
+- **Repeatability.** Claude Code sets no temperature, so verdicts are cached in the results by the transcript's hash and the judge's identity. A regrade reuses the cache, and a new identity re-judges from the retained transcript. Old results without a transcript stay `not computable` for the judged four.
+- **Calibration gate.** Before a judge identity grades a baseline, it judges every reference session (Testing) in both harnesses twice. It must give each session's expected verdict both times. The run is committed as `evals/results/judge-calibration-<identity>.json`. A failing Haiku is tried as Sonnet; if Sonnet fails too, the question goes back to the human.
+- **Cross-check.** The frozen parser's verdict for each judged expectation is kept beside the judge's. `TREND.md` lists every cell where they disagree, for a person to read, and does not resolve them.
+- **In tests.** This repository's Vitest suite never calls a model. The judge module takes its runner as an argument, and unit tests pass a fake one. Calibration is its own command, run by hand or by a worker, and its committed file is the evidence.
 
 ### D8. Variants
 
@@ -128,7 +143,7 @@ One JSON file per variant in `evals/variants/`, applied to a copy of the pinned 
 2. Resolved 2026-10-10 by the human: no Opus in the baseline.
 3. The Claude Code allow-list for subject sessions: 005-06's list (from 001's dogfooding) refused `node scripts/changelog.mjs` once, which confounds the uncovered-suite behaviour. Default: add `Bash(node:*)`. Owner: 006-01.
 4. Whether the 25-point flag is the right threshold, after two runs. Owner: 006-04.
-5. If the fail-closed rules leave too much not computable, or another review finds the next unparsed shell or glob form, classify each recorded test command with a small model judge instead (Claude Code Haiku 5.5, pinned effort). It would answer whether the command runs tests, which test files and filters it selects, and whether it writes files. Its answers are cached by command text, so a regrade stays repeatable, and the deterministic parser stays the first pass. Proposed by the human 2026-10-11, held until the fail-closed rules are tried. Owner: the human.
+5. Resolved 2026-10-11 by the human: a hybrid judge (D4 "Who grades what", D9), run through Claude Code. The original proposal was: if the fail-closed rules leave too much not computable, or another review finds the next unparsed shell or glob form, classify each recorded test command with a small model judge instead (Claude Code Haiku 5.5, pinned effort). It would answer whether the command runs tests, which test files and filters it selects, and whether it writes files. Its answers are cached by command text, so a regrade stays repeatable, and the deterministic parser stays the first pass. Proposed by the human 2026-10-11, held until the fail-closed rules are tried. Owner: the human.
 
 ## References
 
