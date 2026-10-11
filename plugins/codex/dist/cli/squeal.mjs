@@ -82,6 +82,7 @@ var init_store = __esm({
       checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
       daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
       daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
+      daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
       slowTier: { prefix: "slow-tier:", owner: "slow/state" },
       slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
       failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -107,6 +108,9 @@ function predecessorIncarnation(hasRow, last) {
 }
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
+}
+function daemonExitMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonExit", worktreeId);
 }
 var DAEMON_SOCKET_TIMEOUT_MS;
 var init_daemon = __esm({
@@ -1229,7 +1233,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 6;
+    KEY_FORMAT_VERSION = 7;
   }
 });
 
@@ -5476,10 +5480,14 @@ function withDeath(store, worktree, live) {
   if (live.state !== "down" || worktree === null || record === null) return live;
   const { id: id2 } = worktree;
   const self = daemonIncarnation(record);
-  if (self !== null && readDaemonNotes(store, id2).some((note) => note.exitOf === self)) return live;
+  if (self !== null && shutDown(store, id2, self)) return live;
   if (!daemonGone(worktree)) return live;
   const runs = store.runs.inFlight(id2, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
   return { ...live, died: { runs } };
+}
+function shutDown(store, worktreeId, self) {
+  if (store.meta.get(daemonExitMetaKey(worktreeId)) === self) return true;
+  return readDaemonNotes(store, worktreeId).some((note) => note.exitOf === self);
 }
 function daemonGone(worktree) {
   const path = lockFileFor(worktree.commonDir, worktree.id);
@@ -34268,7 +34276,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.121";
+  if (true) return "0.1.122";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37581,7 +37589,9 @@ var Daemon = class {
    * Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the
    * socket and a heartbeat. A predecessor's `running` rows become `queued`
    * first: with this heartbeat they would read as live claims until the
-   * baseline rewrites them (D10 as amended, task 001-205).
+   * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
+   * shutdown mark goes, unless this daemon's own shutdown already began
+   * (task 001-274).
    */
   #register() {
     const { store, worktreeId: id2, root, commonDir } = this.opened;
@@ -37589,6 +37599,7 @@ var Daemon = class {
       const existing = store.worktrees.get(id2);
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id2));
       store.testFileKeys.releaseRunning(id2);
+      if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id2));
       store.worktrees.upsert({
         id: id2,
         root,
@@ -37825,6 +37836,7 @@ var Daemon = class {
     this.#exit ??= (async () => {
       this.#setPhase("stopping");
       this.#stopTimers();
+      this.#markExit();
       this.#note(text2, void 0, this.#incarnation());
       await this.#starting.catch(() => {
       });
@@ -37848,6 +37860,18 @@ var Daemon = class {
       return result;
     })();
     return this.#exit;
+  }
+  /**
+   * Its shutdown's mark, before anything it awaits, which status reads to tell
+   * a kill from here on from a death (`withDeath`, task 001-274). A store
+   * that cannot take it costs the log line, as a note's does.
+   */
+  #markExit() {
+    try {
+      this.opened.store.meta.set(daemonExitMetaKey(this.opened.worktreeId), this.#incarnation());
+    } catch (error) {
+      this.#log(`could not mark the shutdown: ${message(error)}`);
+    }
   }
   async #step(name, fn) {
     try {

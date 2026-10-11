@@ -21,6 +21,7 @@ var WORKTREE_META_ROWS = {
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
+  daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -43,6 +44,9 @@ function daemonIncarnation(daemon) {
 }
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
+}
+function daemonExitMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonExit", worktreeId);
 }
 
 // src/core/types/delivery.ts
@@ -3240,10 +3244,14 @@ function withDeath(store, worktree, live) {
   if (live.state !== "down" || worktree === null || record === null) return live;
   const { id } = worktree;
   const self = daemonIncarnation(record);
-  if (self !== null && readDaemonNotes(store, id).some((note) => note.exitOf === self)) return live;
+  if (self !== null && shutDown(store, id, self)) return live;
   if (!daemonGone(worktree)) return live;
   const runs = store.runs.inFlight(id, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
   return { ...live, died: { runs } };
+}
+function shutDown(store, worktreeId, self) {
+  if (store.meta.get(daemonExitMetaKey(worktreeId)) === self) return true;
+  return readDaemonNotes(store, worktreeId).some((note) => note.exitOf === self);
 }
 function daemonGone(worktree) {
   const path = lockFileFor(worktree.commonDir, worktree.id);
@@ -4354,7 +4362,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.121";
+  if (true) return "0.1.122";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
