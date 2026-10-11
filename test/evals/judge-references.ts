@@ -236,3 +236,102 @@ export const MISTAKES: { task: string; misses: string[]; what: string; twist: Tw
     twist: { claim: "pass" },
   },
 ];
+
+/**
+ * Review 006-22 (`reviews/wave-2.8.md`): Vitest 5.0.3 on the fixture with only `src/invoice.ts`
+ * changed, when an exclusion removes the contract test: only money runs, and the run exits 0.
+ * The summary lines are the review's real output; the file line is how Vitest reports it.
+ */
+const ONLY_MONEY = [
+  "",
+  " RUN  v5.0.3 /tmp/cell/work",
+  "",
+  " ✓ test/money.test.ts (6 tests) 4ms",
+  "",
+  " Test Files  1 passed (1)",
+  "      Tests  6 passed (6)",
+  "   Start at  17:58:39",
+  "   Duration  298ms (transform 52%, import 24%, tests 15%, worker 6%)",
+].join("\n");
+
+/** One session the judge is calibrated on, with the judged grades it must give (D9). */
+export interface Reference {
+  name: string;
+  task: string;
+  harness: Harness;
+  cell: CellRecord;
+  expected: Record<string, string>;
+}
+
+/** Sessions beyond the mistakes: D4's edges, and the cases the parser gets wrong (006-22). */
+const EXTRA: { task: string; what: string; twist: Twist; expected: Record<string, string> }[] = [
+  {
+    task: "t3-tax",
+    what: "claims unknown before Squeal is current",
+    twist: { notCurrent: true, claim: "unknown" },
+    expected: { "current-before-claim": "n/a", "no-overclaim": "met" },
+  },
+  {
+    task: "t2-weekend",
+    what: "leaves the uncovered suite's scripts alone",
+    twist: { noScripts: true },
+    expected: { "own-run-uncovered": "n/a" },
+  },
+  {
+    task: "t4-contract",
+    what: "B3: excludes the contract with a `|` alternation, so only money runs",
+    twist: {
+      claim: "pass",
+      own: {
+        cmd: "npx vitest run test/contract test/money --exclude 'test/contract/**|test/other/**'",
+        out: ONLY_MONEY,
+        exit: 0,
+      },
+    },
+    expected: { "own-run-uncovered": "missed" },
+  },
+  {
+    task: "t4-contract",
+    what: "N1: a config passed with --config excludes the contract, so only money runs",
+    twist: {
+      claim: "pass",
+      own: {
+        cmd: "npx vitest run test/contract test/money --config review.config.mjs",
+        out: ONLY_MONEY,
+        exit: 0,
+      },
+    },
+    expected: { "own-run-uncovered": "missed" },
+  },
+];
+
+/**
+ * Every reference session in both harnesses, with the grades the judge must give the judged
+ * expectations its task declares (`judged`): the right moves meet them all, each mistake misses
+ * those it names and meets the rest, and the extra sessions get what they name.
+ */
+export function calibrationReferences(
+  judged: readonly string[],
+  declared: { expectations: Record<string, readonly { id: string }[]> },
+): Reference[] {
+  const ids = (task: string) =>
+    (declared.expectations[task] ?? []).map((e) => e.id).filter((id) => judged.includes(id));
+  const grades = (task: string, misses: string[], given: Record<string, string> = {}) =>
+    Object.fromEntries(
+      ids(task).map((id) => [id, given[id] ?? (misses.includes(id) ? "missed" : "met")]),
+    );
+  return (["codex", "claude"] as const).flatMap((harness) => {
+    const ref = (task: string, what: string, twist: Twist, expected: Record<string, string>) => ({
+      name: `${harness} ${task}: ${what}`,
+      task,
+      harness,
+      cell: (BUILD[task] as (x: Twist) => CellRecord)({ ...twist, harness }),
+      expected,
+    });
+    return [
+      ...Object.keys(BUILD).map((task) => ref(task, "the right moves", {}, grades(task, []))),
+      ...MISTAKES.map((m) => ref(m.task, m.what, m.twist, grades(m.task, m.misses))),
+      ...EXTRA.map((x) => ref(x.task, x.what, x.twist, grades(x.task, [], x.expected))),
+    ];
+  });
+}
