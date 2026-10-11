@@ -1,4 +1,6 @@
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
+import { testFileId } from "../../src/core/keys/index.js";
+import { recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
 import type {
   CheckKey,
   DaemonRecord,
@@ -11,7 +13,8 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/he
 
 /*
  * A worktree at revision 4 for `status --wait`'s edit window (lessons, defect
- * 32, tasks 001-186 and 001-191), and a daemon that names the re-keyed files.
+ * 32, tasks 001-186 and 001-191), and a daemon whose store records the
+ * re-keyed files (task 001-258).
  */
 
 export const NOW = Date.UTC(2026, 9, 9, 12, 0, 0);
@@ -107,33 +110,57 @@ export function later(ms: number, fn: () => void) {
 type Named = string | [string, number] | [string, number, "resolved"];
 
 /**
- * A daemon that answers the pass at revision 4 `answerMs` after it is asked,
- * naming `rekeyed`; records the asked window.
+ * A daemon that answers the pass at revision 4 `answerMs` after it is asked.
+ * Asked, after the wait read its start, it records `rekeyed` in the store's
+ * re-key moves as the scheduler's commits would: each move open, then the
+ * resolved ones resolved (task 001-258). `null`: a daemon that records no
+ * moves. Counts the asks.
  */
-export function answering(rekeyed: readonly Named[] | null, current?: SyncState, answerMs = 0) {
-  const asked: RevisionNumber[] = [];
-  const named = (file: Named) => {
+export function answering(
+  store: Store,
+  worktreeId: string,
+  rekeyed: readonly Named[] | null,
+  current?: SyncState,
+  answerMs = 0,
+) {
+  const asked: true[] = [];
+  const marks = (rekeyed ?? []).map((file) => {
     const [path, revision, resolved] = typeof file === "string" ? [file, 4] : file;
-    return {
-      testFile: ref(path),
-      revision: revision as RevisionNumber,
-      ...(resolved === undefined ? {} : { resolved: true as const }),
-    };
-  };
+    return { id: testFileId(ref(path)), revision, resolved: resolved !== undefined };
+  });
   const state: SyncState = current ?? {
     state: "synced",
     revision: 4 as RevisionNumber,
-    rekeyed: rekeyed === null ? null : rekeyed.map(named),
+    moves: rekeyed !== null,
   };
-  const sync = (_root: unknown, _pollMs: number, after: RevisionNumber): DaemonSync => {
-    asked.push(after);
+  const sync = (): DaemonSync => {
+    asked.push(true);
+    let recorded = rekeyed === null;
+    // After the wait's read transaction, which asked: the daemon's commits come from elsewhere.
+    setTimeout(() => {
+      if (recorded) return;
+      store.transaction(() => {
+        const opened = marks.map(({ id, revision }) => ({ id, open: revision, moved: revision }));
+        recordMoves(store, worktreeId, opened, [], 4 as RevisionNumber, NOW);
+        const resolved = marks.filter((mark) => mark.resolved);
+        const closed = resolved.map(({ id }) => ({ id, open: null, moved: null }));
+        recordMoves(store, worktreeId, closed, [], 4 as RevisionNumber, NOW);
+      });
+      recorded = true;
+    }, 0);
     const at = performance.now() + answerMs;
     return {
-      current: () => (performance.now() >= at ? state : { state: "pending" }),
+      current: () => (recorded && performance.now() >= at ? state : { state: "pending" }),
       stop: () => {},
     };
   };
   return { asked, sync };
+}
+
+/** `path`'s moves had their result, as a commit records it. */
+export function resolveMoves(store: Store, worktreeId: string, path: string) {
+  const mark = { id: testFileId(ref(path)), open: null, moved: null };
+  store.transaction(() => recordMoves(store, worktreeId, [mark], [], 4 as RevisionNumber, NOW));
 }
 
 export const options = (sync: ReturnType<typeof answering>["sync"], timeoutMs = 5_000) => ({

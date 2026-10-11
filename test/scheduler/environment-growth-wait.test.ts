@@ -1,7 +1,6 @@
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type StatusWait, waitForStatus } from "../../src/cli/status-wait.js";
 import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
@@ -15,12 +14,14 @@ import {
   type RevisionNumber,
   type RunnerAdapter,
   type RunReport,
+  refinedMetaKey,
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome, PRELOAD_SRC, PRELOADED } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
+import { captureSync } from "./store-wait.js";
 
 /*
  * Review wave 4 (003), B1: a run that grew its environment re-keys its file
@@ -148,19 +149,13 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
     const edited = scheduler.status().revision;
     await expect.poll(() => heldClosures, { timeout: 60_000 }).toBeGreaterThan(0);
 
-    // 3. The wait starts; its sync captures the edit's revision, then awaits the runner part.
+    // 3. The wait starts; its sync captures the edit's revision, read once its runner part is.
     let captured = null as RevisionNumber | null;
-    let synced = false;
-    const sync = (_root: string, _pollMs: number, after: RevisionNumber): DaemonSync => {
-      let current: SyncState = { state: "pending" };
-      const revision = scheduler.status().revision;
-      captured = revision;
-      void scheduler.refined().then(() => {
-        current = { state: "synced", revision, rekeyed: scheduler.rekeyedSince(after, revision) };
-        synced = true;
-      });
-      return { current: () => current, stop: () => {} };
-    };
+    const sync = captureSync(() => {
+      captured = scheduler.status().revision;
+      return captured;
+    });
+    const refined = () => Number(store.meta.get(refinedMetaKey(worktreeId)));
     let ended = null as StatusWait | null;
     const wait = waitForStatus(root, { timeoutMs: 60_000, pollMs: 50, settleMs: 0, sync }).then(
       (result) => {
@@ -184,8 +179,8 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
       .not.toBeNull();
     refinement.open();
     await expect.poll(() => runs, { timeout: 60_000 }).toBe(2);
-    await expect.poll(() => synced, { timeout: 60_000 }).toBe(true);
-    // Ten of the wait's reads after the daemon named the files.
+    await expect.poll(refined, { timeout: 60_000 }).toBeGreaterThanOrEqual(edited);
+    // Ten of the wait's reads after the store named the files.
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // 7. The wait still holds for the file while its re-run is held, then ends on its result.

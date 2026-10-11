@@ -153,7 +153,6 @@ describe("run-slow through the front desk", () => {
           return Promise.resolve({ revision: 3 as RevisionNumber, queued: 0 });
         },
         requestSync: () => new Promise(() => {}),
-        forgetSync: () => {},
         onStop: () => {},
         onStepDown: () => {},
         onFailure: () => {},

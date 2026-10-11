@@ -223,6 +223,8 @@ export interface HarnessOptions {
   readonly rerunCap?: number;
   /** `SchedulerOptions.runnerPartMs` (task 001-228). */
   readonly runnerPartMs?: number;
+  /** `SchedulerOptions.now`: the clock the store's re-key moves are stamped with (task 001-258). */
+  readonly now?: () => number;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -311,6 +313,7 @@ export async function openHarness(
     ...(options.slow === undefined ? {} : { slow: options.slow }),
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
+    ...(options.now === undefined ? {} : { now: options.now }),
   });
   cleanups.push(async () => {
     await scheduler.close();

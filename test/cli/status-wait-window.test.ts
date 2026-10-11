@@ -16,13 +16,14 @@ import {
   NOW,
   options,
   repoWith,
+  resolveMoves,
   SLOW_FILE,
 } from "./status-wait-fixture.js";
 
 /*
  * Lessons, defect 32 (tasks 001-186, 001-191, 001-196): the wait's window is
  * every revision after the one its session was last told about, and every
- * revision up to it of which the daemon still names a file: one with no
+ * revision up to it of which the store still names a file: one with no
  * result under its new key, or whose result landed after the wait started.
  */
 
@@ -41,16 +42,17 @@ describe("the wait's window starts where the session was last told (task 001-186
     store.consumers.register(other, NOW);
     tellRevision(store, other, 1 as RevisionNumber);
 
-    const mine = answering([A]);
+    const mine = answering(store, repo.mainId, [A]);
     const wait = await waitForStatus(repo.main, { ...options(mine.sync), session: "s1" });
-    // A had its result before the wait: the daemon names it no more (task 001-196).
-    const unknown = answering([]);
+    // A had its result before the wait: the store names it no more (task 001-196).
+    resolveMoves(store, repo.mainId, A);
+    const unknown = answering(store, repo.mainId, []);
     const fresh = await waitForStatus(repo.main, { ...options(unknown.sync), session: "nobody" });
 
-    expect(mine.asked).toEqual([0]);
+    expect(mine.asked).toHaveLength(1);
     expect(wait).toMatchObject({ edit: { since: 3, testFiles: 1 } });
     // No consumer of the session: the revision current when the wait started, whose file had its result.
-    expect(unknown.asked).toEqual([0]);
+    expect(unknown.asked).toHaveLength(1);
     expect(fresh).toMatchObject({ edit: { since: 4, testFiles: 0 } });
   });
 
@@ -60,7 +62,10 @@ describe("the wait's window starts where the session was last told (task 001-186
     told(store, repo.mainId, 4);
     later(300, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, { ...options(answering([A]).sync), session: "s1" });
+    const wait = await waitForStatus(repo.main, {
+      ...options(answering(store, repo.mainId, [A]).sync),
+      session: "s1",
+    });
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
@@ -77,7 +82,7 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     later(500, () => finish(store, repo.mainId, A));
 
     const wait = await waitForStatus(repo.main, {
-      ...options(answering([[A, 3], B]).sync),
+      ...options(answering(store, repo.mainId, [[A, 3], B]).sync),
       session: "s1",
     });
 
@@ -93,7 +98,7 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     later(300, () => finish(store, repo.mainId, A));
 
     const wait = await waitForStatus(repo.main, {
-      ...options(answering([[A, 2], B]).sync, 800),
+      ...options(answering(store, repo.mainId, [[A, 2], B]).sync, 800),
       session: "s1",
     });
 
@@ -111,7 +116,7 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     told(store, repo.mainId, 3);
     later(200, () => finish(store, repo.mainId, B));
 
-    const daemon = answering([[SLOW_FILE, 2], B]);
+    const daemon = answering(store, repo.mainId, [[SLOW_FILE, 2], B]);
     const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
 
     expect(wait.outcome).toBe("quiet");
@@ -124,7 +129,7 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     told(store, repo.mainId, 3);
     later(200, () => finish(store, repo.mainId, B));
 
-    const daemon = answering([[C, 3, "resolved"], B]);
+    const daemon = answering(store, repo.mainId, [[C, 3, "resolved"], B]);
     const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
 
     expect(wait.outcome).toBe("quiet");
@@ -141,7 +146,7 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
       fail(store, repo.mainId, ADDS);
     });
 
-    const daemon = answering([[A, 3, "resolved"], B], undefined, 300);
+    const daemon = answering(store, repo.mainId, [[A, 3, "resolved"], B], undefined, 300);
     const wait = await waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" });
 
     expect(wait.outcome).toBe("news");

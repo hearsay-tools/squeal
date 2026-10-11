@@ -7,6 +7,7 @@ import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createDelivery } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createScheduler } from "../../src/core/scheduler/index.js";
+import { answerMoves } from "../../src/core/scheduler/rekeyed-moves.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   type CheckKey,
@@ -14,7 +15,9 @@ import {
   DEFAULT_POLICY,
   MAIN_AGENT,
   type NodeTestProject,
+  type RevisionNumber,
   type RunnerAdapter,
+  type Store,
   type TestFileRef,
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
@@ -41,6 +44,13 @@ import { RecordingSink } from "./recording-sink.js";
  */
 
 const TEST = "nt/test/a.test.mjs";
+
+/** The open moves at `revision` the store's record names (task 001-258). */
+function rekeyedAt(store: Store, worktreeId: string, revision: RevisionNumber) {
+  const answer = answerMoves(store, worktreeId, revision, Number.MAX_SAFE_INTEGER);
+  if (answer.state !== "answered") return answer.state;
+  return answer.rekeyed.filter((file) => file.revision === revision);
+}
 
 describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () => {
   it("is unknown after three runs in a row that each loaded a new environment file", async () => {
@@ -92,7 +102,7 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       run(files, options) {
         runs.push([...files]);
         const { revision } = scheduler.status();
-        named.push(scheduler.rekeyedSince(revision - 1, revision));
+        named.push(rekeyedAt(store, worktreeId, revision));
         return adapter.run(files, options);
       },
     };
@@ -122,7 +132,7 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
     const { revision } = scheduler.status();
     const held = [{ testFile: { project: "nt", path: TEST }, revision }];
     expect(named).toEqual([[], held, held]);
-    expect(scheduler.rekeyedSince(revision - 1, revision)).toEqual([]);
+    expect(rekeyedAt(store, worktreeId, revision)).toEqual([]);
     // It never ran to a result, so the file itself is what is unknown.
     expect(sink.calls.filter((call) => call.method === "markUnknown")).toEqual([
       expect.objectContaining({

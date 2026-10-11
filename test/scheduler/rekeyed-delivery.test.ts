@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import { readRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { movesOnceRefined } from "./store-wait.js";
 
 /*
  * Review wave 13u, B1 (task 001-238): a delivery's edit notes (tasks 001-223
@@ -28,7 +29,7 @@ describe("edit notes over the scheduler's re-key record (task 001-238)", () => {
 
       h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
       await h.batch("src/math.ts");
-      await h.scheduler.refined();
+      await movesOnceRefined(h, h.scheduler.status().revision);
 
       const record = readRekeyed(h.store, h.worktreeId);
       expect([...record.keys()]).toEqual([testFileId(ref(MATH))]);

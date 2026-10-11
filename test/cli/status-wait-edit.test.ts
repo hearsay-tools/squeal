@@ -23,7 +23,8 @@ import {
  * Lessons, defect 32, decided by the human (2026-10-09, task 001-186): a
  * wait ends when the test files its window's edits re-keyed have their
  * results, while a backlog or a slow file still runs; only their checks'
- * transitions end it early. The daemon names the files (`SyncState.rekeyed`).
+ * transitions end it early. The store's re-key moves name the files
+ * (`answerMoves`, task 001-258).
  */
 
 describe("status --wait holds for the edit's own test files (lessons, defect 32)", () => {
@@ -31,7 +32,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const { repo, store } = repoWith([A, B, C]);
     later(300, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, options(answering([A]).sync));
+    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
@@ -50,7 +51,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     later(100, () => fail(store, repo.mainId, BACKLOG));
     later(500, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, options(answering([A]).sync));
+    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeGreaterThanOrEqual(500);
@@ -62,7 +63,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const { repo, store } = repoWith([A, B]);
     later(200, () => fail(store, repo.mainId, ADDS));
 
-    const wait = await waitForStatus(repo.main, options(answering([A]).sync));
+    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
 
     expect(wait.outcome).toBe("news");
     expect(wait.waitedMs).toBeLessThan(2_000);
@@ -80,7 +81,10 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     );
     later(200, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, options(answering([A, SLOW_FILE]).sync));
+    const wait = await waitForStatus(
+      repo.main,
+      options(answering(store, repo.mainId, [A, SLOW_FILE]).sync),
+    );
 
     expect(wait.outcome).toBe("quiet");
     expect(wait).toMatchObject({ edit: { testFiles: 2, pending: 0 } });
@@ -90,7 +94,10 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const { repo, store } = repoWith([A, B, C]);
     later(100, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, options(answering([A, B, C]).sync, 800));
+    const wait = await waitForStatus(
+      repo.main,
+      options(answering(store, repo.mainId, [A, B, C]).sync, 800),
+    );
 
     expect(wait.outcome).toBe("timeout");
     expect(wait).toMatchObject({ edit: { testFiles: 3, pending: 2 } });
@@ -104,7 +111,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     store.meta.set(refinedMetaKey(repo.mainId), "3");
     later(300, () => store.meta.set(refinedMetaKey(repo.mainId), "4"));
 
-    const wait = await waitForStatus(repo.main, options(answering([A]).sync));
+    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
@@ -114,7 +121,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const { repo, store } = repoWith([A, B]);
     later(100, () => fail(store, repo.mainId, BACKLOG));
 
-    const pending = answering(null, { state: "pending" });
+    const pending = answering(store, repo.mainId, null, { state: "pending" });
     const wait = await waitForStatus(repo.main, options(pending.sync, 600));
 
     expect(wait.outcome).toBe("timeout");
@@ -125,7 +132,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const { repo, store } = repoWith([A, B]);
     later(100, () => fail(store, repo.mainId, BACKLOG));
 
-    const wait = await waitForStatus(repo.main, options(answering(null).sync));
+    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, null).sync));
 
     expect(wait.outcome).toBe("news");
     expect(wait).not.toHaveProperty("edit");

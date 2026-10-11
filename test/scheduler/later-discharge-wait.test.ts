@@ -1,83 +1,83 @@
-import { describe, expect, it, onTestFinished, vi } from "vitest";
-import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
+import { testFileId } from "../../src/core/keys/index.js";
 import {
-  DISCHARGE_CAP,
-  DISCHARGE_RETENTION_MS,
-  Discharges,
-  HOLD_MS,
-} from "../../src/core/scheduler/discharges.js";
-import { newFileState } from "../../src/core/scheduler/files.js";
-import type { EpochMs, RevisionNumber } from "../../src/core/types/index.js";
+  MOVES_GRACE_MS,
+  MOVES_RETENTION_MS,
+  recordMoves,
+  rekeyedMovesMetaKey,
+} from "../../src/core/scheduler/rekeyed-moves.js";
+import { refinedMetaKey } from "../../src/core/types/index.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { captureSync, liveDaemon } from "./store-wait.js";
 
 /*
- * Review wave 13l, S1 (task 001-202): the scheduler kept only a file's last
- * discharge, so a second move of the file resolved by a cached result while
- * the wait's sync awaited an unrelated refinement replaced the first; the
- * answer, bounded by the captured revision, no longer named the file, and
- * the wait ended quiet with the edit's failure counted as another check's.
- * Review wave 13q, S1 (task 001-214): later discharges past the default cap,
- * or one past the hour, evicted the first the same way; the answer now holds
- * it. The scheduler, adapter, store and sink are real; the sync is the
- * daemon's `rekeyedOnceRefined` at the captured revision. The control
- * differs only in the second, cached edit or the later discharges, which
- * are synthetic, noted to the live instance after the captured revision.
- * Review wave-13r B2 (task 001-226): no hold outlives the hour, so past it
- * the answer fails and the wait falls back to any check's news.
+ * Review wave 13l, S1 (task 001-202): a second move of the file resolved by
+ * a cached result while the wait awaited an unrelated refinement replaced
+ * the first, and the wait ended quiet with the edit's failure counted as
+ * another check's. Review wave 13q, S1 (task 001-214): later discharges past
+ * a count cap, or one past the hour, evicted the first the same way. Review
+ * wave-13s B2 and 13t S1: a hold outlived its hour, or a late timer kept a
+ * younger one. Since task 001-258 the store's moves keep one entry per file
+ * and revision with no count cap, and prune by age only once refinement has
+ * been caught up for a grace, so none of these drops the wait's own entry;
+ * a wait whose entry was pruned anyway falls back, never quiet. The
+ * scheduler, adapter, store and sink are real; a commit's record is
+ * `recordMoves` at the scheduler's clock, which the test shifts.
+ * Revisions: 1 and 2 warm math's cache, 3 breaks math (run held), 4 edits
+ * strings (runner part held); the wait captures 4.
  */
 
 const MATH = "src/math.ts";
+const MATH_ID = testFileId({ project: "", path: "test/math.test.ts" });
 const CACHED = "export const add = (a: number, b: number) => a - b; // cached\n";
 const PASSING = "export const add = (a: number, b: number) => a + b;\n";
 const TARGET = "export const add = (a: number, b: number) => a - b; // target\n";
+const HOUR = 60 * 60_000;
 
-describe("status --wait over a later cached discharge of its file (task 001-202)", () => {
-  it.each([
-    { name: "a later cached discharge", cached: true, later: [] },
-    { name: "the one-discharge control", cached: false, later: [] },
-    {
-      name: "a full cap of later discharges",
-      cached: false,
-      later: Array.from({ length: DISCHARGE_CAP }, () => 1),
-    },
-    { name: "a later discharge past the hour", cached: false, later: [DISCHARGE_RETENTION_MS + 1] },
-  ])("returns on the edit's own news with $name", SLOW, async ({ cached, later }) => {
-    // Task 001-226: no hold outlives the hour; that answer fails, and the wait falls back.
-    const incomplete = later.some((delay) => delay > HOLD_MS);
-    // The live instance, and when it last discharged.
-    let discharges: Discharges | null = null;
-    let lastAt = 0;
-    const note = Discharges.prototype.note;
-    vi.spyOn(Discharges.prototype, "note").mockImplementation(function (this: Discharges, ...args) {
-      discharges = this;
-      lastAt = args[1];
-      note.apply(this, args);
-    });
-    onTestFinished(() => {
-      vi.restoreAllMocks();
-    });
+interface Case {
+  readonly name: string;
+  readonly cached?: boolean;
+  /** Later resolved moves of other files, at the next revision. */
+  readonly flood?: number;
+  /** Shift the scheduler's clock by this much while the runner part is held. */
+  readonly clock?: number;
+  /** Then a commit, which may prune. */
+  readonly commit?: boolean;
+  /** Once refined, caught up for the grace and an hour past it: a prune drops math's entry. */
+  readonly prune?: boolean;
+}
+
+const CASES: Case[] = [
+  { name: "a later cached discharge (13l S1)", cached: true },
+  { name: "the one-discharge control" },
+  { name: "10,050 later resolved moves (13q S1, count)", flood: 10_050 },
+  { name: "two hours with no commit while held (13s B2)", clock: 2 * HOUR },
+  { name: "a commit past the hour while held (13q S1 age, 13t S1)", clock: HOUR + 1, commit: true },
+  { name: "a prune of its entry after the catch-up (falls back)", prune: true },
+];
+
+describe("status --wait over later discharges of its file (tasks 001-202, 001-258)", () => {
+  it.each(CASES)("$name", SLOW, async (c) => {
+    let shift = 0;
+    const clock = () => Date.now() + shift;
     const repo = createRepo();
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       runnerPartBesideRun: true,
+      now: clock,
     });
     await h.scheduler.start();
     await h.scheduler.idle();
-    // A live daemon record: without one a wait never reports quiet (D7).
-    h.store.worktrees.upsert({
-      id: h.worktreeId,
-      root: h.root,
-      commonDir: repo.commonDir,
-      isMain: true,
-      registeredAt: Date.now(),
-      daemon: {
-        socketPath: "/tmp/squeal-test.sock",
-        startedAt: Date.now(),
-        heartbeatAt: Date.now(),
-        heartbeatIntervalMs: 600_000,
-        squealVersion: "0.0.0-test",
-      },
-    });
+    liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
+    // As `Ledger.commit` records the moves when nothing else changed.
+    const commit = () =>
+      h.store.transaction(() =>
+        recordMoves(h.store, h.worktreeId, [], [], h.scheduler.status().revision, clock()),
+      );
+    const math = (): Record<string, unknown> => {
+      const raw = h.store.meta.get(rekeyedMovesMetaKey(h.worktreeId));
+      return raw === null ? {} : (JSON.parse(raw).files[MATH_ID]?.resolved ?? {});
+    };
     // Revisions 1 and 2: math's failure under CACHED is stored, then it passes again.
     h.write(MATH, CACHED);
     await h.batch(MATH);
@@ -124,54 +124,53 @@ describe("status --wait over a later cached discharge of its file (task 001-202)
     h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase(); // 4\n");
     await h.batch("src/strings.ts");
 
-    let state: SyncState = { state: "pending" };
-    const sync = (
-      _root: unknown,
-      _pollMs: number,
-      after: RevisionNumber,
-      resolvedSince: EpochMs,
-    ): DaemonSync => {
-      void (async () => {
-        const revision = h.scheduler.status().revision;
-        const answer = h.scheduler.rekeyedOnceRefined(after, revision, resolvedSince);
-        // Math's failure lands while the pass waits for strings' refinement.
+    const sync = captureSync(
+      () => h.scheduler.status().revision,
+      async (upTo) => {
+        // Math's failure lands while strings' refinement is held.
         releaseRun();
         await expect.poll(mathFails, { timeout: 60_000 }).toBe(true);
-        expect(h.scheduler.rekeyedSince(0, revision, resolvedSince)).toContainEqual(
-          expect.objectContaining({ revision: target, resolved: true }),
-        );
-        if (cached) {
-          // Revision 5 restores CACHED: its stored failure discharges the move without a run.
+        await expect.poll(() => math()[String(target)] ?? null).not.toBeNull();
+        if (c.cached === true) {
+          // Revision 5 restores CACHED: its stored failure resolves the move without a run.
           h.write(MATH, CACHED);
           await h.batch(MATH);
-          const latest = h.scheduler.status().revision;
-          expect(latest).toBe(revision + 1);
+          expect(h.scheduler.status().revision).toBe(upTo + 1);
           await expect
-            .poll(() => h.scheduler.rekeyedSince(revision, latest, resolvedSince), {
-              timeout: 60_000,
-            })
-            .toContainEqual(expect.objectContaining({ revision: latest, resolved: true }));
+            .poll(() => math()[String(upTo + 1)] ?? null, { timeout: 60_000 })
+            .not.toBeNull();
         }
-        const at = lastAt;
-        later.forEach((delay, n) => {
-          const file = newFileState({ project: "", path: `test/later-${n}.test.ts` });
-          const moved = { ...file, keyedAt: revision + 1, lastKeyedAt: revision + 1 };
-          discharges?.note(moved, at + delay);
-        });
+        if (c.flood !== undefined) {
+          const marks = Array.from({ length: c.flood }, (_, n) => ({
+            id: `later-${n}`,
+            open: null,
+            moved: upTo + 1,
+          }));
+          h.store.transaction(() => recordMoves(h.store, h.worktreeId, marks, [], upTo, clock()));
+        }
+        if (c.clock !== undefined) {
+          shift = c.clock;
+          if (c.commit === true) commit();
+          expect(math()[String(target)]).toBeDefined();
+        }
         releaseRefinement();
-        // As `syncDaemon` reads a failed answer: the daemon cannot sync.
-        state = await answer.then(
-          (rekeyed): SyncState => ({ state: "synced", revision, rekeyed }),
-          (): SyncState => ({ state: "unsupported" }),
-        );
-      })();
-      return { current: () => state, stop: () => {} };
-    };
+        if (c.prune === true) {
+          const refined = () => Number(h.store.meta.get(refinedMetaKey(h.worktreeId)));
+          await expect.poll(refined, { timeout: 60_000 }).toBeGreaterThanOrEqual(upTo);
+          await h.scheduler.idle();
+          commit();
+          shift = MOVES_RETENTION_MS + MOVES_GRACE_MS + 1;
+          commit();
+          expect(math()).toEqual({});
+        }
+      },
+    );
 
     const wait = await waitForStatus(h.root, { timeoutMs: 60_000, pollMs: 20, sync });
 
+    expect(mathFails()).toBe(true);
     expect(wait.outcome).toBe("news");
-    if (incomplete) {
+    if (c.prune === true) {
       // Never quiet: without the edit's files, any check's news ends the wait.
       expect(wait).toMatchObject({ transitions: 1 });
       expect(wait).not.toHaveProperty("edit");

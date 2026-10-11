@@ -6,6 +6,7 @@ import { NOTHING_CHANGED, type SchedulerContext } from "../../src/core/scheduler
 import type { FileState } from "../../src/core/scheduler/files.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { priorityOf } from "../../src/core/scheduler/queue.js";
+import { answerMoves, movesSeq } from "../../src/core/scheduler/rekeyed-moves.js";
 import { readRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { endRerun, queueReruns, RERUN_CAP } from "../../src/core/scheduler/rerun.js";
 import { createStateSink } from "../../src/core/state/index.js";
@@ -174,12 +175,13 @@ describe("the settled line over an edited file's confirmation run (review wave 1
 
   it("leaves status --wait's discharge as it was: the wait holds for no same-key confirmation", async () => {
     await baseline();
-    const startedAt = Date.now();
+    const startedAt = movesSeq(store, WT as WorktreeId) ?? 0;
     edit();
     land(FILE, key("b"), [result(A, "fail", { key: key("b") })]);
     expect(fileOf(FILE).phase).toBe("queued");
 
-    const rekeyed = ledger.discharges.since(startedAt, 0, 1);
+    const answer = answerMoves(store, WT as WorktreeId, 1, startedAt);
+    const rekeyed = answer.state === "answered" ? answer.rekeyed : [];
     expect(rekeyed).toEqual([{ testFile: FILE, revision: 1, resolved: true }]);
     const window = editWindow(store, WT as WorktreeId, 0, 1, rekeyed);
     expect(window.ids).toEqual(new Set([testFileId(FILE)]));
