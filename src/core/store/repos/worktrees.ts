@@ -55,12 +55,16 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
         d?.squealVersion ?? null,
       );
     },
-    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
+    // the start time and version too, the identity `lastDaemon` reads (task 001-268); with no
+    // socket every other read finds no daemon.
     setDaemon: (id, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?,
+           daemon_started_at = COALESCE(?, daemon_started_at),
            daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
-           daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
+           daemon_heartbeat_interval_ms = ?,
+           daemon_version = COALESCE(?, daemon_version) WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
         d?.heartbeatAt ?? null,

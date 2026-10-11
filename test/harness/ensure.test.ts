@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:net";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { recordedDaemon } from "../../src/core/daemon/ensure.js";
 import { ensureDaemon, probeDaemon, socketPathFor } from "../../src/core/daemon/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { fakeRepo } from "../status/helpers.js";
@@ -181,6 +182,24 @@ describe("probeDaemon and the recorded socket (review wave 3, S8)", () => {
     record(r, elsewhere, Date.now() - 60_000);
 
     expect(await probeDaemon(r.root, 100)).toEqual({ state: "absent", code: "ENOENT" });
+    rmSync(dirname(elsewhere), { recursive: true, force: true });
+  });
+
+  // Task 001-268: a clean exit keeps the daemon's start time and version in its row.
+  it("finds no daemon once the recorded one cleared its record, and spawns one", async () => {
+    const r = squealRepo();
+    const elsewhere = join(mkdtempSync("/tmp/sq-"), "other.sock");
+    await listen(elsewhere);
+    record(r, elsewhere, Date.now());
+    r.store.worktrees.setDaemon(r.worktreeId, null);
+    expect(r.store.worktrees.lastDaemon(r.worktreeId)).not.toBeNull();
+
+    expect(recordedDaemon(r.root)).toBeNull();
+    expect(await probeDaemon(r.root, 100)).toEqual({ state: "absent", code: "ENOENT" });
+    const { cli, argsFile } = recordingCli();
+    expect(await ensureDaemon(r.root, { cli, socketTimeoutMs: 100 })).toBe("spawned");
+    await waitFor(argsFile);
+    expect(JSON.parse(readFileSync(argsFile, "utf8"))).toEqual(["daemon", r.root]);
     rmSync(dirname(elsewhere), { recursive: true, force: true });
   });
 
