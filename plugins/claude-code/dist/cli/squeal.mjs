@@ -1233,7 +1233,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 7;
+    KEY_FORMAT_VERSION = 8;
   }
 });
 
@@ -10365,6 +10365,15 @@ var init_slow_tier = __esm({
       request() {
         this.#requested = true;
       }
+      /**
+       * A consumer may have gone idle (task 001-281): with slow files queued the
+       * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
+       * trigger does not allow; `next` decides as on the timer.
+       */
+      nudge() {
+        if (this.host.closed()) return;
+        if (this.host.started().ledger.orderedSlow().length > 0) this.host.pump();
+      }
       /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
       preempt() {
         this.#preemptions += 1;
@@ -10926,6 +10935,10 @@ var init_scheduler2 = __esm({
         });
         this.#pump();
         return request;
+      }
+      nudge() {
+        if (this.#closed || !this.#ledger) return;
+        this.#slow.nudge();
       }
       refreshObserved() {
         if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
@@ -34276,7 +34289,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.125";
+  if (true) return "0.1.126";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35695,6 +35708,7 @@ function createHandlers(context) {
         };
       case "nudge":
         context.onActivity();
+        context.onNudge?.();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "nudge" };
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
@@ -35928,6 +35942,9 @@ async function inWorker(worker, identity, events) {
         case "activity":
           events.onActivity();
           return;
+        case "nudge":
+          events.onNudge?.();
+          return;
         case "run-all":
           events.requestFullSuite(message2.force).then(
             (checkpoint) => post({ type: "run-all-result", id: message2.id, checkpoint, error: null }),
@@ -36016,6 +36033,7 @@ async function inThread(identity, events) {
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
       onActivity: events.onActivity,
+      ...events.onNudge === void 0 ? {} : { onNudge: events.onNudge },
       onStop: events.onStop,
       onStepDown: events.onStepDown
     })
@@ -37755,6 +37773,7 @@ var Daemon = class {
         onActivity: () => {
           this.#lastActive = this.#now();
         },
+        onNudge: () => this.#loop?.scheduler.nudge(),
         // After the answer is written.
         onStop: () => setImmediate(
           () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop")

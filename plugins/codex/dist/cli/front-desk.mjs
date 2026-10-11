@@ -132,6 +132,7 @@ function createHandlers(context) {
         };
       case "nudge":
         context.onActivity();
+        context.onNudge?.();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "nudge" };
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
@@ -347,6 +348,7 @@ function bind(identity) {
       post({ type: "sync", id });
     }),
     onActivity: () => post({ type: "activity" }),
+    onNudge: () => post({ type: "nudge" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version })
   });

@@ -4,6 +4,52 @@ const require = __squealCreateRequire(import.meta.url);
 // src/harness/shared/stop.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
+// src/core/daemon/client.ts
+import { createConnection } from "node:net";
+function requestDaemon(socketPath, request, timeoutMs) {
+  return new Promise((resolve3, reject) => {
+    const socket = createConnection(socketPath);
+    let buffer = "";
+    let settled2 = false;
+    const settle = (error, response) => {
+      if (settled2) return;
+      settled2 = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve3(response);
+    };
+    const timer = setTimeout(
+      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      timeoutMs
+    );
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
+`));
+    socket.on("data", (chunk) => {
+      buffer += chunk;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
+      try {
+        settle(null, JSON.parse(buffer.slice(0, end)));
+      } catch {
+        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
+      }
+    });
+    socket.on(
+      "error",
+      (error) => settle(failure(error.code ?? "EIO", error.message))
+    );
+    socket.on(
+      "close",
+      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
+    );
+  });
+}
+function failure(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync2 } from "node:fs";
 import { join as join2 } from "node:path";
@@ -4200,52 +4246,6 @@ function currentUid() {
   return process.getuid?.() ?? 0;
 }
 
-// src/core/daemon/client.ts
-import { createConnection } from "node:net";
-function requestDaemon(socketPath, request, timeoutMs) {
-  return new Promise((resolve3, reject) => {
-    const socket = createConnection(socketPath);
-    let buffer = "";
-    let settled2 = false;
-    const settle = (error, response) => {
-      if (settled2) return;
-      settled2 = true;
-      clearTimeout(timer);
-      socket.destroy();
-      if (error) reject(error);
-      else resolve3(response);
-    };
-    const timer = setTimeout(
-      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
-      timeoutMs
-    );
-    socket.setEncoding("utf8");
-    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
-`));
-    socket.on("data", (chunk) => {
-      buffer += chunk;
-      const end = buffer.indexOf("\n");
-      if (end < 0) return;
-      try {
-        settle(null, JSON.parse(buffer.slice(0, end)));
-      } catch {
-        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
-      }
-    });
-    socket.on(
-      "error",
-      (error) => settle(failure(error.code ?? "EIO", error.message))
-    );
-    socket.on(
-      "close",
-      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
-    );
-  });
-}
-function failure(code, message) {
-  return Object.assign(new Error(message), { code });
-}
-
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
 import { existsSync as existsSync6, mkdirSync as mkdirSync4 } from "node:fs";
@@ -4337,7 +4337,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.125";
+  if (true) return "0.1.126";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4585,7 +4585,8 @@ var STOP_WAIT_CAP_MS = 1500;
 var STOP_MARGIN_MS = 250;
 var STOP_POLL_MS = 100;
 function stopBusyTimeoutMs(waitMs) {
-  return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
+  const left = HOOK_TIMEOUT_MS - STOP_MARGIN_MS - SOCKET_TIMEOUT_MS - waitMs;
+  return Math.min(STATUS_BUSY_TIMEOUT_MS, left);
 }
 function stopTurn(input, location2, deps) {
   const project = readPolicy(location2.root);
@@ -4628,6 +4629,7 @@ ${text}` };
 
 ${text}` };
           }
+          await nudgeSlow(context, header);
         }
         return news === null ? null : { news };
       }
@@ -4689,6 +4691,13 @@ async function newsText(context, starting, command) {
   const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail").map((s) => s.check);
   return `${formatDelta(delta, command)}
 ${knownFailuresLine(failures, command)}`;
+}
+async function nudgeSlow(context, header) {
+  if ((header.slowPending?.testFiles ?? 0) === 0) return;
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  if (record === null) return;
+  await requestDaemon(record.socketPath, { type: "nudge" }, SOCKET_TIMEOUT_MS).catch(() => {
+  });
 }
 async function waitForPending(context, waitMs, pollMs, isSlow) {
   const deadline = performance.now() + waitMs;
