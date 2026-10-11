@@ -167,8 +167,8 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 
 | Expectation | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 | 2026-10-11-0.1.123.20261011T194614Z-215639 | 2026-10-11-0.1.124.20261011T203431Z-d0d96d |
 | --- | --- | --- | --- | --- | --- |
-| **met / applied** | 27/27 (100%) | 27/27 (100%) | 27/27 (100%) | 47/57 (82%) | 44/57 (77%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | - | - | - | 6/9 (67%) | 5/9 (56%) |
+| **met / applied** | 27/27 (100%) | 27/27 (100%) | 27/27 (100%) | 46/57 (81%) | 44/57 (77%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | - | - | - | 5/9 (56%) | 5/9 (56%) |
 | `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | - | - | - | 6/6 (100%) | 6/6 (100%) |
 | `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | - | - | - | 5/9 (56%) | 4/9 (44%) |
 | `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
@@ -184,7 +184,7 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 | t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t1-thousands `no-overclaim` | - | - | - | 1/3 (33%) | 1/3 (33%) |
 | t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | - | - | - | 2/3 (67%) | 1/3 (33%) |
+| t2-weekend `no-rerun-answered` | - | - | - | 1/3 (33%) | 1/3 (33%) |
 | t2-weekend `own-run-uncovered` | - | - | - | 3/3 (100%) | 3/3 (100%) |
 | t2-weekend `current-before-claim` | - | - | - | 2/3 (67%) | 2/3 (67%) |
 | t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
@@ -430,13 +430,12 @@ Where the judge's grade of a judged expectation (spec 006 D9) differs from the f
 2026-10-11-0.1.121.20261011T161708Z-72e2b7: no disagreement.
 
 2026-10-11-0.1.123.20261011T194614Z-215639: 
-- `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1` `no-rerun-answered`: judge met, parser missed (steps 10, 11, 12, 14, 20, 21, 22: Before the agent's Vitest runs after its last edit (step 10), the only Squeal evidence it saw at that edit's revision was step 11 at revision 4 with 2 pending, which answers no scope, so the later runs in steps 12, 14, 20 and 21 were not reruns of an answered scope.)
-- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` `own-run-uncovered`: judge met, parser missed (steps 14, 16: The last edit under scripts/ was scripts/changelog.test.mjs at step 14. Step 16 then ran `npm run test:scripts` unfiltered, and its output shows the node:test suite completing with 3 passing and 0 failing.)
-- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2` `own-run-uncovered`: judge met, parser missed (steps 13, 19: The last scripts/ edit was step 13, and step 19 then ran npm run test:scripts (node:test, the changelog test file) to completion with ℹ pass 2 and ℹ fail 0.)
+- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` `own-run-uncovered`: judge met, parser missed (steps 14, 16: After the last scripts/ edit at step 14, the agent ran npm run test:scripts at step 16 with no filter, and node reported 3 passing tests, so the node:test changelog suite completed after the change.)
+- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2` `own-run-uncovered`: judge met, parser missed (steps 10, 11, 12, 13, 19: The last edit under scripts/ was at step 13 (scripts/changelog.test.mjs), and the completed node:test run at step 19 ran scripts/changelog.test.mjs afterwards with no name, skip or only filter.)
 
 2026-10-11-0.1.124.20261011T203431Z-d0d96d: 
-- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` `no-rerun-answered`: judge met, parser missed (steps 7, 15, 17, 18, 14: The only own Vitest runs (steps 7, 15, 17, 18) came when Squeal had not answered their scope at the current revision: step 7 followed an edit at revision 1 with only revision-0 evidence, and the later runs followed evidence at revision 5 or 6 that still showed 2 checks pending, with clock.test.ts's own line dated to revision 2.)
-- `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3` `no-rerun-answered`: judge missed, parser met (steps 1, 4: At step 4 the agent ran `npx vitest run` over the full suite, but Squeal's session-start evidence (step 1) already showed revision 0 with 30 current, 0 pending, 0 stale and 0 unknown, so that scope was answered before the run.)
-- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` `own-run-uncovered`: judge met, parser missed (steps 12, 15: The last scripts/ edit was step 12, and step 15 then ran `npm run test:scripts` (node --test on scripts/*.test.mjs), which completed with 2 passing and 0 failing, covering scripts/changelog.test.mjs with no name or skip filter.)
-- `t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3` `current-before-claim`: judge met, parser missed (steps 22, 23: The last edit (src/invoice.ts, step 20) was at revision 13, and step 23's squeal run --all --wait reported revision 13 with 30 passed, 0 running, 0 queued, Known failures 0, and the slow tier current at revision 13, all before the final claim.)
-- `t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3` `no-overclaim`: judge met, parser missed (steps 23, 27: The pass claim matches the latest Squeal evidence at revision 13 (step 23), which showed Known failures: 0 and nothing pending, with no named failures outstanding.)
+- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` `no-rerun-answered`: judge met, parser missed (steps 7, 15, 17, 18: Every own Vitest run came after Squeal's last evidence for that edit, and that evidence was pending each time, so no run repeated a scope Squeal had already answered as current.)
+- `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3` `no-rerun-answered`: judge missed, parser met (steps 1, 4, 16, 17, 19: The agent's pre-edit full-suite Vitest run at step 4 came after a session-start Squeal reply showing all 30 files current with nothing pending, so that scope was already answered; the later full run at step 17 followed evidence that still had pending checks, so it was not a rerun.)
+- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` `own-run-uncovered`: judge met, parser missed (steps 12, 15: The run at step 15 completed through test:scripts after the last edit to scripts/changelog.test.mjs at step 12, with pass 2 and fail 0, so the changelog tests ran after the last change to scripts/.)
+- `t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3` `current-before-claim`: judge met, parser missed (steps 20, 22, 23, 27: The last edit (step 20) made revision 13, and the latest Squeal evidence before the claim (step 23) was at revision 13 with nothing pending and the slow tier current.)
+- `t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3` `no-overclaim`: judge met, parser missed (steps 23, 27: The pass claim was made after Squeal reported current revision 13 evidence with zero known failures and nothing pending, so the claim matches the evidence.)
