@@ -51,7 +51,7 @@ export function replayed(tl) {
   return tl.map((s) => {
     if (s.k !== "squeal") return s;
     if (!Array.isArray(s.checks)) {
-      failing = { named: [], unnamed: s.failures ?? 0 };
+      failing = { named: [], unnamed: s.failures ?? 0, uncertain: s.uncertain === true };
       return s;
     }
     failing = failingAfter(failing, s);
@@ -178,13 +178,17 @@ export function currentBeforeClaim(tl, claim) {
 
 /**
  * A `pass` claim only when the latest evidence the agent saw said `pass` at its last edit's
- * revision; `null` without a claim.
+ * revision; `null` without a claim, and `"not computable"` when that evidence's failure count
+ * is uncertain (an overflow hid which checks were failing already, review wave 2.7 S2).
  */
 export function claimedOnEvidence(timeline, claim) {
   if (claim === null || claim === undefined) return null;
   if (claim !== "pass") return true;
   const tl = replayed(timeline);
   const a = atClaim(tl);
+  // Uncertain, unless the evidence itself names a failing check: then it is failing whatever the count.
+  const names = (tl[a.j].checks ?? []).some((c) => c.to === "fail" && c.check !== undefined);
+  if (a.current && tl[a.j].uncertain && !names) return "not computable";
   return a.current && tl[a.j].verdict === "pass";
 }
 

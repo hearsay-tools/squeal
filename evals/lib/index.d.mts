@@ -367,6 +367,8 @@ export interface Evidence {
   /** Each check the text named, with its own provenance (review 006-18 B2, S2). */
   checks?: CheckSeen[];
   failures: number;
+  /** The failure count may be wrong: an overflow hid which checks were failing already. */
+  uncertain?: true;
   verdict: "pass" | "fail" | "unknown";
   /** Test files named current at the revision, and those named failing. */
   files: string[];
@@ -388,6 +390,7 @@ export type CheckSeen =
 export interface Failing {
   named: string[];
   unnamed: number;
+  uncertain?: boolean;
 }
 export function squealEvidence(
   text: string,
@@ -410,7 +413,10 @@ export function coveredRun(
   d: { runner: string; files: readonly string[]; after?: string | null },
 ): boolean | null;
 export function currentBeforeClaim(timeline: readonly Step[], claim: unknown): boolean | null;
-export function claimedOnEvidence(timeline: readonly Step[], claim: unknown): boolean | null;
+export function claimedOnEvidence(
+  timeline: readonly Step[],
+  claim: unknown,
+): boolean | null | "not computable";
 export function redStep(
   timeline: readonly Step[],
   d: { test: string; check?: string; fix: string },
