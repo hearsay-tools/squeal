@@ -11,6 +11,7 @@ import {
   STOP_WAIT_CAP_MS,
   stopBusyTimeoutMs,
 } from "../../src/harness/claude-code/index.js";
+import { SOCKET_TIMEOUT_MS } from "../../src/harness/shared/index.js";
 import { check, result, setKey } from "../state/helpers.js";
 import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 
@@ -148,10 +149,11 @@ describe("Stop's wait for pending checks (review wave 4.5, S1)", () => {
 });
 
 describe("Stop within its 2 s hook timeout (review wave 3, N4)", () => {
-  it("leaves room for the busy timeout after the longest wait", () => {
-    expect(STOP_WAIT_CAP_MS + stopBusyTimeoutMs(STOP_WAIT_CAP_MS) + STOP_MARGIN_MS).toBe(
-      HOOK_TIMEOUT_MS,
-    );
+  it("leaves room for the busy timeout and the slow nudge after the longest wait", () => {
+    const busy = stopBusyTimeoutMs(STOP_WAIT_CAP_MS);
+    // Task 001-281: the nudge after a silent Stop has the socket budget of its own.
+    expect(STOP_WAIT_CAP_MS + busy + SOCKET_TIMEOUT_MS + STOP_MARGIN_MS).toBe(HOOK_TIMEOUT_MS);
+    expect(busy).toBeGreaterThan(0);
     expect(stopBusyTimeoutMs(0)).toBe(1_000);
   });
 

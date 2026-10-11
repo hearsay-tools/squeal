@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { requestDaemon } from "../../core/daemon/client.js";
 import { readPolicy } from "../../core/daemon/policy.js";
 import {
   formatDelta,
@@ -19,7 +20,7 @@ import type {
 } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
-import { ensureIfStale, startingAfter } from "./ensure.js";
+import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import {
   fullSuiteReason,
@@ -44,11 +45,13 @@ export const STOP_POLL_MS = 100;
 
 /**
  * How long Stop's store statements wait for a lock after waiting `waitMs`:
- * what is left of the hook timeout, at most the usual hook busy timeout.
- * Review wave 3, N4: a full wait plus a full busy timeout outlasted the hook.
+ * what is left of the hook timeout after the nudge's socket budget
+ * (`nudgeSlow`), at most the usual hook busy timeout. Review wave 3, N4: a
+ * full wait plus a full busy timeout outlasted the hook.
  */
 export function stopBusyTimeoutMs(waitMs: number): number {
-  return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
+  const left = HOOK_TIMEOUT_MS - STOP_MARGIN_MS - SOCKET_TIMEOUT_MS - waitMs;
+  return Math.min(STATUS_BUSY_TIMEOUT_MS, left);
 }
 
 /** What a Stop says: a block with its reason, news that keeps the turn going, or nothing. */
@@ -71,7 +74,8 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  *
  * Task 001-85: a main agent's Stop that says nothing ends the turn, so its
  * consumer is idle and the waiter may wake it for the test files pending now;
- * one that speaks keeps the turn going, and the Stop after it decides.
+ * one that speaks keeps the turn going, and the Stop after it decides. With
+ * slow files pending, the silent Stop then nudges the daemon (`nudgeSlow`).
  *
  * `stop.blockOnKnownFailures` blocks only on failures current at this
  * revision; failures whose re-run is pending are named as such, never as
@@ -131,6 +135,7 @@ export function stopTurn(
             const text = statusText(header, failures, deps.command);
             return { block: `${retriesReason(header.revision)}\n\n${text}` };
           }
+          await nudgeSlow(context, header);
         }
         return news === null ? null : { news };
       }
@@ -250,6 +255,20 @@ async function newsText(
     .filter((s) => s.outcome === "fail")
     .map((s) => s.check);
   return `${formatDelta(delta, command)}\n${knownFailuresLine(failures, command)}`;
+}
+
+/**
+ * Task 001-281: after a silent Stop ended the turn with slow files pending,
+ * a nudge over the daemon's socket (D9: "liveness and nudges with a 100 ms
+ * timeout"), so a slow tier waiting for its consumers to go idle starts now
+ * rather than at its recheck (`SLOW_RECHECK_MS`). A daemon that does not
+ * answer costs the socket budget and nothing more; the recheck still comes.
+ */
+async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<void> {
+  if ((header.slowPending?.testFiles ?? 0) === 0) return;
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  if (record === null) return;
+  await requestDaemon(record.socketPath, { type: "nudge" }, SOCKET_TIMEOUT_MS).catch(() => {});
 }
 
 /**
