@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type CellRecord,
+  CONTEXT,
   conditionsOf,
   declarations,
   expectationsOf,
@@ -334,6 +335,42 @@ describe("the edges of D4's rules", () => {
     const c = BUILD["t2-weekend"]?.({}) as CellRecord;
     expect([c.claim, c.truthPass, c.claimMatchesSqueal]).toEqual(["fail", true, true]);
     expect(Object.values(grade(c) ?? {})).not.toContain("missed");
+  });
+});
+
+describe("T2's red step, recorded as context (review 006-13 S1)", () => {
+  const red = (c: CellRecord) =>
+    ["redStepSqueal", "redStepOwnRun"].map((key) =>
+      CONTEXT.find((x) => x.key === key)?.of(c, [], declared.context?.[String(c.task)]),
+    );
+
+  it("is seen through Squeal before the fix in the right moves", () => {
+    expect(red(BUILD["t2-weekend"]?.({}) as CellRecord)).toEqual([true, false]);
+  });
+
+  it("is seen in the agent's own failing run before the fix", () => {
+    const c = session(
+      "t2-weekend",
+      [
+        { edit: "test/clock.test.ts" },
+        { cmd: "npx vitest run test/clock.test.ts", out: " Test Files  1 failed (1)", exit: 1 },
+        { edit: "src/clock.ts" },
+        { squeal: RECOVERED(2) },
+        CLAIM("fail"),
+      ],
+      { truthPass: true, status: "fail" },
+    );
+    expect(red(c)).toEqual([false, true]);
+  });
+
+  it("is not seen when the fix comes first, and does not apply to other tasks", () => {
+    const c = session(
+      "t2-weekend",
+      [{ edit: "src/clock.ts" }, { squeal: SUNDAY(1) }, CLAIM("fail")],
+      { truthPass: true, status: "fail" },
+    );
+    expect(red(c)).toEqual([false, false]);
+    expect(red(BUILD["t1-thousands"]?.({}) as CellRecord)).toEqual([null, null]);
   });
 });
 

@@ -5,8 +5,9 @@
 // `dir` defaults to evals/results. Each cell's `claim` is re-read from its `claimLine` with the
 // current parser, and `claimTrue` and `claimMatchesSqueal` are recomputed from it, `truthPass`
 // and `squealVerdict` by the grader's own rule. Then each cell's `expectations` are computed from
-// its kept fields, and the file records the expectations revision that graded it. A rule a file
-// lacks a field for is `not computable`, and a task whose run had other knobs is not graded;
+// its kept fields and its retained timeline (D4), and the file records the expectations revision
+// that graded it. A rule a cell lacks a field or a timeline for is `not computable`, and a task
+// whose run had other knobs is not graded;
 // both are named in the note, never guessed. Nothing else changes. Each file gets a `regraded`
 // note per change, naming the cells it changed, an empty list where it changed none. Grading is
 // not a condition, so the fingerprint stays.
@@ -23,7 +24,7 @@ const NOTE =
   "Claims re-read from claimLine: one claim word followed by `|` and evidence is now a claim, and a line naming two claim words is still none. claimTrue and claimMatchesSqueal recomputed from claim, truthPass and squealVerdict; the trend now splits a false claim into false pass and false fail. The 006-12 `command -p`, `-v` and `-V` parsing fix is not applied: results files keep no transcripts, so every other count is as first graded.";
 
 const EXPECTED =
-  "Expectations (spec 006 D4) computed from each cell's kept fields under evals/tasks/tasks.json at this revision: met, missed, n/a where one does not apply. The trend scores these, never raw behaviours. Results keep no transcripts, so a rule needing a field a file does not keep is not computable, and a cell whose run had other knobs for its task is not graded; both are listed here.";
+  "Expectations (spec 006 D4 as amended 2026-10-11) computed from each cell's kept fields under evals/tasks/tasks.json at this revision: met, missed, n/a where one does not apply. The trend scores these, never raw behaviours. no-rerun-answered, own-run-uncovered, current-before-claim and no-overclaim read the cell's retained timeline (006-17): the evidence the agent had seen, when, and which tests its own runs completed. A cell without a timeline, as every cell graded before 006-17 is, is not computable for them, never guessed from its counts or from the runner's end status; measuring them needs a new run. A cell whose run had other knobs for its task is not graded. Both are listed here.";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -127,7 +128,7 @@ const runs = readdirSync(dir)
   });
 for (const { f, data, changed, write } of runs) {
   if (write) writeFileSync(join(dir, f), `${JSON.stringify(data, null, 1)}\n`);
-  const note = data.regraded.find((n) => n.by === "expectations");
+  const note = data.regraded.findLast((n) => n.by === "expectations");
   console.log(
     `${f}: claims ${changed.length ? `regraded ${changed.join(", ")}` : "unchanged"}; expectations ${note.revision}, ${note.changed.length} cell(s) changed, not graded: ${note.notGraded.map((n) => n.task).join(", ") || "none"}`,
   );
