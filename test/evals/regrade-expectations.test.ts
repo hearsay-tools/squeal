@@ -19,17 +19,32 @@ const root = mkdtempSync(join(tmpdir(), "squeal-evals-expect-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 const declared = declarations();
 
-/** T4's right moves: edits, then its own Vitest run, since no daemon validates. */
-const t4 = session(
-  "t4-contract",
-  [
-    { edit: "src/invoice.ts" },
-    { cmd: "npx vitest run", out: " Test Files  1 failed | 6 passed (7)", exit: 1 },
-    { cmd: "squeal status --wait 60000", out: "Not validated: no daemon is running" },
-    CLAIM("fail"),
-  ],
-  { truthPass: false, status: "noDaemon" },
-);
+/**
+ * T4's right moves: edits, then its own Vitest run, since no daemon validates. The judge grades
+ * own-run-uncovered (spec 006 D9), so the cell carries its verdict, citing the run (step 2).
+ */
+const t4 = {
+  ...session(
+    "t4-contract",
+    [
+      { edit: "src/invoice.ts" },
+      { cmd: "npx vitest run", out: " Test Files  1 failed | 6 passed (7)", exit: 1 },
+      { cmd: "squeal status --wait 60000", out: "Not validated: no daemon is running" },
+      CLAIM("fail"),
+    ],
+    { truthPass: false, status: "noDaemon" },
+  ),
+  judge: {
+    verdicts: {
+      "own-run-uncovered": {
+        verdict: "met",
+        steps: [2],
+        reason: "The full suite ran after the last edit.",
+        grade: "met",
+      },
+    },
+  },
+};
 const t1 = session("t1-thousands", [{ edit: "src/money.ts" }, WAIT, CLAIM("pass")], {
   truthPass: true,
   status: "pass",
