@@ -134,6 +134,28 @@ export async function environmentPackages(
   return { imports, builtins: [...builtins].sort(compare), runner };
 }
 
+/**
+ * The reporter names Vitest maps to its own classes before it looks for a
+ * package (`ReportersMap`). Its default reporter follows the launching agent
+ * and CI (`minimal` or `default`, plus `github-actions`), so reading these as
+ * package names keyed the harness (task 001-260).
+ */
+export const BUILTIN_REPORTERS: ReadonlySet<string> = new Set([
+  "default",
+  "agent",
+  "minimal",
+  "blob",
+  "verbose",
+  "dot",
+  "json",
+  "tap",
+  "tap-flat",
+  "junit",
+  "tree",
+  "hanging-process",
+  "github-actions",
+]);
+
 /** The resolved config's fields Vitest loads by package name. */
 interface NamingConfig {
   readonly environment?: unknown;
@@ -143,8 +165,8 @@ interface NamingConfig {
 /**
  * Package names the resolved config gives as strings, looked up from the
  * project root: the environment's package and every reporter that is a bare
- * specifier. A builtin reporter's name resolves to no package and keys as
- * absent, which changes only when a package of that name is installed.
+ * specifier other than a builtin reporter's name, which Vitest never loads
+ * as a package (`BUILTIN_REPORTERS`).
  */
 function namedByConfig(config: NamingConfig): string[] {
   const names: string[] = [];
@@ -155,7 +177,8 @@ function namedByConfig(config: NamingConfig): string[] {
   const reporters = Array.isArray(config.reporters) ? config.reporters : [];
   for (const reporter of reporters) {
     const specifier = Array.isArray(reporter) ? reporter[0] : reporter;
-    const name = typeof specifier === "string" ? packageName(specifier) : null;
+    if (typeof specifier !== "string" || BUILTIN_REPORTERS.has(specifier)) continue;
+    const name = packageName(specifier);
     if (name !== null) names.push(name);
   }
   return names;

@@ -4,4 +4,4 @@
  * in its file, which the key-format guard exempts (task 001-203), so a bump
  * leaves `KEY_FORMAT_VERSION` and the other runners' keys alone.
  */
-export const VITEST_ADAPTER_VERSION = "2";
+export const VITEST_ADAPTER_VERSION = "3";
