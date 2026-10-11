@@ -79,3 +79,24 @@ export function assertNoSecrets(text, secrets) {
   if (n)
     throw new Error(`the results hold ${n} secret value(s) (a provider URL or token); not written`);
 }
+
+/**
+ * Each arm's fixture commit from the graded cells (`{ variant, head }`): `{ [arm]: head }`, null
+ * for an arm with no graded cell. An arm's instructions and policy are committed into its
+ * fixture, so arms differ by design; cells of one arm that differ are drift, and throw.
+ */
+export function armFixtures(grades, arms) {
+  return Object.fromEntries(
+    arms.map((arm) => {
+      const heads = [...new Set(grades.filter((g) => g.variant === arm).map((g) => g.head))];
+      if (heads.length > 1)
+        throw new Error(`arm ${arm} ran on ${heads.length} fixture commits: ${heads.join(", ")}`);
+      return [arm, heads[0] ?? null];
+    }),
+  );
+}
+
+/** A run's results file name: `<date>-<version>.<run>[.<variant>].json`, one per run. */
+export function resultsName({ date, version, run, variant = null }) {
+  return `${date}-${version}.${run}${variant ? `.${variant}` : ""}.json`;
+}

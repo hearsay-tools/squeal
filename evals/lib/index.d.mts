@@ -144,9 +144,78 @@ export function secretsOf(
 export function scanForSecrets(
   dirs: readonly string[],
   secrets: readonly string[],
-): { path: string; secrets: number }[];
+): { path: string; secrets: number; unscanned?: true }[];
+export function redact(text: string, secrets: readonly string[]): string;
+export interface ScratchReport {
+  secretsBeforeRemoval: string[];
+  sanitized: string[];
+  removed: string[];
+  secretsAfterRemoval: string[];
+}
+export function clearScratch(cell: string, secrets: readonly string[]): ScratchReport;
+export function leftoverProcesses(dir: string): { pid: number; line: string }[];
 
 export const CLAUDE_ALLOWED_TOOLS: readonly string[];
+/** How a bounded command ended: `exit` is null unless it exited by itself. */
+export interface Completion {
+  exit: number | null;
+  signal: string | null;
+  timedOut: boolean;
+  spawnError: string | null;
+}
+export function runBounded(input: {
+  command: string;
+  args: readonly string[];
+  cwd: string;
+  env: Record<string, string | undefined>;
+  timeoutMs: number;
+  graceMs?: number;
+  onStdout?: (chunk: Buffer) => void;
+  onStderr?: (chunk: Buffer) => void;
+  log: (line: string) => void;
+}): Promise<Completion>;
+export function killRunning(signal?: string): void;
+/** `out/truth.json`, the contract between the runner and the grader (006 wave 1.5). */
+export interface TruthRecord {
+  vitest: Completion;
+  nodeTest: Completion & { files: number };
+}
+export function groundTruth(input: {
+  cwd: string;
+  env: Record<string, string | undefined>;
+  out: string;
+  log: (line: string) => void;
+  timeoutMs?: number;
+  graceMs?: number;
+  npx?: string;
+}): Promise<TruthRecord>;
+export function runId(now?: Date): string;
+export interface CellArgs {
+  dry: boolean;
+  cold: boolean;
+  resume: boolean;
+  run: string;
+  maxLoad: number;
+  timeoutS: number;
+  graceS: number;
+  effort: string;
+  commit: string;
+  task: string;
+  variant: string;
+  harness: "claude" | "codex";
+  model: string;
+  rep: string;
+}
+export function cellArgs(
+  argv: readonly string[],
+  defaults?: { runId?: () => string; maxLoad?: number },
+): CellArgs;
+export function buildFixture(input: {
+  work: string;
+  variant: { instructions?: string; policy?: Record<string, unknown> };
+  env: Record<string, string | undefined>;
+  modules?: string | null;
+}): string;
 export function sessionCommand(input: {
   harness: "claude" | "codex";
   prompt: string;
@@ -201,6 +270,16 @@ export function conditionsOf(input: {
   effort: string;
 }): Conditions;
 export function cellRecord(grade: Record<string, unknown>): CellRecord;
+export function armFixtures(
+  grades: readonly { variant: string; head: string }[],
+  arms: readonly string[],
+): Record<string, string | null>;
+export function resultsName(input: {
+  date: string;
+  version: string;
+  run: string;
+  variant?: string | null;
+}): string;
 
 export interface ResultsFile {
   kind: "baseline" | "variant";
