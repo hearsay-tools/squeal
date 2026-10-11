@@ -37,6 +37,20 @@ describe("persisted notes", () => {
     expect(notes.at(-1)?.text).toBe("note 24");
   });
 
+  it("read back a shutdown's incarnation, and drop one that is not a string (wave-13af B1)", () => {
+    const store = open(fakeCommonDir());
+    appendNote(store, "wt", { at: 1, revision: null, text: "stop", exitOf: "0.1.121@1#t" });
+    const raw = JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]") as unknown[];
+    store.meta.set(
+      notesMetaKey("wt"),
+      JSON.stringify([...raw, { at: 2, revision: null, text: "x", exitOf: 7 }]),
+    );
+    expect(readDaemonNotes(store, "wt")).toEqual([
+      { at: 1, revision: null, text: "stop", exitOf: "0.1.121@1#t" },
+      { at: 2, revision: null, text: "x" },
+    ]);
+  });
+
   it("start a new list when the stored value is not a list", () => {
     const store = open(fakeCommonDir());
     store.meta.set(notesMetaKey("wt"), "not json");

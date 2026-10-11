@@ -292,6 +292,15 @@ class Daemon {
     });
   }
 
+  /** Its registration's incarnation (`daemonIncarnation`). */
+  #incarnation(): string {
+    return daemonIncarnation({
+      squealVersion: this.#version,
+      startedAt: this.#startedAt,
+      token: this.#token,
+    });
+  }
+
   /** Runner, sink and loop. The heavy modules load here, after the socket is up. */
   async #run(): Promise<void> {
     const { root, worktreeId, store, commonDir } = this.opened;
@@ -396,11 +405,7 @@ class Daemon {
           changes.some((change) => change.path === POLICY_FILE) ? this.#reloadPolicy() : null,
         squealVersion: this.#version,
         // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
-        incarnation: daemonIncarnation({
-          squealVersion: this.#version,
-          startedAt: this.#startedAt,
-          token: this.#token,
-        }),
+        incarnation: this.#incarnation(),
         ...(this.#predecessor === undefined ? {} : { predecessor: this.#predecessor }),
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
@@ -508,11 +513,19 @@ class Daemon {
     }
   }
 
-  /** `stopped`, a stop's processes, goes beside the text for status to fold by (task 001-255). */
-  #note(text: string, stopped?: StoppedProcesses): void {
+  /**
+   * `stopped`, a stop's processes, goes beside the text for status to fold by
+   * (task 001-255); `exitOf`, this daemon's incarnation, on its shutdown's
+   * note, so status tells that it left from a death (review wave-13af B1).
+   */
+  #note(text: string, stopped?: StoppedProcesses, exitOf?: string): void {
     this.#log(text);
     const revision = this.#loop?.scheduler.status().revision ?? null;
-    const note = stopped === undefined ? { text } : { text, stopped };
+    const note = {
+      text,
+      ...(stopped === undefined ? {} : { stopped }),
+      ...(exitOf === undefined ? {} : { exitOf }),
+    };
     writeNote(
       this.opened.store,
       this.opened.worktreeId,
@@ -534,7 +547,7 @@ class Daemon {
     this.#exit ??= (async () => {
       this.#setPhase("stopping");
       this.#stopTimers();
-      this.#note(text);
+      this.#note(text, undefined, this.#incarnation());
       await this.#starting.catch(() => {});
       const { store, worktreeId, lock } = this.opened;
       await this.#step("loop.close", () => this.#loop?.close());
