@@ -7286,6 +7286,45 @@ var init_queue = __esm({
   }
 });
 
+// src/core/scheduler/moves-keys.ts
+import { createHash as createHash14 } from "node:crypto";
+function keyMark(row) {
+  const key2 = row.key === null ? null : createHash14("sha256").update(row.key).digest("base64url");
+  return [row.revision, key2 === null ? null : key2.slice(0, 16)];
+}
+function readKeyMarks(value) {
+  if (!isRecord(value)) return null;
+  const marks = {};
+  for (const [id2, mark] of Object.entries(value)) {
+    if (!Array.isArray(mark) || !Number.isInteger(mark[0])) continue;
+    marks[id2] = [mark[0], typeof mark[1] === "string" ? mark[1] : null];
+  }
+  return marks;
+}
+function marksVouch(marks, rows) {
+  return marks !== null && rows.every((row) => same(marks[testFileId(row.testFile)], keyMark(row)));
+}
+function markRows(marks, rows) {
+  let changed = false;
+  for (const row of rows) {
+    const id2 = testFileId(row.testFile);
+    const mark = keyMark(row);
+    if (same(marks[id2], mark)) continue;
+    marks[id2] = mark;
+    changed = true;
+  }
+  return changed;
+}
+var same;
+var init_moves_keys = __esm({
+  "src/core/scheduler/moves-keys.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    same = (a, b) => a?.[0] === b[0] && a[1] === b[1];
+  }
+});
+
 // src/core/scheduler/rekeyed-moves.ts
 function rekeyedMovesMetaKey(worktreeId) {
   return worktreeMetaKey("rekeyedMoves", worktreeId);
@@ -7312,7 +7351,22 @@ function readMoves(store, worktreeId) {
     files[id2] = { open: asPair(entry2.open), resolved };
   }
   const caughtUpAt = isInt(value.caughtUpAt) ? value.caughtUpAt : null;
-  return { seq: value.seq, caughtUpAt, dropped: value.dropped, files };
+  return {
+    seq: value.seq,
+    caughtUpAt,
+    dropped: value.dropped,
+    files,
+    keys: readKeyMarks(value.keys)
+  };
+}
+function unrecordedRows(store, worktreeId) {
+  const moves = readMoves(store, worktreeId);
+  const rows = store.testFileKeys.list(worktreeId);
+  return moves === null ? rows : rows.filter((row) => !marksVouch(moves.keys, [row]));
+}
+function movesVouch(store, worktreeId, sinceSeq, rows) {
+  const moves = readMoves(store, worktreeId);
+  return moves !== null && moves.dropped <= sinceSeq && marksVouch(moves.keys, rows);
 }
 function movesSeq(store, worktreeId) {
   return readMoves(store, worktreeId)?.seq ?? null;
@@ -7321,18 +7375,33 @@ function refinedRevision(store, worktreeId) {
   const refined = Number(store.meta.get(refinedMetaKey(worktreeId)) ?? Number.NaN);
   return Number.isInteger(refined) ? refined : null;
 }
-function recordMoves(store, worktreeId, marks, removed, revision, now) {
+function recordMoves(store, worktreeId, marks, removed, revision, now, rows = NO_ROWS) {
   const read4 = readMoves(store, worktreeId);
-  const moves = read4 ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {} };
+  const moves = read4 ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, keys: {} };
   const seq = moves.seq + 1;
-  let changed = read4 === null;
+  let changed = read4 === null || moves.keys === null;
+  const keys = moves.keys ?? {};
+  moves.keys = keys;
   for (const id2 of removed) {
-    if (id2 in moves.files) {
+    if (id2 in moves.files || id2 in keys) {
       delete moves.files[id2];
+      delete keys[id2];
       changed = true;
     }
   }
+  const gone = new Set(removed);
+  const unrecorded = rows.unrecorded.filter((row) => !gone.has(testFileId(row.testFile)));
+  if (unrecorded.length > 0) {
+    moves.dropped = seq;
+    changed = true;
+  }
+  for (const row of unrecorded) {
+    if (row.pending === null) continue;
+    const id2 = testFileId(row.testFile);
+    apply(moves, { id: id2, open: row.revision, moved: row.revision }, seq, now);
+  }
   for (const mark of marks) changed = apply(moves, mark, seq, now) || changed;
+  changed = markRows(keys, [...unrecorded, ...rows.written]) || changed;
   const refined = refinedRevision(store, worktreeId);
   const caughtUpAt = refined === null || refined >= revision ? moves.caughtUpAt ?? now : null;
   if (caughtUpAt !== moves.caughtUpAt) {
@@ -7387,10 +7456,11 @@ function answerMoves(store, worktreeId, upTo, sinceSeq) {
   const refined = refinedRevision(store, worktreeId);
   if (refined !== null && refined < upTo) return { state: "refining" };
   const moves = readMoves(store, worktreeId);
-  if (moves === null || moves.dropped > sinceSeq) return { state: "incomplete" };
-  const refs2 = new Map(
-    store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row.testFile])
-  );
+  const rows = store.testFileKeys.list(worktreeId);
+  if (moves === null || moves.dropped > sinceSeq || !marksVouch(moves.keys, rows)) {
+    return { state: "incomplete" };
+  }
+  const refs2 = new Map(rows.map((row) => [testFileId(row.testFile), row.testFile]));
   const rekeyed = [];
   for (const [id2, file] of Object.entries(moves.files)) {
     const testFile = refs2.get(id2);
@@ -7405,15 +7475,17 @@ function answerMoves(store, worktreeId, upTo, sinceSeq) {
   }
   return { state: "answered", rekeyed };
 }
-var MOVES_RETENTION_MS, MOVES_GRACE_MS, isInt, asPair;
+var MOVES_RETENTION_MS, MOVES_GRACE_MS, NO_ROWS, isInt, asPair;
 var init_rekeyed_moves = __esm({
   "src/core/scheduler/rekeyed-moves.ts"() {
     "use strict";
     init_fs();
     init_keys();
     init_types();
+    init_moves_keys();
     MOVES_RETENTION_MS = 60 * 6e4;
     MOVES_GRACE_MS = 6e4;
+    NO_ROWS = { written: [], unrecorded: [] };
     isInt = (value) => typeof value === "number" && Number.isInteger(value);
     asPair = (value) => Array.isArray(value) && isInt(value[0]) && isInt(value[1]) ? [value[0], value[1]] : null;
   }
@@ -7629,6 +7701,8 @@ var init_ledger = __esm({
        * 001-258).
        */
       #rekeyed = /* @__PURE__ */ new Map();
+      /** A commit took in the rows of the store's writers before this ledger (`unrecordedRows`). */
+      #adopted = false;
       file(ref2) {
         return this.files.get(testFileId(ref2));
       }
@@ -7894,11 +7968,15 @@ var init_ledger = __esm({
         this.#unknown = [];
         this.#retired = [];
         store.transaction(() => {
+          const unrecorded = this.#adopted ? [] : unrecordedRows(store, worktreeId);
           if (rows.length > 0) store.testFileKeys.upsertMany(rows);
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
           const removedIds = removed.map(testFileId);
           recordRekeyed(store, worktreeId, rekeyed, removedIds);
-          recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now());
+          recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
+            written: rows,
+            unrecorded
+          });
           for (const { results: results2, checkpointId } of mergeApplied(applied)) {
             sink.applyResults(worktreeId, revision, results2, { checkpointId });
           }
@@ -7913,6 +7991,7 @@ var init_ledger = __esm({
             store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
           }
         });
+        this.#adopted = true;
       }
       #byCheckpoint(rows) {
         const groups = /* @__PURE__ */ new Map();
@@ -8808,14 +8887,14 @@ var init_bootstrap = __esm({
 });
 
 // src/core/scheduler/install-stamp.ts
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 import { lstat as lstat5, readdir as readdir5 } from "node:fs/promises";
 import { join as join29 } from "node:path";
 async function entriesPart(dir) {
   try {
     const names = (await readdir5(dir)).filter((name) => !name.startsWith(".")).sort();
     if (names.length === 0) return "-";
-    return createHash14("sha1").update(names.join("\0")).digest("hex");
+    return createHash15("sha1").update(names.join("\0")).digest("hex");
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return "-";
     throw error;
@@ -9103,7 +9182,7 @@ var init_lockfiles = __esm({
 });
 
 // src/core/scheduler/keying.ts
-import { createHash as createHash15 } from "node:crypto";
+import { createHash as createHash16 } from "node:crypto";
 var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
 var init_keying = __esm({
   "src/core/scheduler/keying.ts"() {
@@ -9299,7 +9378,7 @@ var init_keying = __esm({
         const previous = this.index.environment(project);
         if (previous === void 0) return [];
         const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
-        return this.index.setEnvironment(project, createHash15("sha256").update(encoded).digest("hex"));
+        return this.index.setEnvironment(project, createHash16("sha256").update(encoded).digest("hex"));
       }
       /**
        * Applies a reloaded policy (spec 001 D11, review S3). New `inputs`:
@@ -14204,7 +14283,7 @@ var init_broken = __esm({
 });
 
 // src/runners/vitest/stamp.ts
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash17 } from "node:crypto";
 import { lstat as lstat8, readFile as readFile5 } from "node:fs/promises";
 function changedBefore(stat7, at2) {
   const wholeSeconds = stat7.ctimeMs % 1e3 === 0 && stat7.mtimeMs % 1e3 === 0;
@@ -14216,7 +14295,7 @@ async function readStamp(file) {
   try {
     return {
       stat: stat7,
-      hash: createHash16("sha1").update(await readFile5(file)).digest("hex")
+      hash: createHash17("sha1").update(await readFile5(file)).digest("hex")
     };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -33924,7 +34003,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.114";
+  if (true) return "0.1.115";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35719,7 +35798,7 @@ var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
 var PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
 async function terminate(found, table = PROC) {
-  const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
+  const same2 = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
   const named = [];
   for (const entry2 of found) {
     const now = table.stat(entry2.pid);
@@ -35732,19 +35811,19 @@ async function terminate(found, table = PROC) {
   }
   const ages = /* @__PURE__ */ new Map();
   for (const { entry: entry2 } of named) {
-    if (!same(entry2)) continue;
+    if (!same2(entry2)) continue;
     ages.set(entry2, Math.max(0, table.uptime() - entry2.start) / TICKS_PER_SECOND);
     table.signal(entry2.pid, "SIGTERM");
   }
   const deadline = Date.now() + GRACE_MS;
-  let alive = [...ages.keys()].filter(same);
+  let alive = [...ages.keys()].filter(same2);
   while (alive.length > 0 && Date.now() < deadline) {
     await sleep2(25);
-    alive = alive.filter(same);
+    alive = alive.filter(same2);
   }
   const killed = /* @__PURE__ */ new Set();
   for (const entry2 of alive) {
-    if (!same(entry2)) continue;
+    if (!same2(entry2)) continue;
     table.signal(entry2.pid, "SIGKILL");
     killed.add(entry2);
   }
@@ -38260,8 +38339,13 @@ async function waitForStatus(cwd, options) {
           }
           syncing.fallback = answer2.state === "incomplete";
         }
+        let keys = syncing.window === void 0 ? [] : store.testFileKeys.list(id2);
+        if (syncing.window !== void 0 && !movesVouch(store, id2, syncing.sinceSeq ?? 0, keys)) {
+          syncing.window = void 0;
+          syncing.fallback = true;
+          keys = [];
+        }
         const window = syncing.window;
-        const keys = window === void 0 ? [] : store.testFileKeys.list(id2);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id2), now());
         let transitions;
