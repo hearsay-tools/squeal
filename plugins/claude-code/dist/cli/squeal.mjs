@@ -95,6 +95,14 @@ var init_store = __esm({
 });
 
 // src/core/types/daemon.ts
+function daemonIncarnation(daemon) {
+  return daemon === null ? null : `${daemon.squealVersion}@${daemon.startedAt}`;
+}
+function predecessorIncarnation(hasRow, last) {
+  if (!hasRow) return null;
+  if (last === null || last.squealVersion === null) return void 0;
+  return daemonIncarnation({ startedAt: last.startedAt, squealVersion: last.squealVersion });
+}
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
@@ -5014,12 +5022,16 @@ function createWorktreeRepo(conn) {
         d?.squealVersion ?? null
       );
     },
-    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
+    // the start time and version too, the identity `lastDaemon` reads (task 001-268); with no
+    // socket every other read finds no daemon.
     setDaemon: (id2, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?,
+           daemon_started_at = COALESCE(?, daemon_started_at),
            daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
-           daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
+           daemon_heartbeat_interval_ms = ?,
+           daemon_version = COALESCE(?, daemon_version) WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
         d?.heartbeatAt ?? null,
@@ -5034,6 +5046,15 @@ function createWorktreeRepo(conn) {
         at2,
         id2
       );
+    },
+    lastDaemon: (id2) => {
+      const row = conn.get(
+        "SELECT daemon_started_at, daemon_version FROM worktrees WHERE id = ?",
+        id2
+      );
+      const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
+      if (row === null || startedAt === null) return null;
+      return { startedAt, squealVersion: strOrNull(row, "daemon_version") };
     },
     remove: (id2) => {
       conn.transaction(() => {
@@ -7286,45 +7307,6 @@ var init_queue = __esm({
   }
 });
 
-// src/core/scheduler/moves-keys.ts
-import { createHash as createHash14 } from "node:crypto";
-function keyMark(row) {
-  const key2 = row.key === null ? null : createHash14("sha256").update(row.key).digest("base64url");
-  return [row.revision, key2 === null ? null : key2.slice(0, 16)];
-}
-function readKeyMarks(value) {
-  if (!isRecord(value)) return null;
-  const marks = {};
-  for (const [id2, mark] of Object.entries(value)) {
-    if (!Array.isArray(mark) || !Number.isInteger(mark[0])) continue;
-    marks[id2] = [mark[0], typeof mark[1] === "string" ? mark[1] : null];
-  }
-  return marks;
-}
-function marksVouch(marks, rows) {
-  return marks !== null && rows.every((row) => same(marks[testFileId(row.testFile)], keyMark(row)));
-}
-function markRows(marks, rows) {
-  let changed = false;
-  for (const row of rows) {
-    const id2 = testFileId(row.testFile);
-    const mark = keyMark(row);
-    if (same(marks[id2], mark)) continue;
-    marks[id2] = mark;
-    changed = true;
-  }
-  return changed;
-}
-var same;
-var init_moves_keys = __esm({
-  "src/core/scheduler/moves-keys.ts"() {
-    "use strict";
-    init_fs();
-    init_keys();
-    same = (a, b) => a?.[0] === b[0] && a[1] === b[1];
-  }
-});
-
 // src/core/scheduler/rekeyed-moves.ts
 function rekeyedMovesMetaKey(worktreeId) {
   return worktreeMetaKey("rekeyedMoves", worktreeId);
@@ -7356,17 +7338,18 @@ function readMoves(store, worktreeId) {
     caughtUpAt,
     dropped: value.dropped,
     files,
-    keys: readKeyMarks(value.keys)
+    writer: typeof value.writer === "string" ? value.writer : null
   };
 }
-function unrecordedRows(store, worktreeId) {
-  const moves = readMoves(store, worktreeId);
-  const rows = store.testFileKeys.list(worktreeId);
-  return moves === null ? rows : rows.filter((row) => !marksVouch(moves.keys, [row]));
+function movesTrusted(store, worktreeId, sinceSeq, incarnation) {
+  return trusted(store, worktreeId, readMoves(store, worktreeId), sinceSeq, incarnation);
 }
-function movesVouch(store, worktreeId, sinceSeq, rows) {
-  const moves = readMoves(store, worktreeId);
-  return moves !== null && moves.dropped <= sinceSeq && marksVouch(moves.keys, rows);
+function trusted(store, worktreeId, moves, sinceSeq, incarnation) {
+  return incarnation !== null && moves !== null && moves.dropped <= sinceSeq && moves.writer === incarnation && daemonIncarnation(store.worktrees.get(worktreeId)?.daemon ?? null) === incarnation;
+}
+function adoptsAtFirstCommit(store, worktreeId, predecessor) {
+  if (predecessor === null) return false;
+  return predecessor === void 0 || readMoves(store, worktreeId)?.writer !== predecessor;
 }
 function movesSeq(store, worktreeId) {
   return readMoves(store, worktreeId)?.seq ?? null;
@@ -7375,33 +7358,28 @@ function refinedRevision(store, worktreeId) {
   const refined = Number(store.meta.get(refinedMetaKey(worktreeId)) ?? Number.NaN);
   return Number.isInteger(refined) ? refined : null;
 }
-function recordMoves(store, worktreeId, marks, removed, revision, now, rows = NO_ROWS) {
+function recordMoves(store, worktreeId, marks, removed, revision, now, by) {
   const read4 = readMoves(store, worktreeId);
-  const moves = read4 ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, keys: {} };
+  const moves = read4 ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, writer: null };
   const seq = moves.seq + 1;
-  let changed = read4 === null || moves.keys === null;
-  const keys = moves.keys ?? {};
-  moves.keys = keys;
+  let changed = read4 === null || moves.writer !== by.writer;
+  moves.writer = by.writer;
+  if (by.before !== void 0) {
+    moves.dropped = seq;
+    changed = true;
+    for (const row of by.before) {
+      if (row.pending === null) continue;
+      const id2 = testFileId(row.testFile);
+      apply(moves, { id: id2, open: row.revision, moved: row.revision }, seq, now);
+    }
+  }
   for (const id2 of removed) {
-    if (id2 in moves.files || id2 in keys) {
+    if (id2 in moves.files) {
       delete moves.files[id2];
-      delete keys[id2];
       changed = true;
     }
   }
-  const gone = new Set(removed);
-  const unrecorded = rows.unrecorded.filter((row) => !gone.has(testFileId(row.testFile)));
-  if (unrecorded.length > 0) {
-    moves.dropped = seq;
-    changed = true;
-  }
-  for (const row of unrecorded) {
-    if (row.pending === null) continue;
-    const id2 = testFileId(row.testFile);
-    apply(moves, { id: id2, open: row.revision, moved: row.revision }, seq, now);
-  }
   for (const mark of marks) changed = apply(moves, mark, seq, now) || changed;
-  changed = markRows(keys, [...unrecorded, ...rows.written]) || changed;
   const refined = refinedRevision(store, worktreeId);
   const caughtUpAt = refined === null || refined >= revision ? moves.caughtUpAt ?? now : null;
   if (caughtUpAt !== moves.caughtUpAt) {
@@ -7452,14 +7430,14 @@ function prune3(moves, cutoff) {
   }
   return pruned;
 }
-function answerMoves(store, worktreeId, upTo, sinceSeq) {
-  const refined = refinedRevision(store, worktreeId);
-  if (refined !== null && refined < upTo) return { state: "refining" };
+function answerMoves(store, worktreeId, upTo, sinceSeq, incarnation) {
   const moves = readMoves(store, worktreeId);
-  const rows = store.testFileKeys.list(worktreeId);
-  if (moves === null || moves.dropped > sinceSeq || !marksVouch(moves.keys, rows)) {
+  if (moves === null || !trusted(store, worktreeId, moves, sinceSeq, incarnation)) {
     return { state: "incomplete" };
   }
+  const refined = refinedRevision(store, worktreeId);
+  if (refined !== null && refined < upTo) return { state: "refining" };
+  const rows = store.testFileKeys.list(worktreeId);
   const refs2 = new Map(rows.map((row) => [testFileId(row.testFile), row.testFile]));
   const rekeyed = [];
   for (const [id2, file] of Object.entries(moves.files)) {
@@ -7475,17 +7453,15 @@ function answerMoves(store, worktreeId, upTo, sinceSeq) {
   }
   return { state: "answered", rekeyed };
 }
-var MOVES_RETENTION_MS, MOVES_GRACE_MS, NO_ROWS, isInt, asPair;
+var MOVES_RETENTION_MS, MOVES_GRACE_MS, isInt, asPair;
 var init_rekeyed_moves = __esm({
   "src/core/scheduler/rekeyed-moves.ts"() {
     "use strict";
     init_fs();
     init_keys();
     init_types();
-    init_moves_keys();
     MOVES_RETENTION_MS = 60 * 6e4;
     MOVES_GRACE_MS = 6e4;
-    NO_ROWS = { written: [], unrecorded: [] };
     isInt = (value) => typeof value === "number" && Number.isInteger(value);
     asPair = (value) => Array.isArray(value) && isInt(value[0]) && isInt(value[1]) ? [value[0], value[1]] : null;
   }
@@ -7701,7 +7677,7 @@ var init_ledger = __esm({
        * 001-258).
        */
       #rekeyed = /* @__PURE__ */ new Map();
-      /** A commit took in the rows of the store's writers before this ledger (`unrecordedRows`). */
+      /** A commit took in the rows the store's writers before this ledger left pending (`recordMoves`). */
       #adopted = false;
       file(ref2) {
         return this.files.get(testFileId(ref2));
@@ -7968,14 +7944,15 @@ var init_ledger = __esm({
         this.#unknown = [];
         this.#retired = [];
         store.transaction(() => {
-          const unrecorded = this.#adopted ? [] : unrecordedRows(store, worktreeId);
+          const adopts = !this.#adopted && adoptsAtFirstCommit(store, worktreeId, this.context.predecessor);
+          const before = adopts ? store.testFileKeys.list(worktreeId) : void 0;
           if (rows.length > 0) store.testFileKeys.upsertMany(rows);
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
           const removedIds = removed.map(testFileId);
           recordRekeyed(store, worktreeId, rekeyed, removedIds);
           recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
-            written: rows,
-            unrecorded
+            writer: this.context.incarnation ?? null,
+            ...before === void 0 ? {} : { before }
           });
           for (const { results: results2, checkpointId } of mergeApplied(applied)) {
             sink.applyResults(worktreeId, revision, results2, { checkpointId });
@@ -8887,14 +8864,14 @@ var init_bootstrap = __esm({
 });
 
 // src/core/scheduler/install-stamp.ts
-import { createHash as createHash15 } from "node:crypto";
+import { createHash as createHash14 } from "node:crypto";
 import { lstat as lstat5, readdir as readdir5 } from "node:fs/promises";
 import { join as join29 } from "node:path";
 async function entriesPart(dir) {
   try {
     const names = (await readdir5(dir)).filter((name) => !name.startsWith(".")).sort();
     if (names.length === 0) return "-";
-    return createHash15("sha1").update(names.join("\0")).digest("hex");
+    return createHash14("sha1").update(names.join("\0")).digest("hex");
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return "-";
     throw error;
@@ -9182,7 +9159,7 @@ var init_lockfiles = __esm({
 });
 
 // src/core/scheduler/keying.ts
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
 var init_keying = __esm({
   "src/core/scheduler/keying.ts"() {
@@ -9378,7 +9355,7 @@ var init_keying = __esm({
         const previous = this.index.environment(project);
         if (previous === void 0) return [];
         const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed]);
-        return this.index.setEnvironment(project, createHash16("sha256").update(encoded).digest("hex"));
+        return this.index.setEnvironment(project, createHash15("sha256").update(encoded).digest("hex"));
       }
       /**
        * Applies a reloaded policy (spec 001 D11, review S3). New `inputs`:
@@ -10607,7 +10584,9 @@ var init_scheduler2 = __esm({
             now: options.now ?? (() => Date.now()),
             note: (message2) => this.#note(message2),
             rerunCap: options.rerunCap ?? RERUN_CAP,
-            ...options.runnerPartMs === void 0 ? {} : { runnerPartMs: options.runnerPartMs }
+            ...options.runnerPartMs === void 0 ? {} : { runnerPartMs: options.runnerPartMs },
+            ...options.incarnation === void 0 ? {} : { incarnation: options.incarnation },
+            ...options.predecessor === void 0 ? {} : { predecessor: options.predecessor }
           };
           const ledger = new Ledger(context);
           this.#ledger = ledger;
@@ -14283,7 +14262,7 @@ var init_broken = __esm({
 });
 
 // src/runners/vitest/stamp.ts
-import { createHash as createHash17 } from "node:crypto";
+import { createHash as createHash16 } from "node:crypto";
 import { lstat as lstat8, readFile as readFile5 } from "node:fs/promises";
 function changedBefore(stat7, at2) {
   const wholeSeconds = stat7.ctimeMs % 1e3 === 0 && stat7.mtimeMs % 1e3 === 0;
@@ -14295,7 +14274,7 @@ async function readStamp(file) {
   try {
     return {
       stat: stat7,
-      hash: createHash17("sha1").update(await readFile5(file)).digest("hex")
+      hash: createHash16("sha1").update(await readFile5(file)).digest("hex")
     };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -34003,7 +33982,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.115";
+  if (true) return "0.1.116";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34964,10 +34943,10 @@ async function trustCodexHooks(io, root, options) {
     const hooks = listed.filter((h) => h.pluginId === options.pluginId);
     const old = listed.filter((h) => h.pluginId === options.previous?.pluginId);
     if (options.previous !== void 0 && old.length > 0) {
-      const trusted = old.filter((h) => h.trustStatus === "trusted").length;
+      const trusted2 = old.filter((h) => h.trustStatus === "trusted").length;
       io.stdout(
         [
-          `squeal init: Codex still has the previous ${options.previous.pluginId}, ${trusted} of its ${old.length} hooks trusted; with no Codex session running, remove it:`,
+          `squeal init: Codex still has the previous ${options.previous.pluginId}, ${trusted2} of its ${old.length} hooks trusted; with no Codex session running, remove it:`,
           ...options.previous.removeCommands.map((c) => `  ${c}`),
           ""
         ].join("\n")
@@ -35400,7 +35379,8 @@ function createHandlers(context) {
     requestId,
     revision: state.revision,
     error: state.error,
-    moves: true
+    moves: true,
+    incarnation: daemonIncarnation(context)
   });
   return (request) => {
     switch (request.type) {
@@ -35798,7 +35778,7 @@ var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
 var PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
 async function terminate(found, table = PROC) {
-  const same2 = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
+  const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
   const named = [];
   for (const entry2 of found) {
     const now = table.stat(entry2.pid);
@@ -35811,19 +35791,19 @@ async function terminate(found, table = PROC) {
   }
   const ages = /* @__PURE__ */ new Map();
   for (const { entry: entry2 } of named) {
-    if (!same2(entry2)) continue;
+    if (!same(entry2)) continue;
     ages.set(entry2, Math.max(0, table.uptime() - entry2.start) / TICKS_PER_SECOND);
     table.signal(entry2.pid, "SIGTERM");
   }
   const deadline = Date.now() + GRACE_MS;
-  let alive = [...ages.keys()].filter(same2);
+  let alive = [...ages.keys()].filter(same);
   while (alive.length > 0 && Date.now() < deadline) {
     await sleep2(25);
-    alive = alive.filter(same2);
+    alive = alive.filter(same);
   }
   const killed = /* @__PURE__ */ new Set();
   for (const entry2 of alive) {
-    if (!same2(entry2)) continue;
+    if (!same(entry2)) continue;
     table.signal(entry2.pid, "SIGKILL");
     killed.add(entry2);
   }
@@ -37249,6 +37229,8 @@ var Daemon = class {
   #now;
   #socketPath;
   #startedAt;
+  /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
+  #predecessor = void 0;
   #version = squealVersion();
   #phase = "starting";
   #policy = DEFAULT_POLICY;
@@ -37373,8 +37355,9 @@ var Daemon = class {
   #register() {
     const { store, worktreeId: id2, root, commonDir } = this.opened;
     store.transaction(() => {
-      store.testFileKeys.releaseRunning(id2);
       const existing = store.worktrees.get(id2);
+      this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id2));
+      store.testFileKeys.releaseRunning(id2);
       store.worktrees.upsert({
         id: id2,
         root,
@@ -37476,6 +37459,12 @@ var Daemon = class {
         policy: this.#policy,
         reloadPolicy: (changes) => changes.some((change2) => change2.path === POLICY_FILE) ? this.#reloadPolicy() : null,
         squealVersion: this.#version,
+        // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
+        incarnation: daemonIncarnation({
+          squealVersion: this.#version,
+          startedAt: this.#startedAt
+        }),
+        ...this.#predecessor === void 0 ? {} : { predecessor: this.#predecessor },
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
         now: this.#now,
@@ -38185,7 +38174,8 @@ async function syncOnce(root, pollMs, stopped) {
   let state = first;
   for (; ; ) {
     if (state.revision !== null) {
-      return { state: "synced", revision: state.revision, moves: state.moves === true };
+      const incarnation = state.moves === true ? state.incarnation ?? null : null;
+      return { state: "synced", revision: state.revision, incarnation };
     }
     if (state.error !== null) return UNSUPPORTED;
     await sleep6(pollMs, void 0, { ref: false });
@@ -38333,19 +38323,24 @@ async function waitForStatus(cwd, options) {
         syncing.sync ??= startSync(root, pollMs);
         const current2 = syncing.sync.current();
         if (current2.state === "synced" && syncing.window === void 0 && !syncing.fallback) {
-          const answer2 = current2.moves ? answerMoves(store, id2, current2.revision, syncing.sinceSeq ?? 0) : { state: "incomplete" };
+          const answer2 = answerMoves(
+            store,
+            id2,
+            current2.revision,
+            syncing.sinceSeq ?? 0,
+            current2.incarnation
+          );
           if (answer2.state === "answered") {
             syncing.window = editWindow(store, id2, heard, current2.revision, answer2.rekeyed);
           }
           syncing.fallback = answer2.state === "incomplete";
         }
-        let keys = syncing.window === void 0 ? [] : store.testFileKeys.list(id2);
-        if (syncing.window !== void 0 && !movesVouch(store, id2, syncing.sinceSeq ?? 0, keys)) {
+        if (syncing.window !== void 0 && current2.state === "synced" && !movesTrusted(store, id2, syncing.sinceSeq ?? 0, current2.incarnation)) {
           syncing.window = void 0;
           syncing.fallback = true;
-          keys = [];
         }
         const window = syncing.window;
+        const keys = window === void 0 ? [] : store.testFileKeys.list(id2);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id2), now());
         let transitions;
