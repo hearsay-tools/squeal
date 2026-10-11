@@ -5,7 +5,6 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
-import type { RekeyedTestFile } from "./scheduler.js";
 import type { CheckpointRecord } from "./store-records.js";
 
 /*

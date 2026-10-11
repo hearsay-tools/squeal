@@ -2,7 +2,6 @@ import type {
   CheckpointRecord,
   DaemonPhase,
   EpochMs,
-  RevisionNumber,
   SyncAnswer,
   WorktreeId,
 } from "../types/index.js";

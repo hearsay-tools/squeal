@@ -1,13 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import type {
-  CheckpointRecord,
-  DaemonPhase,
-  EpochMs,
-  RevisionNumber,
-  SyncAnswer,
-} from "../types/index.js";
+import type { CheckpointRecord, DaemonPhase, SyncAnswer } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";

@@ -13,7 +13,6 @@ import { storePaths } from "../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
   type NodeTestProject,
-  type RevisionNumber,
   type RunnerAdapter,
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
