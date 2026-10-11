@@ -19,6 +19,7 @@ export {
 export {
   CLAUDE_ALLOWED_TOOLS,
   groundTruth,
+  groupLive,
   killRunning,
   runBounded,
   sessionCommand,
