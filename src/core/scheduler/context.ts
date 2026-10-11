@@ -41,6 +41,8 @@ export interface SchedulerContext {
   readonly runnerPartMs?: number;
   /** `SchedulerOptions.incarnation`. */
   readonly incarnation?: string;
+  /** `SchedulerOptions.predecessor`; absent, not known. */
+  readonly predecessor?: string | null;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

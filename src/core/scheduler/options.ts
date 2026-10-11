@@ -46,6 +46,13 @@ export interface SchedulerOptions {
    */
   readonly incarnation?: string;
   /**
+   * The incarnation of the daemon registered on the worktree before this
+   * one (`predecessorIncarnation`), `null` when none ever was. The first
+   * commit takes in what it left unless it wrote the record's moves last
+   * (`adoptsAtFirstCommit`). Absent: not known, and the first commit does.
+   */
+  readonly predecessor?: string | null;
+  /**
    * The full extra-file list whenever it grows. Called while a batch is being
    * handled: hand it to `ChangeFeed.setExtraFiles` without awaiting, because
    * the feed delivers the next batch only after this one.

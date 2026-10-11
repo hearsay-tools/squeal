@@ -25,7 +25,7 @@ import {
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
-import { recordMoves } from "./rekeyed-moves.js";
+import { adoptsAtFirstCommit, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
 import { slowView } from "./slow.js";
@@ -419,7 +419,9 @@ export class Ledger {
 
     store.transaction(() => {
       // Before this ledger's first row: what earlier writers left pending (review waves 13ac, 13ad B1).
-      const before = this.#adopted ? undefined : store.testFileKeys.list(worktreeId);
+      const adopts =
+        !this.#adopted && adoptsAtFirstCommit(store, worktreeId, this.context.predecessor);
+      const before = adopts ? store.testFileKeys.list(worktreeId) : undefined;
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
       const removedIds = removed.map(testFileId);

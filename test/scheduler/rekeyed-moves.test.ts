@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import {
+  adoptsAtFirstCommit,
   answerMoves,
   MOVES_GRACE_MS,
   MOVES_RETENTION_MS,
@@ -12,6 +13,7 @@ import type { RekeyedMark } from "../../src/core/scheduler/rekeyed-record.js";
 import {
   type CheckKey,
   daemonIncarnation,
+  predecessorIncarnation,
   type RevisionNumber,
   refinedMetaKey,
   type Store,
@@ -283,6 +285,32 @@ describe("the store's re-key moves (task 001-258)", () => {
       );
       expect(answer(s, 1, before)).toEqual({ state: "incomplete" });
       expect(answer(s, 1, movesSeq(s, WT) ?? 0)).toEqual({ state: "answered", rekeyed: [] });
+    });
+  });
+
+  // Decided by the human (2026-10-11): what a ledger's first commit takes in.
+  describe("the first commit's predecessor", () => {
+    it("is the registration before, none without a row, unknown without its identity", () => {
+      expect(predecessorIncarnation(false, null)).toBeNull();
+      expect(predecessorIncarnation(true, null)).toBeUndefined();
+      expect(predecessorIncarnation(true, { startedAt: 5, squealVersion: null })).toBeUndefined();
+      expect(predecessorIncarnation(true, { startedAt: 5, squealVersion: VERSION })).toBe(
+        `${VERSION}@5`,
+      );
+    });
+
+    it("takes things in unless it wrote the moves last, or there was none", () => {
+      const s = store();
+      // No record yet: only a fresh worktree takes nothing in.
+      expect(adoptsAtFirstCommit(s, WT, null)).toBe(false);
+      expect(adoptsAtFirstCommit(s, WT, LIVE)).toBe(true);
+      expect(adoptsAtFirstCommit(s, WT, undefined)).toBe(true);
+      commit(s, [], 1);
+      expect(adoptsAtFirstCommit(s, WT, LIVE)).toBe(false);
+      expect(adoptsAtFirstCommit(s, WT, "0.1.112@2")).toBe(true);
+      expect(adoptsAtFirstCommit(s, WT, undefined)).toBe(true);
+      commit(s, [], 1, T0, [], null);
+      expect(adoptsAtFirstCommit(s, WT, LIVE)).toBe(true);
     });
   });
 });

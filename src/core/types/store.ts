@@ -36,6 +36,14 @@ export interface WorktreeRepo {
   /** `null` clears the daemon and keeps its last heartbeat as `lastHeartbeatAt`. */
   setDaemon(id: WorktreeId, daemon: DaemonRecord | null): void;
   heartbeat(id: WorktreeId, at: EpochMs): void;
+  /**
+   * The identity of the daemon that registered last, running or not: its
+   * start time and version, which a clean exit keeps (D10). `null` with no
+   * row, or with no start time (a release whose exit cleared it).
+   */
+  lastDaemon(
+    id: WorktreeId,
+  ): { readonly startedAt: EpochMs; readonly squealVersion: string | null } | null;
   /** Spec 001 D8: drop "everything owned by removed worktrees". */
   remove(id: WorktreeId): void;
 }

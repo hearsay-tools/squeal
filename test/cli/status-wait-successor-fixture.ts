@@ -4,13 +4,14 @@ import { afterEach } from "vitest";
 import { syncDaemon } from "../../src/cli/status-sync.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { testFileId } from "../../src/core/keys/index.js";
-import { recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
+import { adoptsAtFirstCommit, recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import {
   type AbsolutePath,
   type CheckKey,
   type DaemonRecord,
   daemonIncarnation,
+  predecessorIncarnation,
   type RevisionNumber,
   refinedMetaKey,
   type Store,
@@ -24,7 +25,8 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/he
  * over a real socket from its front desk, and its commits write what its
  * ledger's do, the store's re-key moves included. An older one, before task
  * 001-258, registers and writes the rows, the legacy re-key record, the
- * states and the refined revision; never the moves.
+ * states and the refined revision; never the moves. Each reads the
+ * registration before its own, as the daemon does (task 001-268).
  */
 
 export const A = "src/a.test.ts";
@@ -58,30 +60,38 @@ export function row(path: string, key: string, pending: "queued" | null): TestFi
 
 export type Worktree = Awaited<ReturnType<typeof worktree>>;
 
-/** A worktree at revision 4, refined to `refined`, with no daemon yet. */
+/** A worktree at revision 4, refined to `refined`, on which no daemon ever registered. */
 export async function worktree(refined: number) {
   const repo = fakeRepo();
   const store = seedStore(repo);
   cleanups.push(() => store.close());
   const dir = mkdtempSync("/tmp/sq-succ-");
   cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-  store.worktrees.upsert({
-    id: repo.mainId,
-    root: repo.main,
-    commonDir: repo.commonDir,
-    isMain: true,
-    registeredAt: 1,
-    daemon: null,
-  });
   appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
   store.meta.set(refinedMetaKey(repo.mainId), String(refined));
   return { repo, store, id: repo.mainId, dir };
 }
 
+/** Registers `record` on `w` as a daemon's start does; the incarnation registered before it. */
+function register(w: Worktree, record: DaemonRecord): string | null | undefined {
+  const existing = w.store.worktrees.get(w.id);
+  const predecessor = predecessorIncarnation(existing !== null, w.store.worktrees.lastDaemon(w.id));
+  w.store.worktrees.upsert({
+    id: w.id,
+    root: w.repo.main,
+    commonDir: w.repo.commonDir,
+    isMain: true,
+    registeredAt: existing?.registeredAt ?? 1,
+    daemon: record,
+  });
+  return predecessor;
+}
+
 /**
  * A newer daemon, started at `startedAt`, registered and serving `w`; its
  * sync captures 4. `commit` is one of its ledger's commits; `first` its
- * first, which takes in what the writers before it left pending.
+ * first, which takes in what the writers before it left pending unless the
+ * daemon registered before wrote the moves last (`adoptsAtFirstCommit`).
  */
 export async function newerDaemon(w: Worktree, startedAt = 1) {
   const socketPath = join(w.dir, `d${startedAt}.sock`) as AbsolutePath;
@@ -105,11 +115,12 @@ export async function newerDaemon(w: Worktree, startedAt = 1) {
   cleanups.push(close);
   desk.setPhase("ready");
   const record = daemon(socketPath, "0.1.115", startedAt);
-  w.store.worktrees.setDaemon(w.id, record);
+  const predecessor = register(w, record);
   const writer = daemonIncarnation(record);
   const commit = (rows: TestFileKeyRecord[], open: string[] = [], first = false) =>
     w.store.transaction(() => {
-      const before = first ? w.store.testFileKeys.list(w.id) : undefined;
+      const adopts = first && adoptsAtFirstCommit(w.store, w.id, predecessor);
+      const before = adopts ? w.store.testFileKeys.list(w.id) : undefined;
       const owned = rows.map((r) => ({ ...r, worktreeId: w.id }));
       w.store.testFileKeys.upsertMany(owned);
       const marks = open.map((path) => ({ id: testFileId(ref(path)), open: 4, moved: 4 }));
@@ -119,7 +130,7 @@ export async function newerDaemon(w: Worktree, startedAt = 1) {
       });
       states(w.store, w.id, owned);
     });
-  return { ...w, close, commit };
+  return { ...w, close, commit, incarnation: writer, record };
 }
 
 /** Each row's check: pending while its row is, else a pass seen at revision 4. */
@@ -138,7 +149,7 @@ function states(store: Store, id: string, rows: readonly TestFileKeyRecord[]) {
 /** A daemon before task 001-258 registers, after `close` stopped the one serving. */
 export async function olderSuccessor(w: Worktree & { close: () => Promise<void> }) {
   await w.close();
-  w.store.worktrees.setDaemon(w.id, daemon("/tmp/sq-succ-gone.sock", "0.1.112", 2));
+  register(w, daemon("/tmp/sq-succ-gone.sock", "0.1.112", 2));
 }
 
 /**

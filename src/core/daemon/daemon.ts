@@ -19,6 +19,7 @@ import {
   bootstrappedMetaKey,
   DEFAULT_POLICY,
   daemonIncarnation,
+  predecessorIncarnation,
   SLOW_LANE_PREFIX,
 } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
@@ -121,6 +122,8 @@ class Daemon {
   readonly #now: () => EpochMs;
   readonly #socketPath: AbsolutePath;
   readonly #startedAt: EpochMs;
+  /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
+  #predecessor: string | null | undefined = undefined;
   readonly #version = squealVersion();
   #phase: DaemonPhase = "starting";
   #policy: Policy = DEFAULT_POLICY;
@@ -263,8 +266,10 @@ class Daemon {
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
     store.transaction(() => {
-      store.testFileKeys.releaseRunning(id);
       const existing = store.worktrees.get(id);
+      // Before this registration replaces it: whose rows this daemon's ledger finds (001-268).
+      this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id));
+      store.testFileKeys.releaseRunning(id);
       store.worktrees.upsert({
         id,
         root,
@@ -391,6 +396,7 @@ class Daemon {
           squealVersion: this.#version,
           startedAt: this.#startedAt,
         }),
+        ...(this.#predecessor === undefined ? {} : { predecessor: this.#predecessor }),
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
         now: this.#now,

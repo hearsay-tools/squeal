@@ -42,7 +42,9 @@ import type { RekeyedMark } from "./rekeyed-record.js";
  * before it writes a row, so another writer's rows come with another
  * registration. A ledger's first commit takes in every pending row as a
  * move open at its row's revision, whoever wrote it, and the history before
- * as lost (`dropped`), so a wait that started before falls back.
+ * as lost (`dropped`), so a wait that started before falls back; unless the
+ * daemon registered before it wrote the record last, or none ever was
+ * (`adoptsAtFirstCommit`).
  */
 
 /** `meta` key of a worktree's re-key moves. */
@@ -161,6 +163,27 @@ function trusted(
     moves.writer === incarnation &&
     daemonIncarnation(store.worktrees.get(worktreeId)?.daemon ?? null) === incarnation
   );
+}
+
+/**
+ * Whether a ledger's first commit takes in what the writers before it left
+ * (`MovesWriter.before`), given the incarnation of the daemon registered on
+ * the worktree before its own (`predecessorIncarnation`). Every daemon of
+ * every release registers before it writes a row, and two never run one
+ * worktree at once, so that registration names the last daemon that could
+ * have written one. When it also wrote the record last, the record holds
+ * every move of its rows (a restart from one daemon of task 001-268 to
+ * another), and when there was none (a fresh worktree) there are no rows:
+ * neither takes anything in. A predecessor that cannot be read
+ * (`undefined`), or any other, does (decided by the human, 2026-10-11).
+ */
+export function adoptsAtFirstCommit(
+  store: Store,
+  worktreeId: WorktreeId,
+  predecessor: string | null | undefined,
+): boolean {
+  if (predecessor === null) return false;
+  return predecessor === undefined || readMoves(store, worktreeId)?.writer !== predecessor;
 }
 
 /** The record's commit sequence, which a wait reads with its start view; `null` with no record. */
