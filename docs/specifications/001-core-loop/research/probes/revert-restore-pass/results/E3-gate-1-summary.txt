@@ -1,0 +1,8 @@
+ FAIL  test/keys/key-format.test.ts > KEY_FORMAT_VERSION > is bumped whenever the guarded sources change
+ FAIL  test/keys/key-format.test.ts > an adapter-only bump > of src/runners/vitest/version.ts keeps the global pin
+ FAIL  test/keys/key-format.test.ts > an adapter-only bump > of src/runners/node-test/version.ts keeps the global pin
+ FAIL  test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them
+ FAIL  test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them
+ FAIL  test/runners/vitest/midrun-182.test.ts > probe 001-182: a mid-run invalidate of bytes the run read > midRun true
+ Test Files  4 failed | 371 passed | 1 skipped (376)
+   Duration  540.34s (tests 98%, import 2%)

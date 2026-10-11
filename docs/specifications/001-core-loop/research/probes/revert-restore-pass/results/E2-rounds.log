@@ -1,0 +1,24 @@
+2026-10-11T08:56:11+02:00 split round 1 start load 7.64 12.25 17.78
+2026-10-11T08:56:44+02:00 split round 1 end exit 0 load 6.91 11.56 17.35  Test Files 22 passed (22)
+2026-10-11T08:56:44+02:00 split round 2 start load 6.91 11.56 17.35
+2026-10-11T08:57:18+02:00 split round 2 end exit 0 load 6.83 11.10 17.01  Test Files 22 passed (22)
+2026-10-11T08:57:18+02:00 split round 3 start load 6.83 11.10 17.01
+2026-10-11T08:57:51+02:00 split round 3 end exit 0 load 6.38 10.51 16.59  Test Files 22 passed (22)
+2026-10-11T08:57:51+02:00 split round 4 start load 6.38 10.51 16.59
+2026-10-11T08:58:33+02:00 split round 4 end exit 0 load 9.05 10.54 16.34  Test Files 22 passed (22)
+2026-10-11T08:58:33+02:00 split round 5 start load 9.05 10.54 16.34
+2026-10-11T08:59:10+02:00 split round 5 end exit 0 load 9.85 10.61 16.12  Test Files 22 passed (22)
+2026-10-11T08:59:10+02:00 split round 6 start load 9.85 10.61 16.12
+2026-10-11T08:59:43+02:00 split round 6 end exit 0 load 8.35 10.18 15.80  Test Files 22 passed (22)
+2026-10-11T08:59:43+02:00 split round 7 start load 8.35 10.18 15.80
+2026-10-11T09:00:34+02:00 split round 7 end exit 0 load 12.40 10.84 15.69  Test Files 22 passed (22)
+2026-10-11T09:00:34+02:00 split round 8 start load 12.40 10.84 15.69
+2026-10-11T09:01:11+02:00 split round 8 end exit 0 load 9.96 10.42 15.37  Test Files 22 passed (22)
+2026-10-11T09:01:11+02:00 split round 9 start load 9.96 10.42 15.37
+2026-10-11T09:01:47+02:00 split round 9 end exit 0 load 9.22 10.20 15.11  Test Files 22 passed (22)
+2026-10-11T09:01:47+02:00 split round 10 start load 9.22 10.20 15.11
+2026-10-11T09:02:21+02:00 split round 10 end exit 0 load 7.10 9.53 14.71  Test Files 22 passed (22)
+2026-10-11T09:02:21+02:00 split round 11 start load 7.10 9.53 14.71
+2026-10-11T09:02:54+02:00 split round 11 end exit 0 load 5.70 8.93 14.31  Test Files 22 passed (22)
+2026-10-11T09:02:54+02:00 split round 12 start load 5.70 8.93 14.31
+2026-10-11T09:03:37+02:00 split round 12 end exit 0 load 4.70 8.25 13.86  Test Files 22 passed (22)

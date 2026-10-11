@@ -1,0 +1,143 @@
+diff --git a/src/core/scheduler/batch.ts b/src/core/scheduler/batch.ts
+index 83aa671..0a205b8 100644
+--- a/src/core/scheduler/batch.ts
++++ b/src/core/scheduler/batch.ts
+@@ -6,6 +6,7 @@ import type { SchedulerContext } from "./context.js";
+ import type { Ledger } from "./ledger.js";
+ import { type ContentRekey, rekeyContent } from "./revision.js";
+ import { touchedUnchanged } from "./stability.js";
++import { plog } from "../../probe-log.js";
+ 
+ /**
+  * Reconciles a batch. A new revision is stored in one transaction with the
+@@ -70,6 +71,7 @@ export async function reconcileBatch(
+     ledger.commit();
+     return { revision, content };
+   });
++  plog("batch", { trigger: batch.trigger, paths: diff.changes.map((c) => c.path), touched, revision: applied?.revision.number ?? null });
+   return { applied, touched };
+ }
+ 
+diff --git a/src/core/scheduler/scheduler.ts b/src/core/scheduler/scheduler.ts
+index ebee29e..a54b5cf 100644
+--- a/src/core/scheduler/scheduler.ts
++++ b/src/core/scheduler/scheduler.ts
+@@ -45,6 +45,7 @@ import { retryRunner } from "./revision.js";
+ import { RunnerWork } from "./runner-work.js";
+ import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
+ import { withheldForTouch } from "./stability.js";
++import { plog } from "../../probe-log.js";
+ import {
+   endTier,
+   executeTier,
+@@ -541,6 +542,20 @@ class TierScheduler implements Scheduler {
+             environment === undefined || read === undefined ? read : { ...read, environment };
+           const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
+           const report = withheldForTouch(ran, touched);
++          plog("fly", {
++            runId: tier.runId,
++            revision: tier.revision.number,
++            files: tier.files.map((f) => ({ path: f.file.ref.path, key: f.key, cur: f.file.key, inputs: f.inputs })),
++            ranCompleted: ran.completedFiles.map((r) => r.path),
++            ranFailure: ran.failure,
++            changed: [...inputs.changed],
++            touchedInputs: [...inputs.touched],
++            observedTouched: [...(observed?.touched ?? [])],
++            observedChanged: [...(observed?.changed ?? [])],
++            growth: [...(observed?.growth ?? new Map()).entries()].map(([k, g]) => ({ k, growth: g.growth, firstSeen: g.firstSeen })),
++            completed: report.completedFiles.map((r) => r.path),
++            duringRun: [...tier.changes],
++          });
+           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
+           return context.store.transaction(() => {
+             const result = recordTier(
+diff --git a/src/runners/vitest/adapter.ts b/src/runners/vitest/adapter.ts
+index 75a1e31..dcb7563 100644
+--- a/src/runners/vitest/adapter.ts
++++ b/src/runners/vitest/adapter.ts
+@@ -43,6 +43,7 @@ import { abandon, buildReport, execute, writeRunLog } from "./run.js";
+ import { invalidateStale, SourceStamps } from "./sources.js";
+ import { invalidateStructural } from "./stale.js";
+ import { VITEST_ADAPTER_VERSION } from "./version.js";
++import { plog } from "../../probe-log.js";
+ 
+ /**
+  * Vitest adapter over one warm `vitest/node` instance per worktree.
+@@ -255,6 +256,7 @@ export class VitestAdapter implements RunnerAdapter {
+    */
+   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
+     const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
++    plog("invalidate", { paths, running: this.#running });
+     this.#touched.push(...touched);
+     const changed = paths.filter((p) => p.kind !== "touch");
+     if (changed.length === 0) return Promise.resolve({ recreatedProjects: [] });
+@@ -381,6 +383,7 @@ export class VitestAdapter implements RunnerAdapter {
+       const exitCode = process.exitCode;
+       const unsure = this.#unsure;
+       const loadedSince = Date.now();
++      plog("run-start", { files: testFiles.map((r) => r.path), loadedSince, runId: options.runId });
+       const started = performance.now();
+       this.#collector = collector;
+       this.#running = true;
+@@ -417,6 +420,18 @@ export class VitestAdapter implements RunnerAdapter {
+           this.paths,
+         );
+         const report = touched.length === 0 ? kept : withoutTouched(kept, testFiles, touched);
++        plog("run-end", {
++          runId: options.runId,
++          loadedSince,
++          ran,
++          unsure,
++          heard,
++          end: execution.end,
++          builtCompleted: built.completedFiles.map((r) => r.path),
++          completed: report.completedFiles.map((r) => r.path),
++          observed: (observed ?? []).map((o) => ({ f: o.testFile.path, paths: (o as { paths?: unknown }).paths })),
++          failure: report.failure,
++        });
+         // One persisted note for status, besides the crash's delivered line (D5).
+         if (broken !== null && report.failure !== null) this.#note(report.failure);
+         writeRunLog(options, collector, report);
+diff --git a/src/runners/vitest/sources.ts b/src/runners/vitest/sources.ts
+index c8838af..40a08ff 100644
+--- a/src/runners/vitest/sources.ts
++++ b/src/runners/vitest/sources.ts
+@@ -5,6 +5,7 @@ import type { AbsolutePath, EpochMs, FileStat } from "../../core/types/index.js"
+ import type { WorktreePaths } from "./paths.js";
+ import { cachedTransform } from "./stale.js";
+ import { changedBefore, readStamp, statOrNull } from "./stamp.js";
++import { plog } from "../../probe-log.js";
+ 
+ /** What was on disk when Vite read one project file: the stat taken before the read, and the bytes' hash. */
+ interface Stamp {
+@@ -116,6 +117,7 @@ export class SourceStamps {
+       return;
+     }
+     const read = await readStamp(file);
++    if (file.endsWith("/src/mod.ts")) plog("stamp", { id, loadedAt, hash: read?.hash, stat: read?.stat });
+     if (read === null) reads.stamps.delete(id);
+     else reads.stamps.set(id, { file, ...read, hashedAt: loadedAt, loadedAt });
+   }
+@@ -196,6 +198,22 @@ export class SourceStamps {
+       return null;
+     });
+     const found = new Set<AbsolutePath>();
++    {
++      const mods: unknown[] = [];
++      for (const environment of environments(vitest)) {
++        for (const [id, module] of environment.moduleGraph.idToModuleMap) {
++          if (!id.includes("/src/mod.ts")) continue;
++          const st = (module as { invalidationState?: unknown }).invalidationState;
++          mods.push({ env: environment.name, id, attached: this.#containers.has(environment.pluginContainer), tr: module.transformResult !== null, inv: typeof st === "string" ? st : st ? "object" : null });
++        }
++      }
++      plog("stale", {
++        loadedSince: loadedSince ?? null,
++        mods,
++        checks: checks.map((c, i) => ({ file: c.file, key: c.key, stamp: c.stamps.get(c.key)?.loadedAt ?? null, moved: moved[i] ?? null })).filter((c) => c.file.endsWith("/src/mod.ts")),
++        pending: this.#moved.map((m) => ({ file: m.file, loadedAt: m.loadedAt })),
++      });
++    }
+     checks.forEach(({ file }, i) => {
+       const loadedAt = moved[i];
+       if (loadedAt === null || loadedAt === undefined) return;
