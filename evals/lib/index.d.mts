@@ -155,6 +155,8 @@ export interface Grade {
   claimMatchesSqueal: boolean | null;
   /** The retained timeline a results cell keeps as `timeline`. */
   retained: Step[];
+  /** The numbered, trimmed transcript the judge reads (spec 006 D9), before redaction. */
+  transcript: string[];
   timeline: {
     runs: Run[];
     edits: { t: number; path: string }[];
@@ -532,6 +534,61 @@ export function judgeIdentity(input: {
 export function identityKey(identity: JudgeIdentity): string;
 export function gradeOf(verdict: unknown, steps: number): ExpectationGrade;
 export function transcriptHash(task: string, transcript: readonly string[]): string;
+export const JUDGE_MODELS: readonly string[];
+export function calibrationName(identity: JudgeIdentity): string;
+export function declaredConditions(declared: Declarations): Pick<Conditions, "tasks">;
+export interface CalibrationReference {
+  name: string;
+  task: string;
+  harness: string;
+  cell: CellRecord;
+  expected: Record<string, string>;
+}
+export interface Calibration {
+  kind: "judge-calibration";
+  identity: JudgeIdentity;
+  rounds: number;
+  passed: boolean;
+  sessions: number;
+  failed: string[];
+  costUsd: number;
+  references: {
+    name: string;
+    task: string;
+    harness: string;
+    expected: Record<string, string>;
+    parser: Record<string, ExpectationGrade> | null;
+    pass: boolean;
+    runs: {
+      grades: Record<string, ExpectationGrade>;
+      verdicts: Record<string, Omit<JudgedVerdict, "grade">>;
+      cost: number | null;
+      error?: string;
+    }[];
+  }[];
+}
+export function calibrate(input: {
+  references: readonly CalibrationReference[];
+  declared: Declarations;
+  identity: JudgeIdentity;
+  runner: JudgeRunner;
+  rounds?: number;
+  parallel?: number;
+}): Promise<Calibration>;
+export function calibratedIdentity(input: {
+  dir: string;
+  declared: Declarations;
+  runner: JudgeRunner;
+}): Promise<JudgeIdentity | null>;
+export function judgeRecord(
+  cell: CellRecord,
+  options: {
+    identity: JudgeIdentity;
+    runner: JudgeRunner;
+    declared: Declarations;
+    conditions: Pick<Conditions, "tasks"> | undefined;
+  },
+): Promise<{ judge: CellJudge; parser: Record<string, ExpectationGrade> | null }>;
 export function judgeCell(input: {
   task: string;
   transcript: readonly string[];

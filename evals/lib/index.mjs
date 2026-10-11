@@ -15,6 +15,14 @@ export {
   RULES,
   rate,
 } from "./behaviours.mjs";
+export {
+  calibrate,
+  calibratedIdentity,
+  calibrationName,
+  declaredConditions,
+  JUDGE_MODELS,
+  judgeRecord,
+} from "./calibration.mjs";
 export { parseClaim } from "./claim.mjs";
 export { classifyShell, scopeLabel } from "./commands.mjs";
 export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";
