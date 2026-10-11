@@ -1,0 +1,73 @@
+{
+ "api-client": {
+  "project": "api-client",
+  "runnerName": "vitest",
+  "runnerVersion": "4.1.10",
+  "adapterVersion": "2",
+  "resolvedConfig": "bf1ad23e001b",
+  "files": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "packages/api-client/vitest.config.ts",
+   "packages/cezar/vitest.config.ts",
+   "packages/contract/vitest.config.ts",
+   "packages/web/vite.config.ts",
+   "packages/web/vitest.config.ts",
+   "vitest.config.ts"
+  ],
+  "packages": "8dd884b978a4"
+ },
+ "contract": {
+  "project": "contract",
+  "runnerName": "vitest",
+  "runnerVersion": "4.1.10",
+  "adapterVersion": "2",
+  "resolvedConfig": "794f96e67b9e",
+  "files": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "packages/api-client/vitest.config.ts",
+   "packages/cezar/vitest.config.ts",
+   "packages/contract/vitest.config.ts",
+   "packages/web/vite.config.ts",
+   "packages/web/vitest.config.ts",
+   "vitest.config.ts"
+  ],
+  "packages": "8431ef79d93d"
+ },
+ "server": {
+  "project": "server",
+  "runnerName": "vitest",
+  "runnerVersion": "4.1.10",
+  "adapterVersion": "2",
+  "resolvedConfig": "0e27360c597d",
+  "files": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "packages/api-client/vitest.config.ts",
+   "packages/cezar/vitest.config.ts",
+   "packages/cezar/vitest.setup.ts",
+   "packages/contract/vitest.config.ts",
+   "packages/web/vite.config.ts",
+   "packages/web/vitest.config.ts",
+   "vitest.config.ts"
+  ],
+  "packages": "218a2481e6a5"
+ },
+ "web": {
+  "project": "web",
+  "runnerName": "vitest",
+  "runnerVersion": "4.1.10",
+  "adapterVersion": "2",
+  "resolvedConfig": "23de4f7834e9",
+  "files": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "packages/api-client/vitest.config.ts",
+   "packages/cezar/vitest.config.ts",
+   "packages/contract/vitest.config.ts",
+   "packages/web/src/lib/highlighter.ts",
+   "packages/web/vite.config.ts",
+   "packages/web/vitest.config.ts",
+   "packages/web/vitest.setup.ts",
+   "vitest.config.ts"
+  ],
+  "packages": "aeda1ec27c48"
+ }
+}
