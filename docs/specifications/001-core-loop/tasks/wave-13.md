@@ -817,3 +817,20 @@ Use /worker. Shape: repair. The board rows and `research/fresh-worktree-reuse.md
 ## 001-271 review of wave 13af
 
 Use /reviewer on gpt-6.1-sol, after the five land. Output `reviews/wave-13af.md`. Is each row's done-when met? Does 001-260 change any key except the harness-derived ones, and do `CI`-derived fields still key? Does 001-264 drop a run that would have completed? Can 001-270's token or 001-267's refresh make a wait trust an incomplete record? Is the retry or baseline bound ever hit by a run that would have finished? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-272 repair of wave 13af
+
+Use /worker. Shape: repair. From `reviews/wave-13af.md` (001-271) B1, B2 and S1, under the human's standing rule: the coordinator fixes first-round blockers and re-reviews them (001-273). Read the review's probes first.
+
+Outcome:
+- B1: `withDeath` (`src/core/status/died.ts`) counts only the note a clean shutdown writes as evidence that the daemon left, that is a stop or step-down note or whatever the daemon's own exit path persists, never any other diagnostic note. A daemon SIGKILLed after an ordinary watcher note is named dead, with its in-flight run, in status and the next hook.
+- B2: `SourceStamps.hold` (`src/runners/vitest/sources.ts`) also keeps the stamps of a virtual module's declared inputs (`addWatchFile`), as the existing end check already does for cached modules. A mid-run invalidate that drops the virtual module's transform still has its read bytes checked at the run's end.
+- S1: amend D3, D5 and D7 for wave 13af's rows (001-260 key inputs, 001-259 and 001-264 runner and run checks, 001-267 and 001-270 wait and incarnation), with dated `status.md` entries.
+
+Own: `src/core/status/died.ts` and its tests; `src/runners/vitest/sources.ts` (and `adapter.ts` only if the hold call needs it) and their tests; `spec.md` D3, D5, D7 and `status.md`. The coordinator re-pins `KEY_FORMAT_VERSION` 6 and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`.
+
+Done when: the review's two probes pass as tests and are red before; the controls still pass (no invalidate, unchanged bytes, and a clean stop still read as a stop, not a death); lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+## 001-273 re-review of wave 13af
+
+Use /reviewer on gpt-6.1-sol, after 001-272 lands. Output `reviews/wave-13ag.md`. Second round on `reviews/wave-13af.md` B1, B2 and S1: can any note or exit path still hide a real death, or name a clean stop as one? Can any module kind's read bytes still escape the run's end check after a mid-run invalidate? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
