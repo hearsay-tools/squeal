@@ -1,6 +1,12 @@
 // What one shell command does, as far as the grade cares (spec 006 D4): Squeal calls, the agent's
 // own Vitest and node:test runs with their scope, sleeps, and file writes.
+import { readFileSync } from "node:fs";
 import { simpleCommands } from "./shell.mjs";
+
+/** The Ledgerline fixture's npm scripts: what `npm test` and `npm run test:scripts` run. */
+const SCRIPTS = JSON.parse(
+  readFileSync(new URL("../ledgerline/package.json", import.meta.url), "utf8"),
+).scripts;
 
 const VITEST_VALUE_FLAGS = new Set([
   "--reporter",
@@ -17,14 +23,47 @@ const VITEST_VALUE_FLAGS = new Set([
   "--maxWorkers",
   "--minWorkers",
   "--testTimeout",
+  "--hookTimeout",
   "--mode",
+  "--exclude",
+  "--bail",
+  "--retry",
+  "-t",
+  "--testNamePattern",
 ]);
+const NODE_VALUE_FLAGS = new Set([
+  "--test-reporter",
+  "--test-reporter-destination",
+  "--test-name-pattern",
+  "--test-skip-pattern",
+  "--test-concurrency",
+  "--test-timeout",
+  "--test-shard",
+  "--import",
+  "--require",
+  "-r",
+  "--loader",
+  "--experimental-loader",
+  "--conditions",
+  "-C",
+  "--env-file",
+]);
+/** Vitest subcommands, and those that run no test: listing, watching, benchmarks. */
+const VITEST_SUBCOMMANDS = new Set(["run", "watch", "dev", "related", "list", "bench"]);
+const VITEST_NO_RUN = new Set(["watch", "dev", "list", "bench"]);
+const HELP = new Set(["--help", "-h", "--version", "-v"]);
 
 /**
  * Every action in shell text `text`, in the order it runs, one entry per simple command that
- * matters: `{ kind: "squeal", sub, wait, all, slow }`, `{ kind: "vitest" | "node:test", scope }`
- * with scope `full`, `files` or `name`, `{ kind: "sleep", seconds }` and `{ kind: "write", path }`.
- * A chain yields one action per command in it.
+ * matters: `{ kind: "squeal", sub, wait, all, slow }`, a test action, `{ kind: "sleep", seconds }`
+ * and `{ kind: "write", path }`. A chain yields one action per command in it.
+ *
+ * A test action (wave 2.6's contract, review wave 2.5 B3) is `{ kind, runner, informational,
+ * scope }`, `kind` and `runner` both `vitest` or `node:test`. `informational` is true for help,
+ * version, listing and watch-only invocations, which never count as a run. `scope` is `{ full:
+ * true }` for the runner's whole suite or `{ full: false, paths }` with the paths and globs it
+ * selects as written, plus `names` for a test-name filter, `related` for the source files of
+ * `vitest related` and `changed` for `--changed`. An npm script resolves to what it runs.
  *
  * Each action has an `execution` (review wave 1, B2): `refused` when the whole call was refused,
  * `executed` when the call's structure and `exit` establish it ran, else `indeterminate`. A
@@ -37,8 +76,7 @@ export function classifyShell(text, { exit = null, output = "", refused = false 
   for (const c of simpleCommands(text, { exit })) {
     if (c.unreachable) continue;
     const execution = refused ? "refused" : c.established ? "executed" : "indeterminate";
-    const a = classify(c.words);
-    if (a) actions.push({ ...a, execution });
+    for (const a of classify(c.words)) actions.push({ ...a, execution });
     for (const path of writes(c)) actions.push({ kind: "write", path, execution });
   }
   return refused ? actions : withEvidence(actions, output);
@@ -70,7 +108,7 @@ function withEvidence(actions, output) {
 
 const base = (w) => (w ?? "").replace(/^.*\//, "");
 
-function classify(words) {
+function classify(words, depth = 0) {
   const prog = base(words[0]);
   // squeal, squeal.mjs, `node <path>/squeal.mjs`, `npx squeal`
   let sq = -1;
@@ -80,28 +118,46 @@ function classify(words) {
   if (sq >= 0) {
     const rest = words.slice(sq + 1);
     const sub = rest.find((w) => !w.startsWith("-")) ?? "";
-    return {
-      kind: "squeal",
-      sub,
-      wait: rest.includes("--wait") || rest.some((w) => w.startsWith("--wait=")),
-      all: rest.includes("--all"),
-      slow: rest.includes("--slow"),
-    };
+    return [
+      {
+        kind: "squeal",
+        sub,
+        wait: rest.includes("--wait") || rest.some((w) => w.startsWith("--wait=")),
+        all: rest.includes("--all"),
+        slow: rest.includes("--slow"),
+      },
+    ];
+  }
+  const script = scriptCall(prog, words);
+  if (script) {
+    const body = SCRIPTS[script.name];
+    if (typeof body !== "string" || depth > 2) return [];
+    const text = [body, ...script.args.map((a) => `'${a.replaceAll("'", "'\\''")}'`)].join(" ");
+    return simpleCommands(text)
+      .flatMap((c) => classify(c.words, depth + 1))
+      .filter((a) => a.kind === "vitest" || a.kind === "node:test");
   }
   const vitestArgs = vitestCall(prog, words);
-  if (vitestArgs) return { kind: "vitest", scope: vitestScope(vitestArgs) };
-  if (prog === "node" && words.includes("--test")) {
-    const files = words.slice(words.indexOf("--test") + 1).filter((w) => !w.startsWith("-"));
-    return {
-      kind: "node:test",
-      scope: files.length && !files.some((f) => f.includes("*")) ? "files" : "full",
-    };
-  }
-  if (prog === "npm" && /^(?:run|run-script)$/.test(words[1] ?? "") && words[2] === "test:scripts")
-    return { kind: "node:test", scope: "full" };
+  if (vitestArgs) return [vitestRun(vitestArgs)];
+  const node = prog === "node" ? parseArgs(words.slice(1), NODE_VALUE_FLAGS) : null;
+  if (node?.flags.some((f) => f.name === "--test" && f.at === 0)) return [nodeTestRun(node)];
   if (prog === "sleep" && /^\d/.test(words[1] ?? ""))
-    return { kind: "sleep", seconds: Number.parseFloat(words[1]) };
-  return null;
+    return [{ kind: "sleep", seconds: Number.parseFloat(words[1]) }];
+  return [];
+}
+
+/** The package script `words` runs, `{ name, args }`: `npm test`, `npm run x`, `yarn x`. */
+function scriptCall(prog, words) {
+  if (!["npm", "pnpm", "yarn"].includes(prog)) return null;
+  let at = 1;
+  if (/^(?:run|run-script)$/.test(words[1] ?? "")) at = 2;
+  else if (!/^(?:test|t)$/.test(words[1] ?? "") && (prog === "npm" || !(words[1] in SCRIPTS)))
+    return null;
+  const name = words[at] === "t" ? "test" : words[at];
+  if (name === undefined) return null;
+  const args = words.slice(at + 1);
+  if (args[0] === "--") args.shift();
+  return { name, args };
 }
 
 /** The arguments after `vitest` when `words` runs Vitest, else `null`. */
@@ -116,25 +172,76 @@ function vitestCall(prog, words) {
   }
   if (prog === "node" && words.some((w) => /node_modules\/vitest\/vitest\.mjs$/.test(w)))
     return words.slice(2);
-  if (["npm", "pnpm", "yarn"].includes(prog)) {
-    const scriptAt = /^(?:run|run-script)$/.test(words[1] ?? "") ? 2 : 1;
-    if (!/^(?:test|t)$/.test(words[scriptAt] ?? "")) return null;
-    const dash = words.indexOf("--");
-    return dash >= 0 ? words.slice(dash + 1) : words.slice(scriptAt + 1);
-  }
   return null;
 }
 
-function vitestScope(args) {
-  if (args.some((a) => a === "-t" || a.startsWith("--testNamePattern") || a.startsWith("-t=")))
-    return "name";
-  const files = [];
+/**
+ * `args` as `{ flags, positional }`: each flag `{ name, value, at }`, `at` the number of
+ * positionals before it, a flag in `valueFlags` taking the next word as its value; `--` ends
+ * the flags.
+ */
+function parseArgs(args, valueFlags) {
+  const flags = [];
+  const positional = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (VITEST_VALUE_FLAGS.has(a)) i++;
-    else if (!a.startsWith("-") && !["run", "watch", "related"].includes(a)) files.push(a);
+    if (a === "--") {
+      positional.push(...args.slice(i + 1));
+      break;
+    }
+    if (!a.startsWith("-") || a === "-") {
+      positional.push(a);
+      continue;
+    }
+    const eq = a.indexOf("=");
+    const name = eq > 0 ? a.slice(0, eq) : a;
+    const value = eq > 0 ? a.slice(eq + 1) : valueFlags.has(name) ? args[++i] : undefined;
+    flags.push({ name, value, at: positional.length });
   }
-  return files.length ? "files" : "full";
+  return { flags, positional };
+}
+
+const values = (flags, ...names) =>
+  flags.filter((f) => names.includes(f.name) && f.value !== undefined).map((f) => f.value);
+
+function testRun(runner, informational, scope, names) {
+  return {
+    kind: runner,
+    runner,
+    informational,
+    scope: names.length ? { ...scope, names } : scope,
+  };
+}
+
+function vitestRun(args) {
+  const { flags, positional } = parseArgs(args, VITEST_VALUE_FLAGS);
+  const sub = VITEST_SUBCOMMANDS.has(positional[0]) ? positional.shift() : "run";
+  const has = (...names) => flags.some((f) => names.includes(f.name) && f.value !== "false");
+  const informational = VITEST_NO_RUN.has(sub) || has(...HELP, "--watch", "-w", "--standalone");
+  const scope =
+    sub === "related"
+      ? { full: false, paths: [], related: positional }
+      : has("--changed")
+        ? { full: false, paths: positional, changed: true }
+        : positional.length
+          ? { full: false, paths: positional }
+          : { full: true };
+  return testRun("vitest", informational, scope, values(flags, "-t", "--testNamePattern"));
+}
+
+function nodeTestRun({ flags, positional }) {
+  const informational = flags.some((f) => HELP.has(f.name) || f.name === "--watch");
+  const scope = positional.length ? { full: false, paths: positional } : { full: true };
+  return testRun("node:test", informational, scope, values(flags, "--test-name-pattern"));
+}
+
+/**
+ * A scope's name in the grade's earlier counters: `name` with a name filter, else `full` or
+ * `files`. Kept for `vitestByScope` until the timeline keeps the scope itself (wave 2.6).
+ */
+export function scopeLabel(scope) {
+  if (scope.names?.length) return "name";
+  return scope.full ? "full" : "files";
 }
 
 /** Paths a command writes: redirections, `tee`, `sed -i`, `perl -i`, `apply_patch` bodies. */

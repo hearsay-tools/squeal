@@ -206,7 +206,13 @@ describe("classifyShell after a termination (B2)", () => {
   it("drops an unreachable action, and evidence in the output never revives it", () => {
     expect(classifyShell(`exit 0; ${NODE_TEST}`, { exit: 0, output: "ℹ tests 1\n" })).toEqual([]);
     expect(classifyShell(`exec ${NODE_TEST}; npx vitest run`, { exit: 0 })).toEqual([
-      { kind: "node:test", scope: "files", execution: "executed" },
+      {
+        kind: "node:test",
+        runner: "node:test",
+        informational: false,
+        scope: { full: false, paths: ["scripts/changelog.test.mjs"] },
+        execution: "executed",
+      },
     ]);
   });
 

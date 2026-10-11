@@ -13,7 +13,7 @@ export {
   rate,
 } from "./behaviours.mjs";
 export { parseClaim } from "./claim.mjs";
-export { classifyShell } from "./commands.mjs";
+export { classifyShell, scopeLabel } from "./commands.mjs";
 export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";
 export { gradeCell, groundTruthOf, squealState } from "./grade.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
