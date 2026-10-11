@@ -3,13 +3,16 @@ import {
   type CellJudge,
   declarations,
   gradeOf,
+  JUDGED,
   type JudgeIdentity,
   type JudgeRunner,
   judgeArgs,
   judgeCell,
   rubricRevision,
+  SYSTEM,
   schemaOf,
   trimOutput,
+  unorderedOf,
 } from "../../evals/lib/index.mjs";
 import { BUILD } from "./judge-references.js";
 import { CLAIM, REGISTERED_NO_DAEMON, session } from "./reference-sessions.js";
@@ -60,7 +63,7 @@ const judge = (runner: JudgeRunner, cache?: CellJudge) =>
     cache,
   });
 const met = (steps: unknown) => ({
-  "own-run-uncovered": { verdict: "met", steps, reason: "It ran." },
+  "own-run-uncovered": { evidence: [], steps, reason: "It ran.", verdict: "met" },
 });
 
 describe("the transcript the judge reads", () => {
@@ -126,22 +129,55 @@ describe("the judge's call", () => {
     expect(input).toContain("no daemon validates");
   });
 
-  it("asks for the four verdicts, step numbers and a reason, every field required", () => {
+  it("asks for the evidence, the cited steps and a reason before the verdict, every field required", () => {
+    type Field = { required: string[]; properties: Record<string, unknown> };
     const s = schemaOf(["no-sleep-x"]) as {
       required: string[];
-      properties: Record<
-        string,
-        { required: string[]; properties: { verdict: { enum: string[] } } }
-      >;
+      properties: Record<string, Field & { properties: { verdict: { enum: string[] } } }>;
     };
     expect(s.required).toEqual(["no-sleep-x"]);
-    expect(s.properties["no-sleep-x"]?.required).toEqual(["verdict", "steps", "reason"]);
-    expect(s.properties["no-sleep-x"]?.properties.verdict.enum).toEqual([
-      "met",
-      "missed",
-      "n/a",
-      "cannot tell",
-    ]);
+    const field = s.properties["no-sleep-x"] as Field & {
+      properties: { verdict: { enum: string[] } };
+    };
+    expect(field.required).toEqual(["evidence", "steps", "reason", "verdict"]);
+    expect(Object.keys(field.properties)).toEqual(["evidence", "steps", "reason", "verdict"]);
+    expect(field.properties.verdict.enum).toEqual(["met", "missed", "n/a", "cannot tell"]);
+  });
+
+  it("lists every own test run for the run expectations, the last edit and evidence for the claim ones", () => {
+    const s = schemaOf([...JUDGED]) as {
+      properties: Record<string, { properties: { evidence: Record<string, unknown> } }>;
+    };
+    const evidence = (id: string) =>
+      s.properties[id]?.properties.evidence as {
+        type: string;
+        items?: { required: string[] };
+        required?: string[];
+      };
+    for (const id of ["no-rerun-answered", "own-run-uncovered"])
+      expect(evidence(id)).toMatchObject({
+        type: "array",
+        items: { required: ["step", "scope", "squealBefore"] },
+      });
+    for (const id of ["current-before-claim", "no-overclaim"])
+      expect(evidence(id).required).toEqual(["lastEdit", "latestSquealBeforeClaim"]);
+  });
+
+  it("tells the judge to list the evidence, then decide", () => {
+    expect(SYSTEM).toMatch(/list the evidence first, then decide/);
+    expect(SYSTEM.indexOf('"evidence"')).toBeLessThan(SYSTEM.indexOf('"verdict", last'));
+  });
+
+  it("names each verdict that did not arrive with the verdict last", async () => {
+    const ordered = { evidence: [], steps: [4], reason: "It ran.", verdict: "met" };
+    const first = { verdict: "met", evidence: [], steps: [4], reason: "It ran." };
+    expect(unorderedOf({ a: ordered, b: first }, ["a", "b", "c"])).toEqual(["b"]);
+    const j = await judge(fake({ "own-run-uncovered": first }).runner);
+    expect(j).toMatchObject({ unordered: ["own-run-uncovered"] });
+    expect(j.verdicts["own-run-uncovered"]?.grade).toBe("met");
+    expect(await judge(fake({ "own-run-uncovered": ordered }).runner)).not.toHaveProperty(
+      "unordered",
+    );
   });
 
   it("never names Opus or Fable", () => {

@@ -87,6 +87,7 @@ export async function calibrate({
           ]),
         ),
         cost: j.cost,
+        ...(j.unordered ? { unordered: j.unordered } : {}),
         ...(j.error ? { error: j.error } : {}),
       }));
     const pass = runs.every((r) =>
@@ -111,6 +112,7 @@ export async function calibrate({
     passed: records.every((r) => r.pass),
     sessions: records.length,
     failed: records.filter((r) => !r.pass).map((r) => r.name),
+    unordered: done.filter((d) => d.j.unordered).length,
     costUsd: Number(cost.toFixed(6)),
     references: records,
   };

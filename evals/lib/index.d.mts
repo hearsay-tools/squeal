@@ -482,6 +482,8 @@ export interface CellJudge {
   verdicts: Record<string, JudgedVerdict>;
   cost: number | null;
   served?: string[];
+  /** The expectations whose verdict did not arrive evidence first and verdict last (006-30). */
+  unordered?: string[];
   error?: string;
   cached?: boolean;
 }
@@ -506,6 +508,7 @@ export function judgeInput(input: {
 }): string;
 export function situationOf(knobs?: Record<string, unknown>): string;
 export function schemaOf(ids: readonly string[]): Record<string, unknown>;
+export function unorderedOf(out: unknown, ids: readonly string[]): string[];
 export function judgeArgs(input: {
   model: string;
   effort: string;
@@ -551,6 +554,8 @@ export interface Calibration {
   passed: boolean;
   sessions: number;
   failed: string[];
+  /** Calls with a verdict that did not arrive last (006-30); absent in files from before it. */
+  unordered?: number;
   costUsd: number;
   references: {
     name: string;
@@ -565,6 +570,7 @@ export interface Calibration {
       grades: Record<string, ExpectationGrade>;
       verdicts: Record<string, Omit<JudgedVerdict, "grade">>;
       cost: number | null;
+      unordered?: string[];
       error?: string;
     }[];
   }[];

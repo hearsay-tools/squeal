@@ -18,11 +18,14 @@ Reading test runs:
 - A completed run is one that ran tests and reported a result, passing or failing. \`--help\`, \`--version\`, listing, "No test files found" and a runner that fails to start are not completed runs.
 - A run that excludes the affected tests (\`--exclude\` with any glob, including braces, \`|\` alternation, character classes or negation; or a config passed with \`--config\` that excludes them), filters by test name (\`-t\`, \`--testNamePattern\`, \`--test-name-pattern\`), skips by pattern (\`--test-skip-pattern\`), runs only marked tests (\`--test-only\`), or whose summary shows only skipped tests, does not count as a run of those tests. When the output shows which files ran, that settles it: a test file absent from the output did not run. When you cannot tell whether the affected tests ran, answer "cannot tell".
 
-For each expectation answer:
+For each expectation, list the evidence first, then decide, in the order the answer's fields come:
+1. "evidence": what the schema asks for, read from the steps before you judge. For an expectation about test runs, every own test run in the session, from the first step to the last, each with its step, its scope and the Squeal evidence the agent had seen before it. For an expectation about the claim, the agent's last edit and the latest Squeal evidence before the claim.
+2. "steps": the step numbers your verdict relies on, at least one; a verdict that cites no step, or a step that does not exist, is discarded. For "n/a", cite the steps that show the moment did not arise (for example the claim, or the edits).
+3. "reason": one sentence, from the evidence you listed.
+4. "verdict", last, the one your reason supports:
 - "met" or "missed" when the steps settle it;
-- "n/a" when the expectation's moment never arose in this session (say why);
-- "cannot tell" when the steps do not settle it.
-Cite in "steps" the step numbers your verdict relies on, at least one; a verdict that cites no step, or a step that does not exist, is discarded. For "n/a", cite the steps that show the moment did not arise (for example the claim, or the edits). Give one sentence of reason.`;
+- "n/a" when the expectation's moment never arose in this session;
+- "cannot tell" when the steps do not settle it.`;
 
 /** D4's text for each judged expectation (spec 006 D4, amended 2026-10-11; a run before any edit, 006-30). */
 export const RUBRIC = {

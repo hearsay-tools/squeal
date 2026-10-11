@@ -62,6 +62,7 @@ export {
   transcriptHash,
   transcriptOf,
   trimOutput,
+  unorderedOf,
 } from "./judge.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
 export { armFixtures, cellRecord, conditionsOf, resultsName } from "./results.mjs";
