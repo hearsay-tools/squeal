@@ -292,6 +292,16 @@ class TierScheduler implements Scheduler {
     return request;
   }
 
+  /**
+   * A hook's nudge (task 001-281): a silent Stop ended a turn, so a slow
+   * file waiting for its consumers to go idle is planned now, not at the
+   * slow tier's next recheck.
+   */
+  nudge(): void {
+    if (this.#closed || !this.#ledger) return;
+    this.#slow.nudge();
+  }
+
   refreshObserved(): boolean {
     if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
     this.#runnerWork.queueObserved();

@@ -122,6 +122,16 @@ export class SlowTier {
     this.#requested = true;
   }
 
+  /**
+   * A consumer may have gone idle (task 001-281): with slow files queued the
+   * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
+   * trigger does not allow; `next` decides as on the timer.
+   */
+  nudge(): void {
+    if (this.host.closed()) return;
+    if (this.host.started().ledger.orderedSlow().length > 0) this.host.pump();
+  }
+
   /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
   preempt(): void {
     this.#preemptions += 1;
