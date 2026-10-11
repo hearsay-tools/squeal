@@ -35,7 +35,7 @@ Use /worker. Shape: slice.
 
 ## 006-24 review of the judge
 
-Use /reviewer. Review the design and the evidence, not parsing:
+Use /reviewer. Range `be6aaaf9^..9250fb4e`: 006-23's commits on main and the coordinator's 006-25 (`9250fb4e`, calibration as a step of every run). Also check that no unit test can reach a model. Review the design and the evidence, not parsing:
 - Does each rubric say the right behaviour at the right moment for its task?
 - Is the isolation real: no user plugins, hooks or memory reach the judge, and it has no tools?
 - Can a judge verdict become `met` without cited evidence?
