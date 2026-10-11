@@ -622,10 +622,12 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 | 006-08 repair: nested evidence, shell termination, malformed inputs (wave 1.6) | done (`83cb575c`, six commits) | `reviews/wave-1.5.md` B1, B2, SF1, SF2; the third and last round, bought by the human 2026-10-11. | Each probe a test; earlier evals tests pass; repository gate green. |
 | 006-09 narrow review of wave 1.6 | done: FAIL (`reviews/wave-1.6.md`): SF1 and SF2 closed; B1 (a symlink cleanup cannot remove is certified clean) and B2 (a failing builtin or redirection under `set -e` credits later actions) remain; the bought third round ends here, the human decides | `/reviewer` on gpt-6.1-sol, limited to B1, B2, SF1, SF2 and their nearest variants. | `reviews/wave-1.6.md`. |
 | 006-10 repair: surviving links, failing builtins (wave 1.7) | done (`312fd2b9`, two commits) | `reviews/wave-1.6.md` B1, B2; the fourth round, bought by the human 2026-10-11. | Each probe a test; earlier evals tests pass; repository gate green. |
-| 006-11 narrow review of wave 1.7 | running (`fbb13e87`, gpt-6.1-sol; `tasks/wave-1.7.md`) | `/reviewer` on gpt-6.1-sol, limited to B1, B2 and their nearest variants. | `reviews/wave-1.7.md`. |
-| 006-04 first baseline | planned, at calm load, after 006-11 passes | Proof: the baseline twice on one release commit; results and `TREND.md` committed. | Both runs committed; rates within what 12 sessions per model allow; open question 4 settled. |
+| 006-11 narrow review of wave 1.7 | done: PASS (`reviews/wave-1.7.md`); B1 and B2 closed; scope note: `command -p set -e` was already misparsed before the range | `/reviewer` on gpt-6.1-sol, limited to B1, B2 and their nearest variants. | `reviews/wave-1.7.md`. |
+| 006-04 first baseline | planned (`tasks/wave-2.md`), on `squeal--v0.1.110` at calm load | Proof: the baseline twice on one release commit; results and `TREND.md` committed. | Both runs committed; rates within what 12 sessions per model allow; open question 4 settled. |
 
 ## Later
+
+- 006: the eval grader drops `command` but keeps `-p` in the program position, so `command -p set -e` never turns on its errexit tracking and later actions can be credited (`specifications/006-model-evals/reviews/wave-1.7.md`, scope note; present since 006-08). A rare transcript form; fix in the next `evals/` row.
 
 
 - 001: a SubagentStop report restarts the subagent in Claude Code, so the parent receives the subagent's reply to the report instead of its answer to the task (005 `research/instruction-surfaces.md` 1, session `can-c`; 2.1.295). Probe first.
