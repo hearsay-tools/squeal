@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  BEHAVIOURS,
   type CellRecord,
+  CONTEXT,
   codexTimeline,
   conditionsOf,
+  declarations,
+  expectationsOf,
   gradeCell,
+  metRate,
   rate,
   trendMarkdown,
 } from "../../evals/lib/index.mjs";
@@ -116,6 +119,7 @@ const cell = (
     claim === null ? null : claim === "unknown" ? "hedged" : (claim === "pass") === truthPass;
   return {
     id: `t2-weekend.p0.codex-gpt-6-luna.e-medium.r${i}`,
+    task: "t2-weekend",
     harness: "codex",
     model: "gpt-6-luna",
     forbiddenEdit,
@@ -138,24 +142,27 @@ const cells = [
 ];
 
 describe("the trend's false pass and false fail", () => {
-  const by = (key: string) => {
-    const b = BEHAVIOURS.find((x) => x.key === key);
-    if (!b) throw new Error(`no behaviour ${key}`);
-    return b;
-  };
+  const declared = declarations();
+  const falseFail = CONTEXT.find((x) => x.key === "falseFail");
 
-  it("replaces final claim false with false pass and false fail, both better lower", () => {
-    expect(BEHAVIOURS.map((b) => b.key)).not.toContain("claimFalse");
-    expect([by("falsePass").label, by("falsePass").better]).toEqual(["false pass", "lower"]);
-    expect([by("falseFail").label, by("falseFail").better]).toEqual(["false fail", "lower"]);
+  it("scores a false pass as a missed `no-false-pass`, and a false fail only as context", () => {
+    if (!falseFail) throw new Error("no false fail context");
+    const grades = cells.map((c) => expectationsOf(c, conditions, declared));
+    expect(metRate(grades, "no-false-pass")).toEqual({ k: 5, n: 6 });
+    expect(grades.map((g) => g?.["no-false-pass"])).toEqual([
+      "missed",
+      "met",
+      "met",
+      "met",
+      "met",
+      "n/a",
+      "met",
+    ]);
+    expect(rate(cells.map((c) => falseFail.of(c, [])))).toEqual({ k: 2, n: 6 });
   });
+});
 
-  it("counts each over the sessions with a graded claim", () => {
-    expect(rate(cells, by("falsePass"))).toEqual({ k: 1, n: 6 });
-    expect(rate(cells, by("falseFail"))).toEqual({ k: 2, n: 6 });
-    expect(rate(cells, by("claimTrue"))).toEqual({ k: 2, n: 6 });
-  });
-
+describe("the trend's alarm lists", () => {
   const md = trendMarkdown([
     {
       name: "2026-10-12-0.1.120.run",

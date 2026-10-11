@@ -278,20 +278,47 @@ export interface Rate {
   k: number;
   n: number;
 }
-export interface Behaviour {
-  key: string;
-  label: string;
-  better: "higher" | "lower" | null;
+export type ExpectationGrade = "met" | "missed" | "n/a" | "not computable";
+export interface Declaration {
+  id: string;
+  moment: string;
+  rule: string;
+}
+export interface Declarations {
+  tasks: Record<string, Record<string, unknown>>;
+  expectations: Record<string, Declaration[]>;
+}
+export interface Rule {
+  needs: readonly string[];
+  reads: readonly string[];
   of: (cell: CellRecord) => boolean | null;
 }
-export const BEHAVIOURS: readonly Behaviour[];
-export function rate(cells: readonly CellRecord[], behaviour: Behaviour): Rate | null;
-export function dropped(
-  behaviour: Behaviour,
-  before: Rate | null,
-  now: Rate | null,
-  points?: number,
-): boolean;
+export interface ContextCount {
+  key: string;
+  label: string;
+  of: (cell: CellRecord, declaredIds: readonly string[]) => boolean | null;
+}
+export const EXPECTATIONS: Readonly<Record<string, string>>;
+export const RULES: Readonly<Record<string, Rule>>;
+export const CONTEXT: readonly ContextCount[];
+export function declarations(file?: string | URL): Declarations;
+export function notGraded(
+  cell: CellRecord,
+  conditions: Pick<Conditions, "tasks"> | undefined,
+  declared: Declarations,
+): string | null;
+export function expectationsOf(
+  cell: CellRecord,
+  conditions: Pick<Conditions, "tasks"> | undefined,
+  declared: Declarations,
+): Record<string, ExpectationGrade> | null;
+export function falseClaim(cell: CellRecord, claim: "pass" | "fail"): boolean | null;
+export function rate(values: readonly (boolean | null | undefined)[]): Rate | null;
+export function metRate(
+  grades: readonly (Record<string, ExpectationGrade> | null)[],
+  id: string,
+): Rate | null;
+export function dropped(before: Rate | null, now: Rate | null, points?: number): boolean;
 
 export type CellRecord = { id: string; harness: string; model: string; [key: string]: unknown };
 export interface Conditions {
@@ -327,13 +354,32 @@ export interface ResultsFile {
   conditions: Conditions;
   models?: { harness: string; model: string; status: "served" | "missing"; standIn?: string }[];
   cells: CellRecord[];
+  /** The expectations revision `regrade.mjs` last graded the file's cells under. */
+  expectationsRevision?: string;
+}
+export interface Scores {
+  headline: Rate | null;
+  expectations: Record<string, Rate | null>;
+  byTask: Record<string, Record<string, Rate | null>>;
+  notComputable: number;
+  context: Record<string, Rate | null>;
 }
 export interface TrendLine {
   fingerprint: string;
   runs: {
     name: string;
-    flags: { model: string; behaviour: string; before: Rate | null; now: Rate | null }[];
+    models: string[];
+    scores: Record<string, Scores>;
+    flags: { model: string; expectation: string; before: Rate | null; now: Rate | null }[];
+    ungraded: Record<string, { why: string; n: number }>;
   }[];
 }
-export function trendLines(runs: readonly { name: string; data: ResultsFile }[]): TrendLine[];
-export function trendMarkdown(runs: readonly { name: string; data: ResultsFile }[]): string;
+export function expectationsRevision(declared: Declarations): string;
+export function trendLines(
+  runs: readonly { name: string; data: ResultsFile }[],
+  declared?: Declarations,
+): TrendLine[];
+export function trendMarkdown(
+  runs: readonly { name: string; data: ResultsFile }[],
+  declared?: Declarations,
+): string;
