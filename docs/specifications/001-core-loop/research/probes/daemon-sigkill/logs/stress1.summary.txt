@@ -1,0 +1,7 @@
+round 1 06:09:47 load 32.36
+round 2 06:11:29 load 11.28
+round 3 06:13:17 load 8.86
+hits 0
+      4       Tests  1 failed | 86 passed (87)
+      1       Tests  2 failed | 85 passed (87)
+     19       Tests  87 passed (87)
