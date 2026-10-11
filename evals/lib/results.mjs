@@ -70,6 +70,8 @@ export function cellRecord(g) {
     squealVerdict: g.squealEnd?.verdict ?? null,
     daemonKilled: (g.daemonExits ?? []).filter((e) => e.signal).length,
     leftovers: g.leftovers ?? 0,
+    // D4 "Retained evidence": what the timeline rules read, so a later rule regrades from it.
+    timeline: g.retained ?? null,
   };
 }
 

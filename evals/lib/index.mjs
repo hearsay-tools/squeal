@@ -15,6 +15,16 @@ export {
 export { parseClaim } from "./claim.mjs";
 export { classifyShell, scopeLabel } from "./commands.mjs";
 export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";
+export {
+  answeredRuns,
+  claimedOnEvidence,
+  coveredRun,
+  covers,
+  currentBeforeClaim,
+  redStep,
+  selects,
+  squealEvidence,
+} from "./evidence.mjs";
 export { gradeCell, groundTruthOf, squealState } from "./grade.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
 export { armFixtures, cellRecord, conditionsOf, resultsName } from "./results.mjs";

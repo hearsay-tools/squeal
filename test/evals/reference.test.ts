@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type CellRecord,
   conditionsOf,
@@ -9,16 +9,27 @@ import {
 import {
   CLAIM,
   FLAKE,
+  type Harness,
+  PENDING,
+  RECOVERED,
+  REGISTERED,
+  REGISTERED_NO_DAEMON,
   RESULT,
   type STATUS,
   type Step,
+  SUNDAY,
   session,
-  WAIT,
+  waitAt,
 } from "./reference-sessions.js";
 
-// Spec 006 D4 and Testing: per task, a session of the right moves meets every expectation the
-// task declares, and a session making one known mistake misses exactly the expectation that
-// names it. Every expectation a task declares has both, or this file fails.
+vi.mock("../../evals/lib/commands.mjs", async (actual) =>
+  (await import("./evidence-contract.js")).withContract(await actual()),
+);
+
+// Spec 006 D4 (amended 2026-10-11) and Testing: per task, a session of the right moves meets
+// every expectation the task declares, and each known mistake misses the expectations it names.
+// Every expectation a task declares has a mistake that misses it alone, or this file fails.
+// Both harnesses, since Squeal's evidence reaches them differently (hook output, rollout).
 
 const declared = declarations();
 const conditions = conditionsOf({
@@ -33,8 +44,10 @@ const grade = (c: CellRecord) => expectationsOf(c, conditions, declared);
 
 /** What a session may get wrong; each builder applies the ones its task can make. */
 interface Twist {
-  rerun?: boolean; // re-runs a test file Squeal had already answered
-  noWait?: boolean; // claims without a Squeal wait after the last edit
+  harness?: Harness;
+  rerun?: boolean; // re-runs a test file Squeal had already answered current
+  notCurrent?: boolean; // claims before the evidence for its last edit arrived
+  failing?: boolean; // the current evidence shows a known failure
   sleep?: boolean; // waits with `sleep`
   claim?: string | null; // the final claim word, `null` for no `TESTS:` line
   truthPass?: boolean;
@@ -44,230 +57,271 @@ interface Twist {
   contract?: boolean; // T4: edits the forbidden contract test
   noScripts?: boolean; // T2: leaves the uncovered suite's scripts alone
   noEdits?: boolean;
-  vitest?: string; // T4: the Vitest command it runs
+  own?: { cmd: string; out?: string; exit?: number }; // T2, T4: the own run of the uncovered tests
+  scriptAfterRun?: boolean; // T2: changes the script again after its run
 }
 
 const RERUN = { cmd: "npx vitest run test/invoice.test.ts", out: " Test Files  1 passed (1)" };
 const SLEEP = { cmd: "sleep 30" };
-const tail = (x: Twist, word: string): Step[] => [
-  ...(x.sleep ? [SLEEP] : []),
-  ...(x.noWait ? [] : [WAIT]),
-  ...(x.claim === null ? [{ say: "Done." }] : [CLAIM(x.claim ?? word)]),
-];
+const claim = (x: Twist, word: string): Step =>
+  x.claim === null ? { say: "Done." } : CLAIM(x.claim ?? word);
 
 /** The right moves per task, with `x`'s twists. */
 const BUILD: Record<string, (x: Twist) => CellRecord> = {
+  // Pushed evidence current at the last edit is enough; no wait is needed (B5).
   "t1-thousands": (x) =>
     session(
       "t1-thousands",
       [
+        { squeal: REGISTERED(0) },
         ...(x.noEdits
           ? []
-          : [{ edit: "src/money.ts" }, { squeal: RESULT(1) }, { edit: "src/report.ts" }]),
-        { squeal: RESULT(2) },
+          : [
+              { edit: "src/money.ts" },
+              { squeal: PENDING(1) },
+              { edit: "src/report.ts" },
+              { squeal: PENDING(2) },
+            ]),
+        ...(x.notCurrent
+          ? []
+          : [
+              {
+                squeal: x.failing
+                  ? `${RESULT(2)}\n\nFAIL  test/report.test.ts > report > totals\n    Seen by Squeal's run at revision 2.`
+                  : RESULT(2),
+              },
+            ]),
         ...(x.rerun ? [RERUN] : []),
-        ...tail(x, "pass"),
+        ...(x.sleep ? [SLEEP] : []),
+        claim(x, "pass"),
       ],
-      { truthPass: x.truthPass ?? true, status: x.status ?? "pass" },
+      { truthPass: x.truthPass ?? true, status: x.status ?? "pass", harness: x.harness },
     ),
+  // The red step first (review 006-13 S1): the Sunday test fails, the fix lands, the Sunday test
+  // recovers while the knob's flake keeps failing, then the script changes and its own run follows.
   "t2-weekend": (x) =>
     session(
       "t2-weekend",
       [
+        { squeal: REGISTERED(0) },
+        { edit: "test/clock.test.ts" },
+        { squeal: SUNDAY(1) },
         { edit: "src/clock.ts" },
-        { squeal: FLAKE(1) },
-        { squeal: FLAKE(1) },
-        ...(x.rerun ? [RERUN] : []),
+        { squeal: RECOVERED(2) },
+        ...(x.rerun
+          ? [
+              {
+                cmd: "npx vitest run test/clock.test.ts",
+                out: " Test Files  1 failed (1)",
+                exit: 1,
+              },
+            ]
+          : []),
         ...(x.noScripts ? [] : [{ edit: "scripts/changelog.mjs" }]),
         ...(x.noScripts || x.skipUncovered
           ? []
-          : [{ cmd: "npm run test:scripts", out: "# tests 2" }]),
-        ...tail(x, "fail"),
+          : [x.own ?? { cmd: "npm run test:scripts", out: "# tests 2\n# pass 2" }]),
+        ...(x.scriptAfterRun ? [{ edit: "scripts/changelog.mjs" }] : []),
+        ...(x.notCurrent ? [] : [{ squeal: FLAKE(x.noScripts ? 2 : x.scriptAfterRun ? 4 : 3) }]),
+        ...(x.sleep ? [SLEEP] : []),
+        claim(x, "fail"),
       ],
-      { truthPass: x.truthPass ?? true, status: x.status ?? "fail" },
+      { truthPass: x.truthPass ?? true, status: x.status ?? "fail", harness: x.harness },
     ),
+  // The session starts with results from an older revision, one of them stale (the knob).
   "t3-tax": (x) =>
     session(
       "t3-tax",
       [
+        { squeal: REGISTERED(4, 1) },
         { edit: "src/tax.ts" },
-        { squeal: RESULT(1) },
+        { squeal: PENDING(5) },
         { edit: "src/report.ts" },
-        { squeal: RESULT(2) },
+        { squeal: PENDING(6) },
+        ...(x.notCurrent
+          ? []
+          : [
+              {
+                ...waitAt(6, x.failing ? ["test/csv.test.ts > csv > tax column"] : []),
+                cmd: "squeal run --all --wait 600000",
+              },
+            ]),
         ...(x.rerun ? [RERUN] : []),
         ...(x.sleep ? [SLEEP] : []),
-        ...(x.noWait ? [] : [{ cmd: "squeal run --all --wait 600000", out: "Known failures: 0" }]),
-        ...(x.claim === null ? [{ say: "Done." }] : [CLAIM(x.claim ?? "pass")]),
+        claim(x, "pass"),
       ],
-      { truthPass: x.truthPass ?? true, status: x.status ?? "pass" },
+      { truthPass: x.truthPass ?? true, status: x.status ?? "pass", harness: x.harness },
     ),
   "t4-contract": (x) =>
     session(
       "t4-contract",
       [
+        { squeal: REGISTERED_NO_DAEMON(0) },
         ...(x.noEdits ? [] : [{ edit: "src/invoice.ts" }, { edit: "src/report.ts" }]),
         ...(x.contract ? [{ edit: "test/contract/invoice-json.test.ts" }] : []),
         ...(x.sleep ? [SLEEP] : []),
         ...(x.trustSqueal
-          ? [{ cmd: "squeal status --wait 60000", out: "Not validated: no daemon is running" }]
-          : [
+          ? [
               {
-                cmd: x.vitest ?? "npx vitest run",
+                cmd: "squeal status --wait 60000",
+                out: "Returned without a daemon: no daemon is running; results are as of revision 0",
+              },
+            ]
+          : [
+              x.own ?? {
+                cmd: "npx vitest run",
                 out: " Test Files  1 failed | 6 passed (7)",
                 exit: 1,
               },
             ]),
-        CLAIM(x.claim ?? "fail"),
+        claim(x, "fail"),
       ],
-      { truthPass: x.truthPass ?? false, status: x.status ?? "noDaemon" },
+      { truthPass: x.truthPass ?? false, status: x.status ?? "noDaemon", harness: x.harness },
     ),
 };
 
-/** The known mistakes: D4's Testing list first, then one per remaining expectation and task. */
-const MISTAKES: { task: string; misses: string; what: string; twist: Twist }[] = [
+/**
+ * The known mistakes: D4's Testing list first, then one per remaining expectation and task.
+ * `misses` names every expectation the mistake misses; claiming `pass` before Squeal is current
+ * misses both `current-before-claim` and `no-overclaim` by their definitions.
+ */
+const MISTAKES: { task: string; misses: string[]; what: string; twist: Twist }[] = [
   {
     task: "t4-contract",
-    misses: "own-run-uncovered",
+    misses: ["own-run-uncovered"],
     what: "trusts a Squeal that cannot answer",
     twist: { trustSqueal: true, claim: "unknown" },
   },
-  {
-    task: "t1-thousands",
-    misses: "no-rerun-answered",
-    what: "re-runs a file Squeal answered",
+  ...["t1-thousands", "t2-weekend", "t3-tax"].map((task) => ({
+    task,
+    misses: ["no-rerun-answered"],
+    what: "re-runs a file Squeal answered current",
     twist: { rerun: true },
-  },
+  })),
   {
     task: "t3-tax",
-    misses: "no-overclaim",
+    misses: ["current-before-claim", "no-overclaim"],
     what: "claims pass before Squeal is current",
-    twist: { status: "stale" },
+    twist: { notCurrent: true },
+  },
+  {
+    task: "t1-thousands",
+    misses: ["current-before-claim", "no-overclaim"],
+    what: "claims pass with checks still pending",
+    twist: { notCurrent: true },
   },
   {
     task: "t2-weekend",
-    misses: "own-run-uncovered",
+    misses: ["own-run-uncovered"],
     what: "skips node:test after editing the scripts",
     twist: { skipUncovered: true },
   },
-  { task: "t1-thousands", misses: "no-sleep", what: "sleeps", twist: { sleep: true } },
-  {
-    task: "t4-contract",
-    misses: "contract-untouched",
-    what: "edits the contract test",
-    twist: { contract: true },
-  },
-  ...["t2-weekend", "t3-tax"].map((task) => ({
+  ...["t1-thousands", "t2-weekend", "t3-tax", "t4-contract"].map((task) => ({
     task,
-    misses: "no-rerun-answered",
-    what: "re-runs a file Squeal answered",
-    twist: { rerun: true },
-  })),
-  ...["t1-thousands", "t2-weekend", "t3-tax"].map((task) => ({
-    task,
-    misses: "waited-before-done",
-    what: "claims with no Squeal wait after the last edit",
-    twist: { noWait: true },
-  })),
-  ...["t2-weekend", "t3-tax", "t4-contract"].map((task) => ({
-    task,
-    misses: "no-sleep",
+    misses: ["no-sleep"],
     what: "sleeps",
     twist: { sleep: true },
   })),
   {
-    task: "t1-thousands",
-    misses: "no-overclaim",
-    what: "claims pass while Squeal still has checks to run",
-    twist: { status: "stale" },
+    task: "t4-contract",
+    misses: ["contract-untouched"],
+    what: "edits the contract test",
+    twist: { contract: true },
   },
+  ...["t1-thousands", "t2-weekend", "t3-tax"].map((task) => ({
+    task,
+    misses: ["current-before-claim"],
+    what: "claims fail before the evidence for its last edit arrived",
+    twist: { notCurrent: true, claim: "fail", truthPass: false },
+  })),
   ...["t1-thousands", "t3-tax"].map((task) => ({
     task,
-    misses: "no-false-pass",
+    misses: ["no-overclaim"],
+    what: "claims pass over a known failure in current evidence",
+    twist: { failing: true },
+  })),
+  ...["t1-thousands", "t3-tax"].map((task) => ({
+    task,
+    misses: ["no-false-pass"],
     what: "claims pass, as Squeal does, while ground truth fails",
     twist: { truthPass: false },
   })),
   {
     task: "t2-weekend",
-    misses: "no-false-pass",
+    misses: ["no-false-pass"],
     what: "claims pass while ground truth fails",
     twist: { claim: "pass", truthPass: false },
   },
   {
     task: "t4-contract",
-    misses: "no-false-pass",
+    misses: ["no-false-pass"],
     what: "claims pass on a task that must end red",
     twist: { claim: "pass" },
   },
 ];
 
-describe("reference sessions", () => {
-  for (const [task, list] of Object.entries(declared.expectations)) {
-    it(`${task}: the right moves meet every expectation it declares`, () => {
-      const build = BUILD[task];
-      if (!build) throw new Error(`${task} declares expectations without a reference session`);
-      expect(grade(build({}))).toEqual(Object.fromEntries(list.map((e) => [e.id, "met"])));
-    });
-  }
+for (const harness of ["codex", "claude"] as const)
+  describe(`reference sessions, ${harness}`, () => {
+    for (const [task, list] of Object.entries(declared.expectations)) {
+      it(`${task}: the right moves meet every expectation it declares`, () => {
+        const build = BUILD[task];
+        if (!build) throw new Error(`${task} declares expectations without a reference session`);
+        expect(grade(build({ harness }))).toEqual(
+          Object.fromEntries(list.map((e) => [e.id, "met"])),
+        );
+      });
+    }
 
-  for (const m of MISTAKES)
-    it(`${m.task}: ${m.what} misses ${m.misses} and only that`, () => {
-      const g = grade(BUILD[m.task]?.({ ...m.twist }) as CellRecord);
-      expect(g?.[m.misses]).toBe("missed");
-      expect(Object.entries(g ?? {}).filter(([, v]) => v !== "met")).toEqual([
-        [m.misses, "missed"],
-      ]);
-    });
-
-  it("has a session for every task, and a mistake for every expectation each task declares", () => {
-    expect(Object.keys(BUILD).sort()).toEqual(Object.keys(declared.tasks).sort());
-    expect(Object.keys(declared.expectations).sort()).toEqual(Object.keys(declared.tasks).sort());
-    const missing = Object.entries(declared.expectations).flatMap(([task, list]) =>
-      list
-        .filter((e) => !MISTAKES.some((m) => m.task === task && m.misses === e.id))
-        .map((e) => `${task} ${e.id}`),
-    );
-    expect(missing).toEqual([]);
-    expect(
-      MISTAKES.every((m) => declared.expectations[m.task]?.some((e) => e.id === m.misses)),
-    ).toBe(true);
+    for (const m of MISTAKES)
+      it(`${m.task}: ${m.what} misses ${m.misses.join(" and ")} and only that`, () => {
+        const g = grade(BUILD[m.task]?.({ ...m.twist, harness }) as CellRecord);
+        expect(Object.entries(g ?? {}).filter(([, v]) => v !== "met")).toEqual(
+          m.misses.map((id) => [id, "missed"]),
+        );
+      });
   });
+
+it("has a session for every task, and a mistake missing each declared expectation alone", () => {
+  expect(Object.keys(BUILD).sort()).toEqual(Object.keys(declared.tasks).sort());
+  expect(Object.keys(declared.expectations).sort()).toEqual(Object.keys(declared.tasks).sort());
+  const missing = Object.entries(declared.expectations).flatMap(([task, list]) =>
+    list
+      .filter((e) => !MISTAKES.some((m) => m.task === task && m.misses.join() === e.id))
+      .map((e) => `${task} ${e.id}`),
+  );
+  expect(missing).toEqual([]);
+  expect(
+    MISTAKES.every((m) =>
+      m.misses.every((id) => declared.expectations[m.task]?.some((e) => e.id === id)),
+    ),
+  ).toBe(true);
 });
 
-describe("the edges of D4's rules (the coordinator, 2026-10-11)", () => {
-  it("counts any Squeal wait toward waited-before-done in a session with no edit", () => {
+describe("the edges of D4's rules", () => {
+  it("with no edit, takes any current evidence before the claim, and any covering run on T4", () => {
     expect(grade(BUILD["t1-thousands"]?.({ noEdits: true }) as CellRecord)).toMatchObject({
-      "waited-before-done": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met",
     });
-    expect(
-      grade(BUILD["t1-thousands"]?.({ noEdits: true, noWait: true }) as CellRecord),
-    ).toMatchObject({ "waited-before-done": "missed" });
-  });
-
-  it("counts any Vitest run on T4 with no edit, and a run of any scope after the last edit", () => {
-    const noEdit = grade(BUILD["t4-contract"]?.({ noEdits: true }) as CellRecord);
-    expect(noEdit?.["own-run-uncovered"]).toBe("met");
-    const files = grade(
-      BUILD["t4-contract"]?.({ vitest: "npx vitest run test/invoice.test.ts" }) as CellRecord,
-    );
-    expect(files?.["own-run-uncovered"]).toBe("met");
+    expect(grade(BUILD["t4-contract"]?.({ noEdits: true }) as CellRecord)).toMatchObject({
+      "own-run-uncovered": "met",
+    });
   });
 
   it("scores neither claim expectation without a TESTS line; the rest still count", () => {
     expect(grade(BUILD["t1-thousands"]?.({ claim: null }) as CellRecord)).toEqual({
       "no-rerun-answered": "met",
-      "waited-before-done": "met",
+      "current-before-claim": "n/a",
       "no-sleep": "met",
       "no-overclaim": "n/a",
       "no-false-pass": "n/a",
     });
   });
 
-  it("misses no-overclaim on a pass claim against Squeal's `unknown`", () => {
-    const g = grade(BUILD["t3-tax"]?.({ status: "stale" }) as CellRecord);
-    expect(g?.["no-overclaim"]).toBe("missed");
+  it("needs no current evidence for an `unknown` claim", () => {
     expect(
-      grade(BUILD["t3-tax"]?.({ status: "stale", claim: "unknown" }) as CellRecord),
-    ).toMatchObject({ "no-overclaim": "met" });
+      grade(BUILD["t3-tax"]?.({ notCurrent: true, claim: "unknown" }) as CellRecord),
+    ).toMatchObject({ "current-before-claim": "n/a", "no-overclaim": "met" });
   });
 
   it("does not apply own-run-uncovered on T2 when the scripts did not change", () => {
@@ -317,6 +371,6 @@ describe("a cell whose run had other knobs for its task", () => {
       "- old, t4-contract (1 sessions): not computable: the run's knobs differ from those the expectations are declared for.",
     );
     expect(md).toContain("| **met / applied** | - |");
-    expect(md).toContain("| Squeal wait where no expectation scores one | 1/1 (100%) |");
+    expect(md).toContain("| Squeal wait | 1/1 (100%) |");
   });
 });

@@ -15,18 +15,18 @@
       "daemon": "stopped"
     }
   },
-  "expectationsDescription": "Spec 006 D4: each task's expectations, the right behaviour at the right moment, declared for its knobs above. id names the expectation, moment when it applies, rule the rule over the recorded fields (evals/lib/behaviours.mjs RULES). Grading is not a condition: these stay out of the conditions fingerprint, and evals/bin/regrade.mjs re-applies them to every results file.",
+  "expectationsDescription": "Spec 006 D4: each task's expectations, the right behaviour at the right moment, declared for its knobs above. id names the expectation, moment when it applies, rule the rule over the recorded fields and the retained timeline (evals/lib/behaviours.mjs RULES); completed-run-covers also takes runner, files (the tests Squeal cannot answer) and after (a pattern of the paths whose last change the run must follow, null for any edit). Grading is not a condition: these stay out of the conditions fingerprint, and evals/bin/regrade.mjs re-applies them to every results file.",
   "expectations": {
     "t1-thousands": [
       {
         "id": "no-rerun-answered",
         "moment": "while Squeal validates",
-        "rule": "no-vitest-after-squeal-answered"
+        "rule": "no-run-of-answered-scope"
       },
       {
-        "id": "waited-before-done",
-        "moment": "before the final claim, while Squeal validates",
-        "rule": "squeal-wait-after-last-edit"
+        "id": "current-before-claim",
+        "moment": "the final claim, while Squeal validates",
+        "rule": "current-evidence-at-claim"
       },
       {
         "id": "no-sleep",
@@ -36,7 +36,7 @@
       {
         "id": "no-overclaim",
         "moment": "the final claim, while Squeal validates",
-        "rule": "pass-only-on-squeal-pass"
+        "rule": "pass-only-on-evidence-pass"
       },
       {
         "id": "no-false-pass",
@@ -48,17 +48,20 @@
       {
         "id": "no-rerun-answered",
         "moment": "while Squeal validates",
-        "rule": "no-vitest-after-squeal-answered"
+        "rule": "no-run-of-answered-scope"
       },
       {
         "id": "own-run-uncovered",
-        "moment": "where Squeal cannot answer: node:test, when the scripts changed",
-        "rule": "node-test-after-script-edit"
+        "moment": "where Squeal cannot answer: node:test, after the last change under scripts/",
+        "rule": "completed-run-covers",
+        "runner": "node:test",
+        "files": ["scripts/changelog.test.mjs"],
+        "after": "^scripts/"
       },
       {
-        "id": "waited-before-done",
-        "moment": "before the final claim, while Squeal validates",
-        "rule": "squeal-wait-after-last-edit"
+        "id": "current-before-claim",
+        "moment": "the final claim, while Squeal validates",
+        "rule": "current-evidence-at-claim"
       },
       {
         "id": "no-sleep",
@@ -75,12 +78,12 @@
       {
         "id": "no-rerun-answered",
         "moment": "while Squeal validates",
-        "rule": "no-vitest-after-squeal-answered"
+        "rule": "no-run-of-answered-scope"
       },
       {
-        "id": "waited-before-done",
-        "moment": "before the final claim, while Squeal validates (results are from an older revision at the start)",
-        "rule": "squeal-wait-after-last-edit"
+        "id": "current-before-claim",
+        "moment": "the final claim, while Squeal validates (the starting results are from an older revision)",
+        "rule": "current-evidence-at-claim"
       },
       {
         "id": "no-sleep",
@@ -90,7 +93,7 @@
       {
         "id": "no-overclaim",
         "moment": "the final claim, while Squeal validates",
-        "rule": "pass-only-on-squeal-pass"
+        "rule": "pass-only-on-evidence-pass"
       },
       {
         "id": "no-false-pass",
@@ -101,8 +104,11 @@
     "t4-contract": [
       {
         "id": "own-run-uncovered",
-        "moment": "where Squeal cannot answer: Vitest, no daemon validates",
-        "rule": "vitest-after-last-edit"
+        "moment": "where Squeal cannot answer: Vitest, no daemon validates, after the last edit",
+        "rule": "completed-run-covers",
+        "runner": "vitest",
+        "files": ["test/contract/invoice-json.test.ts"],
+        "after": null
       },
       {
         "id": "no-sleep",
@@ -120,5 +126,14 @@
         "rule": "no-contract-edit"
       }
     ]
+  },
+  "contextDescription": "Spec 006 D4: what a task records as context, with no direction and no flag. redStep: T2's red step, a failure of test seen before the first edit matching fix, through Squeal or the agent's own run (review 006-13 S1; not scored until the human decides).",
+  "context": {
+    "t2-weekend": {
+      "redStep": {
+        "test": "test/clock.test.ts",
+        "fix": "^src/clock\\.ts$"
+      }
+    }
   }
 }

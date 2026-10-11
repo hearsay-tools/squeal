@@ -56,7 +56,10 @@ function scoresOf(cells, grades, declared) {
     ),
     notComputable: all.filter((v) => v === "not computable").length,
     context: Object.fromEntries(
-      CONTEXT.map((x) => [x.key, rate(cells.map((c) => x.of(c, declaredIds(c.task))))]),
+      CONTEXT.map((x) => [
+        x.key,
+        rate(cells.map((c) => x.of(c, declaredIds(c.task), declared.context?.[c.task]))),
+      ]),
     ),
   };
 }

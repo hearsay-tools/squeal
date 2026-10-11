@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   type CellRecord,
   conditionsOf,
@@ -10,6 +10,10 @@ import {
   expectationsRevision,
 } from "../../evals/lib/index.mjs";
 import { CLAIM, session, WAIT } from "./reference-sessions.js";
+
+vi.mock("../../evals/lib/commands.mjs", async (actual) =>
+  (await import("./evidence-contract.js")).withContract(await actual()),
+);
 
 // 006-14: `evals/bin/regrade.mjs` grades every committed cell's expectations from its kept
 // fields, records the expectations revision, and names what it could not grade: a task whose
@@ -71,8 +75,8 @@ function regrade(files: ReturnType<typeof file>[]) {
 }
 
 describe("evals/bin/regrade.mjs, expectations", () => {
-  // A record from before the grader kept `vitestAfterSquealAnswered`.
-  const { vitestAfterSquealAnswered: _, ...partial } = t1;
+  // A record from before the grader kept its timeline (D4 "Retained evidence").
+  const { timeline: _, ...partial } = t1;
   const r = regrade([
     file("current", { "t1-thousands": {}, "t4-contract": { daemon: "stopped" } }, [
       t4,
@@ -89,7 +93,7 @@ describe("evals/bin/regrade.mjs, expectations", () => {
       "no-false-pass": "met",
       "contract-untouched": "met",
     });
-    expect(r.trend).toContain("| Squeal wait where no expectation scores one | 1/1 (100%) |");
+    expect(r.trend).toContain("| Squeal wait | 1/1 (100%) |");
   });
 
   it("records the expectations revision in the file and in its note", () => {
@@ -105,9 +109,18 @@ describe("evals/bin/regrade.mjs, expectations", () => {
 
   it("names a rule whose field the file does not keep as not computable, never guessed", () => {
     const data = r.read("current");
-    expect(data.cells[1].expectations["no-rerun-answered"]).toBe("not computable");
+    const id = data.cells[1].id;
+    expect(data.cells[1].expectations).toEqual({
+      "no-rerun-answered": "not computable",
+      "current-before-claim": "not computable",
+      "no-sleep": "met",
+      "no-overclaim": "not computable",
+      "no-false-pass": "met",
+    });
     expect(data.regraded.at(-1).notComputable).toEqual({
-      "no-rerun-answered": [data.cells[1].id],
+      "no-rerun-answered": [id],
+      "current-before-claim": [id],
+      "no-overclaim": [id],
     });
   });
 
