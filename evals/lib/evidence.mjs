@@ -186,10 +186,13 @@ export function claimedOnEvidence(timeline, claim) {
   if (claim !== "pass") return true;
   const tl = replayed(timeline);
   const a = atClaim(tl);
+  // No current evidence at the claim (none seen at all included): a `pass` claim is a miss.
+  if (!a.current) return false;
+  const seen = tl[a.j];
   // Uncertain, unless the evidence itself names a failing check: then it is failing whatever the count.
-  const names = (tl[a.j].checks ?? []).some((c) => c.to === "fail" && c.check !== undefined);
-  if (a.current && tl[a.j].uncertain && !names) return "not computable";
-  return a.current && tl[a.j].verdict === "pass";
+  const names = (seen.checks ?? []).some((c) => c.to === "fail" && c.check !== undefined);
+  if (seen.uncertain && !names) return "not computable";
+  return seen.verdict === "pass";
 }
 
 /**
