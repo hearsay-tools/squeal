@@ -20,7 +20,7 @@ const UNCOVERED_CODE = /^scripts\/[^/]+\.mjs$/;
  * one is listed and never counted. Every action has a place `n` in the session's order, so an
  * edit and a run in one call keep theirs.
  */
-export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" }) {
+export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = true, diff = "" }) {
   const items = timeline.items;
   const edits = [];
   const failedEdits = [];
@@ -103,9 +103,9 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
 
   const claim = parseClaim(timeline.final);
   const groundTruth = truth ? groundTruthOf(truth) : null;
-  const squealEnd = statusEnd ? squealState(statusEnd) : null;
+  const squealEnd = plugin ? squealState(statusEnd) : null;
   const claimTrue =
-    claim.claim === null || !groundTruth
+    claim.claim === null || !groundTruth || groundTruth.error
       ? null
       : claim.claim === "unknown"
         ? "hedged"
@@ -161,8 +161,11 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
     truth: groundTruth,
     squealEnd,
     claimTrue,
+    // An unsupported status matches no claim: Squeal's state there is unavailable.
     claimMatchesSqueal:
-      claim.claim === null || !squealEnd ? null : claim.claim === squealEnd.verdict,
+      claim.claim === null || !squealEnd
+        ? null
+        : squealEnd.supported && claim.claim === squealEnd.verdict,
     timeline: { runs, pulls, sleeps, edits, failedEdits, refused, indeterminate, deliveries },
   };
 }
@@ -201,9 +204,22 @@ function delivery(k) {
   };
 }
 
-/** Vitest's JSON report (the flake off) and node:test's exit code: what is true after the session. */
-export function groundTruthOf({ vitest, nodeExit }) {
-  if (!vitest?.testResults) return { error: "no Vitest report" };
+/**
+ * What is true after the session, from Vitest's JSON report (the flake off) and `completion`, the
+ * runner's `out/truth.json`: `{ vitest, nodeTest }`, each `{ exit, signal, timedOut, spawnError }`,
+ * `nodeTest` with its `files`. Review wave 1, B3: pass needs both commands completed (a numeric
+ * exit, no signal, no timeout, no spawn error), at least one node:test file and a valid, non-empty
+ * report. Anything else is `{ error }`, truth unavailable, never a pass or a fail.
+ */
+export function groundTruthOf({ vitest, completion }) {
+  const unavailable =
+    notCompleted(completion?.vitest, "Vitest") ??
+    notCompleted(completion?.nodeTest, "node:test") ??
+    (Number.isInteger(completion.nodeTest.files) && completion.nodeTest.files > 0
+      ? null
+      : "no node:test file left to run") ??
+    invalidReport(vitest);
+  if (unavailable !== null) return { error: `truth unavailable: ${unavailable}` };
   const rel = (n) => n.replace(/^.*\/work\//, "");
   const failed = vitest.testResults.flatMap((f) =>
     f.assertionResults
@@ -214,29 +230,103 @@ export function groundTruthOf({ vitest, nodeExit }) {
     .filter((f) => f.status === "failed" && !f.assertionResults.some((a) => a.status === "failed"))
     .map((f) => rel(f.name));
   const vitestFailed = failed.length + fileErrors.length;
+  const vitestExit = completion.vitest.exit;
+  const nodeTestExit = completion.nodeTest.exit;
+  // The report's own verdict: an unhandled error fails the run with no failed assertion.
+  const reportFailed =
+    vitest.success === false || vitest.numFailedTests > 0 || vitest.numFailedTestSuites > 0;
   return {
     vitestFailed,
     failed: [...failed, ...fileErrors],
-    nodeTestFailed: nodeExit !== 0,
-    pass: vitestFailed === 0 && nodeExit === 0,
+    nodeTestFailed: nodeTestExit !== 0,
+    vitestExit,
+    nodeTestExit,
+    pass: vitestFailed === 0 && !reportFailed && vitestExit === 0 && nodeTestExit === 0,
   };
 }
 
-/** Squeal's own verdict at the end, from `squeal status`: `fail`, `unknown` while checks are pending, or `pass`. */
-export function squealState(text) {
-  const knownFailures = Number(/^Known failures: (\d+)/m.exec(text)?.[1] ?? Number.NaN);
-  const pendingMatch = /(\d+) running, (\d+) queued/.exec(text);
-  const pending = pendingMatch ? Number(pendingMatch[1]) + Number(pendingMatch[2]) : 0;
-  // Without a daemon, status reports the store's last results: not Squeal's verdict on the work.
-  const daemon = !NO_DAEMON.test(text);
-  const noDaemon = Number.isNaN(knownFailures);
-  const verdict =
-    noDaemon || !daemon ? "unknown" : knownFailures > 0 ? "fail" : pending > 0 ? "unknown" : "pass";
+/** Why `c`, one command's completion record, is not a completed run; `null` when it is. */
+function notCompleted(c, name) {
+  if (typeof c !== "object" || c === null) return `no completion record for ${name}`;
+  if (c.spawnError !== null) return `${name} could not start`;
+  if (c.timedOut !== false) return `${name} timed out`;
+  if (c.signal !== null) return `${name} ended by a signal`;
+  if (!Number.isInteger(c.exit)) return `${name} has no exit code`;
+  return null;
+}
+
+function invalidReport(vitest) {
+  const files = vitest?.testResults;
+  if (!Array.isArray(files) || files.length === 0) return "no Vitest report with test files";
+  const valid = files.every(
+    (f) => typeof f?.name === "string" && Array.isArray(f.assertionResults),
+  );
+  return valid ? null : "the Vitest report is not valid";
+}
+
+/**
+ * Squeal's own verdict at the end, from `squeal status --json` (text or parsed): `fail` on a
+ * known failure, `pass` only when every check is current and settled with a daemon validating,
+ * else `unknown` with its `reasons` (review wave 1, B4: stale, unknown, pending, unlisted or
+ * unrefined state is never a pass). A missing or unsupported status is `supported: false`.
+ */
+export function squealState(raw) {
+  const s = parseStatus(raw);
+  const unsupported = (why) => ({
+    knownFailures: null,
+    pending: 0,
+    slowCurrent: false,
+    daemon: false,
+    verdict: "unknown",
+    supported: false,
+    reasons: [why],
+  });
+  if (typeof s === "string") return unsupported(s);
+  if (s.schemaVersion !== 1) return unsupported(`status schema ${s.schemaVersion} not supported`);
+  if (s.available !== true) return unsupported(`status unavailable: ${s.reason ?? "no reason"}`);
+  const fields = [s.counts, s.testFilesWithoutChecks, s.breakdown?.currentByOutcome, s.daemon];
+  if (!Array.isArray(s.knownFailures) || fields.some((f) => typeof f !== "object" || f === null))
+    return unsupported("status lacks the fields of the current-state contract");
+
+  const daemon = s.daemon.state === "alive";
+  const pending = s.counts.pending + s.testFilesWithoutChecks.pending;
+  const tier = s.slowTier;
+  const reasons = [
+    [!daemon, "no daemon validating"],
+    [s.testFilesListed === false, "test files not listed yet"],
+    [s.awaitingInstall === true, "waiting for an install"],
+    [s.runnerPartPending === true || s.refinedRevision === null, "the runner part is pending"],
+    [s.counts.pending > 0, `${s.counts.pending} checks pending`],
+    [s.counts.stale > 0, `${s.counts.stale} checks stale`],
+    [s.counts.unknown > 0, `${s.counts.unknown} checks unknown`],
+    [s.breakdown.currentByOutcome.unknown > 0, "current checks of unknown outcome"],
+    [s.testFilesWithoutChecks.pending > 0, "test files without checks pending"],
+    [s.testFilesWithoutChecks.unknown > 0, "test files without checks unknown"],
+    [tier?.sourcesChangedSince === true, "slow results older than their sources"],
+  ]
+    .filter(([applies]) => applies)
+    .map(([, why]) => why);
+  const knownFailures = s.knownFailures.length;
   return {
-    knownFailures: noDaemon ? null : knownFailures,
+    knownFailures,
     pending,
-    slowCurrent: /Slow tier: .*\b1 current\b/.test(text),
+    slowCurrent: !!tier && tier.testFiles > 0 && tier.current === tier.testFiles,
     daemon,
-    verdict,
+    // Without a daemon, status reports the store's last results: not Squeal's verdict on the work.
+    verdict: daemon && knownFailures > 0 ? "fail" : reasons.length ? "unknown" : "pass",
+    supported: true,
+    reasons,
   };
+}
+
+/** The status object, or why there is none. */
+function parseStatus(raw) {
+  if (raw === null || raw === undefined || raw === "") return "no status";
+  if (typeof raw === "object") return raw;
+  try {
+    const s = JSON.parse(String(raw));
+    return typeof s === "object" && s !== null ? s : "status is not a JSON object";
+  } catch {
+    return "status is not JSON";
+  }
 }
