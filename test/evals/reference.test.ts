@@ -4,7 +4,7 @@ import {
   CONTEXT,
   conditionsOf,
   declarations,
-  expectationsOf,
+  parserExpectationsOf,
   trendMarkdown,
 } from "../../evals/lib/index.mjs";
 import { BUILD, MISTAKES } from "./judge-references.js";
@@ -25,7 +25,7 @@ const conditions = conditionsOf({
   variant: "p0",
   effort: "medium",
 });
-const grade = (c: CellRecord) => expectationsOf(c, conditions, declared);
+const grade = (c: CellRecord) => parserExpectationsOf(c, conditions, declared);
 
 for (const harness of ["codex", "claude"] as const)
   describe(`reference sessions, ${harness}`, () => {
@@ -150,7 +150,7 @@ describe("a cell whose run had other knobs for its task", () => {
   const cell = BUILD["t4-contract"]?.({ trustSqueal: true }) as CellRecord;
 
   it("gets null expectations, neither met nor missed", () => {
-    expect(expectationsOf(cell, oldConditions, declared)).toBeNull();
+    expect(parserExpectationsOf(cell, oldConditions, declared)).toBeNull();
   });
 
   it("is named in TREND.md as not graded, with no expectation counted for it", () => {

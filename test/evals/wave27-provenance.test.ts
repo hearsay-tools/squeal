@@ -3,7 +3,7 @@ import {
   type CellRecord,
   conditionsOf,
   declarations,
-  expectationsOf,
+  parserExpectationsOf,
   type Step as Seen,
   squealEvidence,
 } from "../../evals/lib/index.mjs";
@@ -41,7 +41,7 @@ const conditions = conditionsOf({
 });
 const t1 = (steps: Step[], harness: Harness, truthPass = true) =>
   session("t1-thousands", steps, { truthPass, status: "pass", harness });
-const grade = (c: CellRecord) => expectationsOf(c, conditions, declared);
+const grade = (c: CellRecord) => parserExpectationsOf(c, conditions, declared);
 const push = (rev: number, changes: Change[], pending = 0) => ({
   squeal: delivered(rev, changes, pending),
 });
