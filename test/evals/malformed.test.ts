@@ -93,7 +93,7 @@ describe("a malformed Vitest report is truth unavailable (SF1)", () => {
     delete r[field];
     return [`a report without ${field}`, r] as const;
   };
-  it.each([
+  it.each<readonly [string, unknown]>([
     ["a passed file without tests", report([])],
     ["a test without a status", report([{ fullName: "x" }])],
     ["a test still pending", report(["passed", "pending"])],
