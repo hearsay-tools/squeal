@@ -175,9 +175,11 @@ const SCAN_LIMIT = 64 * 1024 * 1024;
  * Files under `dirs` holding any of `secrets`: the path and how many secrets it holds, never the
  * values. The scan reads every file at any depth and never follows a link: a link's own bytes are
  * its target. A file too large to scan, or a directory it cannot read, is listed with
- * `unscanned: true`.
+ * `unscanned: true`. In `retained` evidence (review wave 1.6, B1) every link and every other entry
+ * that is neither a file nor a directory, a FIFO or a socket, is listed unscanned whatever it
+ * names: the scan cannot vouch for what it reaches.
  */
-export function scanForSecrets(dirs, secrets) {
+export function scanForSecrets(dirs, secrets, { retained = false } = {}) {
   const hits = [];
   const holds = (text) => secrets.filter((s) => text.includes(s)).length;
   const visit = (p) => {
@@ -196,6 +198,8 @@ export function scanForSecrets(dirs, secrets) {
         return;
       }
       for (const e of entries) visit(join(p, e));
+    } else if (retained && !st.isFile()) {
+      hits.push({ path: p, secrets: 0, unscanned: true });
     } else if (st.isSymbolicLink()) {
       const n = holds(readlinkSync(p));
       if (n) hits.push({ path: p, secrets: n });
@@ -219,7 +223,11 @@ export function scanForSecrets(dirs, secrets) {
 /** The directories retained evidence never keeps: dependency trees and Git's compressed objects. */
 const UNKEPT = /\/(?:node_modules|\.git\/objects)$/;
 
-/** Removes every link and unkept directory under `dir`, at any depth; one that resists is scanned. */
+/**
+ * Removes every unkept directory under `dir` and every entry that is neither a file nor a
+ * directory (a link, FIFO or socket), at any depth, never following a link; one that resists is
+ * listed unscanned by the scan.
+ */
 function prune(dir) {
   const visit = (p) => {
     let st;
@@ -228,7 +236,7 @@ function prune(dir) {
     } catch {
       return;
     }
-    if (st.isSymbolicLink() || (st.isDirectory() && UNKEPT.test(p))) {
+    if (st.isDirectory() ? UNKEPT.test(p) : !st.isFile()) {
       try {
         rmSync(p, { recursive: true, force: true });
       } catch {
@@ -251,7 +259,7 @@ function prune(dir) {
  * Clears a cell's scratch and makes its retained evidence safe: scans the cell for `secrets`,
  * removes the scratch homes, temp directory and the work tree's `.git` (the diff and the store
  * copy were taken from it), then removes from `out/` and `work/` every `node_modules` and
- * `.git/objects` at any depth and every link, sanitizes each text file that holds a secret and
+ * `.git/objects` at any depth and every link, FIFO and socket, sanitizes each text file that holds a secret and
  * removes each binary or unscannable one, and scans the whole cell again with nothing skipped.
  * The scratch Codex config holds the provider's URL by design and is removed with the rest.
  * Returns relative paths only: `secretsAfterRemoval` not empty means a secret survived, or
@@ -275,7 +283,7 @@ export function clearScratch(cell, secrets) {
   for (const d of evidence) prune(d);
   const sanitized = [];
   const removed = [];
-  for (const hit of scanForSecrets(evidence, secrets)) {
+  for (const hit of scanForSecrets(evidence, secrets, { retained: true })) {
     try {
       const bytes = hit.unscanned ? null : readFileSync(hit.path);
       const text = bytes?.toString("utf8");
@@ -292,7 +300,7 @@ export function clearScratch(cell, secrets) {
       // Left for the scan below to report.
     }
   }
-  const after = scanForSecrets([cell], secrets).map(rel);
+  const after = scanForSecrets([cell], secrets, { retained: true }).map(rel);
   return { secretsBeforeRemoval: before, sanitized, removed, secretsAfterRemoval: after };
 }
 
