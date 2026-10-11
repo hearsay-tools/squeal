@@ -1,6 +1,7 @@
 import { realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { daemonExitMetaKey } from "../../src/core/types/index.js";
@@ -21,6 +22,9 @@ import {
  * directory that cannot be made, leaves no row, so none outlives a removed
  * worktree that `store.prune` never visits. The control: a registered daemon's
  * stop still marks, and removal and prune take the row.
+ *
+ * Review wave-13ai N1 (001-278): nor does a registered daemon whose row a
+ * prune took while it ran; its stop finds no row to describe and writes none.
  */
 
 const suite = daemonSuite();
@@ -85,5 +89,23 @@ describe("the shutdown mark belongs to a registered daemon (review wave-13ah B1)
 
     expect(removeAndPrune(wt).worktreesRemoved).toBe(1);
     expect(read(wt)).toEqual({ worktree: null, mark: null });
+  });
+});
+
+describe("the shutdown mark needs its worktree row (review wave-13ai N1)", SLOW, () => {
+  it("a stop after a prune took the running daemon's row writes no row", async () => {
+    const repo = suite.fixture();
+    const wt = linked(repo, repo.runtimeDir);
+    // A minute's check: the root's removal is not noticed before the stop.
+    const daemon = await startDaemon({ root: wt.root, env: wt.env, timings: { checkMs: 60_000 } });
+    if ("reason" in daemon) throw new Error(daemon.message);
+    await daemon.ready;
+    expect(removeAndPrune(wt).worktreesRemoved).toBe(1);
+    expect(read(wt)).toEqual({ worktree: null, mark: null });
+
+    expect((await daemon.stop("stop-requested")).code).toBe(0);
+    expect(read(wt)).toEqual({ worktree: null, mark: null });
+    expect(removeAndPrune(wt).worktreesRemoved).toBe(0);
+    expect(read(wt).mark).toBeNull();
   });
 });

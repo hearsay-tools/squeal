@@ -586,12 +586,18 @@ class Daemon {
    * a kill from here on from a death (`withDeath`, task 001-274). A store
    * that cannot take it costs the log line, as a note's does. A daemon not
    * yet registered writes none: a start that fails first leaves no row, which
-   * no worktree record would let prune reach (task 001-276).
+   * no worktree record would let prune reach (task 001-276). Nor does one
+   * whose row a prune took while it ran, checked in the write's transaction
+   * (task 001-278).
    */
   #markExit(): void {
     if (!this.#registered) return;
+    const { store, worktreeId } = this.opened;
     try {
-      this.opened.store.meta.set(daemonExitMetaKey(this.opened.worktreeId), this.#incarnation());
+      store.transaction(() => {
+        if (store.worktrees.get(worktreeId) === null) return;
+        store.meta.set(daemonExitMetaKey(worktreeId), this.#incarnation());
+      });
     } catch (error) {
       this.#log(`could not mark the shutdown: ${message(error)}`);
     }
