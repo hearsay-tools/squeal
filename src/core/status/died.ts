@@ -3,13 +3,7 @@ import { acquireDaemonLock } from "../daemon/lock.js";
 import { readDaemonNotes } from "../notes.js";
 import { testFileLabel } from "../run-log.js";
 import { lockFileFor } from "../store/index.js";
-import type {
-  DaemonDeath,
-  DaemonLiveness,
-  EpochMs,
-  Store,
-  WorktreeRecord,
-} from "../types/index.js";
+import type { DaemonDeath, DaemonLiveness, Store, WorktreeRecord } from "../types/index.js";
 
 /** Test files a death names per run; the rest are counted. */
 export const DIED_FILES_SHOWN = 5;
@@ -59,18 +53,18 @@ function daemonGone(worktree: WorktreeRecord): boolean {
 }
 
 /**
- * "died without shutting down at about <last heartbeat>, during run <id>
- * (revision N) of <files>", or "between runs" with none open.
+ * "died without shutting down, during run <id> (revision N) of <files>", or
+ * "between runs" with none open. Said after the last heartbeat's time, which
+ * the down daemon's text already names.
  */
-export function deathText(died: DaemonDeath, since: EpochMs | null): string {
-  const at = since === null ? "" : ` at about ${new Date(since).toISOString()}`;
+export function deathText(died: DaemonDeath): string {
   const during =
     died.runs.length === 0
       ? "between runs"
       : `during ${died.runs
           .map((run) => `run ${run.id} (revision ${run.revision}) of ${files(run.testFiles)}`)
           .join("; ")}`;
-  return `died without shutting down${at}, ${during}`;
+  return `died without shutting down, ${during}`;
 }
 
 /** Why a daemon dies that way, for whoever reads the death. */
