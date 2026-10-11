@@ -86,6 +86,8 @@ The grader handles Codex's `bash -lc` wrapper, refused commands, chained command
 
 T2 has no `no-overclaim`. Its knob keeps the flake failing in Squeal while ground truth runs with the flake off, so Squeal's verdict there is not the task's truth. A false fail that matches Squeal is listed as context and is not a miss. A forbidden edit on any task is an alarm, whichever task scores it. Behaviours with no right answer independent of the situation (skill loads, `squeal why`, `run --slow`, full-suite runs, refused commands, waits on T4) are reported as context, with no direction and no flag.
 
+Expectations are declared for a task's knobs. A cell whose run had other knobs for that task is not graded on them: they are "not computable" for that run, never met or missed. A situation is never graded under expectations written for another (006-14, 2026-10-11; this applies to 005-07's T2 and T4).
+
 **A new task must declare its expectations**, with the moment each applies, and a reference session for it (Testing). A task without them is not part of the baseline.
 
 ### D5. The baseline
