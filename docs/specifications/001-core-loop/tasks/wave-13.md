@@ -854,3 +854,17 @@ Done when: the review's startup-churn probe reads as down, not dead, and is red 
 ## 001-275 review of the shutdown marker
 
 Use /reviewer on gpt-6.1-sol, after 001-274 lands. Output `reviews/wave-13ah.md`. Can any exit path, note churn or succession still make a clean stop read as a death, or hide a real death? Is the new row cleared and pruned on every path? Re-run `reviews/wave-13ag.md`'s probes and the earlier death and succession probes. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-276 a daemon that never registered writes no exit mark
+
+Use /worker. Shape: repair. From `reviews/wave-13ah.md` (001-275) B1, under the human's standing rule: the coordinator fixes first-round blockers and re-reviews them (001-277). Read the review's reproduction first.
+
+Outcome: `#markExit` writes the `daemon-exit:<worktree>` row only once this daemon has registered its row (`#register` committed). A start that fails earlier, for example `prepareSocketDir` on an unusable `XDG_RUNTIME_DIR`, writes nothing, since there is no registration to describe. If the review shows other pre-registration exit paths, cover them the same way. Worktree removal and `store.prune` keep pruning the row for every registered worktree. Optionally, a prune that also drops an orphaned `daemon-exit:` row with no worktree row; say in the notes whether you did.
+
+Own: `src/core/daemon/daemon.ts` (`#markExit`, `#shutdown`, `#register`), `src/core/store/` prune only if you take the optional step, and tests under `test/daemon/` and `test/store/`. The coordinator re-pins `KEY_FORMAT_VERSION` 7 (unreleased) and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+Done when: the review's failed-socket start leaves no row, red before; a registered daemon's stop and step-down still mark and read as down; the startup-churn case still reads as down; lint, typecheck and the full suite are green.
+
+## 001-277 re-review of the shutdown marker
+
+Use /reviewer on gpt-6.1-sol, after 001-276 lands. Output `reviews/wave-13ai.md`. Second round on `reviews/wave-13ah.md` B1: can any exit path, before or after registration, still leave a `daemon-exit:` row no prune reaches, or drop one a registered daemon needs? Re-run the 13ah and 13ag probes. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
