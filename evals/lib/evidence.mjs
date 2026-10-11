@@ -113,6 +113,41 @@ function filesOf(t, from) {
   return { files: [...files], failing: [...failing] };
 }
 
+/**
+ * The retained timeline from `seen` (`{ t, phase, i, step }`, as the grader saw them), in order,
+ * each Squeal text (`{ from, text }`) reduced to its evidence.
+ */
+export function retainedOf(seen) {
+  let failures = 0;
+  const steps = [];
+  for (const { step } of seen.sort((a, b) => a.t - b.t || a.phase - b.phase || a.i - b.i)) {
+    if (step.k !== undefined) {
+      steps.push(step);
+      continue;
+    }
+    const e = squealEvidence(step.text, step.from, failures);
+    if (e === null) continue;
+    failures = e.failures;
+    steps.push(e);
+  }
+  return steps;
+}
+
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
+/**
+ * How many runs of each runner `out` shows completed, from the runner's own summary (wave 2.6
+ * contract): Vitest's `Test Files` line, node:test's `# tests` with at least one test. No tests
+ * found and a runner that failed to start print neither.
+ */
+export function completedRuns(out) {
+  const text = String(out ?? "").replace(ANSI, "");
+  return {
+    vitest: text.match(/^[ \t]*Test Files\s|"numTotalTestSuites"/gm)?.length ?? 0,
+    "node:test": text.match(/^(?:# tests|\u2139 tests) [1-9]/gm)?.length ?? 0,
+  };
+}
+
 /** Nothing pending, stale or unknown, the slow tier included, with a daemon validating. */
 export const clear = (s) =>
   s.daemon !== false && s.pending === 0 && s.stale === 0 && s.unknown === 0 && s.slow !== false;
