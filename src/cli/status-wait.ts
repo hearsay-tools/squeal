@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { planDelta, readHeader, worktreeLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
+import { answerMoves, type MovesAnswer, movesSeq } from "../core/scheduler/rekeyed-moves.js";
 import { isPending } from "../core/state/index.js";
 import {
   buildSnapshot,
@@ -58,12 +59,7 @@ export interface StatusWaitOptions {
    */
   readonly session?: string | null;
   /** Default `syncDaemon`; tests replace it. */
-  readonly sync?: (
-    root: AbsolutePath,
-    pollMs: number,
-    after: RevisionNumber,
-    resolvedSince: EpochMs,
-  ) => DaemonSync;
+  readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
 }
 
 /**
@@ -141,14 +137,17 @@ export type StatusWait =
  * A store that cannot be read at the start ends the wait at once; a read that
  * fails later (a busy lock) is skipped.
  *
- * Lessons, defect 32 (tasks 001-186, 001-191): the pass also names the test
- * files every revision up to its own re-keyed, once their runner part is
- * applied, and the window keeps those of the revisions since the wait last
- * heard and of earlier ones not yet seen through (`lastHeard`, `editWindow`). Then quiet is none of those files
- * pending, slow ones aside, whatever else runs, and news is a transition of
- * one of their checks; until the daemon answers, neither. A daemon that
- * names no files (one before the task) or cannot sync leaves the wait as
- * before: nothing pending at all, and any check's news.
+ * Lessons, defect 32 (tasks 001-186, 001-191): once the store's refined
+ * revision reached the pass's, the store's re-key moves name the test files
+ * every revision up to it re-keyed, those whose move had its result since
+ * the start view included (`answerMoves`, task 001-258), and the window
+ * keeps those of the revisions since the wait last heard and of earlier
+ * ones not yet seen through (`lastHeard`, `editWindow`). Then quiet is none
+ * of those files pending, slow ones aside, whatever else runs, and news is
+ * a transition of one of their checks; until the moves are read, neither.
+ * A daemon that records no moves (one before the task) or cannot sync, and
+ * moves a prune dropped since the start, leave the wait as before: nothing
+ * pending at all, and any check's news.
  */
 export async function waitForStatus(
   cwd: AbsolutePath,
@@ -162,10 +161,16 @@ export async function waitForStatus(
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
-  // When the start was read: a result since then is news the daemon still attributes (001-196).
-  let startedAt: EpochMs = now();
   // Started at the first read, which finds the root; a box, since the read is a callback.
-  const syncing: { sync?: DaemonSync; heard?: RevisionNumber; window?: EditWindow } = {};
+  const syncing: {
+    sync?: DaemonSync;
+    heard?: RevisionNumber;
+    /** The moves' commit with the start view: a move resolved after it is the wait's (001-258). */
+    sinceSeq?: number;
+    window?: EditWindow;
+    /** The moves cannot name the window: the wait takes the no-files path. */
+    fallback?: boolean;
+  } = {};
   try {
     for (;;) {
       // The read at the deadline decides with what it finds and waits the full busy timeout.
@@ -180,20 +185,25 @@ export async function waitForStatus(
         const header = readHeader(store, id, states);
         if (start === null) {
           start = states.map(toStartView);
-          startedAt = now();
+          syncing.sinceSeq = movesSeq(store, id) ?? 0;
         }
         const news = newsOf(start, states, header.revision);
         syncing.heard ??= lastHeard(store, id, header.revision, session);
         const heard = syncing.heard;
-        // Every revision's files: a told one counts while its files are not seen through (001-191).
-        syncing.sync ??= startSync(root, pollMs, 0, startedAt);
+        syncing.sync ??= startSync(root, pollMs);
         const current = syncing.sync.current();
-        const named = current.state === "synced" && current.rekeyed !== null;
-        const keys = named ? store.testFileKeys.list(id) : [];
-        if (named) {
-          syncing.window ??= editWindow(store, id, heard, current.revision, current.rekeyed);
+        if (current.state === "synced" && syncing.window === undefined && !syncing.fallback) {
+          // Every revision's files: a told one counts while its files are not seen through (001-191).
+          const answer: MovesAnswer = current.moves
+            ? answerMoves(store, id, current.revision, syncing.sinceSeq ?? 0)
+            : { state: "incomplete" };
+          if (answer.state === "answered") {
+            syncing.window = editWindow(store, id, heard, current.revision, answer.rekeyed);
+          }
+          syncing.fallback = answer.state === "incomplete";
         }
         const window = syncing.window;
+        const keys = window === undefined ? [] : store.testFileKeys.list(id);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id), now());
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
@@ -212,7 +222,7 @@ export async function waitForStatus(
             pending,
             otherTransitions: split.other,
           };
-        } else if (current.state === "pending") {
+        } else if (current.state === "pending" || (current.state === "synced" && !syncing.fallback)) {
           // Which files are the edit's is not known yet: no check's news is the edit's.
           transitions = 0;
           quiet = false;

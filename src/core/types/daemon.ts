@@ -78,18 +78,6 @@ export interface RunSlowStatusRequest {
  */
 export interface SyncRequest {
   readonly type: "sync";
-  /**
-   * The revision before the wait's window (task 001-186): the answer then
-   * names the test files the revisions after it re-keyed, up to the pass's
-   * (`SyncResponse.rekeyed`). A daemon from before the field ignores it.
-   */
-  readonly after?: RevisionNumber;
-  /**
-   * With `after`, when the wait started (task 001-196): the answer also names
-   * the files whose move had its result since (`RekeyedTestFile.resolved`).
-   * A daemon from before the field ignores it.
-   */
-  readonly resolvedSince?: EpochMs;
 }
 
 /** The revision a `sync` request's pass left, once it was stored. */
@@ -181,7 +169,9 @@ export interface RunSlowResponse {
 /**
  * State of one `sync` request. `revision` is `null` until the pass was
  * stored: the worktree's revision then, which holds every change made before
- * the request. `error` is set when the pass failed.
+ * the request. `error` is set when the pass failed. An older CLI's `after`
+ * is ignored: with no `rekeyed` in the answer it takes its path for a
+ * daemon before task 001-186 (task 001-258).
  */
 export interface SyncResponse {
   readonly schemaVersion: PayloadSchemaVersion;
@@ -191,18 +181,17 @@ export interface SyncResponse {
   readonly revision: RevisionNumber | null;
   readonly error: string | null;
   /**
-   * With `SyncRequest.after`, once `revision` is set: the test files whose
-   * key a revision after `after` up to `revision` moved
-   * (`Scheduler.rekeyedSince`), read once the runner part of `revision` was
-   * applied. Absent without `after`, and from a daemon before task 001-186.
+   * The daemon records the re-key moves a wait reads from the store
+   * (`rekeyed-moves.<id>`, task 001-258). Absent from a daemon before it,
+   * whose commits leave that record as it was: the wait then names no
+   * files, never ends quiet on them.
    */
-  readonly rekeyed?: readonly RekeyedTestFile[];
+  readonly moves?: true;
 }
 
-/** What a daemon's sync pass left: its revision, and the window's files when asked (`SyncRequest.after`). */
+/** What a daemon's sync pass left: its revision. */
 export interface SyncAnswer {
   readonly revision: RevisionNumber;
-  readonly rekeyed: readonly RekeyedTestFile[] | null;
 }
 
 export interface StopResponse {

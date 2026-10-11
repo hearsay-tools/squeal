@@ -6,7 +6,6 @@ import {
   type DaemonResponse,
   type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
-  type RekeyedTestFile,
   type RevisionNumber,
   type RunAllResponse,
   type RunSlowResponse,
@@ -21,7 +20,7 @@ import { isNewerVersion } from "./version.js";
 
 /**
  * `run-all`, `run-slow` and `sync` requests remembered for their status
- * requests; older ones are dropped, a sync's with `forgetSync`.
+ * requests; older ones are dropped.
  */
 const MAX_REQUESTS = 32;
 
@@ -44,21 +43,10 @@ export interface HandlerContext {
   /**
    * Runs a reconciliation pass for `status --wait` (lessons, defect 30) and
    * resolves with the worktree's revision once the pass is stored, like
-   * `requestFullSuite`; with `after`, also with the files the revisions after
-   * it re-keyed (task 001-186). Absent: this daemon answers that it cannot sync.
-   * `requestId` is the id its status requests ask with, and `forgetSync`'s.
+   * `requestFullSuite`. Absent: this daemon answers that it cannot sync.
+   * The files a wait holds for are read from the store (task 001-258).
    */
-  readonly requestSync?: (
-    after: RevisionNumber | null,
-    resolvedSince: EpochMs | null,
-    requestId: string,
-  ) => Promise<SyncAnswer>;
-  /**
-   * The sync `requestId` was dropped from the remembered requests, so its
-   * answer is never read: what it holds can go (review wave-13r B2, task
-   * 001-226).
-   */
-  readonly forgetSync?: (requestId: string) => void;
+  readonly requestSync?: () => Promise<SyncAnswer>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
@@ -83,7 +71,6 @@ interface RunSlowState {
 interface SyncState {
   revision: RevisionNumber | null;
   error: string | null;
-  rekeyed: readonly RekeyedTestFile[] | null;
 }
 
 /**
@@ -118,7 +105,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     requestId,
     revision: state.revision,
     error: state.error,
-    ...(state.rekeyed === null ? {} : { rekeyed: state.rekeyed }),
+    moves: true,
   });
 
   return (request): DaemonResponse => {
@@ -186,14 +173,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
-        const state: SyncState = { revision: null, error: null, rekeyed: null };
-        for (const dropped of remember(syncRequests, requestId, state)) {
-          context.forgetSync?.(dropped);
-        }
-        context.requestSync(request.after ?? null, request.resolvedSince ?? null, requestId).then(
+        const state: SyncState = { revision: null, error: null };
+        remember(syncRequests, requestId, state);
+        context.requestSync().then(
           (answer) => {
             state.revision = answer.revision;
-            state.rekeyed = answer.rekeyed;
           },
           (error: unknown) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -224,14 +208,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   };
 }
 
-/** Remembers `requestId`; the ids of the oldest, dropped past `MAX_REQUESTS`. */
-function remember<T>(requests: Map<string, T>, requestId: string, state: T): string[] {
+/** Remembers `requestId`; the oldest are dropped past `MAX_REQUESTS`. */
+function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {
   requests.set(requestId, state);
-  const dropped: string[] = [];
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
     requests.delete(old);
-    dropped.push(old);
   }
-  return dropped;
 }

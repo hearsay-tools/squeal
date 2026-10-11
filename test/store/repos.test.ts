@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { editsMetaKey } from "../../src/core/delivery/edits.js";
+import { rekeyedMovesMetaKey } from "../../src/core/scheduler/rekeyed-moves.js";
 import { rekeyedMetaKey } from "../../src/core/scheduler/rekeyed-record.js";
 import { WORKTREE_META_PREFIXES } from "../../src/core/store/repos/worktrees.js";
 import { connectionOf } from "../../src/core/store/store.js";
@@ -107,7 +108,12 @@ describe("worktree removal and its meta rows (review wave 13u, S1)", () => {
 
   it("names each owner's key", () => {
     expect(WORKTREE_META_PREFIXES.map((prefix) => `${prefix}w`).sort()).toEqual(
-      [editsMetaKey("w"), checkpointMetaKey("w"), rekeyedMetaKey("w")].sort(),
+      [
+        editsMetaKey("w"),
+        checkpointMetaKey("w"),
+        rekeyedMetaKey("w"),
+        rekeyedMovesMetaKey("w"),
+      ].sort(),
     );
   });
 
@@ -119,6 +125,7 @@ describe("worktree removal and its meta rows (review wave 13u, S1)", () => {
         editsMetaKey(id),
         checkpointMetaKey(id),
         rekeyedMetaKey(id),
+        rekeyedMovesMetaKey(id),
         snapshot(id),
       ]) {
         store.meta.set(key, "{}");
@@ -130,7 +137,13 @@ describe("worktree removal and its meta rows (review wave 13u, S1)", () => {
 
     store.worktrees.remove("gone");
 
-    for (const key of [editsMetaKey, checkpointMetaKey, rekeyedMetaKey, snapshot]) {
+    for (const key of [
+      editsMetaKey,
+      checkpointMetaKey,
+      rekeyedMetaKey,
+      rekeyedMovesMetaKey,
+      snapshot,
+    ]) {
       expect(store.meta.get(key("gone"))).toBeNull();
       expect(store.meta.get(key("stay"))).toBe("{}");
     }
