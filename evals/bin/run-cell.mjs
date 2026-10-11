@@ -1,24 +1,22 @@
 #!/usr/bin/env node
-// Spec 006 D3: one eval cell, moved from 005-06's prototype (research/probes/model-evals/).
-//
-// Runs one cell (task x variant x harness x model x repetition) end to end, isolated:
-//   node run-cell.mjs <task> <variant> <claude|codex> <model> [rep] [--cold] [--dry] [--max-load 24] [--timeout-s 900] [--effort medium]
-// --dry builds the cell and warms it, then stops the daemon without a session.
-// --effort pins the reasoning effort (005-07): `claude -p --effort <level>`, `codex exec -c model_reasoning_effort="<level>"`.
-// The 005-06 pilot ran before this option, at each model's unrecorded default.
+// Spec 006 D3: one eval cell (task x variant x harness x model x repetition) end to end, isolated.
+//   node evals/bin/run-cell.mjs <task> <variant> <claude|codex> <model> [rep]
+//     [--commit HEAD] [--effort medium] [--cold] [--dry] [--max-load <cpus>] [--timeout-s 900]
+// --dry builds the cell and warms it, then stops the daemon without a session. --effort pins the
+// reasoning effort: `claude -p --effort <level>`, `codex exec -c model_reasoning_effort="<level>"`.
+// The task's knobs come from evals/tasks/tasks.json. Exit 75: held, the load is too high.
 //
 // Everything lives under $SQ_EVALS_ROOT (default <tmpdir>/squeal-evals):
-//   pin-base/            `git archive` of this repository's plugins at the pinned commit (prepare.sh)
-//   nm/node_modules      one Vitest 5.0.3 install, copied into each work tree
-//   pins/<variant>/      the pin with the variant's patches applied, built once
-//   cells/<id>/home      HOME for the subject harness (no real ~/.claude or ~/.codex is read or written)
-//   cells/<id>/codex     CODEX_HOME: the host provider block (URL read at run time, never committed), the pinned plugin
-//   cells/<id>/tmp       TMPDIR
-//   cells/<id>/work      the fixture, committed at a fixed date, its store warmed unless --cold
-//   cells/<id>/out       events.jsonl (timestamped), load.tsv, truth, diff, store copy, grade.json
-// Every daemon the cell started is stopped; any process still naming the cell's directory is listed and killed.
+//   pin-base/<commit>/      `git archive` of the commit's plugins
+//   nm/node_modules         the fixture's Vitest, copied into each cell
+//   pins/<commit>/<variant> the variant's patched copy (evals/variants/<variant>.json)
+//   cells/<id>/home, codex, tmp   HOME, CODEX_HOME and TMPDIR for the subject; removed at the end
+//   cells/<id>/work         the fixture, committed at a fixed date, its store warmed unless --cold
+//   cells/<id>/out          events.jsonl (timestamped), load.tsv, truth, diff, store copy, grade.json
+// Every daemon the cell started is stopped and waited for; any process still naming the cell is
+// listed and killed; the scratch is scanned for credentials before it is removed.
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import {
   appendFileSync,
   cpSync,
@@ -29,21 +27,26 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { loadavg, tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { availableParallelism, loadavg, tmpdir } from "node:os";
+import { join, relative } from "node:path";
+import { daemonPids, waitForExit } from "../lib/daemon.mjs";
+import { EVALS, fixtureModules, pinBase, resolveCommit } from "../lib/prepare.mjs";
+import {
+  cellEnv,
+  clearScratch,
+  codexConfig,
+  providerVariables,
+  secretsOf,
+} from "../lib/scratch.mjs";
+import { runSession, sessionCommand } from "../lib/session.mjs";
+import { buildPin } from "../lib/variant.mjs";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const EVALS = join(HERE, "..");
 const ROOT = process.env.SQ_EVALS_ROOT ?? join(tmpdir(), "squeal-evals");
-
 const argv = process.argv.slice(2);
 const flag = (name, dflt) => {
   const i = argv.indexOf(name);
   if (i < 0) return dflt;
-  const v = argv[i + 1];
-  argv.splice(i, 2);
-  return v;
+  return argv.splice(i, 2)[1];
 };
 const has = (name) => {
   const i = argv.indexOf(name);
@@ -52,29 +55,33 @@ const has = (name) => {
 };
 const dry = has("--dry");
 const cold = has("--cold");
-const maxLoad = Number(flag("--max-load", "24"));
+const maxLoad = Number(flag("--max-load", String(availableParallelism())));
 const timeoutS = Number(flag("--timeout-s", "900"));
 const effort = flag("--effort", "medium");
+const commit = resolveCommit(flag("--commit", "HEAD"));
 if (!/^(low|medium|high|xhigh|max)$/.test(effort))
   throw new Error(`--effort ${effort}: not a level both harnesses take`);
 const [task, variantName, harness, model, rep = "1"] = argv;
 if (!task || !variantName || !["claude", "codex"].includes(harness) || !model) {
   console.error(
-    "usage: run-cell.mjs <task> <variant> <claude|codex> <model> [rep] [--cold] [--max-load 24] [--timeout-s 900]",
+    "usage: run-cell.mjs <task> <variant> <claude|codex> <model> [rep] [--commit HEAD] [--effort medium] [--cold] [--dry]",
   );
   process.exit(2);
 }
-if (/fable/i.test(model)) throw new Error("never Fable (brief)");
+if (/opus|fable/i.test(model))
+  throw new Error("never Opus or Fable as a subject model (spec 006 D5)");
 
 const variant = JSON.parse(readFileSync(join(EVALS, "variants", `${variantName}.json`), "utf8"));
+const knobs =
+  JSON.parse(readFileSync(join(EVALS, "tasks", "tasks.json"), "utf8")).tasks[task] ?? {};
 const id = `${task}.${variantName}.${harness}-${model.replace(/[^\w.-]/g, "_")}.e-${effort}.r${rep}${cold ? ".cold" : ""}`;
 const CELL = join(ROOT, "cells", id);
 const OUT = join(CELL, "out");
+const WORK = join(CELL, "work");
 if (existsSync(join(OUT, "grade.json"))) {
   console.log(`skip ${id}: already graded`);
   process.exit(0);
 }
-
 const load1 = () => loadavg()[0];
 if (load1() >= maxLoad) {
   console.log(`held ${id}: load ${load1().toFixed(1)} >= ${maxLoad}`);
@@ -84,97 +91,48 @@ if (load1() >= maxLoad) {
 rmSync(CELL, { recursive: true, force: true });
 for (const d of ["home", "tmp", "work", "out", "codex"])
   mkdirSync(join(CELL, d), { recursive: true });
-const WORK = join(CELL, "work");
 const log = (s) => {
   appendFileSync(join(OUT, "runner.log"), `${new Date().toISOString()} ${s}\n`);
   console.log(`[${id}] ${s}`);
 };
 
-// ---------- environment: the parent's CLAUDE*, CEZ_* and Codex thread variables removed ----------
-const env = {};
-for (const [k, v] of Object.entries(process.env)) {
-  if (/^(CLAUDE|CEZ_|CODEX_(SESSION|THREAD))/.test(k)) continue;
-  env[k] = v;
-}
-Object.assign(env, {
-  HOME: join(CELL, "home"),
-  TMPDIR: join(CELL, "tmp"),
-  CODEX_HOME: join(CELL, "codex"),
-  DISABLE_AUTOUPDATER: "1",
-  GIT_AUTHOR_NAME: "ledgerline",
-  GIT_AUTHOR_EMAIL: "dev@ledgerline.invalid",
-  GIT_COMMITTER_NAME: "ledgerline",
-  GIT_COMMITTER_EMAIL: "dev@ledgerline.invalid",
-});
+const realCodex = existsSync(join(process.env.HOME, ".codex/config.toml"))
+  ? readFileSync(join(process.env.HOME, ".codex/config.toml"), "utf8")
+  : "";
+const env = cellEnv(process.env, CELL, providerVariables(harness, process.env, realCodex));
+if (knobs.flakeColdRuns) env.LEDGERLINE_CALENDAR_COLD_RUNS = String(knobs.flakeColdRuns);
 const fixedDate = {
   GIT_AUTHOR_DATE: "2026-10-01T09:00:00Z",
   GIT_COMMITTER_DATE: "2026-10-01T09:00:00Z",
 };
-
-function sh(cmd, args, opts = {}) {
+const sh = (cmd, args, opts = {}) => {
   const r = spawnSync(cmd, args, {
     cwd: WORK,
-    env: { ...env, ...(opts.env ?? {}) },
+    env: { ...env, ...opts.env },
     encoding: "utf8",
     timeout: opts.timeout ?? 600_000,
   });
   if (opts.check !== false && r.status !== 0)
     throw new Error(`${cmd} ${args.join(" ")} exited ${r.status}: ${r.stderr}${r.stdout}`);
   return r;
-}
+};
 
-// ---------- the variant's pinned plugin copy ----------
-function pinFor(name, v) {
-  const dir = join(ROOT, "pins", name);
-  if (existsSync(join(dir, "PIN.json"))) return dir;
-  rmSync(dir, { recursive: true, force: true });
-  cpSync(join(ROOT, "pin-base"), dir, { recursive: true });
-  // Codex: the marketplace takes the hub's name, so the plugin id is squeal@hearsay (005-02).
-  const mk = join(dir, ".agents/plugins/marketplace.json");
-  writeFileSync(mk, readFileSync(mk, "utf8").replace('"name": "squeal"', '"name": "hearsay"'));
-  const applied = [];
-  for (const p of v.patch ?? []) {
-    let count = 0;
-    const [pluginsGlob] = p.files.split("/dist/");
-    for (const plugin of readdirSync(join(dir, "plugins"))) {
-      if (!pluginsGlob.endsWith("*") && !pluginsGlob.endsWith(plugin)) continue;
-      const walk = (d) =>
-        readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-          e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)],
-        );
-      for (const f of walk(join(dir, "plugins", plugin, "dist")).filter((f) =>
-        f.endsWith(".mjs"),
-      )) {
-        const text = readFileSync(f, "utf8");
-        const n = text.split(p.find).length - 1;
-        if (n) writeFileSync(f, text.replaceAll(p.find, p.replace));
-        count += n;
-      }
-    }
-    if (count < (p.min ?? 1))
-      throw new Error(`variant ${name}: patch matched ${count} times, expected at least ${p.min}`);
-    applied.push({ find: p.find.slice(0, 60), count });
-  }
-  for (const r of v.remove ?? []) rmSync(join(dir, r), { recursive: true, force: true });
-  writeFileSync(
-    join(dir, "PIN.json"),
-    JSON.stringify({ variant: name, applied, removed: v.remove ?? [] }, null, 2),
-  );
-  return dir;
-}
-
+// ---------- the variant's pinned plugin copy, and the fixture committed at a fixed date ----------
 const t0Setup = Date.now();
-const PIN = pinFor(variantName, variant);
+const PIN = buildPin(
+  pinBase(ROOT, commit),
+  join(ROOT, "pins", commit, variantName),
+  variantName,
+  variant,
+);
 const CLI = join(
   PIN,
   "plugins",
   harness === "codex" ? "codex" : "claude-code",
   "dist/cli/squeal.mjs",
 );
-const squeal = (...args) =>
-  sh("node", ["--disable-warning=ExperimentalWarning", CLI, ...args], { check: false });
-
-// ---------- the fixture, committed at a fixed date ----------
+const squeal = (args, opts = {}) =>
+  sh("node", ["--disable-warning=ExperimentalWarning", CLI, ...args], { check: false, ...opts });
 cpSync(join(EVALS, "ledgerline"), WORK, { recursive: true });
 const base = readFileSync(join(WORK, "BASE.md"), "utf8");
 rmSync(join(WORK, "BASE.md"));
@@ -188,9 +146,10 @@ if (variant.policy) {
     `${JSON.stringify({ ...p, ...variant.policy }, null, 2)}\n`,
   );
 }
-cpSync(join(ROOT, "nm/node_modules"), join(WORK, "node_modules"), {
+cpSync(fixtureModules(ROOT), join(WORK, "node_modules"), {
   recursive: true,
   verbatimSymlinks: true,
+  preserveTimestamps: true,
 });
 sh("git", ["init", "-q", "-b", "main"]);
 sh("git", ["add", "-A"]);
@@ -200,11 +159,9 @@ log(`fixture ${head}, pin ${relative(ROOT, PIN)}, load ${load1().toFixed(1)}`);
 
 // A policy key the pinned CLI does not know is a variant that cannot run here (D8 before it ships).
 if (variant.policy) {
-  const st = squeal("status");
-  if (
-    /unknown key|not a key|problem/i.test(st.stdout + st.stderr) &&
-    /testCommand|denyWhenCurrent/.test(st.stdout + st.stderr)
-  ) {
+  const st = squeal(["status"]);
+  const text = st.stdout + st.stderr;
+  if (/unknown key|not a key|problem/i.test(text) && /testCommand|denyWhenCurrent/.test(text)) {
     writeFileSync(
       join(OUT, "grade.json"),
       JSON.stringify({ id, skipped: "policy key unknown to the pinned CLI" }),
@@ -214,47 +171,50 @@ if (variant.policy) {
   }
 }
 
-// ---------- Codex: scratch CODEX_HOME, provider block, the pinned plugin installed and trusted ----------
+// ---------- Codex: scratch CODEX_HOME, the host's provider block, the pinned plugin installed ----------
 if (harness === "codex") {
-  const real = readFileSync(join(process.env.HOME, ".codex/config.toml"), "utf8");
-  const baseUrl = /\[model_providers\.cliproxy\][^[]*?base_url\s*=\s*"([^"]+)"/s.exec(real)?.[1];
-  if (!baseUrl) throw new Error("no cliproxy provider in ~/.codex/config.toml");
-  writeFileSync(
-    join(CELL, "codex/config.toml"),
-    [
-      'model_provider = "cliproxy"',
-      `model = "${model}"`,
-      'approval_policy = "never"',
-      'sandbox_mode = "danger-full-access"',
-      "check_for_update_on_startup = false",
-      "",
-      "[model_providers.cliproxy]",
-      'name = "CLI Proxy"',
-      `base_url = "${baseUrl}"`,
-      'env_key = "CLIPROXY_API_KEY"',
-      'wire_api = "responses"',
-      "requires_openai_auth = false",
-      "supports_websockets = true",
-      "",
-    ].join("\n"),
-  );
+  writeFileSync(join(CELL, "codex/config.toml"), codexConfig(realCodex, model));
   if (variant.plugin !== false) {
     sh("codex", ["plugin", "marketplace", "add", PIN]);
     sh("codex", ["plugin", "add", "squeal@hearsay"]);
-    const trust = squeal("init", "--harness", "codex", "--trust", "--yes");
-    log(
-      `codex trust: ${(trust.stdout + trust.stderr).split("\n").filter(Boolean).slice(-1)[0] ?? ""}`,
-    );
+    const trust = squeal(["init", "--harness", "codex", "--trust", "--yes"]);
+    log(`codex trust: ${(trust.stdout + trust.stderr).split("\n").filter(Boolean).at(-1) ?? ""}`);
     sh("git", ["checkout", "-q", "--", "."], { check: false });
   }
 }
 
-// ---------- the daemon, warm unless --cold ----------
-if (variant.plugin !== false && !cold) {
-  squeal("start");
-  const w = squeal("run", "--all", "--wait");
+// ---------- the daemon: warm unless --cold, then the task's knobs ----------
+const stopDaemon = async (why) => {
+  const pids = daemonPids(WORK);
+  const stop = squeal(["stop", WORK]);
+  const exits = await waitForExit([...new Set([...pids, ...daemonPids(WORK)])]);
+  log(
+    `daemon stopped (${why}): ${(stop.stdout + stop.stderr).trim().split("\n").at(-1) ?? ""}; ${JSON.stringify(exits)}`,
+  );
+  return exits;
+};
+const daemonExits = [];
+const plugin = variant.plugin !== false;
+if (plugin && !cold) {
+  // The flake knob warms with the flake off, then restarts the daemon with it on.
+  const warm = knobs.flakeColdRuns ? { env: { LEDGERLINE_CALENDAR_WARM: "1" } } : {};
+  squeal(["start"], warm);
+  const w = squeal(["run", "--all", "--wait"], warm);
   writeFileSync(join(OUT, "warmup.txt"), w.stdout + w.stderr);
   log(`warm-up: ${(w.stdout.match(/^Known failures: .*$/m) ?? ["?"])[0]}`);
+  if (knobs.flakeColdRuns) {
+    daemonExits.push(...(await stopDaemon("flake knob")));
+    squeal(["start"]);
+  }
+}
+if (plugin && knobs.daemon === "stopped") {
+  daemonExits.push(...(await stopDaemon("daemon knob")));
+  env.SQUEAL_CLI = join(CELL, "no-daemon", "squeal.mjs"); // names no file: nothing can start one
+}
+if (knobs.staleEdit) {
+  if (plugin) daemonExits.push(...(await stopDaemon("stale-edit knob")));
+  appendFileSync(join(WORK, knobs.staleEdit.path), knobs.staleEdit.append);
+  log(`stale edit: ${knobs.staleEdit.path}`);
 }
 const setupS = (Date.now() - t0Setup) / 1000;
 if (dry) {
@@ -262,129 +222,42 @@ if (dry) {
     join(OUT, "git-status.txt"),
     sh("git", ["status", "--short", "--ignored"], { check: false }).stdout,
   );
-  if (variant.plugin !== false) log(`dry: ${(squeal("stop", WORK).stdout).trim()}`);
-  log(`dry run: setup ${setupS.toFixed(1)} s`);
+  if (plugin) await stopDaemon("dry run");
+  const scratch = clearScratch(CELL, secretsOf(process.env, realCodex));
+  writeFileSync(join(OUT, "scratch.json"), JSON.stringify(scratch, null, 2));
+  log(`dry run: setup ${setupS.toFixed(1)} s; scratch ${JSON.stringify(scratch)}`);
   process.exit(0);
 }
 
 // ---------- the session ----------
-const prompt =
-  readFileSync(join(EVALS, "tasks", `${task}.txt`), "utf8").trim() +
-  "\n" +
-  readFileSync(join(EVALS, "tasks", "_ending.txt"), "utf8");
+const prompt = `${readFileSync(join(EVALS, "tasks", `${task}.txt`), "utf8").trim()}\n${readFileSync(join(EVALS, "tasks", "_ending.txt"), "utf8")}`;
 writeFileSync(join(OUT, "prompt.txt"), prompt);
-let cmd, args;
-if (harness === "claude") {
-  cmd = "claude";
-  args = [
-    "-p",
-    prompt,
-    "--model",
-    model,
-    "--effort",
-    effort,
-    "--output-format",
-    "stream-json",
-    "--verbose",
-    "--include-hook-events",
-    "--setting-sources",
-    "project",
-    "--strict-mcp-config",
-    "--permission-mode",
-    "acceptEdits",
-    ...(variant.plugin === false ? [] : ["--plugin-dir", join(PIN, "plugins/claude-code")]),
-    "--allowedTools",
-    "Bash(git:*)",
-    "Bash(grep:*)",
-    "Bash(ls:*)",
-    "Bash(cat:*)",
-    "Bash(npx vitest:*)",
-    "Bash(npm test:*)",
-    "Bash(npm run:*)",
-    "Bash(node --test:*)",
-    "Bash(squeal:*)",
-    "Bash(sleep:*)",
-    "Read",
-    "Edit",
-    "Write",
-    "Glob",
-    "Grep",
-  ];
-} else {
-  cmd = "codex";
-  args = [
-    "exec",
-    "--json",
-    "-s",
-    "danger-full-access",
-    "-m",
-    model,
-    "-c",
-    `model_reasoning_effort="${effort}"`,
-    prompt,
-  ];
-}
-
-const samples = [];
-const sample = () => {
-  const l = loadavg();
-  samples.push(l[0]);
-  appendFileSync(
-    join(OUT, "load.tsv"),
-    `${Date.now()}\t${l.map((x) => x.toFixed(2)).join("\t")}\n`,
-  );
-};
-const T0 = Date.now();
-writeFileSync(join(OUT, "t0"), String(T0));
-sample();
-const timer = setInterval(sample, 5000);
-log(`session ${cmd} ${model} effort ${effort} start, load ${load1().toFixed(1)}`);
-const child = spawn(cmd, args, { cwd: WORK, env, stdio: ["ignore", "pipe", "pipe"] });
-let buf = "";
-child.stdout.on("data", (d) => {
-  buf += d;
-  for (let i = buf.indexOf("\n"); i >= 0; i = buf.indexOf("\n")) {
-    const line = buf.slice(0, i);
-    buf = buf.slice(i + 1);
-    if (!line.trim()) continue;
-    let v;
-    try {
-      v = JSON.parse(line);
-    } catch {
-      v = { raw: line };
-    }
-    appendFileSync(join(OUT, "events.jsonl"), `${JSON.stringify({ t: Date.now() - T0, ...v })}\n`);
-  }
+const [cmd, args] = sessionCommand({
+  harness,
+  prompt,
+  model,
+  effort,
+  pluginDir: plugin ? join(PIN, "plugins/claude-code") : null,
 });
-child.stderr.on("data", (d) => appendFileSync(join(OUT, "stderr.txt"), d));
-const killer = setTimeout(() => {
-  log("timeout: killing the session");
-  child.kill("SIGTERM");
-}, timeoutS * 1000);
-const exit = await new Promise((resolve) =>
-  child.on("close", (code, signal) => resolve({ code, signal })),
-);
-clearTimeout(killer);
-clearInterval(timer);
-sample();
-const T1 = Date.now();
-writeFileSync(join(OUT, "t1"), String(T1));
+log(`session ${cmd} ${model} effort ${effort} start, load ${load1().toFixed(1)}`);
+const {
+  exit,
+  t0: T0,
+  t1: T1,
+  samples,
+} = await runSession({ command: cmd, args, cwd: WORK, env, out: OUT, timeoutS, log });
 log(`session end ${JSON.stringify(exit)} after ${((T1 - T0) / 1000).toFixed(1)} s`);
 
 // ---------- after: Squeal's view, ground truth, diff, store copy, daemons stopped ----------
-if (variant.plugin !== false) {
-  const st = squeal("status");
+if (plugin) {
+  const st = squeal(["status"]);
   writeFileSync(join(OUT, "status-end.txt"), st.stdout + st.stderr);
 }
-const truthV = sh(
-  "npx",
-  ["vitest", "run", "--reporter=json", `--outputFile=${join(OUT, "truth.vitest.json")}`],
-  {
-    check: false,
-    env: { LEDGERLINE_CALENDAR_WARM: "1" },
-    timeout: 180_000,
-  },
-);
+sh("npx", ["vitest", "run", "--reporter=json", `--outputFile=${join(OUT, "truth.vitest.json")}`], {
+  check: false,
+  env: { LEDGERLINE_CALENDAR_WARM: "1" },
+  timeout: 180_000,
+});
 const nodeFiles = existsSync(join(WORK, "scripts"))
   ? readdirSync(join(WORK, "scripts"))
       .filter((f) => f.endsWith(".test.mjs"))
@@ -392,22 +265,17 @@ const nodeFiles = existsSync(join(WORK, "scripts"))
   : [];
 const truthN = nodeFiles.length
   ? sh("node", ["--test", ...nodeFiles], { check: false, timeout: 60_000 })
-  : { status: 0, stdout: "" };
+  : { status: 0, stdout: "", stderr: "" };
 writeFileSync(join(OUT, "truth.node.txt"), truthN.stdout + (truthN.stderr ?? ""));
+writeFileSync(join(OUT, "truth.txt"), `node:test exit ${truthN.status}\n`);
+const git = (a) => sh("git", a, { check: false }).stdout;
 writeFileSync(
-  join(OUT, "truth.txt"),
-  `vitest exit ${truthV.status}\nnode:test exit ${truthN.status}\n`,
+  join(OUT, "diff.patch"),
+  `${git(["diff", "--stat"])}\n${git(["status", "--short"])}\n${git(["diff"])}`,
 );
-const diff =
-  sh("git", ["diff", "--stat"], { check: false }).stdout +
-  "\n" +
-  sh("git", ["status", "--short"], { check: false }).stdout +
-  "\n" +
-  sh("git", ["diff"], { check: false }).stdout;
-writeFileSync(join(OUT, "diff.patch"), diff);
-if (variant.plugin !== false) {
-  const stop = squeal("stop", WORK);
-  log(`daemon: ${(stop.stdout + stop.stderr).trim()}`);
+if (plugin) {
+  delete env.SQUEAL_CLI;
+  daemonExits.push(...(await stopDaemon("cell end")));
   const store = join(WORK, ".git/squeal");
   if (existsSync(store)) {
     mkdirSync(join(OUT, "store"), { recursive: true });
@@ -416,17 +284,16 @@ if (variant.plugin !== false) {
   }
 }
 // Anything still running from this cell is ours: list it, then stop it.
-const ps = spawnSync("pgrep", ["-af", CELL], { encoding: "utf8" })
-  .stdout.split("\n")
+const leftovers = (spawnSync("pgrep", ["-af", CELL], { encoding: "utf8" }).stdout ?? "")
+  .split("\n")
   .filter((l) => l && !l.includes("pgrep") && !l.includes("run-cell.mjs"));
-if (ps.length) {
-  log(`leftover processes: ${ps.length}`);
-  appendFileSync(join(OUT, "leftovers.txt"), `${ps.join("\n")}\n`);
-  for (const l of ps) {
-    try {
-      process.kill(Number(l.split(" ")[0]), "SIGTERM");
-    } catch {}
-  }
+if (leftovers.length) {
+  log(`leftover processes: ${leftovers.length}`);
+  appendFileSync(join(OUT, "leftovers.txt"), `${leftovers.join("\n")}\n`);
+  await waitForExit(
+    leftovers.map((l) => Number(l.split(" ")[0])),
+    0,
+  );
 }
 
 const meta = {
@@ -438,6 +305,8 @@ const meta = {
   effort,
   rep: Number(rep),
   cold,
+  knobs,
+  commit,
   head,
   pin: relative(ROOT, PIN),
   setupS: +setupS.toFixed(1),
@@ -449,9 +318,18 @@ const meta = {
     mean: +(samples.reduce((a, b) => a + b, 0) / samples.length).toFixed(2),
     end: samples.at(-1),
   },
-  harnessVersion: spawnSync(cmd, ["--version"], { encoding: "utf8", env }).stdout.trim(),
+  daemonExits,
+  leftovers: leftovers.length,
+  harnessVersion: spawnSync(cmd, ["--version"], { encoding: "utf8", env }).stdout?.trim() ?? null,
 };
 writeFileSync(join(OUT, "meta.json"), JSON.stringify(meta, null, 2));
-const g = spawnSync("node", [join(HERE, "grade.mjs"), OUT], { encoding: "utf8" });
+const g = spawnSync("node", [join(EVALS, "bin/grade.mjs"), OUT], { encoding: "utf8" });
 if (g.status !== 0) log(`grade failed: ${g.stderr}`);
 else log(`graded: ${g.stdout.trim().split("\n").at(-1)}`);
+
+// ---------- the scratch: scanned for credentials, then removed ----------
+const scratch = clearScratch(CELL, secretsOf(process.env, realCodex));
+writeFileSync(join(OUT, "scratch.json"), JSON.stringify(scratch, null, 2));
+log(
+  `scratch: ${scratch.secretsBeforeRemoval.length} file(s) held a secret before removal, ${scratch.secretsAfterRemoval.length} after`,
+);
