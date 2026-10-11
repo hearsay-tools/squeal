@@ -35,6 +35,15 @@ export function createRunRepo(conn: Connection): RunRepo {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
       return row === null ? null : toRun(row);
     },
+    inFlight: (worktreeId, startedSince) =>
+      conn
+        .all(
+          `SELECT * FROM runs WHERE worktree_id = ? AND end_state IS NULL AND started_at >= ?
+           ORDER BY started_at, rowid`,
+          worktreeId,
+          startedSince,
+        )
+        .map(toRun),
   };
 }
 

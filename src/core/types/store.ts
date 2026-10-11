@@ -145,6 +145,12 @@ export interface RunRepo {
   start(record: Omit<RunRecord, "endedAt" | "end">): RunRecord;
   finish(id: string, end: RunEnd, at: EpochMs): void;
   get(id: string): RunRecord | null;
+  /**
+   * The worktree's runs with no end started at or after `startedSince`,
+   * oldest first: what a daemon that started then was running when it died
+   * (task 001-263).
+   */
+  inFlight(worktreeId: WorktreeId, startedSince: EpochMs): readonly RunRecord[];
 }
 
 /** Spec 001 D8: "`checkpoints` (one per `run --all` or baseline request, referenced by its tier runs)". */

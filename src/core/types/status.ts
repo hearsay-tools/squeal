@@ -9,7 +9,7 @@ import type {
   SourceLocation,
   WorktreeId,
 } from "./common.js";
-import type { ClosureMethod } from "./keys.js";
+import type { ClosureMethod, TestFileRef } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
 import type {
   DiagnosticFingerprint,
@@ -275,7 +275,26 @@ export type DaemonLiveness =
        * delivered to a consumer told so, within `DAEMON_START_GRACE_MS`.
        */
       readonly startingSince?: EpochMs;
+      /**
+       * Task 001-263: the recorded daemon stopped heartbeating and never shut
+       * down (no stop note, its record not cleared), as a SIGKILL or a test's
+       * `kill(0, ...)` leaves it. Absent when it stopped, or no record names it.
+       */
+      readonly died?: DaemonDeath;
     };
+
+/** What a daemon that died without shutting down was doing (task 001-263). */
+export interface DaemonDeath {
+  /** Its runs with no end, oldest first: the tiers in flight when it died. */
+  readonly runs: readonly InFlightRun[];
+}
+
+/** One run a dead daemon left open, from its `runs` row. */
+export interface InFlightRun {
+  readonly id: string;
+  readonly revision: RevisionNumber;
+  readonly testFiles: readonly TestFileRef[];
+}
 
 /** One known failure in status. */
 export interface KnownFailure {
