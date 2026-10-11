@@ -23,6 +23,7 @@ var WORKTREE_META_ROWS = {
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+  daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -816,27 +817,27 @@ function classifySlowFiles(states, keys, isSlow) {
     const id = testFileId(ref);
     checks.set(id, [...checks.get(id) ?? [], state]);
   }
-  const files = /* @__PURE__ */ new Map();
+  const files2 = /* @__PURE__ */ new Map();
   for (const row of keys) {
     if (!isSlow(row.testFile)) continue;
     const id = testFileId(row.testFile);
     const own = checks.get(id) ?? [];
     const cls = own.length === 0 ? row.key !== null && row.pending !== null ? "pending" : "notRun" : own.some((s) => s.validity === "pending") ? "pending" : own.every((s) => s.validity === "current") ? "current" : "notRun";
-    files.set(id, { ref: row.testFile, class: cls });
+    files2.set(id, { ref: row.testFile, class: cls });
   }
-  return files;
+  return files2;
 }
 function readSlowTier(store, worktreeId, revision, states, keys, view) {
-  const files = classifySlowFiles(states, keys, view.isSlow);
+  const files2 = classifySlowFiles(states, keys, view.isSlow);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  for (const { class: cls } of files.values()) counts[cls]++;
+  for (const { class: cls } of files2.values()) counts[cls]++;
   let currentAt = null;
   let currentUpTo = null;
   const ranFrom = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
     const id = testFileId(testFileOf(state.check));
-    if (files.get(id)?.class !== "current") continue;
+    if (files2.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
     currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
     const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
@@ -859,7 +860,7 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
   const globs2 = [...artifact].sort();
   const isSource = artifactSources(store, keys, view);
   return {
-    testFiles: files.size,
+    testFiles: files2.size,
     ...counts,
     currentAt,
     ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
@@ -973,12 +974,12 @@ function countFilesWithoutChecks(states, keys) {
 }
 function countSlowPending(states, keys, isSlow) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files = /* @__PURE__ */ new Set();
+  const files2 = /* @__PURE__ */ new Set();
   let checks = 0;
   for (const state of states) {
     if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
     checks++;
-    files.add(testFileKeyOf(state.check));
+    files2.add(testFileKeyOf(state.check));
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -987,9 +988,9 @@ function countSlowPending(states, keys, isSlow) {
       continue;
     }
     testFilesWithoutChecks++;
-    files.add(id);
+    files2.add(id);
   }
-  return { testFiles: files.size, checks, testFilesWithoutChecks };
+  return { testFiles: files2.size, checks, testFilesWithoutChecks };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -1104,9 +1105,9 @@ function nameLines(checks) {
 function byFile(checks) {
   const byFile2 = /* @__PURE__ */ new Map();
   for (const check of checks) byFile2.set(fileName(check), (byFile2.get(fileName(check)) ?? 0) + 1);
-  const files = [...byFile2].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
-  const lines = files.slice(0, FILES_SHOWN).map(([file, n]) => `${n} in ${file}`);
-  const rest = files.slice(FILES_SHOWN);
+  const files2 = [...byFile2].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
+  const lines = files2.slice(0, FILES_SHOWN).map(([file, n]) => `${n} in ${file}`);
+  const rest = files2.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
   const count = rest.reduce((sum, [, n]) => sum + n, 0);
   return [...lines, `and ${plural(rest.length, "more test file")} (${plural(count, "check")})`];
@@ -1235,6 +1236,9 @@ function storePaths(commonDir) {
     runsDir: join3(dir, "runs"),
     locksDir: join3(dir, "locks")
   };
+}
+function lockFileFor(commonDir, worktreeId) {
+  return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 
 // src/core/store/schema.ts
@@ -1923,7 +1927,13 @@ function createRunRepo(conn) {
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
       return row === null ? null : toRun(row);
-    }
+    },
+    inFlight: (worktreeId, startedSince) => conn.all(
+      `SELECT * FROM runs WHERE worktree_id = ? AND end_state IS NULL AND started_at >= ?
+           ORDER BY started_at, rowid`,
+      worktreeId,
+      startedSince
+    ).map(toRun)
   };
 }
 function toRun(row) {
@@ -2391,7 +2401,36 @@ var WORKTREE_SCOPED_TABLES = [
   "consumer_views",
   "consumers"
 ];
+var tokenKey = (id) => worktreeMetaKey("daemonToken", id);
 function createWorktreeRepo(conn) {
+  const tokenOf = (id, startedAt, version) => {
+    const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
+    let value = null;
+    try {
+      value = raw === null ? null : JSON.parse(str(raw, "value"));
+    } catch {
+      return void 0;
+    }
+    return isRecord(value) && value.startedAt === startedAt && value.squealVersion === version && typeof value.token === "string" ? value.token : void 0;
+  };
+  const writeToken = (id, d) => {
+    if (d.token === void 0) {
+      conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
+      return;
+    }
+    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    conn.run(
+      "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      tokenKey(id),
+      JSON.stringify(value)
+    );
+  };
+  const toRecord = (row) => {
+    const record = fromRow(row);
+    const d = record.daemon;
+    const token = d === null ? void 0 : tokenOf(record.id, d.startedAt, d.squealVersion);
+    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, token } };
+  };
   return {
     get: (id) => {
       const row = conn.get("SELECT * FROM worktrees WHERE id = ?", id);
@@ -2421,9 +2460,11 @@ function createWorktreeRepo(conn) {
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null
       );
+      if (d !== null) writeToken(record.id, d);
     },
     // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
-    // the start time and version too, the identity `lastDaemon` reads (task 001-268); with no
+    // the start time and version too, and the token row, the identity `lastDaemon` reads (tasks
+    // 001-268, 001-270); with no
     // socket every other read finds no daemon.
     setDaemon: (id, d) => {
       conn.run(
@@ -2439,6 +2480,7 @@ function createWorktreeRepo(conn) {
         d?.squealVersion ?? null,
         id
       );
+      if (d !== null) writeToken(id, d);
     },
     heartbeat: (id, at2) => {
       conn.run(
@@ -2454,7 +2496,9 @@ function createWorktreeRepo(conn) {
       );
       const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
       if (row === null || startedAt === null) return null;
-      return { startedAt, squealVersion: strOrNull(row, "daemon_version") };
+      const squealVersion2 = strOrNull(row, "daemon_version");
+      const token = tokenOf(id, startedAt, squealVersion2);
+      return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
     },
     remove: (id) => {
       conn.transaction(() => {
@@ -2469,7 +2513,7 @@ function createWorktreeRepo(conn) {
     }
   };
 }
-function toRecord(row) {
+function fromRow(row) {
   const socketPath = strOrNull(row, "daemon_socket");
   const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {
@@ -2820,9 +2864,9 @@ function attribute(store, consumer, entries, revision) {
   });
 }
 function dependenciesInstalled(store, worktreeId) {
-  const files = store.fileHashes.list(worktreeId);
-  if (files.length === 0) return void 0;
-  return files.some((f) => isInstalledLockfile(f.path));
+  const files2 = store.fileHashes.list(worktreeId);
+  if (files2.length === 0) return void 0;
+  return files2.some((f) => isInstalledLockfile(f.path));
 }
 function annotate(store, consumer, entries, header, states) {
   return {
@@ -3155,6 +3199,96 @@ function recordHarness(store, consumer, harness) {
   writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
 }
 
+// src/core/status/died.ts
+import { existsSync as existsSync5 } from "node:fs";
+
+// src/core/daemon/lock.ts
+import { mkdirSync as mkdirSync3 } from "node:fs";
+import { dirname as dirname2 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+function acquireDaemonLock(path) {
+  const db = lockDatabase(path);
+  let lock2;
+  try {
+    lock2 = tryLock(db);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  if (lock2 === null) db.close();
+  return lock2;
+}
+function lockDatabase(path) {
+  mkdirSync3(dirname2(path), { recursive: true });
+  const db = new DatabaseSync3(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  return db;
+}
+function tryLock(db) {
+  try {
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    if (isBusy(error)) return null;
+    throw error;
+  }
+  let held = true;
+  return {
+    release() {
+      if (!held) return;
+      held = false;
+      try {
+        db.exec("ROLLBACK");
+      } finally {
+        db.close();
+      }
+    }
+  };
+}
+
+// src/core/run-log.ts
+function testFileLabel(project, path) {
+  return project ? `[${project}] ${path}` : path;
+}
+
+// src/core/status/died.ts
+var DIED_FILES_SHOWN = 5;
+function withDeath(store, worktree, live) {
+  const record = worktree?.daemon ?? null;
+  if (live.state !== "down" || worktree === null || record === null) return live;
+  const { id } = worktree;
+  if (readDaemonNotes(store, id).some((note) => note.at >= record.heartbeatAt)) return live;
+  if (!daemonGone(worktree)) return live;
+  const runs = store.runs.inFlight(id, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
+  return { ...live, died: { runs } };
+}
+function daemonGone(worktree) {
+  const path = lockFileFor(worktree.commonDir, worktree.id);
+  if (!existsSync5(path)) return false;
+  try {
+    const lock2 = acquireDaemonLock(path);
+    lock2?.release();
+    return lock2 !== null;
+  } catch {
+    return false;
+  }
+}
+function deathText(died) {
+  const during = died.runs.length === 0 ? "between runs" : `during ${died.runs.map((run) => `run ${run.id} (revision ${run.revision}) of ${files(run.testFiles)}`).join("; ")}`;
+  return `died without shutting down, ${during}`;
+}
+var DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
+function files(refs) {
+  const shown = refs.slice(0, DIED_FILES_SHOWN).map((ref) => testFileLabel(ref.project, ref.path));
+  const more = refs.length - shown.length;
+  return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+}
+
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync4 } from "node:fs";
 import { join as join7 } from "node:path";
@@ -3232,7 +3366,11 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+  const daemon = withDeath(
+    store,
+    worktree,
+    liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+  );
   const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -3348,9 +3486,11 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
+  const worktree = store.worktrees.get(worktreeId);
   return {
     ...header,
-    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
+    // Task 001-263: a daemon that died without its stop note is named, as status names it.
+    daemon: withDeath(store, worktree, worktreeLiveness(worktree, now)),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
@@ -3412,13 +3552,13 @@ var IN_TURN = { turn: "in-turn" };
 function parse(value) {
   if (!isRecord(value)) return START_IDLE;
   if (value.turn === "in-turn") return IN_TURN;
-  const files = Array.isArray(value.testFiles) ? value.testFiles : [];
+  const files2 = Array.isArray(value.testFiles) ? value.testFiles : [];
   const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
     (e) => typeof e[1] === "string" || e[1] === null
   ) : null;
   return {
     turn: "idle",
-    testFiles: files.filter((f) => typeof f === "string"),
+    testFiles: files2.filter((f) => typeof f === "string"),
     newTestFiles: value.newTestFiles === true,
     ...keys === null ? {} : { keys: Object.fromEntries(keys) },
     ...typeof value.revision === "number" ? { revision: value.revision } : {}
@@ -3438,13 +3578,13 @@ function currentKeys(keys) {
 }
 function endTurn(store, consumer, states, undelivered) {
   const keys = store.testFileKeys.list(consumer.worktreeId);
-  const files = /* @__PURE__ */ new Set();
-  for (const s of states) if (s.validity === "pending") files.add(testFileKeyOf(s.check));
-  for (const k of keys) if (k.key !== null && k.pending !== null) files.add(testFileId(k.testFile));
-  for (const e of undelivered) files.add(testFileKeyOf(e.check));
+  const files2 = /* @__PURE__ */ new Set();
+  for (const s of states) if (s.validity === "pending") files2.add(testFileKeyOf(s.check));
+  for (const k of keys) if (k.key !== null && k.pending !== null) files2.add(testFileId(k.testFile));
+  for (const e of undelivered) files2.add(testFileKeyOf(e.check));
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current = currentKeys(keys);
-  const testFiles = [...files].sort();
+  const testFiles = [...files2].sort();
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
@@ -3805,9 +3945,9 @@ function changedText(paths) {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 function headerLine(header, command) {
-  const { revision, counts, testFilesWithoutChecks: files } = header;
+  const { revision, counts, testFilesWithoutChecks: files2 } = header;
   const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
-  const withoutChecks = files.pending + files.unknown === 0 ? "" : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
+  const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
   const awaiting = awaitingInstallSentence(header);
@@ -3819,11 +3959,12 @@ function headerLines(header, command) {
 }
 function livenessSentence(daemon, revision) {
   if (daemon === void 0 || daemon.state === "alive") return "";
+  const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
   if (daemon.startingSince !== void 0) {
-    return ` A daemon is starting; results are as of revision ${revision}.`;
+    return ` A daemon is starting; results are as of revision ${revision}.${died}`;
   }
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return ` ${since}; results are as of revision ${revision}.`;
+  return ` ${since}; results are as of revision ${revision}.${died}`;
 }
 function block(head, lines, outcomes) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
@@ -3885,13 +4026,13 @@ function unknownBlocks(entries) {
     byReason.set(reason, [...byReason.get(reason) ?? [], e]);
   }
   return [...byReason].map(([reason, group]) => {
-    const files = [...new Set(group.map((e) => e.check.testPath))];
+    const files2 = [...new Set(group.map((e) => e.check.testPath))];
     const from = (outcome) => group.filter((e) => e.from === outcome).length;
     const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper2(o)} -> UNKNOWN (${from(o)})`);
-    const listed = files.slice(0, 5).join(", ");
-    const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
+    const listed = files2.slice(0, 5).join(", ");
+    const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
     return block(
-      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files.length, "test file")}`,
+      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files2.length, "test file")}`,
       [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
       group.map(() => "unknown")
     );
@@ -3950,19 +4091,19 @@ function formatDelta(delta, command = SQUEAL_COMMAND) {
 function sawEditLine(queued) {
   return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
 }
-function settledLine({ since, files, unknown }) {
-  const which = `${files === 1 ? "The test file" : `All ${files} test files`} your edits since revision ${since} re-keyed`;
-  if (unknown === 0) return `${which} ${files === 1 ? "is" : "are"} current.`;
-  return `${which} finished: ${files - unknown} current, ${unknown} with no result (unknown).`;
+function settledLine({ since, files: files2, unknown }) {
+  const which = `${files2 === 1 ? "The test file" : `All ${files2} test files`} your edits since revision ${since} re-keyed`;
+  if (unknown === 0) return `${which} ${files2 === 1 ? "is" : "are"} current.`;
+  return `${which} finished: ${files2 - unknown} current, ${unknown} with no result (unknown).`;
 }
-function sawSettledLine({ files, unknown }) {
+function sawSettledLine({ files: files2, unknown }) {
   const head = "Squeal saw your edit; ";
   const tail = "passing results stay silent.";
   if (unknown === 0) {
-    const which = files === 1 ? "the 1 test file" : `all ${files} test files`;
-    return `${head}${which} it re-keyed ${files === 1 ? "is" : "are"} current, and ${tail}`;
+    const which = files2 === 1 ? "the 1 test file" : `all ${files2} test files`;
+    return `${head}${which} it re-keyed ${files2 === 1 ? "is" : "are"} current, and ${tail}`;
   }
-  return `${head}of the ${plural(files, "test file")} it re-keyed, ${files - unknown} current and ${unknown} with no result (unknown); ${tail}`;
+  return `${head}of the ${plural(files2, "test file")} it re-keyed, ${files2 - unknown} current and ${unknown} with no result (unknown); ${tail}`;
 }
 function editLines({ sawEdit, editsSettled }) {
   if (sawEdit !== void 0 && editsSettled !== void 0) return [sawSettledLine(editsSettled)];
@@ -3977,20 +4118,20 @@ function livenessTitle(liveness2, revision) {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname2, join as join8 } from "node:path";
+import { dirname as dirname3, join as join8 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.119";
+  if (true) return "0.1.120";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
-  let dir = dirname2(fileURLToPath(module));
+  let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
     const version = readVersion(join8(dir, "package.json"));
     if (version !== null) return version;
-    const parent = dirname2(dir);
+    const parent = dirname3(dir);
     if (parent === dir) return null;
     dir = parent;
   }
