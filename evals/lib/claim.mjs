@@ -41,6 +41,6 @@ export function gradeClaim({ claim, truthPass, squeal }) {
     falsePass: graded ? claim === "pass" && !truthPass : null,
     falseFail: graded ? claim === "fail" && truthPass : null,
     claimMatchesSqueal:
-      claim === null || !squeal ? null : squeal.supported && claim === squeal.verdict,
+      claim === null || !squeal ? null : claim === squeal.verdict && squeal.supported === true,
   };
 }
