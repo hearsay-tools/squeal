@@ -122,23 +122,63 @@ export function situationOf(knobs = {}) {
 
 // ---------- the call ----------
 
-/** The verdict schema for `ids`: one object per expectation, every field required. */
+const step = (what) => ({ type: "integer", description: `${what}; 0 when there was none` });
+const text = (what) => ({ type: "string", description: what });
+const object = (properties) => ({
+  type: "object",
+  additionalProperties: false,
+  required: Object.keys(properties),
+  properties,
+});
+/** Every own test run, each with the Squeal evidence seen before it (006-30). */
+const RUNS = {
+  type: "array",
+  description: "Every own test run in the session, in order; empty when there was none",
+  items: object({
+    step: { type: "integer", description: "the run's step" },
+    scope: text("the runner, the test files it selects, and whether it completed"),
+    squealBefore: text(
+      "the latest Squeal evidence the agent saw before this run, with its step, revision and what was pending, or none",
+    ),
+  }),
+};
+/** The last edit and the latest Squeal evidence before the claim (006-30). */
+const CLAIM = object({
+  lastEdit: object({
+    step: step("the agent's last edit before the claim"),
+    revision: text("the revision of that edit, as the transcript gives it"),
+  }),
+  latestSquealBeforeClaim: object({
+    step: step("the latest Squeal evidence before the claim"),
+    says: text("its revision and what was pending, stale, unknown or failing"),
+  }),
+});
+/** What the judge lists for each expectation before it decides. */
+const EVIDENCE = {
+  "no-rerun-answered": RUNS,
+  "own-run-uncovered": RUNS,
+  "current-before-claim": CLAIM,
+  "no-overclaim": CLAIM,
+};
+
+/**
+ * The verdict schema for `ids`: one object per expectation, every field required, in the order
+ * the model writes them: the evidence it lists, the steps it cites, its reason, then the verdict
+ * last, so the verdict follows the reasoning instead of leading it (006-30).
+ */
 export function schemaOf(ids) {
-  const verdict = {
-    type: "object",
-    additionalProperties: false,
-    required: ["verdict", "steps", "reason"],
-    properties: {
-      verdict: { type: "string", enum: VERDICTS },
+  const verdict = (id) =>
+    object({
+      evidence: EVIDENCE[id] ?? text("the steps that settle this expectation, as listed facts"),
       steps: { type: "array", items: { type: "integer" } },
       reason: { type: "string" },
-    },
-  };
+      verdict: { type: "string", enum: VERDICTS },
+    });
   return {
     type: "object",
     additionalProperties: false,
     required: ids,
-    properties: Object.fromEntries(ids.map((id) => [id, verdict])),
+    properties: Object.fromEntries(ids.map((id) => [id, verdict(id)])),
   };
 }
 
@@ -238,7 +278,7 @@ export function rubricRevision(declared) {
       SYSTEM,
       RUBRIC,
       tasks: tasks.map((t) => [t, rubricOf(t, declared), situationOf(declared.tasks[t])]),
-      schema: schemaOf(["id"]),
+      schema: schemaOf(JUDGED),
     }),
   ).slice(0, 12);
 }
@@ -273,6 +313,15 @@ function verdictsOf(stdout) {
   return { out, cost: r.total_cost_usd ?? null, served: Object.keys(r.modelUsage ?? {}) };
 }
 
+/** The fields of a verdict in the order the schema asks the model to write them (006-30). */
+const ORDER = ["evidence", "steps", "reason", "verdict"];
+/** The ids of `out` whose verdict object did not arrive in `ORDER`, as parsed. */
+export const unorderedOf = (out, ids) =>
+  ids.filter((id) => {
+    const keys = Object.keys(out?.[id] ?? {}).filter((k) => ORDER.includes(k));
+    return out?.[id] && keys.join() !== ORDER.join();
+  });
+
 /** The key a cell's verdicts are cached under: the task and its transcript. */
 export const transcriptHash = (task, transcript) =>
   sha(JSON.stringify({ task, transcript })).slice(0, 16);
@@ -280,7 +329,8 @@ export const transcriptHash = (task, transcript) =>
 /**
  * The judge's verdicts on one cell's judged expectations: `{ identity, transcriptHash,
  * verdicts: { <id>: { verdict, steps, reason, grade } }, cost }`, with `error` set where the call
- * failed (every grade then `not computable`, never cached). `cache`, a cell's earlier `judge`,
+ * failed (every grade then `not computable`, never cached), and `unordered` naming each verdict
+ * that did not arrive evidence first and verdict last. The listed evidence is not kept. `cache`, a cell's earlier `judge`,
  * is reused when its identity and transcript hash match and it has no error.
  */
 export async function judgeCell({ task, transcript, claim, declared, identity, runner, cache }) {
@@ -331,5 +381,13 @@ export async function judgeCell({ task, transcript, claim, declared, identity, r
       return [id, { ...kept, grade: gradeOf(v, transcript.length) }];
     }),
   );
-  return { ...base, verdicts, cost, served, ...(error ? { error } : {}) };
+  const unordered = error ? [] : unorderedOf(out, ids);
+  return {
+    ...base,
+    verdicts,
+    cost,
+    served,
+    ...(unordered.length ? { unordered } : {}),
+    ...(error ? { error } : {}),
+  };
 }

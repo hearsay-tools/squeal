@@ -69,6 +69,6 @@ for (const r of result.references.filter((x) => !x.pass))
     `failed: ${r.name}: expected ${JSON.stringify(r.expected)}, got ${r.runs.map((x) => JSON.stringify(x.grades)).join(" then ")}`,
   );
 console.log(
-  `${result.passed ? "PASSED" : "FAILED"}: ${result.sessions - result.failed.length}/${result.sessions} sessions, cost $${result.costUsd}; wrote ${file}`,
+  `${result.passed ? "PASSED" : "FAILED"}: ${result.sessions - result.failed.length}/${result.sessions} sessions, cost $${result.costUsd}, ${result.unordered} call(s) with a verdict not last; wrote ${file}`,
 );
 process.exit(result.passed ? 0 : 3);
