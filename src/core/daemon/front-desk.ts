@@ -62,6 +62,7 @@ function bind(identity: DeskIdentity): void {
         post({ type: "sync", id });
       }),
     onActivity: () => post({ type: "activity" }),
+    onNudge: () => post({ type: "nudge" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
   });

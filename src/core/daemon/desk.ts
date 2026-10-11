@@ -17,6 +17,8 @@ export interface FrontDesk {
 /** What the front desk hands to the main thread. */
 export interface DeskEvents {
   readonly onActivity: () => void;
+  /** A hook's nudge (task 001-281); absent: a nudge is only activity. */
+  readonly onNudge?: () => void;
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
@@ -112,6 +114,9 @@ async function inWorker(
         case "activity":
           events.onActivity();
           return;
+        case "nudge":
+          events.onNudge?.();
+          return;
         case "run-all":
           events.requestFullSuite(message.force).then(
             (checkpoint) =>
@@ -205,6 +210,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
       onActivity: events.onActivity,
+      ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
       onStop: events.onStop,
       onStepDown: events.onStepDown,
     }),

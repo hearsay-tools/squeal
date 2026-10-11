@@ -460,6 +460,7 @@ class Daemon {
         onActivity: () => {
           this.#lastActive = this.#now();
         },
+        onNudge: () => this.#loop?.scheduler.nudge(),
         // After the answer is written.
         onStop: () =>
           setImmediate(

@@ -52,6 +52,11 @@ export interface HandlerContext {
   readonly requestSync?: () => Promise<SyncAnswer>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
+  /**
+   * A hook's nudge, after `onActivity` (task 001-281): a consumer may have
+   * gone idle, so the scheduler plans its waiting slow files now.
+   */
+  readonly onNudge?: () => void;
   /** Called after the stop answer is built; the shutdown runs after it is sent. */
   readonly onStop: () => void;
   /**
@@ -128,6 +133,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         };
       case "nudge":
         context.onActivity();
+        context.onNudge?.();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "nudge" };
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");

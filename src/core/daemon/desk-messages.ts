@@ -47,6 +47,7 @@ export type FromDesk =
   | { readonly type: "listening" }
   | { readonly type: "failed"; readonly error: string }
   | { readonly type: "activity" }
+  | { readonly type: "nudge" }
   | { readonly type: "run-all"; readonly id: string; readonly force: boolean }
   | { readonly type: "run-slow"; readonly id: string }
   | { readonly type: "sync"; readonly id: string }
