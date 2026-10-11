@@ -18,6 +18,12 @@ const jsonl = (name: string): Event[] =>
     .map((l) => JSON.parse(l) as Event);
 const T0 = 1760000000000;
 const vitestReport = (failed: string[]) => ({
+  success: failed.length === 0,
+  numTotalTests: 1 + failed.length,
+  numPassedTests: 1,
+  numFailedTests: failed.length,
+  numPendingTests: 0,
+  numTodoTests: 0,
   testResults: [
     {
       name: "/tmp/cell/work/test/clock.test.ts",
