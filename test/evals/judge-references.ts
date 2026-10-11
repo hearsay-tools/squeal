@@ -387,7 +387,13 @@ export function calibrationReferences(
       ...RETAINED.map((r) => {
         const cell = retained(r.file, r.id, harness);
         const task = cell.task as string;
-        return { name: `${harness} ${task}: ${r.what}`, task, harness, cell, expected: grades(task, r.misses) };
+        return {
+          name: `${harness} ${task}: ${r.what}`,
+          task,
+          harness,
+          cell,
+          expected: grades(task, r.misses),
+        };
       }),
     ];
   });
