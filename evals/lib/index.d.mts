@@ -15,15 +15,21 @@ export interface SimpleCommand {
   words: string[];
   redirects: { op: string; target: string }[];
   heredocs: string[];
+  established: boolean;
 }
-export function simpleCommands(text: string): SimpleCommand[];
+export function simpleCommands(text: string, options?: { exit?: number | null }): SimpleCommand[];
 
-export type Action =
+export type Execution = "executed" | "refused" | "indeterminate";
+export type Action = (
   | { kind: "squeal"; sub: string; wait: boolean; all: boolean; slow: boolean }
   | { kind: "vitest" | "node:test"; scope: "full" | "files" | "name" }
   | { kind: "sleep"; seconds: number }
-  | { kind: "write"; path: string };
-export function classifyShell(text: string): Action[];
+  | { kind: "write"; path: string }
+) & { execution: Execution };
+export function classifyShell(
+  text: string,
+  options?: { exit?: number | null; output?: string; refused?: boolean },
+): Action[];
 
 export interface TimelineItem {
   t: number;
@@ -37,6 +43,8 @@ export interface TimelineItem {
   exit?: number | null;
   out?: string;
   refused?: boolean;
+  failed?: boolean;
+  background?: boolean;
 }
 export interface Timeline {
   items: TimelineItem[];
@@ -86,6 +94,8 @@ export interface Grade {
   nodeTestWanted: boolean;
   nodeTestAfterScriptEdit: boolean | null;
   refused: number;
+  failedEdits: number;
+  indeterminate: number;
   testAttemptsRefused: number;
   squealPulls: number;
   squealWaits: number;
@@ -105,7 +115,9 @@ export interface Grade {
   timeline: {
     runs: Run[];
     edits: { t: number; path: string }[];
+    failedEdits: { t: number; path: string }[];
     refused: { t: number; what: string }[];
+    indeterminate: { t: number; what: string; cmd: string }[];
   };
 }
 export function gradeCell(input: {

@@ -1,6 +1,6 @@
 // One timeline from a subject session's transcript (spec 006 D4): Claude Code `stream-json`, or
 // Codex `exec --json` plus its rollout, which holds the SQUEAL texts the model received.
-// Entries: `cmd { cmd, ms, exit, out, refused }`, `edit { path, refused }`, `read { path }`,
+// Entries: `cmd { cmd, ms, exit, out, refused }`, `edit { path, refused, failed }`, `read { path }`,
 // `skill`, `say { text }`, `squeal { hook, text }`, `tool { name }`; `t` is ms since session start.
 
 const SQUEAL_TEXT = /SQUEAL|Squeal runs/;
@@ -39,6 +39,11 @@ export function claudeTimeline(events) {
         const denied = pendingDeny !== null && pendingDeny >= k.t;
         if (c.is_error && (CLAUDE_REFUSAL.test(out) || denied)) k.refused = true;
         if (denied) pendingDeny = null;
+        // Claude Code reports a non-zero exit as an error result opening with `Exit code N`.
+        if (k.kind === "cmd" && !k.background && !k.refused)
+          k.exit = c.is_error ? Number(/^Exit code (\d+)/.exec(out)?.[1] ?? Number.NaN) : 0;
+        if (Number.isNaN(k.exit)) k.exit = null;
+        if (k.kind === "edit" && c.is_error && !k.refused) k.failed = true;
       }
     }
     if (e.type === "result") {
@@ -57,7 +62,8 @@ export function claudeTimeline(events) {
 
 function claudeTool(t, c) {
   const i = c.input ?? {};
-  if (c.name === "Bash") return { t, kind: "cmd", cmd: String(i.command ?? "") };
+  if (c.name === "Bash")
+    return { t, kind: "cmd", cmd: String(i.command ?? ""), background: !!i.run_in_background };
   if (EDIT_TOOLS.has(c.name))
     return { t, kind: "edit", path: String(i.file_path ?? i.notebook_path ?? "") };
   if (c.name === "Read")
@@ -113,7 +119,8 @@ export function codexTimeline(events, rollout = [], t0 = 0) {
           t: e.t,
           kind: "edit",
           path: c.path,
-          refused: i.status === "failed" || i.status === "declined",
+          refused: i.status === "declined",
+          failed: i.status === "failed",
         });
     }
     if (i.type === "agent_message" && e.type === "item.completed") {
