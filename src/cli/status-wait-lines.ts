@@ -56,10 +56,26 @@ function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: stri
     case "quiet":
       return `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at} ${after}${pending}${others}`;
     case "news":
-      return `Returned on news: ${plural(wait.transitions, "transition")} in the ${files}, ${at} ${after}${pending}${others}`;
+      return `Returned on news: ${newsText(wait, files)}, ${at} ${after}${pending}${others}`;
     default:
       return `Returned on timeout ${after}: ${edit.pending} of the ${files} pending ${at}${pending}${others}`;
   }
+}
+
+/**
+ * The edit's transitions in its files, then the held slow files' in theirs,
+ * each named only when there is one (review wave-13ak, S1).
+ */
+function newsText(wait: EndedWait, files: string): string {
+  const slow = wait.slow?.transitions ?? 0;
+  const own = wait.transitions - slow;
+  const parts: string[] = [];
+  if (own > 0) parts.push(`${plural(own, "transition")} in the ${files}`);
+  if (slow > 0) {
+    const held = `${plural(wait.slow?.held ?? 0, "slow file")} run --slow queued`;
+    parts.push(`${parts.length === 0 ? plural(slow, "transition") : slow} in the ${held}`);
+  }
+  return parts.join(" and ");
 }
 
 /**

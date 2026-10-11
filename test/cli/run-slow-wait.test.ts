@@ -137,11 +137,18 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
 
   it("ends on news of a queued slow file's checks", async () => {
     const { repo, store, seen } = await slowQueued([SLOW_FILE, SECOND]);
-    onceWaiting(seen, 100, () => fail(store, repo.mainId, check(SLOW_FILE, "holds")));
+    // Its run ended with a failure: the row and the check, as one commit records them.
+    onceWaiting(seen, 100, () => {
+      finish(store, repo.mainId, SLOW_FILE);
+      fail(store, repo.mainId, check(SLOW_FILE, "holds"));
+    });
 
     const result = await run(["run", "--slow", "--wait", "20000"], repo.main);
 
-    expect(result.stdout).toMatch(/\nReturned on news: 1 transition[^\n]*; 1 of the 2 slow files/);
+    // The news is the slow files', not the empty edit window's (review wave-13ak, S1).
+    expect(result.stdout).toMatch(
+      /\nReturned on news: 1 transition in the 2 slow files run --slow queued, at revision 4 after \d+\.\d s; 1 check pending in all; 1 of the 2 slow files run --slow queued pending: test\/slow-two\.test\.ts\n/,
+    );
   });
 
   it("does not hold for fast files outside the edit", async () => {

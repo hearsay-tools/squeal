@@ -115,6 +115,12 @@ export interface StatusWaitEdit {
 export interface StatusWaitSlow {
   readonly held: number;
   readonly pending: readonly RelativePath[];
+  /**
+   * Of the wait's `transitions`, those of the held files outside the edit's
+   * window (review wave-13ak, S1); 0 while the window is not known, when no
+   * transition is named as the edit's either.
+   */
+  readonly transitions: number;
 }
 
 export type StatusWait =
@@ -252,18 +258,19 @@ export async function waitForStatus(
           window === undefined && options.holdSlow !== true ? [] : store.testFileKeys.list(id);
         if (options.holdSlow === true) syncing.slow ??= pendingSlow(store, id, states, keys);
         const held = syncing.slow;
-        const slowLeft =
-          held === undefined ? [] : heldSlowLeft(held, pendingSlow(store, id, states, keys));
+        const slowLeft = held === undefined ? [] : heldSlowLeft(held, states, keys);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id), now());
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
         let transitions: number;
         let quiet: boolean;
         let edit: StatusWaitEdit | undefined;
+        // The held files' own news, outside the edit's window: named as theirs (review wave-13ak, S1).
+        let slowNews = 0;
         if (window !== undefined) {
           const split = splitNews(window, news);
           const pending = heldPending(window, keys);
-          const slowNews = held === undefined ? 0 : heldSlowNews(held, news, window.ids);
+          slowNews = held === undefined ? 0 : heldSlowNews(held, news, window.ids);
           transitions = split.own + slowNews;
           quiet =
             header.revision >= window.revision && windowRefined(window, header) && pending === 0;
@@ -297,7 +304,10 @@ export async function waitForStatus(
                   : null;
         if (outcome === null) return null;
         const result = buildSnapshot(store, root, now());
-        const slow = held === undefined ? {} : { slow: { held: held.size, pending: slowLeft } };
+        const slow =
+          held === undefined
+            ? {}
+            : { slow: { held: held.size, pending: slowLeft, transitions: slowNews } };
         return { outcome, transitions, ...(edit === undefined ? {} : { edit }), ...slow, result };
       });
       if (read !== null && "available" in read) {
