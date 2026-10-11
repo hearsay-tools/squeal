@@ -42,3 +42,11 @@ Use /worker.
 **Owns:** `evals/bin/grade.mjs` and `evals/lib/{shell,commands,grade,behaviours,transcript,claim}.mjs`.
 
 **Done when:** every B2, B3 (grader) and B4 probe from the review is a passing test, including `false && …`, a heredoc fed to `bash`, an edit then a run in one call, a null exit, an empty report, and stale or unknown status. The repository gate is green.
+
+## 006-07 re-review of wave 1.5
+
+Use /reviewer. Range `aa8a5dc4^..1f95673f`: 006-05's two commits, then 006-06's two, on main. Prior findings: `../reviews/wave-1.md`. The second and last round on this slice.
+
+Question: are B1 to B5 closed, and are S1 to S3 addressed? Re-run each original probe against the candidate, then look for the nearest variant of each that still escapes. Examples: a secret in a file type the scan skips; a chained command form the parser does not model; a truth record that is valid JSON but describes an incomplete run; a status JSON with a field the grader does not read; two arms whose fixtures differ in a way the arm check accepts.
+
+New findings count only when they are in the changed lines or caused by them. Probe cells are allowed: at most 2 subject sessions, below load 24, in scratch homes. Findings go to `../reviews/wave-1.5.md`, committed.
