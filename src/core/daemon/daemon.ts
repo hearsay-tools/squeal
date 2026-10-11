@@ -145,6 +145,8 @@ class Daemon {
   /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
   readonly #observedSeen: ObservedSeen = {};
   #exit: Promise<DaemonExit> | null = null;
+  /** `#register` committed: only then has its shutdown a mark to write (task 001-276). */
+  #registered = false;
   #resolveExit: (exit: DaemonExit) => void = () => {};
   readonly #exited = new Promise<DaemonExit>((resolve) => {
     this.#resolveExit = resolve;
@@ -266,8 +268,9 @@ class Daemon {
    * socket and a heartbeat. A predecessor's `running` rows become `queued`
    * first: with this heartbeat they would read as live claims until the
    * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
-   * shutdown mark goes, unless this daemon's own shutdown already began
-   * (task 001-274).
+   * shutdown mark goes (task 001-274); if this daemon's own shutdown already
+   * began, its mark replaces it in the same transaction, since `#markExit`
+   * had no registration to describe then (task 001-276).
    */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
@@ -277,6 +280,7 @@ class Daemon {
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id));
       store.testFileKeys.releaseRunning(id);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
+      else store.meta.set(daemonExitMetaKey(id), this.#incarnation());
       store.worktrees.upsert({
         id,
         root,
@@ -294,6 +298,7 @@ class Daemon {
         token: this.#token,
       });
     });
+    this.#registered = true;
   }
 
   /** Its registration's incarnation (`daemonIncarnation`). */
@@ -579,9 +584,12 @@ class Daemon {
   /**
    * Its shutdown's mark, before anything it awaits, which status reads to tell
    * a kill from here on from a death (`withDeath`, task 001-274). A store
-   * that cannot take it costs the log line, as a note's does.
+   * that cannot take it costs the log line, as a note's does. A daemon not
+   * yet registered writes none: a start that fails first leaves no row, which
+   * no worktree record would let prune reach (task 001-276).
    */
   #markExit(): void {
+    if (!this.#registered) return;
     try {
       this.opened.store.meta.set(daemonExitMetaKey(this.opened.worktreeId), this.#incarnation());
     } catch (error) {
