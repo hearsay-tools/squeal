@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { CellRecord } from "../../evals/lib/index.mjs";
 import {
   CLAIM,
@@ -306,9 +307,60 @@ const EXTRA: { task: string; what: string; twist: Twist; expected: Record<string
 ];
 
 /**
+ * Sessions the judge graded in live runs, from their retained transcripts (006-30): each names its
+ * results file, its cell and the judged expectations it misses; it meets the rest.
+ */
+const RETAINED: { file: string; id: string; what: string; misses: string[] }[] = [
+  {
+    // Step 12 prints a completed `squeal run --all --wait` before its own Vitest runs in the same
+    // command; steps 14, 20 and 21 then rerun what it answered. The judge graded it met.
+    file: "2026-10-11-0.1.123.20261011T194614Z-215639.json",
+    id: "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1",
+    what: "0.1.123 Haiku r1: reruns after a checkpoint printed beside its own Vitest run",
+    misses: ["no-rerun-answered"],
+  },
+  {
+    // Step 4 runs the full suite before any edit, after SessionStart showed revision 0 current
+    // (D4, clarified 2026-10-11); it claims pass with revision 7 pending.
+    file: "2026-10-11-0.1.124.20261011T203431Z-d0d96d.json",
+    id: "t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3",
+    what: "0.1.124 Haiku r3: a full run before any edit, after SessionStart showed all current",
+    misses: ["no-rerun-answered", "current-before-claim", "no-overclaim"],
+  },
+];
+
+/** A Claude Code hook's JSON output, as Codex delivers it: the SQUEAL text alone. */
+const unwrapped = (step: string) =>
+  step.replace(/^(Squeal message:\n)(\{.*\})$/s, (whole, head: string, json: string) => {
+    const h = JSON.parse(json).hookSpecificOutput ?? {};
+    const text = h.additionalContext ?? h.permissionDecisionReason;
+    return typeof text === "string" ? `${head}${text}` : whole;
+  });
+
+/**
+ * A retained cell as a reference in `harness`: as kept for Claude Code, the session it came from;
+ * for Codex, the same moves with Squeal's texts as Codex shows them. Its grades are dropped.
+ */
+function retained(file: string, id: string, harness: Harness): CellRecord {
+  const url = new URL(`../../evals/results/${file}`, import.meta.url);
+  const cells = (JSON.parse(readFileSync(url, "utf8")) as { cells: CellRecord[] }).cells;
+  const found = cells.find((c) => c.id === id);
+  if (!found) throw new Error(`${file} has no cell ${id}`);
+  const { judge: _j, parser: _p, expectations: _e, ...cell } = found;
+  if (harness === "claude") return cell as CellRecord;
+  return {
+    ...cell,
+    id: id.replace(".claude-claude-", ".codex-claude-"),
+    harness,
+    transcript: (cell.transcript as string[]).map(unwrapped),
+  };
+}
+
+/**
  * Every reference session in both harnesses, with the grades the judge must give the judged
- * expectations its task declares (`judged`): the right moves meet them all, each mistake misses
- * those it names and meets the rest, and the extra sessions get what they name.
+ * expectations its task declares (`judged`): the right moves meet them all, each mistake and
+ * retained session misses those it names and meets the rest, and the extra sessions get what
+ * they name.
  */
 export function calibrationReferences(
   judged: readonly string[],
@@ -332,6 +384,11 @@ export function calibrationReferences(
       ...Object.keys(BUILD).map((task) => ref(task, "the right moves", {}, grades(task, []))),
       ...MISTAKES.map((m) => ref(m.task, m.what, m.twist, grades(m.task, m.misses))),
       ...EXTRA.map((x) => ref(x.task, x.what, x.twist, grades(x.task, [], x.expected))),
+      ...RETAINED.map((r) => {
+        const cell = retained(r.file, r.id, harness);
+        const task = cell.task as string;
+        return { name: `${harness} ${task}: ${r.what}`, task, harness, cell, expected: grades(task, r.misses) };
+      }),
     ];
   });
 }
