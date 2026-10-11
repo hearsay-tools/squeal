@@ -87,7 +87,8 @@ export function failingAfter(before, s) {
     else if (check === null) named.shift();
   };
   for (const c of s.checks) {
-    if (c.to === "fail") {
+    if (c.to === "fail" && c.check === undefined) unnamed += c.count;
+    else if (c.to === "fail") {
       if (!named.includes(c.check)) named.push(c.check);
     } else for (let n = 0; n < (c.count ?? 1); n++) remove(c.check ?? null);
   }
@@ -141,6 +142,7 @@ const COLLAPSED = /^(\d+) checks? (?:recovered|no longer reported)/;
  * validity }`, `to` `fail`, `pass` or `resolved`, `from` the outcome it changed from (`null`
  * when first observed), `observed` the revision its result is from (`null` when unstated) and
  * `validity` `current`, `pending`, `stale` or `unknown`; `stated` when a status says `current`.
+ * A collapsed list or an overflow is `{ to, count }`.
  */
 function checksOf(t) {
   const checks = [];
@@ -177,6 +179,10 @@ function checksOf(t) {
       ...(stated === undefined ? {} : { stated: true }),
     });
   }
+  // A delivery too long for its cap counts the rest by outcome (`formatDelta`'s overflow).
+  const hidden = /^Not shown: \d+ more changed checks \(([^)]*)\)/m.exec(t)?.[1] ?? "";
+  for (const [, n, outcome] of hidden.matchAll(/(\d+) (FAIL|PASS|RESOLVED)\b/g))
+    checks.push({ to: outcome.toLowerCase(), count: Number(n) });
   return checks;
 }
 
