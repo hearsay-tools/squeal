@@ -2,7 +2,6 @@ import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type StatusWait, waitForStatus } from "../../src/cli/status-wait.js";
 import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
@@ -22,6 +21,7 @@ import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
+import { captureSync } from "./store-wait.js";
 
 /*
  * Re-review 003-46 (003-node-test-runner/reviews/wave-4.5.md, B1), closed by
@@ -161,17 +161,7 @@ describe(
       // The wait's sync captures revision 2, as the daemon's does.
       const captured = scheduler.status().revision;
       expect(captured).toBe(2);
-      const sync = (_root: string, _pollMs: number, after: RevisionNumber): DaemonSync => {
-        let current: SyncState = { state: "pending" };
-        void scheduler.refined().then(() => {
-          current = {
-            state: "synced",
-            revision: captured,
-            rekeyed: scheduler.rekeyedSince(after, captured),
-          };
-        });
-        return { current: () => current, stop: () => {} };
-      };
+      const sync = captureSync(() => captured);
       let ended = null as StatusWait | null;
       const wait = waitForStatus(root, { timeoutMs: 60_000, pollMs: 50, settleMs: 0, sync }).then(
         (result) => {

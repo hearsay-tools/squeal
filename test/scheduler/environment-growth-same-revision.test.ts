@@ -2,7 +2,6 @@ import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type StatusWait, waitForStatus } from "../../src/cli/status-wait.js";
 import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
@@ -14,7 +13,6 @@ import { createScheduler } from "../../src/core/scheduler/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
-  type EpochMs,
   MAIN_AGENT,
   type NodeTestProject,
   type RevisionNumber,
@@ -25,6 +23,7 @@ import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
+import { captureSync } from "./store-wait.js";
 
 /*
  * Review wave 13k, B1 (task 001-196): a and b are edited at revision 2. a
@@ -33,7 +32,8 @@ import { RecordingSink } from "./recording-sink.js";
  * growth re-keys a at revision 2 again. a's old result was observed at 2,
  * so a wait that heard of revision 2 counted a as seen and ended quiet with
  * no files while a's re-run ran. Seen is now a result under the current key:
- * the daemon names a until its re-run lands. The control's session was last
+ * the store's moves name a until its re-run lands, since the growth's move
+ * back to revision 2 opens it again (task 001-258). The control's session was last
  * told revision 1, so revision 2 is in its window either way.
  */
 
@@ -164,22 +164,7 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
 
     // The wait's sync captures revision 2, as the daemon's does.
     const captured = scheduler.status().revision;
-    const sync = (
-      _root: string,
-      _pollMs: number,
-      after: RevisionNumber,
-      resolvedSince: EpochMs,
-    ): DaemonSync => {
-      let current: SyncState = { state: "pending" };
-      void scheduler.refined().then(() => {
-        current = {
-          state: "synced",
-          revision: captured,
-          rekeyed: scheduler.rekeyedSince(after, captured, resolvedSince),
-        };
-      });
-      return { current: () => current, stop: () => {} };
-    };
+    const sync = captureSync(() => captured);
     const control = { worktreeId, sessionId: "told-1", agentId: MAIN_AGENT };
     store.consumers.register(control, Date.now());
     tellRevision(store, control, 1 as RevisionNumber);

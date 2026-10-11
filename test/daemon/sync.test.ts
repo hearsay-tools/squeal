@@ -10,8 +10,6 @@ import type {
   AbsolutePath,
   DaemonPhase,
   DaemonResponse,
-  EpochMs,
-  RekeyedTestFile,
   RevisionNumber,
   SyncAnswer,
 } from "../../src/core/types/index.js";
@@ -20,12 +18,9 @@ import type {
  * Lessons, defect 30: `status --wait` asks the daemon for a reconciliation
  * pass and decides quiet at the revision the pass stored. The request is
  * answered at once, like `run-all`, and its revision is asked for after.
+ * The files the wait holds for are the store's (task 001-258): the answer
+ * says the daemon records them (`moves`), and names none.
  */
-
-const MATH: RekeyedTestFile = {
-  testFile: { project: "", path: "test/math.test.ts" as never },
-  revision: 8 as RevisionNumber,
-};
 
 const cleanups: (() => unknown)[] = [];
 afterEach(async () => {
@@ -59,19 +54,12 @@ function requestId(response: DaemonResponse): string {
 }
 
 describe("the sync request (lessons, defect 30)", () => {
-  it("parses sync and sync-status", () => {
+  it("parses sync and sync-status, an older CLI's window fields ignored", () => {
     expect(parseRequest('{"type":"sync"}')).toEqual({ type: "sync" });
-    expect(parseRequest('{"type":"sync","after":4}')).toEqual({ type: "sync", after: 4 });
-    expect(parseRequest('{"type":"sync","after":-1}')).toBe('"after" must be a revision number');
-    expect(parseRequest('{"type":"sync","after":"4"}')).toBe('"after" must be a revision number');
+    expect(parseRequest('{"type":"sync","after":4}')).toEqual({ type: "sync" });
     expect(parseRequest('{"type":"sync","after":4,"resolvedSince":1700}')).toEqual({
       type: "sync",
-      after: 4,
-      resolvedSince: 1700,
     });
-    expect(parseRequest('{"type":"sync","after":4,"resolvedSince":"x"}')).toBe(
-      '"resolvedSince" must be a time',
-    );
     expect(parseRequest('{"type":"sync-status","requestId":"r1"}')).toEqual({
       type: "sync-status",
       requestId: "r1",
@@ -88,32 +76,29 @@ describe("the sync request (lessons, defect 30)", () => {
     const id = requestId(first);
     expect(handle({ type: "sync-status", requestId: id })).toMatchObject({ revision: null });
 
-    store({ revision: 7 as RevisionNumber, rekeyed: null });
+    store({ revision: 7 as RevisionNumber });
     await settle();
     const answer = handle({ type: "sync-status", requestId: id });
-    expect(answer).toMatchObject({ revision: 7, error: null });
+    expect(answer).toMatchObject({ revision: 7, error: null, moves: true });
+    // An older CLI that asked with `after` takes its path for a daemon before task 001-186.
     expect(answer).not.toHaveProperty("rekeyed");
   });
 
-  // Tasks 001-186, 001-196: the files the window's revisions re-keyed, which `status --wait` holds for.
-  it("passes the window's start and answers with the files it re-keyed", async () => {
-    const asked: [RevisionNumber | null, EpochMs | null][] = [];
-    const handle = handler((after, resolvedSince) => {
-      asked.push([after, resolvedSince]);
-      return Promise.resolve({ revision: 9 as RevisionNumber, rekeyed: [MATH] });
+  it("remembers the latest 32 requests, which nothing else holds", async () => {
+    let asked = 0;
+    const handle = handler(() => {
+      asked += 1;
+      return Promise.resolve({ revision: 3 as RevisionNumber });
     });
 
-    const id = requestId(handle({ type: "sync", after: 6 as RevisionNumber, resolvedSince: 1700 }));
-    requestId(handle({ type: "sync", after: 6 as RevisionNumber }));
+    const ids = Array.from({ length: 40 }, () => requestId(handle({ type: "sync" })));
     await settle();
 
-    expect(asked).toEqual([
-      [6, 1700],
-      [6, null],
-    ]);
-    expect(handle({ type: "sync-status", requestId: id })).toMatchObject({
-      revision: 9,
-      rekeyed: [MATH],
+    expect(asked).toBe(40);
+    expect(handle({ type: "sync-status", requestId: ids[7] ?? "" })).toMatchObject({ ok: false });
+    expect(handle({ type: "sync-status", requestId: ids[8] ?? "" })).toMatchObject({
+      ok: true,
+      revision: 3,
     });
   });
 
@@ -145,99 +130,14 @@ describe("the sync request (lessons, defect 30)", () => {
 });
 
 describe("sync through the front desk", () => {
-  it("reaches the daemon's requestSync and answers sync-status", async () => {
+  it.each([
+    { name: "in the worker thread", worker: true },
+    { name: "on the main thread", worker: false },
+  ])("reaches the daemon's requestSync $name and answers sync-status", async ({ worker }) => {
     const dir = mkdtempSync("/tmp/sq-sync-");
     cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
     const socketPath = join(dir, "d.sock") as AbsolutePath;
     let calls = 0;
-    let since: EpochMs | null = null;
-    const desk = await prepareFrontDesk().open(
-      {
-        socketPath,
-        worktreeId: "0123456789abcdef" as never,
-        root: "/",
-        squealVersion: "0.0.0-test",
-        startedAt: 1 as never,
-      },
-      {
-        onActivity: () => {},
-        requestFullSuite: () => new Promise(() => {}),
-        requestSlowSuite: () => new Promise(() => {}),
-        requestSync: (after, resolvedSince) => {
-          calls++;
-          since = resolvedSince;
-          return Promise.resolve({
-            revision: 5 as RevisionNumber,
-            rekeyed: after === null ? null : [MATH],
-          });
-        },
-        forgetSync: () => {},
-        onStop: () => {},
-        onStepDown: () => {},
-        onFailure: () => {},
-      },
-    );
-    cleanups.push(() => desk.close());
-    desk.setPhase("ready");
-
-    const ask = { type: "sync", after: 3 as RevisionNumber, resolvedSince: 1700 } as const;
-    const id = requestId(await requestDaemon(socketPath, ask, 2_000));
-    await settle();
-    expect(calls).toBe(1);
-    expect(since).toBe(1700);
-    expect(
-      await requestDaemon(socketPath, { type: "sync-status", requestId: id }, 2_000),
-    ).toMatchObject({ type: "sync", revision: 5, error: null, rekeyed: [MATH] });
-  });
-});
-
-/*
- * Review wave-13r B2 (task 001-226): the socket remembers 32 sync requests,
- * and the main thread hears which it drops, by the id the request was
- * answered with, so their answers' holds are released at once.
- */
-describe("a sync request the socket drops", () => {
-  it("is forgotten on the main thread by its id, once each, the others never", async () => {
-    const forgotten: string[] = [];
-    const asked: string[] = [];
-    const handle = createHandlers({
-      worktreeId: "0123456789abcdef" as never,
-      root: "/" as never,
-      squealVersion: "0.0.0-test",
-      startedAt: 1 as never,
-      phase: () => "ready",
-      requestFullSuite: () => new Promise(() => {}),
-      requestSync: (_after, _since, id) => {
-        asked.push(id);
-        return new Promise(() => {});
-      },
-      forgetSync: (id) => forgotten.push(id),
-      onActivity: () => {},
-      onStop: () => {},
-      onStepDown: () => {},
-    });
-    const ids: string[] = [];
-    for (let n = 0; n < 40; n += 1) {
-      ids.push(requestId(handle({ type: "sync", after: 0 as RevisionNumber, resolvedSince: 1 })));
-    }
-    expect(asked).toEqual(ids);
-    expect(forgotten).toEqual(ids.slice(0, 8));
-    expect(handle({ type: "sync-status", requestId: ids[7] ?? "" })).toMatchObject({ ok: false });
-    expect(handle({ type: "sync-status", requestId: ids[8] ?? "" })).toMatchObject({ ok: true });
-    // Other requests' drops forget no sync.
-    for (let n = 0; n < 40; n += 1) handle({ type: "run-all" });
-    expect(forgotten).toHaveLength(8);
-  });
-
-  it.each([
-    { name: "in the worker thread", worker: true },
-    { name: "on the main thread", worker: false },
-  ])("reaches the daemon's forgetSync through the front desk $name", async ({ worker }) => {
-    const dir = mkdtempSync("/tmp/sq-sync-");
-    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-    const socketPath = join(dir, "d.sock") as AbsolutePath;
-    const asked: string[] = [];
-    const forgotten: string[] = [];
     const prepared = prepareFrontDesk(
       worker
         ? {
@@ -262,11 +162,10 @@ describe("a sync request the socket drops", () => {
         onActivity: () => {},
         requestFullSuite: () => new Promise(() => {}),
         requestSlowSuite: () => new Promise(() => {}),
-        requestSync: (_after, _since, id) => {
-          asked.push(id);
-          return new Promise(() => {});
+        requestSync: () => {
+          calls++;
+          return Promise.resolve({ revision: 5 as RevisionNumber });
         },
-        forgetSync: (id) => forgotten.push(id),
         onStop: () => {},
         onStepDown: () => {},
         onFailure: () => {},
@@ -275,11 +174,15 @@ describe("a sync request the socket drops", () => {
     cleanups.push(() => desk.close());
     desk.setPhase("ready");
 
-    const ask = { type: "sync", after: 3 as RevisionNumber, resolvedSince: 1700 } as const;
-    const ids: string[] = [];
-    for (let n = 0; n < 33; n += 1)
-      ids.push(requestId(await requestDaemon(socketPath, ask, 2_000)));
-    await expect.poll(() => asked).toEqual(ids);
-    await expect.poll(() => forgotten).toEqual([ids[0]]);
+    // As an older CLI asks: its window fields are ignored.
+    const ask = { type: "sync", after: 3, resolvedSince: 1700 } as never;
+    const id = requestId(await requestDaemon(socketPath, ask, 2_000));
+    await expect.poll(() => calls).toBe(1);
+    await expect
+      .poll(() => requestDaemon(socketPath, { type: "sync-status", requestId: id }, 2_000))
+      .toMatchObject({ type: "sync", revision: 5, error: null, moves: true });
+    expect(
+      await requestDaemon(socketPath, { type: "sync-status", requestId: id }, 2_000),
+    ).not.toHaveProperty("rekeyed");
   });
 });
