@@ -5,6 +5,7 @@ import {
   declarations,
   expectationsOf,
   type Step as Seen,
+  squealEvidence,
 } from "../../evals/lib/index.mjs";
 import {
   CLAIM,
@@ -174,3 +175,23 @@ for (const harness of ["codex", "claude"] as const)
       });
     });
   });
+
+describe("S2: failures a delivery does not show by name still count", () => {
+  const many = Array.from({ length: 200 }, (_, i) => ({ ...MONEY, name: `money > case ${i}` }));
+
+  it("counts the failures in a delivery's overflow, and their collapsed recovery", () => {
+    const failed = delivered(
+      1,
+      many.map((c) => ({ ...c, ...REGRESSES })),
+    );
+    expect(failed).toMatch(/^Not shown: \d+ more changed checks \(\d+ FAIL\)/m);
+    const e = squealEvidence(failed, "push");
+    expect([e?.failures, e?.verdict]).toEqual([200, "fail"]);
+    const recovered = delivered(
+      2,
+      many.map((c) => ({ ...c, ...RECOVERS })),
+    );
+    expect(recovered).toContain("PASS  200 checks recovered (FAIL -> PASS)");
+    expect(squealEvidence(recovered, "push", 200)?.failures).toBe(0);
+  });
+});

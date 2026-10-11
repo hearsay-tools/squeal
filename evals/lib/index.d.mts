@@ -372,7 +372,7 @@ export interface Evidence {
   files: string[];
   failing: string[];
 }
-/** One check a Squeal text named, or a collapsed list of `count` recoveries or retirements. */
+/** One check a Squeal text named, or `count` checks a collapsed list or an overflow counts. */
 export type CheckSeen =
   | {
       check: string;
@@ -383,7 +383,7 @@ export type CheckSeen =
       validity: string;
       stated?: true;
     }
-  | { to: "pass" | "resolved"; count: number };
+  | { to: "fail" | "pass" | "resolved"; count: number };
 /** Known failures: check names, and a count of those no text named. */
 export interface Failing {
   named: string[];
