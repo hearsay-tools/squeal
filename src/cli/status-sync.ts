@@ -6,7 +6,9 @@ import { askDaemon, daemonSocket } from "./daemon-access.js";
  * Where a wait's sync stands: `pending` until the daemon stored its pass;
  * `synced` with the revision that holds every change made before the
  * request, and whether the daemon records the re-key moves the wait reads
- * from the store (`moves`, task 001-258; `false` from a daemon before it);
+ * from the store (`moves`, task 001-258; `false` from a daemon before it),
+ * which says nothing of a successor: the record itself says whether its
+ * writer wrote every row (`movesVouch`, review wave 13ac, B1);
  * `unsupported` when no daemon could sync (none listens, one from before
  * the request, or its pass failed), and the wait falls back to its settle
  * time.

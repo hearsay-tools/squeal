@@ -44,7 +44,7 @@ export function lastHeard(
   return Math.min(revision, ...told);
 }
 
-/** What the wait knows of its window once the daemon named the files (`SyncState.rekeyed`). */
+/** What the wait knows of its window once the store's re-key moves named the files (`answerMoves`). */
 export interface EditWindow {
   /** The window's first revision. */
   readonly since: RevisionNumber;
