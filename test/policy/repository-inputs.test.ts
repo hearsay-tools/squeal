@@ -67,6 +67,10 @@ beforeAll(async () => {
     write(path, verbatim ? readFileSync(join(REPO_ROOT, path), "utf8") : `${path}\n`);
   }
   git(root, ["init", "-q", "-b", "main"]);
+  // A mirror of ~2,800 files leaves enough loose objects for `git commit` to start a
+  // detached `gc --auto`, still writing `.git` when afterAll removes it (ENOTEMPTY on CI).
+  git(root, ["config", "gc.auto", "0"]);
+  git(root, ["config", "maintenance.auto", "false"]);
   git(root, ["add", "-A"]);
   git(root, ["commit", "-qm", "mirror"]);
 
