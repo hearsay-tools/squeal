@@ -19,6 +19,7 @@ export {
   calibrate,
   calibratedIdentity,
   calibrationName,
+  coverageGaps,
   declaredConditions,
   ensureCalibrated,
   JUDGE_MODELS,

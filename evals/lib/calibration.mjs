@@ -5,7 +5,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expectationsOf, parserOf } from "./behaviours.mjs";
-import { claudeVersion, identityKey, JUDGE, JUDGED, judgeCell, judgeIdentity } from "./judge.mjs";
+import {
+  claudeVersion,
+  identityKey,
+  JUDGE,
+  JUDGED,
+  judgeCell,
+  judgeIdentity,
+  transcriptHash,
+} from "./judge.mjs";
 
 /** The models D9 allows, in the order they are tried: Haiku 5.5, then Sonnet 5.5. Never Opus or Fable. */
 export const JUDGE_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5"];
@@ -42,7 +50,8 @@ async function pooled(tasks, n) {
  * Judges each of `references` (`{ name, task, harness, cell, expected }`, `expected` the judged
  * grades the session must get) `rounds` times with `identity` through `runner`, never cached.
  * Returns the calibration record: `passed` only when every reference got its expected grades in
- * every round. `parser` is the frozen parser's grade of each, for comparison.
+ * every round. Each reference keeps its transcript's hash, so the record names what it covered;
+ * `parser` is the frozen parser's grade of each, for comparison.
  */
 export async function calibrate({
   references,
@@ -87,6 +96,7 @@ export async function calibrate({
       name: ref.name,
       task: ref.task,
       harness: ref.harness,
+      transcriptHash: transcriptHash(ref.task, ref.cell.transcript),
       expected: ref.expected,
       parser: parserOf(ref.cell, declaredConditions(declared), declared),
       pass,
@@ -104,6 +114,29 @@ export async function calibrate({
     costUsd: Number(cost.toFixed(6)),
     references: records,
   };
+}
+
+/**
+ * How `calibration` differs from `references` (006-30): each reference it lacks, each it holds
+ * that is not one of them, and each whose transcript hash or expected grades changed. A
+ * calibration counts only while this is empty, since a reference set is not part of the identity.
+ */
+export function coverageGaps(calibration, references) {
+  const key = (r) => JSON.stringify({ hash: r.transcriptHash ?? null, expected: r.expected });
+  const held = new Map((calibration.references ?? []).map((r) => [r.name, key(r)]));
+  const want = new Map(
+    references.map((r) => [
+      r.name,
+      key({ transcriptHash: transcriptHash(r.task, r.cell.transcript), expected: r.expected }),
+    ]),
+  );
+  return [
+    ...[...want.keys()].filter((n) => !held.has(n)).map((n) => `missing: ${n}`),
+    ...[...held.keys()].filter((n) => !want.has(n)).map((n) => `not a reference: ${n}`),
+    ...[...want]
+      .filter(([n, k]) => held.has(n) && held.get(n) !== k)
+      .map(([n]) => `changed transcript or expected grades: ${n}`),
+  ];
 }
 
 /**

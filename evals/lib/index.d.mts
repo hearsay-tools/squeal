@@ -556,6 +556,8 @@ export interface Calibration {
     name: string;
     task: string;
     harness: string;
+    /** The reference's `transcriptHash` (006-30); absent in files from before it. */
+    transcriptHash?: string;
     expected: Record<string, string>;
     parser: Record<string, ExpectationGrade> | null;
     pass: boolean;
@@ -575,6 +577,11 @@ export function calibrate(input: {
   rounds?: number;
   parallel?: number;
 }): Promise<Calibration>;
+/** How `calibration` differs from `references` by name, transcript hash and expected grades. */
+export function coverageGaps(
+  calibration: Pick<Calibration, "references">,
+  references: readonly CalibrationReference[],
+): string[];
 export function calibratedIdentity(input: {
   dir: string;
   declared: Declarations;
