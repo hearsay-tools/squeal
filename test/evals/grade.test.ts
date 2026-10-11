@@ -6,8 +6,8 @@ import {
   type Event,
   gradeCell,
   reportedEffort,
-  squealState,
 } from "../../evals/lib/index.mjs";
+import { settled } from "./status-snapshot.js";
 
 // Small recorded transcripts in each harness's own format (Claude Code `stream-json`, Codex
 // `exec --json` and its rollout), cut down from 005-06's cells to the behaviours spec 006 D4 grades.
@@ -29,11 +29,19 @@ const vitestReport = (failed: string[]) => ({
     },
   ],
 });
-const statusEnd = "Revision 3: 31 current, 0 pending, 0 stale, 0 unknown.\nKnown failures: 0\n";
+const statusEnd = settled;
+const completion = (nodeExit: number) => ({
+  vitest: { exit: 0, signal: null, timedOut: false, spawnError: null },
+  nodeTest: { exit: nodeExit, signal: null, timedOut: false, spawnError: null, files: 1 },
+});
 
 describe("gradeCell on a Claude Code transcript", () => {
   const timeline = claudeTimeline(jsonl("claude-t2.jsonl"));
-  const g = gradeCell({ timeline, truth: { vitest: vitestReport([]), nodeExit: 1 }, statusEnd });
+  const g = gradeCell({
+    timeline,
+    truth: { vitest: vitestReport([]), completion: completion(1) },
+    statusEnd,
+  });
 
   it("counts the agent's own runs by runner and scope, and whether Squeal had answered", () => {
     expect(g.vitestRuns).toBe(1);
@@ -89,9 +97,12 @@ describe("gradeCell on a Codex transcript", () => {
   );
   const g = gradeCell({
     timeline,
-    truth: { vitest: vitestReport([]), nodeExit: 0 },
-    statusEnd:
-      "Revision 4: 29 current, 2 pending.\nPending: 0 running, 2 queued\nKnown failures: 0\n",
+    truth: { vitest: vitestReport([]), completion: completion(0) },
+    statusEnd: {
+      ...settled,
+      counts: { ...settled.counts, pending: 2 },
+      breakdown: { ...settled.breakdown, pendingByPhase: { queued: 2, running: 0 } },
+    },
     diff: "diff --git a/src/money.ts b/src/money.ts\n",
   });
 
@@ -124,19 +135,11 @@ describe("gradeCell on a Codex transcript", () => {
       slowCurrent: false,
       daemon: true,
       verdict: "unknown",
+      supported: true,
+      reasons: ["2 checks pending"],
     });
     expect(g.claimMatchesSqueal).toBe(true);
     expect(reportedEffort("codex", jsonl("codex-t1.rollout.jsonl"))).toBe("medium");
-  });
-});
-
-describe("squealState", () => {
-  it("reads a status with known failures as fail, and no status line as unknown", () => {
-    expect(squealState("Known failures: 2\n").verdict).toBe("fail");
-    expect(squealState("No daemon is running.\n")).toMatchObject({
-      knownFailures: null,
-      verdict: "unknown",
-    });
   });
 });
 
@@ -216,7 +219,7 @@ describe("a session with no daemon validating (the T4 knob)", () => {
   ];
   const g = gradeCell({
     timeline: claudeTimeline(events),
-    statusEnd: stale.split("\n\n")[1] ?? "",
+    statusEnd: { ...settled, daemon: { state: "down", since: 1_760_161_362_946 } },
   });
 
   it("does not count a 'no daemon' reply as Squeal having answered", () => {

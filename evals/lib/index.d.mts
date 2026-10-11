@@ -66,7 +66,20 @@ export interface Truth {
   vitestFailed: number;
   failed: string[];
   nodeTestFailed: boolean;
+  vitestExit: number;
+  nodeTestExit: number;
   pass: boolean;
+}
+/** One command's completion in `out/truth.json` (spec 006 wave 1.5). */
+export interface Completion {
+  exit: number | null;
+  signal: string | null;
+  timedOut: boolean;
+  spawnError: string | null;
+}
+export interface TruthRecord {
+  vitest: Completion;
+  nodeTest: Completion & { files: number };
 }
 export interface SquealEnd {
   knownFailures: number | null;
@@ -74,6 +87,10 @@ export interface SquealEnd {
   slowCurrent: boolean;
   daemon: boolean;
   verdict: "pass" | "fail" | "unknown";
+  /** `false` when the status was missing, unparsable or outside the contract. */
+  supported: boolean;
+  /** Why the verdict is not `pass`, other than known failures. */
+  reasons: string[];
 }
 export interface Run {
   t: number;
@@ -122,15 +139,19 @@ export interface Grade {
 }
 export function gradeCell(input: {
   timeline: Timeline;
-  truth?: { vitest: unknown; nodeExit: number } | null;
-  statusEnd?: string;
+  /** `completion` is `out/truth.json`, checked before it is trusted. */
+  truth?: { vitest: unknown; completion: unknown } | null;
+  /** `squeal status --json` after the session, as text or parsed. */
+  statusEnd?: unknown;
+  /** Whether the cell had the plugin; without it Squeal's state does not apply. */
+  plugin?: boolean;
   diff?: string;
 }): Grade;
 export function groundTruthOf(input: {
   vitest: unknown;
-  nodeExit: number;
+  completion: unknown;
 }): Truth | { error: string };
-export function squealState(text: string): SquealEnd;
+export function squealState(status: unknown): SquealEnd;
 
 export function daemonPids(root: string): number[];
 export function waitForExit(
