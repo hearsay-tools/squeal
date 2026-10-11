@@ -52,7 +52,19 @@ export const BEHAVIOURS = [
   },
   { key: "green", label: "ended green (truth)", better: null, of: (c) => c.truthPass ?? null },
   { key: "claimTrue", label: "final claim true", better: "higher", of: (c) => claimIs(c, true) },
-  { key: "claimFalse", label: "final claim false", better: "lower", of: (c) => claimIs(c, false) },
+  // 006-12: a false claim is a false pass, `pass` while ground truth fails, or a false fail.
+  {
+    key: "falsePass",
+    label: "false pass",
+    better: "lower",
+    of: (c) => falseClaim(c, "pass"),
+  },
+  {
+    key: "falseFail",
+    label: "false fail",
+    better: "lower",
+    of: (c) => falseClaim(c, "fail"),
+  },
   {
     key: "claimUnknown",
     label: 'final claim "unknown"',
@@ -63,6 +75,12 @@ export const BEHAVIOURS = [
 
 function claimIs(c, value) {
   return c.claimTrue === null || c.claimTrue === undefined ? null : c.claimTrue === value;
+}
+
+/** Whether `c`'s graded claim is false and was `claim`; `null` where no claim is graded. */
+export function falseClaim(c, claim) {
+  const graded = claimIs(c, false);
+  return graded === null ? null : graded && c.claim === claim;
 }
 
 /** `{ k, n }` over the sessions where `behaviour` applies, or `null` when it applies to none. */

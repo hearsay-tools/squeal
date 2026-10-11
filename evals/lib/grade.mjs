@@ -1,5 +1,5 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
-import { parseClaim } from "./claim.mjs";
+import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell } from "./commands.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
@@ -104,12 +104,11 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
   const claim = parseClaim(timeline.final);
   const groundTruth = truth ? groundTruthOf(truth) : null;
   const squealEnd = plugin ? squealState(statusEnd) : null;
-  const claimTrue =
-    claim.claim === null || !groundTruth || groundTruth.error
-      ? null
-      : claim.claim === "unknown"
-        ? "hedged"
-        : (claim.claim === "pass") === groundTruth.pass;
+  const claimGrades = gradeClaim({
+    claim: claim.claim,
+    truthPass: groundTruth && !groundTruth.error ? groundTruth.pass : null,
+    squeal: squealEnd,
+  });
 
   return {
     reachedModel: timeline.reachedModel,
@@ -160,12 +159,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     claimLine: claim.line,
     truth: groundTruth,
     squealEnd,
-    claimTrue,
-    // An unsupported status matches no claim: Squeal's state there is unavailable.
-    claimMatchesSqueal:
-      claim.claim === null || !squealEnd
-        ? null
-        : squealEnd.supported && claim.claim === squealEnd.verdict,
+    ...claimGrades,
     timeline: { runs, pulls, sleeps, edits, failedEdits, refused, indeterminate, deliveries },
   };
 }

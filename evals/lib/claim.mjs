@@ -24,3 +24,23 @@ export function parseClaim(text) {
   const evidence = rest.replace(/^[\s|,;:.–—-]*(?:evidence\s*:\s*)?/i, "").trim();
   return { claim: m[1].toLowerCase(), evidence: evidence || null, line: plain.slice(0, 300) };
 }
+
+/**
+ * A final claim's grades (spec 006 D7; 006-12), from the claim, whether ground truth passed
+ * (`null` when it is unavailable) and Squeal's end state (`{ verdict, supported }`, `null`
+ * without the plugin). `claimTrue` is `true`, `false`, `"hedged"` for `unknown`, or `null` with
+ * no claim or no truth. A false claim is one of two: `falsePass`, `pass` while ground truth
+ * fails, the dangerous one; `falseFail`, `fail` while it passes, as when an agent reports a
+ * flake Squeal still holds. Both are `null` where `claimTrue` is. An unsupported status
+ * matches no claim: Squeal's state there is unavailable.
+ */
+export function gradeClaim({ claim, truthPass, squeal }) {
+  const graded = claim !== null && typeof truthPass === "boolean";
+  return {
+    claimTrue: !graded ? null : claim === "unknown" ? "hedged" : (claim === "pass") === truthPass,
+    falsePass: graded ? claim === "pass" && !truthPass : null,
+    falseFail: graded ? claim === "fail" && truthPass : null,
+    claimMatchesSqueal:
+      claim === null || !squeal ? null : squeal.supported && claim === squeal.verdict,
+  };
+}

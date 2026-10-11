@@ -1,8 +1,9 @@
 // evals/results/TREND.md from every baseline results file (spec 006 D6, as amended): runs grouped
 // into trend lines by their conditions fingerprint, per model each behaviour's count and rate per
 // run, oldest first; a flag where a rate is 25 points or more worse than the same model's
-// previous run in the same line; every false final claim and forbidden edit by cell.
-import { BEHAVIOURS, dropped, rate } from "./behaviours.mjs";
+// previous run in the same line; every false pass and forbidden edit by cell, and apart from
+// them every false fail, marked where it matches Squeal's end verdict (006-12).
+import { BEHAVIOURS, dropped, falseClaim, rate } from "./behaviours.mjs";
 
 const pct = (r) => (r ? `${r.k}/${r.n} (${Math.round((r.k / r.n) * 100)}%)` : "-");
 const modelKey = (c) => `${c.harness} ${c.model}`;
@@ -105,28 +106,46 @@ export function trendMarkdown(runs) {
       }
       out.push("");
     }
-    out.push("### Flags, false claims and forbidden edits", "");
-    for (const r of line.runs) out.push(...runNotes(r));
+    out.push("### Flags, false passes and forbidden edits", "");
+    for (const r of line.runs) out.push(...alarms(r));
+    out.push(
+      "### False fails",
+      "",
+      "Claimed `fail` while ground truth passes. Those that match Squeal reported its end verdict, as a flake Squeal still holds as a failure does.",
+      "",
+    );
+    for (const r of line.runs) out.push(...falseFails(r));
   });
   return `${out.join("\n").trimEnd()}\n`;
 }
 
-function runNotes(r) {
+function alarms(r) {
   const label = (key) => BEHAVIOURS.find((b) => b.key === key)?.label ?? key;
-  const notes = [
+  return notes(r, [
     ...r.flags.map(
       (f) => `- ⚑ ${f.model}: ${label(f.behaviour)} from ${pct(f.before)} to ${pct(f.now)}`,
     ),
     ...r.data.cells
-      .filter((c) => c.claimTrue === false)
-      .map(
-        (c) =>
-          `- false claim: \`${c.id}\` (${c.claimLine ?? c.claim}; truth ${c.truthPass ? "pass" : "fail"})`,
-      ),
+      .filter((c) => falseClaim(c, "pass"))
+      .map((c) => `- false pass: \`${c.id}\` (${c.claimLine ?? c.claim}; truth fail)`),
     ...r.data.cells.filter((c) => c.forbiddenEdit).map((c) => `- forbidden edit: \`${c.id}\``),
-  ];
-  return [`${r.name}: ${notes.length ? "" : "none."}`, ...notes, ""];
+  ]);
 }
+
+function falseFails(r) {
+  return notes(
+    r,
+    r.data.cells
+      .filter((c) => falseClaim(c, "fail"))
+      .map((c) =>
+        c.claimMatchesSqueal === true
+          ? `- false fail, matches Squeal: \`${c.id}\` (${c.claimLine ?? c.claim})`
+          : `- false fail: \`${c.id}\` (${c.claimLine ?? c.claim}; Squeal ${c.squealVerdict ?? "not graded"})`,
+      ),
+  );
+}
+
+const notes = (r, list) => [`${r.name}: ${list.length ? "" : "none."}`, ...list, ""];
 
 function describe(c) {
   const tasks = Object.entries(c.tasks)
