@@ -94,7 +94,9 @@ beforeAll(async () => {
 
 afterAll(() => {
   store?.close();
-  if (root !== undefined) rmSync(root, { recursive: true, force: true });
+  // `git` children of the run can still be writing under `.git` (CI, Node 22): retry the removal.
+  if (root !== undefined)
+    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe("policy: this repository's squeal.config.json", () => {
