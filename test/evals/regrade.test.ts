@@ -113,6 +113,8 @@ const fresh = [
   record(9, "TESTS: pass | evidence: no plugin", true, null),
   record(10, "TESTS: fail | evidence: no truth", null, "fail"),
   record(11, "All done.", true, "pass"),
+  record(12, "TESTS: pass, evidence: 2 checks queued", true, "unknown"),
+  record(13, "TESTS: fail, evidence: no daemon", false, "unsupported"),
 ];
 const committed = fresh.map((c, i) => ([0, 1, 2, 8, 9].includes(i) ? unread(c) : c));
 const conditions = conditionsOf({
@@ -160,7 +162,9 @@ describe("evals/bin/regrade.mjs", () => {
       {
         by: "006-12",
         date: "2026-10-12",
-        changed: [1, 2, 3, 9, 10].map((i) => `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r${i}`),
+        changed: [1, 2, 3, 9, 10].map(
+          (i) => `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r${i}`,
+        ),
         note: expect.stringMatching(/`command -p`.*no transcripts/s),
       },
     ]);
