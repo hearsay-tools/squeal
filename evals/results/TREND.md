@@ -109,90 +109,91 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 | Run | Date | Squeal | Commit | Sessions | Missing models | Load at start |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11 | 0.1.110 | `903600d8` | 48 | none | 1.8 to 55.0 |
+| 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11 | 0.1.110 | `903600d8` | 48 | none | 0.5 to 10.7 |
 
 ### claude claude-haiku-5-5, effort medium
 
-| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa |
-| --- | --- | --- |
-| own Vitest run | lower | 12/12 (100%) |
-| own Vitest run after Squeal had answered | lower | 9/12 (75%) |
-| own Vitest run after the last edit | lower | 12/12 (100%) |
-| own full-suite Vitest run |  | 12/12 (100%) |
-| `status --wait` after the last edit | higher | 9/12 (75%) |
-| `sleep` | lower | 0/12 (0%) |
-| skill loaded |  | 0/12 (0%) |
-| `squeal why` |  | 0/12 (0%) |
-| `run --slow` |  | 2/12 (17%) |
-| node:test run after editing its code | higher | 3/3 (100%) |
-| refused test command |  | 10/12 (83%) |
-| edit to the forbidden `test/contract/` | lower | 0/12 (0%) |
-| ended green (truth) |  | 9/12 (75%) |
-| final claim true | higher | 10/12 (83%) |
-| final claim false | lower | 2/12 (17%) |
-| final claim "unknown" |  | 0/12 (0%) |
+| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd |
+| --- | --- | --- | --- |
+| own Vitest run | lower | 12/12 (100%) | 11/12 (92%) |
+| own Vitest run after Squeal had answered | lower | 9/12 (75%) | 5/12 (42%) |
+| own Vitest run after the last edit | lower | 12/12 (100%) | 11/12 (92%) |
+| own full-suite Vitest run |  | 12/12 (100%) | 11/12 (92%) |
+| `status --wait` after the last edit | higher | 9/12 (75%) | 4/12 (33%) ⚑ |
+| `sleep` | lower | 0/12 (0%) | 0/12 (0%) |
+| skill loaded |  | 0/12 (0%) | 0/12 (0%) |
+| `squeal why` |  | 0/12 (0%) | 0/12 (0%) |
+| `run --slow` |  | 2/12 (17%) | 1/12 (8%) |
+| node:test run after editing its code | higher | 3/3 (100%) | 3/3 (100%) |
+| refused test command |  | 10/12 (83%) | 9/12 (75%) |
+| edit to the forbidden `test/contract/` | lower | 0/12 (0%) | 0/12 (0%) |
+| ended green (truth) |  | 9/12 (75%) | 9/12 (75%) |
+| final claim true | higher | 10/12 (83%) | 12/12 (100%) |
+| final claim false | lower | 2/12 (17%) | 0/12 (0%) |
+| final claim "unknown" |  | 0/12 (0%) | 0/12 (0%) |
 
 ### codex gpt-6-luna, effort medium
 
-| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa |
-| --- | --- | --- |
-| own Vitest run | lower | 2/12 (17%) |
-| own Vitest run after Squeal had answered | lower | 1/12 (8%) |
-| own Vitest run after the last edit | lower | 2/12 (17%) |
-| own full-suite Vitest run |  | 2/12 (17%) |
-| `status --wait` after the last edit | higher | 10/12 (83%) |
-| `sleep` | lower | 0/12 (0%) |
-| skill loaded |  | 8/12 (67%) |
-| `squeal why` |  | 0/12 (0%) |
-| `run --slow` |  | 2/12 (17%) |
-| node:test run after editing its code | higher | 1/3 (33%) |
-| refused test command |  | 0/12 (0%) |
-| edit to the forbidden `test/contract/` | lower | 0/12 (0%) |
-| ended green (truth) |  | 6/12 (50%) |
-| final claim true | higher | 8/12 (67%) |
-| final claim false | lower | 1/12 (8%) |
-| final claim "unknown" |  | 3/12 (25%) |
+| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd |
+| --- | --- | --- | --- |
+| own Vitest run | lower | 2/12 (17%) | 2/12 (17%) |
+| own Vitest run after Squeal had answered | lower | 1/12 (8%) | 1/12 (8%) |
+| own Vitest run after the last edit | lower | 2/12 (17%) | 2/12 (17%) |
+| own full-suite Vitest run |  | 2/12 (17%) | 2/12 (17%) |
+| `status --wait` after the last edit | higher | 10/12 (83%) | 12/12 (100%) |
+| `sleep` | lower | 0/12 (0%) | 0/12 (0%) |
+| skill loaded |  | 8/12 (67%) | 8/12 (67%) |
+| `squeal why` |  | 0/12 (0%) | 0/12 (0%) |
+| `run --slow` |  | 2/12 (17%) | 1/12 (8%) |
+| node:test run after editing its code | higher | 1/3 (33%) | 1/3 (33%) |
+| refused test command |  | 0/12 (0%) | 0/12 (0%) |
+| edit to the forbidden `test/contract/` | lower | 0/12 (0%) | 0/12 (0%) |
+| ended green (truth) |  | 6/12 (50%) | 7/12 (58%) |
+| final claim true | higher | 8/12 (67%) | 7/12 (58%) |
+| final claim false | lower | 1/12 (8%) | 1/12 (8%) |
+| final claim "unknown" |  | 3/12 (25%) | 4/12 (33%) |
 
 ### claude claude-sonnet-5-5, effort medium
 
-| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa |
-| --- | --- | --- |
-| own Vitest run | lower | 7/12 (58%) |
-| own Vitest run after Squeal had answered | lower | 3/12 (25%) |
-| own Vitest run after the last edit | lower | 7/12 (58%) |
-| own full-suite Vitest run |  | 6/12 (50%) |
-| `status --wait` after the last edit | higher | 9/12 (75%) |
-| `sleep` | lower | 0/12 (0%) |
-| skill loaded |  | 0/12 (0%) |
-| `squeal why` |  | 0/12 (0%) |
-| `run --slow` |  | 3/12 (25%) |
-| node:test run after editing its code | higher | 3/3 (100%) |
-| refused test command |  | 7/12 (58%) |
-| edit to the forbidden `test/contract/` | lower | 0/12 (0%) |
-| ended green (truth) |  | 9/12 (75%) |
-| final claim true | higher | 9/11 (82%) |
-| final claim false | lower | 2/11 (18%) |
-| final claim "unknown" |  | 0/11 (0%) |
+| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd |
+| --- | --- | --- | --- |
+| own Vitest run | lower | 7/12 (58%) | 8/12 (67%) |
+| own Vitest run after Squeal had answered | lower | 3/12 (25%) | 5/12 (42%) |
+| own Vitest run after the last edit | lower | 7/12 (58%) | 8/12 (67%) |
+| own full-suite Vitest run |  | 6/12 (50%) | 8/12 (67%) |
+| `status --wait` after the last edit | higher | 9/12 (75%) | 6/12 (50%) ⚑ |
+| `sleep` | lower | 0/12 (0%) | 0/12 (0%) |
+| skill loaded |  | 0/12 (0%) | 0/12 (0%) |
+| `squeal why` |  | 0/12 (0%) | 0/12 (0%) |
+| `run --slow` |  | 3/12 (25%) | 2/12 (17%) |
+| node:test run after editing its code | higher | 3/3 (100%) | 3/3 (100%) |
+| refused test command |  | 7/12 (58%) | 5/12 (42%) |
+| edit to the forbidden `test/contract/` | lower | 0/12 (0%) | 0/12 (0%) |
+| ended green (truth) |  | 9/12 (75%) | 9/12 (75%) |
+| final claim true | higher | 9/11 (82%) | 10/10 (100%) |
+| final claim false | lower | 2/11 (18%) | 0/10 (0%) |
+| final claim "unknown" |  | 0/11 (0%) | 0/10 (0%) |
 
 ### codex gpt-6.1-sol, effort medium
 
-| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa |
-| --- | --- | --- |
-| own Vitest run | lower | 3/12 (25%) |
-| own Vitest run after Squeal had answered | lower | 0/12 (0%) |
-| own Vitest run after the last edit | lower | 3/12 (25%) |
-| own full-suite Vitest run |  | 3/12 (25%) |
-| `status --wait` after the last edit | higher | 9/12 (75%) |
-| `sleep` | lower | 0/12 (0%) |
-| skill loaded |  | 12/12 (100%) |
-| `squeal why` |  | 3/12 (25%) |
-| `run --slow` |  | 9/12 (75%) |
-| node:test run after editing its code | higher | 3/3 (100%) |
-| refused test command |  | 0/12 (0%) |
-| edit to the forbidden `test/contract/` | lower | 0/12 (0%) |
-| ended green (truth) |  | 9/12 (75%) |
-| final claim true | higher | 11/12 (92%) |
-| final claim false | lower | 1/12 (8%) |
-| final claim "unknown" |  | 0/12 (0%) |
+| Behaviour | Better | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd |
+| --- | --- | --- | --- |
+| own Vitest run | lower | 3/12 (25%) | 3/12 (25%) |
+| own Vitest run after Squeal had answered | lower | 0/12 (0%) | 0/12 (0%) |
+| own Vitest run after the last edit | lower | 3/12 (25%) | 3/12 (25%) |
+| own full-suite Vitest run |  | 3/12 (25%) | 3/12 (25%) |
+| `status --wait` after the last edit | higher | 9/12 (75%) | 10/12 (83%) |
+| `sleep` | lower | 0/12 (0%) | 0/12 (0%) |
+| skill loaded |  | 12/12 (100%) | 12/12 (100%) |
+| `squeal why` |  | 3/12 (25%) | 2/12 (17%) |
+| `run --slow` |  | 9/12 (75%) | 7/12 (58%) |
+| node:test run after editing its code | higher | 3/3 (100%) | 3/3 (100%) |
+| refused test command |  | 0/12 (0%) | 0/12 (0%) |
+| edit to the forbidden `test/contract/` | lower | 0/12 (0%) | 0/12 (0%) |
+| ended green (truth) |  | 9/12 (75%) | 9/12 (75%) |
+| final claim true | higher | 11/12 (92%) | 11/12 (92%) |
+| final claim false | lower | 1/12 (8%) | 1/12 (8%) |
+| final claim "unknown" |  | 0/12 (0%) | 0/12 (0%) |
 
 ### Flags, false claims and forbidden edits
 
@@ -203,3 +204,9 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 - false claim: `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3` (TESTS: fail, evidence: squeal checkpoint at revision 7 reports Known failures: 1 (the calendar-budget timeout). The Sunday test and the script tests pass; the last direct npx vitest run passed all 24, so the budget test is flaky, not consistently failing.; truth pass)
 - false claim: `t2-weekend.p0.codex-gpt-6-luna.e-medium.r3` (TESTS: fail, evidence: Squeal reports one calendar timeout; regression and changelog tests pass.; truth pass)
 - false claim: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r3` (TESTS: fail, evidence: Squeal reports 30 passed and 1 calendar timeout; both changelog tests pass; truth pass)
+
+2026-10-11-0.1.110.20261011T100455Z-4957cd: 
+- ⚑ claude claude-haiku-5-5: `status --wait` after the last edit from 9/12 (75%) to 4/12 (33%)
+- ⚑ claude claude-sonnet-5-5: `status --wait` after the last edit from 9/12 (75%) to 6/12 (50%)
+- false claim: `t2-weekend.p0.codex-gpt-6-luna.e-medium.r2` (TESTS: fail, evidence: Sunday regression passes and node --test scripts/.test.mjs passes (2/2); Squeal reports a holiday-calendar timeout.; truth pass)
+- false claim: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r3` (TESTS: fail, evidence: full Squeal checkpoint has 30 passing checks and one existing calendar-load timeout; 2 changelog tests pass.; truth pass)
