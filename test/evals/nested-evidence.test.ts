@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -129,6 +130,18 @@ describe("clearScratch on nested evidence (B1)", () => {
     expect(readFileSync(join(outside, "node_modules/leak.txt"), "utf8")).toBe(TOKEN);
     expect(readFileSync(join(cell, "work/src/a.ts"), "utf8")).toBe("export {};\n");
     expect(r.secretsAfterRemoval).toEqual([]);
+  });
+
+  it("redacts a hard-linked file without writing through to its other name", () => {
+    const cell = scratch();
+    const outside = scratch();
+    write(outside, "kept.txt", `token ${TOKEN}\n`);
+    mkdirSync(join(cell, "work"));
+    linkSync(join(outside, "kept.txt"), join(cell, "work/linked.txt"));
+    const r = clearScratch(cell, SECRETS);
+    expect(readFileSync(join(cell, "work/linked.txt"), "utf8")).toBe("token [redacted]\n");
+    expect(readFileSync(join(outside, "kept.txt"), "utf8")).toBe(`token ${TOKEN}\n`);
+    expect(r.sanitized).toEqual(["work/linked.txt"]);
   });
 });
 

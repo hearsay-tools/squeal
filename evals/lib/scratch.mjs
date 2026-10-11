@@ -219,7 +219,7 @@ export function scanForSecrets(dirs, secrets) {
 /** The directories retained evidence never keeps: dependency trees and Git's compressed objects. */
 const UNKEPT = /\/(?:node_modules|\.git\/objects)$/;
 
-/** Removes every unkept entry under `dir`, at any depth; one that resists is left to the scan. */
+/** Removes every link and unkept directory under `dir`, at any depth; one that resists is scanned. */
 function prune(dir) {
   const visit = (p) => {
     let st;
@@ -280,6 +280,8 @@ export function clearScratch(cell, secrets) {
       const bytes = hit.unscanned ? null : readFileSync(hit.path);
       const text = bytes?.toString("utf8");
       if (text !== undefined && !text.includes("\0") && Buffer.from(text).equals(bytes)) {
+        // A new file, so a hard link's other name keeps its bytes.
+        rmSync(hit.path);
         writeFileSync(hit.path, redact(text, secrets));
         sanitized.push(rel(hit));
       } else {
