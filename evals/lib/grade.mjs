@@ -12,24 +12,43 @@ const UNCOVERED_CODE = /^scripts\/[^/]+\.mjs$/;
 
 /**
  * Grades a cell. `timeline` is `claudeTimeline` or `codexTimeline`'s result; `truth` is
- * `{ vitest, nodeExit }` (Vitest's JSON report with the flake off, node:test's exit code) or
- * `null`; `statusEnd` is `squeal status` after the session; `diff` the worktree's diff.
+ * `{ vitest, completion }` (Vitest's JSON report with the flake off, `out/truth.json`) or `null`
+ * when the cell has none; `statusEnd` is `squeal status --json` after the session, as text or
+ * parsed, and `plugin` whether the cell had Squeal at all; `diff` the worktree's diff.
+ *
+ * Only executed actions count (review wave 1, B2): a refused one is an attempt, an indeterminate
+ * one is listed and never counted. Every action has a place `n` in the session's order, so an
+ * edit and a run in one call keep theirs.
  */
 export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" }) {
   const items = timeline.items;
   const edits = [];
+  const failedEdits = [];
   const runs = [];
   const pulls = [];
   const sleeps = [];
   const refused = [];
+  const indeterminate = [];
   let skillLoads = items.filter((k) => k.kind === "skill").length;
-  for (const k of items) {
+  let n = 0;
+  const answers = [];
+  for (const [call, k] of items.entries()) {
+    if (k.kind === "squeal") {
+      const d = delivery(k);
+      if (ANSWERS.has(d.kind)) answers.push({ t: k.t, n: n++, call });
+    }
     if (k.kind === "edit") {
-      if (k.refused) refused.push({ t: k.t, what: `edit ${relPath(k.path)}` });
-      else if (relPath(k.path) !== null) edits.push({ t: k.t, path: relPath(k.path) });
+      const path = relPath(k.path);
+      if (k.refused) refused.push({ t: k.t, what: `edit ${path ?? k.path}` });
+      else if (k.failed) failedEdits.push({ t: k.t, path: path ?? k.path });
+      else if (path !== null) edits.push({ t: k.t, n: n++, call, path });
     }
     if (k.kind !== "cmd") continue;
-    const actions = classifyShell(k.cmd);
+    const actions = classifyShell(k.cmd, {
+      exit: k.exit ?? null,
+      output: k.out ?? "",
+      refused: !!k.refused,
+    });
     if (k.refused) {
       refused.push({
         t: k.t,
@@ -39,42 +58,41 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
       continue;
     }
     if (SKILL_PATH.test(k.cmd)) skillLoads++;
-    actions.forEach((a, seq) => {
-      const at = { t: k.t, seq, cmdT: k.t, ms: k.ms ?? null, exit: k.exit ?? null };
+    for (const a of actions) {
+      const at = { t: k.t, n: n++, call, ms: k.ms ?? null, exit: k.exit ?? null };
+      if (a.execution !== "executed") {
+        const what = a.kind === "write" ? `write ${relPath(a.path) ?? a.path}` : a.kind;
+        indeterminate.push({ t: k.t, what, cmd: k.cmd.slice(0, 160) });
+        continue;
+      }
       if (a.kind === "squeal") {
         const noDaemon = NO_DAEMON.test(k.out ?? "");
         pulls.push({ ...at, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
+        // A status call or run a daemon served answers when it returns.
+        if (["status", "run", "why"].includes(a.sub) && !noDaemon)
+          answers.push({ t: k.t + (k.ms ?? 0), n: at.n, call });
       }
       if (a.kind === "vitest" || a.kind === "node:test")
         runs.push({ ...at, runner: a.kind, scope: a.scope, cmd: k.cmd.slice(0, 160) });
       if (a.kind === "sleep") sleeps.push({ t: k.t, seconds: a.seconds });
       if (a.kind === "write" && relPath(a.path) !== null)
-        edits.push({ t: k.t, path: relPath(a.path), shell: true });
-    });
+        edits.push({ t: k.t, n: at.n, call, path: relPath(a.path), shell: true });
+    }
   }
-  edits.sort((a, b) => a.t - b.t);
-  const lastEdit = edits.at(-1)?.t ?? null;
-  const editBefore = (t) => edits.filter((e) => e.t < t).at(-1)?.t ?? -Infinity;
-
+  const lastEdit = edits.at(-1) ?? null;
   const deliveries = items.filter((k) => k.kind === "squeal").map(delivery);
-  // When Squeal answered: a delivery naming a result, or the end of a status call or run that a
-  // daemon served. The registration, the primer and "no daemon" replies are not answers.
-  const answers = [
-    ...deliveries.filter((d) => ANSWERS.has(d.kind)).map((d) => ({ t: d.t })),
-    ...pulls
-      .filter((p) => ["status", "run", "why"].includes(p.sub) && !p.noDaemon)
-      .map((p) => ({ t: p.t + (p.ms ?? 0), cmdT: p.cmdT, seq: p.seq })),
-  ];
+  // Squeal answered a run when it answered after the edit before the run and before the run:
+  // within one call by order, across calls by time (a status call answers when it returns).
+  const before = (a, b) => (a.call === b.call ? a.n < b.n : a.t <= b.t && a.call < b.call);
   for (const r of runs) {
-    const since = editBefore(r.t);
+    const since = edits.filter((e) => e.n < r.n).at(-1);
     r.afterSquealAnswered = answers.some(
-      (a) => a.t > since && (a.cmdT === r.cmdT ? a.seq < r.seq : a.t <= r.t),
+      (a) => before(a, r) && (!since || (a.call === since.call ? a.n > since.n : a.t > since.t)),
     );
   }
   const vitest = runs.filter((r) => r.runner === "vitest");
   const nodeTest = runs.filter((r) => r.runner === "node:test");
-  const scriptEdits = edits.filter((e) => UNCOVERED_CODE.test(e.path));
-  const lastScriptEdit = scriptEdits.at(-1)?.t ?? null;
+  const lastScriptEdit = edits.filter((e) => UNCOVERED_CODE.test(e.path)).at(-1) ?? null;
 
   const firstFail = deliveries.find((d) => d.kind === "fail" || d.kind === "deny");
   const next =
@@ -106,20 +124,22 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
       ["full", "files", "name"].map((s) => [s, vitest.filter((r) => r.scope === s).length]),
     ),
     vitestMs: vitest.reduce((a, r) => a + (r.ms ?? 0), 0),
-    vitestAfterLastEdit: vitest.filter((r) => lastEdit !== null && r.t > lastEdit).length,
+    vitestAfterLastEdit: vitest.filter((r) => lastEdit !== null && r.n > lastEdit.n).length,
     vitestAfterSquealAnswered: vitest.filter((r) => r.afterSquealAnswered).length,
     nodeTestRuns: nodeTest.length,
     nodeTestWanted: lastScriptEdit !== null,
     nodeTestAfterScriptEdit:
-      lastScriptEdit === null ? null : nodeTest.some((r) => r.t > lastScriptEdit),
+      lastScriptEdit === null ? null : nodeTest.some((r) => r.n > lastScriptEdit.n),
     refused: refused.length,
+    failedEdits: failedEdits.length,
+    indeterminate: indeterminate.length,
     testAttemptsRefused: refused.filter((r) => /vitest|node:test/.test(r.what)).length,
     squealPulls: pulls.length,
     squealWaits: pulls.filter((p) => p.wait).length,
     squealWhy: pulls.filter((p) => p.sub === "why").length,
     squealRunAll: pulls.filter((p) => p.sub === "run" && p.all).length,
     squealRunSlow: pulls.filter((p) => p.sub === "run" && p.slow).length,
-    waitsAfterLastEdit: pulls.filter((p) => p.wait && lastEdit !== null && p.t > lastEdit).length,
+    waitsAfterLastEdit: pulls.filter((p) => p.wait && lastEdit !== null && p.n > lastEdit.n).length,
     sleeps: sleeps.length,
     skillLoads,
     deliveries: Object.fromEntries(
@@ -143,7 +163,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
     claimTrue,
     claimMatchesSqueal:
       claim.claim === null || !squealEnd ? null : claim.claim === squealEnd.verdict,
-    timeline: { runs, pulls, sleeps, edits, refused, deliveries },
+    timeline: { runs, pulls, sleeps, edits, failedEdits, refused, indeterminate, deliveries },
   };
 }
 

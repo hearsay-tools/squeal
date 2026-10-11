@@ -21,17 +21,46 @@ const VITEST_VALUE_FLAGS = new Set([
 ]);
 
 /**
- * Every action in shell text `text`, in order, one entry per simple command that matters:
- * `{ kind: "squeal", sub, wait, all, slow }`, `{ kind: "vitest" | "node:test", scope }` with
- * scope `full`, `files` or `name`, `{ kind: "sleep", seconds }` and `{ kind: "write", path }`.
+ * Every action in shell text `text`, in the order it runs, one entry per simple command that
+ * matters: `{ kind: "squeal", sub, wait, all, slow }`, `{ kind: "vitest" | "node:test", scope }`
+ * with scope `full`, `files` or `name`, `{ kind: "sleep", seconds }` and `{ kind: "write", path }`.
  * A chain yields one action per command in it.
+ *
+ * Each action has an `execution` (review wave 1, B2): `refused` when the whole call was refused,
+ * `executed` when the call's structure and `exit` establish it ran, else `indeterminate`. A
+ * runner's own summary in `output` establishes as many indeterminate runs of it as it shows.
  */
-export function classifyShell(text) {
+export function classifyShell(text, { exit = null, output = "", refused = false } = {}) {
   const actions = [];
-  for (const c of simpleCommands(text)) {
+  for (const c of simpleCommands(text, { exit })) {
+    const execution = refused ? "refused" : c.established ? "executed" : "indeterminate";
     const a = classify(c.words);
-    if (a) actions.push(a);
-    for (const path of writes(c)) actions.push({ kind: "write", path });
+    if (a) actions.push({ ...a, execution });
+    for (const path of writes(c)) actions.push({ kind: "write", path, execution });
+  }
+  return refused ? actions : withEvidence(actions, output);
+}
+
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+/** What each runner prints once per run that ran. */
+const SUMMARIES = {
+  vitest: /^[ \t]*Test Files\s|No test files found|"numTotalTestSuites"/gm,
+  "node:test": /^(?:# tests|\u2139 tests) \d+/gm,
+  squeal: /^Known failures: \d+/gm,
+};
+
+function withEvidence(actions, output) {
+  const text = String(output ?? "").replace(ANSI, "");
+  for (const [kind, summary] of Object.entries(SUMMARIES)) {
+    const ran = actions.filter((a) => a.kind === kind && a.execution === "executed").length;
+    let spare = (text.match(summary)?.length ?? 0) - ran;
+    for (const a of actions) {
+      if (spare <= 0) break;
+      if (a.kind === kind && a.execution === "indeterminate") {
+        a.execution = "executed";
+        spare--;
+      }
+    }
   }
   return actions;
 }

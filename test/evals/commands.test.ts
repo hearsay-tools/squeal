@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { classifyShell, simpleCommands } from "../../evals/lib/index.mjs";
 
 const kinds = (text: string) => classifyShell(text).map((a) => a.kind);
+/** The actions without their execution, which `execution.test.ts` covers. */
+const shapes = (text: string, exit = 0) =>
+  classifyShell(text, { exit }).map(({ execution: _, ...a }) => a);
 
 describe("simpleCommands", () => {
-  it("splits chains, pipes and subshells into their commands", () => {
+  it("splits chains, pipes and subshells into their commands, a substitution first", () => {
     const words = simpleCommands(
       "cd x && (npx vitest run | tail -5); sleep 2 || echo $(squeal status)",
     ).map((c) => c.words);
@@ -13,8 +16,8 @@ describe("simpleCommands", () => {
       ["npx", "vitest", "run"],
       ["tail", "-5"],
       ["sleep", "2"],
-      ["echo"],
       ["squeal", "status"],
+      ["echo"],
     ]);
   });
 
@@ -44,26 +47,26 @@ describe("simpleCommands", () => {
 
 describe("classifyShell", () => {
   it("names each Squeal call with its flags, however the CLI is spelled", () => {
-    expect(
-      classifyShell('node "/pin/plugins/codex/dist/cli/squeal.mjs" status --wait 60000'),
-    ).toEqual([{ kind: "squeal", sub: "status", wait: true, all: false, slow: false }]);
-    expect(classifyShell("squeal run --slow && squeal status --wait 90000")).toEqual([
+    expect(shapes('node "/pin/plugins/codex/dist/cli/squeal.mjs" status --wait 60000')).toEqual([
+      { kind: "squeal", sub: "status", wait: true, all: false, slow: false },
+    ]);
+    expect(shapes("squeal run --slow && squeal status --wait 90000")).toEqual([
       { kind: "squeal", sub: "run", wait: false, all: false, slow: true },
       { kind: "squeal", sub: "status", wait: true, all: false, slow: false },
     ]);
   });
 
   it("finds every test run in a chain, with its scope", () => {
-    expect(classifyShell("npx vitest run && node --test 'scripts/*.test.mjs'")).toEqual([
+    expect(shapes("npx vitest run && node --test 'scripts/*.test.mjs'")).toEqual([
       { kind: "vitest", scope: "full" },
       { kind: "node:test", scope: "full" },
     ]);
-    expect(classifyShell("npx vitest run test/clock.test.ts --reporter verbose")).toEqual([
+    expect(shapes("npx vitest run test/clock.test.ts --reporter verbose")).toEqual([
       { kind: "vitest", scope: "files" },
     ]);
-    expect(classifyShell("npm test -- -t 'Sunday'")).toEqual([{ kind: "vitest", scope: "name" }]);
-    expect(classifyShell("npm run test:scripts")).toEqual([{ kind: "node:test", scope: "full" }]);
-    expect(classifyShell("node --test scripts/changelog.test.mjs")).toEqual([
+    expect(shapes("npm test -- -t 'Sunday'")).toEqual([{ kind: "vitest", scope: "name" }]);
+    expect(shapes("npm run test:scripts")).toEqual([{ kind: "node:test", scope: "full" }]);
+    expect(shapes("node --test scripts/changelog.test.mjs")).toEqual([
       { kind: "node:test", scope: "files" },
     ]);
   });
@@ -76,19 +79,19 @@ describe("classifyShell", () => {
   });
 
   it("counts sleeps and the files a command writes", () => {
-    expect(classifyShell("sleep 20; squeal status --wait 60000")[0]).toEqual({
+    expect(shapes("sleep 20; squeal status --wait 60000")[0]).toEqual({
       kind: "sleep",
       seconds: 20,
     });
-    expect(classifyShell("sed -i 's/a/b/' src/clock.ts test/clock.test.ts")).toEqual([
+    expect(shapes("sed -i 's/a/b/' src/clock.ts test/clock.test.ts")).toEqual([
       { kind: "write", path: "src/clock.ts" },
       { kind: "write", path: "test/clock.test.ts" },
     ]);
-    expect(classifyShell("echo x | tee -a changes.json > /dev/null")).toEqual([
+    expect(shapes("echo x | tee -a changes.json > /dev/null")).toEqual([
       { kind: "write", path: "changes.json" },
     ]);
     expect(
-      classifyShell(
+      shapes(
         "apply_patch <<'PATCH'\n*** Begin Patch\n*** Update File: test/contract/x.test.ts\nPATCH",
       ),
     ).toEqual([{ kind: "write", path: "test/contract/x.test.ts" }]);
