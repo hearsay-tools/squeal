@@ -150,6 +150,8 @@ export type StatusWait =
  * ones not yet seen through (`lastHeard`, `editWindow`). Then quiet is none
  * of those files pending, slow ones aside, whatever else runs, and news is
  * a transition of one of their checks; until the moves are read, neither.
+ * Every commit to the moves after the window reads them again, so a move
+ * recorded later joins it (review wave 13ad, S1, task 001-267).
  * A daemon that names no incarnation (one before task 001-268) or cannot
  * sync, moves lost since the start, and a record that incarnation did not
  * write last or a daemon registered since, read before the window or at any
@@ -175,6 +177,8 @@ export async function waitForStatus(
     /** The moves' commit with the start view: a move resolved after it is the wait's (001-258). */
     sinceSeq?: number;
     window?: EditWindow | undefined;
+    /** The moves' commit the window was read at: a later one is read again (S1, 001-267). */
+    windowSeq?: number | null;
     /** The moves cannot name the window: the wait takes the no-files path. */
     fallback?: boolean;
   } = {};
@@ -199,28 +203,28 @@ export async function waitForStatus(
         const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs);
         const current = syncing.sync.current();
-        if (current.state === "synced" && syncing.window === undefined && !syncing.fallback) {
-          // Every revision's files: a told one counts while its files are not seen through (001-191).
-          const answer: MovesAnswer = answerMoves(
-            store,
-            id,
-            current.revision,
-            syncing.sinceSeq ?? 0,
-            current.incarnation,
-          );
-          if (answer.state === "answered") {
-            syncing.window = editWindow(store, id, heard, current.revision, answer.rekeyed);
+        if (current.state === "synced" && !syncing.fallback) {
+          const seq = movesSeq(store, id);
+          if (syncing.window === undefined || seq !== syncing.windowSeq) {
+            // Every revision's files: a told one counts while its files are not seen through
+            // (001-191); a move recorded after the window joins it (review wave 13ad, S1).
+            const answer: MovesAnswer = answerMoves(
+              store,
+              id,
+              current.revision,
+              syncing.sinceSeq ?? 0,
+              current.incarnation,
+            );
+            if (answer.state === "answered") {
+              syncing.window = editWindow(store, id, heard, current.revision, answer.rekeyed);
+              syncing.windowSeq = seq;
+            }
+            syncing.fallback = answer.state === "incomplete";
+          } else if (!movesTrusted(store, id, syncing.sinceSeq ?? 0, current.incarnation)) {
+            // Another daemon registered since the window was read: it names no files (B1).
+            syncing.fallback = true;
           }
-          syncing.fallback = answer.state === "incomplete";
-        }
-        if (
-          syncing.window !== undefined &&
-          current.state === "synced" &&
-          !movesTrusted(store, id, syncing.sinceSeq ?? 0, current.incarnation)
-        ) {
-          // Another daemon registered or wrote since the window was read: it names no files (B1).
-          syncing.window = undefined;
-          syncing.fallback = true;
+          if (syncing.fallback) syncing.window = undefined;
         }
         const window = syncing.window;
         const keys = window === undefined ? [] : store.testFileKeys.list(id);
