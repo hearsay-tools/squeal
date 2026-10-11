@@ -1214,7 +1214,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 5;
+    KEY_FORMAT_VERSION = 6;
   }
 });
 
@@ -15595,6 +15595,14 @@ var init_sources = __esm({
        */
       #moved = [];
       /**
+       * Task 001-264: the stamp of each module cached when the runner part was
+       * about to drop transforms during a run, and the stamps it was in. A
+       * transform dropped while the bytes it read are still on disk logs nothing
+       * in `#moved`, and the run's own check no longer finds it cached; it
+       * compares these with the disk instead.
+       */
+      #held = /* @__PURE__ */ new Map();
+      /**
        * Review wave-13 B2: a plugin passed to `createVitest` reaches the root
        * server and the inline projects sharing it, not a project with its own
        * config file, which gets a Vite server of its own. So the stamp goes into
@@ -15616,6 +15624,23 @@ var init_sources = __esm({
             await this.#stamp(reads, id2);
             return load(id2);
           };
+        }
+      }
+      /**
+       * Task 001-264: keeps the stamp of every cached module for the next run's
+       * check, before the runner part drops transforms a run in flight may have
+       * read. That check compares each one, if read since the run began, with
+       * the disk as it does a cached module's stamp, and lets them go.
+       */
+      hold(vitest) {
+        this.attach(vitest);
+        for (const environment of environments(vitest)) {
+          const reads = this.#containers.get(environment.pluginContainer);
+          if (!reads) continue;
+          for (const id2 of cachedModules(environment, this.paths).keys()) {
+            const stamp2 = reads.stamps.get(id2);
+            if (stamp2) this.#held.set(stamp2, { stamps: reads.stamps, key: id2 });
+          }
         }
       }
       async #stamp(reads, id2) {
@@ -15640,7 +15665,8 @@ var init_sources = __esm({
        *
        * With `loadedSince`, a run's check after it ends: it also names what an
        * earlier call found moved since that run began loading (task 001-150),
-       * and starts the log again.
+       * and starts the log again, and the stamps `hold` kept read since then
+       * (task 001-264), and lets them go.
        */
       async stale(vitest, loadedSince) {
         this.attach(vitest);
@@ -15668,6 +15694,14 @@ var init_sources = __esm({
             }
           }
         }
+        if (loadedSince !== void 0) {
+          const checked = new Set(checks.map(({ stamps, key: key2 }) => stamps.get(key2)));
+          for (const [held2, { stamps, key: key2 }] of this.#held) {
+            if (held2.loadedAt >= since && !checked.has(held2))
+              checks.push({ stamps, key: key2, file: held2.file, held: held2 });
+          }
+          this.#held.clear();
+        }
         const stats = /* @__PURE__ */ new Map();
         const hashes = /* @__PURE__ */ new Map();
         const statOnce = (file) => memo(stats, file, () => statOrNull3(file));
@@ -15676,8 +15710,8 @@ var init_sources = __esm({
           const read4 = await readStamp(file);
           return read4 && { ...read4, hashedAt };
         });
-        const moved2 = await mapConcurrent(checks, async ({ stamps, key: key2, file, after }) => {
-          const stamp2 = stamps.get(key2);
+        const moved2 = await mapConcurrent(checks, async ({ stamps, key: key2, file, after, held: held2 }) => {
+          const stamp2 = held2 ?? stamps.get(key2);
           const stat7 = await statOnce(file);
           if (!stamp2) {
             if (after === void 0 || stat7 === null || !changedBefore(stat7, after))
@@ -15951,7 +15985,10 @@ var init_adapter = __esm({
             const names = /* @__PURE__ */ new Set([...before, ...fresh.projects.map((p) => p.name)]);
             return { recreatedProjects: [...names].sort() };
           }
-          if (this.#running) await this.#sources.stale(vitest);
+          if (this.#running) {
+            this.#sources.hold(vitest);
+            await this.#sources.stale(vitest);
+          }
           for (const p of abs) vitest.invalidateFile(p.abs);
           await invalidateStructural(vitest, abs, this.#note);
           await this.#invalidateStale(vitest);
@@ -33982,7 +34019,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.116";
+  if (true) return "0.1.117";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

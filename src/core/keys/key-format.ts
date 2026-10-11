@@ -15,7 +15,7 @@
  * itself re-keys every check once and no row stored under a version-hashed key
  * is trusted.
  */
-export const KEY_FORMAT_VERSION = 5;
+export const KEY_FORMAT_VERSION = 6;
 
 /**
  * The guarded sources' hash at each `KEY_FORMAT_VERSION`, as the guard
@@ -27,4 +27,5 @@ export const KEY_SOURCES_HASHES: Readonly<Record<number, string>> = {
   3: "af0a578ac8bd610a40ec5787f84c1119b55470b0ad97ec0b4b9467933070b7d2",
   4: "6e03cdb8686afcdfbee6c4d0c18485479b95617e12d83a58ad33b07cac67cc42",
   5: "ca40658569bb0d2e5e61ae0341cbcd1cf1bedb8e16a6a34b03fbd636f4349b23",
+  6: "1fcd4c795d233280a08a6c064f95a98466773c5378ebaa7e39ac1ae90cfe0f29",
 };
