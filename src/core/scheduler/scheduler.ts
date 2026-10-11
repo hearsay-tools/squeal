@@ -103,6 +103,7 @@ class TierScheduler implements Scheduler {
       {
         lock: this.#lock,
         started: () => this.#started(),
+        ready: () => this.#context !== null,
         closed: () => this.#closed,
         pump: () => this.#pump(),
         editPending: () => this.#editPending(),
@@ -293,7 +294,8 @@ class TierScheduler implements Scheduler {
   }
 
   nudge(): void {
-    if (this.#closed || !this.#ledger) return;
+    // Before `start` has set the context nothing is planned; the start pumps when it ends (review wave-13ak, B1).
+    if (this.#closed || !this.#context) return;
     this.#slow.nudge();
   }
 

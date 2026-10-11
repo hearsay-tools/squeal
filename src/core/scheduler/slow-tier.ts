@@ -50,6 +50,8 @@ export const SLOT_HELD_NOTE_MS = 60_000;
 export interface SlowHost {
   readonly lock: Mutex;
   started(): { context: SchedulerContext; ledger: Ledger };
+  /** `start` has ended: `started` no longer throws. */
+  ready(): boolean;
   closed(): boolean;
   pump(): void;
   /**
@@ -125,10 +127,11 @@ export class SlowTier {
   /**
    * A consumer may have gone idle (task 001-281): with slow files queued the
    * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
-   * trigger does not allow; `next` decides as on the timer.
+   * trigger does not allow; `next` decides as on the timer. Before the
+   * scheduler has started it does nothing: the start pumps as it ends.
    */
   nudge(): void {
-    if (this.host.closed()) return;
+    if (this.host.closed() || !this.host.ready()) return;
     if (this.host.started().ledger.orderedSlow().length > 0) this.host.pump();
   }
 

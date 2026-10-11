@@ -75,7 +75,16 @@ function bind(identity: DeskIdentity): void {
   );
 }
 
+// A throw here would end the worker, and the daemon with it (review wave-13ak, B1).
 port.on("message", (message: ToDesk) => {
+  try {
+    receive(message);
+  } catch (error) {
+    console.error(`squeal front desk: ${String(error)}`);
+  }
+});
+
+function receive(message: ToDesk): void {
   switch (message.type) {
     case "bind":
       bind(message.identity);
@@ -106,7 +115,9 @@ port.on("message", (message: ToDesk) => {
     }
     case "close":
       phase = "stopping";
-      void (server?.close() ?? Promise.resolve()).then(() => post({ type: "closed" }));
+      void (server?.close() ?? Promise.resolve())
+        .catch((error: unknown) => console.error(`squeal front desk: ${String(error)}`))
+        .then(() => post({ type: "closed" }));
       return;
   }
-});
+}

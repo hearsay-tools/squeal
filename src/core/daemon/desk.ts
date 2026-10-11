@@ -27,6 +27,11 @@ export interface DeskEvents {
   readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
   readonly onFailure: (error: Error) => void;
+  /**
+   * One of these events threw; the desk caught it and goes on serving
+   * (review wave-13ak, B1). Absent: written to stderr.
+   */
+  readonly onError?: (error: Error) => void;
 }
 
 /** A front desk worker booting while the daemon takes its lock. */
@@ -55,7 +60,7 @@ export function prepareFrontDesk(
 ): PreparedDesk {
   const script = worker?.script ?? frontDeskScript(new URL(import.meta.url));
   if (script === null) {
-    return { open: (identity, events) => inThread(identity, events), discard: () => {} };
+    return { open: (identity, events) => inThread(identity, guarded(events)), discard: () => {} };
   }
   const execArgv = worker?.execArgv;
   return started(new Worker(script, execArgv === undefined ? {} : { execArgv: [...execArgv] }));
@@ -73,7 +78,7 @@ function started(worker: Worker): PreparedDesk {
       worker.off("error", onError);
       worker.off("exit", onExit);
       if (early[0] !== undefined) return Promise.reject(early[0]);
-      return inWorker(worker, identity, events);
+      return inWorker(worker, identity, guarded(events));
     },
     discard: () => void worker.terminate(),
   };
@@ -90,6 +95,55 @@ export function frontDeskScript(module: URL): string | null {
     if (existsSync(script)) return script;
   }
   return null;
+}
+
+/**
+ * The events with every callback caught (review wave-13ak, B1): a throw in
+ * the worker's message listener on the main thread is uncaught and ends the
+ * daemon. A request's synchronous throw becomes its rejection, and so its
+ * error answer.
+ */
+export function guarded(events: DeskEvents): DeskEvents {
+  const report =
+    events.onError ??
+    ((error: Error) => process.stderr.write(`squeal front desk: ${error.message}\n`));
+  const caught = (error: unknown) => {
+    try {
+      report(error instanceof Error ? error : new Error(String(error)));
+    } catch {
+      // Reporting is best effort; the desk serves on.
+    }
+  };
+  const safe =
+    <A extends unknown[]>(call: (...args: A) => void) =>
+    (...args: A): void => {
+      try {
+        call(...args);
+      } catch (error) {
+        caught(error);
+      }
+    };
+  const asked =
+    <A extends unknown[], T>(call: (...args: A) => Promise<T>) =>
+    (...args: A): Promise<T> => {
+      try {
+        return call(...args);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    };
+  const { onNudge } = events;
+  return {
+    onActivity: safe(events.onActivity),
+    ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
+    requestFullSuite: asked(events.requestFullSuite),
+    requestSlowSuite: asked(events.requestSlowSuite),
+    requestSync: asked(events.requestSync),
+    onStop: safe(events.onStop),
+    onStepDown: safe(events.onStepDown),
+    onFailure: safe(events.onFailure),
+    onError: caught,
+  };
 }
 
 async function inWorker(
