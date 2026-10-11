@@ -95,6 +95,15 @@ The killer is cezar's `src/autosave-timeout.test.ts` `afterEach`. On an empty pi
 
 The fix belongs to cezar (issue draft below). Squeal has a gap of its own. The daemon shares its process group with the test workers it hosts, so a test's group kill takes the daemon down silently. Status then shows a live daemon on a stale heartbeat, then "no daemon running since", with no cause.
 
+### 7. Side finding: cezar's suite writes into the task that runs it
+
+My guarded runs started Vitest from this task's worktree, with the agent's environment. They left three things behind:
+
+- 3 lines "mock: implemented the change (dry run)" in this task's handoff file (`$CEZ_HANDOFF_FILE`), at 05:20:56, 06:00:25 and 06:15:17. `scripts/mock-claude.mjs:94-105` appends them when `CEZ_HANDOFF_FILE` is set. *Verified by experiment; read in source code.*
+- `notes.md` in the worktree root, with 12 "mock notes" lines from 05:20 to 06:29, staged with `git add`, as were my uncommitted probe files. These came from the process cwd, which my probe left at the worktree. Under Squeal, Vitest runs with the tested root as its cwd, so this part is my probe's doing. *Verified by experiment; the Squeal part is inferred.*
+
+I removed the lines and `notes.md` before committing. The handoff write is a second cezar issue, appended to the draft below. It also reaches a cezar suite run by a Squeal daemon, because the daemon keeps the environment of the session that started it. *Read in source code: `ensure.ts:155-157` and spec 001 D11, "inherits the environment of the hook that started it with no additions".*
+
 ## Recommendation for Squeal
 
 1. No change to the sweep, the node:test runner or the start path. None of them sent this.
@@ -111,7 +120,7 @@ The fix belongs to cezar (issue draft below). Squeal has a gap of its own. The d
 >
 > Fix: one helper, `killFromPidFile(path, signal)`, that signals only a value matching `/^\d+$/` and greater than 1, and reads every pid line the same way. Write pid files atomically in the fakes and mocks: write to `<file>.tmp`, then `renameSync`. Optionally, a lint rule against `process.kill(Number(`.
 >
-> Separately noticed, not examined: `vitest.setup.ts` clears the host's `CEZ_*_BIN` and mode variables but not `CEZ_DELEGATION_URL`, `CEZ_DELEGATION_TOKEN`, `CEZ_TOOL_SOCKET`, `CEZ_TOOL_TOKEN` or `CEZ_TASK_ID`. A suite run inside a cezar task inherits the live orchestrator's endpoints.
+> Second issue, seen while reproducing: `vitest.setup.ts` clears the host's `CEZ_*_BIN` and mode variables but not `CEZ_HANDOFF_FILE`, `CEZ_TODOS_FILE`, `CEZ_TASK_ID`, `CEZ_DELEGATION_URL`, `CEZ_DELEGATION_TOKEN`, `CEZ_TOOL_SOCKET` or `CEZ_TOOL_TOKEN`. A suite run inside a cezar task writes into the live task. Three runs of the `server` project from a task worktree appended "mock: implemented the change (dry run)" to that task's real handoff file, once per run, from `scripts/mock-claude.mjs` `writeHandoffAndTodo` (lines 94-105). A daemon started by a session hook inherits the same variables. Fix: delete every `CEZ_*` task variable in `vitest.setup.ts`, or allow-list the few a test sets itself.
 
 ## Open questions
 
