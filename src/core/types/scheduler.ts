@@ -41,6 +41,13 @@ export interface DaemonNote {
    * other note and on one an older daemon wrote, which stays unfolded.
    */
   readonly stopped?: StoppedProcesses;
+  /**
+   * The incarnation (`daemonIncarnation`) of the daemon whose shutdown wrote
+   * this note, its first, so a reader tells that it left from any other note
+   * (review wave-13af B1). Absent on any other note and on one a daemon
+   * before task 001-272 wrote.
+   */
+  readonly exitOf?: string;
 }
 
 /** The processes one stop stopped (`describe` in `src/core/daemon/terminate.ts`). */

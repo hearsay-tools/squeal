@@ -3,7 +3,13 @@ import { acquireDaemonLock } from "../daemon/lock.js";
 import { readDaemonNotes } from "../notes.js";
 import { testFileLabel } from "../run-log.js";
 import { lockFileFor } from "../store/index.js";
-import type { DaemonDeath, DaemonLiveness, Store, WorktreeRecord } from "../types/index.js";
+import {
+  type DaemonDeath,
+  type DaemonLiveness,
+  daemonIncarnation,
+  type Store,
+  type WorktreeRecord,
+} from "../types/index.js";
 
 /** Test files a death names per run; the rest are counted. */
 export const DIED_FILES_SHOWN = 5;
@@ -11,11 +17,14 @@ export const DIED_FILES_SHOWN = 5;
 /**
  * Task 001-263 (`research/daemon-sigkill.md`): a daemon killed by its
  * process group, as a hosted test's `kill(0, "SIGKILL")` does, leaves its
- * record with a stale heartbeat and writes no note. `live` with `died` when
- * it is down and the record still names a daemon, which a shutdown clears;
- * no note was written at or after the last heartbeat, since a shutdown stops
- * the heartbeat, then notes why; and its lock is free (`daemonGone`). The
- * runs it left open are those it started.
+ * record with a stale heartbeat. `live` with `died` when it is down and the
+ * record still names a daemon, which a shutdown clears; no note says this
+ * daemon's shutdown began, the first one it writes, which names its
+ * incarnation (`exitOf`), so one killed while it shut down is not dead, and
+ * any other note, a watcher's or a runner's, proves nothing (review
+ * wave-13af B1); and its lock is free (`daemonGone`). A record with no
+ * incarnation (a release before task 001-270) has no such note. The runs it
+ * left open are those it started.
  */
 export function withDeath(
   store: Store,
@@ -25,7 +34,8 @@ export function withDeath(
   const record = worktree?.daemon ?? null;
   if (live.state !== "down" || worktree === null || record === null) return live;
   const { id } = worktree;
-  if (readDaemonNotes(store, id).some((note) => note.at >= record.heartbeatAt)) return live;
+  const self = daemonIncarnation(record);
+  if (self !== null && readDaemonNotes(store, id).some((note) => note.exitOf === self)) return live;
   if (!daemonGone(worktree)) return live;
   const runs = store.runs
     .inFlight(id, record.startedAt)

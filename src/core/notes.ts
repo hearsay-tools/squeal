@@ -60,8 +60,17 @@ function toNote(item: unknown): DaemonNote[] {
   const { at, revision, text } = item as Record<string, unknown>;
   if (typeof at !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  const stopped = stoppedOf((item as Record<string, unknown>).stopped);
-  return [stopped === undefined ? { at, revision, text } : { at, revision, text, stopped }];
+  const { stopped: rawStopped, exitOf } = item as Record<string, unknown>;
+  const stopped = stoppedOf(rawStopped);
+  return [
+    {
+      at,
+      revision,
+      text,
+      ...(stopped === undefined ? {} : { stopped }),
+      ...(typeof exitOf === "string" ? { exitOf } : {}),
+    },
+  ];
 }
 
 /** A note's processes (task 001-255); a malformed field is dropped, so the note stays unfolded. */
