@@ -5,6 +5,8 @@ import { SKILL_PATH } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
 const FORBIDDEN = /^test\/contract\//;
+/** Squeal saying no daemon validates: a reply, never a result (the T4 knob's state). */
+const NO_DAEMON = /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon/m;
 /** The suite Squeal is not configured for, and its code. */
 const UNCOVERED_CODE = /^scripts\/[^/]+\.mjs$/;
 
@@ -39,8 +41,10 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
     if (SKILL_PATH.test(k.cmd)) skillLoads++;
     actions.forEach((a, seq) => {
       const at = { t: k.t, seq, cmdT: k.t, ms: k.ms ?? null, exit: k.exit ?? null };
-      if (a.kind === "squeal")
-        pulls.push({ ...at, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow });
+      if (a.kind === "squeal") {
+        const noDaemon = NO_DAEMON.test(k.out ?? "");
+        pulls.push({ ...at, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
+      }
       if (a.kind === "vitest" || a.kind === "node:test")
         runs.push({ ...at, runner: a.kind, scope: a.scope, cmd: k.cmd.slice(0, 160) });
       if (a.kind === "sleep") sleeps.push({ t: k.t, seconds: a.seconds });
@@ -53,11 +57,12 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
   const editBefore = (t) => edits.filter((e) => e.t < t).at(-1)?.t ?? -Infinity;
 
   const deliveries = items.filter((k) => k.kind === "squeal").map(delivery);
-  // When Squeal answered: a delivery naming a result, or the end of a status call or run.
+  // When Squeal answered: a delivery naming a result, or the end of a status call or run that a
+  // daemon served. The registration, the primer and "no daemon" replies are not answers.
   const answers = [
-    ...deliveries.filter((d) => d.kind !== "registration").map((d) => ({ t: d.t })),
+    ...deliveries.filter((d) => ANSWERS.has(d.kind)).map((d) => ({ t: d.t })),
     ...pulls
-      .filter((p) => ["status", "run", "why"].includes(p.sub))
+      .filter((p) => ["status", "run", "why"].includes(p.sub) && !p.noDaemon)
       .map((p) => ({ t: p.t + (p.ms ?? 0), cmdT: p.cmdT, seq: p.seq })),
   ];
   for (const r of runs) {
@@ -118,7 +123,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = "", diff = "" })
     sleeps: sleeps.length,
     skillLoads,
     deliveries: Object.fromEntries(
-      ["registration", "fail", "deny", "resolved", "other"].map((k) => [
+      ["registration", "fail", "deny", "resolved", "noDaemon", "other"].map((k) => [
         k,
         deliveries.filter((d) => d.kind === k).length,
       ]),
@@ -150,17 +155,23 @@ function relPath(p) {
   return s.replace(/^\.\//, "");
 }
 
+const ANSWERS = new Set(["fail", "deny", "resolved", "result"]);
+
 function delivery(k) {
   const text = k.text;
   const kind = /"permissionDecision":\s*"deny"|"decision":\s*"block"/.test(text)
     ? "deny"
-    : /Squeal runs this repository/.test(text) && !/FAIL|RESOLVED/.test(text)
+    : /registered at revision|Squeal runs this repository/.test(text) && !/FAIL|RESOLVED/.test(text)
       ? "registration"
       : /(?:^|\n|\\n)FAIL {2}/.test(text)
         ? "fail"
         : /RESOLVED|-> PASS/.test(text)
           ? "resolved"
-          : "other";
+          : NO_DAEMON.test(text)
+            ? "noDaemon"
+            : /SQUEAL · (?:revision|\d+ checks? changed)/.test(text)
+              ? "result"
+              : "other";
   return {
     t: k.t,
     hook: k.hook,
@@ -196,18 +207,16 @@ export function squealState(text) {
   const knownFailures = Number(/^Known failures: (\d+)/m.exec(text)?.[1] ?? Number.NaN);
   const pendingMatch = /(\d+) running, (\d+) queued/.exec(text);
   const pending = pendingMatch ? Number(pendingMatch[1]) + Number(pendingMatch[2]) : 0;
+  // Without a daemon, status reports the store's last results: not Squeal's verdict on the work.
+  const daemon = !NO_DAEMON.test(text);
   const noDaemon = Number.isNaN(knownFailures);
-  const verdict = noDaemon
-    ? "unknown"
-    : knownFailures > 0
-      ? "fail"
-      : pending > 0
-        ? "unknown"
-        : "pass";
+  const verdict =
+    noDaemon || !daemon ? "unknown" : knownFailures > 0 ? "fail" : pending > 0 ? "unknown" : "pass";
   return {
     knownFailures: noDaemon ? null : knownFailures,
     pending,
     slowCurrent: /Slow tier: .*\b1 current\b/.test(text),
+    daemon,
     verdict,
   };
 }

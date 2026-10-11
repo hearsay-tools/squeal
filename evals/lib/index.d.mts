@@ -64,6 +64,7 @@ export interface SquealEnd {
   knownFailures: number | null;
   pending: number;
   slowCurrent: boolean;
+  daemon: boolean;
   verdict: "pass" | "fail" | "unknown";
 }
 export interface Run {
@@ -94,7 +95,7 @@ export interface Grade {
   waitsAfterLastEdit: number;
   sleeps: number;
   skillLoads: number;
-  deliveries: Record<"registration" | "fail" | "deny" | "resolved" | "other", number>;
+  deliveries: Record<"registration" | "fail" | "deny" | "resolved" | "noDaemon" | "other", number>;
   claim: Claim["claim"];
   claimLine: string | null;
   truth: Truth | { error: string } | null;
