@@ -63,6 +63,15 @@ describe("conditionsOf", () => {
     expect(knob.fingerprint).not.toBe(line("aaa").fingerprint);
     expect(line("aaa").tasks["t1-thousands"]?.prompt).toMatch(/^[0-9a-f]{12}$/);
   });
+
+  it("starts a new line when the tool allow-list is named or changes, and keeps old runs' line", () => {
+    const tools = (claude: string[]) =>
+      conditionsOf({ fixture: "aaa", tasks, variant: "p0", effort: "medium", tools: { claude } });
+    expect(tools(["Read"]).fingerprint).not.toBe(line("aaa").fingerprint);
+    expect(tools(["Read", "Skill"]).fingerprint).not.toBe(tools(["Read"]).fingerprint);
+    expect(tools(["Read"]).tools).toEqual({ claude: ["Read"] });
+    expect(line("aaa")).not.toHaveProperty("tools");
+  });
 });
 
 describe("dropped", () => {

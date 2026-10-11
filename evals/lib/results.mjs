@@ -7,10 +7,11 @@ const sha = (s) => createHash("sha256").update(s).digest("hex");
 
 /**
  * The conditions a trend line holds fixed: the fixture commit, each task's prompt (hashed) and
- * knobs, the variant and the effort level. Squeal, harness and model versions are left out:
- * they are what the trend tracks. `fingerprint` is the first 12 hex digits of their hash.
+ * knobs, the variant, the effort level and, when given, each harness's tool allow-list (added
+ * 2026-10-12 with `Skill`; runs before it name none). Squeal, harness and model versions are left
+ * out: they are what the trend tracks. `fingerprint` is the first 12 hex digits of their hash.
  */
-export function conditionsOf({ fixture, tasks, variant, effort }) {
+export function conditionsOf({ fixture, tasks, variant, effort, tools }) {
   const sorted = Object.fromEntries(
     Object.keys(tasks)
       .sort()
@@ -19,7 +20,7 @@ export function conditionsOf({ fixture, tasks, variant, effort }) {
         { prompt: sha(tasks[id].prompt).slice(0, 12), knobs: tasks[id].knobs ?? {} },
       ]),
   );
-  const body = { fixture, tasks: sorted, variant, effort };
+  const body = { fixture, tasks: sorted, variant, effort, ...(tools ? { tools } : {}) };
   return { ...body, fingerprint: sha(JSON.stringify(body)).slice(0, 12) };
 }
 

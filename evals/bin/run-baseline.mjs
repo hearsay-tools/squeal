@@ -38,6 +38,7 @@ import {
   resultsName,
 } from "../lib/results.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
+import { CLAUDE_ALLOWED_TOOLS } from "../lib/session.mjs";
 import { expectationsRevision } from "../lib/trend.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
@@ -207,6 +208,7 @@ const conditions = Object.fromEntries(
       tasks: tasksOf(),
       variant: arm,
       effort: config.effort,
+      tools: { claude: CLAUDE_ALLOWED_TOOLS },
     }),
   ]),
 );
