@@ -4339,7 +4339,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.125";
+  if (true) return "0.1.126";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4656,7 +4656,8 @@ var STOP_WAIT_CAP_MS = 1500;
 var STOP_MARGIN_MS = 250;
 var STOP_POLL_MS = 100;
 function stopBusyTimeoutMs(waitMs) {
-  return Math.min(STATUS_BUSY_TIMEOUT_MS, HOOK_TIMEOUT_MS - STOP_MARGIN_MS - waitMs);
+  const left = HOOK_TIMEOUT_MS - STOP_MARGIN_MS - SOCKET_TIMEOUT_MS - waitMs;
+  return Math.min(STATUS_BUSY_TIMEOUT_MS, left);
 }
 function stopTurn(input, location2, deps) {
   const project = readPolicy(location2.root);
@@ -4699,6 +4700,7 @@ ${text}` };
 
 ${text}` };
           }
+          await nudgeSlow(context, header);
         }
         return news === null ? null : { news };
       }
@@ -4754,6 +4756,13 @@ async function newsText(context, starting, command) {
   const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail").map((s) => s.check);
   return `${formatDelta(delta, command)}
 ${knownFailuresLine(failures, command)}`;
+}
+async function nudgeSlow(context, header) {
+  if ((header.slowPending?.testFiles ?? 0) === 0) return;
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  if (record === null) return;
+  await requestDaemon(record.socketPath, { type: "nudge" }, SOCKET_TIMEOUT_MS).catch(() => {
+  });
 }
 async function waitForPending(context, waitMs, pollMs, isSlow) {
   const deadline = performance.now() + waitMs;
