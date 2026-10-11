@@ -59,3 +59,8 @@ export function fixtureModules(root) {
   writeFileSync(join(dir, ".done"), "");
   return join(dir, "node_modules");
 }
+
+/** A cell's id: task, variant, harness and model, effort, repetition. */
+export function cellId({ task, variant, harness, model, effort, rep, cold = false }) {
+  return `${task}.${variant}.${harness}-${model.replace(/[^\w.-]/g, "_")}.e-${effort}.r${rep}${cold ? ".cold" : ""}`;
+}

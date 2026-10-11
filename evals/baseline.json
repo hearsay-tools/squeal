@@ -1,0 +1,13 @@
+{
+  "description": "Spec 006 D5: the recurring baseline. Every task with its knobs (tasks/tasks.json) x these models x repetitions, the shipped texts, one effort level for every model. No Opus. Changing the effort level, a task or a knob starts a new trend line.",
+  "tasks": ["t1-thousands", "t2-weekend", "t3-tax", "t4-contract"],
+  "models": [
+    { "harness": "claude", "model": "claude-haiku-5-5" },
+    { "harness": "codex", "model": "gpt-6-luna" },
+    { "harness": "claude", "model": "claude-sonnet-5-5" },
+    { "harness": "codex", "model": "gpt-6.1-sol" }
+  ],
+  "repetitions": 3,
+  "effort": "medium",
+  "variant": "p0"
+}

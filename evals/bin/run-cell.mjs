@@ -10,9 +10,9 @@
 //   pin-base/<commit>/      `git archive` of the commit's plugins
 //   nm/node_modules         the fixture's Vitest, copied into each cell
 //   pins/<commit>/<variant> the variant's patched copy (evals/variants/<variant>.json)
-//   cells/<id>/home, codex, tmp   HOME, CODEX_HOME and TMPDIR for the subject; removed at the end
-//   cells/<id>/work         the fixture, committed at a fixed date, its store warmed unless --cold
-//   cells/<id>/out          events.jsonl (timestamped), load.tsv, truth, diff, store copy, grade.json
+//   cells/<commit>/<id>/home, codex, tmp   HOME, CODEX_HOME and TMPDIR for the subject; removed at the end
+//   cells/<commit>/<id>/work         the fixture, committed at a fixed date, its store warmed unless --cold
+//   cells/<commit>/<id>/out          events.jsonl (timestamped), load.tsv, truth, diff, store copy, grade.json
 // Every daemon the cell started is stopped and waited for; any process still naming the cell is
 // listed and killed; the scratch is scanned for credentials before it is removed.
 
@@ -30,7 +30,7 @@ import {
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { daemonPids, waitForExit } from "../lib/daemon.mjs";
-import { EVALS, fixtureModules, pinBase, resolveCommit } from "../lib/prepare.mjs";
+import { cellId, EVALS, fixtureModules, pinBase, resolveCommit } from "../lib/prepare.mjs";
 import {
   cellEnv,
   clearScratch,
@@ -74,8 +74,8 @@ if (/opus|fable/i.test(model))
 const variant = JSON.parse(readFileSync(join(EVALS, "variants", `${variantName}.json`), "utf8"));
 const knobs =
   JSON.parse(readFileSync(join(EVALS, "tasks", "tasks.json"), "utf8")).tasks[task] ?? {};
-const id = `${task}.${variantName}.${harness}-${model.replace(/[^\w.-]/g, "_")}.e-${effort}.r${rep}${cold ? ".cold" : ""}`;
-const CELL = join(ROOT, "cells", id);
+const id = cellId({ task, variant: variantName, harness, model, effort, rep, cold });
+const CELL = join(ROOT, "cells", commit.slice(0, 12), id);
 const OUT = join(CELL, "out");
 const WORK = join(CELL, "work");
 if (existsSync(join(OUT, "grade.json"))) {
