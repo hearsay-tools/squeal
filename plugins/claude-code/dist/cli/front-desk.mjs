@@ -32,16 +32,9 @@ function parseRequest(line) {
     case "run-slow":
     case "stop":
       return { type: request.type };
-    case "sync": {
-      if (request.after === void 0) return { type: "sync" };
-      if (!Number.isInteger(request.after) || request.after < 0) {
-        return '"after" must be a revision number';
-      }
-      const after = request.after;
-      if (request.resolvedSince === void 0) return { type: "sync", after };
-      if (!Number.isFinite(request.resolvedSince)) return '"resolvedSince" must be a time';
-      return { type: "sync", after, resolvedSince: request.resolvedSince };
-    }
+    // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
+    case "sync":
+      return { type: "sync" };
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -114,7 +107,7 @@ function createHandlers(context) {
     requestId,
     revision: state.revision,
     error: state.error,
-    ...state.rekeyed === null ? {} : { rekeyed: state.rekeyed }
+    moves: true
   });
   return (request) => {
     switch (request.type) {
@@ -180,14 +173,11 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
-        const state = { revision: null, error: null, rekeyed: null };
-        for (const dropped of remember(syncRequests, requestId, state)) {
-          context.forgetSync?.(dropped);
-        }
-        context.requestSync(request.after ?? null, request.resolvedSince ?? null, requestId).then(
+        const state = { revision: null, error: null };
+        remember(syncRequests, requestId, state);
+        context.requestSync().then(
           (answer2) => {
             state.revision = answer2.revision;
-            state.rekeyed = answer2.rekeyed;
           },
           (error) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -219,13 +209,10 @@ function createHandlers(context) {
 }
 function remember(requests, requestId, state) {
   requests.set(requestId, state);
-  const dropped = [];
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
     requests.delete(old);
-    dropped.push(old);
   }
-  return dropped;
 }
 
 // src/core/daemon/server.ts
@@ -346,12 +333,11 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    // By the socket's own id, which a forget names; the main thread still answers it.
-    requestSync: (after, resolvedSince, id) => new Promise((resolve, reject) => {
+    requestSync: () => new Promise((resolve, reject) => {
+      const id = randomUUID2();
       waitingSync.set(id, { resolve, reject });
-      post({ type: "sync", id, after, resolvedSince });
+      post({ type: "sync", id });
     }),
-    forgetSync: (id) => post({ type: "sync-forget", id }),
     onActivity: () => post({ type: "activity" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version })

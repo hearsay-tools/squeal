@@ -3189,7 +3189,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
-  const refinedRevision = readRefined(store, worktreeId);
+  const refinedRevision2 = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting = missing !== null;
   const view = worktreeSlowView(store, worktreeId);
@@ -3205,8 +3205,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     },
     testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
-    refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    refinedRevision: refinedRevision2,
+    runnerPartPending: refinedRevision2 !== null && refinedRevision2 < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
@@ -5054,7 +5054,12 @@ var init_worktrees = __esm({
       "consumer_views",
       "consumers"
     ];
-    WORKTREE_META_PREFIXES = ["edits:", "checkpoint.", "rekeyed."];
+    WORKTREE_META_PREFIXES = [
+      "edits:",
+      "checkpoint.",
+      "rekeyed.",
+      "rekeyed-moves."
+    ];
     EDIT_KEYS_PREFIX = "edit-keys:";
   }
 });
@@ -5687,7 +5692,6 @@ function newFileState(ref2) {
     id: testFileId(ref2),
     key: null,
     keyedAt: null,
-    lastKeyedAt: null,
     resultKey: null,
     checks: [],
     failing: false,
@@ -5704,11 +5708,9 @@ function newFileState(ref2) {
 }
 function noteKeyedAt(file, revision) {
   file.keyedAt = file.keyedAt === null ? revision : Math.min(file.keyedAt, revision);
-  file.lastKeyedAt = file.lastKeyedAt === null ? revision : Math.max(file.lastKeyedAt, revision);
 }
 function clearKeyedAt(file) {
   file.keyedAt = null;
-  file.lastKeyedAt = null;
 }
 function classify2(file) {
   if (file.phase !== null) return "pending";
@@ -7085,155 +7087,6 @@ var init_claims = __esm({
   }
 });
 
-// src/core/scheduler/discharges.ts
-function covers2({ since, after, upTo }, { revision, at: at2 }) {
-  return at2 >= since && revision > after && revision <= upTo;
-}
-var DISCHARGE_RETENTION_MS, DISCHARGE_CAP, HOLD_MS, INCOMPLETE_ANSWER, Discharges;
-var init_discharges = __esm({
-  "src/core/scheduler/discharges.ts"() {
-    "use strict";
-    DISCHARGE_RETENTION_MS = 60 * 6e4;
-    DISCHARGE_CAP = 1e4;
-    HOLD_MS = 60 * 6e4;
-    INCOMPLETE_ANSWER = "the sync answer's discharges were released before it was read; its files may be incomplete";
-    Discharges = class {
-      /** `now` is the clock the holds' times are read from, which the timer reads when it runs. */
-      constructor(limits = {
-        retentionMs: DISCHARGE_RETENTION_MS,
-        cap: DISCHARGE_CAP
-      }, now = () => Date.now()) {
-        this.limits = limits;
-        this.now = now;
-      }
-      limits;
-      now;
-      /** By file and revision, oldest discharge first. */
-      #kept = /* @__PURE__ */ new Map();
-      /** Oldest first. */
-      #held = /* @__PURE__ */ new Set();
-      /** The latest time a call was given or a deadline passed, which an ended hold prunes at. */
-      #latest = null;
-      /** Due at the earliest deadline, or earlier; none while nothing is held. Never keeps the process alive. */
-      #timer = null;
-      /** The latest time of a discharge a prune dropped: a window from before it may miss it. */
-      #dropped = null;
-      get size() {
-        return this.#kept.size;
-      }
-      /** The holds in force. */
-      get holds() {
-        return this.#held.size;
-      }
-      /** `file`'s attribution is discharged at `at`; nothing when it had none. */
-      note(file, at2) {
-        if (file.keyedAt === null || file.lastKeyedAt === null) return;
-        for (const revision of /* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])) {
-          const key2 = `${file.id}\0${revision}`;
-          this.#kept.delete(key2);
-          this.#kept.set(key2, { id: file.id, ref: file.ref, revision, at: at2 });
-        }
-        this.#see(at2);
-        this.#expire(at2);
-        this.#prune(at2);
-      }
-      /**
-       * Keeps the discharges `since(since, after, upTo)` names, from `now` until
-       * the answer's release, which a sync answer calls once read or failed, or
-       * its forget, and for `HOLD_MS` at the latest (review wave-13r B2), when
-       * `expired` is called, once, whatever else the daemon is doing (task
-       * 001-229). Not after a release or forget.
-       */
-      hold(since, after, upTo, now, expired) {
-        this.#see(now);
-        this.#expire(now);
-        const hold = {
-          window: { since, after, upTo },
-          until: now + HOLD_MS,
-          lost: this.#dropped !== null && this.#dropped >= since,
-          expired
-        };
-        this.#held.add(hold);
-        this.#arm(now);
-        return {
-          release: () => this.#end(hold, false),
-          forget: () => this.#end(hold, true),
-          intact: (at2) => {
-            this.#see(at2);
-            this.#expire(at2);
-            return !hold.lost;
-          }
-        };
-      }
-      forget(id2) {
-        for (const [key2, discharge] of this.#kept) {
-          if (discharge.id === id2) this.#kept.delete(key2);
-        }
-      }
-      /** Files discharged at or after `since`, at their revisions after `after` up to `upTo`. */
-      since(since, after, upTo) {
-        const files = [];
-        const window = { since, after, upTo };
-        for (const discharge of this.#kept.values()) {
-          if (covers2(window, discharge)) {
-            files.push({ testFile: discharge.ref, revision: discharge.revision, resolved: true });
-          }
-        }
-        return files;
-      }
-      /** Ends `hold`, `early` when its answer was not read; prunes what it alone kept. */
-      #end(hold, early) {
-        if (!this.#held.delete(hold)) return;
-        if (early) hold.lost = true;
-        if (this.#held.size === 0 && this.#timer !== null) {
-          clearTimeout(this.#timer.handle);
-          this.#timer = null;
-        }
-        if (this.#latest !== null) this.#prune(this.#latest);
-      }
-      /** Releases, early, every hold past its deadline at `now`, and tells its answer. */
-      #expire(now) {
-        for (const hold of [...this.#held]) {
-          if (hold.until > now) continue;
-          this.#end(hold, true);
-          hold.expired?.();
-        }
-      }
-      /** Due at the earliest deadline, from `now`; a timer due no later is left. */
-      #arm(now) {
-        const at2 = Math.min(...[...this.#held].map((hold) => hold.until));
-        if (this.#timer !== null) {
-          if (this.#timer.at <= at2) return;
-          clearTimeout(this.#timer.handle);
-        }
-        const handle = setTimeout(() => {
-          this.#timer = null;
-          const ran = this.now();
-          this.#see(ran);
-          this.#expire(ran);
-          if (this.#held.size > 0) this.#arm(ran);
-        }, at2 - now);
-        handle.unref?.();
-        this.#timer = { at: at2, handle };
-      }
-      #see(at2) {
-        this.#latest = Math.max(this.#latest ?? at2, at2);
-      }
-      #prune(now) {
-        for (const [key2, discharge] of this.#kept) {
-          if (this.#kept.size <= this.limits.cap && discharge.at >= now - this.limits.retentionMs) {
-            return;
-          }
-          if (![...this.#held].some((hold) => covers2(hold.window, discharge))) {
-            this.#kept.delete(key2);
-            this.#dropped = Math.max(this.#dropped ?? discharge.at, discharge.at);
-          }
-        }
-      }
-    };
-  }
-});
-
 // src/core/scheduler/held.ts
 function heldFilesMetaKey(worktreeId) {
   return `held-files:${worktreeId}`;
@@ -7409,6 +7262,139 @@ var init_queue = __esm({
   }
 });
 
+// src/core/scheduler/rekeyed-moves.ts
+function rekeyedMovesMetaKey(worktreeId) {
+  return `rekeyed-moves.${worktreeId}`;
+}
+function readMoves(store, worktreeId) {
+  const raw = store.meta.get(rekeyedMovesMetaKey(worktreeId));
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || !isInt(value.seq) || !isInt(value.dropped) || !isRecord(value.files)) {
+    return null;
+  }
+  const files = {};
+  for (const [id2, entry2] of Object.entries(value.files)) {
+    if (!isRecord(entry2) || !isRecord(entry2.resolved)) continue;
+    const resolved = {};
+    for (const [revision, at2] of Object.entries(entry2.resolved)) {
+      const pair = asPair(at2);
+      if (pair !== null) resolved[revision] = pair;
+    }
+    files[id2] = { open: asPair(entry2.open), resolved };
+  }
+  const caughtUpAt = isInt(value.caughtUpAt) ? value.caughtUpAt : null;
+  return { seq: value.seq, caughtUpAt, dropped: value.dropped, files };
+}
+function movesSeq(store, worktreeId) {
+  return readMoves(store, worktreeId)?.seq ?? null;
+}
+function refinedRevision(store, worktreeId) {
+  const refined = Number(store.meta.get(refinedMetaKey(worktreeId)) ?? Number.NaN);
+  return Number.isInteger(refined) ? refined : null;
+}
+function recordMoves(store, worktreeId, marks, removed, revision, now) {
+  const read4 = readMoves(store, worktreeId);
+  const moves = read4 ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {} };
+  const seq = moves.seq + 1;
+  let changed = read4 === null;
+  for (const id2 of removed) {
+    if (id2 in moves.files) {
+      delete moves.files[id2];
+      changed = true;
+    }
+  }
+  for (const mark of marks) changed = apply(moves, mark, seq, now) || changed;
+  const refined = refinedRevision(store, worktreeId);
+  const caughtUpAt = refined === null || refined >= revision ? moves.caughtUpAt ?? now : null;
+  if (caughtUpAt !== moves.caughtUpAt) {
+    moves.caughtUpAt = caughtUpAt;
+    changed = true;
+  }
+  if (caughtUpAt !== null && now - caughtUpAt >= MOVES_GRACE_MS) {
+    changed = prune3(moves, now - MOVES_RETENTION_MS) || changed;
+  }
+  if (!changed) return;
+  moves.seq = seq;
+  store.meta.set(rekeyedMovesMetaKey(worktreeId), JSON.stringify(moves));
+}
+function apply(moves, { id: id2, open: open3, moved: moved2 }, seq, at2) {
+  const file = moves.files[id2] ?? { open: null, resolved: {} };
+  const before = JSON.stringify(file);
+  if (open3 === null) {
+    for (const revision of /* @__PURE__ */ new Set([...file.open ?? [], ...moved2 === null ? [] : [moved2]])) {
+      file.resolved[String(revision)] = [seq, at2];
+    }
+    file.open = null;
+  } else {
+    const revisions = [open3, ...moved2 === null ? [] : [moved2]];
+    file.open = [
+      Math.min(file.open?.[0] ?? open3, ...revisions),
+      Math.max(file.open?.[1] ?? open3, ...revisions)
+    ];
+    for (const revision of revisions) delete file.resolved[String(revision)];
+  }
+  if (file.open === null && Object.keys(file.resolved).length === 0) {
+    const had = id2 in moves.files;
+    delete moves.files[id2];
+    return had;
+  }
+  moves.files[id2] = file;
+  return JSON.stringify(file) !== before;
+}
+function prune3(moves, cutoff) {
+  let pruned = false;
+  for (const [id2, file] of Object.entries(moves.files)) {
+    for (const [revision, [seq, at2]] of Object.entries(file.resolved)) {
+      if (at2 >= cutoff) continue;
+      delete file.resolved[revision];
+      moves.dropped = Math.max(moves.dropped, seq);
+      pruned = true;
+    }
+    if (file.open === null && Object.keys(file.resolved).length === 0) delete moves.files[id2];
+  }
+  return pruned;
+}
+function answerMoves(store, worktreeId, upTo, sinceSeq) {
+  const refined = refinedRevision(store, worktreeId);
+  if (refined !== null && refined < upTo) return { state: "refining" };
+  const moves = readMoves(store, worktreeId);
+  if (moves === null || moves.dropped > sinceSeq) return { state: "incomplete" };
+  const refs2 = new Map(
+    store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row.testFile])
+  );
+  const rekeyed = [];
+  for (const [id2, file] of Object.entries(moves.files)) {
+    const testFile = refs2.get(id2);
+    if (testFile === void 0) continue;
+    for (const revision of new Set(file.open ?? [])) {
+      if (revision <= upTo) rekeyed.push({ testFile, revision });
+    }
+    for (const [raw, [seq]] of Object.entries(file.resolved)) {
+      const revision = Number(raw);
+      if (seq > sinceSeq && revision <= upTo) rekeyed.push({ testFile, revision, resolved: true });
+    }
+  }
+  return { state: "answered", rekeyed };
+}
+var MOVES_RETENTION_MS, MOVES_GRACE_MS, isInt, asPair;
+var init_rekeyed_moves = __esm({
+  "src/core/scheduler/rekeyed-moves.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    init_types();
+    MOVES_RETENTION_MS = 60 * 6e4;
+    MOVES_GRACE_MS = 6e4;
+    isInt = (value) => typeof value === "number" && Number.isInteger(value);
+    asPair = (value) => Array.isArray(value) && isInt(value[0]) && isInt(value[1]) ? [value[0], value[1]] : null;
+  }
+});
+
 // src/core/scheduler/rerun-memory.ts
 function rerunsMetaKey(worktreeId) {
   return `reruns:${worktreeId}`;
@@ -7569,10 +7555,10 @@ var init_ledger = __esm({
     init_checkpoints();
     init_claims();
     init_context();
-    init_discharges();
     init_files();
     init_held();
     init_queue();
+    init_rekeyed_moves();
     init_rekeyed_record();
     init_rerun();
     init_slow3();
@@ -7581,7 +7567,6 @@ var init_ledger = __esm({
       constructor(context) {
         this.context = context;
         this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
-        this.discharges = new Discharges(void 0, context.now);
         this.claims = new Claims(context);
         this.queue.setSlow((ref2) => slowView(context.policy).isSlow(ref2));
       }
@@ -7589,8 +7574,6 @@ var init_ledger = __esm({
       files = /* @__PURE__ */ new Map();
       queue = new RunQueue();
       checkpoints;
-      /** Attributions results discharged, for a wait's sync answer (task 001-196). */
-      discharges;
       /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
       claims;
       revision = { number: 0, head: null, dirty: false };
@@ -7617,7 +7600,8 @@ var init_ledger = __esm({
       /**
        * Files whose re-key attribution moved since the last commit, with the
        * latest revision that re-keyed one (`null`: only discharged), owed to the
-       * store's record (`recordRekeyed`, task 001-238).
+       * store's records (`recordRekeyed`, task 001-238; `recordMoves`, task
+       * 001-258).
        */
       #rekeyed = /* @__PURE__ */ new Map();
       file(ref2) {
@@ -7642,7 +7626,6 @@ var init_ledger = __esm({
         this.context.keys.removeTestFile(file.ref);
         this.queue.remove(file.ref);
         this.files.delete(file.id);
-        this.discharges.forget(file.id);
         this.#retired.push(...file.checks);
         this.#removed.push(file.ref);
         this.checkpoints.done(file.ref, this.checkpoints.idFor(file.ref));
@@ -7888,7 +7871,9 @@ var init_ledger = __esm({
         store.transaction(() => {
           if (rows.length > 0) store.testFileKeys.upsertMany(rows);
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
-          recordRekeyed(store, worktreeId, rekeyed, removed.map(testFileId));
+          const removedIds = removed.map(testFileId);
+          recordRekeyed(store, worktreeId, rekeyed, removedIds);
+          recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now());
           for (const { results: results2, checkpointId } of mergeApplied(applied)) {
             sink.applyResults(worktreeId, revision, results2, { checkpointId });
           }
@@ -7916,14 +7901,12 @@ var init_ledger = __esm({
       }
       /**
        * The file has a result, or is `unknown`, at its key: its attribution is
-       * discharged (task 001-194). The store's record is resolved even with no
-       * attribution here: a restarted daemon's files start with none, while the
-       * record may hold an edit open (review wave 13v, S1). Only the record is
-       * resolved; the attribution `status --wait` reads is not restored.
+       * discharged (task 001-194). The store's records are resolved even with
+       * no attribution here: a restarted daemon's files start with none, while
+       * a record may hold an edit open (review wave 13v, S1).
        */
       #discharge(file) {
         if (!this.#rekeyed.has(file.id)) this.#rekeyed.set(file.id, null);
-        this.discharges.note(file, this.context.now());
         clearKeyedAt(file);
       }
       /**
@@ -10421,7 +10404,6 @@ var init_scheduler2 = __esm({
     init_checkpoint_requests();
     init_claims();
     init_context();
-    init_discharges();
     init_environment_growth();
     init_install();
     init_install_stamp();
@@ -10517,7 +10499,7 @@ var init_scheduler2 = __esm({
             runsDir: options.runsDir,
             describe: options.describeFailure ?? describeFailure,
             head: options.head,
-            // Read at each call, as `rekeyedOnceRefined` reads it: the discharge timer and its holds share it.
+            // Read at each call: a commit stamps the store's re-key moves with it (`recordMoves`).
             now: options.now ?? (() => Date.now()),
             note: (message2) => this.#note(message2),
             rerunCap: options.rerunCap ?? RERUN_CAP,
@@ -10654,43 +10636,6 @@ var init_scheduler2 = __esm({
       }
       status() {
         return { revision: this.#ledger?.revision.number ?? 0 };
-      }
-      async refined() {
-        await this.#runnerWork.afterTier(() => Promise.resolve());
-      }
-      rekeyedSince(after, upTo, resolvedSince) {
-        const files = [];
-        for (const file of this.#ledger?.files.values() ?? []) {
-          for (const revision of /* @__PURE__ */ new Set([file.keyedAt, file.lastKeyedAt])) {
-            if (revision !== null && revision > after && revision <= upTo) {
-              files.push({ testFile: file.ref, revision });
-            }
-          }
-        }
-        if (resolvedSince === void 0 || this.#ledger === null) return files;
-        return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
-      }
-      async rekeyedOnceRefined(after, upTo, resolvedSince, signal2) {
-        if (signal2?.aborted === true) throw new Error(INCOMPLETE_ANSWER);
-        const now = this.options.now ?? Date.now;
-        let end = () => {
-        };
-        const ending2 = new Promise((_, reject) => {
-          end = () => {
-            held2?.forget();
-            reject(new Error(INCOMPLETE_ANSWER));
-          };
-        });
-        const held2 = resolvedSince === void 0 || this.#ledger === null ? null : this.#ledger.discharges.hold(resolvedSince, after, upTo, now(), () => end());
-        signal2?.addEventListener("abort", end, { once: true });
-        try {
-          await Promise.race([this.refined(), ending2]);
-          if (held2 !== null && !held2.intact(now())) throw new Error(INCOMPLETE_ANSWER);
-          return this.rekeyedSince(after, upTo, resolvedSince);
-        } finally {
-          signal2?.removeEventListener("abort", end);
-          held2?.release();
-        }
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
@@ -33954,7 +33899,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.112";
+  if (true) return "0.1.113";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35284,16 +35229,9 @@ function parseRequest(line) {
     case "run-slow":
     case "stop":
       return { type: request.type };
-    case "sync": {
-      if (request.after === void 0) return { type: "sync" };
-      if (!Number.isInteger(request.after) || request.after < 0) {
-        return '"after" must be a revision number';
-      }
-      const after = request.after;
-      if (request.resolvedSince === void 0) return { type: "sync", after };
-      if (!Number.isFinite(request.resolvedSince)) return '"resolvedSince" must be a time';
-      return { type: "sync", after, resolvedSince: request.resolvedSince };
-    }
+    // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
+    case "sync":
+      return { type: "sync" };
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -35358,7 +35296,7 @@ function createHandlers(context) {
     requestId,
     revision: state.revision,
     error: state.error,
-    ...state.rekeyed === null ? {} : { rekeyed: state.rekeyed }
+    moves: true
   });
   return (request) => {
     switch (request.type) {
@@ -35424,14 +35362,11 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         const requestId = randomUUID();
-        const state = { revision: null, error: null, rekeyed: null };
-        for (const dropped of remember(syncRequests, requestId, state)) {
-          context.forgetSync?.(dropped);
-        }
-        context.requestSync(request.after ?? null, request.resolvedSince ?? null, requestId).then(
+        const state = { revision: null, error: null };
+        remember(syncRequests, requestId, state);
+        context.requestSync().then(
           (answer2) => {
             state.revision = answer2.revision;
-            state.rekeyed = answer2.rekeyed;
           },
           (error) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -35463,13 +35398,10 @@ function createHandlers(context) {
 }
 function remember(requests, requestId, state) {
   requests.set(requestId, state);
-  const dropped = [];
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
     requests.delete(old);
-    dropped.push(old);
   }
-  return dropped;
 }
 
 // src/core/daemon/server.ts
@@ -35638,7 +35570,7 @@ async function inWorker(worker, identity, events) {
           );
           return;
         case "sync":
-          events.requestSync(message2.after, message2.resolvedSince, message2.id).then(
+          events.requestSync().then(
             (answer2) => post({ type: "sync-result", id: message2.id, answer: answer2, error: null }),
             (error) => post({
               type: "sync-result",
@@ -35647,9 +35579,6 @@ async function inWorker(worker, identity, events) {
               error: error instanceof Error ? error.message : String(error)
             })
           );
-          return;
-        case "sync-forget":
-          events.forgetSync(message2.id);
           return;
         case "stop":
           events.onStop();
@@ -35704,7 +35633,6 @@ async function inThread(identity, events) {
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
-      forgetSync: events.forgetSync,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown
@@ -36642,7 +36570,7 @@ function startTimers(context) {
     const read4 = readObserved();
     if (read4 !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read4;
   });
-  const prune3 = () => attempt("prune", () => {
+  const prune4 = () => attempt("prune", () => {
     store.prune({
       now: now(),
       retentionDays: context.policy.store.retentionDays,
@@ -36653,10 +36581,10 @@ function startTimers(context) {
     setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
     setInterval(departure, presenceMs),
-    setInterval(prune3, pruneMs),
+    setInterval(prune4, pruneMs),
     ...observedKeys.length > 0 && context.observedChanged ? [setInterval(observed, timings.observedMs ?? 5e3)] : []
   ];
-  const first = setTimeout(prune3, timings.firstPruneMs ?? 6e4);
+  const first = setTimeout(prune4, timings.firstPruneMs ?? 6e4);
   for (const timer of [...timers, first]) timer.unref();
   return () => {
     for (const timer of timers) clearInterval(timer);
@@ -37179,32 +37107,6 @@ function message(error) {
 // src/core/daemon/daemon.ts
 init_paths4();
 init_policy2();
-
-// src/core/daemon/sync-requests.ts
-var SyncRequests = class {
-  #live = /* @__PURE__ */ new Map();
-  /** In flight now. */
-  get size() {
-    return this.#live.size;
-  }
-  /** Runs `answer` with a signal that `forget(id)` aborts until it settles. */
-  async run(id2, answer2) {
-    const controller = new AbortController();
-    this.#live.set(id2, controller);
-    try {
-      return await answer2(controller.signal);
-    } finally {
-      if (this.#live.get(id2) === controller) this.#live.delete(id2);
-    }
-  }
-  /** Aborts `id`'s answer; an unknown id, or one settled or forgotten already, is nothing. */
-  forget(id2) {
-    this.#live.get(id2)?.abort();
-    this.#live.delete(id2);
-  }
-};
-
-// src/core/daemon/daemon.ts
 async function startDaemon(options) {
   const now = options.now ?? Date.now;
   const desk = prepareFrontDesk();
@@ -37252,8 +37154,6 @@ var Daemon = class {
   #loop = null;
   /** What its tests leave running, stopped after each tier and at exit (D12). */
   #children = new EscapedChildren();
-  /** Sync requests in flight, which the socket can forget (task 001-226). */
-  #syncs = new SyncRequests();
   #starting = Promise.resolve();
   #stopTimers = () => {
   };
@@ -37503,8 +37403,7 @@ var Daemon = class {
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: (after, resolvedSince, id2) => this.#syncs.run(id2, (signal2) => this.#requestSync(after, resolvedSince, signal2)),
-        forgetSync: (id2) => this.#syncs.forget(id2),
+        requestSync: () => this.#requestSync(),
         onActivity: () => {
           this.#lastActive = this.#now();
         },
@@ -37540,32 +37439,17 @@ var Daemon = class {
   }
   /**
    * Lessons, defect 30: the revision of every change made before the
-   * request, once stored. With `after` (task 001-186), once its runner part
-   * is applied too, with the test files the revisions after `after` re-keyed.
-   * With `resolvedSince` (task 001-196), also those whose move had its result
-   * since that time: a result before the answer does not take its file out
-   * of the wait's window, kept until the answer is read whatever the prune
-   * bounds (task 001-214), or until `signal`, the socket forgetting the
-   * request, or an hour (task 001-226).
+   * request, once stored. The files a wait holds for are read from the
+   * store, once its runner part is applied (`answerMoves`, task 001-258):
+   * nothing waits here for the refinement, and nothing is held per request.
    */
-  async #requestSync(after, resolvedSince, signal2) {
+  async #requestSync() {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
     await this.#loop.reconcile();
-    const scheduler = this.#loop.scheduler;
-    const revision = scheduler.status().revision;
-    if (after === null) return { revision, rekeyed: null };
-    return {
-      revision,
-      rekeyed: await scheduler.rekeyedOnceRefined(
-        after,
-        revision,
-        resolvedSince ?? void 0,
-        signal2
-      )
-    };
+    return { revision: this.#loop.scheduler.status().revision };
   }
   /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */
   #optimizerOff(projects) {
@@ -38141,6 +38025,7 @@ init_text();
 // src/cli/status-wait.ts
 import { setTimeout as sleep7 } from "node:timers/promises";
 init_fs();
+init_rekeyed_moves();
 init_state3();
 
 // src/cli/status-command.ts
@@ -38163,13 +38048,13 @@ function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
 // src/cli/status-sync.ts
 import { setTimeout as sleep6 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
-function syncDaemon(root, pollMs, after = null, resolvedSince = null) {
+function syncDaemon(root, pollMs) {
   let current2 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   void (async () => {
     for (; ; ) {
-      const outcome2 = await syncOnce(root, pollMs, { after, resolvedSince }, isStopped);
+      const outcome2 = await syncOnce(root, pollMs, isStopped);
       if (outcome2 !== "again") return outcome2;
     }
   })().then(
@@ -38187,16 +38072,15 @@ function syncDaemon(root, pollMs, after = null, resolvedSince = null) {
     }
   };
 }
-async function syncOnce(root, pollMs, { after, resolvedSince }, stopped) {
+async function syncOnce(root, pollMs, stopped) {
   const socketPath = await daemonSocket(root).catch(() => null);
   if (socketPath === null || stopped()) return UNSUPPORTED;
-  const request = after === null ? { type: "sync" } : { type: "sync", after, ...resolvedSince === null ? {} : { resolvedSince } };
-  const first = await askDaemon(socketPath, request).catch(() => null);
+  const first = await askDaemon(socketPath, { type: "sync" }).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state = first;
   for (; ; ) {
     if (state.revision !== null) {
-      return { state: "synced", revision: state.revision, rekeyed: state.rekeyed ?? null };
+      return { state: "synced", revision: state.revision, moves: state.moves === true };
     }
     if (state.error !== null) return UNSUPPORTED;
     await sleep6(pollMs, void 0, { ref: false });
@@ -38324,7 +38208,6 @@ async function waitForStatus(cwd, options) {
   const started2 = performance.now();
   const elapsed = () => performance.now() - started2;
   let start = null;
-  let startedAt = now();
   const syncing = {};
   try {
     for (; ; ) {
@@ -38337,19 +38220,22 @@ async function waitForStatus(cwd, options) {
         const header = readHeader(store, id2, states);
         if (start === null) {
           start = states.map(toStartView);
-          startedAt = now();
+          syncing.sinceSeq = movesSeq(store, id2) ?? 0;
         }
         const news = newsOf(start, states, header.revision);
         syncing.heard ??= lastHeard(store, id2, header.revision, session);
         const heard = syncing.heard;
-        syncing.sync ??= startSync(root, pollMs, 0, startedAt);
+        syncing.sync ??= startSync(root, pollMs);
         const current2 = syncing.sync.current();
-        const named = current2.state === "synced" && current2.rekeyed !== null;
-        const keys = named ? store.testFileKeys.list(id2) : [];
-        if (named) {
-          syncing.window ??= editWindow(store, id2, heard, current2.revision, current2.rekeyed);
+        if (current2.state === "synced" && syncing.window === void 0 && !syncing.fallback) {
+          const answer2 = current2.moves ? answerMoves(store, id2, current2.revision, syncing.sinceSeq ?? 0) : { state: "incomplete" };
+          if (answer2.state === "answered") {
+            syncing.window = editWindow(store, id2, heard, current2.revision, answer2.rekeyed);
+          }
+          syncing.fallback = answer2.state === "incomplete";
         }
         const window = syncing.window;
+        const keys = window === void 0 ? [] : store.testFileKeys.list(id2);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id2), now());
         let transitions;
@@ -38366,7 +38252,7 @@ async function waitForStatus(cwd, options) {
             pending,
             otherTransitions: split.other
           };
-        } else if (current2.state === "pending") {
+        } else if (current2.state === "pending" || current2.state === "synced" && !syncing.fallback) {
           transitions = 0;
           quiet = false;
         } else {
