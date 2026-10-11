@@ -4,8 +4,9 @@ import type { AbsolutePath, WatchHint } from "../types/index.js";
 import type { Exclusions } from "./exclusions.js";
 
 /**
- * How close to its file's timestamps a signature is racy: two seconds, the
- * coarsest common tick (FAT), well above a kernel's coarse clock (a jiffy).
+ * How far before the previous batch a write's timestamp may fall: two
+ * seconds, the coarsest common tick (FAT), well above a kernel's coarse clock
+ * (a jiffy).
  */
 export const RACY_NS = 2_000_000_000n;
 
@@ -74,7 +75,7 @@ export class RootRecheck {
           const path = join(dir, entry.name);
           if (named.has(path) || this.exclusions.excludes(path)) continue;
           stats--;
-          if (written(path, after)) hints.push({ path, kind: "change" });
+          if (stamp(path, after) === "written") hints.push({ path, kind: "change" });
         }
       } catch {
         // A directory removed while it is listed: its batch named it, and the rest is reconciled.
@@ -89,21 +90,21 @@ export class RootRecheck {
   }
 }
 
-function nowNs(): bigint {
+export function nowNs(): bigint {
   return BigInt(Date.now()) * 1_000_000n;
 }
 
 /**
- * Whether `path` is a file whose mtime or ctime is no older than `after`; a
- * stat that fails for another reason than its absence is reported, never
- * trusted as unwritten.
+ * Whether `path` is absent (or a directory), or a file whose mtime or ctime
+ * is no older than `after`, or an older file. A stat that fails for another
+ * reason than its absence is written, never trusted as unwritten.
  */
-function written(path: AbsolutePath, after: bigint): boolean {
+export function stamp(path: AbsolutePath, after: bigint): "absent" | "written" | "older" {
   try {
     const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
-    if (!stat || stat.isDirectory()) return false;
-    return stat.mtimeNs >= after || stat.ctimeNs >= after;
+    if (!stat || stat.isDirectory()) return "absent";
+    return stat.mtimeNs >= after || stat.ctimeNs >= after ? "written" : "older";
   } catch {
-    return true;
+    return "written";
   }
 }

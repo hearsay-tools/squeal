@@ -86,7 +86,8 @@ describe("parcel backend, an extra file behind a linked directory", () => {
  * `index.js`, lost `index.js` this way in 1-2 % of fresh processes locally and
  * in a quarter of CI's jobs (the flake above). The batch that erased an event
  * arrives after its write, so each batch from a parent re-stats the declared
- * files there it does not name.
+ * files there it does not name. Its timestamp rule is proved against a clock
+ * in parcel-racy.test.ts.
  */
 type FakeCallback = (error: Error | null, events: { path: string; type: string }[]) => void;
 
@@ -158,15 +159,5 @@ describe("parcel backend, an event @parcel/watcher erased", () => {
       { path: join(root, "dist/index.js"), kind: "unlink" },
       { path: join(root, "dist/index.js"), kind: "add" },
     ]);
-  });
-
-  it("reports nothing more for a sibling's batch when the declared file did not move", async () => {
-    await start();
-    writeFileSync(join(root, "real-build/other.js"), "export const other = 'b';\n");
-    deliver("other.js");
-    writeFileSync(join(root, "real-build/index.js"), "export const build = 'b';\n");
-    deliver("index.js");
-    deliver("other.js");
-    expect(hints).toEqual([{ path: join(root, "dist/index.js"), kind: "change" }]);
   });
 });

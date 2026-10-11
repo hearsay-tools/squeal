@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type {
@@ -11,7 +9,7 @@ import type {
   WatchSubscription,
 } from "../types/index.js";
 import { Exclusions } from "./exclusions.js";
-import { RACY_NS, RootRecheck } from "./root-recheck.js";
+import { nowNs, RACY_NS, RootRecheck, stamp } from "./root-recheck.js";
 
 export type Parcel = typeof import("@parcel/watcher");
 /** Loads @parcel/watcher for the worktree at `root`. */
@@ -129,129 +127,43 @@ async function subscribeAll(
  * (2.6.0, every platform). A rebuild writing `other.js`, then `index.js` lost
  * `index.js` in 1-2 % of fresh processes locally and in a quarter of CI's
  * jobs (`test/watcher/parcel-links.test.ts`). The batch that erased an event
- * is delivered after its write, so each batch from the parent re-stats the
- * extra files there it does not name and reports those that moved.
- *
- * A same-size rewrite inside one timestamp tick leaves the stat as it was, so
- * a signature taken within {@link RACY_NS} of its file's mtime or ctime is
- * racy, as git calls it, and also carries the content's hash (001-243). Only
- * racy signatures read the file; a later write to a settled one moves its
- * timestamps. A racy file that could not be read, or not within
- * {@link READ_BUDGET}, has an unknown hash: it is reported as changed, never
- * trusted as unchanged (001-245), and the reconciler compares its content
- * anyway.
+ * is delivered after its write, so each batch from the parent reports the
+ * extra files there it does not name by the root's rule ({@link RootRecheck}):
+ * written no earlier than the previous batch, less {@link RACY_NS}. It reads
+ * no content, so a same-size rewrite inside one tick is reported too (001-243,
+ * 001-253), and a duplicate is dropped by the reconciler. One exists bit per
+ * file reports an erased removal or creation by its kind.
  */
 class ErasedEvents {
-  private readonly last = new Map<AbsolutePath, Signature | null>();
+  private readonly exists = new Map<AbsolutePath, boolean>();
+  private since = nowNs();
 
   constructor(private readonly files: Map<AbsolutePath, AbsolutePath[]>) {
-    const budget = { left: READ_BUDGET };
-    for (const real of files.keys()) this.last.set(real, signature(real, budget));
+    for (const real of files.keys()) this.exists.set(real, stamp(real, this.since) !== "absent");
   }
 
-  /** The hints for the extra files that moved without an event in `named`. */
+  /** The hints for the extra files written, added or removed without an event in `named`. */
   find(named: ReadonlySet<AbsolutePath>): WatchHint[] {
+    const after = this.since - RACY_NS;
+    this.since = nowNs();
     const hints: WatchHint[] = [];
-    const budget = { left: READ_BUDGET };
     for (const [real, declared] of this.files) {
-      const before = this.last.get(real) ?? null;
-      const now = signature(real, budget);
-      this.last.set(real, now);
-      if (named.has(real) || same(real, before, now, budget)) continue;
-      const kind = now === null ? "unlink" : before === null ? "add" : "change";
-      for (const path of declared) hints.push({ path, kind });
+      const was = this.exists.get(real) ?? false;
+      const now = stamp(real, after);
+      this.exists.set(real, now !== "absent");
+      if (named.has(real)) continue;
+      const kind = moved(was, now);
+      if (kind) for (const path of declared) hints.push({ path, kind });
     }
     return hints;
   }
 }
 
-/**
- * The content bytes one parent's batch, or its seed, may read. Extra files
- * are configuration and build outputs, mostly a few kilobytes; a racy file
- * past the rest of the budget is reported unread.
- */
-export const READ_BUDGET = 4 * 1024 * 1024;
-
-/** The bytes a batch may still read. */
-interface Budget {
-  left: number;
-}
-
-interface Signature {
-  stat: string;
-  size: number;
-  /** Taken within {@link RACY_NS} of the file's timestamps. */
-  racy: boolean;
-  /** A racy signature's content hash, null when it is unknown. */
-  hash: string | null;
-}
-
-function signature(path: AbsolutePath, budget: Budget): Signature | null {
-  const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
-  if (!stat) return null;
-  const latest = stat.mtimeNs > stat.ctimeNs ? stat.mtimeNs : stat.ctimeNs;
-  const racy = latest >= BigInt(Date.now()) * 1_000_000n - RACY_NS;
-  const size = Number(stat.size);
-  return {
-    stat: `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`,
-    size,
-    racy,
-    hash: racy ? contentHash(path, size, budget) : null,
-  };
-}
-
-/**
- * A racy `before` is matched by content too, and an unknown hash matches
- * nothing; `now` is read for it if it settled since.
- */
-function same(
-  path: AbsolutePath,
-  before: Signature | null,
-  now: Signature | null,
-  budget: Budget,
-): boolean {
-  if (before === null || now === null) return before === now;
-  if (before.stat !== now.stat) return false;
-  if (!before.racy) return true;
-  if (before.hash === null) return false;
-  return before.hash === (now.racy ? now.hash : contentHash(path, now.size, budget));
-}
-
-/** The bytes one read takes from a file's descriptor. */
-const CHUNK = 64 * 1024;
-
-/**
- * The content's hash, null when it cannot be read within `budget`: the caller
- * reports the file. `size` is the stat's and the file may have grown since, so
- * the read stops one byte past the budget (001-247); that byte spends it all,
- * and the batch reads no more than {@link READ_BUDGET} plus one.
- */
-function contentHash(path: AbsolutePath, size: number, budget: Budget): string | null {
-  if (size > budget.left) return null;
-  let fd: number;
-  try {
-    fd = openSync(path, "r");
-  } catch {
-    return null;
-  }
-  try {
-    const hash = createHash("sha1");
-    const chunk = Buffer.allocUnsafe(Math.min(CHUNK, budget.left + 1));
-    for (;;) {
-      const read = readSync(fd, chunk, 0, Math.min(chunk.length, budget.left + 1), null);
-      if (read === 0) return hash.digest("hex");
-      budget.left -= read;
-      if (budget.left < 0) return null;
-      hash.update(chunk.subarray(0, read));
-    }
-  } catch {
-    return null;
-  } finally {
-    // A failed close must not throw out of parcel's callback; the hash, if any, was read.
-    try {
-      closeSync(fd);
-    } catch {}
-  }
+/** The hint for a file that `was` present and whose stamp is `now`, null when it did not move. */
+function moved(was: boolean, now: ReturnType<typeof stamp>): WatchHint["kind"] | null {
+  if (now === "absent") return was ? "unlink" : null;
+  if (!was) return "add";
+  return now === "written" ? "change" : null;
 }
 
 /** `report` names the paths an event is reported under, none to drop it. */
