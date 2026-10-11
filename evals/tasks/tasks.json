@@ -1,0 +1,14 @@
+{
+  "description": "Spec 006 D2: the baseline's tasks and their knobs. A knob sets up a state the live daemon makes hard to reach, after the warm-up and before the session. daemon \"stopped\": the daemon is stopped and cannot be started again (SQUEAL_CLI names no file), so no daemon validates. staleEdit: the daemon is stopped, the file is edited outside the session, and the session starts with results from the older revision. flakeColdRuns: the flaky calendar test stays cold for that many runs after each change to src/clock.ts, so it also fails Squeal's first re-run.",
+  "tasks": {
+    "t1-thousands": {},
+    "t2-weekend": { "flakeColdRuns": 2 },
+    "t3-tax": {
+      "staleEdit": {
+        "path": "src/csv.ts",
+        "append": "\n// Columns follow the accounting system's import format.\n"
+      }
+    },
+    "t4-contract": { "daemon": "stopped" }
+  }
+}
