@@ -15,7 +15,12 @@ import type {
   SyncAnswer,
   WorktreeId,
 } from "../types/index.js";
-import { bootstrappedMetaKey, DEFAULT_POLICY, SLOW_LANE_PREFIX } from "../types/index.js";
+import {
+  bootstrappedMetaKey,
+  DEFAULT_POLICY,
+  daemonIncarnation,
+  SLOW_LANE_PREFIX,
+} from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import {
@@ -381,6 +386,11 @@ class Daemon {
         reloadPolicy: (changes) =>
           changes.some((change) => change.path === POLICY_FILE) ? this.#reloadPolicy() : null,
         squealVersion: this.#version,
+        // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
+        incarnation: daemonIncarnation({
+          squealVersion: this.#version,
+          startedAt: this.#startedAt,
+        }),
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
         now: this.#now,

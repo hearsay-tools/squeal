@@ -10,7 +10,7 @@ import {
   openRepoStore,
   SLOW,
 } from "./helpers.js";
-import { movesOnceRefined } from "./store-wait.js";
+import { liveDaemon, movesOnceRefined } from "./store-wait.js";
 
 /*
  * Lessons, defect 32 (task 001-186): `status --wait` holds for the test files
@@ -24,6 +24,7 @@ import { movesOnceRefined } from "./store-wait.js";
 async function open(): Promise<Harness> {
   const repo = createRepo();
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
+  liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
   await h.scheduler.start();
   await h.scheduler.idle();
   return h;

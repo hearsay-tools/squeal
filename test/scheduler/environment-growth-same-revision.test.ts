@@ -23,7 +23,7 @@ import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
-import { captureSync } from "./store-wait.js";
+import { captureSync, HARNESS_DAEMON, HARNESS_INCARNATION } from "./store-wait.js";
 
 /*
  * Review wave 13k, B1 (task 001-196): a and b are edited at revision 2. a
@@ -71,11 +71,10 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
       isMain: true,
       registeredAt: 1,
       daemon: {
+        ...HARNESS_DAEMON,
         socketPath: "/tmp/squeal-test.sock",
-        startedAt: Date.now(),
         heartbeatAt: Date.now(),
         heartbeatIntervalMs: 600_000,
-        squealVersion: "0.0.0-test",
       },
     });
 
@@ -124,6 +123,7 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,
       head: () => readHead(root),
+      incarnation: HARNESS_INCARNATION,
     });
     onTestFinished(async () => {
       release();

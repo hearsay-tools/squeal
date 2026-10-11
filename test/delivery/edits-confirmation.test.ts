@@ -14,6 +14,7 @@ import {
   type CheckKey,
   type Consumer,
   DEFAULT_POLICY,
+  daemonIncarnation,
   type HarnessDelivery,
   type ResultRecord,
   type Store,
@@ -22,6 +23,9 @@ import {
 } from "../../src/core/types/index.js";
 import { check, FILE, freshStore, result, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
+
+/** `liveDaemon`'s incarnation: the writer of its ledger's moves (task 001-268). */
+const INCARNATION = daemonIncarnation({ squealVersion: "0.0.0-test", startedAt: 1 });
 
 /*
  * Review wave 13v, B1 (task 001-240): the first result at an edit's key
@@ -60,6 +64,7 @@ beforeEach(() => {
     worktreeId: WT as WorktreeId,
     policy: DEFAULT_POLICY,
     now: Date.now,
+    incarnation: INCARNATION,
     rerunCap: RERUN_CAP,
     note: () => {},
     keys: {
@@ -180,7 +185,7 @@ describe("the settled line over an edited file's confirmation run (review wave 1
     land(FILE, key("b"), [result(A, "fail", { key: key("b") })]);
     expect(fileOf(FILE).phase).toBe("queued");
 
-    const answer = answerMoves(store, WT as WorktreeId, 1, startedAt);
+    const answer = answerMoves(store, WT as WorktreeId, 1, startedAt, INCARNATION);
     const rekeyed = answer.state === "answered" ? answer.rekeyed : [];
     expect(rekeyed).toEqual([{ testFile: FILE, revision: 1, resolved: true }]);
     const window = editWindow(store, WT as WorktreeId, 0, 1, rekeyed);

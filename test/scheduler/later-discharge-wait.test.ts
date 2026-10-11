@@ -9,7 +9,7 @@ import {
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
-import { captureSync, liveDaemon } from "./store-wait.js";
+import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
 
 /*
  * Review wave 13l, S1 (task 001-202): a second move of the file resolved by
@@ -34,6 +34,8 @@ const CACHED = "export const add = (a: number, b: number) => a - b; // cached\n"
 const PASSING = "export const add = (a: number, b: number) => a + b;\n";
 const TARGET = "export const add = (a: number, b: number) => a - b; // target\n";
 const HOUR = 60 * 60_000;
+/** As the harness's ledger writes its moves. */
+const BY = { writer: HARNESS_INCARNATION };
 
 interface Case {
   readonly name: string;
@@ -72,7 +74,7 @@ describe("status --wait over later discharges of its file (tasks 001-202, 001-25
     // As `Ledger.commit` records the moves when nothing else changed.
     const commit = () =>
       h.store.transaction(() =>
-        recordMoves(h.store, h.worktreeId, [], [], h.scheduler.status().revision, clock()),
+        recordMoves(h.store, h.worktreeId, [], [], h.scheduler.status().revision, clock(), BY),
       );
     const math = (): Record<string, unknown> => {
       const raw = h.store.meta.get(rekeyedMovesMetaKey(h.worktreeId));
@@ -146,7 +148,9 @@ describe("status --wait over later discharges of its file (tasks 001-202, 001-25
             open: null,
             moved: upTo + 1,
           }));
-          h.store.transaction(() => recordMoves(h.store, h.worktreeId, marks, [], upTo, clock()));
+          h.store.transaction(() =>
+            recordMoves(h.store, h.worktreeId, marks, [], upTo, clock(), BY),
+          );
         }
         if (c.clock !== undefined) {
           shift = c.clock;

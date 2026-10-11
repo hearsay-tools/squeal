@@ -5,7 +5,7 @@ import {
   answerMoves,
   type MovesAnswer,
   movesSeq,
-  movesVouch,
+  movesTrusted,
 } from "../core/scheduler/rekeyed-moves.js";
 import { isPending } from "../core/state/index.js";
 import {
@@ -150,11 +150,11 @@ export type StatusWait =
  * ones not yet seen through (`lastHeard`, `editWindow`). Then quiet is none
  * of those files pending, slow ones aside, whatever else runs, and news is
  * a transition of one of their checks; until the moves are read, neither.
- * A daemon that records no moves (one before the task) or cannot sync,
- * moves a prune dropped since the start, and a key the record's writer did
- * not write, read before the window or at any read after it (another
- * daemon's, review wave 13ac, B1), leave the wait as before: nothing
- * pending at all, and any check's news.
+ * A daemon that names no incarnation (one before task 001-268) or cannot
+ * sync, moves lost since the start, and a record that incarnation did not
+ * write last or a daemon registered since, read before the window or at any
+ * read after it (`movesTrusted`, review waves 13ac and 13ad, B1), leave the
+ * wait as before: nothing pending at all, and any check's news.
  */
 export async function waitForStatus(
   cwd: AbsolutePath,
@@ -201,22 +201,29 @@ export async function waitForStatus(
         const current = syncing.sync.current();
         if (current.state === "synced" && syncing.window === undefined && !syncing.fallback) {
           // Every revision's files: a told one counts while its files are not seen through (001-191).
-          const answer: MovesAnswer = current.moves
-            ? answerMoves(store, id, current.revision, syncing.sinceSeq ?? 0)
-            : { state: "incomplete" };
+          const answer: MovesAnswer = answerMoves(
+            store,
+            id,
+            current.revision,
+            syncing.sinceSeq ?? 0,
+            current.incarnation,
+          );
           if (answer.state === "answered") {
             syncing.window = editWindow(store, id, heard, current.revision, answer.rekeyed);
           }
           syncing.fallback = answer.state === "incomplete";
         }
-        let keys = syncing.window === undefined ? [] : store.testFileKeys.list(id);
-        if (syncing.window !== undefined && !movesVouch(store, id, syncing.sinceSeq ?? 0, keys)) {
-          // Another writer moved a key since the window was read: it names no files now (13ac B1).
+        if (
+          syncing.window !== undefined &&
+          current.state === "synced" &&
+          !movesTrusted(store, id, syncing.sinceSeq ?? 0, current.incarnation)
+        ) {
+          // Another daemon registered or wrote since the window was read: it names no files (B1).
           syncing.window = undefined;
           syncing.fallback = true;
-          keys = [];
         }
         const window = syncing.window;
+        const keys = window === undefined ? [] : store.testFileKeys.list(id);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id), now());
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.

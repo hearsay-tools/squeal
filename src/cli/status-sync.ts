@@ -5,17 +5,23 @@ import { askDaemon, daemonSocket } from "./daemon-access.js";
 /**
  * Where a wait's sync stands: `pending` until the daemon stored its pass;
  * `synced` with the revision that holds every change made before the
- * request, and whether the daemon records the re-key moves the wait reads
- * from the store (`moves`, task 001-258; `false` from a daemon before it),
- * which says nothing of a successor: the record itself says whether its
- * writer wrote every row (`movesVouch`, review wave 13ac, B1);
+ * request, and the incarnation of the daemon that answered, which names
+ * itself the writer of the re-key moves the wait reads from the store
+ * (`incarnation`, task 001-268; `null` from a daemon before it, whose
+ * moves no wait trusts), which says nothing of a successor: the wait
+ * checks the record's writer and the registered daemon at every read
+ * (`movesTrusted`, review waves 13ac and 13ad, B1);
  * `unsupported` when no daemon could sync (none listens, one from before
  * the request, or its pass failed), and the wait falls back to its settle
  * time.
  */
 export type SyncState =
   | { readonly state: "pending" }
-  | { readonly state: "synced"; readonly revision: RevisionNumber; readonly moves: boolean }
+  | {
+      readonly state: "synced";
+      readonly revision: RevisionNumber;
+      readonly incarnation: string | null;
+    }
   | { readonly state: "unsupported" };
 
 export interface DaemonSync {
@@ -71,7 +77,8 @@ async function syncOnce(
   let state: SyncResponse = first;
   for (;;) {
     if (state.revision !== null) {
-      return { state: "synced", revision: state.revision, moves: state.moves === true };
+      const incarnation = state.moves === true ? (state.incarnation ?? null) : null;
+      return { state: "synced", revision: state.revision, incarnation };
     }
     if (state.error !== null) return UNSUPPORTED;
     // Unref'd: a wait that ended does not keep the CLI alive for its sync.

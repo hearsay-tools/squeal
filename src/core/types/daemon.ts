@@ -6,7 +6,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import { worktreeMetaKey } from "./store.js";
-import type { CheckpointRecord } from "./store-records.js";
+import type { CheckpointRecord, DaemonRecord } from "./store-records.js";
 
 /*
  * The daemon's unix socket. Spec 001 D1: "The unix socket for liveness is
@@ -187,6 +187,31 @@ export interface SyncResponse {
    * files, never ends quiet on them.
    */
   readonly moves?: true;
+  /**
+   * The answering daemon's incarnation (`daemonIncarnation`), which its
+   * ledger names as the writer of those moves (task 001-268). Absent from a
+   * daemon before it: the wait cannot tell its moves from another writer's,
+   * and names no files.
+   */
+  readonly incarnation?: string;
+}
+
+/**
+ * A daemon's incarnation as its registration row names it: the version and
+ * the start time of the daemon that registered (`DaemonRecord`); `null`
+ * with none registered. Two daemons of one worktree never run at once, so
+ * a successor registers another.
+ */
+export function daemonIncarnation(
+  daemon: Pick<DaemonRecord, "squealVersion" | "startedAt">,
+): string;
+export function daemonIncarnation(
+  daemon: Pick<DaemonRecord, "squealVersion" | "startedAt"> | null,
+): string | null;
+export function daemonIncarnation(
+  daemon: Pick<DaemonRecord, "squealVersion" | "startedAt"> | null,
+): string | null {
+  return daemon === null ? null : `${daemon.squealVersion}@${daemon.startedAt}`;
 }
 
 /** What a daemon's sync pass left: its revision. */

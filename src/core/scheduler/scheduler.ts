@@ -148,6 +148,7 @@ class TierScheduler implements Scheduler {
         note: (message) => this.#note(message),
         rerunCap: options.rerunCap ?? RERUN_CAP,
         ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
+        ...(options.incarnation === undefined ? {} : { incarnation: options.incarnation }),
       };
       const ledger = new Ledger(context);
       // Notes written during the baseline carry its revision.

@@ -20,7 +20,7 @@ import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
-import { captureSync } from "./store-wait.js";
+import { captureSync, HARNESS_DAEMON, HARNESS_INCARNATION } from "./store-wait.js";
 
 /*
  * Re-review 003-46 (003-node-test-runner/reviews/wave-4.5.md, B1), closed by
@@ -74,11 +74,10 @@ describe(
         isMain: true,
         registeredAt: 1,
         daemon: {
+          ...HARNESS_DAEMON,
           socketPath: "/tmp/squeal-test.sock",
-          startedAt: Date.now(),
           heartbeatAt: Date.now(),
           heartbeatIntervalMs: 600_000,
-          squealVersion: "0.0.0-test",
         },
       });
 
@@ -122,6 +121,7 @@ describe(
         squealVersion: "0.0.0-test",
         runsDir: storePaths(repo.commonDir).runsDir,
         head: () => readHead(root),
+        incarnation: HARNESS_INCARNATION,
       });
       onTestFinished(async () => {
         release();

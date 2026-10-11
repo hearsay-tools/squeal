@@ -1,6 +1,7 @@
 import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import {
+  daemonIncarnation,
   type EpochMs,
   type RekeyedTestFile,
   type RevisionNumber,
@@ -10,7 +11,6 @@ import {
   type WorktreeId,
   worktreeMetaKey,
 } from "../types/index.js";
-import { type KeyMarks, markRows, marksVouch, readKeyMarks } from "./moves-keys.js";
 import type { RekeyedMark } from "./rekeyed-record.js";
 
 /*
@@ -32,16 +32,17 @@ import type { RekeyedMark } from "./rekeyed-record.js";
  * timer. A wait whose start predates a pruned entry (`dropped`) falls back,
  * never ends quiet.
  *
- * Review wave 13ac, B1 (task 001-265): a daemon before 001-258 moves keys
- * and refines without writing this record, and may succeed a newer one at
- * any time, before a wait's refinement or after its window. So the record
- * also keeps, per test file, the revision and key its writer last wrote
- * (`keys`), and vouches for the moves only while every `test_file_keys` row
- * still has them (`movesVouch`): a row another writer wrote makes a wait fall
- * back, in the same read it would trust the record in. A ledger's first
- * commit takes such rows in (`unrecordedRows`): a pending one as a move
- * open at its row's revision, and every one as lost history (`dropped`), so
- * a wait that started before falls back too.
+ * Review waves 13ac and 13ad, B1 (tasks 001-265, 001-268): a daemon
+ * before 001-258 moves keys and refines without writing this record, and
+ * may run before or after a newer one, even between two of a wait's reads;
+ * a key it moves away and back leaves no trace in the rows. So the record
+ * names the daemon incarnation that wrote it (`writer`), and a wait trusts
+ * it only while the worktree's registered daemon is that incarnation, the
+ * one that answered its sync (`movesTrusted`). Every daemon registers
+ * before it writes a row, so another writer's rows come with another
+ * registration. A ledger's first commit takes in every pending row as a
+ * move open at its row's revision, whoever wrote it, and the history before
+ * as lost (`dropped`), so a wait that started before falls back.
  */
 
 /** `meta` key of a worktree's re-key moves. */
@@ -70,27 +71,27 @@ interface Moves {
   /** Since when the refined revision has been the current one; `null` while behind. */
   caughtUpAt: EpochMs | null;
   /**
-   * The latest `seq` of a resolved move a prune dropped, or of a commit that
-   * took in rows another writer wrote (`unrecordedRows`).
+   * The latest `seq` of a resolved move a prune dropped, or of a ledger's
+   * first commit, which took in what writers before it left pending.
    */
   dropped: number;
   /** By `testFileId`. */
   files: Record<string, FileMoves>;
   /**
-   * The file's `test_file_keys` row as this record's writer last wrote it
-   * (`moves-keys.ts`); `null` in a record before task 001-265, which
-   * vouches for no row.
+   * The incarnation of the daemon whose ledger last wrote the record
+   * (`daemonIncarnation`); `null` when unknown: a record before task
+   * 001-268, or a writer that named none, which no wait trusts.
    */
-  keys: KeyMarks | null;
+  writer: string | null;
 }
 
-/** The rows one commit writes, and those its ledger found no record vouches for (`recordMoves`). */
-export interface MovesRows {
-  readonly written: readonly TestFileKeyRecord[];
-  readonly unrecorded: readonly TestFileKeyRecord[];
+/** Who writes one commit's moves (`recordMoves`). */
+export interface MovesWriter {
+  /** The writing daemon's incarnation; `null` when it has none. */
+  readonly writer: string | null;
+  /** At a ledger's first commit: the worktree's rows before it wrote any. */
+  readonly before?: readonly TestFileKeyRecord[];
 }
-
-const NO_ROWS: MovesRows = { written: [], unrecorded: [] };
 
 const isInt = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value);
@@ -126,34 +127,40 @@ function readMoves(store: Store, worktreeId: WorktreeId): Moves | null {
     caughtUpAt,
     dropped: value.dropped,
     files,
-    keys: readKeyMarks(value.keys),
+    writer: typeof value.writer === "string" ? value.writer : null,
   };
 }
 
 /**
- * The worktree's `test_file_keys` rows the record does not name as its
- * writer last wrote them: another writer's, a daemon's before task 001-258
- * or 001-265. A ledger reads them before its first commit writes a row.
+ * Whether a wait that started at `sinceSeq`, whose sync `incarnation`
+ * answered, may trust the record: one exists, no prune or ledger's first
+ * commit lost a move since, that incarnation wrote it last and is still the
+ * worktree's registered daemon (review waves 13ac and 13ad, B1). Read in
+ * the wait's read transaction, beside what it decides with.
  */
-export function unrecordedRows(store: Store, worktreeId: WorktreeId): readonly TestFileKeyRecord[] {
-  const moves = readMoves(store, worktreeId);
-  const rows = store.testFileKeys.list(worktreeId);
-  return moves === null ? rows : rows.filter((row) => !marksVouch(moves.keys, [row]));
-}
-
-/**
- * Whether a wait that started at `sinceSeq` may trust the record over the
- * worktree's `rows` (`test_file_keys`): one exists, no prune or other writer
- * lost a move since, and its writer wrote every row (review wave 13ac, B1).
- */
-export function movesVouch(
+export function movesTrusted(
   store: Store,
   worktreeId: WorktreeId,
   sinceSeq: number,
-  rows: readonly TestFileKeyRecord[],
+  incarnation: string | null,
 ): boolean {
-  const moves = readMoves(store, worktreeId);
-  return moves !== null && moves.dropped <= sinceSeq && marksVouch(moves.keys, rows);
+  return trusted(store, worktreeId, readMoves(store, worktreeId), sinceSeq, incarnation);
+}
+
+function trusted(
+  store: Store,
+  worktreeId: WorktreeId,
+  moves: Moves | null,
+  sinceSeq: number,
+  incarnation: string | null,
+): boolean {
+  return (
+    incarnation !== null &&
+    moves !== null &&
+    moves.dropped <= sinceSeq &&
+    moves.writer === incarnation &&
+    daemonIncarnation(store.worktrees.get(worktreeId)?.daemon ?? null) === incarnation
+  );
 }
 
 /** The record's commit sequence, which a wait reads with its start view; `null` with no record. */
@@ -172,10 +179,10 @@ function refinedRevision(store: Store, worktreeId: WorktreeId): RevisionNumber |
  * `now`, while the worktree's revision is `revision`. Call inside the
  * scheduler's commit transaction, before it records its own refined
  * revision. Prunes resolved moves older than `MOVES_RETENTION_MS` once
- * refinement has been caught up for `MOVES_GRACE_MS`. Keeps the `rows` the
- * commit wrote as the record's own, and takes in the `unrecorded` ones: a
- * pending row as a move open at its revision, and the history before this
- * commit as lost (`dropped`).
+ * refinement has been caught up for `MOVES_GRACE_MS`. Names `by.writer`
+ * as the record's writer. At a ledger's first commit (`by.before`), takes
+ * in each pending row as a move open at its revision, whatever wrote it,
+ * and the history before this commit as lost (`dropped`).
  */
 export function recordMoves(
   store: Store,
@@ -184,34 +191,30 @@ export function recordMoves(
   removed: readonly string[],
   revision: RevisionNumber,
   now: EpochMs,
-  rows: MovesRows = NO_ROWS,
+  by: MovesWriter,
 ): void {
   const read = readMoves(store, worktreeId);
-  const moves = read ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, keys: {} };
+  const moves = read ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, writer: null };
   const seq = moves.seq + 1;
-  let changed = read === null || moves.keys === null;
-  const keys = moves.keys ?? {};
-  moves.keys = keys;
+  let changed = read === null || moves.writer !== by.writer;
+  moves.writer = by.writer;
+  if (by.before !== undefined) {
+    // Review wave 13ad, B1: a row's values do not say who moved it, nor how often.
+    moves.dropped = seq;
+    changed = true;
+    for (const row of by.before) {
+      if (row.pending === null) continue;
+      const id = testFileId(row.testFile);
+      apply(moves, { id, open: row.revision, moved: row.revision }, seq, now);
+    }
+  }
   for (const id of removed) {
-    if (id in moves.files || id in keys) {
+    if (id in moves.files) {
       delete moves.files[id];
-      delete keys[id];
       changed = true;
     }
   }
-  const gone = new Set(removed);
-  const unrecorded = rows.unrecorded.filter((row) => !gone.has(testFileId(row.testFile)));
-  if (unrecorded.length > 0) {
-    moves.dropped = seq;
-    changed = true;
-  }
-  for (const row of unrecorded) {
-    if (row.pending === null) continue;
-    const id = testFileId(row.testFile);
-    apply(moves, { id, open: row.revision, moved: row.revision }, seq, now);
-  }
   for (const mark of marks) changed = apply(moves, mark, seq, now) || changed;
-  changed = markRows(keys, [...unrecorded, ...rows.written]) || changed;
   const refined = refinedRevision(store, worktreeId);
   const caughtUpAt = refined === null || refined >= revision ? (moves.caughtUpAt ?? now) : null;
   if (caughtUpAt !== moves.caughtUpAt) {
@@ -271,12 +274,12 @@ function prune(moves: Moves, cutoff: EpochMs): boolean {
 
 /**
  * What a wait reads once the daemon captured `upTo`: `refining` until the
- * store's refined revision reached it; `incomplete` with no record, when
- * a prune dropped a move resolved after the wait's start (`sinceSeq`) or a
- * ledger took in another writer's rows since, or when a row is not as the
- * record's writer wrote it (`movesVouch`), so the wait falls back and never
- * ends quiet; else every move at a revision
- * up to `upTo` that is open, or was resolved after the start (`resolved`).
+ * store's refined revision reached it; `incomplete` when the wait may not
+ * trust the record (`movesTrusted`): none, a move lost since the wait's
+ * start (`sinceSeq`), or another incarnation than the sync's wrote it or is
+ * registered, so the wait falls back and never ends quiet; else every move
+ * at a revision up to `upTo` that is open, or was resolved after the start
+ * (`resolved`).
  */
 export type MovesAnswer =
   | { readonly state: "refining" }
@@ -289,14 +292,15 @@ export function answerMoves(
   worktreeId: WorktreeId,
   upTo: RevisionNumber,
   sinceSeq: number,
+  incarnation: string | null,
 ): MovesAnswer {
-  const refined = refinedRevision(store, worktreeId);
-  if (refined !== null && refined < upTo) return { state: "refining" };
   const moves = readMoves(store, worktreeId);
-  const rows = store.testFileKeys.list(worktreeId);
-  if (moves === null || moves.dropped > sinceSeq || !marksVouch(moves.keys, rows)) {
+  if (moves === null || !trusted(store, worktreeId, moves, sinceSeq, incarnation)) {
     return { state: "incomplete" };
   }
+  const refined = refinedRevision(store, worktreeId);
+  if (refined !== null && refined < upTo) return { state: "refining" };
+  const rows = store.testFileKeys.list(worktreeId);
   const refs = new Map(rows.map((row) => [testFileId(row.testFile), row.testFile]));
   const rekeyed: RekeyedTestFile[] = [];
   for (const [id, file] of Object.entries(moves.files)) {

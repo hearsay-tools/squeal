@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import { readRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
-import { movesOnceRefined } from "./store-wait.js";
+import { liveDaemon, movesOnceRefined } from "./store-wait.js";
 
 /*
  * Review wave 13u, B1 (task 001-238): a delivery's edit notes (tasks 001-223
@@ -21,6 +21,7 @@ describe("edit notes over the scheduler's re-key record (task 001-238)", () => {
     async () => {
       const repo = createRepo();
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
+      liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       const { delivery, consumer } = await h.consumer();
       await h.scheduler.start();
       await h.scheduler.idle();
