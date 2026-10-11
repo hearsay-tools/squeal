@@ -4,11 +4,12 @@
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { join, relative } from "node:path";
@@ -172,25 +173,42 @@ const SCAN_LIMIT = 64 * 1024 * 1024;
 
 /**
  * Files under `dirs` holding any of `secrets`: the path and how many secrets it holds, never the
- * values. A file too large to scan is listed with `unscanned: true`.
+ * values. The scan reads every file at any depth and never follows a link: a link's own bytes are
+ * its target. A file too large to scan, or a directory it cannot read, is listed with
+ * `unscanned: true`.
  */
 export function scanForSecrets(dirs, secrets) {
   const hits = [];
+  const holds = (text) => secrets.filter((s) => text.includes(s)).length;
   const visit = (p) => {
     let st;
     try {
-      st = statSync(p);
+      st = lstatSync(p);
     } catch {
       return;
     }
     if (st.isDirectory()) {
-      if (/\/node_modules$|\/\.git\/objects$/.test(p)) return;
-      for (const e of readdirSync(p)) visit(join(p, e));
+      let entries;
+      try {
+        entries = readdirSync(p);
+      } catch {
+        hits.push({ path: p, secrets: 0, unscanned: true });
+        return;
+      }
+      for (const e of entries) visit(join(p, e));
+    } else if (st.isSymbolicLink()) {
+      const n = holds(readlinkSync(p));
+      if (n) hits.push({ path: p, secrets: n });
     } else if (st.isFile() && st.size >= SCAN_LIMIT) {
       hits.push({ path: p, secrets: 0, unscanned: true });
     } else if (st.isFile()) {
-      const text = readFileSync(p, "latin1");
-      const n = secrets.filter((s) => text.includes(s)).length;
+      let n;
+      try {
+        n = holds(readFileSync(p, "latin1"));
+      } catch {
+        hits.push({ path: p, secrets: 0, unscanned: true });
+        return;
+      }
       if (n) hits.push({ path: p, secrets: n });
     }
   };
@@ -198,14 +216,46 @@ export function scanForSecrets(dirs, secrets) {
   return hits;
 }
 
+/** The directories retained evidence never keeps: dependency trees and Git's compressed objects. */
+const UNKEPT = /\/(?:node_modules|\.git\/objects)$/;
+
+/** Removes every unkept entry under `dir`, at any depth; one that resists is left to the scan. */
+function prune(dir) {
+  const visit = (p) => {
+    let st;
+    try {
+      st = lstatSync(p);
+    } catch {
+      return;
+    }
+    if (st.isSymbolicLink() || (st.isDirectory() && UNKEPT.test(p))) {
+      try {
+        rmSync(p, { recursive: true, force: true });
+      } catch {
+        // Scanned below: whatever survives in it fails the cell.
+      }
+    } else if (st.isDirectory()) {
+      let entries = [];
+      try {
+        entries = readdirSync(p);
+      } catch {
+        // Listed by the scan as unscanned.
+      }
+      for (const e of entries) visit(join(p, e));
+    }
+  };
+  visit(dir);
+}
+
 /**
  * Clears a cell's scratch and makes its retained evidence safe: scans the cell for `secrets`,
- * removes the scratch homes, temp directory, the work tree's `node_modules` and `.git` (its
- * compressed objects cannot be scanned; the diff and the store copy were taken from it), then
- * sanitizes each text file in `out/` and `work/` that holds a secret and removes each binary or
- * unscannable one, and scans again. The scratch Codex config holds the provider's URL by design
- * and is removed with the rest. Returns relative paths only: `secretsAfterRemoval` not empty
- * means a secret survived and the cell fails.
+ * removes the scratch homes, temp directory and the work tree's `.git` (the diff and the store
+ * copy were taken from it), then removes from `out/` and `work/` every `node_modules` and
+ * `.git/objects` at any depth and every link, sanitizes each text file that holds a secret and
+ * removes each binary or unscannable one, and scans the whole cell again with nothing skipped.
+ * The scratch Codex config holds the provider's URL by design and is removed with the rest.
+ * Returns relative paths only: `secretsAfterRemoval` not empty means a secret survived, or
+ * something retained could not be scanned, and the cell fails.
  */
 export function clearScratch(cell, secrets) {
   const rel = (h) => relative(cell, h.path);
@@ -216,8 +266,13 @@ export function clearScratch(cell, secrets) {
   )
     .map(rel)
     .filter((p) => p !== "codex/config.toml");
-  for (const d of ["home", "codex", "tmp", "work/node_modules", "work/.git"])
-    rmSync(join(cell, d), { recursive: true, force: true });
+  for (const d of ["home", "codex", "tmp", "work/.git"])
+    try {
+      rmSync(join(cell, d), { recursive: true, force: true });
+    } catch {
+      // Scanned below.
+    }
+  for (const d of evidence) prune(d);
   const sanitized = [];
   const removed = [];
   for (const hit of scanForSecrets(evidence, secrets)) {
@@ -228,7 +283,7 @@ export function clearScratch(cell, secrets) {
         writeFileSync(hit.path, redact(text, secrets));
         sanitized.push(rel(hit));
       } else {
-        rmSync(hit.path, { force: true });
+        rmSync(hit.path, { recursive: true, force: true });
         removed.push(rel(hit));
       }
     } catch {
