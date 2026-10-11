@@ -118,3 +118,50 @@ export function groundTruthOf(input: {
   nodeExit: number;
 }): Truth | { error: string };
 export function squealState(text: string): SquealEnd;
+
+export function daemonPids(root: string): number[];
+export function waitForExit(
+  pids: readonly number[],
+  ms?: number,
+): Promise<{ pid: number; exitedMs: number; signal: "SIGTERM" | "SIGKILL" | null }[]>;
+
+export function cellEnv(
+  parent: Record<string, string | undefined>,
+  cell: string,
+  provider?: readonly string[],
+): Record<string, string | undefined>;
+export function providerVariables(
+  harness: "claude" | "codex",
+  parent: Record<string, string | undefined>,
+  realCodexConfig?: string,
+): string[];
+export function codexConfig(realConfig: string, model: string): string;
+export function secretsOf(
+  env: Record<string, string | undefined>,
+  realCodexConfig?: string,
+): string[];
+export function scanForSecrets(
+  dirs: readonly string[],
+  secrets: readonly string[],
+): { path: string; secrets: number }[];
+
+export const CLAUDE_ALLOWED_TOOLS: readonly string[];
+export function sessionCommand(input: {
+  harness: "claude" | "codex";
+  prompt: string;
+  model: string;
+  effort: string;
+  pluginDir: string | null;
+}): [string, string[]];
+
+export interface Patch {
+  files: string;
+  find: string;
+  replace: string;
+  min?: number;
+}
+export function applyPatch(text: string, patch: Patch): { text: string; count: number };
+export function patchPlugins(
+  pluginsDir: string,
+  variant: { patch?: readonly Patch[] },
+): { find: string; count: number }[];
