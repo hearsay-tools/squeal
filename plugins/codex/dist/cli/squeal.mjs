@@ -34276,7 +34276,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.124";
+  if (true) return "0.1.125";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -38522,10 +38522,14 @@ function splitNews(window, entries2) {
 init_state3();
 init_text();
 function waitLine(wait, command = "squeal") {
+  const line = ownLine(wait, command);
+  return wait.slow === void 0 || wait.outcome === "no-daemon" ? line : `${line}${slowText(wait.slow)}`;
+}
+function ownLine(wait, command) {
   const { outcome: outcome2, transitions, edit, result: snapshot3 } = wait;
   const after = `after ${(wait.waitedMs / 1e3).toFixed(1)} s`;
   const at2 = `at revision ${snapshot3.revision}`;
-  const running = outcome2 === "quiet" ? checkpointText(snapshot3, command) : "";
+  const running = outcome2 === "quiet" ? `${checkpointText(snapshot3, command)}${wait.slow === void 0 ? slowTierText2(snapshot3, command) : ""}` : "";
   if (edit !== void 0 && outcome2 !== "no-daemon") {
     return `${editLine(edit, wait, at2, after)}${running}`;
   }
@@ -38559,6 +38563,20 @@ function checkpointText(snapshot3, command) {
   const what = checkpoint.kind === "run-all" ? "a `run --all` checkpoint" : "the baseline checkpoint";
   return `; ${what} is still running (${checkpoint.done} of ${plural(checkpoint.total, "test file")} done), which this wait does not hold for: \`${command} run --all --wait\` waits for it`;
 }
+function slowText(slow) {
+  if (slow.held === 0) return "";
+  const queued = `${plural(slow.held, "slow file")} run --slow queued`;
+  if (slow.pending.length === 0) {
+    return `; the ${queued} ${slow.held === 1 ? "has its result" : "have their results"}`;
+  }
+  return `; ${slow.pending.length} of the ${queued} pending: ${slow.pending.join(", ")}`;
+}
+function slowTierText2(snapshot3, command) {
+  const tier = snapshot3.slowTier;
+  const open3 = tier === void 0 ? 0 : tier.pending + tier.notRun;
+  if (open3 === 0) return "";
+  return `; ${plural(open3, "slow file")} ${open3 === 1 ? "is" : "are"} not current, which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${open3 === 1 ? "it" : "them"}`;
+}
 function noDaemonText(daemon) {
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
   return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
@@ -38574,6 +38592,27 @@ function pendingText2(snapshot3) {
   if (files2 > 0) parts.push(`${plural(files2, "test file")} without checks`);
   if (snapshot3.runnerPartPending === true) parts.push(runnerPartText(snapshot3.revision));
   return parts.length === 1 ? `${parts[0]} pending` : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
+}
+
+// src/cli/status-wait-slow.ts
+init_keys();
+init_state3();
+function pendingSlow(store, worktreeId, states, keys) {
+  const view = worktreeSlowView(store, worktreeId);
+  if (view === null) return /* @__PURE__ */ new Map();
+  const files2 = classifySlowFiles(states, keys, view.isSlow);
+  return new Map(
+    [...files2].filter(([, file]) => file.class === "pending").map(([id2, file]) => [id2, file.ref.path])
+  );
+}
+function heldSlowLeft(held2, now) {
+  return [...held2.keys()].filter((id2) => now.has(id2)).map((id2) => held2.get(id2)).sort();
+}
+function heldSlowNews(held2, entries2, counted) {
+  return entries2.filter((entry2) => {
+    const id2 = testFileId(testFileOf(entry2.check));
+    return held2.has(id2) && !counted.has(id2);
+  }).length;
 }
 
 // src/cli/status-wait.ts
@@ -38628,7 +38667,10 @@ async function waitForStatus(cwd, options) {
           if (syncing.fallback) syncing.window = void 0;
         }
         const window = syncing.window;
-        const keys = window === void 0 ? [] : store.testFileKeys.list(id2);
+        const keys = window === void 0 && options.holdSlow !== true ? [] : store.testFileKeys.list(id2);
+        if (options.holdSlow === true) syncing.slow ??= pendingSlow(store, id2, states, keys);
+        const held2 = syncing.slow;
+        const slowLeft = held2 === void 0 ? [] : heldSlowLeft(held2, pendingSlow(store, id2, states, keys));
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id2), now());
         let transitions;
@@ -38637,13 +38679,14 @@ async function waitForStatus(cwd, options) {
         if (window !== void 0) {
           const split = splitNews(window, news);
           const pending = heldPending(window, keys);
-          transitions = split.own;
+          const slowNews = held2 === void 0 ? 0 : heldSlowNews(held2, news, window.ids);
+          transitions = split.own + slowNews;
           quiet = header.revision >= window.revision && windowRefined(window, header) && pending === 0;
           edit = {
             since: window.since,
             testFiles: window.ids.size,
             pending,
-            otherTransitions: split.other
+            otherTransitions: split.other - slowNews
           };
         } else if (current2.state === "pending" || current2.state === "synced" && !syncing.fallback) {
           transitions = 0;
@@ -38652,10 +38695,12 @@ async function waitForStatus(cwd, options) {
           transitions = news.length;
           quiet = isSynced(current2, header.revision, settled) && !isPending(header);
         }
+        quiet &&= slowLeft.length === 0;
         const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
         if (outcome2 === null) return null;
         const result = buildSnapshot(store, root, now());
-        return { outcome: outcome2, transitions, ...edit === void 0 ? {} : { edit }, result };
+        const slow = held2 === void 0 ? {} : { slow: { held: held2.size, pending: slowLeft } };
+        return { outcome: outcome2, transitions, ...edit === void 0 ? {} : { edit }, ...slow, result };
       });
       if (read4 !== null && "available" in read4) {
         if (start === null || final) {
@@ -38688,11 +38733,16 @@ function newsOf(start, states, revision) {
     revision
   }).entries;
 }
-async function statusWaitCommand(timeoutMs, json3, io) {
+async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false) {
   const now = io.now ?? Date.now;
   const env = io.env ?? process.env;
   const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
-  const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now, session });
+  const wait = await waitForStatus(io.cwd ?? process.cwd(), {
+    timeoutMs,
+    now,
+    session,
+    holdSlow
+  });
   const result = wait.result;
   if (wait.outcome === "unavailable") {
     io.stdout(json3 ? `${JSON.stringify(result, null, 2)}
@@ -38762,7 +38812,7 @@ ${usage2}`);
 ` : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.
 `
   );
-  return wait.waitMs === null ? 0 : statusWaitCommand(wait.waitMs, false, io);
+  return wait.waitMs === null ? 0 : statusWaitCommand(wait.waitMs, false, io, queued > 0);
 }
 async function taken(socketPath, first, io) {
   if (first === null) return "no-daemon";
