@@ -2,7 +2,9 @@
 // Spec 006 D9's calibration gate: the judge identity judges every reference session in both
 // harnesses twice and must give each its expected verdict both times.
 //   node --import tsx evals/bin/judge-calibrate.mjs [--model claude-haiku-5-5] [--base <dir>]
-//     [--parallel 4] [--date YYYY-MM-DD]
+//     [--parallel 4] [--date YYYY-MM-DD] [--max-cost <usd>]
+// --max-cost stops calling the model once the calls made so far cost that much; the calls left
+// fail, so the identity fails calibration rather than overspending (up to --parallel calls past it).
 // --model is Haiku 5.5 or Sonnet 5.5, never Opus or Fable; try Sonnet only when Haiku fails.
 // --base is where each call's scratch HOME is made and removed (the system temp directory by
 // default). The reference sessions are this repository's (test/evals/judge-references.ts), so the
@@ -27,6 +29,7 @@ const { values } = parseArgs({
     base: { type: "string", default: tmpdir() },
     parallel: { type: "string", default: "4" },
     date: { type: "string", default: new Date().toISOString().slice(0, 10) },
+    "max-cost": { type: "string" },
   },
 });
 if (!JUDGE_MODELS.includes(values.model)) {
@@ -44,7 +47,19 @@ try {
 }
 
 const declared = declarations();
-const runner = claudeRunner({ base: values.base });
+const maxCost = values["max-cost"] === undefined ? Infinity : Number(values["max-cost"]);
+const real = claudeRunner({ base: values.base });
+let spent = 0;
+/** The real runner until the calls so far cost `maxCost`, then a refusal. */
+const runner = async (call) => {
+  if (spent >= maxCost)
+    return { status: 1, stdout: "", stderr: `--max-cost $${maxCost} reached, not called` };
+  const r = await real(call);
+  try {
+    spent += JSON.parse(r.stdout).total_cost_usd ?? 0;
+  } catch {}
+  return r;
+};
 const identity = judgeIdentity({
   model: values.model,
   effort: JUDGE.effort,
