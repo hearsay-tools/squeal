@@ -5,6 +5,7 @@ import {
   SUMMARY_MAX_CHARS,
   slowTierText,
 } from "../state/index.js";
+import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -152,10 +153,16 @@ export function headerLines(header: StatusHeader, command: string): string[] {
  */
 function livenessSentence(daemon: DaemonLiveness | undefined, revision: number): string {
   if (daemon === undefined || daemon.state === "alive") return "";
+  // Task 001-263: the daemon that died without its stop note, and what it was running.
+  const died =
+    daemon.died === undefined
+      ? ""
+      : ` The last daemon ${deathText(daemon.died, daemon.since)}. ${DEATH_CAUSE}`;
   // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
   if (daemon.startingSince !== undefined) {
-    return ` A daemon is starting; results are as of revision ${revision}.`;
+    return `${died} A daemon is starting; results are as of revision ${revision}.`;
   }
+  if (died !== "") return `${died} Results are as of revision ${revision}.`;
   const since =
     daemon.since === null
       ? "No daemon is running"

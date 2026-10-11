@@ -8,6 +8,7 @@ import type {
   StatusSnapshot,
   StatusUnavailable,
 } from "../types/index.js";
+import { DEATH_CAUSE, deathText } from "./died.js";
 
 export interface StatusFormatOptions {
   /** `squeal status --notes`: every note in full, none grouped (task 001-222). */
@@ -207,6 +208,10 @@ function worktreeLine(s: StatusSnapshot): string {
 function daemonLine(s: StatusSnapshot, now: EpochMs): string {
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
+  }
+  // Task 001-263: a daemon that died without its stop note is named, with what it was running.
+  if (s.daemon.died !== undefined) {
+    return `Daemon: ${deathText(s.daemon.died, s.daemon.since)}. ${DEATH_CAUSE}`;
   }
   if (s.daemon.since === null) return "Daemon: no daemon running";
   return `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
