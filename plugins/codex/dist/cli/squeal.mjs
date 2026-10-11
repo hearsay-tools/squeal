@@ -2539,7 +2539,14 @@ function toNote(item) {
   const { at: at2, revision, text: text2 } = item;
   if (typeof at2 !== "number" || typeof text2 !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text: text2 }];
+  const stopped = stoppedOf(item.stopped);
+  return [stopped === void 0 ? { at: at2, revision, text: text2 } : { at: at2, revision, text: text2, stopped }];
+}
+function stoppedOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { what, commands } = value;
+  if (typeof what !== "string" || !Array.isArray(commands)) return void 0;
+  return commands.every((c) => typeof c === "string") ? { what, commands } : void 0;
 }
 var init_notes = __esm({
   "src/core/notes.ts"() {
@@ -33947,7 +33954,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.111";
+  if (true) return "0.1.112";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34055,41 +34062,28 @@ function notes(s, command, all) {
   const groups = /* @__PURE__ */ new Map();
   const kept2 = [];
   for (const note of s.daemonNotes) {
-    const stopped = all ? null : parseStopped(note);
-    if (stopped === null) kept2.push(note);
-    else groups.set(stopped.what, [...groups.get(stopped.what) ?? [], stopped]);
+    const what = all ? void 0 : note.stopped?.what;
+    if (what === void 0) kept2.push(note);
+    else groups.set(what, [...groups.get(what) ?? [], note]);
   }
   const folded = [];
   for (const [what, list2] of groups) {
     const [only] = list2;
-    if (list2.length === 1 && only !== void 0) kept2.push(only.note);
+    if (list2.length === 1 && only !== void 0) kept2.push(only);
     else folded.push(foldedText(what, list2, command));
   }
   kept2.sort((a, b) => a.at - b.at);
   const lines = [...s.notes, ...kept2.map(stamped), ...folded];
   return lines.length === 0 ? [] : ["Notes:", ...lines.map((note) => `  ${note}`)];
 }
-var STOPPED = /^stopped \d+ process(?:es)? (.+?): (.+)$/;
-var COMMAND_CHARS = 120;
-function parseStopped(note) {
-  const match2 = STOPPED.exec(note.text);
-  if (match2 === null) return null;
-  const [, what = "", list2 = ""] = match2;
-  const commands = list2.split("; ").map((entry2) => {
-    const facts = entry2.lastIndexOf(" (");
-    const process2 = facts === -1 ? entry2 : entry2.slice(0, facts);
-    return cap(process2.slice(process2.indexOf(" ") + 1), COMMAND_CHARS);
-  });
-  return { note, what, commands };
-}
 function foldedText(what, list2, command) {
   const counts = /* @__PURE__ */ new Map();
-  for (const line of list2.flatMap((stopped) => stopped.commands)) {
+  for (const line of list2.flatMap((note) => note.stopped?.commands ?? [])) {
     counts.set(line, (counts.get(line) ?? 0) + 1);
   }
   const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
   const byCommand = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([line, n]) => `${n} \xD7 ${line}`);
-  const since = new Date(Math.min(...list2.map((stopped) => stopped.note.at))).toISOString();
+  const since = new Date(Math.min(...list2.map((note) => note.at))).toISOString();
   const processes = total === 1 ? "1 process" : `${total} processes`;
   return `stopped ${processes} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
@@ -35769,7 +35763,7 @@ import { readFile as readFile2 } from "node:fs/promises";
 import { setTimeout as sleep2 } from "node:timers/promises";
 var GRACE_MS = 1e3;
 var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS2 = 120;
+var COMMAND_CHARS = 120;
 var PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
 async function terminate(found, table = PROC) {
   const same = (entry2) => table.stat(entry2.pid)?.start === entry2.start;
@@ -35811,7 +35805,8 @@ function describe(stopped, what) {
   if (stopped.length === 0) return null;
   const count = stopped.length === 1 ? "1 process" : `${stopped.length} processes`;
   const list2 = stopped.map(entryText).join("; ");
-  return `stopped ${count} ${what}: ${list2}`;
+  const commands = stopped.map(({ args }) => args);
+  return { text: `stopped ${count} ${what}: ${list2}`, stopped: { what, commands } };
 }
 function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed, run }) {
   const ended2 = killed ? `SIGKILL after ${GRACE_MS / 1e3} s` : "SIGTERM";
@@ -35844,7 +35839,7 @@ function statOf(pid) {
 async function commandLine(pid) {
   try {
     const text2 = (await readFile2(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS2 ? `${text2.slice(0, COMMAND_CHARS2 - 3)}...` : text2;
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
   } catch {
     return "";
   }
@@ -36067,8 +36062,8 @@ function afterEachRun(runner, children, note) {
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
         const runs = [...overlapped];
-        const text2 = await children.afterRun(at2, since, alone, options.runId, runs).catch(() => null);
-        if (text2 !== null) note(text2);
+        const stop = await children.afterRun(at2, since, alone, options.runId, runs).catch(() => null);
+        if (stop !== null) note(stop);
       }
     },
     close: () => runner.close()
@@ -37458,7 +37453,7 @@ var Daemon = class {
           ...nodeTestRunners
         ]),
         this.#children,
-        (text2) => this.#note(text2)
+        ({ text: text2, stopped }) => this.#note(text2, stopped)
       );
       this.#vitest = vitestRunner;
       this.#runner = runner;
@@ -37580,13 +37575,15 @@ var Daemon = class {
       this.#log(`could not record the optimizer note: ${String(error)}`);
     }
   }
-  #note(text2) {
+  /** `stopped`, a stop's processes, goes beside the text for status to fold by (task 001-255). */
+  #note(text2, stopped) {
     this.#log(text2);
     const revision = this.#loop?.scheduler.status().revision ?? null;
+    const note = stopped === void 0 ? { text: text2 } : { text: text2, stopped };
     writeNote(
       this.opened.store,
       this.opened.worktreeId,
-      { at: this.#now(), revision, text: text2 },
+      { at: this.#now(), revision, ...note },
       () => {
       }
     );
@@ -37611,8 +37608,8 @@ var Daemon = class {
       await this.#step("loop.close", () => this.#loop?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
-        const text3 = await this.#children.atExit();
-        if (text3 !== null) this.#note(text3);
+        const stop = await this.#children.atExit();
+        if (stop !== null) this.#note(stop.text, stop.stopped);
       });
       await this.#step("temp dir removal", async () => {
         await this.opened.leftovers;
