@@ -14382,7 +14382,13 @@ function projectEnvironment(project, inputs2, context) {
   };
 }
 function canonicalConfig(project, paths, injected = {}) {
-  const { sequence, env, ...config } = project.serializedConfig;
+  const {
+    sequence,
+    env,
+    disableColors: _colors,
+    isAgent: _agent,
+    ...config
+  } = project.serializedConfig;
   const { seed: _seed, ...stableSequence } = sequence;
   return JSON.stringify(
     canonicalize(
@@ -15125,7 +15131,8 @@ function namedByConfig(config) {
   const reporters = Array.isArray(config.reporters) ? config.reporters : [];
   for (const reporter of reporters) {
     const specifier = Array.isArray(reporter) ? reporter[0] : reporter;
-    const name = typeof specifier === "string" ? packageName(specifier) : null;
+    if (typeof specifier !== "string" || BUILTIN_REPORTERS.has(specifier)) continue;
+    const name = packageName(specifier);
     if (name !== null) names.push(name);
   }
   return names;
@@ -15162,7 +15169,7 @@ async function loadsOf(file) {
 function directoryOf2(dir, paths) {
   return dir === paths.root ? "" : paths.toRelative(dir);
 }
-var NODE_MODULES, UNNAMED;
+var NODE_MODULES, UNNAMED, BUILTIN_REPORTERS;
 var init_packages2 = __esm({
   "src/runners/vitest/packages.ts"() {
     "use strict";
@@ -15172,6 +15179,21 @@ var init_packages2 = __esm({
     init_loads();
     NODE_MODULES = "node_modules/";
     UNNAMED = "module";
+    BUILTIN_REPORTERS = /* @__PURE__ */ new Set([
+      "default",
+      "agent",
+      "minimal",
+      "blob",
+      "verbose",
+      "dot",
+      "json",
+      "tap",
+      "tap-flat",
+      "junit",
+      "tree",
+      "hanging-process",
+      "github-actions"
+    ]);
   }
 });
 
@@ -15766,7 +15788,7 @@ var VITEST_ADAPTER_VERSION;
 var init_version = __esm({
   "src/runners/vitest/version.ts"() {
     "use strict";
-    VITEST_ADAPTER_VERSION = "2";
+    VITEST_ADAPTER_VERSION = "3";
   }
 });
 
@@ -34035,7 +34057,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.118";
+  if (true) return "0.1.119";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
