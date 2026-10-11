@@ -205,8 +205,10 @@ function install(settings) {
     });
   }
 
-  // The entry point of a child `node script.mjs`; a thread's argv is its parent's.
-  if (workerThreads.isMainThread && typeof process.argv[1] === "string") {
+  // The entry point of a child `node script.mjs`; a thread's argv is its parent's. Under `-e` or
+  // `-p` there is none: `argv[1]` is the first argument, often JSON or another worktree's path (001-261).
+  const evaluated = process.execArgv.some((arg) => /^(-[a-z]*[ep]|--eval|--print)(=|$)/.test(arg));
+  if (workerThreads.isMainThread && !evaluated && typeof process.argv[1] === "string") {
     record("f", process.argv[1]);
   }
 
