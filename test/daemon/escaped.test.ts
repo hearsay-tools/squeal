@@ -169,15 +169,17 @@ describe.runIf(process.platform === "linux")(
       expect(await stop.exited).toEqual({ code: 0, signal: null });
       expect(stop.stdout()).toMatch(/^Squeal daemon stopped for /);
       await waitFor(() => child !== undefined && !isAlive(child), 5_000, "the setup's child gone");
-      expect(readNoteRecords(repo)).toContainEqual({
-        text: expect.stringMatching(
-          /^stopped 1 process the runners left running when the daemon exited: /,
-        ),
-        stopped: {
-          what: "the runners left running when the daemon exited",
-          commands: [expect.any(String)],
-        },
-      });
+      expect(readNoteRecords(repo)).toContainEqual(
+        expect.objectContaining({
+          text: expect.stringMatching(
+            /^stopped 1 process the runners left running when the daemon exited: /,
+          ),
+          stopped: {
+            what: "the runners left running when the daemon exited",
+            commands: [expect.any(String)],
+          },
+        }),
+      );
     });
 
     it("leaves the rest of a pipeline it leads alone, and stops its orphan there", () => {
