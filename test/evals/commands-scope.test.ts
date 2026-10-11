@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyShell, scopeLabel } from "../../evals/lib/index.mjs";
+import { type Action, classifyShell, scopeLabel } from "../../evals/lib/index.mjs";
 
 // Review wave 2.5, B3 (the command half; wave 2.6's contract): each test action names its
 // `runner`, whether it is `informational` (help, version, listing, watch-only: never a run), and
@@ -7,7 +7,7 @@ import { classifyShell, scopeLabel } from "../../evals/lib/index.mjs";
 // filter. An npm script resolves to the command it runs, here the Ledgerline fixture's.
 const tests = (text: string) =>
   classifyShell(text, { exit: 0 })
-    .filter((a) => a.kind === "vitest" || a.kind === "node:test")
+    .filter((a): a is Extract<Action, { runner: string }> => "runner" in a)
     .map(({ runner, informational, scope }) => ({ runner, informational, scope }));
 const run = (runner: string, scope: object) => [{ runner, informational: false, scope }];
 
