@@ -2373,7 +2373,12 @@ var WORKTREE_SCOPED_TABLES = [
   "consumer_views",
   "consumers"
 ];
-var WORKTREE_META_PREFIXES = ["edits:", "checkpoint.", "rekeyed."];
+var WORKTREE_META_PREFIXES = [
+  "edits:",
+  "checkpoint.",
+  "rekeyed.",
+  "rekeyed-moves."
+];
 var EDIT_KEYS_PREFIX = "edit-keys:";
 function editKeysOf(key, worktreeId) {
   try {
@@ -4152,7 +4157,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.112";
+  if (true) return "0.1.113";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
