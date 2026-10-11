@@ -1,5 +1,5 @@
 import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
-import { cap, plural } from "../text.js";
+import { plural } from "../text.js";
 import type {
   CommitSha,
   DaemonNote,
@@ -116,17 +116,17 @@ function notes(s: StatusSnapshot, command: string, all: boolean): string[] {
     const at = new Date(n.at).toISOString();
     return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
   };
-  const groups = new Map<string, Stopped[]>();
+  const groups = new Map<string, DaemonNote[]>();
   const kept: DaemonNote[] = [];
   for (const note of s.daemonNotes) {
-    const stopped = all ? null : parseStopped(note);
-    if (stopped === null) kept.push(note);
-    else groups.set(stopped.what, [...(groups.get(stopped.what) ?? []), stopped]);
+    const what = all ? undefined : note.stopped?.what;
+    if (what === undefined) kept.push(note);
+    else groups.set(what, [...(groups.get(what) ?? []), note]);
   }
   const folded: string[] = [];
   for (const [what, list] of groups) {
     const [only] = list;
-    if (list.length === 1 && only !== undefined) kept.push(only.note);
+    if (list.length === 1 && only !== undefined) kept.push(only);
     else folded.push(foldedText(what, list, command));
   }
   kept.sort((a, b) => a.at - b.at);
@@ -134,39 +134,16 @@ function notes(s: StatusSnapshot, command: string, all: boolean): string[] {
   return lines.length === 0 ? [] : ["Notes:", ...lines.map((note) => `  ${note}`)];
 }
 
-/** A note of `describe` in `src/core/daemon/terminate.ts`: the command line of each process. */
-interface Stopped {
-  readonly note: DaemonNote;
-  readonly what: string;
-  readonly commands: readonly string[];
-}
-
-const STOPPED = /^stopped \d+ process(?:es)? (.+?): (.+)$/;
-/** How much of a command line names its group. */
-const COMMAND_CHARS = 120;
-
-function parseStopped(note: DaemonNote): Stopped | null {
-  const match = STOPPED.exec(note.text);
-  if (match === null) return null;
-  const [, what = "", list = ""] = match;
-  const commands = list.split("; ").map((entry) => {
-    const facts = entry.lastIndexOf(" (");
-    const process = facts === -1 ? entry : entry.slice(0, facts);
-    return cap(process.slice(process.indexOf(" ") + 1), COMMAND_CHARS);
-  });
-  return { note, what, commands };
-}
-
-function foldedText(what: string, list: readonly Stopped[], command: string): string {
+function foldedText(what: string, list: readonly DaemonNote[], command: string): string {
   const counts = new Map<string, number>();
-  for (const line of list.flatMap((stopped) => stopped.commands)) {
+  for (const line of list.flatMap((note) => note.stopped?.commands ?? [])) {
     counts.set(line, (counts.get(line) ?? 0) + 1);
   }
   const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
   const byCommand = [...counts]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([line, n]) => `${n} × ${line}`);
-  const since = new Date(Math.min(...list.map((stopped) => stopped.note.at))).toISOString();
+  const since = new Date(Math.min(...list.map((note) => note.at))).toISOString();
   const processes = total === 1 ? "1 process" : `${total} processes`;
   return (
     `stopped ${processes} ${what}, in ${plural(list.length, "note")} since ${since}: ` +

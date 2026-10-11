@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
+import type { DaemonNote } from "../types/index.js";
 
 /** How long a process told to stop gets before it is killed. */
 export const GRACE_MS = 1_000;
@@ -99,16 +100,21 @@ export async function terminate(
   });
 }
 
+/** A stop's note: its line and, beside it, its processes as data (task 001-255). */
+export type StopNote = Required<Pick<DaemonNote, "text" | "stopped">>;
+
 /**
- * One line naming what a stop stopped, or `null` for nothing: per process
- * its pid and command line, its parent's, its age, the signal that ended it
- * (task 001-212) and its run (review wave-13r B1).
+ * The note of what a stop stopped, or `null` for nothing. Its line names per
+ * process its pid and command line, its parent's, its age, the signal that
+ * ended it (task 001-212) and its run (review wave-13r B1); `stopped` holds
+ * each command line, which status folds by (task 001-255).
  */
-export function describe(stopped: readonly Stopped[], what: string): string | null {
+export function describe(stopped: readonly Stopped[], what: string): StopNote | null {
   if (stopped.length === 0) return null;
   const count = stopped.length === 1 ? "1 process" : `${stopped.length} processes`;
   const list = stopped.map(entryText).join("; ");
-  return `stopped ${count} ${what}: ${list}`;
+  const commands = stopped.map(({ args }) => args);
+  return { text: `stopped ${count} ${what}: ${list}`, stopped: { what, commands } };
 }
 
 function entryText({ pid, args, ppid, parent, ageSeconds, killed, run }: Stopped): string {

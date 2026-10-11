@@ -17,7 +17,12 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import { notesMetaKey, type PingResponse, type Store } from "../../src/core/types/index.js";
+import {
+  type DaemonNote,
+  notesMetaKey,
+  type PingResponse,
+  type Store,
+} from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { findProcesses, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
 
@@ -234,15 +239,22 @@ export function diagnose(
 
 /** Persisted note texts of the worktree, oldest first; a missing or unreadable store reads as a reason. */
 export function readNotes(repo: Pick<FixtureRepo, "commonDir" | "worktreeId">): string[] {
+  return readNoteRecords(repo).map((n) => n.text);
+}
+
+/** Persisted notes of the worktree as stored, oldest first; a missing or unreadable store reads as a reason. */
+export function readNoteRecords(
+  repo: Pick<FixtureRepo, "commonDir" | "worktreeId">,
+): Pick<DaemonNote, "text" | "stopped">[] {
   let store: Store | undefined;
   try {
     const opened = openStore(repo.commonDir, { create: false, busyTimeoutMs: 10_000 });
-    if (isStoreOpenFailure(opened)) return [`(store: ${JSON.stringify(opened)})`];
+    if (isStoreOpenFailure(opened)) return [{ text: `(store: ${JSON.stringify(opened)})` }];
     store = opened;
     const raw = store.meta.get(notesMetaKey(repo.worktreeId));
-    return raw === null ? [] : (JSON.parse(raw) as { text: string }[]).map((n) => n.text);
+    return raw === null ? [] : (JSON.parse(raw) as Pick<DaemonNote, "text" | "stopped">[]);
   } catch (error) {
-    return [`(store unreadable: ${String(error)})`];
+    return [{ text: `(store unreadable: ${String(error)})` }];
   } finally {
     store?.close();
   }
