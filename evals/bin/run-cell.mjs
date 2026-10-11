@@ -323,6 +323,10 @@ const meta = {
   harnessVersion: spawnSync(cmd, ["--version"], { encoding: "utf8", env }).stdout?.trim() ?? null,
 };
 writeFileSync(join(OUT, "meta.json"), JSON.stringify(meta, null, 2));
+// The harness's own records, kept with the cell's evidence: they outlive the scratch homes.
+for (const d of harness === "claude" ? ["home/.claude/projects"] : ["codex/sessions"]) {
+  if (existsSync(join(CELL, d))) cpSync(join(CELL, d), join(OUT, "harness"), { recursive: true });
+}
 const g = spawnSync("node", [join(EVALS, "bin/grade.mjs"), OUT], { encoding: "utf8" });
 if (g.status !== 0) log(`grade failed: ${g.stderr}`);
 else log(`graded: ${g.stdout.trim().split("\n").at(-1)}`);

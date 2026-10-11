@@ -122,6 +122,7 @@ describe("gradeCell on a Codex transcript", () => {
       knownFailures: 0,
       pending: 2,
       slowCurrent: false,
+      daemon: true,
       verdict: "unknown",
     });
     expect(g.claimMatchesSqueal).toBe(true);
@@ -136,6 +137,97 @@ describe("squealState", () => {
       knownFailures: null,
       verdict: "unknown",
     });
+  });
+});
+
+describe("a session with no daemon validating (the T4 knob)", () => {
+  const noDaemon =
+    "SQUEAL · Not validated: no daemon has validated since 2026-10-11T05:42:42.946Z; any change this call made has no result.";
+  const stale =
+    "Returned without a daemon: no daemon has validated since 2026-10-11T05:42:42.946Z; results are as of revision 0\n\nRevision: 0\nKnown failures: 0\nDaemon: no daemon running since 2026-10-11T05:42:42.946Z\n";
+  const events: Event[] = [
+    {
+      t: 100,
+      type: "system",
+      subtype: "hook_response",
+      hook_name: "SessionStart:startup",
+      output: "SQUEAL · registered at revision 0",
+    },
+    {
+      t: 1000,
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "e1",
+            name: "Edit",
+            input: { file_path: "/x/work/src/invoice.ts" },
+          },
+        ],
+      },
+    },
+    {
+      t: 1100,
+      type: "user",
+      message: { content: [{ type: "tool_result", tool_use_id: "e1", content: "ok" }] },
+    },
+    {
+      t: 1200,
+      type: "system",
+      subtype: "hook_response",
+      hook_name: "PostToolBatch",
+      output: noDaemon,
+    },
+    {
+      t: 2000,
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "s1",
+            name: "Bash",
+            input: { command: "squeal status --wait 60000" },
+          },
+        ],
+      },
+    },
+    {
+      t: 2900,
+      type: "user",
+      message: { content: [{ type: "tool_result", tool_use_id: "s1", content: stale }] },
+    },
+    {
+      t: 3000,
+      type: "assistant",
+      message: {
+        content: [
+          { type: "tool_use", id: "v1", name: "Bash", input: { command: "npx vitest run" } },
+        ],
+      },
+    },
+    {
+      t: 9000,
+      type: "user",
+      message: { content: [{ type: "tool_result", tool_use_id: "v1", content: "1 failed" }] },
+    },
+    { t: 9500, type: "result", result: "TESTS: fail, evidence: contract test" },
+  ];
+  const g = gradeCell({
+    timeline: claudeTimeline(events),
+    statusEnd: stale.split("\n\n")[1] ?? "",
+  });
+
+  it("does not count a 'no daemon' reply as Squeal having answered", () => {
+    expect(g.deliveries).toMatchObject({ registration: 1, noDaemon: 1, other: 0 });
+    expect(g.timeline.runs[0]?.afterSquealAnswered).toBe(false);
+    expect(g.vitestAfterSquealAnswered).toBe(0);
+  });
+
+  it("reads the store's last results without a daemon as no verdict", () => {
+    expect(g.squealEnd).toMatchObject({ knownFailures: 0, daemon: false, verdict: "unknown" });
+    expect(g.claimMatchesSqueal).toBe(false);
   });
 });
 
