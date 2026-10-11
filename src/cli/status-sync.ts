@@ -1,29 +1,19 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import type {
-  AbsolutePath,
-  EpochMs,
-  RekeyedTestFile,
-  RevisionNumber,
-  SyncRequest,
-  SyncResponse,
-} from "../core/types/index.js";
+import type { AbsolutePath, RevisionNumber, SyncResponse } from "../core/types/index.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 
 /**
  * Where a wait's sync stands: `pending` until the daemon stored its pass;
  * `synced` with the revision that holds every change made before the
- * request, and the test files the revisions after the asked `after` re-keyed
- * up to it (`null` from a daemon before task 001-186); `unsupported` when no
- * daemon could sync (none listens, one from before the request, or its pass
- * failed), and the wait falls back to its settle time.
+ * request, and whether the daemon records the re-key moves the wait reads
+ * from the store (`moves`, task 001-258; `false` from a daemon before it);
+ * `unsupported` when no daemon could sync (none listens, one from before
+ * the request, or its pass failed), and the wait falls back to its settle
+ * time.
  */
 export type SyncState =
   | { readonly state: "pending" }
-  | {
-      readonly state: "synced";
-      readonly revision: RevisionNumber;
-      readonly rekeyed: readonly RekeyedTestFile[] | null;
-    }
+  | { readonly state: "synced"; readonly revision: RevisionNumber; readonly moves: boolean }
   | { readonly state: "unsupported" };
 
 export interface DaemonSync {
@@ -41,22 +31,14 @@ const UNSUPPORTED: SyncState = { state: "unsupported" };
  * reconciliation pass (`sync`) in the background and polls it every
  * `pollMs` until the pass is stored. A daemon that went away meanwhile is
  * asked again where `daemonSocket` finds one now, a successor included.
- * With `after` the answer also names the files the revisions after it
- * re-keyed (defect 32, task 001-186), and with `resolvedSince` those whose
- * move had its result since then (task 001-196).
  */
-export function syncDaemon(
-  root: AbsolutePath,
-  pollMs: number,
-  after: RevisionNumber | null = null,
-  resolvedSince: EpochMs | null = null,
-): DaemonSync {
+export function syncDaemon(root: AbsolutePath, pollMs: number): DaemonSync {
   let current: SyncState = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   void (async () => {
     for (;;) {
-      const outcome = await syncOnce(root, pollMs, { after, resolvedSince }, isStopped);
+      const outcome = await syncOnce(root, pollMs, isStopped);
       if (outcome !== "again") return outcome;
     }
   })().then(
@@ -78,21 +60,16 @@ export function syncDaemon(
 async function syncOnce(
   root: AbsolutePath,
   pollMs: number,
-  { after, resolvedSince }: { after: RevisionNumber | null; resolvedSince: EpochMs | null },
   stopped: () => boolean,
 ): Promise<SyncState | "again"> {
   const socketPath = await daemonSocket(root).catch(() => null);
   if (socketPath === null || stopped()) return UNSUPPORTED;
-  const request: SyncRequest =
-    after === null
-      ? { type: "sync" }
-      : { type: "sync", after, ...(resolvedSince === null ? {} : { resolvedSince }) };
-  const first = await askDaemon(socketPath, request).catch(() => null);
+  const first = await askDaemon(socketPath, { type: "sync" }).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state: SyncResponse = first;
   for (;;) {
     if (state.revision !== null) {
-      return { state: "synced", revision: state.revision, rekeyed: state.rekeyed ?? null };
+      return { state: "synced", revision: state.revision, moves: state.moves === true };
     }
     if (state.error !== null) return UNSUPPORTED;
     // Unref'd: a wait that ended does not keep the CLI alive for its sync.

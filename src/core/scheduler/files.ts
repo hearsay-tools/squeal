@@ -17,17 +17,14 @@ export interface FileState {
   key: CheckKey | null;
   /**
    * The earliest revision whose change moved the key with no result since
-   * (`SettleOptions.keyedAt`), so `status --wait` holds for the files its
-   * window's edits re-keyed (task 001-186) until they have one; a later move
-   * keeps it, and a result or `unknown` at `key` clears it (task 001-194).
-   * `null` when only the baseline, a backlog or a run moved it since.
+   * (`SettleOptions.keyedAt`), which the store's re-key records keep
+   * open (`recordRekeyed`, `recordMoves`), so `status --wait` holds for the
+   * files its window's edits re-keyed (task 001-186) until they have one; a
+   * later move keeps it, and a result or `unknown` at `key` clears it (task
+   * 001-194). `null` when only the baseline, a backlog or a run moved it
+   * since.
    */
   keyedAt: RevisionNumber | null;
-  /**
-   * The latest such revision, so a window that holds only a later move,
-   * an environment change after an earlier edit, names the file too.
-   */
-  lastKeyedAt: RevisionNumber | null;
   /** Key of the results last applied for this worktree; `null` when there are none. */
   resultKey: CheckKey | null;
   /** Checks of those results: what the state sink knows for this file. */
@@ -87,7 +84,6 @@ export function newFileState(ref: TestFileRef): FileState {
     id: testFileId(ref),
     key: null,
     keyedAt: null,
-    lastKeyedAt: null,
     resultKey: null,
     checks: [],
     failing: false,
@@ -109,13 +105,11 @@ export function newFileState(ref: TestFileRef): FileState {
  */
 export function noteKeyedAt(file: FileState, revision: RevisionNumber): void {
   file.keyedAt = file.keyedAt === null ? revision : Math.min(file.keyedAt, revision);
-  file.lastKeyedAt = file.lastKeyedAt === null ? revision : Math.max(file.lastKeyedAt, revision);
 }
 
 /** The file has a result, or is `unknown`, at its key: it holds no wait (task 001-194). */
 export function clearKeyedAt(file: FileState): void {
   file.keyedAt = null;
-  file.lastKeyedAt = null;
 }
 
 /**

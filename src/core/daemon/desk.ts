@@ -25,14 +25,8 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
-  /** A `status --wait` reconciliation pass (lessons, defect 30), by the socket's request id. */
-  readonly requestSync: (
-    after: RevisionNumber | null,
-    resolvedSince: EpochMs | null,
-    id: string,
-  ) => Promise<SyncAnswer>;
-  /** The socket dropped sync `id`, whose answer is never read (task 001-226); any id, any number of times. */
-  readonly forgetSync: (id: string) => void;
+  /** A `status --wait` reconciliation pass (lessons, defect 30). */
+  readonly requestSync: () => Promise<SyncAnswer>;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
   /** The worker died after it started listening. */
@@ -151,7 +145,7 @@ async function inWorker(
           );
           return;
         case "sync":
-          events.requestSync(message.after, message.resolvedSince, message.id).then(
+          events.requestSync().then(
             (answer) => post({ type: "sync-result", id: message.id, answer, error: null }),
             (error: unknown) =>
               post({
@@ -161,9 +155,6 @@ async function inWorker(
                 error: error instanceof Error ? error.message : String(error),
               }),
           );
-          return;
-        case "sync-forget":
-          events.forgetSync(message.id);
           return;
         case "stop":
           events.onStop();
@@ -218,7 +209,6 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
-      forgetSync: events.forgetSync,
       onActivity: events.onActivity,
       onStop: events.onStop,
       onStepDown: events.onStepDown,

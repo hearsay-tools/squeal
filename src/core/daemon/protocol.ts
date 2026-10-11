@@ -23,16 +23,9 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "run-slow":
     case "stop":
       return { type: request.type };
-    case "sync": {
-      if (request.after === undefined) return { type: "sync" };
-      if (!Number.isInteger(request.after) || (request.after as number) < 0) {
-        return '"after" must be a revision number';
-      }
-      const after = request.after as number;
-      if (request.resolvedSince === undefined) return { type: "sync", after };
-      if (!Number.isFinite(request.resolvedSince)) return '"resolvedSince" must be a time';
-      return { type: "sync", after, resolvedSince: request.resolvedSince as number };
-    }
+    // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
+    case "sync":
+      return { type: "sync" };
     case "run-all":
       if (request.force !== undefined && typeof request.force !== "boolean") {
         return '"force" must be true or false';

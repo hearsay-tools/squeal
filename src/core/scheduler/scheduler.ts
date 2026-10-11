@@ -6,10 +6,8 @@ import { plural } from "../text.js";
 import {
   type CandidateBatch,
   type CheckpointRecord,
-  type EpochMs,
   type FullSuiteRequest,
   isSlowLane,
-  type RekeyedTestFile,
   type RelativePath,
   type RevisionNumber,
   type Scheduler,
@@ -23,7 +21,6 @@ import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
-import { INCOMPLETE_ANSWER } from "./discharges.js";
 import { rekeyEnvironments } from "./environment-growth.js";
 import {
   missingInstall,
@@ -303,60 +300,6 @@ class TierScheduler implements Scheduler {
 
   status(): SchedulerStatus {
     return { revision: this.#ledger?.revision.number ?? 0 };
-  }
-
-  async refined(): Promise<void> {
-    await this.#runnerWork.afterTier(() => Promise.resolve());
-  }
-
-  rekeyedSince(
-    after: RevisionNumber,
-    upTo: RevisionNumber,
-    resolvedSince?: EpochMs,
-  ): readonly RekeyedTestFile[] {
-    const files: RekeyedTestFile[] = [];
-    for (const file of this.#ledger?.files.values() ?? []) {
-      // The earliest move still owed, and the latest for a window after it (task 001-194).
-      for (const revision of new Set([file.keyedAt, file.lastKeyedAt])) {
-        if (revision !== null && revision > after && revision <= upTo) {
-          files.push({ testFile: file.ref, revision });
-        }
-      }
-    }
-    if (resolvedSince === undefined || this.#ledger === null) return files;
-    return [...files, ...this.#ledger.discharges.since(resolvedSince, after, upTo)];
-  }
-
-  async rekeyedOnceRefined(
-    after: RevisionNumber,
-    upTo: RevisionNumber,
-    resolvedSince?: EpochMs,
-    signal?: AbortSignal,
-  ): Promise<readonly RekeyedTestFile[]> {
-    if (signal?.aborted === true) throw new Error(INCOMPLETE_ANSWER);
-    const now = this.options.now ?? Date.now;
-    // A forget, or the hold's deadline, ends the answer at once, while the
-    // refinement may still be stalled (task 001-229).
-    let end = () => {};
-    const ending = new Promise<never>((_, reject) => {
-      end = () => {
-        held?.forget();
-        reject(new Error(INCOMPLETE_ANSWER));
-      };
-    });
-    const held =
-      resolvedSince === undefined || this.#ledger === null
-        ? null
-        : this.#ledger.discharges.hold(resolvedSince, after, upTo, now(), () => end());
-    signal?.addEventListener("abort", end, { once: true });
-    try {
-      await Promise.race([this.refined(), ending]);
-      if (held !== null && !held.intact(now())) throw new Error(INCOMPLETE_ANSWER);
-      return this.rekeyedSince(after, upTo, resolvedSince);
-    } finally {
-      signal?.removeEventListener("abort", end);
-      held?.release();
-    }
   }
 
   idle(): Promise<void> {

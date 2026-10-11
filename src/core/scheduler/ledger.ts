@@ -15,7 +15,6 @@ import {
 import { Checkpoints } from "./checkpoints.js";
 import { Claims } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
-import { Discharges } from "./discharges.js";
 import {
   checkId,
   clearKeyedAt,
@@ -26,6 +25,7 @@ import {
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
+import { recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
 import { slowView } from "./slow.js";
@@ -74,8 +74,6 @@ export class Ledger {
   readonly files = new Map<string, FileState>();
   readonly queue = new RunQueue();
   readonly checkpoints: Checkpoints;
-  /** Attributions results discharged, for a wait's sync answer (task 001-196). */
-  readonly discharges: Discharges;
   /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
   readonly claims: Claims;
   revision: RevisionState = { number: 0, head: null, dirty: false };
@@ -103,14 +101,13 @@ export class Ledger {
   /**
    * Files whose re-key attribution moved since the last commit, with the
    * latest revision that re-keyed one (`null`: only discharged), owed to the
-   * store's record (`recordRekeyed`, task 001-238).
+   * store's records (`recordRekeyed`, task 001-238; `recordMoves`, task
+   * 001-258).
    */
   readonly #rekeyed = new Map<string, RevisionNumber | null>();
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
-    // The clock its holds are taken at (`Scheduler.rekeyedOnceRefined`), for its timer (task 001-232).
-    this.discharges = new Discharges(undefined, context.now);
     this.claims = new Claims(context);
     // Read at every query: a reload replaces `context.policy`.
     this.queue.setSlow((ref) => slowView(context.policy).isSlow(ref));
@@ -142,7 +139,6 @@ export class Ledger {
     this.context.keys.removeTestFile(file.ref);
     this.queue.remove(file.ref);
     this.files.delete(file.id);
-    this.discharges.forget(file.id);
     this.#retired.push(...file.checks);
     this.#removed.push(file.ref);
     // Nothing is left to run for it.
@@ -422,7 +418,10 @@ export class Ledger {
     store.transaction(() => {
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
-      recordRekeyed(store, worktreeId, rekeyed, removed.map(testFileId));
+      const removedIds = removed.map(testFileId);
+      recordRekeyed(store, worktreeId, rekeyed, removedIds);
+      // Before this commit's refined revision: refinement caught up only by an earlier commit.
+      recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now());
       for (const { results, checkpointId } of mergeApplied(applied)) {
         sink.applyResults(worktreeId, revision, results, { checkpointId });
       }
@@ -454,14 +453,12 @@ export class Ledger {
 
   /**
    * The file has a result, or is `unknown`, at its key: its attribution is
-   * discharged (task 001-194). The store's record is resolved even with no
-   * attribution here: a restarted daemon's files start with none, while the
-   * record may hold an edit open (review wave 13v, S1). Only the record is
-   * resolved; the attribution `status --wait` reads is not restored.
+   * discharged (task 001-194). The store's records are resolved even with
+   * no attribution here: a restarted daemon's files start with none, while
+   * a record may hold an edit open (review wave 13v, S1).
    */
   #discharge(file: FileState): void {
     if (!this.#rekeyed.has(file.id)) this.#rekeyed.set(file.id, null);
-    this.discharges.note(file, this.context.now());
     clearKeyedAt(file);
   }
 

@@ -21,11 +21,17 @@ export const WORKTREE_SCOPED_TABLES = [
 /**
  * `meta` rows named `<prefix><worktreeId>` that belong to one worktree and go
  * with it (review wave 13u, S1): the consumers' edit state (`editsMetaKey`),
- * the open checkpoint (`checkpointMetaKey`) and the re-key record
- * (`rekeyedMetaKey`). Removed by exact name, never by a suffix match, so a
- * row shared across worktrees, a node:test observation's, stays.
+ * the open checkpoint (`checkpointMetaKey`) and the re-key records
+ * (`rekeyedMetaKey`, `rekeyedMovesMetaKey`). Removed by exact name, never by
+ * a suffix match, so a row shared across worktrees, a node:test
+ * observation's, stays.
  */
-export const WORKTREE_META_PREFIXES = ["edits:", "checkpoint.", "rekeyed."] as const;
+export const WORKTREE_META_PREFIXES = [
+  "edits:",
+  "checkpoint.",
+  "rekeyed.",
+  "rekeyed-moves.",
+] as const;
 
 /**
  * Prefix of the per-consumer key snapshots squeal 0.1.100 to 0.1.102 kept,

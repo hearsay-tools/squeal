@@ -3,12 +3,12 @@ import type { TestFileRef } from "./keys.js";
 import type { CheckpointKind, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
-/** A test file and a revision whose move of its key has no result yet (`Scheduler.rekeyedSince`). */
+/** A test file and a revision whose move of its key has no result yet (`answerMoves`). */
 export interface RekeyedTestFile {
   readonly testFile: TestFileRef;
   readonly revision: RevisionNumber;
   /**
-   * The move had its result, or became `unknown`, since the time asked
+   * The move had its result, or became `unknown`, since the wait started
    * (task 001-196): the file's news is the window's, but it owes no work.
    * Absent while the move has no result.
    */
@@ -223,44 +223,6 @@ export interface Scheduler {
    */
   refreshObserved(): boolean;
   status(): SchedulerStatus;
-  /**
-   * Resolves once the runner work queued before the call is applied: the
-   * runner part of every revision stored so far included (task 001-186).
-   * Rejects once the scheduler closed.
-   */
-  refined(): Promise<void>;
-  /**
-   * Test files whose key a revision numbered after `after` up to `upTo`
-   * moved: its content, closure, declared inputs, observed paths or
-   * environment, or the file was added (task 001-186, `status --wait`). Each
-   * at the earliest and the latest such revision with no result at the key
-   * since, so a later move never hides an earlier one (task 001-194), and a
-   * file with a result, or `unknown`, at its key is in no window. Not the
-   * baseline's, a backlog's or a run's moves. Empty before the start.
-   * With `resolvedSince`, also the files whose last such move had its
-   * result, or became `unknown`, at or after that time (`resolved`), so a
-   * wait whose answer comes after the result keeps its news (review wave
-   * 13k, S1).
-   */
-  rekeyedSince(
-    after: RevisionNumber,
-    upTo: RevisionNumber,
-    resolvedSince?: EpochMs,
-  ): readonly RekeyedTestFile[];
-  /**
-   * `rekeyedSince` once `refined()`, as a sync answer reads it: the
-   * discharges it would name are kept from the call until it resolves or
-   * rejects, whatever the prune bounds (review wave 13q, S1, task 001-214),
-   * until `signal` aborts (the socket forgot the request), or for an hour
-   * at most (task 001-226). It rejects when what it held ended before it
-   * was read, so a wait never reads fewer files as quiet.
-   */
-  rekeyedOnceRefined(
-    after: RevisionNumber,
-    upTo: RevisionNumber,
-    resolvedSince?: EpochMs,
-    signal?: AbortSignal,
-  ): Promise<readonly RekeyedTestFile[]>;
   /**
    * Resolves once nothing is queued or running and no revision waits for its
    * runner part. Slow files that wait for a trigger or the slot (spec 004
