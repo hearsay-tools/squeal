@@ -26,5 +26,5 @@ export const KEY_SOURCES_HASHES: Readonly<Record<number, string>> = {
   2: "5adc2c3b593ac71d1a51e33a882dde90d984a1643c518b4e0495fe00eec42ae9",
   3: "af0a578ac8bd610a40ec5787f84c1119b55470b0ad97ec0b4b9467933070b7d2",
   4: "6e03cdb8686afcdfbee6c4d0c18485479b95617e12d83a58ad33b07cac67cc42",
-  5: "f293aa7e44fdfab44c72d5ac3d69f57f5857625c53f92249d00b75ab22e6362b",
+  5: "3806959a8bc71dde906b535de3621893bff1c38ce07c4ebc19dd290d852a020f",
 };
