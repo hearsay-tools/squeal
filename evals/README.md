@@ -3,7 +3,8 @@
 Spec 006 (`docs/specifications/006-model-evals/spec.md`): a recurring baseline that shows whether models use Squeal well, run at every hub release and with every `/quality` scan, at calm load. Never in CI or in this repository's Vitest suite. Built from 005-06's prototype (`docs/specifications/005-agent-adoption/research/probes/model-evals/`, whose logs stay there).
 
 ```sh
-node evals/bin/run-baseline.mjs                    # the baseline on HEAD: 48 sessions, about 45 min at 2 at once
+node evals/bin/run-baseline.mjs                    # the baseline on HEAD: 48 sessions, about 45 min at 2 at once;
+                                                   # calibrates the judge first when this Claude Code has no passing file
 node evals/bin/run-baseline.mjs --variant p1       # shipped texts and a variant side by side, a run of its own
 node evals/bin/run-baseline.mjs --resume <run>     # continue a run cut short: its graded cells are skipped
 node evals/bin/run-cell.mjs t1-thousands p0 claude claude-haiku-5-5 1   # one cell

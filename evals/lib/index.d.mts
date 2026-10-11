@@ -580,6 +580,13 @@ export function calibratedIdentity(input: {
   declared: Declarations;
   runner: JudgeRunner;
 }): Promise<JudgeIdentity | null>;
+export function ensureCalibrated(input: {
+  dir: string;
+  declared: Declarations;
+  runner: JudgeRunner;
+  calibrateModel: (model: string) => Promise<unknown>;
+  log?: (line: string) => void;
+}): Promise<JudgeIdentity | null>;
 export function judgeRecord(
   cell: CellRecord,
   options: {

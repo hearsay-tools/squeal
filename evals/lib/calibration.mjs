@@ -121,6 +121,29 @@ export async function calibratedIdentity({ dir, declared, runner }) {
 }
 
 /**
+ * Calibration as a step of every eval run (spec 006 D9, the human 2026-10-11): the identity that
+ * grades now, calibrating first when no file in `dir` passed for this Claude Code version and
+ * rubric. Each of `JUDGE_MODELS` without a calibration file yet is calibrated in turn by
+ * `calibrateModel(model)`, which writes its file into `dir`, until one passes; a model already
+ * calibrated and failed for this identity is not tried again. `null` when none passes, so the run
+ * stops before any subject session.
+ */
+export async function ensureCalibrated({ dir, declared, runner, calibrateModel, log = () => {} }) {
+  const found = await calibratedIdentity({ dir, declared, runner });
+  if (found) return found;
+  const claudeCode = await claudeVersion(runner);
+  for (const model of JUDGE_MODELS) {
+    const identity = judgeIdentity({ model, effort: JUDGE.effort, claudeCode, declared });
+    if (existsSync(join(dir, calibrationName(identity)))) continue;
+    log(`judge: no passing calibration for ${identityKey(identity)}; calibrating it first`);
+    await calibrateModel(model);
+    const now = await calibratedIdentity({ dir, declared, runner });
+    if (now) return now;
+  }
+  return null;
+}
+
+/**
  * `cell`'s judge record and the parser's cross-check beside it (D9), judged by `identity` through
  * `runner`, reusing `cell.judge` when its transcript hash and identity match: `{ judge, parser }`.
  * `conditions` holds the cell's run's knobs, as the grade of record reads them.

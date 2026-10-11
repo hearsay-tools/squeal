@@ -19,6 +19,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
 import { declarations, expectationsOf } from "../lib/behaviours.mjs";
+import { ensureCalibrated } from "../lib/calibration.mjs";
+import { claudeRunner, identityKey } from "../lib/judge.mjs";
 import {
   cellId,
   EVALS,
@@ -56,6 +58,39 @@ const config = JSON.parse(readFileSync(join(EVALS, "baseline.json"), "utf8"));
 const knobs = JSON.parse(readFileSync(join(EVALS, "tasks/tasks.json"), "utf8")).tasks;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const load1 = () => loadavg()[0];
+
+// ---------- the judge, calibrated before any session (spec 006 D9) ----------
+// A Claude Code version or rubric with no passing calibration file is calibrated first: Haiku 5.5,
+// then Sonnet 5.5. With none passing, the run stops here, before spending on any subject session.
+const judgeIdentity = await ensureCalibrated({
+  dir: join(EVALS, "results"),
+  declared: declarations(),
+  runner: claudeRunner({ base: ROOT }),
+  calibrateModel: (model) =>
+    new Promise((resolve) =>
+      spawn(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          join(EVALS, "bin/judge-calibrate.mjs"),
+          "--model",
+          model,
+          "--base",
+          ROOT,
+        ],
+        { cwd: join(EVALS, ".."), stdio: "inherit" },
+      ).on("close", resolve),
+    ),
+  log: console.log,
+});
+if (!judgeIdentity) {
+  console.error(
+    "judge: no model passed calibration for this Claude Code and rubric (spec 006 D9); no session ran. Commit the calibration files in evals/results and ask the human.",
+  );
+  process.exit(3);
+}
+console.log(`judge: ${identityKey(judgeIdentity)}; commit its calibration file with the results`);
 
 // ---------- what every cell shares, built before any cell starts ----------
 const base = pinBase(ROOT, commit);
