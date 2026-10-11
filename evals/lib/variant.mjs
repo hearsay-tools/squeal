@@ -13,20 +13,25 @@ export function applyPatch(text, patch) {
 }
 
 /**
- * Applies `variant.patch` to the `.mjs` bundles of every plugin under `pluginsDir` that the
- * patch's `files` names (`plugins/*` or `plugins/<name>`). Throws when a patch matches fewer
- * than its `min` (default 1) times: a rebuild that moved the string fails loudly instead of
- * running the shipped text under the variant's name. Returns `[{ find, count }]`.
+ * Applies `variant.patch` to the files of every plugin under `pluginsDir` that the patch's
+ * `files` names (`plugins/*` or `plugins/<name>`): `.../dist/**\/*.mjs` is the plugin's `.mjs`
+ * bundles, any other path one file in the plugin (`plugins/*\/skills/squeal/SKILL.md`). Throws
+ * when a patch matches fewer than its `min` (default 1) times: a rebuild that moved the string
+ * fails loudly instead of running the shipped text under the variant's name. Returns
+ * `[{ find, count }]`.
  */
 export function patchPlugins(pluginsDir, variant) {
   const applied = [];
   for (const p of variant.patch ?? []) {
-    const [glob] = p.files.split("/dist/");
+    const [, glob, rest] = /^(plugins\/[^/]+)\/(.*)$/.exec(p.files) ?? [];
+    if (!glob) throw new Error(`patch files must start plugins/<name>/: ${p.files}`);
     let count = 0;
     for (const plugin of readdirSync(pluginsDir)) {
       if (!glob.endsWith("*") && !glob.endsWith(`/${plugin}`)) continue;
-      const dist = join(pluginsDir, plugin, "dist");
-      for (const f of walk(dist).filter((f) => f.endsWith(".mjs"))) {
+      const files = rest.startsWith("dist/")
+        ? walk(join(pluginsDir, plugin, "dist")).filter((f) => f.endsWith(".mjs"))
+        : [join(pluginsDir, plugin, rest)].filter((f) => existsSync(f));
+      for (const f of files) {
         const r = applyPatch(readFileSync(f, "utf8"), p);
         if (r.count) writeFileSync(f, r.text);
         count += r.count;
