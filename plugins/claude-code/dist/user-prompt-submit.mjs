@@ -2427,12 +2427,16 @@ function createWorktreeRepo(conn) {
         d?.squealVersion ?? null
       );
     },
-    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5).
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
+    // the start time and version too, the identity `lastDaemon` reads (task 001-268); with no
+    // socket every other read finds no daemon.
     setDaemon: (id, d) => {
       conn.run(
-        `UPDATE worktrees SET daemon_socket = ?, daemon_started_at = ?,
+        `UPDATE worktrees SET daemon_socket = ?,
+           daemon_started_at = COALESCE(?, daemon_started_at),
            daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
-           daemon_heartbeat_interval_ms = ?, daemon_version = ? WHERE id = ?`,
+           daemon_heartbeat_interval_ms = ?,
+           daemon_version = COALESCE(?, daemon_version) WHERE id = ?`,
         d?.socketPath ?? null,
         d?.startedAt ?? null,
         d?.heartbeatAt ?? null,
@@ -2447,6 +2451,15 @@ function createWorktreeRepo(conn) {
         at2,
         id
       );
+    },
+    lastDaemon: (id) => {
+      const row = conn.get(
+        "SELECT daemon_started_at, daemon_version FROM worktrees WHERE id = ?",
+        id
+      );
+      const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
+      if (row === null || startedAt === null) return null;
+      return { startedAt, squealVersion: strOrNull(row, "daemon_version") };
     },
     remove: (id) => {
       conn.transaction(() => {
@@ -4224,7 +4237,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.115";
+  if (true) return "0.1.116";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

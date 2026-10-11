@@ -11,6 +11,11 @@ import { randomUUID } from "node:crypto";
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
+// src/core/types/daemon.ts
+function daemonIncarnation(daemon) {
+  return daemon === null ? null : `${daemon.squealVersion}@${daemon.startedAt}`;
+}
+
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
@@ -107,7 +112,8 @@ function createHandlers(context) {
     requestId,
     revision: state.revision,
     error: state.error,
-    moves: true
+    moves: true,
+    incarnation: daemonIncarnation(context)
   });
   return (request) => {
     switch (request.type) {
