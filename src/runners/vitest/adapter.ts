@@ -281,8 +281,12 @@ export class VitestAdapter implements RunnerAdapter {
         return { recreatedProjects: [...names].sort() };
       }
       // A run in flight checks the bytes it read only after it ends: what moved
-      // is logged before this drops its transform (`SourceStamps.stale`).
-      if (this.#running) await this.#sources.stale(vitest);
+      // is logged before this drops its transform (`SourceStamps.stale`), and
+      // what has not moved yet keeps its stamp for that check (task 001-264).
+      if (this.#running) {
+        this.#sources.hold(vitest);
+        await this.#sources.stale(vitest);
+      }
       for (const p of abs) vitest.invalidateFile(p.abs);
       await invalidateStructural(vitest, abs, this.#note);
       // Task 001-146: a file read between a revert and its restore is named by no revision.

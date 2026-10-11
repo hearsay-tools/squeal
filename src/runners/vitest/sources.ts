@@ -77,6 +77,14 @@ export class SourceStamps {
    * no longer sees those transforms; it reads them here.
    */
   #moved: { readonly file: AbsolutePath; readonly loadedAt: EpochMs }[] = [];
+  /**
+   * Task 001-264: the stamp of each module cached when the runner part was
+   * about to drop transforms during a run, and the stamps it was in. A
+   * transform dropped while the bytes it read are still on disk logs nothing
+   * in `#moved`, and the run's own check no longer finds it cached; it
+   * compares these with the disk instead.
+   */
+  #held = new Map<Stamp, { readonly stamps: Map<string, Stamp>; readonly key: string }>();
 
   constructor(
     readonly paths: WorktreePaths,
@@ -108,6 +116,24 @@ export class SourceStamps {
     }
   }
 
+  /**
+   * Task 001-264: keeps the stamp of every cached module for the next run's
+   * check, before the runner part drops transforms a run in flight may have
+   * read. That check compares each one, if read since the run began, with
+   * the disk as it does a cached module's stamp, and lets them go.
+   */
+  hold(vitest: Vitest): void {
+    this.attach(vitest);
+    for (const environment of environments(vitest)) {
+      const reads = this.#containers.get(environment.pluginContainer);
+      if (!reads) continue;
+      for (const id of cachedModules(environment, this.paths).keys()) {
+        const stamp = reads.stamps.get(id);
+        if (stamp) this.#held.set(stamp, { stamps: reads.stamps, key: id });
+      }
+    }
+  }
+
   async #stamp(reads: Reads, id: string): Promise<void> {
     const file = sourceOf(id, this.paths);
     const loadedAt = this.now();
@@ -131,7 +157,8 @@ export class SourceStamps {
    *
    * With `loadedSince`, a run's check after it ends: it also names what an
    * earlier call found moved since that run began loading (task 001-150),
-   * and starts the log again.
+   * and starts the log again, and the stamps `hold` kept read since then
+   * (task 001-264), and lets them go.
    */
   async stale(vitest: Vitest, loadedSince?: EpochMs): Promise<AbsolutePath[]> {
     this.attach(vitest);
@@ -144,6 +171,8 @@ export class SourceStamps {
       readonly key: string;
       readonly file: AbsolutePath;
       readonly after?: EpochMs | undefined;
+      /** A stamp `hold` kept, compared whatever `stamps` holds now. */
+      readonly held?: Stamp;
     }[] = [];
     for (const environment of environments(vitest)) {
       const reads = this.#containers.get(environment.pluginContainer);
@@ -166,6 +195,14 @@ export class SourceStamps {
         }
       }
     }
+    if (loadedSince !== undefined) {
+      const checked = new Set(checks.map(({ stamps, key }) => stamps.get(key)));
+      for (const [held, { stamps, key }] of this.#held) {
+        if (held.loadedAt >= since && !checked.has(held))
+          checks.push({ stamps, key, file: held.file, held });
+      }
+      this.#held.clear();
+    }
     // One stat and at most one hash per file, however many modules read it.
     const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
     const hashes = new Map<AbsolutePath, Promise<Hashed | null>>();
@@ -176,8 +213,8 @@ export class SourceStamps {
         const read = await readStamp(file);
         return read && { ...read, hashedAt };
       });
-    const moved = await mapConcurrent(checks, async ({ stamps, key, file, after }) => {
-      const stamp = stamps.get(key);
+    const moved = await mapConcurrent(checks, async ({ stamps, key, file, after, held }) => {
+      const stamp = held ?? stamps.get(key);
       const stat = await statOnce(file);
       if (!stamp) {
         if (after === undefined || stat === null || !changedBefore(stat, after))
