@@ -76,6 +76,15 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
         id,
       );
     },
+    lastDaemon: (id) => {
+      const row = conn.get(
+        "SELECT daemon_started_at, daemon_version FROM worktrees WHERE id = ?",
+        id,
+      );
+      const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
+      if (row === null || startedAt === null) return null;
+      return { startedAt, squealVersion: strOrNull(row, "daemon_version") };
+    },
     remove: (id) => {
       conn.transaction(() => {
         conn.run("DELETE FROM worktrees WHERE id = ?", id);

@@ -214,6 +214,22 @@ export function daemonIncarnation(
   return daemon === null ? null : `${daemon.squealVersion}@${daemon.startedAt}`;
 }
 
+/**
+ * The incarnation of the daemon registered on a worktree before this one,
+ * read before this one replaces it (task 001-268, as decided by the human):
+ * `null` when the worktree has no row, so none ever registered; `undefined`
+ * when its identity cannot be read (a release whose clean exit cleared it,
+ * or no version), and a ledger's first commit then takes in what was left.
+ */
+export function predecessorIncarnation(
+  hasRow: boolean,
+  last: { readonly startedAt: EpochMs; readonly squealVersion: string | null } | null,
+): string | null | undefined {
+  if (!hasRow) return null;
+  if (last === null || last.squealVersion === null) return undefined;
+  return daemonIncarnation({ startedAt: last.startedAt, squealVersion: last.squealVersion });
+}
+
 /** What a daemon's sync pass left: its revision. */
 export interface SyncAnswer {
   readonly revision: RevisionNumber;

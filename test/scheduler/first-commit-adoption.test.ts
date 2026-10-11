@@ -13,11 +13,16 @@ import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
  * Reviews wave 13ac and 13ad, B1 (tasks 001-265, 001-268): a daemon before
  * task 001-258 writes no re-key moves, and its key moved away and back at
  * one revision leaves the rows as the record last named them. So the first
- * commit of a newer daemon's ledger takes in every pending row, whatever
- * wrote it: as a move open at its row's revision, so a later wait holds
- * for it until its result, and the history before as lost, so a wait from
- * before falls back.
+ * commit of a newer daemon's ledger after one that did not write the moves
+ * last takes in every pending row, whatever wrote it: as a move open at its
+ * row's revision, so a later wait holds for it until its result, and the
+ * history before as lost, so a wait from before falls back. After a newer
+ * daemon that did, or on a fresh worktree, it takes nothing in (decided by
+ * the human, 2026-10-11).
  */
+
+const OLDER = "0.1.112@2";
+const NEXT = "0.0.0-test@3";
 
 const MATH = "test/math.test.ts";
 
@@ -28,7 +33,7 @@ describe("a newer daemon after one that wrote no moves", () => {
     async () => {
       const repo = createRepo();
       const store = openRepoStore(repo.commonDir);
-      const first = await openHarness(repo.main, store, repo.commonDir);
+      const first = await openHarness(repo.main, store, repo.commonDir, { predecessor: null });
       await first.scheduler.start();
       await first.scheduler.idle();
       await first.scheduler.close();
@@ -43,7 +48,8 @@ describe("a newer daemon after one that wrote no moves", () => {
       store.testFileKeys.upsertMany([{ ...math, key: "elsewhere" as CheckKey, pending: "queued" }]);
       store.testFileKeys.upsertMany([{ ...math, pending: "queued" }]);
 
-      const second = await openHarness(repo.main, store, repo.commonDir);
+      // An older daemon registered in between.
+      const second = await openHarness(repo.main, store, repo.commonDir, { predecessor: OLDER });
       await second.scheduler.start();
       await second.scheduler.idle();
 
@@ -63,6 +69,40 @@ describe("a newer daemon after one that wrote no moves", () => {
         state: "answered",
         rekeyed: [],
       });
+    },
+  );
+
+  it(
+    "takes nothing in after a newer daemon that wrote the moves, nor on a fresh worktree",
+    SLOW,
+    async () => {
+      const repo = createRepo();
+      const store = openRepoStore(repo.commonDir);
+      const first = await openHarness(repo.main, store, repo.commonDir, { predecessor: null });
+      await first.scheduler.start();
+      await first.scheduler.idle();
+      await first.scheduler.close();
+      const id = first.worktreeId as WorktreeId;
+      const fresh = JSON.parse(store.meta.get(rekeyedMovesMetaKey(id)) ?? "{}");
+      expect(fresh.dropped).toBe(0);
+
+      // Math left queued with no move, as a backlog file is: not the edit's.
+      const math = store.testFileKeys.list(id).find((row) => row.testFile.path === MATH);
+      if (math === undefined) throw new Error("math has no row");
+      store.testFileKeys.upsertMany([{ ...math, pending: "queued" }]);
+      const before = JSON.parse(store.meta.get(rekeyedMovesMetaKey(id)) ?? "{}");
+
+      const second = await openHarness(repo.main, store, repo.commonDir, {
+        predecessor: HARNESS_INCARNATION,
+        incarnation: NEXT,
+      });
+      await second.scheduler.start();
+      await second.scheduler.idle();
+
+      const after = JSON.parse(store.meta.get(rekeyedMovesMetaKey(id)) ?? "{}");
+      expect(after.dropped).toBe(before.dropped);
+      expect(after.writer).toBe(NEXT);
+      expect(after.files[testFileId({ project: "", path: MATH as never })]).toBeUndefined();
     },
   );
 });

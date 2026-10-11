@@ -228,6 +228,8 @@ export interface HarnessOptions {
   readonly now?: () => number;
   /** `SchedulerOptions.incarnation`; default `HARNESS_INCARNATION`, the daemon `liveDaemon` registers. */
   readonly incarnation?: string;
+  /** `SchedulerOptions.predecessor`; default not known, so the first commit takes in what was left. */
+  readonly predecessor?: string | null;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -318,6 +320,7 @@ export async function openHarness(
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.now === undefined ? {} : { now: options.now }),
     incarnation: options.incarnation ?? HARNESS_INCARNATION,
+    ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
   });
   cleanups.push(async () => {
     await scheduler.close();
