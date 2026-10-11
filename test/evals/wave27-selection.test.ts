@@ -5,7 +5,7 @@ import {
   completedRuns,
   conditionsOf,
   declarations,
-  expectationsOf,
+  parserExpectationsOf,
 } from "../../evals/lib/index.mjs";
 import {
   CLAIM,
@@ -33,7 +33,7 @@ const conditions = conditionsOf({
   variant: "p0",
   effort: "medium",
 });
-const grade = (c: CellRecord) => expectationsOf(c, conditions, declared);
+const grade = (c: CellRecord) => parserExpectationsOf(c, conditions, declared);
 const run = (cmd: string, out: string, exit = 0): Step => ({ cmd, out: output(out), exit });
 const CONTRACT = "test/contract/invoice-json.test.ts";
 

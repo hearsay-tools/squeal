@@ -4,7 +4,7 @@ import {
   claimedOnEvidence,
   conditionsOf,
   declarations,
-  expectationsOf,
+  parserExpectationsOf,
   type Step as Seen,
 } from "../../evals/lib/index.mjs";
 import {
@@ -41,7 +41,7 @@ const conditions = conditionsOf({
   variant: "p0",
   effort: "medium",
 });
-const grade = (c: CellRecord) => expectationsOf(c, conditions, declared);
+const grade = (c: CellRecord) => parserExpectationsOf(c, conditions, declared);
 const CONTRACT = "test/contract/invoice-json.test.ts";
 
 /** The review's real Vitest 5.0.3 summary for the brace exclusion: only the money file ran. */

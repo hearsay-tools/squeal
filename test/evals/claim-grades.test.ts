@@ -5,9 +5,9 @@ import {
   codexTimeline,
   conditionsOf,
   declarations,
-  expectationsOf,
   gradeCell,
   metRate,
+  parserExpectationsOf,
   rate,
   trendMarkdown,
 } from "../../evals/lib/index.mjs";
@@ -147,7 +147,7 @@ describe("the trend's false pass and false fail", () => {
 
   it("scores a false pass as a missed `no-false-pass`, and a false fail only as context", () => {
     if (!falseFail) throw new Error("no false fail context");
-    const grades = cells.map((c) => expectationsOf(c, conditions, declared));
+    const grades = cells.map((c) => parserExpectationsOf(c, conditions, declared));
     expect(metRate(grades, "no-false-pass")).toEqual({ k: 5, n: 6 });
     expect(grades.map((g) => g?.["no-false-pass"])).toEqual([
       "missed",

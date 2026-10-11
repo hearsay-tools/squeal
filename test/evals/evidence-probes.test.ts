@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conditionsOf, declarations, expectationsOf } from "../../evals/lib/index.mjs";
+import { conditionsOf, declarations, parserExpectationsOf } from "../../evals/lib/index.mjs";
 import {
   CLAIM,
   FAILED,
@@ -34,7 +34,8 @@ const grade = (
   steps: Step[],
   harness: Harness,
   { truthPass = true, status = "pass" }: { truthPass?: boolean; status?: keyof typeof STATUS } = {},
-) => expectationsOf(session(task, steps, { truthPass, status, harness }), conditions, declared);
+) =>
+  parserExpectationsOf(session(task, steps, { truthPass, status, harness }), conditions, declared);
 
 const MONEY = "test/money.test.ts > money > formats thousands";
 const rerunMoney = { cmd: "npx vitest run test/money.test.ts", out: " Test Files  1 passed (1)" };
