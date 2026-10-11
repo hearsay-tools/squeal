@@ -1,5 +1,11 @@
 import { testFileId } from "../keys/index.js";
-import type { CheckKey, Store, TestFileRef, WorktreeId } from "../types/index.js";
+import {
+  type CheckKey,
+  type Store,
+  type TestFileRef,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /*
  * Review wave 13i, S1 (task 001-187): the key each file's new failure was
@@ -19,7 +25,7 @@ export interface RerunMemory {
 
 /** `meta` key of a worktree's re-runs, a JSON array of `RerunMemory`. */
 export function rerunsMetaKey(worktreeId: WorktreeId): string {
-  return `reruns:${worktreeId}`;
+  return worktreeMetaKey("reruns", worktreeId);
 }
 
 /** The worktree's re-runs by `testFileId`; empty when the row is absent or does not parse. */

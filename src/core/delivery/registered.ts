@@ -8,6 +8,7 @@ import {
   type RevisionNumber,
   type Store,
   type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { readAll, readSlot, slot, writeSlot } from "./slots.js";
 
@@ -50,12 +51,12 @@ export interface Resumed {
 
 /** `meta` key of a worktree's registration revisions. */
 export function registeredMetaKey(worktreeId: WorktreeId): string {
-  return `revision-registered:${worktreeId}`;
+  return worktreeMetaKey("registered", worktreeId);
 }
 
 /** `meta` key of the registrations of consumers that left. */
 function parkedMetaKey(worktreeId: WorktreeId): string {
-  return `revision-registered-left:${worktreeId}`;
+  return worktreeMetaKey("registeredLeft", worktreeId);
 }
 
 const isNumber = (value: unknown): value is number => typeof value === "number";

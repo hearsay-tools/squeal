@@ -6,18 +6,19 @@ import { isInputList, testFileId } from "../keys/index.js";
 import { slowFiles } from "../slow/classify.js";
 import { slowGlobs } from "../slow/inherit.js";
 import { readSlowActivity, readSlowArtifacts } from "../slow/state.js";
-import type {
-  CheckKey,
-  KnownState,
-  Policy,
-  RelativePath,
-  RevisionNumber,
-  SlowTierActivity,
-  SlowTierState,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
+import {
+  type CheckKey,
+  type KnownState,
+  type Policy,
+  type RelativePath,
+  type RevisionNumber,
+  type SlowTierActivity,
+  type SlowTierState,
+  type Store,
+  type TestFileKeyRecord,
+  type TestFileRef,
+  type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { testFileOf } from "./derive.js";
 import { artifactSources, sourcesChanged } from "./slow-sources.js";
@@ -225,13 +226,13 @@ function liveActivity(
 
 /**
  * Whether a registered consumer of the worktree is in a turn (001 D9), from
- * the turn row `delivery/turn.ts` keeps (`turnMetaKey`), read here by its key
- * since that module reads the header. Unlike the slow tier's trigger
+ * the turn row `delivery/turn.ts` keeps, read here by its registry key since
+ * that module reads the header. Unlike the slow tier's trigger
  * (`consumersIdle`) it has no clock, so a consumer the daemon has not yet
  * expired still counts.
  */
 function consumerInTurn(store: Store, worktreeId: WorktreeId): boolean {
-  const turns = readAll(store, `turn:${worktreeId}`);
+  const turns = readAll(store, worktreeMetaKey("turn", worktreeId));
   return store.consumers.list(worktreeId).some((record) => {
     const turn = turns[slot(record.consumer)];
     return isRecord(turn) && turn.turn === "in-turn";

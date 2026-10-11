@@ -1,5 +1,11 @@
 import { testFileId } from "../keys/index.js";
-import type { CheckKey, Store, TestFileRef, WorktreeId } from "../types/index.js";
+import {
+  type CheckKey,
+  type Store,
+  type TestFileRef,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /*
  * Review wave 13i, B1 (task 001-187): a heal (`storeResults`) refreshes
@@ -20,7 +26,7 @@ export interface HeldFile {
 
 /** `meta` key of the files a heal left held in `worktreeId`, a JSON array of `HeldFile`. */
 export function heldFilesMetaKey(worktreeId: WorktreeId): string {
-  return `held-files:${worktreeId}`;
+  return worktreeMetaKey("heldFiles", worktreeId);
 }
 
 /** Adds `file` to the worktree's held files; call inside the transaction of the heal. */

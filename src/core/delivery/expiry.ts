@@ -8,6 +8,7 @@ import {
   type Store,
   WAITERLESS_EXPIRY_MS,
   type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { recordVersion } from "./consumer-version.js";
@@ -144,7 +145,7 @@ export function drop(store: Store, consumer: Consumer, at: EpochMs): void {
 
 /** `meta` key of the time a consumer of the worktree last unregistered or was dropped. */
 export function departedMetaKey(worktreeId: WorktreeId): string {
-  return `departed:${worktreeId}`;
+  return worktreeMetaKey("departed", worktreeId);
 }
 
 /**

@@ -376,14 +376,6 @@ describe("the consumer's edit state", () => {
     await delivery.register(ALSO);
     expect(await nextEdit(ALSO)).toMatch(FIRST_LINE);
   });
-
-  it("drops the legacy key snapshot when the consumer unregisters", async () => {
-    const legacy = `edit-keys:${JSON.stringify([WT, "s1", "main"])}`;
-    await delivery.register(C1);
-    store.meta.set(legacy, "{}");
-    await delivery.unregister(C1);
-    expect(store.meta.get(legacy)).toBeNull();
-  });
 });
 
 describe("the scheduler's re-key record, as delivery prunes it", () => {

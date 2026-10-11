@@ -1,9 +1,10 @@
-import type {
-  CheckId,
-  DiagnosticFingerprint,
-  Store,
-  Transition,
-  WorktreeId,
+import {
+  type CheckId,
+  type DiagnosticFingerprint,
+  type Store,
+  type Transition,
+  type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { checkIdentity } from "./derive.js";
 
@@ -19,7 +20,9 @@ import { checkIdentity } from "./derive.js";
  * starts a new set.
  */
 
-const metaKey = (worktreeId: WorktreeId) => `state.baseline-findings.${worktreeId}`;
+function baselineMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("baselineFindings", worktreeId);
+}
 
 interface Findings {
   readonly checkpointId: string;
@@ -31,7 +34,7 @@ function entry(check: CheckId, fingerprint: DiagnosticFingerprint | null): strin
 }
 
 function read(store: Store, worktreeId: WorktreeId): Findings | null {
-  const raw = store.meta.get(metaKey(worktreeId));
+  const raw = store.meta.get(baselineMetaKey(worktreeId));
   return raw === null ? null : (JSON.parse(raw) as Findings);
 }
 
@@ -59,7 +62,7 @@ export function recordBaselineFindings(
   }
   const id = baseline ? checkpointId : (current?.checkpointId ?? "");
   const next: Findings = { checkpointId: id, entries: [...entries] };
-  store.meta.set(metaKey(worktreeId), JSON.stringify(next));
+  store.meta.set(baselineMetaKey(worktreeId), JSON.stringify(next));
 }
 
 /** Whether a first-seen fail of `check` with `fingerprint` is a baseline finding. */

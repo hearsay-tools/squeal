@@ -1,15 +1,16 @@
 import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import { readHeader, testFileKeyOf } from "../state/index.js";
-import type {
-  CheckKey,
-  Consumer,
-  DeltaEntry,
-  KnownState,
-  Store,
-  TestFileKeyRecord,
-  TurnState,
-  WorktreeId,
+import {
+  type CheckKey,
+  type Consumer,
+  type DeltaEntry,
+  type KnownState,
+  type Store,
+  type TestFileKeyRecord,
+  type TurnState,
+  type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
 
@@ -26,7 +27,7 @@ import { readSlot, writeSlot } from "./slots.js";
 
 /** `meta` key of a worktree's turn states. */
 export function turnMetaKey(worktreeId: WorktreeId): string {
-  return `turn:${worktreeId}`;
+  return worktreeMetaKey("turn", worktreeId);
 }
 
 /** A consumer starts idle, waiting for nothing: the waiter is silent until a turn ends. */

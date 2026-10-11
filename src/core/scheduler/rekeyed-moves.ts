@@ -7,6 +7,7 @@ import {
   refinedMetaKey,
   type Store,
   type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import type { RekeyedMark } from "./rekeyed-record.js";
 
@@ -20,18 +21,19 @@ import type { RekeyedMark } from "./rekeyed-record.js";
  * B1); a later move resolved first is kept beside the earlier one (13l S1).
  *
  * One JSON row per worktree, written in the scheduler's commit transaction
- * beside `rekeyed.<id>`, which older hooks read and this leaves alone. A
- * wait reads `seq` with its start view; an entry resolved at a later `seq`
- * is the wait's news. A resolved entry is pruned an hour after it resolved,
- * and only once refinement has been caught up for a minute, so no wait
- * still refining its captured revision loses one (13q S1, 13s B2, 13t S1):
- * nothing is held per request, and nothing runs on a timer. A wait whose
- * start predates a pruned entry (`dropped`) falls back, never ends quiet.
+ * beside the `rekeyed` row (`rekeyedMetaKey`), which older hooks read and
+ * this leaves alone. A wait reads `seq` with its start view; an entry
+ * resolved at a later `seq` is the wait's news. A resolved entry is pruned
+ * an hour after it resolved, and only once refinement has been caught up for
+ * a minute, so no wait still refining its captured revision loses one (13q
+ * S1, 13s B2, 13t S1): nothing is held per request, and nothing runs on a
+ * timer. A wait whose start predates a pruned entry (`dropped`) falls back,
+ * never ends quiet.
  */
 
 /** `meta` key of a worktree's re-key moves. */
 export function rekeyedMovesMetaKey(worktreeId: WorktreeId): string {
-  return `rekeyed-moves.${worktreeId}`;
+  return worktreeMetaKey("rekeyedMoves", worktreeId);
 }
 
 /** How long a resolved move stays readable once refinement caught up. */

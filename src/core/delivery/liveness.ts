@@ -2,20 +2,21 @@ import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
-import type {
-  Consumer,
-  DaemonLiveness,
-  DaemonRecord,
-  EpochMs,
-  FileChange,
-  KnownState,
-  RelativePath,
-  RevisionNumber,
-  StatusHeader,
-  Store,
-  TestFileKeyRecord,
-  WorktreeId,
-  WorktreeRecord,
+import {
+  type Consumer,
+  type DaemonLiveness,
+  type DaemonRecord,
+  type EpochMs,
+  type FileChange,
+  type KnownState,
+  type RelativePath,
+  type RevisionNumber,
+  type StatusHeader,
+  type Store,
+  type TestFileKeyRecord,
+  type WorktreeId,
+  type WorktreeRecord,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
 
@@ -113,7 +114,7 @@ export const DAEMON_START_GRACE_MS = 10_000;
 
 /** `meta` key of a worktree's told liveness. */
 export function livenessMetaKey(worktreeId: WorktreeId): string {
-  return `liveness-told:${worktreeId}`;
+  return worktreeMetaKey("livenessTold", worktreeId);
 }
 
 /**
@@ -177,7 +178,7 @@ export function livenessChange(
 
 /** `meta` key of a worktree's told revisions. */
 export function revisionMetaKey(worktreeId: WorktreeId): string {
-  return `revision-told:${worktreeId}`;
+  return worktreeMetaKey("revisionTold", worktreeId);
 }
 
 /** The revision last told to `consumer`; `null` when none was recorded (registered by 0.1.8 or older). */

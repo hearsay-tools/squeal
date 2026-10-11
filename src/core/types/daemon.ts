@@ -5,6 +5,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
+import { worktreeMetaKey } from "./store.js";
 import type { CheckpointRecord } from "./store-records.js";
 
 /*
@@ -181,7 +182,7 @@ export interface SyncResponse {
   readonly error: string | null;
   /**
    * The daemon records the re-key moves a wait reads from the store
-   * (`rekeyed-moves.<id>`, task 001-258). Absent from a daemon before it,
+   * (the `rekeyedMoves` row, task 001-258). Absent from a daemon before it,
    * whose commits leave that record as it was: the wait then names no
    * files, never ends quiet on them.
    */
@@ -287,5 +288,5 @@ export interface DaemonExit {
  * (task 001-96, review wave 10c). No hook waits for it.
  */
 export function bootstrappedMetaKey(worktreeId: WorktreeId): string {
-  return `daemon-bootstrapped:${worktreeId}`;
+  return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
