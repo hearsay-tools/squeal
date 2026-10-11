@@ -4,7 +4,8 @@
 // `/bin/bash -lc '<script>'`; `simpleCommands` unwraps any `sh -c`-style wrapper and splits its
 // script the same way, which the 005-06 prototype's regular expressions over raw text did not.
 // Review wave 1, B2: each command also says whether it is established to have run, from the
-// chain's operators, the blocks around it and the call's exit code.
+// chain's operators, the blocks around it and the call's exit code. Review wave 1.5, B2: and
+// whether an earlier `exit` or `exec`, or a failure under `set -e`, ends the shell before it.
 
 const SEPARATORS = new Set([";", "&", "|", "(", ")", "`", "\n"]);
 const KEYWORDS = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until"]);
@@ -23,27 +24,44 @@ const SHELL = /^(?:.*\/)?(?:ba|z|da)?sh$/;
  * command substitution comes before the command holding it.
  *
  * `established` is `true` only for a command that ran whenever the text ran: not behind `&&` or
- * `||`, not in an `if`, loop or `case` body. `exit`, the call's exit code, establishes the last
- * list of a chain: all of an `&&` chain when it is 0, all of an `||` chain when it is not.
+ * `||`, not in an `if`, loop or `case` body, not after a command that may have ended its shell.
+ * `exit`, the call's exit code, establishes the last list of a chain: all of an `&&` chain when it
+ * is 0, all of an `||` chain when it is not. `unreachable` is `true` for a command after an
+ * established `exit` or `exec` of its shell: it never ran. After an `exit` or `exec` that may not
+ * have run, or after a command that can fail while `set -e` (`set -o errexit`, `bash -e`) may be
+ * on, a command is neither.
  */
-export function simpleCommands(text, { exit = null } = {}) {
+export function simpleCommands(text, { exit = null, errexit = false } = {}) {
   const { commands, top } = tokenize(String(text));
   settle(top, exit);
+  walk(top, errexit);
   const solo = commands.length === 1;
   return commands.flatMap((c, i) => {
     const established = isEstablished(c.el);
+    const unreachable = isUnreachable(c.el);
     const words = strip(c.words);
     const script = shellScript(words, c, commands[i - 1]);
     if (script !== null) {
-      return simpleCommands(script, { exit: solo ? exit : null }).map((inner) => ({
-        ...inner,
-        established: established && inner.established,
+      const inner = { exit: solo ? exit : null, errexit: errexitFlags(words) };
+      return simpleCommands(script, inner).map((ic) => ({
+        ...ic,
+        established: established && ic.established,
+        unreachable: unreachable || ic.unreachable,
       }));
     }
     return words.length
-      ? [{ words, redirects: c.redirects, heredocs: c.heredocs, established }]
+      ? [{ words, redirects: c.redirects, heredocs: c.heredocs, established, unreachable }]
       : [];
   });
+}
+
+/** Whether a shell's own flags turn errexit on: `bash -e -c`, `sh -ec`, `bash -o errexit`. */
+function errexitFlags(words) {
+  const end = words.findIndex((w, j) => j > 0 && !w.startsWith("-") && words[j - 1] !== "-o");
+  const flags = words.slice(1, end < 0 ? words.length : end);
+  return flags.some(
+    (w, j) => /^-[a-zA-Z]*e[a-zA-Z]*$/.test(w) || (w === "-o" && flags[j + 1] === "errexit"),
+  );
 }
 
 /** The script a shell command runs: its `-c` argument, or the heredoc it reads on stdin. */
@@ -84,21 +102,84 @@ function settle(top, exit) {
   if ((ops.has("&&") && exit === 0) || (ops.has("||") && exit !== 0)) last.settled = true;
 }
 
+/**
+ * Marks each element of `frame` and the frames inside it with `cut`, what may have ended the
+ * shell before it: `none`; `maybe`, an `exit` or `exec` that may have run, or a command that can
+ * fail under errexit; `never`, an established `exit` or `exec`. A subshell or substitution is a
+ * shell of its own: its `exit` ends only itself, and it inherits errexit.
+ */
+function walk(frame, errexit) {
+  let cut = "none";
+  for (const el of frame.els) {
+    el.cut = cut;
+    for (const f of el.frames) walk(f, errexit);
+    if (cut === "never") continue;
+    const sure = cut === "none" && !el.block && (el.index === 0 || el.list.settled);
+    const only = el.cmds.length === 1 && !el.list.background ? el.cmds[0].words : null;
+    const flag = only ? setErrexit(only) : null;
+    if (only && ends(only)) cut = sure ? "never" : "maybe";
+    else if (flag !== null) errexit = flag || (errexit && !sure);
+    else if (errexit && el.index === el.list.ops.length && !el.list.background && canFail(el))
+      cut = "maybe";
+  }
+}
+
+/** Ends its shell: `exit`, or `exec` running a program in the shell's place (not `exec 2>&1`). */
+function ends(words) {
+  let i = 0;
+  const skip = (w) =>
+    /^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(w) || (KEYWORDS_ALSO.has(w) && w !== "exec");
+  while (words[i] !== undefined && skip(words[i])) i++;
+  if (words[i] === "exit") return true;
+  return words[i] === "exec" && words.slice(i + 1).some((w) => !w.startsWith("-"));
+}
+
+/** `set -e` or `set -o errexit`: `true`; `set +e` or `set +o errexit`: `false`; else `null`. */
+function setErrexit(words) {
+  const w = strip(words);
+  if (w[0] !== "set") return null;
+  let on = null;
+  for (let i = 1; i < w.length && w[i] !== "--" && w[i] !== "-"; i++) {
+    if (/^[-+]o$/.test(w[i])) {
+      if (w[i + 1] === "errexit") on = w[i][0] === "-";
+      i++;
+    } else if (/^[-+][a-zA-Z]*e[a-zA-Z]*$/.test(w[i])) on = w[i][0] === "-";
+  }
+  return on;
+}
+
+/** The commands whose status is always 0. */
+const NEVER_FAILS = new Set(["true", ":", "set", "export", "unset"]);
+/** An element that can fail: a subshell, or any command in it but `true` and the like. */
+function canFail(el) {
+  if (el.frames.some((f) => f.kind === "(")) return true;
+  return el.cmds.some((c) => {
+    const w = strip(c.words);
+    return w.length > 0 && !NEVER_FAILS.has(w[0]);
+  });
+}
+
 /** An element ran: first in its list or in a settled list, outside a body, inside one that ran. */
 function isEstablished(el) {
-  if (el.block || (el.index > 0 && !el.list.settled)) return false;
+  if (el.cut !== "none" || el.block || (el.index > 0 && !el.list.settled)) return false;
   return el.frame.parent === null || isEstablished(el.frame.parent);
+}
+
+/** An element never ran: after an established end of its shell, or inside one that never ran. */
+function isUnreachable(el) {
+  return el.cut === "never" || (el.frame.parent !== null && isUnreachable(el.frame.parent));
 }
 
 /**
  * Splits shell text into raw commands, each with its element: `{ frame, list, index, block }`,
  * the pipeline it belongs to, at position `index` of an and-or `list` (`list.ops` holds the
  * `&&` and `||` between them) in a `frame` (the text, or a subshell or substitution run by the
- * element `frame.parent`), `block` when an `if`, loop or `case` body holds it.
+ * element `frame.parent`), `block` when an `if`, loop or `case` body holds it. A frame lists its
+ * elements in `els`; an element its commands in `cmds` and the frames it runs in `frames`.
  */
 function tokenize(s) {
   const commands = [];
-  const top = { parent: null, lists: [] };
+  const top = { parent: null, kind: null, lists: [], els: [] };
   let st = { frame: top, list: null, el: null, op: null };
   const frames = [];
   const blocks = [];
@@ -121,7 +202,10 @@ function tokenize(s) {
       list: st.list,
       index: st.list.ops.length,
       block: blocks.some((b) => b.body),
+      cmds: [],
+      frames: [],
     };
+    st.frame.els.push(st.el);
     return st.el;
   };
   const ensureEl = () => {
@@ -154,7 +238,10 @@ function tokenize(s) {
   };
   const endCommand = () => {
     endWord();
-    if (cmd.words.length || cmd.redirects.length) commands.push(cmd);
+    if (cmd.words.length || cmd.redirects.length) {
+      commands.push(cmd);
+      cmd.el.cmds.push(cmd);
+    }
     cmd = newCommand();
   };
   const endList = (background) => {
@@ -173,7 +260,9 @@ function tokenize(s) {
       parent = cmd.el;
     }
     frames.push({ kind, st, cmd, word, pendingRedirect });
-    st = { frame: { parent, lists: [] }, list: null, el: null, op: null };
+    const frame = { parent, kind, lists: [], els: [] };
+    parent.frames.push(frame);
+    st = { frame, list: null, el: null, op: null };
     cmd = newCommand();
     word = null;
     pendingRedirect = null;

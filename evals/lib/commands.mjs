@@ -28,11 +28,14 @@ const VITEST_VALUE_FLAGS = new Set([
  *
  * Each action has an `execution` (review wave 1, B2): `refused` when the whole call was refused,
  * `executed` when the call's structure and `exit` establish it ran, else `indeterminate`. A
- * runner's own summary in `output` establishes as many indeterminate runs of it as it shows.
+ * runner's own summary in `output` establishes as many indeterminate runs of it as it shows. A
+ * command after an established `exit` or `exec` never ran and yields no action (review wave 1.5,
+ * B2), so no output can establish it.
  */
 export function classifyShell(text, { exit = null, output = "", refused = false } = {}) {
   const actions = [];
   for (const c of simpleCommands(text, { exit })) {
+    if (c.unreachable) continue;
     const execution = refused ? "refused" : c.established ? "executed" : "indeterminate";
     const a = classify(c.words);
     if (a) actions.push({ ...a, execution });
