@@ -4,11 +4,13 @@
 // sessions where it applied, a per-task breakdown and the context counts with no direction, per
 // run, oldest first. A flag marks an expectation's rate 25 points or more below the same model's
 // previous run in the line. Every false pass and forbidden edit is listed by cell, and apart from
-// them every false fail, marked where it matches Squeal's end verdict (006-12).
+// them every false fail, marked where it matches Squeal's end verdict (006-12), and every cell
+// where the judge's grade differs from the frozen parser's (006-23, D9).
 import { createHash } from "node:crypto";
 import {
   CONTEXT,
   declarations,
+  disagreements,
   dropped,
   EXPECTATIONS,
   expectationsOf,
@@ -174,6 +176,13 @@ export function trendMarkdown(runs, declared = declarations()) {
       "",
     );
     for (const r of line.runs) out.push(...falseFails(r));
+    out.push(
+      "### Judge and parser disagreements",
+      "",
+      "Where the judge's grade of a judged expectation (spec 006 D9) differs from the frozen parser's cross-check, for a person to read; neither is resolved here. Cited steps are the cell's retained transcript.",
+      "",
+    );
+    for (const r of line.runs) out.push(...disagreed(r, declared));
   });
   return `${out.join("\n").trimEnd()}\n`;
 }
@@ -245,6 +254,16 @@ function falseFails(r) {
           : `- false fail: \`${c.id}\` (${c.claimLine ?? c.claim}; Squeal ${c.squealVerdict ?? "not graded"})`,
       ),
   );
+}
+
+function disagreed(r, declared) {
+  const list = r.data.cells.flatMap((c) =>
+    disagreements(c, r.data.conditions, declared).map(
+      (d) =>
+        `- \`${c.id}\` \`${d.id}\`: judge ${d.judge}, parser ${d.parser} (steps ${[d.steps].flat().join(", ")}: ${d.reason})`,
+    ),
+  );
+  return [`${r.name}: ${list.length ? "" : "no disagreement."}`, ...list, ""];
 }
 
 const notes = (r, list) => [`${r.name}: ${list.length ? "" : "none."}`, ...list, ""];
