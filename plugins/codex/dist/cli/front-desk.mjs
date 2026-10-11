@@ -361,6 +361,13 @@ function bind(identity) {
   );
 }
 port.on("message", (message) => {
+  try {
+    receive(message);
+  } catch (error) {
+    console.error(`squeal front desk: ${String(error)}`);
+  }
+});
+function receive(message) {
   switch (message.type) {
     case "bind":
       bind(message.identity);
@@ -391,7 +398,7 @@ port.on("message", (message) => {
     }
     case "close":
       phase = "stopping";
-      void (server?.close() ?? Promise.resolve()).then(() => post({ type: "closed" }));
+      void (server?.close() ?? Promise.resolve()).catch((error) => console.error(`squeal front desk: ${String(error)}`)).then(() => post({ type: "closed" }));
       return;
   }
-});
+}

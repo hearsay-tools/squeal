@@ -10368,10 +10368,11 @@ var init_slow_tier = __esm({
       /**
        * A consumer may have gone idle (task 001-281): with slow files queued the
        * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
-       * trigger does not allow; `next` decides as on the timer.
+       * trigger does not allow; `next` decides as on the timer. Before the
+       * scheduler has started it does nothing: the start pumps as it ends.
        */
       nudge() {
-        if (this.host.closed()) return;
+        if (this.host.closed() || !this.host.ready()) return;
         if (this.host.started().ledger.orderedSlow().length > 0) this.host.pump();
       }
       /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
@@ -10732,6 +10733,7 @@ var init_scheduler2 = __esm({
           {
             lock: this.#lock,
             started: () => this.#started(),
+            ready: () => this.#context !== null,
             closed: () => this.#closed,
             pump: () => this.#pump(),
             editPending: () => this.#editPending(),
@@ -10937,7 +10939,7 @@ var init_scheduler2 = __esm({
         return request;
       }
       nudge() {
-        if (this.#closed || !this.#ledger) return;
+        if (this.#closed || !this.#context) return;
         this.#slow.nudge();
       }
       refreshObserved() {
@@ -34289,7 +34291,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.126";
+  if (true) return "0.1.127";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35895,7 +35897,7 @@ function answer(socket, response) {
 function prepareFrontDesk(worker = null) {
   const script = worker?.script ?? frontDeskScript(new URL(import.meta.url));
   if (script === null) {
-    return { open: (identity, events) => inThread(identity, events), discard: () => {
+    return { open: (identity, events) => inThread(identity, guarded(events)), discard: () => {
     } };
   }
   const execArgv = worker?.execArgv;
@@ -35912,7 +35914,7 @@ function started(worker) {
       worker.off("error", onError);
       worker.off("exit", onExit);
       if (early[0] !== void 0) return Promise.reject(early[0]);
-      return inWorker(worker, identity, events);
+      return inWorker(worker, identity, guarded(events));
     },
     discard: () => void worker.terminate()
   };
@@ -35923,6 +35925,42 @@ function frontDeskScript(module) {
     if (existsSync8(script)) return script;
   }
   return null;
+}
+function guarded(events) {
+  const report2 = events.onError ?? ((error) => process.stderr.write(`squeal front desk: ${error.message}
+`));
+  const caught = (error) => {
+    try {
+      report2(error instanceof Error ? error : new Error(String(error)));
+    } catch {
+    }
+  };
+  const safe = (call) => (...args) => {
+    try {
+      call(...args);
+    } catch (error) {
+      caught(error);
+    }
+  };
+  const asked = (call) => (...args) => {
+    try {
+      return call(...args);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  };
+  const { onNudge } = events;
+  return {
+    onActivity: safe(events.onActivity),
+    ...onNudge === void 0 ? {} : { onNudge: safe(onNudge) },
+    requestFullSuite: asked(events.requestFullSuite),
+    requestSlowSuite: asked(events.requestSlowSuite),
+    requestSync: asked(events.requestSync),
+    onStop: safe(events.onStop),
+    onStepDown: safe(events.onStepDown),
+    onFailure: safe(events.onFailure),
+    onError: caught
+  };
 }
 async function inWorker(worker, identity, events) {
   const post = (message2) => worker.postMessage(message2);
@@ -37781,7 +37819,9 @@ var Daemon = class {
         onStepDown: (version2) => setImmediate(
           () => void this.#shutdown("superseded", 0, stepDownNote(this.#version, version2))
         ),
-        onFailure: (error) => void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`)
+        onFailure: (error) => void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`),
+        // Caught by the desk, which serves on (review wave-13ak, B1).
+        onError: (error) => this.#log(`front desk: ${error.message}`)
       }
     );
   }
@@ -37922,11 +37962,11 @@ function ownSignals(onSignal) {
   const originals = METHODS2.map((name) => [name, process[name]]);
   for (const signal2 of OWNED) process.on(signal2, onSignal);
   for (const [name, original] of originals) {
-    const guarded = function(event2, ...rest) {
+    const guarded2 = function(event2, ...rest) {
       if (OWNED.has(event2)) return process;
       return Reflect.apply(original, this, [event2, ...rest]);
     };
-    process[name] = guarded;
+    process[name] = guarded2;
   }
   return () => {
     for (const [name, original] of originals) process[name] = original;
@@ -38571,10 +38611,21 @@ function editLine(edit, wait, at2, after) {
     case "quiet":
       return `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at2} ${after}${pending}${others}`;
     case "news":
-      return `Returned on news: ${plural(wait.transitions, "transition")} in the ${files2}, ${at2} ${after}${pending}${others}`;
+      return `Returned on news: ${newsText(wait, files2)}, ${at2} ${after}${pending}${others}`;
     default:
       return `Returned on timeout ${after}: ${edit.pending} of the ${files2} pending ${at2}${pending}${others}`;
   }
+}
+function newsText(wait, files2) {
+  const slow = wait.slow?.transitions ?? 0;
+  const own = wait.transitions - slow;
+  const parts = [];
+  if (own > 0) parts.push(`${plural(own, "transition")} in the ${files2}`);
+  if (slow > 0) {
+    const held2 = `${plural(wait.slow?.held ?? 0, "slow file")} run --slow queued`;
+    parts.push(`${parts.length === 0 ? plural(slow, "transition") : slow} in the ${held2}`);
+  }
+  return parts.join(" and ");
 }
 function checkpointText(snapshot3, command) {
   const checkpoint = snapshot3.checkpoint;
@@ -38624,8 +38675,21 @@ function pendingSlow(store, worktreeId, states, keys) {
     [...files2].filter(([, file]) => file.class === "pending").map(([id2, file]) => [id2, file.ref.path])
   );
 }
-function heldSlowLeft(held2, now) {
-  return [...held2.keys()].filter((id2) => now.has(id2)).map((id2) => held2.get(id2)).sort();
+function heldSlowLeft(held2, states, keys) {
+  const pending = /* @__PURE__ */ new Set();
+  for (const state of states) {
+    if (state.validity !== "pending") continue;
+    const id2 = testFileId(testFileOf(state.check));
+    if (held2.has(id2)) pending.add(id2);
+  }
+  const rows = /* @__PURE__ */ new Set();
+  for (const row of keys) {
+    const id2 = testFileId(row.testFile);
+    if (!held2.has(id2)) continue;
+    rows.add(id2);
+    if (row.pending !== null) pending.add(id2);
+  }
+  return [...pending].filter((id2) => rows.has(id2)).map((id2) => held2.get(id2)).sort();
 }
 function heldSlowNews(held2, entries2, counted) {
   return entries2.filter((entry2) => {
@@ -38689,16 +38753,17 @@ async function waitForStatus(cwd, options) {
         const keys = window === void 0 && options.holdSlow !== true ? [] : store.testFileKeys.list(id2);
         if (options.holdSlow === true) syncing.slow ??= pendingSlow(store, id2, states, keys);
         const held2 = syncing.slow;
-        const slowLeft = held2 === void 0 ? [] : heldSlowLeft(held2, pendingSlow(store, id2, states, keys));
+        const slowLeft = held2 === void 0 ? [] : heldSlowLeft(held2, states, keys);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id2), now());
         let transitions;
         let quiet;
         let edit;
+        let slowNews = 0;
         if (window !== void 0) {
           const split = splitNews(window, news);
           const pending = heldPending(window, keys);
-          const slowNews = held2 === void 0 ? 0 : heldSlowNews(held2, news, window.ids);
+          slowNews = held2 === void 0 ? 0 : heldSlowNews(held2, news, window.ids);
           transitions = split.own + slowNews;
           quiet = header.revision >= window.revision && windowRefined(window, header) && pending === 0;
           edit = {
@@ -38718,7 +38783,7 @@ async function waitForStatus(cwd, options) {
         const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
         if (outcome2 === null) return null;
         const result = buildSnapshot(store, root, now());
-        const slow = held2 === void 0 ? {} : { slow: { held: held2.size, pending: slowLeft } };
+        const slow = held2 === void 0 ? {} : { slow: { held: held2.size, pending: slowLeft, transitions: slowNews } };
         return { outcome: outcome2, transitions, ...edit === void 0 ? {} : { edit }, ...slow, result };
       });
       if (read4 !== null && "available" in read4) {
