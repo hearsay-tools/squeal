@@ -6,6 +6,7 @@
 // Review wave 1, B2: each command also says whether it is established to have run, from the
 // chain's operators, the blocks around it and the call's exit code. Review wave 1.5, B2: and
 // whether an earlier `exit` or `exec`, or a failure under `set -e`, ends the shell before it.
+// Review wave 1.6, B2: under `set -e` only a bare `true` or `:` is sure not to fail.
 
 const SEPARATORS = new Set([";", "&", "|", "(", ")", "`", "\n"]);
 const KEYWORDS = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until"]);
@@ -117,10 +118,14 @@ function walk(frame, errexit) {
     const sure = cut === "none" && !el.block && (el.index === 0 || el.list.settled);
     const only = el.cmds.length === 1 && !el.list.background ? el.cmds[0].words : null;
     const flag = only ? setErrexit(only) : null;
-    if (only && ends(only)) cut = sure ? "never" : "maybe";
-    else if (flag !== null) errexit = flag || (errexit && !sure);
-    else if (errexit && el.index === el.list.ops.length && !el.list.background && canFail(el))
+    if (only && ends(only)) {
+      cut = sure ? "never" : "maybe";
+      continue;
+    }
+    // A `set` that fails changes nothing, so it ends the shell when errexit was already on.
+    if (errexit && el.index === el.list.ops.length && !el.list.background && canFail(el))
       cut = "maybe";
+    if (flag !== null) errexit = flag || (errexit && !sure);
   }
 }
 
@@ -148,14 +153,21 @@ function setErrexit(words) {
   return on;
 }
 
-/** The commands whose status is always 0. */
-const NEVER_FAILS = new Set(["true", ":", "set", "export", "unset"]);
-/** An element that can fail: a subshell, or any command in it but `true` and the like. */
+/** The commands whose status is always 0, bare: no argument, assignment or redirection. */
+const NEVER_FAILS = new Set(["true", ":"]);
+/** Words that run nothing themselves: a block's keywords and braces, `!` and `time`. */
+const INERT = new Set([...KEYWORDS, "!", "{", "}", "time"]);
+/**
+ * An element that can fail (review wave 1.6, B2): any but a bare `true` or `:`. A subshell or a
+ * substitution can fail, a redirection can fail before its command starts, and every other
+ * command, `set`, `export` and `unset` among them, can fail on its arguments.
+ */
 function canFail(el) {
-  if (el.frames.some((f) => f.kind === "(")) return true;
+  if (el.frames.length) return true;
   return el.cmds.some((c) => {
-    const w = strip(c.words);
-    return w.length > 0 && !NEVER_FAILS.has(w[0]);
+    if (c.redirected || c.heredocs.length) return true;
+    const w = c.words.filter((x) => !INERT.has(x));
+    return w.length > 0 && !(w.length === 1 && NEVER_FAILS.has(w[0]));
   });
 }
 
@@ -238,7 +250,7 @@ function tokenize(s) {
   };
   const endCommand = () => {
     endWord();
-    if (cmd.words.length || cmd.redirects.length) {
+    if (cmd.words.length || cmd.redirected) {
       commands.push(cmd);
       cmd.el.cmds.push(cmd);
     }
@@ -305,6 +317,8 @@ function tokenize(s) {
     } else if (ch === ">" || ch === "<") {
       if (word !== null && /^\d+$/.test(word)) word = null; // the fd in `2>`
       endWord();
+      ensureEl();
+      cmd.redirected = true;
       let op = ch;
       while (/[<>&|-]/.test(s[i + 1] ?? "") && op.length < 3) op += s[++i];
       if (/^>&\d?$|^<&/.test(op) || /^>&$/.test(op)) {
@@ -313,6 +327,8 @@ function tokenize(s) {
       } else pendingRedirect = { op: op.replace(/&$/, "") || ">" };
     } else if (ch === "&" && s[i + 1] === ">") {
       endWord();
+      ensureEl();
+      cmd.redirected = true;
       i++;
       if (s[i + 1] === ">") i++;
       pendingRedirect = { op: ">" };
@@ -341,7 +357,7 @@ function tokenize(s) {
 }
 
 function newCommand() {
-  return { words: [], redirects: [], heredocs: [], el: null, piped: false };
+  return { words: [], redirects: [], heredocs: [], el: null, piped: false, redirected: false };
 }
 
 /** Reads the queued heredoc bodies starting at `start`; returns the index after the last one. */
