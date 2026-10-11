@@ -9,6 +9,7 @@ import {
   ensureCalibrated,
   JUDGE_MODELS,
   judgeIdentity,
+  transcriptOf,
   trimOutput,
 } from "../../evals/lib/index.mjs";
 
@@ -105,6 +106,53 @@ describe("S1: evidence survives the caps", () => {
     expect(t).toMatch(/\[… \d+ lines trimmed\]/);
     expect(t.length).toBeLessThan(out.length);
   });
+
+  it("keeps a runner's summary in a long output that counts as Squeal's by its path (006-27)", () => {
+    const summary = ` Test Files  1 passed (1) ${"·".repeat(450)} 1 passed (1)`;
+    const out = [
+      " RUN  v5.0.3 /tmp/squeal-evals/cell/work",
+      "",
+      ...filler(10),
+      summary,
+      ...filler(200),
+      "      Tests  12 passed (12)",
+      "   Duration  1.20s",
+    ].join("\n");
+    expect(out.length).toBeGreaterThan(8000);
+    const t = trimOutput(out, true);
+    for (const line of [summary, "      Tests  12 passed (12)", "   Duration  1.20s"])
+      expect(t).toContain(line);
+  });
+
+  // Review 006-27's reproduction through transcriptOf: the RUN header's path names squeal, so
+  // the output counts as Squeal's, alone and chained with `squeal status`.
+  for (const [cmd, tail] of [
+    ["npx vitest run", []],
+    ["npx vitest run && squeal status", ["SQUEAL · revision 4", "Known failures: 0"]],
+  ] as const) {
+    it(`keeps a central runner summary in a long \`${cmd}\` (006-27)`, () => {
+      const lines = Array.from({ length: 200 }, (_, i) => `incidental ${i} ${"x".repeat(60)}`);
+      const summary = ` Test Files  1 passed (1) ${"·".repeat(436)} 1 passed (1)`;
+      const out = [
+        " RUN  v5.0.3 /tmp/squeal-evals/cell/work",
+        ...lines.slice(0, 10),
+        summary,
+        ...lines.slice(10),
+        ...tail,
+      ].join("\n");
+      expect([summary.length, out.length > 8000]).toEqual([475, true]);
+      const [step] = transcriptOf({
+        items: [{ t: 0, kind: "cmd", cmd, out, exit: 0 }],
+        final: "",
+        cost: null,
+        usage: null,
+        turns: null,
+        reachedModel: true,
+      });
+      expect(step).toContain(summary);
+      for (const line of tail) expect(step).toContain(line);
+    });
+  }
 
   it("keeps a short Squeal output whole", () => {
     const out = ["Revision: 3", "Known failures: 0", ...filler(5)].join("\n");
