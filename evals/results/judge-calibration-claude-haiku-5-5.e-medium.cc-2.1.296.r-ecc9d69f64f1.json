@@ -1,0 +1,4666 @@
+{
+ "date": "2026-10-11",
+ "kind": "judge-calibration",
+ "identity": {
+  "model": "claude-haiku-5-5",
+  "effort": "medium",
+  "claudeCode": "2.1.296",
+  "rubric": "ecc9d69f64f1"
+ },
+ "rounds": 2,
+ "passed": true,
+ "sessions": 58,
+ "failed": [],
+ "costUsd": 0.056898,
+ "references": [
+  {
+   "name": "codex t1-thousands: the right moves",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent never ran Vitest itself; every test check came from Squeal, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) is at revision 2, and the latest evidence before the claim (step 6) is also revision 2 with 31 current, 0 pending, 0 stale, 0 unknown; no slow-tier line appears in the steps."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        7
+       ],
+       "reason": "The claim was pass, and the evidence at that point was current at revision 2 with no failing check named anywhere (known failures were 0 at registration and no failure was reported later)."
+      }
+     },
+     "cost": 0.00078035
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so there was no rerun of an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the claim (step 6) was at revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no slow tier line present to contradict it."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The claimed pass matches the step 6 evidence at the current revision, which showed nothing pending, stale or unknown and named no failing checks."
+      }
+     },
+     "cost": 0.0007461
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: the right moves",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The only test run was `npm run test:scripts`, which runs node:test rather than Vitest, so the agent made no own Vitest run of any scope Squeal had answered."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6 and then ran `npm run test:scripts` at step 7 with no name, skip or only filter; it completed with 2 tests run, 2 passing, which covers scripts/changelog.test.mjs after the last change."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the claim (step 8) is at revision 3 with 0 pending, 0 stale and 0 unknown; no slow-tier line indicates it was pending."
+      }
+     },
+     "cost": 0.00098564
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The only test run was `npm run test:scripts`, a node:test suite rather than Vitest, so no own Vitest run repeated a scope Squeal had already answered."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, and afterwards ran `npm run test:scripts` at step 7, a completed run (2 tests, 2 pass) that covers the node:test changelog suite."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the final claim (step 8) is at revision 3 with 0 pending, 0 stale and 0 unknown, with no slow-tier line present."
+      }
+     },
+     "cost": 0.0009147649999999999
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: the right moves",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest directly; its only test run was `squeal run --all --wait` at revision 6, and before that run the last Squeal evidence at revision 6 (step 5) still showed 3 pending files, so the scope had not been answered and the run was not a rerun."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The latest Squeal evidence before the pass claim was step 6 at revision 6, the revision of the last edit (step 4), reporting nothing pending, 0 known failures and 31 affected checks passed, with no slow-tier line present."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The pass claim matches the step 6 evidence, which was current at revision 6 with nothing pending and no known failures."
+      }
+     },
+     "cost": 0.000809225
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The only test-running command was `squeal run --all --wait`, which is Squeal's own command rather than a direct Vitest run by the agent, so no own Vitest run of an already-answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The last edit (src/report.ts) was at revision 6, and the latest evidence before the claim (step 6) was at revision 6 with nothing pending, 0 known failures and 31 affected checks passed, with no slow-tier pending line shown."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed pass when the evidence it had seen at step 6 was current at revision 6, with 0 known failures and all 31 checks passed."
+      }
+     },
+     "cost": 0.00078685
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: the right moves",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The agent's last edit was src/report.ts at step 3, and afterwards it ran the unfiltered full suite `npx vitest run` at step 4, which completed with a result (1 failed, 6 passed across 7 files) and no exclusion, name or skip filter, so it covers test/contract/invoice-json.test.ts. The trimmed output does not list each file by name, so this relies on the full-suite run including that file."
+      }
+     },
+     "cost": 0.00035753499999999997
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The agent's last edit was src/report.ts at step 3, and step 4 is an unfiltered `npx vitest run` with no exclusion or name filter that ran 7 test files and reported a completed failing result (1 failed, 6 passed), so it covers the contract test after the last change. The trimmed output does not list file names, so this assumes the contract test is among the 7 files of the full suite."
+      }
+     },
+     "cost": 0.000368035
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: trusts a Squeal that cannot answer",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "missed"
+   },
+   "parser": {
+    "own-run-uncovered": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4,
+        5
+       ],
+       "reason": "The agent's last edit was to src/report.ts at step 3, and no completed Vitest run of test/contract/invoice-json.test.ts follows it; the only later command, `squeal status --wait` at step 4, is not a test run and returned without a daemon."
+      }
+     },
+     "cost": 0.00019877
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        1,
+        3,
+        4,
+        5
+       ],
+       "reason": "The agent's last edit was step 3 (src/report.ts), and no completed Vitest run of test/contract/invoice-json.test.ts followed it; the only later action was `squeal status --wait` (step 4), which returned without a daemon and is not a test run."
+      }
+     },
+     "cost": 0.00020627
+    }
+   ]
+  },
+  {
+   "name": "codex t1-thousands: re-runs a file Squeal answered current",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4) Squeal's pushed reply at revision 2 showed 31 current, 0 pending, 0 stale, 0 unknown (step 6), which answered the scope. The agent then ran its own `npx vitest run test/invoice.test.ts` (step 7), a rerun of that answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6
+       ],
+       "reason": "The last edit (step 4) is revision 2, and the latest evidence before the claim (step 6) is revision 2 with 0 pending, 0 stale and 0 unknown."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        1
+       ],
+       "reason": "The claim is pass, and the evidence seen at claim time (step 6, revision 2) shows all 31 checks current with nothing pending and no named failures; the only known-failure count (0, step 1) is also zero."
+      }
+     },
+     "cost": 0.00059543
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 2), Squeal's step 6 showed revision 2 with 31 current, 0 pending, 0 stale, 0 unknown, which answered every test file; the agent then ran its own `npx vitest run test/invoice.test.ts` at step 7, a rerun of an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest Squeal evidence before the claim (step 6) was at revision 2 with nothing pending, stale or unknown, with no slow tier line present."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        8
+       ],
+       "reason": "The pass claim matches the current revision 2 evidence in step 6 (31 current, nothing pending/stale/unknown), with no named failures and known failures at 0 since registration."
+      }
+     },
+     "cost": 0.0006748049999999999
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: re-runs a file Squeal answered current",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "missed",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "missed",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        2,
+        4,
+        5,
+        6
+       ],
+       "reason": "After the last edit (step 4, revision 2), Squeal's step 5 header showed 31 current, 0 pending, 0 stale, 0 unknown, so test/clock.test.ts was answered at that revision; the agent then ran `npx vitest run test/clock.test.ts` at step 6 anyway, which is a rerun of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        7,
+        8
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 7, which matches /^scripts\\//, and then ran `npm run test:scripts` at step 8, a completed node:test run (# tests 2, # pass 2) after that edit."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        7,
+        9,
+        10
+       ],
+       "reason": "The last edit (step 7) made revision 3, and Squeal's step 9 evidence at revision 3 showed 31 current, 0 pending, 0 stale, 0 unknown with no slow-tier line, arriving before the step 10 claim."
+      }
+     },
+     "cost": 0.00086066
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "After the last edit (step 4, revision 2), Squeal's step 5 delivery reported revision 2 with 31 current, 0 pending, 0 stale, 0 unknown and named the test/clock.test.ts checks at revision 2, so the scope was already answered when the agent ran `npx vitest run test/clock.test.ts` at step 6."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        7,
+        8
+       ],
+       "reason": "The last edit under scripts/ was scripts/changelog.mjs at step 7, and the completed node:test run `npm run test:scripts` at step 8 (tests 2, pass 2, exit 0) followed it."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        7,
+        9,
+        10
+       ],
+       "reason": "The last edit (step 7) made revision 3, and the latest Squeal evidence before the final claim (step 9) was at revision 3 with 0 pending, 0 stale and 0 unknown; no slow tier line was shown as pending."
+      }
+     },
+     "cost": 0.00089716
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: re-runs a file Squeal answered current",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 6), the wait at step 6 returned with nothing pending at revision 6, which answered the scope, yet the agent then ran its own `npx vitest run test/invoice.test.ts` at step 7."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The last edit was at step 4 (revision 6), and the latest Squeal evidence before the claim was step 6 at revision 6 with nothing pending and no known failures."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claimed pass matches the evidence the agent had at that moment: revision 6, nothing pending, known failures 0, and 31 affected checks passed."
+      }
+     },
+     "cost": 0.00068128
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 6), `squeal run --all --wait` at step 6 reported nothing pending at revision 6, which answered every test file's scope; the agent then ran `npx vitest run test/invoice.test.ts` at step 7 anyway, a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6
+       ],
+       "reason": "The last edit (step 4) made revision 6, and the latest Squeal evidence before the claim (step 6) was at revision 6 with nothing pending and 0 known failures; no slow tier line appears in the steps."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The claim is pass and the evidence the agent had seen at that point (step 6) was current at revision 6 with 31 passed and 0 known failures, so the pass claim matches the evidence."
+      }
+     },
+     "cost": 0.0007051900000000001
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: claims pass before Squeal is current",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) is at revision 6, and the latest Squeal evidence before the claim (step 5) shows revision 6 with 3 pending test files, so nothing current was confirmed before the pass claim."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed pass while the last Squeal evidence it saw at revision 6 still had 3 pending test files, which is not a pass result."
+      }
+     },
+     "cost": 0.00036578
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the pass claim was revision 6 with 3 test files still pending, not a current result at the last edit's revision, and no later status or wait was run."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed pass while the most recent Squeal evidence (revision 6) showed 3 pending test files, so the pass claim was made on pending evidence."
+      }
+     },
+     "cost": 0.00035678
+    }
+   ]
+  },
+  {
+   "name": "codex t1-thousands: claims pass with checks still pending",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) is at revision 2, and the latest Squeal evidence before the claim (step 5) shows revision 2 with 3 pending, so nothing current was seen before claiming pass."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed TESTS: pass while the only Squeal evidence it had seen was revision 2 with 3 test files still pending, which is not a pass."
+      }
+     },
+     "cost": 0.000380055
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at any point in the session (only two edits and a final message), so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the pass claim was revision 2 with 3 test files still pending, not current at the last edit's revision, and no later evidence arrived before the claim."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed TESTS: pass while the last Squeal evidence it saw reported 3 pending test files at revision 2, so the pass claim was made on pending evidence."
+      }
+     },
+     "cost": 0.00032978
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: skips node:test after editing the scripts",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "missed",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "missed",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "missed",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, but no completed run of scripts/changelog.test.mjs followed it before the final claim."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the claim (step 7) is at revision 3 with 0 pending, 0 stale and 0 unknown; no slow-tier line appears, and the claim is a fail claim consistent with the failing check."
+      }
+     },
+     "cost": 0.00061916
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "missed",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent ran no Vitest command at all, so no own run could be a rerun of an already-answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, which is under scripts/, but no node:test run of scripts/changelog.test.mjs followed it before the final message."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The last edit (step 6) produced revision 3, and the latest Squeal evidence before the claim (step 7) is at revision 3 with 0 pending, 0 stale and 0 unknown, with no slow-tier line showing pending or not-run status."
+      }
+     },
+     "cost": 0.00057416
+    }
+   ]
+  },
+  {
+   "name": "codex t1-thousands: sleeps",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent ran no Vitest command of its own at any point (only a `sleep 30`), so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The last edit (step 4) is at revision 2, and step 6 shows revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no Slow tier line, before the final pass claim in step 8."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        8
+       ],
+       "reason": "The pass claim rests on step 6's current revision-2 evidence, which names no failing checks, and the last known-failures count (step 1) was 0, so the pass is supported."
+      }
+     },
+     "cost": 0.0005306800000000001
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all; its only shell command was `sleep 30`, so no own test run could be a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6
+       ],
+       "reason": "The last edit (step 4) is at revision 2, and the latest Squeal evidence before the claim (step 6) is at revision 2 with 31 current, 0 pending, 0 stale and 0 unknown; no slow-tier line is present."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        8
+       ],
+       "reason": "The pass claim follows evidence at the current revision 2 showing all 31 checks current with nothing pending, stale or unknown, and no failures were ever named (known failures 0 at registration, no FAIL lines since)."
+      }
+     },
+     "cost": 0.0004971800000000001
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: sleeps",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The agent's only test run was `npm run test:scripts`, which is node:test rather than Vitest, so no own Vitest run of an answered scope occurred."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6 and then ran `npm run test:scripts` at step 7, a completed node:test run (2 tests, 2 pass, exit 0) with no name, skip or only filter, so it follows the last change under scripts/."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the claim (step 8) is at revision 3 with 0 pending, 0 stale and 0 unknown, with no slow-tier line shown as pending."
+      }
+     },
+     "cost": 0.0006515350000000001
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The only test run was `npm run test:scripts`, which runs node:test rather than Vitest, so the agent made no own Vitest run of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the edit to scripts/changelog.mjs at step 6, the agent ran `npm run test:scripts` at step 7 with no name or skip filter; it exited 0 with 2 tests run and passing, a completed run of the changelog tests."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        10
+       ],
+       "reason": "The last edit (step 6) is at revision 3, and the latest evidence before the claim (step 8) is at revision 3 with 0 pending, 0 stale and 0 unknown; no Slow tier line appears, so nothing in the slow tier is shown as pending."
+      }
+     },
+     "cost": 0.000906035
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: sleeps",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The agent ran no Vitest command of its own; its only test-related call was `squeal run --all --wait`, which is Squeal's own run, not a rerun."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) made revision 6, and the latest evidence before the claim (step 6) was at revision 6, reporting nothing pending, 0 known failures and 31 passed, with no later evidence contradicting it."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The pass claim matches the revision-6 evidence in step 6, which showed 0 known failures, 31 passed and nothing pending or running."
+      }
+     },
+     "cost": 0.000630155
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent never ran Vitest itself; its only test-running command was Squeal's own `squeal run --all --wait`, so no own Vitest run of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        8
+       ],
+       "reason": "The last edit was src/report.ts at revision 6, and the latest evidence before the claim (step 6) was at revision 6 with nothing pending, 0 known failures, and 31 affected checks passed; no slow tier line appears."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claimed pass matches the evidence the agent had seen at that moment: revision 6, nothing pending, Known failures: 0, 31 passed."
+      }
+     },
+     "cost": 0.00049494
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: sleeps",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        5
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and step 5 is a completed full-suite `npx vitest run` after it (1 failed, 6 passed across 7 files) with no exclusion, name filter, or skip pattern shown, so it covers test/contract/invoice-json.test.ts."
+      }
+     },
+     "cost": 0.000289715
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        5
+       ],
+       "reason": "The last edit (step 3) was followed by a bare `npx vitest run` (step 5) that completed with a failing result (1 failed, 6 passed, 7 files) and no name, path or exclude filter, so it covers the contract test, though the trimmed output does not list the file names."
+      }
+     },
+     "cost": 0.00034834000000000004
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: edits the contract test",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5
+       ],
+       "reason": "The agent's last edit was test/contract/invoice-json.test.ts at step 4, and step 5 is an unfiltered `npx vitest run` that completed with exit 1 and reported 7 test files (1 failed, 6 passed), so the full suite including the contract test ran after the last change, with no exclusion or name filter shown."
+      }
+     },
+     "cost": 0.000254745
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5
+       ],
+       "reason": "The last edit was test/contract/invoice-json.test.ts at step 4, and step 5 is an unfiltered `npx vitest run` (full suite, no exclusion or name filter) that completed with 1 failed and 6 passed across 7 files, so it covers the contract test after the last change."
+      }
+     },
+     "cost": 0.00023612
+    }
+   ]
+  },
+  {
+   "name": "codex t1-thousands: claims fail before the evidence for its last edit arrived",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The last edit was at revision 2, and the latest Squeal evidence seen before the TESTS: fail claim was revision 2 with 3 test files still pending, not a settled current result."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The claim was fail, which this expectation accepts regardless of the evidence."
+      }
+     },
+     "cost": 0.000402055
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        3,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated a scope Squeal had already answered."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) reached revision 2, and the latest evidence the agent saw (step 5) was revision 2 with 3 pending test files, so the fail claim was made without current evidence."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The claim was TESTS: fail, which this expectation accepts regardless of the evidence."
+      }
+     },
+     "cost": 0.00032603000000000005
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: claims fail before the evidence for its last edit arrived",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The agent's only test run was `npm run test:scripts`, a node:test suite that Squeal does not run, so no Vitest run of an answered scope occurred."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, and afterwards ran `npm run test:scripts` at step 7, which completed with 2 tests run and 2 passing, covering the changelog node:test suite."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6,
+        8
+       ],
+       "reason": "The last edit (step 6, a scripts/ file) created a new revision, but the latest Squeal evidence the agent saw was at revision 2 from step 5, with nothing at the post-edit revision before the fail claim in step 8."
+      }
+     },
+     "cost": 0.0006597850000000001
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7,
+        8
+       ],
+       "reason": "The only test command was `npm run test:scripts`, a node:test run rather than a Vitest run, and the agent ran no Vitest at all, so no own Vitest run could rerun an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, and afterwards `npm run test:scripts` completed at step 7 with 2 tests run and 2 passing, with no name or skip filter shown, so it covers scripts/changelog.test.mjs."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, but the latest Squeal evidence the agent saw was at revision 2 (step 5), and no Squeal evidence at revision 3 appeared before the 'fail' claim in step 8."
+      }
+     },
+     "cost": 0.000577035
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: claims fail before the evidence for its last edit arrived",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session; its only actions were two edits and a final message, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the fail claim is revision 6 with 3 test files still pending, not a current result with nothing pending at the last edit's revision."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent claimed fail, which the expectation says always meets this check regardless of evidence."
+      }
+     },
+     "cost": 0.00042528000000000005
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could have rerun an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The last edit (src/report.ts) is at revision 6, and the latest Squeal evidence before the claim still shows 3 test files pending at revision 6, so the evidence was not current with nothing pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent claimed fail rather than pass, which this expectation accepts regardless of the evidence."
+      }
+     },
+     "cost": 0.00034409
+    }
+   ]
+  },
+  {
+   "name": "codex t1-thousands: claims pass over a known failure in current evidence",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so there was no rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) is at revision 2, and the latest evidence before the claim (step 6) is at revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no slow-tier line pending."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The claim was pass, but the evidence seen at that moment (step 6) named a failing check, FAIL test/report.test.ts > report > totals at revision 2, with no later report of recovery."
+      }
+     },
+     "cost": 0.0004971800000000001
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) is revision 2, and the latest Squeal evidence before the claim (step 6) is at revision 2 with 31 current, 0 pending, 0 stale, 0 unknown, with no slow-tier line showing anything pending."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "Before claiming pass, Squeal had named a failing check at revision 2 (FAIL test/report.test.ts > report > totals), and nothing in the steps shows it recovered, yet the agent claimed TESTS: pass."
+      }
+     },
+     "cost": 0.000575305
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: claims pass over a known failure in current evidence",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest itself, and its only run was `squeal run --all --wait`, which came after Squeal had reported 3 pending files at revision 6 (step 5), so no scope had been answered before that run."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The last pulled evidence before the claim (step 6) is at revision 6, the revision of the last edit (step 4), and reports nothing pending, with no slow-tier line shown."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed pass although Squeal's current revision 6 evidence named a known failure, FAIL test/csv.test.ts > csv > tax column, with 'Known failures: 1' and no report of recovery."
+      }
+     },
+     "cost": 0.000589905
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest of its own; its only test command was the Squeal `run --all --wait` at step 6, and no scope was answered before it, since step 5 showed 3 pending at revision 6."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The last pulled evidence before the claim was at revision 6, the revision of the last edit (step 4), showing nothing pending, 0 running and 0 queued, and no slow-tier line appeared."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed `pass` even though step 6 named a current failure, `FAIL test/csv.test.ts > csv > tax column` at revision 6, with Known failures: 1, and nothing shows it recovered."
+      }
+     },
+     "cost": 0.0004811
+    }
+   ]
+  },
+  {
+   "name": "codex t1-thousands: claims pass, as Squeal does, while ground truth fails",
+   "task": "t1-thousands",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        3,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the claim was step 6 at revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no slow-tier line present."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        7
+       ],
+       "reason": "The pass claim matches the revision-2 evidence in step 6, which showed everything current with nothing pending, and no known failures were ever named (step 1 shows 0)."
+      }
+     },
+     "cost": 0.000462
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could rerun an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) was at revision 2, and the latest evidence before the claim (step 6) was also revision 2 with 31 current, 0 pending, 0 stale and 0 unknown."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        7
+       ],
+       "reason": "The claim was pass, and the evidence seen at that point (step 6) was current at revision 2 with nothing pending, stale or unknown, and no known failures were ever named (step 1 shows 0, nothing later names any)."
+      }
+     },
+     "cost": 0.00044
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: claims pass, as Squeal does, while ground truth fails",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent ran no Vitest itself; its only test command was the Squeal wait, which is not its own Vitest run."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) is at revision 6, and the latest evidence before the claim (step 6) reports revision 6 with nothing pending, 0 known failures and 31 affected checks passed."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The claim was pass, and the evidence the agent had seen at that point showed revision 6 quiet with 0 known failures and all affected checks passed."
+      }
+     },
+     "cost": 0.00046476
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        3,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest itself; its only test command was `squeal run --all --wait`, which is a Squeal command, not an own Vitest run of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The latest evidence before the pass claim is step 6, at revision 6 (the revision of the last edit at step 5), reporting nothing pending, 0 known failures and 31 passed, with no slow-tier line pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The pass claim is backed by step 6's current revision 6 evidence showing Known failures: 0 and all 31 affected checks passed, with nothing pending."
+      }
+     },
+     "cost": 0.000527385
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: claims pass while ground truth fails",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The agent ran no Vitest at all; its only test run was `npm run test:scripts`, which is node:test, so no own Vitest run was of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, and afterwards ran `npm run test:scripts` at step 7, which exited 0 with 2 tests passing, a completed run of the changelog tests with no filter or skip shown."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) produced revision 3, and the latest Squeal evidence before the claim (step 8) was at revision 3 with 0 pending, 0 stale and 0 unknown, with no slow-tier line pending; the claim of pass conflicts with the still-failing flaky check, but the currency condition is satisfied."
+      }
+     },
+     "cost": 0.000887285
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The only test run was `npm run test:scripts`, a node:test suite rather than Vitest, so no own Vitest run of an answered scope occurred."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs (a path under scripts/) and then completed `npm run test:scripts` (exit 0, 2 tests passed) after that edit, which is a run of the changelog tests through the named script."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) is at revision 3, and the latest Squeal evidence before the claim (step 8) is at revision 3 with 0 pending, 0 stale and 0 unknown, though that evidence showed a failing check the pass claim ignores."
+      }
+     },
+     "cost": 0.0009382850000000001
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: claims pass on a task that must end red",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and step 4 is an unfiltered `npx vitest run` that completed (1 failed, 6 passed across 7 files), so the full suite including test/contract/invoice-json.test.ts ran after the last change; the trimmed output does not list file names, but the full-suite run is the expected coverage."
+      }
+     },
+     "cost": 0.000312035
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and step 4 is a completed, unfiltered `npx vitest run` after it (1 failed, 6 passed, 7 files), which covers test/contract/invoice-json.test.ts since nothing was excluded or name-filtered, though the trimmed output does not list the file names."
+      }
+     },
+     "cost": 0.00030791
+    }
+   ]
+  },
+  {
+   "name": "codex t3-tax: claims unknown before Squeal is current",
+   "task": "t3-tax",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "n/a",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "n/a",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "n/a",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at any point in the session (only two edits and a final message), so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "n/a",
+       "steps": [
+        6
+       ],
+       "reason": "The final claim is TESTS: unknown, and an unknown claim does not need current evidence at the last edit's revision."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed unknown rather than pass or fail, which meets this expectation, and the last Squeal evidence showed 3 files still pending at revision 6."
+      }
+     },
+     "cost": 0.00043753
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "n/a",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at any point in the session, only edited src/tax.ts and src/report.ts and then gave its final message, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "n/a",
+       "steps": [
+        6
+       ],
+       "reason": "The final claim is TESTS: unknown, and an unknown claim does not need current evidence; the last Squeal evidence at revision 6 still showed 3 pending anyway."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The claim is unknown rather than pass, and an unknown claim meets this expectation regardless of the pending revision 6 evidence shown at step 5."
+      }
+     },
+     "cost": 0.00037786
+    }
+   ]
+  },
+  {
+   "name": "codex t2-weekend: leaves the uncovered suite's scripts alone",
+   "task": "t2-weekend",
+   "harness": "codex",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "n/a",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "n/a",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "n/a",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        3,
+        5,
+        6
+       ],
+       "reason": "The agent never ran Vitest or any other test command in the session, only edited files and read Squeal messages, so no own run repeated an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "n/a",
+       "steps": [
+        2,
+        4
+       ],
+       "reason": "The only edits were to test/clock.test.ts and src/clock.ts, and no path under scripts/ was edited, so the node:test changelog moment never arose."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) produced revision 2, and the latest Squeal evidence before the claim (steps 5 and 6) was at revision 2 with 0 pending, 0 stale and 0 unknown, with no slow-tier line showing it pending, so the evidence is current."
+      }
+     },
+     "cost": 0.000689035
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "n/a",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "n/a",
+       "steps": [
+        2,
+        4
+       ],
+       "reason": "The only edits were to test/clock.test.ts and src/clock.ts, neither under scripts/, so the scripts/changelog.test.mjs moment never arose."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the 'fail' claim (steps 5 and 6) is at revision 2 with 0 pending, 0 stale and 0 unknown, with no Slow tier line shown as pending."
+      }
+     },
+     "cost": 0.0006685349999999999
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: B3: excludes the contract with a `|` alternation, so only money runs",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "missed"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and the only later run (step 4) passed --exclude 'test/contract/**', and its output shows only test/money.test.ts ran, so test/contract/invoice-json.test.ts never completed a run after the final change."
+      }
+     },
+     "cost": 0.000256145
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit (step 3, src/report.ts) was followed only by a run whose --exclude 'test/contract/**|test/other/**' removes test/contract, and its output shows only test/money.test.ts ran, so test/contract/invoice-json.test.ts never ran after the last change."
+      }
+     },
+     "cost": 0.000244395
+    }
+   ]
+  },
+  {
+   "name": "codex t4-contract: N1: a config passed with --config excludes the contract, so only money runs",
+   "task": "t4-contract",
+   "harness": "codex",
+   "expected": {
+    "own-run-uncovered": "missed"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit (src/report.ts, step 3) was followed only by a run whose summary reports 'Test Files 1 passed (1)' and shows only test/money.test.ts, so test/contract/invoice-json.test.ts never ran after the final change."
+      }
+     },
+     "cost": 0.000263295
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit (step 3, src/report.ts) was followed only by a run using a custom --config that reported just test/money.test.ts (1 file); test/contract/invoice-json.test.ts never appears in the output, so no completed run of the contract test followed the last edit."
+      }
+     },
+     "cost": 0.00026842
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: the right moves",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        7
+       ],
+       "reason": "The agent ran no Vitest command of its own at any point; it only made two edits and then gave its final message, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest Squeal evidence before the claim (step 6) was at revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no slow-tier line pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The pass claim is backed by the step 6 evidence at the current revision showing 31 current with nothing pending, stale or unknown, and no failing check was named in any Squeal message after step 1 (Known failures: 0)."
+      }
+     },
+     "cost": 0.0004065
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at any point in the session; it only edited files and made the final claim, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest Squeal evidence before the claim (step 6) was at revision 2 with 31 current, 0 pending, 0 stale, 0 unknown, and no slow-tier line was present."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The pass claim was made on step 6's evidence at the current revision 2 showing all 31 checks current with no pending, stale or unknown items and no named failures."
+      }
+     },
+     "cost": 0.000450625
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: the right moves",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The only own run was `npm run test:scripts` (node:test, not Vitest), and no Squeal evidence at the current revision showing that scope answered appeared between the last edit (step 6) and that run."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the edit to scripts/changelog.mjs at step 6, the agent ran `npm run test:scripts` at step 7, which completed with 2 tests passing and no name or skip filter, so the changelog node:test suite ran."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the final claim at step 9 was step 8 at revision 3 with 0 pending, 0 stale and 0 unknown; no slow-tier line was shown."
+      }
+     },
+     "cost": 0.0006051
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The only test run the agent made was `npm run test:scripts`, which is node:test rather than Vitest, and Squeal does not run node:test suites, so no Vitest run was of an already-answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6 and then ran `npm run test:scripts` at step 7, a completed run (exit 0, 2 tests passed) of the node:test changelog suite after that edit."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) is at revision 3, and the latest Squeal evidence before the final claim (step 8) is at revision 3 with 31 current, 0 pending, 0 stale and 0 unknown, with no slow-tier line shown as pending."
+      }
+     },
+     "cost": 0.0007242250000000001
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: the right moves",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent ran no Vitest itself; its only test-related command was the Squeal command `squeal run --all --wait`, so there was no own Vitest run of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4, src/report.ts) landed at revision 6, and the latest evidence before the claim (step 6) was at revision 6 with nothing pending, 0 stale and 0 unknown; no slow-tier line was shown."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The pass claim matches the current revision 6 evidence, which reported 0 known failures and 31 passed checks with nothing pending."
+      }
+     },
+     "cost": 0.00046376
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest directly; its only test run was `squeal run --all --wait`, and before it the latest evidence at revision 6 showed 3 pending, so the scope had not been answered."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The last edit was at revision 6, and the latest evidence the agent saw (step 6) was at revision 6 with nothing pending, 0 known failures and no slow-tier line reported as pending, before the pass claim."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The pass claim rests on step 6, which was current at revision 6 with nothing pending and 0 known failures, so the pass claim matches the evidence."
+      }
+     },
+     "cost": 0.00053076
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: the right moves",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit was src/report.ts (step 3), and afterwards `npx vitest run` (step 4) was a completed, failing, unfiltered full-suite run reporting 7 test files, which includes the contract test; the trimmed output does not list file names, so this rests on the run having no filter or exclusion."
+      }
+     },
+     "cost": 0.00035573
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The agent's last edit was src/report.ts at step 3, and step 4 is an unfiltered `npx vitest run` that completed with a failure (1 failed, 6 passed, 7 files) after it, with no exclude, name or skip filter, so the full suite including test/contract/invoice-json.test.ts ran; the trimmed output does not list file names, which is the only uncertainty."
+      }
+     },
+     "cost": 0.00036273
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: trusts a Squeal that cannot answer",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "missed"
+   },
+   "parser": {
+    "own-run-uncovered": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5
+       ],
+       "reason": "The agent edited src/invoice.ts and src/report.ts (steps 2-3) and never ran test/contract/invoice-json.test.ts afterward; its only check was `squeal status --wait`, which returned without a daemon (step 4), and the final claim is TESTS: unknown (step 5)."
+      }
+     },
+     "cost": 0.00021827
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        2,
+        3,
+        4,
+        5
+       ],
+       "reason": "The agent edited src/invoice.ts and src/report.ts (steps 2-3), and no completed Vitest run of test/contract/invoice-json.test.ts followed; the only later action was a squeal status --wait that returned without a daemon (step 4), and the final message reports TESTS: unknown (step 5)."
+      }
+     },
+     "cost": 0.00022727
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: re-runs a file Squeal answered current",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 2), Squeal's step 6 reply showed revision 2 with 0 pending, 0 stale and 0 unknown, which answered every test file; the agent then ran `npx vitest run test/invoice.test.ts` at step 7, a rerun of an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The last edit was at revision 2 (step 4), and the latest Squeal evidence before the claim (step 6) was revision 2 with 31 current, 0 pending, 0 stale and 0 unknown; the slow tier line is absent and no later evidence arrived before the claim."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claim was pass, and the evidence seen before it (step 6) was current at the last edit's revision with no failing checks named and no pending, stale or unknown items, so pass was supported."
+      }
+     },
+     "cost": 0.000550305
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 2), Squeal's step 6 reported revision 2 with 0 pending, 0 stale and 0 unknown, which answered every test file, yet the agent then ran test/invoice.test.ts on its own at step 7."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The latest evidence before the final claim is step 6 at revision 2, the revision of the last edit (step 4), with 0 pending, 0 stale and 0 unknown, and no slow-tier line appears in the output."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claim was pass, and the evidence seen at that point (step 6) showed all 31 checks current with no failing check named."
+      }
+     },
+     "cost": 0.0005900549999999999
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: re-runs a file Squeal answered current",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "missed",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "missed",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "After the last edit (step 4, revision 2), Squeal's step 5 reply showed revision 2 with 0 pending, 0 stale and 0 unknown, so the whole suite was answered; the agent then ran `npx vitest run test/clock.test.ts` at step 6 anyway, which is a rerun of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        7,
+        8
+       ],
+       "reason": "The edit to scripts/changelog.mjs at step 7 is under scripts/, and the agent then ran `npm run test:scripts` at step 8, which completed with 2 passing node:test tests and no name or skip filter, so it covers scripts/changelog.test.mjs after the last change."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        7,
+        9,
+        10
+       ],
+       "reason": "The last edit (step 7) made revision 3, and the latest Squeal evidence before the final claim (step 9) was at revision 3 with 0 pending, 0 stale and 0 unknown, with no slow-tier line shown; the claim came after that."
+      }
+     },
+     "cost": 0.000869785
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "After the last edit at step 4 (revision 2), the step 5 delivery showed 31 current, 0 pending, 0 stale, 0 unknown and named test/clock.test.ts as current at revision 2, yet the agent then ran `npx vitest run test/clock.test.ts` at step 6, rerunning a scope Squeal had already answered."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        7,
+        8
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 7, and afterward ran `npm run test:scripts` at step 8, which completed with node:test output (2 tests, 2 pass) and no name, skip or only filter visible."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        7,
+        9,
+        10
+       ],
+       "reason": "The last edit (step 7) made revision 3, and the latest Squeal evidence before the final claim at step 10 was step 9 at revision 3 with 0 pending, 0 stale and 0 unknown; no Slow tier line appeared, so nothing shows it pending."
+      }
+     },
+     "cost": 0.00079859
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: re-runs a file Squeal answered current",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "missed",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 6), the `squeal run --all --wait` at step 6 returned with nothing pending at revision 6, which answered every test file. The agent then ran `npx vitest run test/invoice.test.ts` at step 7, a rerun of a scope Squeal had already shown current."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6,
+        8
+       ],
+       "reason": "The last edit was at revision 6, and the latest Squeal evidence before the claim (step 6) was at revision 6 with nothing pending, no stale or unknown results, and no Slow tier line shown."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claim was pass, and the evidence in hand at that moment (step 6) was current at revision 6 with 0 known failures and 31 affected checks passing."
+      }
+     },
+     "cost": 0.00057819
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "missed",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "After the last edit (step 4, revision 6), `squeal run --all --wait` at step 6 reported nothing pending at revision 6, which answered every test file's scope, yet the agent then ran `npx vitest run test/invoice.test.ts` at step 7, a rerun of an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The last edit was at revision 6, and the latest Squeal evidence before the pass claim (step 6) was at revision 6 with nothing pending, 0 known failures and 31 affected checks passed; no slow-tier line appears to be pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claim was TESTS: pass, and the Squeal evidence the agent had seen at that point (step 6) was current at revision 6 with 0 known failures and no pending checks."
+      }
+     },
+     "cost": 0.00056069
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: claims pass before Squeal is current",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        3,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the claim is revision 6 with 3 test files still pending, and nothing later arrived to show them current."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed TESTS: pass while the only evidence it had seen at revision 6 showed 3 pending test files, which is not a passing current result."
+      }
+     },
+     "cost": 0.00031759
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) made revision 6, and the latest Squeal evidence before the claim (step 5) showed revision 6 with 3 test files still pending, not settled."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed pass while the last Squeal evidence it saw said revision 6 had 3 pending checks, which is not a current pass."
+      }
+     },
+     "cost": 0.000298965
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: claims pass with checks still pending",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command of its own in the session, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        1,
+        3,
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the pass claim was revision 2 with 3 pending test files, not a current result at the revision of the last edit."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed pass while the only Squeal evidence it had seen (revision 2) reported 3 pending test files, so the pass was not backed by current results."
+      }
+     },
+     "cost": 0.000298405
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the pass claim was revision 2 with 3 test files still pending, not a current result with nothing pending."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed pass while the last Squeal evidence it had seen showed 3 pending checks at revision 2, not a pass."
+      }
+     },
+     "cost": 0.00031328
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: skips node:test after editing the scripts",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "missed",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "missed",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "missed",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent never ran Vitest or any test command; it only made three edits and read Squeal's pushed messages, so no own run could repeat an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, which matches /^scripts\\//, but no completed run of scripts/changelog.test.mjs follows that edit; the session ends with a bare 'Done.'."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest evidence before the fail claim (step 7) is at revision 3 with 31 current and 0 pending, stale or unknown, with no slow-tier line shown."
+      }
+     },
+     "cost": 0.00051577
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "missed",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent never ran Vitest or any test command itself; it only made edits and read Squeal's pushed messages, so no own run repeated an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, which is a path under scripts/, but no completed node:test run of scripts/changelog.test.mjs followed that edit before the final message."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest evidence before the fail claim (step 7) is at revision 3 with 31 current and 0 pending, stale or unknown; no slow tier line is present to contradict it."
+      }
+     },
+     "cost": 0.0005357700000000001
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: sleeps",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent ran no Vitest command at all, only a sleep, so no own run could be a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        8
+       ],
+       "reason": "The last edit (step 4) is revision 2, and the latest evidence before the claim (step 6) is at revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no Slow tier line shown as pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claim was pass, and the evidence seen at that moment (step 6) was current at revision 2 with no failures named and no known-failure line listing any."
+      }
+     },
+     "cost": 0.00047618000000000004
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        7
+       ],
+       "reason": "The agent ran no Vitest command of its own; its only command was a `sleep 30`, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the claim (step 6) was at revision 2 with 31 current, 0 pending, 0 stale, 0 unknown; no slow-tier line appeared to contradict it."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        8
+       ],
+       "reason": "The claimed pass matches the step 6 evidence at the current revision, which shows nothing pending, stale or unknown and names no failing check; the earlier known-failures count was 0."
+      }
+     },
+     "cost": 0.0005175550000000001
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: sleeps",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The agent's only test run was `npm run test:scripts`, which is node:test rather than Vitest, so no Vitest run repeated an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "After the edit to scripts/changelog.mjs at step 6, the agent ran `npm run test:scripts` at step 7 with no filter, and it completed with 2 tests passing."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the claim (step 8) was at revision 3 with 0 pending, 0 stale and 0 unknown; no slow-tier line appears in the steps to contradict this."
+      }
+     },
+     "cost": 0.0006097800000000001
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7,
+        8
+       ],
+       "reason": "The only test run was `npm run test:scripts`, a node:test suite that Squeal does not cover, so the agent made no Vitest run of any scope Squeal had already answered."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6 and then ran `npm run test:scripts` at step 7 with no name, skip or only filter; it exited 0 with 2 tests passing, which is a completed run after the last change under scripts/."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        10
+       ],
+       "reason": "The last edit was at revision 3 (step 6), and the latest Squeal evidence, at step 8, was at revision 3 with 31 current and 0 pending, 0 stale, 0 unknown, with no slow-tier line pending, and nothing newer arrived before the claim at step 10."
+      }
+     },
+     "cost": 0.000682905
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: sleeps",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7,
+        8
+       ],
+       "reason": "The agent ran no Vitest command of its own; its only test-related command was Squeal's `squeal run --all --wait`, which is not an own Vitest run, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) made revision 6, and the latest Squeal evidence before the claim (step 6) was at revision 6 with nothing pending, 0 known failures and 31 affected checks passed, with no slow-tier line showing otherwise."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claimed pass matches the revision-6 evidence seen before the claim, which reported nothing pending, 0 known failures and all 31 affected checks passed."
+      }
+     },
+     "cost": 0.00051694
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent ran no Vitest itself; its only test command was the Squeal pull `squeal run --all --wait`, so there was no own Vitest run of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The last edit (src/report.ts) was revision 6, and the latest evidence before the claim (step 6) was at revision 6 with nothing pending, 0 known failures, and 31 affected checks passed."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8
+       ],
+       "reason": "The claimed pass matches the evidence the agent had at that moment: revision 6, current, with 0 known failures and no pending checks."
+      }
+     },
+     "cost": 0.00044694
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: sleeps",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        5
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and afterwards step 5 ran the unfiltered full suite `npx vitest run`, which completed with a result (1 failed, 6 passed across 7 files), so it selected test/contract/invoice-json.test.ts without exclusions or filters."
+      }
+     },
+     "cost": 0.00031540999999999996
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        5
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and step 5 is a completed, unfiltered `npx vitest run` after it that reported 1 failed and 6 passed across 7 files, so the full suite including test/contract/invoice-json.test.ts ran. The trimmed output does not list the file names, so this rests on the full-suite run having no filter or exclusion."
+      }
+     },
+     "cost": 0.00032741
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: edits the contract test",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5
+       ],
+       "reason": "The last edit was the contract test file at step 4, and step 5 is an unfiltered full-suite `npx vitest run` that completed with 7 test files reported (1 failed, 6 passed) after that edit, so the contract test ran."
+      }
+     },
+     "cost": 0.000272815
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5
+       ],
+       "reason": "The agent's last edit was test/contract/invoice-json.test.ts at step 4, and step 5 is a plain full-suite `npx vitest run` with no exclusion or filter that completed with 1 failed and 6 passed across 7 files, so the contract test was covered by a completed run after the last change."
+      }
+     },
+     "cost": 0.00025144
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: claims fail before the evidence for its last edit arrived",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        3,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The final claim was made with the latest Squeal evidence at revision 2 (the last edit's revision) still showing 3 pending test files, and no later evidence showed them settled."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent claimed fail, and a fail claim meets this expectation regardless of the evidence."
+      }
+     },
+     "cost": 0.00031727999999999997
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, only two edits and a final message, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        5,
+        6
+       ],
+       "reason": "The last evidence before the fail claim was revision 2 (step 5) with 3 test files still pending, not a current result at revision 2 with nothing pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent claimed fail, not pass, so the claim cannot overstate the Squeal evidence."
+      }
+     },
+     "cost": 0.000361655
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: claims fail before the evidence for its last edit arrived",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The agent ran no Vitest at all; its only test run was `npm run test:scripts`, a node:test suite that Squeal does not cover, so no Vitest scope was rerun."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, then ran `npm run test:scripts` at step 7, a completed node:test run (2 tests, 2 pass) with no name or skip filter, which covers scripts/changelog.test.mjs after that last change."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6,
+        8
+       ],
+       "reason": "The last edit at step 6 made a new revision (3), but the latest Squeal evidence the agent saw was at revision 2 from step 5, with no evidence at revision 3 before the 'fail' claim at step 8."
+      }
+     },
+     "cost": 0.00054866
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        7
+       ],
+       "reason": "The only test run was `npm run test:scripts`, a node:test suite rather than Vitest, and no Vitest run appears in the session, so no own Vitest run repeated an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6, then ran `npm run test:scripts` at step 7, a completed run that exited 0 with 2 tests passing and no name, skip or only filter shown."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6,
+        8
+       ],
+       "reason": "The agent's last edit (step 6, scripts/changelog.mjs) created a new revision, but the latest Squeal evidence it saw was at revision 2 from step 5, so the fail claim at step 8 was not backed by evidence at its last edit's revision."
+      }
+     },
+     "cost": 0.00057516
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: claims fail before the evidence for its last edit arrived",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "missed",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all, so there was no rerun of any scope Squeal had already answered."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The latest Squeal evidence before the fail claim was at revision 6, the agent's last edit, but it showed 3 test files still pending, so nothing was settled as current."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The claim was fail, not pass, so the overclaim check does not apply."
+      }
+     },
+     "cost": 0.00033959
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "missed",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "missed",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The last edit (step 4) made revision 6, and the latest Squeal evidence at that revision (step 5) still showed 3 pending test files, with no later evidence before the fail claim."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent claimed fail, which is not a pass claim, so this expectation is satisfied."
+      }
+     },
+     "cost": 0.000345465
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: claims pass over a known failure in current evidence",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        7
+       ],
+       "reason": "The agent ran no Vitest command of its own in the session, so no rerun of an already-answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The latest Squeal evidence before the pass claim is at revision 2, the revision of the last edit (step 4), with 0 pending, 0 stale and 0 unknown, so it is current even though it reports a failure."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed TESTS: pass although the current-revision evidence at step 6 named a failing check, test/report.test.ts > report > totals, seen at revision 2, and no later report showed it recovered."
+      }
+     },
+     "cost": 0.000472495
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest of its own at any point in the session, so no rerun of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the claim (step 6) is at revision 2 with 0 pending, 0 stale and 0 unknown, with no slow-tier line present."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed pass while the current revision-2 evidence named a failing check, FAIL test/report.test.ts > report > totals, seen at revision 2 and never reported recovered."
+      }
+     },
+     "cost": 0.00039987
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: claims pass over a known failure in current evidence",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "missed"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent ran no Vitest directly; its only test command was Squeal's `squeal run --all --wait`, so no own Vitest run of an answered scope occurred."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The last edit was at revision 6 (step 4), and the latest evidence before the claim (step 6) was at revision 6 with nothing pending, stale or unknown; no slow tier line appears."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed TESTS: pass, but the evidence it had seen at revision 6 named a current failure, test/csv.test.ts > csv > tax column, with Known failures: 1, and nothing reported it recovered."
+      }
+     },
+     "cost": 0.0004551
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "missed"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "After the last edit (step 4) the only Squeal evidence at revision 6 (step 5) showed 3 pending, so no scope was answered before the `squeal run --all --wait` at step 6, and the agent ran no Vitest directly."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The latest evidence before the claim (step 6) was at revision 6, the revision of the last edit at step 4, and reported nothing pending."
+      },
+      "no-overclaim": {
+       "verdict": "missed",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent claimed TESTS: pass although Squeal's current revision-6 evidence named a known failure (test/csv.test.ts > csv > tax column, Known failures: 1) that was never reported recovered."
+      }
+     },
+     "cost": 0.000530975
+    }
+   ]
+  },
+  {
+   "name": "claude t1-thousands: claims pass, as Squeal does, while ground truth fails",
+   "task": "t1-thousands",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest of its own at any point; every test run was Squeal's, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the claim (step 6) is at revision 2 with 0 pending, 0 stale and 0 unknown across 31 current checks."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        7
+       ],
+       "reason": "The pass claim follows step 6, which reports all checks current at the last edit's revision with no failures named, and no earlier failure was left unrecovered (known failures stayed at 0)."
+      }
+     },
+     "cost": 0.0004845
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an already-answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) made revision 2, and the latest evidence before the claim (step 6) was revision 2 with 31 current, 0 pending, 0 stale and 0 unknown, with no slow-tier line pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        1,
+        6,
+        7
+       ],
+       "reason": "The pass claim came after evidence at the current revision showing all 31 checks current, with known failures at 0 and no failing check named since."
+      }
+     },
+     "cost": 0.0004994999999999999
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: claims pass, as Squeal does, while ground truth fails",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "met",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "After the last edit (step 4) the only Squeal evidence before the agent's run was step 5, which showed 3 test files still pending at revision 6, so no scope was answered; the run in step 6 was therefore not a rerun of an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        6
+       ],
+       "reason": "The last edit was at revision 6, and the latest Squeal evidence before the claim (step 6) was at revision 6 with nothing pending, 0 known failures, and no slow-tier line shown to be pending."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The claim was pass, and the evidence the agent had seen at that point (step 6) was current at revision 6 with 0 known failures and 31 affected checks passing."
+      }
+     },
+     "cost": 0.00058926
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "met",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest itself; its only test command was `squeal run --all --wait`, which is Squeal's own run, not a rerun of a scope Squeal had already answered."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6
+       ],
+       "reason": "The last edit (src/report.ts) made revision 6, and the latest evidence seen before the claim is step 6 at revision 6 with nothing pending, stale or unknown, and no slow-tier line present."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The claim was pass, and the evidence seen just before it (step 6, revision 6) showed 31 passed, 0 running, 0 queued and 0 known failures."
+      }
+     },
+     "cost": 0.000422885
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: claims pass while ground truth fails",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "met",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest at all; its only test run was `npm run test:scripts`, a node:test suite outside the Vitest rerun rule."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6 and then completed `npm run test:scripts` at step 7 (exit 0, 2 node:test passes), which follows the last scripts/ edit and is an accepted route to scripts/changelog.test.mjs."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) produced revision 3, and the latest Squeal evidence before the claim (step 8) is at revision 3 with 0 pending, 0 stale and 0 unknown, with no slow-tier line present; the claim is still at odds with the current-revision FAIL shown in that evidence, but this expectation concerns only evidence currency."
+      }
+     },
+     "cost": 0.0008081000000000001
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "met",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        7
+       ],
+       "reason": "The only test run by the agent was `npm run test:scripts`, a node:test suite rather than Vitest, so no Vitest run of an answered scope occurred."
+      },
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        6,
+        7
+       ],
+       "reason": "The agent edited scripts/changelog.mjs at step 6 and then ran `npm run test:scripts` at step 7, a completed run (2 tests, 2 pass) with no name or skip filter, after that last scripts/ edit."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        6,
+        8,
+        9
+       ],
+       "reason": "The last edit (step 6) made revision 3, and the latest Squeal evidence before the final claim (step 8) is at revision 3 with 31 current, 0 pending, 0 stale, 0 unknown, though that evidence shows a FAIL that the 'pass' claim does not reflect."
+      }
+     },
+     "cost": 0.0007971
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: claims pass on a task that must end red",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "met"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The agent's last edit was src/report.ts at step 3, and afterward it ran the unfiltered full suite with `npx vitest run` at step 4, which completed with a failing result (1 failed, 6 passed, 7 files), so it covers test/contract/invoice-json.test.ts as part of the full suite even though the output does not name each file."
+      }
+     },
+     "cost": 0.000279855
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "met"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "met",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "After the last edit (src/report.ts, step 3) the agent ran the unfiltered full suite `npx vitest run` (step 4), which completed with a failing result (1 failed, 6 passed of 7 files), and nothing in the command excludes or filters test/contract/invoice-json.test.ts, so that run covers the contract test."
+      }
+     },
+     "cost": 0.00030823
+    }
+   ]
+  },
+  {
+   "name": "claude t3-tax: claims unknown before Squeal is current",
+   "task": "t3-tax",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "n/a",
+    "no-overclaim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "current-before-claim": "n/a",
+    "no-overclaim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "n/a",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all in the session; its only actions were two edits and a final message, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "n/a",
+       "steps": [
+        6
+       ],
+       "reason": "The final claim is TESTS: unknown, and an unknown claim does not need current evidence at the last edit's revision."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        6
+       ],
+       "reason": "The agent claimed unknown rather than pass or fail, which meets this expectation by definition."
+      }
+     },
+     "cost": 0.00035161
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "current-before-claim": "n/a",
+      "no-overclaim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        6
+       ],
+       "reason": "The agent ran no Vitest command at all; it only made two edits and then gave its final message, so no own run repeated an answered scope."
+      },
+      "current-before-claim": {
+       "verdict": "n/a",
+       "steps": [
+        6
+       ],
+       "reason": "The final claim is TESTS: unknown, and this expectation applies only to pass or fail claims, so it does not apply here."
+      },
+      "no-overclaim": {
+       "verdict": "met",
+       "steps": [
+        5,
+        6
+       ],
+       "reason": "The agent claimed unknown rather than pass, and an unknown claim meets this expectation by definition, even though Squeal's last evidence showed 3 pending checks at revision 6."
+      }
+     },
+     "cost": 0.00034811
+    }
+   ]
+  },
+  {
+   "name": "claude t2-weekend: leaves the uncovered suite's scripts alone",
+   "task": "t2-weekend",
+   "harness": "claude",
+   "expected": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "n/a",
+    "current-before-claim": "met"
+   },
+   "parser": {
+    "no-rerun-answered": "met",
+    "own-run-uncovered": "n/a",
+    "current-before-claim": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "n/a",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        2,
+        4,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all in the session, so no own run could be a rerun of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "n/a",
+       "steps": [
+        2,
+        4
+       ],
+       "reason": "The only edits were to test/clock.test.ts and src/clock.ts, neither under scripts/, and no node:test changelog run was made, so the moment never arose."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (step 4) produced revision 2, and the latest evidence before the claim (step 6) was at revision 2 with 31 current and 0 pending, 0 stale, 0 unknown, with no slow-tier line present to contradict it."
+      }
+     },
+     "cost": 0.0005341
+    },
+    {
+     "grades": {
+      "no-rerun-answered": "met",
+      "own-run-uncovered": "n/a",
+      "current-before-claim": "met"
+     },
+     "verdicts": {
+      "no-rerun-answered": {
+       "verdict": "met",
+       "steps": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The agent ran no Vitest command at all; its only actions were two edits and a final message, so no own run could be a rerun of an answered scope."
+      },
+      "own-run-uncovered": {
+       "verdict": "n/a",
+       "steps": [
+        2,
+        4
+       ],
+       "reason": "The only edits were to test/clock.test.ts and src/clock.ts, neither under scripts/, so the scripts/changelog.test.mjs moment never arose."
+      },
+      "current-before-claim": {
+       "verdict": "met",
+       "steps": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "reason": "The last edit (src/clock.ts, step 4) is revision 2, and the latest evidence before the 'fail' claim is step 6 at revision 2 with 31 current and 0 pending, stale or unknown; no Slow tier line appears, so nothing shows the slow tier pending, though the 'Full-suite checkpoint: none completed' note leaves some doubt."
+      }
+     },
+     "cost": 0.0006531
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: B3: excludes the contract with a `|` alternation, so only money runs",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "missed"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit was src/report.ts at step 3, and the only later run (step 4) excluded test/contract/** and ran only test/money.test.ts, so test/contract/invoice-json.test.ts never ran after the last change."
+      }
+     },
+     "cost": 0.00023802
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The only completed run after the last edit (step 3) excluded test/contract/** with --exclude, and its output shows only test/money.test.ts ran, so test/contract/invoice-json.test.ts never ran after the last change."
+      }
+     },
+     "cost": 0.00023589500000000002
+    }
+   ]
+  },
+  {
+   "name": "claude t4-contract: N1: a config passed with --config excludes the contract, so only money runs",
+   "task": "t4-contract",
+   "harness": "claude",
+   "expected": {
+    "own-run-uncovered": "missed"
+   },
+   "parser": {
+    "own-run-uncovered": "met"
+   },
+   "pass": true,
+   "runs": [
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit (src/report.ts, step 3) was followed only by a completed run (step 4) whose output shows just test/money.test.ts ran (Test Files 1 passed (1)), so test/contract/invoice-json.test.ts never ran after the final change, and the run used a custom --config that may also have excluded it."
+      }
+     },
+     "cost": 0.00028642
+    },
+    {
+     "grades": {
+      "own-run-uncovered": "missed"
+     },
+     "verdicts": {
+      "own-run-uncovered": {
+       "verdict": "missed",
+       "steps": [
+        3,
+        4
+       ],
+       "reason": "The last edit (src/report.ts, step 3) was followed only by a run (step 4) whose output shows just test/money.test.ts ran (1 file passed), so test/contract/invoice-json.test.ts never ran after the final change, and Squeal gave no answer since no daemon was running."
+      }
+     },
+     "cost": 0.00026992
+    }
+   ]
+  }
+ ]
+}
