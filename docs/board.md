@@ -600,11 +600,11 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 ## Feature 006: model evals
 
-Spec: `specifications/006-model-evals/spec.md`, draft 2026-10-10, held with 005 until the other coordinators finish and the quality pass runs (human, 2026-10-10); sections D1 to D8; no Opus in the baseline. A recurring baseline of how models use Squeal, run at every hub release and with every `/quality` scan (human, 2026-10-10). Built from 005-06's prototype (`specifications/005-agent-adoption/research/probes/model-evals/`). Approval and dispatch after the quality pass, at calm load.
+Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human, to be ready before 005 (005 stays held); sections D1 to D8; no Opus in the baseline; briefs under `specifications/006-model-evals/tasks/`. A recurring baseline of how models use Squeal, run at every hub release and with every `/quality` scan (human, 2026-10-10). Built from 005-06's prototype (`specifications/005-agent-adoption/research/probes/model-evals/`). First trend point: 005-07 (Squeal 0.1.101, effort `medium`).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 006-01 the suite in `evals/` | planned | D1 to D6, D8: move the prototype, the grader's fixes (Codex wrapper, refused and chained commands), the three knobs, the runner waiting for the daemon's pid, the load gate, the baseline runner, the results file and `TREND.md`; grader and trend tests in the Vitest suite. | Grader and trend unit tests on recorded transcripts; one smoke cell per harness end to end, leaving no credential, daemon or process behind. |
+| 006-01 the suite in `evals/` | planned (`tasks/wave-1.md`) | D1 to D6, D8: move the prototype, the grader's fixes (Codex wrapper, refused and chained commands), the three knobs, the runner waiting for the daemon's pid, the load gate, the baseline runner, the results file and `TREND.md`; grader and trend tests in the Vitest suite. | Grader and trend unit tests on recorded transcripts; one smoke cell per harness end to end, leaving no credential, daemon or process behind. |
 | 006-02 the cadence | planned (coordinator, after 006-01) | D7: the baseline step in `docs/process.md` 6a and the coordinator skill's "Quality" section. | Both texts say when the baseline runs and who reads a flagged drop. |
 | 006-03 review of 006-01 | planned | `/reviewer` on gpt-6.1-sol: isolation, credentials, grading honesty. | `reviews/wave-1.md`. |
 | 006-04 first baseline | planned, at calm load | Proof: the baseline twice on one release commit; results and `TREND.md` committed. | Both runs committed; rates within what 12 sessions per model allow; open question 4 settled. |

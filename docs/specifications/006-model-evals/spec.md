@@ -1,6 +1,6 @@
 # 006 Model evals
 
-Stage: draft 2026-10-10, held by the human: the other coordinators finish, a quality pass runs, then new specs follow (`status.md`). Amendments: `status.md`. Research: `../005-agent-adoption/research/model-evals.md` (005-06, Opus, a pilot of 36 sessions), with `../005-agent-adoption/research/instruction-surfaces.md` (005-02) and `../005-agent-adoption/research/adoption-baseline.md` 3 (005-01's metric) behind it. Specs 001 to 005 hold unless a section here says otherwise.
+Stage: approved 2026-10-11 by the human, to be ready before 005 resumes (`status.md`). Amendments: `status.md`. Research: `../005-agent-adoption/research/model-evals.md` (005-06, Opus, a pilot of 36 sessions), with `../005-agent-adoption/research/instruction-surfaces.md` (005-02) and `../005-agent-adoption/research/adoption-baseline.md` 3 (005-01's metric) behind it. Specs 001 to 005 hold unless a section here says otherwise.
 
 ## Problem
 
@@ -35,7 +35,7 @@ The human (2026-10-10): a recurring baseline, run at every hub release and whene
 
 ### D1. Layout
 
-A top-level `evals/` directory, moved from `../005-agent-adoption/research/probes/model-evals/`: `ledgerline/` (the fixture), `tasks/`, `variants/`, `bin/` (runner, grader, trend writer), `results/`. It stays outside this repository's Vitest `include`, Biome scope and `tsconfig`: the fixture's tests are the fixture's, and they are not inputs to the product's tests the way `test/fixtures/` are. The grader and the trend writer are tested in this repository's Vitest suite on recorded transcripts, which is deterministic and starts no model.
+A top-level `evals/` directory, built from the code of `../005-agent-adoption/research/probes/model-evals/` (fixture, tasks, variants, scripts; not its logs, which stay with the research as its record): `ledgerline/` (the fixture), `tasks/`, `variants/`, `bin/` (runner, grader, trend writer), `results/`. It stays outside this repository's Vitest `include`, Biome scope and `tsconfig`: the fixture's tests are the fixture's, and they are not inputs to the product's tests the way `test/fixtures/` are. The grader and the trend writer are tested in this repository's Vitest suite on recorded transcripts, which is deterministic and starts no model.
 
 ### D2. Fixture and tasks
 
@@ -68,7 +68,7 @@ T1 to T4 with their knobs × Claude Code `haiku` and `sonnet` and Codex `gpt-6-l
 
 ### D6. Results and trend
 
-Each run writes `evals/results/<date>-<squeal version>.json`: the commit, harness and model versions, the effort level, the load, and every cell's grade. `TREND.md` groups runs by model and effort level. `evals/results/TREND.md` is regenerated from all results: per model and behaviour, the count and rate in each run, newest last. A run lists every false final claim and every forbidden edit by cell, and flags each behaviour whose pooled rate fell by 25 points or more against the previous run. Twelve sessions per model per run show only large changes, so the trend across runs carries slower drift. The coordinator commits the results file and the regenerated table.
+Each run writes `evals/results/<date>-<squeal version>.json`: the commit, harness and model versions, the effort level, the load, and every cell's grade. `TREND.md` groups runs by model and effort level. `evals/results/TREND.md` is regenerated from all results: per model and behaviour, the count and rate in each run, newest last. A run lists every false final claim and every forbidden edit by cell, and flags each behaviour whose pooled rate fell by 25 points or more against the previous run. Twelve sessions per model per run show only large changes, so the trend across runs carries slower drift. The coordinator commits the results file and the regenerated table. The first results file is 005-07's baseline (Squeal 0.1.101, effort `medium`, `../005-agent-adoption/research/model-evals-baseline.md`), its 36 `medium` cells converted to this format.
 
 ### D7. Cadence
 
@@ -86,7 +86,7 @@ One JSON file per variant in `evals/variants/`, applied to a copy of the pinned 
 
 ## Open questions
 
-1. The host's model proxy rejects Claude Code's `haiku` alias and `claude-haiku-5-5` ("400 unknown provider", verified 2026-10-10). Owner: the human.
+1. Resolved 2026-10-10: the host's model proxy serves `claude-haiku-5-5` again (verified by the coordinator; 005-07 ran on it).
 2. Resolved 2026-10-10 by the human: no Opus in the baseline.
 3. The Claude Code allow-list for subject sessions: 005-06's list (from 001's dogfooding) refused `node scripts/changelog.mjs` once, which confounds the uncovered-suite behaviour. Default: add `Bash(node:*)`. Owner: 006-01.
 4. Whether the 25-point flag is the right threshold, after two runs. Owner: 006-04.
