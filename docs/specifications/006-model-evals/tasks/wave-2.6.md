@@ -39,4 +39,4 @@ Use /worker. Shape: repair. Starts from 006-16's contract as written above. If 0
 
 ## 006-18 re-review of wave 2.6
 
-Use /reviewer. The second and last round on 006-12, 006-14 and this repair. Re-run the five reproductions of `../reviews/wave-2.5.md` and their positive counterparts, and check the amended D4 table for design as 006-13 did. Synthetic probes only. Check in a scratch copy, never by building in your worktree. Never run or import `evals/bin/run-baseline.mjs`. Findings go to `../reviews/wave-2.6.md`.
+Use /reviewer. Range `ed35c083^..8a23c721`: 006-16's five commits, 006-17's four, and the coordinator's integration commit `8a23c721`. The second and last round on 006-12, 006-14 and this repair. Re-run the five reproductions of `../reviews/wave-2.5.md` and their positive counterparts, and check the amended D4 table for design as 006-13 did. Synthetic probes only. Check in a scratch copy, never by building in your worktree. Never run or import `evals/bin/run-baseline.mjs`. Findings go to `../reviews/wave-2.6.md`.
