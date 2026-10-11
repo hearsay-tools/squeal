@@ -737,3 +737,9 @@ Use /researcher. Read row 001-218. On the released plugin (0.1.110, KEY_FORMAT_V
 ## 001-257 review of wave 13ac
 
 Use /reviewer on gpt-6.1-sol, after 001-253, 001-255 and 001-254 land. Output `reviews/wave-13ac.md`. Does each subtraction keep every behaviour its tests and the reviews it replaces proved? Is anything left that only the removed code used? Run your own independent full suite. Blockers go to the human.
+
+## 001-258 `status --wait` reads the store's re-key record
+
+Use /worker. Shape: subtraction. Decided by the human (2026-10-11). The brief is `research/wait-from-store.md`'s one-worker row in its section "The store change", and that file is the design: read it whole, and the probes under `research/probes/wait-from-store/`. Start after 001-255 lands; the coordinator steers you when it does. Own what that row names: `src/core/scheduler/` (ledger, record, scheduler), `src/core/daemon/` (the sync path), `src/cli/status-sync.ts`, `src/cli/status-wait*.ts`, `src/core/types/`, and the tests it lists. Replace D7's held-answer paragraph. Add `rekeyed-moves.` to `WORKTREE_META_PREFIXES` so worktree removal prunes it. Keep mixed versions safe: an older CLI or daemon falls back and never ends quiet. Do not edit `docs/board.md`; do not commit `dist`.
+
+Done when: each case of `probes/wait-from-store` passes as a test against the product record, each control red at its base where it applies; the D5 retry probe answers before the retry ends; the removed files and functions are gone; lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
