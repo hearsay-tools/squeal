@@ -17,6 +17,8 @@
 // model: each cell with a retained transcript whose verdicts are from another identity is judged
 // again by the calibrated identity (evals/bin/judge-calibrate.mjs), in an isolated `claude -p`;
 // the cache is reused otherwise. A cell without a transcript stays not computable for the four.
+// --max-cost <usd> stops calling the model once the calls so far cost that much; a regrade that
+// reached it writes nothing.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -39,6 +41,7 @@ const { values, positionals } = parseArgs({
   options: {
     date: { type: "string", default: new Date().toISOString().slice(0, 10) },
     judge: { type: "boolean", default: false },
+    "max-cost": { type: "string" },
   },
 });
 const dir = positionals[0] ?? join(EVALS, "results");
@@ -114,7 +117,24 @@ function expect(data) {
   return true;
 }
 
-const runner = values.judge ? claudeRunner() : null;
+const maxCost = values["max-cost"] === undefined ? Infinity : Number(values["max-cost"]);
+const real = values.judge ? claudeRunner() : null;
+let spent = 0;
+let capped = false;
+/** The real runner until the calls so far cost `maxCost`, then a refusal. */
+const runner = real
+  ? async (call) => {
+      if (spent >= maxCost) {
+        capped = true;
+        return { status: 1, stdout: "", stderr: `--max-cost $${maxCost} reached, not called` };
+      }
+      const r = await real(call);
+      try {
+        spent += JSON.parse(r.stdout).total_cost_usd ?? 0;
+      } catch {}
+      return r;
+    }
+  : null;
 const identity = values.judge
   ? await calibratedIdentity({ dir: join(EVALS, "results"), declared, runner })
   : null;
@@ -179,6 +199,11 @@ for (const r of runs) {
   const judged = await judge(r.data);
   r.write = expect(r.data) || judged || r.write;
 }
+if (capped) {
+  console.error(`--max-cost $${maxCost} reached after $${spent.toFixed(4)}; nothing written`);
+  process.exit(1);
+}
+if (values.judge) console.log(`judge calls cost $${spent.toFixed(4)}`);
 for (const { f, data, changed, write } of runs) {
   if (write) writeFileSync(join(dir, f), `${JSON.stringify(data, null, 1)}\n`);
   const note = data.regraded.findLast((n) => n.by === "expectations");
