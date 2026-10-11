@@ -187,6 +187,7 @@ Started: 2026-10-02
 - 2026-10-11, human (`reviews/wave-13ag.md`, 001-273 FAIL, second round): B1's startup-churn case is accepted as a known limit (D7): a rare false "died" line, no result affected. The fix (a marker outside the capped notes) is planned as 001-274. 0.1.121 releases after process 6a's eval baseline.
 - 2026-10-11, release: squeal--v0.1.121 (b7673881) on the hub (`hearsay-tools/marketplace` 1f66c83), KEY_FORMAT_VERSION 6 and Vitest adapter 3 shipped; covered by reviews wave-13af and 13ag, with 13ag's B1 an accepted limit; eval baseline run 20261011T161708Z-72e2b7 on 6da2890d with no flags, false passes or forbidden edits. A later change to the guarded sources bumps to 7.
 - 2026-10-11, 001-274 (`reviews/wave-13ag.md` B1, decided by the human): D7 amended (001-263, 001-272). The shutdown mark is a `daemon-exit:<worktree>` `meta` row holding the incarnation, written first by `#shutdown` and cleared by the next registration, in `WORKTREE_META_ROWS`, so worktree removal prunes it; status reads it, or a note's `exitOf`, which this daemon still writes and a 0.1.121 daemon's only mark is. The known limit becomes a guarantee: a stop during startup followed by 20 or more diagnostic notes and a SIGKILL reads as down, not dead. A mark of another incarnation proves nothing. Evidence: `test/daemon/died-startup.test.ts`, `test/daemon/died.test.ts`, `test/store/worktree-meta.test.ts`.
+- 2026-10-12, human: 001-278 (the pre-existing prune-before-stop orphan) runs before the next hub release, which then carries 0.1.123 and 001-278.
 
 ## Research
 
