@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 // Spec 006 D3, D5, D6, D8: the baseline against a commit of this repository's Squeal.
 //   node evals/bin/run-baseline.mjs [--commit HEAD] [--parallel 2] [--max-load <cpus>]
-//     [--variant <name>] [--stand-in <model>=<stand-in>] [--date YYYY-MM-DD]
+//     [--variant <name>] [--stand-in <model>=<stand-in>] [--date YYYY-MM-DD] [--resume <run>]
 // Every cell of evals/baseline.json runs through run-cell.mjs, 2 to 4 at once, each started only
 // while the one-minute load average is below --max-load (the host's CPU count by default). A
 // model whose first cell never reaches it is recorded as missing and not run again; --stand-in
 // runs another model in its place, named in the results. Then it writes
-// evals/results/<date>-<version>.json and regenerates TREND.md. --variant runs the shipped texts
-// and the variant side by side (evals/variants/<name>.json) into <date>-<version>.<name>.json,
-// which the trend leaves out: a variant comparison is its own run.
-// Scratch: $SQ_EVALS_ROOT (default <tmpdir>/squeal-evals); a rerun skips the cells already graded.
+// evals/results/<date>-<version>.<run>.json and regenerates TREND.md. --variant runs the shipped
+// texts and the variant side by side (evals/variants/<name>.json) into
+// <date>-<version>.<run>.<name>.json, which the trend leaves out: a variant comparison is its own
+// run. Each arm's fixture commit holds its own instructions and policy, so each arm's conditions
+// name its own fixture; cells of one arm on different fixtures abort the results.
+// Every run has a fresh id, its cells under $SQ_EVALS_ROOT/cells/<commit>/<run>/ (default root
+// <tmpdir>/squeal-evals), so two runs of one commit never share a cell or a results file.
+// --resume <run> continues that run instead: its graded cells are skipped.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
@@ -21,8 +25,15 @@ import {
   pinBase,
   pinVersion,
   resolveCommit,
+  runId,
 } from "../lib/prepare.mjs";
-import { assertNoSecrets, cellRecord, conditionsOf } from "../lib/results.mjs";
+import {
+  armFixtures,
+  assertNoSecrets,
+  cellRecord,
+  conditionsOf,
+  resultsName,
+} from "../lib/results.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
@@ -34,6 +45,8 @@ const parallel = Math.min(4, Math.max(1, Number(opt("--parallel", "2"))));
 const maxLoad = Number(opt("--max-load", String(availableParallelism())));
 const variantArm = opt("--variant", null);
 const date = opt("--date", new Date().toISOString().slice(0, 10));
+const resume = opt("--resume", null);
+const run = resume ?? runId();
 const standIns = Object.fromEntries(
   argv.flatMap((a, i) => (argv[i - 1] === "--stand-in" ? [a.split("=")] : [])),
 );
@@ -72,11 +85,11 @@ for (let rep = 1; rep <= config.repetitions; rep++) {
     }
   }
 }
-const outDir = (c) => join(ROOT, "cells", commit.slice(0, 12), cellId(c), "out");
+const outDir = (c) => join(ROOT, "cells", commit.slice(0, 12), run, cellId(c), "out");
 const missing = new Set();
 const failed = [];
 console.log(
-  `baseline: Squeal ${version} at ${commit.slice(0, 12)}, ${plan.length} cells, ${parallel} at once below load ${maxLoad}`,
+  `baseline ${resume ? "resuming " : ""}run ${run}: Squeal ${version} at ${commit.slice(0, 12)}, ${plan.length} cells, ${parallel} at once below load ${maxLoad}`,
 );
 
 async function runCell(c) {
@@ -93,7 +106,17 @@ async function runCell(c) {
       c.model,
       String(c.rep),
     ];
-    args.push("--commit", commit, "--effort", c.effort, "--max-load", String(maxLoad));
+    args.push(
+      "--commit",
+      commit,
+      "--run",
+      run,
+      "--effort",
+      c.effort,
+      "--max-load",
+      String(maxLoad),
+    );
+    if (resume) args.push("--resume");
     const code = await new Promise((resolve) =>
       spawn(process.execPath, args, { stdio: "inherit" }).on("close", resolve),
     );
@@ -126,9 +149,7 @@ const grades = plan
   .filter((f) => existsSync(f))
   .map((f) => JSON.parse(readFileSync(f, "utf8")))
   .filter((g) => !g.skipped);
-const fixtures = [...new Set(grades.map((g) => g.head))];
-if (fixtures.length > 1)
-  throw new Error(`cells ran on ${fixtures.length} fixture commits: ${fixtures.join(", ")}`);
+const fixtures = armFixtures(grades, arms);
 const tasksOf = () =>
   Object.fromEntries(
     config.tasks.map((t) => [
@@ -145,7 +166,7 @@ const conditions = Object.fromEntries(
   arms.map((arm) => [
     arm,
     conditionsOf({
-      fixture: fixtures[0] ?? null,
+      fixture: fixtures[arm],
       tasks: tasksOf(),
       variant: arm,
       effort: config.effort,
@@ -157,6 +178,7 @@ const results = {
   schema: 1,
   kind: variantArm ? "variant" : "baseline",
   date,
+  run,
   squealVersion: version,
   commit,
   conditions: conditions[config.variant],
@@ -181,8 +203,8 @@ assertNoSecrets(
   text,
   secretsOf(process.env, existsSync(realCodex) ? readFileSync(realCodex, "utf8") : ""),
 );
-const file = join(EVALS, "results", `${date}-${version}${variantArm ? `.${variantArm}` : ""}.json`);
-writeFileSync(file, text);
+const file = join(EVALS, "results", resultsName({ date, version, run, variant: variantArm }));
+writeFileSync(file, text, { flag: "wx" }); // never over another run's results
 console.log(
   `wrote ${file}: ${grades.length} cells, ${failed.length} failed, missing: ${[...missing].join(", ") || "none"}`,
 );
