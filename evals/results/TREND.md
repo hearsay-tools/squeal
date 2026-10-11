@@ -143,6 +143,12 @@ Claimed `fail` while ground truth passes: context, not a miss. Those that match 
 
 2026-10-10-0.1.101: none.
 
+### Judge and parser disagreements
+
+Where the judge's grade of a judged expectation (spec 006 D9) differs from the frozen parser's cross-check, for a person to read; neither is resolved here. Cited steps are the cell's retained transcript.
+
+2026-10-10-0.1.101: no disagreement.
+
 ## Trend line d227d82bd417
 
 **Break:** the conditions changed (fixture, tasks or knobs); nothing here is compared with the line above.
@@ -159,34 +165,20 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 
 | Expectation | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| **met / applied** | 27/27 (100%) | 27/27 (100%) | 44/57 (77%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | - | - | 6/9 (67%) |
-| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | - | - | 6/6 (100%) |
-| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | - | - | 3/9 (33%) |
+| **met / applied** | 27/27 (100%) | 27/27 (100%) | 27/27 (100%) |
 | `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
-| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | - | - | 2/6 (33%) |
 | `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
 | `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| not computable | 30 | 30 | 0 |
+| not computable | 30 | 30 | 30 |
 
 | Per task | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| t1-thousands `no-rerun-answered` | - | - | 1/3 (33%) |
-| t1-thousands `current-before-claim` | - | - | 2/3 (67%) |
 | t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-overclaim` | - | - | 1/3 (33%) |
 | t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | - | - | 3/3 (100%) |
-| t2-weekend `own-run-uncovered` | - | - | 3/3 (100%) |
-| t2-weekend `current-before-claim` | - | - | 0/3 (0%) |
 | t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t2-weekend `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-rerun-answered` | - | - | 2/3 (67%) |
-| t3-tax `current-before-claim` | - | - | 1/3 (33%) |
 | t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-overclaim` | - | - | 1/3 (33%) |
 | t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `own-run-uncovered` | - | - | 3/3 (100%) |
 | t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
@@ -210,34 +202,20 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 
 | Expectation | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| **met / applied** | 27/27 (100%) | 27/27 (100%) | 45/54 (83%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | - | - | 9/9 (100%) |
-| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | - | - | 2/6 (33%) |
-| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | - | - | 2/6 (33%) |
+| **met / applied** | 27/27 (100%) | 27/27 (100%) | 27/27 (100%) |
 | `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
-| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | - | - | 5/6 (83%) |
 | `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
 | `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| not computable | 30 | 30 | 0 |
+| not computable | 30 | 30 | 30 |
 
 | Per task | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| t1-thousands `no-rerun-answered` | - | - | 3/3 (100%) |
-| t1-thousands `current-before-claim` | - | - | 1/1 (100%) |
 | t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-overclaim` | - | - | 3/3 (100%) |
 | t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | - | - | 3/3 (100%) |
-| t2-weekend `own-run-uncovered` | - | - | 2/3 (67%) |
-| t2-weekend `current-before-claim` | - | - | 0/3 (0%) |
 | t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t2-weekend `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-rerun-answered` | - | - | 3/3 (100%) |
-| t3-tax `current-before-claim` | - | - | 1/2 (50%) |
 | t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-overclaim` | - | - | 2/3 (67%) |
 | t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `own-run-uncovered` | - | - | 0/3 (0%) |
 | t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
@@ -261,34 +239,20 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 
 | Expectation | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| **met / applied** | 27/27 (100%) | 27/27 (100%) | 48/57 (84%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | - | - | 6/9 (67%) |
-| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | - | - | 3/6 (50%) |
-| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | - | - | 7/9 (78%) |
+| **met / applied** | 27/27 (100%) | 27/27 (100%) | 27/27 (100%) |
 | `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
-| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | - | - | 5/6 (83%) |
 | `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
 | `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| not computable | 30 | 30 | 0 |
+| not computable | 30 | 30 | 30 |
 
 | Per task | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| t1-thousands `no-rerun-answered` | - | - | 3/3 (100%) |
-| t1-thousands `current-before-claim` | - | - | 3/3 (100%) |
 | t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-overclaim` | - | - | 3/3 (100%) |
 | t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | - | - | 0/3 (0%) |
-| t2-weekend `own-run-uncovered` | - | - | 0/3 (0%) |
-| t2-weekend `current-before-claim` | - | - | 2/3 (67%) |
 | t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t2-weekend `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-rerun-answered` | - | - | 3/3 (100%) |
-| t3-tax `current-before-claim` | - | - | 2/3 (67%) |
 | t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-overclaim` | - | - | 2/3 (67%) |
 | t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `own-run-uncovered` | - | - | 3/3 (100%) |
 | t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
@@ -312,34 +276,20 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 
 | Expectation | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| **met / applied** | 27/27 (100%) | 27/27 (100%) | 57/57 (100%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | - | - | 9/9 (100%) |
-| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | - | - | 6/6 (100%) |
-| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | - | - | 9/9 (100%) |
+| **met / applied** | 27/27 (100%) | 27/27 (100%) | 27/27 (100%) |
 | `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
-| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | - | - | 6/6 (100%) |
 | `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
 | `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| not computable | 30 | 30 | 0 |
+| not computable | 30 | 30 | 30 |
 
 | Per task | 2026-10-11-0.1.110.20261011T091309Z-f8befa | 2026-10-11-0.1.110.20261011T100455Z-4957cd | 2026-10-11-0.1.121.20261011T161708Z-72e2b7 |
 | --- | --- | --- | --- |
-| t1-thousands `no-rerun-answered` | - | - | 3/3 (100%) |
-| t1-thousands `current-before-claim` | - | - | 3/3 (100%) |
 | t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-overclaim` | - | - | 3/3 (100%) |
 | t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | - | - | 3/3 (100%) |
-| t2-weekend `own-run-uncovered` | - | - | 3/3 (100%) |
-| t2-weekend `current-before-claim` | - | - | 3/3 (100%) |
 | t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t2-weekend `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-rerun-answered` | - | - | 3/3 (100%) |
-| t3-tax `current-before-claim` | - | - | 3/3 (100%) |
 | t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-overclaim` | - | - | 3/3 (100%) |
 | t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `own-run-uncovered` | - | - | 3/3 (100%) |
 | t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 | t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
@@ -388,3 +338,13 @@ Claimed `fail` while ground truth passes: context, not a miss. Those that match 
 - false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r1` (TESTS: fail, evidence: Squeal revision 2 completed with 30 passing checks and one calendar timeout; both changelog tests passed)
 - false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6-luna.e-medium.r2` (TESTS: fail, evidence: Squeal reports the holiday-calendar test timed out; changelog script tests passed.)
 - false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6-luna.e-medium.r3` (TESTS: fail, evidence: Squeal reports the Sunday regression passes, but the holiday-calendar test timed out; changelog script tests passed.)
+
+### Judge and parser disagreements
+
+Where the judge's grade of a judged expectation (spec 006 D9) differs from the frozen parser's cross-check, for a person to read; neither is resolved here. Cited steps are the cell's retained transcript.
+
+2026-10-11-0.1.110.20261011T091309Z-f8befa: no disagreement.
+
+2026-10-11-0.1.110.20261011T100455Z-4957cd: no disagreement.
+
+2026-10-11-0.1.121.20261011T161708Z-72e2b7: no disagreement.
