@@ -22,7 +22,8 @@ const SHELL = /^(?:.*\/)?(?:ba|z|da)?sh$/;
  * established }`. Words have their quotes removed; leading `VAR=value` assignments, shell keywords
  * and wrappers such as `timeout`, `env` and `nice` are dropped; `bash -lc '<script>'` (any shell,
  * any `-c` flag cluster) and a shell reading a heredoc become the commands of their script. A
- * command substitution comes before the command holding it.
+ * command substitution comes before the command holding it. `words` is empty for a lookup
+ * (`command -v`) or a bare redirection, which runs no program but still writes.
  *
  * `established` is `true` only for a command that ran whenever the text ran: not behind `&&` or
  * `||`, not in an `if`, loop or `case` body, not after a command that may have ended its shell.
@@ -50,7 +51,9 @@ export function simpleCommands(text, { exit = null, errexit = false } = {}) {
         unreachable: unreachable || ic.unreachable,
       }));
     }
-    return words.length
+    // A lookup (`command -v`) or a bare redirection runs no program, but its redirections are
+    // still writes (review wave 2.5, B4).
+    return words.length || c.redirects.length
       ? [{ words, redirects: c.redirects, heredocs: c.heredocs, established, unreachable }]
       : [];
   });
