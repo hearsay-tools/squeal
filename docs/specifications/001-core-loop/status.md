@@ -170,6 +170,7 @@ Started: 2026-10-02
 - 2026-10-10, release: squeal--v0.1.107 (3089a609) on the hub (`hearsay-tools/marketplace` 28ae0ba), KEY_FORMAT_VERSION 3 shipped; covered by reviews wave-13u to wave-13z; CI green on Node 22 and 24. A later change to the guarded sources bumps to 4.
 - 2026-10-11, 001-250 (`reviews/wave-13aa.md` B1 to B3, S1; recorded for `reviews/wave-13ab.md` N1): D9 amended, the primer names only the runners the daemon builds, projects by their configured identity, and compacts to keep its closing sentence within the cap. D2 amended, the root recheck reads at most 4,096 directory entries beside its 1,024 stats.
 - 2026-10-11, release: squeal--v0.1.110 (903600d8) on the hub (`hearsay-tools/marketplace` c9571a3), KEY_FORMAT_VERSION 4 shipped; covered by reviews wave-13aa and wave-13ab; CI green on Node 22 and 24. A later change to the guarded sources bumps to 5.
+- 2026-10-11, human: the quality pass's rows 001-253 to 001-256 run (254 after 255 and 256); this coordinator owns 001's research (001-180, 182, 218); another coordinator takes spec 006, which changes no code. `@parcel/watcher` upstream issue filed as parcel-bundler/watcher#272.
 
 ## Research
 

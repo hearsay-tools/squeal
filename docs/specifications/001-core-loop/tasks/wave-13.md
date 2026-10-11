@@ -705,3 +705,35 @@ Done when: each of the review's probes passes and is red before (node:test-only,
 ## 001-251 re-review of wave 13aa
 
 Use /reviewer on gpt-6.1-sol, after 001-250 lands. Output `reviews/wave-13ab.md`. Second round on `reviews/wave-13aa.md`: are B1, B2, B3 and S1 closed; can the primer still claim a runner or project that is not configured, or omit one that is; does every primer variant keep its closing sentence within the cap. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
+
+## Wave 13ac (2026-10-11, decided by the human)
+
+The quality pass's rows (`quality/2026-10-2.md`) and 001's open research. Spec 006 runs beside it under another coordinator and changes no code. Each worker: do not edit `docs/board.md`; do not commit `dist`; run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. `KEY_FORMAT_VERSION` 4 shipped in 0.1.110, so the coordinator bumps to 5 at the first guarded-source landing. Read the row on the board first: each quality row's text there is its brief.
+
+## 001-253 the parcel extras' recheck takes the root's rule
+
+Use /worker. Shape: subtraction. The board row is the brief. `ErasedEvents` in `src/core/watcher/parcel-backend.ts` reports a watched extra file by the root recheck's timestamp rule (`RootRecheck`, `RACY_NS`): mtime or ctime no older than the previous batch less the racy window. The content hash, the unknown-hash state, the read budget and the chunked read go. Keep every regression that 001-235, 243, 245, 247 and 236 added. A test that only proved the content hash becomes a timestamp test proving the same miss is caught. Own `src/core/watcher/`, `test/watcher/`, the D2 sentence. Done when: the same-size same-tick rewrite, the erased-event and the failed-read cases are all still reported; no extra file's content is read; parcel tests pass 50 times; lint, typecheck and the full suite are green.
+
+## 001-255 stopped-process notes carry their processes as data
+
+Use /worker. Shape: subtraction. The board row is the brief. Own `src/core/daemon/terminate.ts`, `src/core/status/format-status.ts`, the `DaemonNote` type in `src/core/types/scheduler.ts`, and tests under `test/daemon/` and `test/status/`. Done when: a command containing `; ` and ` (` folds under its own command (red before); an older daemon's prose note still shows, unfolded; `parseStopped`, `STOPPED` and the second `COMMAND_CHARS` are gone; lint, typecheck and the full suite are green.
+
+## 001-256 survey: `status --wait` from the store's re-key record
+
+Use /researcher. The board row is the brief. Output `research/wait-from-store.md`, with a probe for each case of `reviews/wave-13k.md` B1 and of the discharge reviews (13l, 13q, 13r, 13s, 13t). Answer whether a store-persisted record per file and revision, with its resolve time, can answer `status --wait` in one read transaction with no hold. If it can, give the change as a one-worker row. If it can't, name the case that needs memory. No product edits.
+
+## 001-180 research: who kills a daemon started inside a cezar worktree
+
+Use /researcher. Read row 001-180 and `004-slow-suites/lessons.md` defect 16 (004-46 addendum). The human's lead (2026-10-11): Cezarion now runs a worktree setup when a new thread starts, and in the cezar project that setup takes about 18 s, the same as the time of the kill. Look there first. For example: does the setup's runner, or its timeout, kill a process group or the processes under the worktree; does a Squeal daemon started by a hook during setup land in that group; does the setup replace `node_modules` from under a running daemon? Then check the other leads (a leftover fake `gh` from cezar's `src/ci-wait/process.test.ts`; Squeal's own D12 sweep). Probe in a scratch cezar worktree you create and remove yourself. Never touch the human's live worktrees, stores or daemons. Output `research/daemon-sigkill.md`, naming the killer with evidence. If it's Squeal, add a fix row. If it's Cezarion or cezar, draft an issue text for the human and file nothing.
+
+## 001-182 research: the revert-restore current PASS seen once in a full gate
+
+Use /researcher. Read row 001-182 and `reviews/wave-13h.md` Verification. Output `research/revert-restore-pass.md`: the cause, or the anomaly's rarity bounded with evidence (instrumented repeated runs under a measured load), plus a fix row if it's real. Run your repetitions when the host is quiet, and report the load you measured.
+
+## 001-218 confirm a fresh worktree at main's commit reuses main's results
+
+Use /researcher. Read row 001-218. On the released plugin (0.1.110, KEY_FORMAT_VERSION 4), create a fresh scratch worktree of the cezar repository at its main commit. It shares the main checkout's store. Start a daemon there, and record `squeal status`'s `Inherited:` count against the main checkout's current results. Never touch the human's live worktrees; remove yours when done. If reuse is low, name the key input that differs, using `squeal why` and the environment hash, and add a row. Output `research/fresh-worktree-reuse.md`.
+
+## 001-257 review of wave 13ac
+
+Use /reviewer on gpt-6.1-sol, after 001-253, 001-255 and 001-254 land. Output `reviews/wave-13ac.md`. Does each subtraction keep every behaviour its tests and the reviews it replaces proved? Is anything left that only the removed code used? Run your own independent full suite. Blockers go to the human.
