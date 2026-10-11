@@ -76,7 +76,7 @@ async function heldRun(options: { invalidate: boolean; restore: boolean }): Prom
   return run;
 }
 
-describe("vitest adapter: a mid-run invalidate of a virtual module's input (wave-13af B2)", SLOW, () => {
+describe("vitest adapter: a virtual input under a mid-run invalidate (wave-13af B2)", SLOW, () => {
   it("drops the run when its declared input is restored after the invalidate", async () => {
     const report = await heldRun({ invalidate: true, restore: true });
     expect(report.completedFiles).toEqual([]);
