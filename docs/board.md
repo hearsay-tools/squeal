@@ -615,7 +615,7 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 | 006-03 review of 006-01 | done: FAIL (`reviews/wave-1.md`), B1 to B5 and S1 to S3 to wave 1.5 | `/reviewer` on gpt-6.1-sol: isolation, credentials, grading honesty. | `reviews/wave-1.md`. |
 | 006-05 repair: runner (wave 1.5) | done (landed with 006-06, `1f95673f`) | `reviews/wave-1.md` B1 (secrets kept in evidence), B3 and B4's runner half (`truth.json`, `status-end.json`), B5 (variants rejected), S1 (fresh runs), S2 (teardown), S3 (inline credentials). | Each probe a test; repository gate green. |
 | 006-06 repair: grader (wave 1.5) | done (landed with 006-05, `1f95673f`) | `reviews/wave-1.md` B2 (conditional, heredoc and ordered execution), B3 and B4's grader half (interrupted truth, stale or unknown status never pass). | Each probe a test; repository gate green. |
-| 006-07 re-review of wave 1.5 | planned (`tasks/wave-1.5.md`) | `/reviewer` on gpt-6.1-sol: are B1 to B5 closed, S1 to S3 addressed. Second and last round on this slice. | `reviews/wave-1.5.md`. |
+| 006-07 re-review of wave 1.5 | running (`0a553e1b`, gpt-6.1-sol; `tasks/wave-1.5.md`) | `/reviewer` on gpt-6.1-sol: are B1 to B5 closed, S1 to S3 addressed. Second and last round on this slice. | `reviews/wave-1.5.md`. |
 | 006-04 first baseline | planned, at calm load, after 006-07 passes | Proof: the baseline twice on one release commit; results and `TREND.md` committed. | Both runs committed; rates within what 12 sessions per model allow; open question 4 settled. |
 
 ## Later
