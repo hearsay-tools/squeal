@@ -1,6 +1,6 @@
 # 006 Model evals: status
 
-Stage: draft (2026-10-10; held by the human)
+Stage: approved (2026-10-11, by the human; waves on `docs/board.md`, briefs under `tasks/`)
 Started: 2026-10-10
 
 ## Decisions so far
@@ -11,3 +11,4 @@ Started: 2026-10-10
 - 2026-10-10, the human: spec 006 is held. The other coordinators finish their work, a quality pass runs over it (board, Later), and then the new specs (005 and 006) follow. No Opus in the baseline: it watches Claude Code `haiku` and `sonnet` and Codex `gpt-6-luna` and `gpt-6.1-sol` (D5, open question 2).
 - 2026-10-10, the human: record the effort level of eval runs and keep it consistent over time; no effort variants. 005-06's pilot ran at each model's unrecorded default (the runner passed no effort). D3, D5 and D6 now pin `medium` for every model, record it per cell, and group the trend by it. The running prototype baseline (005-07) was steered to do the same.
 - 2026-10-10, first trend point: the prototype baseline 005-07 (`8cf7973d`, `../005-agent-adoption/research/model-evals-baseline.md`), Squeal 0.1.101, effort `medium`, Haiku 5.5, Sonnet 5.5, Luna, Sol. 006-01 imports its results as the first `evals/results/` file. Claude Code's default effort for Haiku 5.5 and Sonnet 5.5 is already `medium`; Codex records none at its default.
+- 2026-10-11, the human: start 006 now so it is ready before 005; this replaces the hold for 006 only (005 stays held behind the other coordinators and the quality pass). Approved as drafted, with D1 copying the prototype's code into `evals/` and leaving its logs with the research, and 005-07's results as the first results file.
