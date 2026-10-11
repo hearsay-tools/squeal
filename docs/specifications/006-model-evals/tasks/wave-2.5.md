@@ -29,6 +29,34 @@ Use /worker. Shape: repair.
 
 Do not run `npm run build` in your worktree.
 
-## 006-13 narrow review of wave 2.5
+## 006-14 score expectations per task, with reference sessions
 
-Use /reviewer. Limited to 006-12's four items. Can a false pass ever be counted as a false fail, or lost? Can the new parser accept the echoed template, or a line naming two claims? Does `command -p`, `command -v` or `command -V` now grade the way Bash runs it? Does the regrade change only claim fields, and does it reproduce what the grader would produce from the same fields? Synthetic probes only, no real subject sessions. Check in a scratch copy, never by building in your worktree. Findings go to `../reviews/wave-2.5.md`.
+Use /worker. Shape: slice. Added 2026-10-11, after the human found that the scoring pooled raw behaviours over every task with one direction each. That counted running the tests on T4, which has no daemon, as a fault, and waiting on a dead Squeal as good.
+
+**Outcome:** the grader scores the expectations `../spec.md` D4 declares per task, and the trend reports them, so every number says whether the right thing happened at the right moment.
+
+**Read:** `../spec.md` goal 3, D4 (the expectations table), D6 and Testing ("Reference sessions"); `../results/2026-10-first-baseline.md`; `evals/lib/{grade,behaviours,trend}.mjs`, `evals/bin/regrade.mjs`, `evals/tasks/tasks.json`.
+
+- **Expectations as data.** Each task in `evals/tasks/tasks.json` declares its expectations by id: the moment each applies, and its rule over the recorded fields. The rules match D4's table exactly. Add a recorded field only where a rule needs one the grader does not yet keep (for example, whether a wait after the last edit was a `run --all --wait`). Keep the field honest to the transcript, as the existing ones are.
+- **Grade.** Per cell, each declared expectation is met, missed, or does not apply (for example, `own-run-uncovered` on T2 when the scripts did not change). Nothing is scored that the task does not declare.
+- **Trend** (`TREND.md`, `compare.mjs`): per model, each expectation's met count over the sessions where it applies, and a headline of expectations met over expectations that applied. Add a per-task breakdown, then the context counts with no direction. Alarms list false passes and forbidden edits by cell. False fails are listed apart, marked where they match Squeal. The drop flag compares expectation rates, at the current 25 points (the human sets the threshold later).
+- **Reference sessions** (`test/evals/reference.test.ts`): per task, one synthetic transcript of the right moves meets every declared expectation. One transcript per known mistake in D4's Testing list misses exactly the expectation it names. A test also fails when any task declares an expectation without a reference session that exercises it.
+- **Regrade.** Extend `evals/bin/regrade.mjs` to compute the expectations from each committed cell's stored fields, and re-run it on every file in `evals/results/`. Where a rule needs a field an old results file does not keep, it is "not computable" for that run, named in the regrade note. It is never guessed.
+
+**Owns:** `evals/lib/{grade,behaviours,trend}.mjs`, `evals/bin/{regrade,compare}.mjs`, `evals/tasks/tasks.json`, `evals/results/**`, `evals/README.md`, and new test files under `test/evals/`. The existing tests that pin raw-behaviour rates change only as far as the switch requires.
+
+**Done when:**
+- the reference sessions pass;
+- the first baseline is regraded and committed under expectations;
+- in the regrade, T4's own Vitest runs count as `own-run-uncovered` met, and waits on T4 appear only as context;
+- the repository gate is green.
+
+Do not run `npm run build` in your worktree.
+
+## 006-13 review of wave 2.5
+
+Use /reviewer. Covers 006-12 (its four items) and 006-14 (expectations), and, for the first time in this spec, the design of the score, not only whether counts match transcripts.
+
+- For each task and each expectation D4 declares: is it the right behaviour at that moment for that situation, and does the fixture and knob make the situation real? Is anything the right move that no expectation scores, or scored where it is not the right move?
+- Does a reference session doing the right thing meet everything, and does each known mistake miss exactly its expectation?
+- Then 006-12's questions: Can a false pass ever be counted as a false fail, or lost? Can the new parser accept the echoed template, or a line naming two claims? Does `command -p`, `command -v` or `command -V` now grade the way Bash runs it? Does the regrade change only claim fields, and does it reproduce what the grader would produce from the same fields? Synthetic probes only, no real subject sessions. Check in a scratch copy, never by building in your worktree. Findings go to `../reviews/wave-2.5.md`.
