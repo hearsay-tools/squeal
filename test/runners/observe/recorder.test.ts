@@ -104,4 +104,46 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
     expect(seen.recursive).toEqual([...forms].sort());
     expect(seen.listed).toEqual(expect.arrayContaining([...forms, ...shallow]));
   });
+
+  it("records a script child's entry point and no argument of an -e or -p child (task 001-261)", () => {
+    const code = 'require("node:fs").readFileSync("data.txt")';
+    const evals = [
+      ["-e", code],
+      ["--eval", code],
+      [`--eval=${code}`],
+      ["-p", code],
+      ["--print", code],
+      ["-pe", code],
+    ];
+    const seen = observe({
+      "main.mjs": [
+        'import { execFileSync } from "node:child_process";',
+        `for (const [i, flags] of ${JSON.stringify(evals)}.entries()) {`,
+        '  execFileSync(process.execPath, [...flags, "arg" + i, "other"]);',
+        "}",
+        // no `.` or `/`: only the child's own entry point records it
+        'execFileSync(process.execPath, ["script", "arg"]);',
+      ].join("\n"),
+      script: "",
+      "data.txt": "d",
+      ...Object.fromEntries(evals.map((_, i) => [`arg${i}`, ""])),
+    });
+    expect(seen.paths).toEqual(["data.txt", "main.mjs", "script"]);
+  });
+
+  it("gives a cezar-style `node -e <code> <json>` child one observed set in every worktree (task 001-261)", () => {
+    const run = () =>
+      observe({
+        "main.mjs": [
+          'import { execFileSync } from "node:child_process";',
+          'const root = new URL(".", import.meta.url).pathname;',
+          "const spec = JSON.stringify({ file: process.execPath, args: [root + 'gh.mjs', '--json'] });",
+          "execFileSync(process.execPath, [\"-e\", \"require('node:fs').readFileSync('gh.mjs')\", spec]);",
+        ].join("\n"),
+        "gh.mjs": "",
+      }).paths;
+    const first = run();
+    expect(first).toEqual(["gh.mjs", "main.mjs"]);
+    expect(run()).toEqual(first);
+  });
 });
