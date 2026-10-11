@@ -14,6 +14,8 @@ export interface DeskIdentity {
   readonly root: string;
   readonly squealVersion: string;
   readonly startedAt: EpochMs;
+  /** `DaemonRecord.token` (task 001-270). */
+  readonly token: string;
 }
 
 /** Main thread to front desk. */

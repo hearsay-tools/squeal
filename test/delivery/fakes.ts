@@ -48,6 +48,7 @@ export function liveDaemon(
     heartbeatAt: Date.now(),
     heartbeatIntervalMs: 3_600_000,
     squealVersion: "0.0.0-test",
+    token: "live",
   });
   if (scanned) store.meta.set(bootstrappedMetaKey(worktreeId), String(startedAt));
 }

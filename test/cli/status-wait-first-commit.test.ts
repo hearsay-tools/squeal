@@ -5,6 +5,7 @@ import type { RevisionNumber } from "../../src/core/types/index.js";
 import {
   A,
   B,
+  daemon,
   newerDaemon,
   pendingOf,
   row,
@@ -83,7 +84,7 @@ describe("status --wait across a daemon's first commit (task 001-268)", () => {
     const first = await newerDaemon(w, 1);
     first.commit([row(A, "a-0", null)], [], true);
     await first.close();
-    w.store.worktrees.setDaemon(w.id, { ...first.record, squealVersion: "0.1.112", startedAt: 2 });
+    w.store.worktrees.setDaemon(w.id, daemon(first.record.socketPath, "0.1.112", 2));
     const wait = await waitOver(w, await newerDaemon(w, 3));
     expect(wait.outcome).toBe("timeout");
     expect(wait).not.toHaveProperty("edit");

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach } from "vitest";
@@ -26,7 +27,9 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/he
  * ledger's do, the store's re-key moves included. An older one, before task
  * 001-258, registers and writes the rows, the legacy re-key record, the
  * states and the refined revision; never the moves. Each reads the
- * registration before its own, as the daemon does (task 001-268).
+ * registration before its own, as the daemon does (task 001-268). A newer
+ * one draws a start token, as the daemon does (task 001-270); an older one
+ * none.
  */
 
 export const A = "src/a.test.ts";
@@ -38,13 +41,19 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-export function daemon(socketPath: string, version: string, startedAt: number): DaemonRecord {
+export function daemon(
+  socketPath: string,
+  version: string,
+  startedAt: number,
+  token?: string,
+): DaemonRecord {
   return {
     socketPath: socketPath as AbsolutePath,
     startedAt,
     heartbeatAt: Date.now(),
     heartbeatIntervalMs: 600_000,
     squealVersion: version,
+    ...(token === undefined ? {} : { token }),
   };
 }
 
@@ -94,9 +103,11 @@ function register(w: Worktree, record: DaemonRecord): string | null | undefined 
  * daemon registered before wrote the moves last (`adoptsAtFirstCommit`).
  */
 export async function newerDaemon(w: Worktree, startedAt = 1) {
-  const socketPath = join(w.dir, `d${startedAt}.sock`) as AbsolutePath;
+  const token = randomUUID();
+  const socketPath = join(w.dir, `d${startedAt}-${token.slice(0, 8)}.sock`) as AbsolutePath;
+  const identity = { worktreeId: w.id, root: w.repo.main, squealVersion: "0.1.115", startedAt };
   const desk = await prepareFrontDesk(null).open(
-    { socketPath, worktreeId: w.id, root: w.repo.main, squealVersion: "0.1.115", startedAt },
+    { ...identity, socketPath, token },
     {
       onActivity: () => {},
       requestFullSuite: () => new Promise(() => {}),
@@ -114,7 +125,7 @@ export async function newerDaemon(w: Worktree, startedAt = 1) {
   };
   cleanups.push(close);
   desk.setPhase("ready");
-  const record = daemon(socketPath, "0.1.115", startedAt);
+  const record = daemon(socketPath, "0.1.115", startedAt, token);
   const predecessor = register(w, record);
   const writer = daemonIncarnation(record);
   const commit = (rows: TestFileKeyRecord[], open: string[] = [], first = false) =>

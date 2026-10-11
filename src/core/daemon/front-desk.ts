@@ -41,6 +41,7 @@ function bind(identity: DeskIdentity): void {
     root: identity.root,
     squealVersion: identity.squealVersion,
     startedAt: identity.startedAt,
+    token: identity.token,
     phase: () => phase,
     requestFullSuite: (force) =>
       new Promise((resolve, reject) => {

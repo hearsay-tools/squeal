@@ -30,6 +30,8 @@ export interface HandlerContext {
   readonly root: AbsolutePath;
   readonly squealVersion: string;
   readonly startedAt: EpochMs;
+  /** `DaemonRecord.token`: with the version and start time, its incarnation (task 001-270). */
+  readonly token: string;
   readonly phase: () => DaemonPhase;
   /**
    * Hands a `run --all` to the scheduler once it has started. Never awaited

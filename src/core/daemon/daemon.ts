@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
@@ -122,6 +123,8 @@ class Daemon {
   readonly #now: () => EpochMs;
   readonly #socketPath: AbsolutePath;
   readonly #startedAt: EpochMs;
+  /** Drawn at start: with the version and `#startedAt`, its incarnation (task 001-270). */
+  readonly #token = randomUUID();
   /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
   #predecessor: string | null | undefined = undefined;
   readonly #version = squealVersion();
@@ -284,6 +287,7 @@ class Daemon {
         heartbeatAt: this.#now(),
         heartbeatIntervalMs: this.#heartbeatMs(),
         squealVersion: this.#version,
+        token: this.#token,
       });
     });
   }
@@ -395,6 +399,7 @@ class Daemon {
         incarnation: daemonIncarnation({
           squealVersion: this.#version,
           startedAt: this.#startedAt,
+          token: this.#token,
         }),
         ...(this.#predecessor === undefined ? {} : { predecessor: this.#predecessor }),
         runsDir: storePaths(commonDir).runsDir,
@@ -432,6 +437,7 @@ class Daemon {
         root: this.opened.root,
         squealVersion: this.#version,
         startedAt: this.#startedAt,
+        token: this.#token,
       },
       {
         requestFullSuite: (force) => this.#requestFullSuite(force),

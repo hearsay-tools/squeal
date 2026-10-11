@@ -165,6 +165,7 @@ describe("the step-down request (daemon side)", () => {
       root: "/" as never,
       squealVersion: version,
       startedAt: 1 as never,
+      token: "t",
       phase: () => "ready",
       requestFullSuite: () => new Promise(() => {}),
       onActivity: () => {},

@@ -30,16 +30,17 @@ const ID = testFileId(FILE);
 const T0 = 1_000_000;
 const VERSION = "0.0.0-test";
 /** The registered daemon's incarnation, which answered the wait's sync. */
-const LIVE = daemonIncarnation({ squealVersion: VERSION, startedAt: 1 });
+const LIVE = daemonIncarnation({ squealVersion: VERSION, startedAt: 1, token: "t1" });
 
-/** Registers the daemon started at `startedAt`. */
-function register(s: Store, startedAt: number) {
+/** Registers the daemon started at `startedAt` that drew `token`. */
+function register(s: Store, startedAt: number, token = `t${startedAt}`) {
   s.worktrees.setDaemon(WT, {
     socketPath: "/run/squeal.sock" as never,
     startedAt,
     heartbeatAt: T0,
     heartbeatIntervalMs: 60_000,
     squealVersion: VERSION,
+    token,
   });
 }
 
@@ -235,6 +236,9 @@ describe("the store's re-key moves (task 001-258)", () => {
       expect(movesTrusted(s, WT, start, LIVE)).toBe(false);
       register(s, 1);
       expect(movesTrusted(s, WT, start, LIVE)).toBe(true);
+      // Another at its start time and version: its start token tells it apart (task 001-270).
+      register(s, 1, "t1-again");
+      expect(movesTrusted(s, WT, start, LIVE)).toBe(false);
     });
 
     it("is not trusted once another writer, or one that names none, wrote the record", () => {
@@ -294,9 +298,13 @@ describe("the store's re-key moves (task 001-258)", () => {
       expect(predecessorIncarnation(false, null)).toBeNull();
       expect(predecessorIncarnation(true, null)).toBeUndefined();
       expect(predecessorIncarnation(true, { startedAt: 5, squealVersion: null })).toBeUndefined();
-      expect(predecessorIncarnation(true, { startedAt: 5, squealVersion: VERSION })).toBe(
-        `${VERSION}@5`,
-      );
+      // A release before task 001-270 drew no start token.
+      expect(
+        predecessorIncarnation(true, { startedAt: 5, squealVersion: VERSION }),
+      ).toBeUndefined();
+      expect(
+        predecessorIncarnation(true, { startedAt: 5, squealVersion: VERSION, token: "t" }),
+      ).toBe(`${VERSION}@5#t`);
     });
 
     it("takes things in unless it wrote the moves last, or there was none", () => {
