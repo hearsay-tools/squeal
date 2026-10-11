@@ -757,3 +757,31 @@ Done when: the review's real-socket successor-before-refinement case and a succe
 ## 001-266 re-review of wave 13ac
 
 Use /reviewer on gpt-6.1-sol, after 001-265 lands. Output `reviews/wave-13ad.md`. Second round on `reviews/wave-13ac.md` B1 and N1: can any daemon succession, older or newer, before or after the window, still make a wait trust an incomplete record; do the static controls still fall back. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
+
+## 001-268 a wait's trust follows the writing daemon's incarnation
+
+Use /worker. Shape: repair. From `reviews/wave-13ad.md` (001-266) B1, decided by the human (2026-10-11): a third round, then a third review (001-269). Read `reviews/wave-13ac.md` and `wave-13ad.md`, and `tasks/001-265/notes.md`, first.
+
+Outcome: a key value can't prove continuity, because an older ledger's same-revision K -> K2 -> K restores it. So trust in the `rekeyed-moves` record follows the writing daemon's incarnation instead:
+- Every new-ledger commit writes the daemon's incarnation id (its start token) into the record.
+- The sync answer names the answering daemon's incarnation, and the wait installs its window only when the record's writer incarnation is the answering daemon's.
+- At every poll, the wait checks that the worktree's live daemon, by its heartbeat or registration row, is still that incarnation, and that the record's writer is still it. On any change, it drops the window and takes D7's fallback.
+- Any daemon not known to write the record counts as an unverified writer: an older one, or one whose incarnation can't be read.
+- A new daemon's first commit adopts every pending row as an open move, whatever the marks say, and bumps `dropped`, so a wait started earlier falls back. This replaces `unrecordedRows`' mark comparison, which the review showed misses the ABA case.
+
+Waiting longer is the cost, and never ending quiet wrongly is the requirement. Keep schema V1 and additive compatibility, with no holds. Keep the key marks only if they still add something; otherwise remove them.
+
+Own: `src/core/scheduler/rekeyed-moves.ts`, `moves-keys.ts`, the ledger's first-commit path in `ledger.ts`, the daemon's incarnation in its heartbeat or registration row (`src/core/daemon/`, `src/core/store/repos/worktrees.ts` only for reading it), `src/cli/status-sync.ts`, `src/cli/status-wait.ts`, D7 and `status.md`, and the regressions under `test/`. The coordinator re-pins `KEY_FORMAT_VERSION` 5 and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`.
+
+Done when:
+- each of the review's probes never ends quiet while an unrecorded edit is queued, red before:
+  - same-revision K -> K2 -> K between polls;
+  - old-then-new before the first commit;
+  - the same after a window is installed;
+- the original real-socket succession and both static controls (including an actual 0.1.112 CLI) still fall back;
+- the 001-258 probe tests still pass;
+- lint, typecheck and the full suite are green with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+## 001-269 third review of wave 13ac
+
+Use /reviewer on gpt-6.1-sol, after 001-268 lands. Output `reviews/wave-13ae.md`. Third round on `reviews/wave-13ad.md` B1 only: can any succession of daemons (older, newer, unverifiable, before or after the window, at one revision or across revisions) still make a wait trust a record its own incarnation did not keep? Re-run every earlier probe. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
