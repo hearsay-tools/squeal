@@ -26,3 +26,17 @@ Use /worker. Shape: slice.
 - The repository gate is green.
 - One smoke cell per harness runs end to end below load 24, or is reported pending if the load never allows it. It leaves no credential in its scratch and no daemon or process behind.
 - No credential or private URL is committed (public repository; the provider is read at run time).
+
+## 006-03 review of 006-01
+
+Use /reviewer. Range `c26cbb78^..69f7eb0f` (006-01's eight commits on main). Spec: `../spec.md` D1 to D6 and D8, with `../status.md`.
+
+Where the blast radius is, in order:
+
+1. **Isolation and credentials.** A cell must never write the real `~/.claude` or `~/.codex`. It must leave no credential in its scratch or in `out/`, and never commit one: the repository is public, and a provider URL leaked from a probe once. The runner reads the provider at run time, so check every path where it is copied.
+2. **Grading honesty.** Can a refused, chained, heredoc'd or `bash -lc`-wrapped command be counted wrongly as a test run, an edit or a wait? Can the `TESTS:` parser, the forbidden-edit rule or "Squeal had already answered" grade a session better than its transcript shows?
+3. **The knobs.** Does T4 leave truly no daemon validating, and does `SQUEAL_CLI` pointing at no file leak anywhere beyond the cell? Does T2's flake really fail Squeal's first re-run, and does T3's outside edit produce a result from an older revision?
+4. **Trend.** Can the 25-point flag compare runs across conditions fingerprints, and does the fingerprint leave out what it should (Squeal, harness and model versions)? Does the 005-07 import reproduce its published table?
+5. **Cleanup.** Does the runner wait for the daemon's pid and leave no process, and does the load gate hold?
+
+Probe cells are allowed: at most 2 subject sessions, below load 24, in scratch homes. Findings go to `../reviews/wave-1.md`, committed.
