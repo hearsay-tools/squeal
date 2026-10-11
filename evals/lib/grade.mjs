@@ -1,7 +1,7 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell, scopeLabel } from "./commands.mjs";
-import { completedRuns, NO_DAEMON, retainedOf } from "./evidence.mjs";
+import { completedRuns, failedChecks, NO_DAEMON, retainedOf } from "./evidence.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
@@ -93,6 +93,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
           scope: a.scope,
           completed: !a.informational && summaries[runner]-- > 0,
           exit: k.exit ?? null,
+          failed: runner === "vitest" ? failedChecks(k.out) : [],
         });
       }
       if (a.kind === "sleep") {

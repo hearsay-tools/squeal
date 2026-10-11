@@ -1,0 +1,28 @@
+
+ RUN  v5.0.3 /tmp/cell/work
+
+ ❯ test/clock.test.ts (6 tests | 1 failed) 299ms
+   ❯ due dates (3)
+     × loads the holiday calendar within its budget 266ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/clock.test.ts > due dates > loads the holiday calendar within its budget
+Error: Test timed out in 250ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/clock.test.ts:20:3
+     18|
+     19| describe("due dates", () => {
+     20|   test("loads the holiday calendar within its budget", async () => {
+       |   ^
+     21|     await loadCalendar();
+     22|   }, 250);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 20 passed (21)
+   Start at  16:27:17
+   Duration  13.21s (tests 79%, transform 13%, import 7%, worker 1%)
+

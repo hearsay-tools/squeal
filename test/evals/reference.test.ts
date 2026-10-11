@@ -22,6 +22,7 @@ import {
   session,
   waitAt,
 } from "./reference-sessions.js";
+import { output } from "./wave27-product.js";
 
 // Spec 006 D4 (amended 2026-10-11) and Testing: per task, a session of the right moves meets
 // every expectation the task declares, and each known mistake misses the expectations it names.
@@ -349,7 +350,7 @@ describe("T2's red step, recorded as context (review 006-13 S1)", () => {
       "t2-weekend",
       [
         { edit: "test/clock.test.ts" },
-        { cmd: "npx vitest run test/clock.test.ts", out: " Test Files  1 failed (1)", exit: 1 },
+        { cmd: "npx vitest run test/clock.test.ts", out: output("sunday"), exit: 1 },
         { edit: "src/clock.ts" },
         { squeal: RECOVERED(2) },
         CLAIM("fail"),

@@ -1,0 +1,13 @@
+
+⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
+Error: No projects matched the filter "unit".
+    at Vitest._attachProjectServers (file:///tmp/cell/work/node_modules/vitest/dist/chunks/index.DpLw24bj.js:20687:22)
+    at Vitest._start (file:///tmp/cell/work/node_modules/vitest/dist/chunks/index.DpLw24bj.js:20540:3)
+    at createVitest (file:///tmp/cell/work/node_modules/vitest/dist/chunks/cli-api.C4x4GGip.js:29:3)
+    at prepareVitest (file:///tmp/cell/work/node_modules/vitest/dist/chunks/cli-api.C4x4GGip.js:421:14)
+    at startVitest (file:///tmp/cell/work/node_modules/vitest/dist/chunks/cli-api.C4x4GGip.js:340:14)
+    at start (file:///tmp/cell/work/node_modules/vitest/dist/chunks/cac.DfDGTQ9W.js:2370:15)
+    at CAC.run (file:///tmp/cell/work/node_modules/vitest/dist/chunks/cac.DfDGTQ9W.js:2346:2)
+
+
+

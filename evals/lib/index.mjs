@@ -18,10 +18,15 @@ export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";
 export {
   answeredRuns,
   claimedOnEvidence,
+  completedRuns,
   coveredRun,
   covers,
   currentBeforeClaim,
+  currentCheck,
+  failedChecks,
+  failingAfter,
   redStep,
+  replayed,
   selects,
   squealEvidence,
 } from "./evidence.mjs";
@@ -37,6 +42,7 @@ export {
   scanForSecrets,
   secretsOf,
 } from "./scratch.mjs";
+export { filtered, selectsFile, vitestFiles } from "./selection.mjs";
 export {
   CLAUDE_ALLOWED_TOOLS,
   groundTruth,

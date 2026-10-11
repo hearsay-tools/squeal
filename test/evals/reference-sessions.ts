@@ -201,12 +201,14 @@ export const PENDING = (rev: number, n = 3) =>
 export const FAILED = (rev: number, check: string) =>
   `SQUEAL · 1 check changed at revision ${rev}\n${COUNTS(rev, 0)}\n\nFAIL  ${check}\n    Seen by Squeal's run at revision ${rev}.\n    AssertionError: expected false to be true`;
 /** T2's knob flake failing in Squeal at `rev`. */
-export const FLAKE = (rev: number) => FAILED(rev, "test/clock.test.ts > calendar > a weekend");
+export const FLAKE = (rev: number) =>
+  FAILED(rev, "test/clock.test.ts > due dates > loads the holiday calendar within its budget");
 /** The Sunday regression test failing before the fix (review 006-13 S1). */
-export const SUNDAY = (rev: number) => FAILED(rev, "test/clock.test.ts > isWeekend > a Sunday");
+export const SUNDAY = (rev: number) =>
+  FAILED(rev, "test/clock.test.ts > due dates > moves a Sunday due date to Monday");
 /** A delivery of the Sunday test recovering while the flake keeps failing. */
 export const RECOVERED = (rev: number) =>
-  `SQUEAL · 2 checks changed at revision ${rev}\n${COUNTS(rev, 0)}\n\nFAIL  test/clock.test.ts > calendar > a weekend\n    Seen by Squeal's run at revision ${rev}.\n\nPASS  test/clock.test.ts > isWeekend > a Sunday\n    FAIL -> PASS`;
+  `SQUEAL · 2 checks changed at revision ${rev}\n${COUNTS(rev, 0)}\n\nFAIL  test/clock.test.ts > due dates > loads the holiday calendar within its budget\n    Seen by Squeal's run at revision ${rev}.\n\nPASS  test/clock.test.ts > due dates > moves a Sunday due date to Monday\n    FAIL -> PASS`;
 /** `squeal status` text: `rev`, `failing` known failures listed as current, and what is left. */
 export const STATUS_TEXT = (
   rev: number,

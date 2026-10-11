@@ -1,0 +1,43 @@
+
+ RUN  v5.0.3 /tmp/cell/work
+
+ ❯ test/contract/invoice-json.test.ts (2 tests | 1 failed) 20ms
+   × invoice JSON has exactly the schema's fields 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields
+AssertionError: expected [ 'currency', 'customer', …(7) ] to deeply equal [ 'currency', 'customer', …(7) ]
+
+- Expected
++ Received
+
+@@ -1,10 +1,10 @@
+  [
+    "currency",
+    "customer",
+    "discount",
+-   "due",
++   "dueDate",
+    "issued",
+    "number",
+    "subtotal",
+    "tax",
+    "total",
+
+ ❯ test/contract/invoice-json.test.ts:7:51
+      5|
+      6| test("invoice JSON has exactly the schema's fields", () => {
+      7|   expect(Object.keys(toJSON(INVOICES[0])).sort()).toEqual(
+       |                                                   ^
+      8|     ["currency", "customer", "discount", "due", "issued", "number", "s…
+      9|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  16:27:00
+   Duration  303ms (transform 56%, import 21%, tests 18%, worker 5%)
+
