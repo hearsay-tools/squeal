@@ -1,6 +1,6 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
 import { gradeClaim, parseClaim } from "./claim.mjs";
-import { classifyShell } from "./commands.mjs";
+import { classifyShell, scopeLabel } from "./commands.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
@@ -73,7 +73,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
           answers.push({ t: k.t + (k.ms ?? 0), n: at.n, call });
       }
       if (a.kind === "vitest" || a.kind === "node:test")
-        runs.push({ ...at, runner: a.kind, scope: a.scope, cmd: k.cmd.slice(0, 160) });
+        runs.push({ ...at, runner: a.kind, scope: scopeLabel(a.scope), cmd: k.cmd.slice(0, 160) });
       if (a.kind === "sleep") sleeps.push({ t: k.t, seconds: a.seconds });
       if (a.kind === "write" && relPath(a.path) !== null)
         edits.push({ t: k.t, n: at.n, call, path: relPath(a.path), shell: true });

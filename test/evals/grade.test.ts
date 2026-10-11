@@ -117,7 +117,7 @@ describe("gradeCell on a Codex transcript", () => {
     expect(g.nodeTestRuns).toBe(1);
     expect(g.timeline.runs.map((r) => [r.runner, r.scope, r.afterSquealAnswered])).toEqual([
       ["vitest", "full", true],
-      ["node:test", "full", true],
+      ["node:test", "files", true],
     ]);
     expect(g.squealPulls).toBe(2);
     expect(g.squealRunSlow).toBe(1);
