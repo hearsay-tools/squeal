@@ -34276,7 +34276,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.122";
+  if (true) return "0.1.123";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37488,6 +37488,8 @@ var Daemon = class {
   /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
   #observedSeen = {};
   #exit = null;
+  /** `#register` committed: only then has its shutdown a mark to write (task 001-276). */
+  #registered = false;
   #resolveExit = () => {
   };
   #exited = new Promise((resolve11) => {
@@ -37590,8 +37592,9 @@ var Daemon = class {
    * socket and a heartbeat. A predecessor's `running` rows become `queued`
    * first: with this heartbeat they would read as live claims until the
    * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
-   * shutdown mark goes, unless this daemon's own shutdown already began
-   * (task 001-274).
+   * shutdown mark goes (task 001-274); if this daemon's own shutdown already
+   * began, its mark replaces it in the same transaction, since `#markExit`
+   * had no registration to describe then (task 001-276).
    */
   #register() {
     const { store, worktreeId: id2, root, commonDir } = this.opened;
@@ -37600,6 +37603,7 @@ var Daemon = class {
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id2));
       store.testFileKeys.releaseRunning(id2);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id2));
+      else store.meta.set(daemonExitMetaKey(id2), this.#incarnation());
       store.worktrees.upsert({
         id: id2,
         root,
@@ -37617,6 +37621,7 @@ var Daemon = class {
         token: this.#token
       });
     });
+    this.#registered = true;
   }
   /** Its registration's incarnation (`daemonIncarnation`). */
   #incarnation() {
@@ -37864,9 +37869,12 @@ var Daemon = class {
   /**
    * Its shutdown's mark, before anything it awaits, which status reads to tell
    * a kill from here on from a death (`withDeath`, task 001-274). A store
-   * that cannot take it costs the log line, as a note's does.
+   * that cannot take it costs the log line, as a note's does. A daemon not
+   * yet registered writes none: a start that fails first leaves no row, which
+   * no worktree record would let prune reach (task 001-276).
    */
   #markExit() {
+    if (!this.#registered) return;
     try {
       this.opened.store.meta.set(daemonExitMetaKey(this.opened.worktreeId), this.#incarnation());
     } catch (error) {
