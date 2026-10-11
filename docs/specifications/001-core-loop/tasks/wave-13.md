@@ -886,3 +886,16 @@ Done when: the review's prune-before-stop probe leaves no `daemon-exit:` row, re
 ## 001-279 review of the orphan exit mark
 
 Use /reviewer on gpt-6.1-sol, after 001-278 lands. Output `reviews/wave-13aj.md`. Can any order of prune, removal, stop, step-down, crash or restart still leave a `daemon-exit:` row no prune reaches, or drop one a registered daemon needs? Re-run the 13ai, 13ah and 13ag probes and the death and succession probes. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-280 research: agents claim while the slow tier is pending, and Claude Code never loads the skill
+
+Use /researcher. Decided by the human (2026-10-12): research first. Read the board row, spec 004 D9 (the idle waiter, Stop and the slow tier), 001 D9 (the primer), the Squeal skill in both plugins (`plugins/claude-code/skills/`, `plugins/codex/skills/`), `evals/README.md`, `evals/results/TREND.md` and the two judged results files (`evals/results/2026-10-11-0.1.123.*.json`, `2026-10-11-0.1.124.*.json`), whose cells keep retained timelines and transcripts. The 006 coordinator's examples are 0.1.124's `t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r1` and `t2-weekend.p0.codex-gpt-6-luna.e-medium.r1`, and 0.1.123's `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1`.
+
+Questions:
+1. Why does no Claude Code session load the Squeal skill (0 of 120), while Codex gpt-6.1-sol always does? Cover the skill's description and trigger text, how each harness discovers and offers plugin skills, whether the primer points at the skill, and anything the eval fixture or pin does differently. Use docs and source, and the retained transcripts.
+2. Does loading the skill change the claim behaviour? Separate correlation from cause: sol is also the strongest model. Propose an eval variant under `evals/variants/` (for example the primer naming the skill, or the skill's slow-tier step moved into the primer) that the coordinator then runs as `run-baseline.mjs --variant <name>`. Write the variant files; do not run the eval runner.
+3. How can Squeal tell that a session is headless (`claude -p`, `codex exec`, CI) from its hook inputs and environment, on both harnesses, without false positives in an interactive session?
+4. What would a bounded slow wait at Stop cost in a headless session, measured on this repository's slow files and the eval fixture's? How should it interact with 004-29's drain and 004 D9?
+5. Recommend a fix, any mix of a headless Stop wait, an end-of-turn message and primer or skill text, as board rows in the board's column shape, each with a one-worker scope.
+
+Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME. Scratch HOME variables are not isolation. Measure the Stop wait with Squeal's own test harness or a scratch repository and daemon you create and remove. Output `research/slow-claims.md`, and commit it with any variant files. Do not edit `docs/board.md`.
