@@ -785,3 +785,35 @@ Done when:
 ## 001-269 third review of wave 13ac
 
 Use /reviewer on gpt-6.1-sol, after 001-268 lands. Output `reviews/wave-13ae.md`. Third round on `reviews/wave-13ad.md` B1 only: can any succession of daemons (older, newer, unverifiable, before or after the window, at one revision or across revisions) still make a wait trust a record its own incarnation did not keep? Re-run every earlier probe. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## Wave 13af (2026-10-11, picked by the human)
+
+Five workers, disjoint ownership, then one review (001-271). The board row of each is its brief. Each worker:
+- does not edit `docs/board.md` and does not commit `dist`;
+- runs the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+`KEY_FORMAT_VERSION` 5 shipped in 0.1.116, so the coordinator bumps to 6 at the first guarded-source landing; workers do not touch `key-format.ts`. Probes stay in scratch directories: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME (scratch HOME variables are not isolation), and pass commit SHAs, never `HEAD` of the main checkout, when making scratch worktrees.
+
+## 001-264 a run's read stamps outlive a runner-part invalidate during it
+
+Use /worker. Shape: repair. The board row and `research/revert-restore-pass.md` Finding 1 are the brief; its probe is `research/probes/revert-restore-pass/`. Own `src/runners/vitest/sources.ts`, `src/runners/vitest/adapter.ts` (only `#invalidate` and the end check), `test/runners/vitest/` (sources and adapter tests). Do not touch `src/runners/vitest/version.ts`, `environment.ts` or `packages.ts` (001-260 owns them).
+
+## 001-260 keys do not depend on the launching harness
+
+Use /worker. Shape: repair. The board row and `research/fresh-worktree-reuse.md` (option 2) are the brief. Own `src/runners/vitest/environment.ts`, `packages.ts`, `version.ts` (bump `VITEST_ADAPTER_VERSION`), and new tests under `test/runners/vitest/` for the environment. Do not touch `sources.ts` or `adapter.ts` (001-264 owns them).
+
+## 001-267 and 001-270 the moves window takes in later moves; a clock-free incarnation
+
+Use /worker. Shape: repair. The board rows and `reviews/wave-13ad.md` S1 and `wave-13ae.md` (the alias note) are the brief. 001-270 adds a random start token to the daemon's registration (additive column or meta row, no schema version change) and to `daemonIncarnation`, so two daemons never share one. Older releases without the token read as unverifiable, so the wait falls back. Own `src/cli/status-wait.ts`, `src/core/scheduler/rekeyed-moves.ts`, `src/core/types/daemon.ts` (`daemonIncarnation`), the daemon's registration write in `src/core/daemon/daemon.ts` and its read in `src/core/store/repos/worktrees.ts`, and their tests. Re-run 001-268's probe tests.
+
+## 001-259 and 001-263 the runner bound covers retry and baseline; a dead daemon is named
+
+Use /worker. Shape: repair. The board rows are the brief, with `research/wait-from-store.md` question 3 (259) and `research/daemon-sigkill.md` (263). Own `src/core/scheduler/runner-work-bound.ts`, `src/core/scheduler/revision.ts` and `bootstrap.ts` where the retry and baseline call the runner, `src/core/status/` (snapshot and format, for the dead-daemon line), the delivery header where it names a daemon's state (`src/core/delivery/`, that function only), and their tests. Do not touch `src/cli/status-wait.ts` (001-267 owns it).
+
+## 001-261 and 001-262 the recorder ignores `-e`/`-p` arguments; `.git` is observed by kind
+
+Use /worker. Shape: repair. The board rows and `research/fresh-worktree-reuse.md` are the brief. Own `src/runners/observe/recorder.cjs` (and its siblings under `src/runners/observe/`), the code that turns an observed path into a key input (`src/core/keys/` observed paths), and their tests. A `.git` file or directory keys by kind, and nothing under `.git/` changes behaviour.
+
+## 001-271 review of wave 13af
+
+Use /reviewer on gpt-6.1-sol, after the five land. Output `reviews/wave-13af.md`. Is each row's done-when met? Does 001-260 change any key except the harness-derived ones, and do `CI`-derived fields still key? Does 001-264 drop a run that would have completed? Can 001-270's token or 001-267's refresh make a wait trust an incomplete record? Is the retry or baseline bound ever hit by a run that would have finished? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
