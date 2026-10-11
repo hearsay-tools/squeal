@@ -170,6 +170,14 @@ describe("evals/bin/regrade.mjs", () => {
     ]);
   });
 
+  it("notes a file it changed nothing in as regraded with no change", () => {
+    const r = regrade(fresh);
+    expect(r.run().status).toBe(0);
+    const { regraded, ...rest } = r.read();
+    expect(rest).toEqual(results(fresh));
+    expect(regraded).toEqual([expect.objectContaining({ by: "006-12", changed: [] })]);
+  });
+
   it("regenerates TREND.md with the false fails apart", () => {
     const r = regrade(committed);
     expect(r.run().status).toBe(0);

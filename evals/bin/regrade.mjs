@@ -3,8 +3,9 @@
 //   node evals/bin/regrade.mjs [dir] [--date YYYY-MM-DD]
 // `dir` defaults to evals/results. Each cell's `claim` is re-read from its `claimLine` with the
 // current parser, and `claimTrue` and `claimMatchesSqueal` are recomputed from it, `truthPass`
-// and `squealVerdict` by the grader's own rule; nothing else changes. A file it changed gets a
-// `regraded` note naming the cells. Grading is not a condition, so the fingerprint stays.
+// and `squealVerdict` by the grader's own rule; nothing else changes. Each file gets a `regraded`
+// note naming the cells it changed, an empty list where it changed none. Grading is not a
+// condition, so the fingerprint stays.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -65,16 +66,17 @@ const runs = readdirSync(dir)
         changed.push(cell.id);
       }
     }
-    if (changed.length) {
-      const earlier = (data.regraded ?? []).find((n) => n.by === BY);
+    const earlier = (data.regraded ?? []).find((n) => n.by === BY);
+    const write = changed.length > 0 || !earlier;
+    if (write) {
       const others = (data.regraded ?? []).filter((n) => n.by !== BY);
       const all = [...new Set([...(earlier?.changed ?? []), ...changed])];
       data.regraded = [...others, { by: BY, date: values.date, changed: all, note: NOTE }];
     }
-    return { f, name: f.replace(/\.json$/, ""), data, changed };
+    return { f, name: f.replace(/\.json$/, ""), data, changed, write };
   });
-for (const { f, data, changed } of runs) {
-  if (changed.length) writeFileSync(join(dir, f), `${JSON.stringify(data, null, 1)}\n`);
+for (const { f, data, changed, write } of runs) {
+  if (write) writeFileSync(join(dir, f), `${JSON.stringify(data, null, 1)}\n`);
   console.log(`${f}: ${changed.length ? `regraded ${changed.join(", ")}` : "unchanged"}`);
 }
 writeFileSync(join(dir, "TREND.md"), trendMarkdown(runs));
