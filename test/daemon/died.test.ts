@@ -5,7 +5,12 @@ import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { appendNote } from "../../src/core/notes.js";
 import { buildSnapshot, formatStatus } from "../../src/core/status/index.js";
-import type { AbsolutePath, DaemonRequest } from "../../src/core/types/index.js";
+import {
+  type AbsolutePath,
+  type DaemonRequest,
+  daemonExitMetaKey,
+  daemonIncarnation,
+} from "../../src/core/types/index.js";
 import { type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { recorded } from "../harness/helpers.js";
 import {
@@ -152,6 +157,26 @@ describe.runIf(process.platform === "linux")(
             text: "watcher dropped events (probe); a full reconciliation follows",
           }),
         );
+        spawned.child.kill("SIGKILL");
+        expect(await spawned.exited).toEqual({ code: null, signal: "SIGKILL" });
+
+        await expectDeath(repo);
+      } finally {
+        writeFileSync(join(dir, "flag"), "");
+      }
+    });
+
+    it("another incarnation's shutdown mark does not hide the death (001-274)", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "sq-001-274-"));
+      suite.cleanup(() => rmSync(dir, { recursive: true, force: true }));
+      try {
+        const { repo, spawned } = await heldDaemon(dir);
+        withStore(repo, (store) => {
+          const record = store.worktrees.get(repo.worktreeId)?.daemon;
+          if (!record) throw new Error("no daemon registered");
+          const other = daemonIncarnation({ ...record, token: "another" });
+          store.meta.set(daemonExitMetaKey(repo.worktreeId), other);
+        });
         spawned.child.kill("SIGKILL");
         expect(await spawned.exited).toEqual({ code: null, signal: "SIGKILL" });
 

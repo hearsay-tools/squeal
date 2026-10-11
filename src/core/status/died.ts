@@ -6,8 +6,10 @@ import { lockFileFor } from "../store/index.js";
 import {
   type DaemonDeath,
   type DaemonLiveness,
+  daemonExitMetaKey,
   daemonIncarnation,
   type Store,
+  type WorktreeId,
   type WorktreeRecord,
 } from "../types/index.js";
 
@@ -18,13 +20,11 @@ export const DIED_FILES_SHOWN = 5;
  * Task 001-263 (`research/daemon-sigkill.md`): a daemon killed by its
  * process group, as a hosted test's `kill(0, "SIGKILL")` does, leaves its
  * record with a stale heartbeat. `live` with `died` when it is down and the
- * record still names a daemon, which a shutdown clears; no note says this
- * daemon's shutdown began, the first one it writes, which names its
- * incarnation (`exitOf`), so one killed while it shut down is not dead, and
- * any other note, a watcher's or a runner's, proves nothing (review
- * wave-13af B1); and its lock is free (`daemonGone`). A record with no
- * incarnation (a release before task 001-270) has no such note. The runs it
- * left open are those it started.
+ * record still names a daemon, which a shutdown clears; its shutdown never
+ * began (`shutDown`), so one killed while it shut down is not dead; and its
+ * lock is free (`daemonGone`). A record with no incarnation (a release before
+ * task 001-270) has no shutdown mark. The runs it left open are those it
+ * started.
  */
 export function withDeath(
   store: Store,
@@ -35,12 +35,24 @@ export function withDeath(
   if (live.state !== "down" || worktree === null || record === null) return live;
   const { id } = worktree;
   const self = daemonIncarnation(record);
-  if (self !== null && readDaemonNotes(store, id).some((note) => note.exitOf === self)) return live;
+  if (self !== null && shutDown(store, id, self)) return live;
   if (!daemonGone(worktree)) return live;
   const runs = store.runs
     .inFlight(id, record.startedAt)
     .map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
   return { ...live, died: { runs } };
+}
+
+/**
+ * Whether the daemon of incarnation `self` began its shutdown: its exit row
+ * (`daemonExitMetaKey`), or the first note its shutdown writes, which names
+ * its incarnation (`exitOf`), the only mark a 0.1.121 daemon leaves, so a
+ * step-down from that release still reads as one. Any other note, a
+ * watcher's or a runner's, proves nothing (review wave-13af B1).
+ */
+function shutDown(store: Store, worktreeId: WorktreeId, self: string): boolean {
+  if (store.meta.get(daemonExitMetaKey(worktreeId)) === self) return true;
+  return readDaemonNotes(store, worktreeId).some((note) => note.exitOf === self);
 }
 
 /**
