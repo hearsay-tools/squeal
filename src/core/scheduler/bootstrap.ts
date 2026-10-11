@@ -20,6 +20,7 @@ import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import { restoreReruns } from "./rerun.js";
 import { readEnvironments, resolveClosures } from "./revision.js";
+import { runnerPartBound } from "./runner-work-bound.js";
 
 /**
  * Daemon start in a worktree: `scan`, then `baseline`, at once or, while no
@@ -50,7 +51,10 @@ import { readEnvironments, resolveClosures } from "./revision.js";
  * The baseline is the runner part of the revision it starts at, so its
  * commit records that revision as refined (D2 as amended). Policy `inputs`
  * entries that select nothing get a note each, unless an earlier start
- * persisted the same one (review wave 4.5, S5).
+ * persisted the same one (review wave 4.5, S5). Its runner calls are bounded
+ * as a refinement's are (`RunnerPartBound`, task 001-259): it holds the
+ * lock, at start or at the install that ends a wait, so a wedged runner
+ * past the bound is noted and fails the calls, and the baseline commits.
  *
  * `scan` is step 1, which needs no runner: the `start` revision and the
  * revision the ledger starts at. It returns the paths no runner has seen
@@ -96,11 +100,12 @@ export async function baseline(
   changed: ReadonlySet<RelativePath> = NOTHING_CHANGED,
 ): Promise<void> {
   const { store, keys, runner, worktreeId, policy } = context;
+  const bound = runnerPartBound(context);
   const failures: Failures = new Map();
   // The lookup below finds a file a heal left held as a miss (review wave 13i, B1).
   takeHeldFiles(store, worktreeId);
-  await readEnvironments(context, failures);
-  const listed = await tryRunner(context, "testFiles", () => runner.testFiles());
+  await readEnvironments(context, failures, bound);
+  const listed = await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles()));
   ledger.listingFailed = listed === null;
   const previousKeys = new Map(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row]),
@@ -120,7 +125,7 @@ export async function baseline(
       unresolved.push(ref);
     }
   }
-  await resolveClosures(context, unresolved, failures);
+  await resolveClosures(context, unresolved, failures, bound);
   if (listed !== null) {
     for (const row of previousKeys.values()) {
       if (ledger.file(row.testFile)) continue;
@@ -139,6 +144,7 @@ export async function baseline(
     context,
     recheck.map((file) => file.ref),
     failures,
+    bound,
   );
   const misses = [
     ...first.filter((file) => !fromStore.has(file.id)),

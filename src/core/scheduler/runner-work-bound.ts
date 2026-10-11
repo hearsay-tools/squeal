@@ -1,4 +1,5 @@
 import { CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS } from "./claims.js";
+import type { SchedulerContext } from "./context.js";
 
 /** Past the run a runner-part call may wait for, what the call itself may take: a recreate's start included. */
 export const RUNNER_PART_MARGIN_MS = 60_000;
@@ -12,6 +13,20 @@ export const RUNNER_PART_MARGIN_MS = 60_000;
  */
 export function runnerPartBoundMs(timeoutMs: number | null): number {
   return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
+}
+
+/**
+ * A fresh bound for one runner part of `context`: a revision's refinement,
+ * a `run --all` retry or a baseline (task 001-259), each of which a wait
+ * may be queued behind. `SchedulerOptions.runnerPartMs`, or else
+ * `runnerPartBoundMs` of the policy's run timeout.
+ */
+export function runnerPartBound(
+  context: Pick<SchedulerContext, "runnerPartMs" | "policy">,
+): RunnerPartBound {
+  return new RunnerPartBound(
+    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs),
+  );
 }
 
 /**

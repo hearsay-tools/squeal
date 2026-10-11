@@ -4,6 +4,7 @@ import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js"
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { unmatchedInputNotes } from "./notes.js";
+import { type RunnerPartBound, runnerPartBound } from "./runner-work-bound.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
 export function toInvalidatedPath(change: FileChange): InvalidatedPath {
@@ -81,27 +82,38 @@ function reloadPolicy(
  * Before `run --all`, while a runner failure is outstanding: reads the
  * environment, the test file list and the blocked files' closures again, so
  * the request covers what the runner can run now.
+ *
+ * It runs under the lock (D5), so its calls are bounded as a runner part's
+ * are (task 001-259): a wedged runner holds the lock, and every wait queued
+ * behind it, no longer than the bound, and the retry ends as failed.
  */
 export async function retryRunner(context: SchedulerContext, ledger: Ledger): Promise<void> {
   if (!ledger.broken) return;
+  const bound = runnerPartBound(context);
   const failures: Failures = new Map();
-  const touched = (await readEnvironments(context, failures)).map((c) => c.testFile);
-  const listed = await listTestFiles(context, ledger);
+  const touched = (await readEnvironments(context, failures, bound)).map((c) => c.testFile);
+  const listed = await listTestFiles(context, ledger, bound);
   const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
   const refs = [...listed, ...blocked];
-  touched.push(...(await resolveClosures(context, refs, failures)).map((c) => c.testFile), ...refs);
+  touched.push(
+    ...(await resolveClosures(context, refs, failures, bound)).map((c) => c.testFile),
+    ...refs,
+  );
   ledger.settle(touched, NOTHING_CHANGED);
   settleFailures(ledger, failures, true, NOTHING_CHANGED);
 }
 
+/** Reads the environments under `bound`; unbounded without one. */
 export async function readEnvironments(
   context: SchedulerContext,
   failures: Failures,
+  bound?: RunnerPartBound,
 ): Promise<KeyChange[]> {
+  const read = () => context.runner.environment();
   const environments = await tryRunner(
     context,
     "environment",
-    () => context.runner.environment(),
+    () => (bound === undefined ? read() : bound.call(read)),
     (reason) => failed(failures, null, reason),
   );
   return environments === null ? [] : context.keys.setEnvironments(environments);
@@ -112,8 +124,14 @@ export async function readEnvironments(
  * Returns the new ones and those without a closure. A failed listing keeps
  * the previous list (D5) and is retried with the next revision.
  */
-async function listTestFiles(context: SchedulerContext, ledger: Ledger): Promise<TestFileRef[]> {
-  const listed = await tryRunner(context, "testFiles", () => context.runner.testFiles());
+async function listTestFiles(
+  context: SchedulerContext,
+  ledger: Ledger,
+  bound: RunnerPartBound,
+): Promise<TestFileRef[]> {
+  const listed = await tryRunner(context, "testFiles", () =>
+    bound.call(() => context.runner.testFiles()),
+  );
   return applyListing(context, ledger, listed);
 }
 
@@ -143,11 +161,12 @@ export async function resolveClosures(
   context: SchedulerContext,
   refs: readonly TestFileRef[],
   failures: Failures,
+  bound: RunnerPartBound,
 ): Promise<KeyChange[]> {
   const changes: KeyChange[] = [];
   const resolved: TestFileRef[] = [];
   for (const ref of refs) {
-    const keyChanges = await resolveClosure(context, ref, (reason) =>
+    const keyChanges = await resolveClosure(context, ref, bound, (reason) =>
       failed(failures, ref.project, reason),
     );
     if (keyChanges === null) continue;
@@ -163,12 +182,13 @@ export async function resolveClosures(
 export async function resolveClosure(
   context: SchedulerContext,
   ref: TestFileRef,
+  bound: RunnerPartBound,
   onFailure?: (reason: string) => void,
 ): Promise<KeyChange[] | null> {
   const closure = await tryRunner(
     context,
     `closure of ${ref.path}`,
-    () => context.runner.closure(ref),
+    () => bound.call(() => context.runner.closure(ref)),
     onFailure,
   );
   return closure === null ? null : context.keys.setClosure(closure);
