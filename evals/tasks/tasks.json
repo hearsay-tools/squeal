@@ -127,11 +127,12 @@
       }
     ]
   },
-  "contextDescription": "Spec 006 D4: what a task records as context, with no direction and no flag. redStep: T2's red step, a failure of test seen before the first edit matching fix, through Squeal or the agent's own run (review 006-13 S1; not scored until the human decides).",
+  "contextDescription": "Spec 006 D4: what a task records as context, with no direction and no flag. redStep: T2's red step, a failure of the Sunday check seen before the first edit matching fix, through Squeal or in the agent's own run's failed checks (review 006-13 S1; not scored until the human decides). test is its file; check a case-insensitive pattern of its name, which the agent writes, matching the prompt's Sunday, weekend, invoice or date and never the calendar flake that fails in the same file (review 006-18 S1).",
   "context": {
     "t2-weekend": {
       "redStep": {
         "test": "test/clock.test.ts",
+        "check": "sunday|weekend|INV-2041|03-15",
         "fix": "^src/clock\\.ts$"
       }
     }

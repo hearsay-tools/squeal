@@ -1,0 +1,9 @@
+
+ RUN  v5.0.3 /tmp/cell/work
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 1 skipped (2)
+   Start at  16:26:58
+   Duration  321ms (transform 66%, import 25%, worker 4%, tests 4%)
+

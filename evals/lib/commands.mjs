@@ -62,8 +62,8 @@ const HELP = new Set(["--help", "-h", "--version", "-v"]);
  * scope }`, `kind` and `runner` both `vitest` or `node:test`. `informational` is true for help,
  * version, listing and watch-only invocations, which never count as a run. `scope` is `{ full:
  * true }` for the runner's whole suite or `{ full: false, paths }` with the paths and globs it
- * selects as written, plus `names` for a test-name filter, `related` for the source files of
- * `vitest related` and `changed` for `--changed`. An npm script resolves to what it runs.
+ * selects as written, plus `related` for the source files of `vitest related`, `changed` for
+ * `--changed`, and the filters that narrow it (`testRun`). An npm script resolves to what it runs.
  *
  * Each action has an `execution` (review wave 1, B2): `refused` when the whole call was refused,
  * `executed` when the call's structure and `exit` establish it ran, else `indeterminate`. A
@@ -204,13 +204,16 @@ function parseArgs(args, valueFlags) {
 const values = (flags, ...names) =>
   flags.filter((f) => names.includes(f.name) && f.value !== undefined).map((f) => f.value);
 
-function testRun(runner, informational, scope, names) {
-  return {
-    kind: runner,
-    runner,
-    informational,
-    scope: names.length ? { ...scope, names } : scope,
-  };
+/**
+ * A test action, its scope with the filters that narrow it (review wave 2.6, B3): `names` for a
+ * test-name filter, `exclude` for excluded paths, `skip` for node:test's skip pattern, `only` for
+ * `--test-only`, `projects` and `shard` for Vitest's. Only those given are set.
+ */
+function testRun(runner, informational, scope, filters) {
+  const narrowed = { ...scope };
+  for (const [key, value] of Object.entries(filters))
+    if (Array.isArray(value) ? value.length : value) narrowed[key] = value;
+  return { kind: runner, runner, informational, scope: narrowed };
 }
 
 function vitestRun(args) {
@@ -226,22 +229,34 @@ function vitestRun(args) {
         : positional.length
           ? { full: false, paths: positional }
           : { full: true };
-  return testRun("vitest", informational, scope, values(flags, "-t", "--testNamePattern"));
+  return testRun("vitest", informational, scope, {
+    names: values(flags, "-t", "--testNamePattern"),
+    exclude: values(flags, "--exclude"),
+    projects: values(flags, "--project"),
+    shard: values(flags, "--shard").at(-1),
+  });
 }
 
 function nodeTestRun({ flags, positional }) {
   const informational = flags.some((f) => HELP.has(f.name) || f.name === "--watch");
   const scope = positional.length ? { full: false, paths: positional } : { full: true };
-  return testRun("node:test", informational, scope, values(flags, "--test-name-pattern"));
+  return testRun("node:test", informational, scope, {
+    names: values(flags, "--test-name-pattern"),
+    skip: values(flags, "--test-skip-pattern"),
+    only: flags.some((f) => f.name === "--test-only" && f.value !== "false") || undefined,
+  });
 }
 
 /**
- * A scope's name in the grade's earlier counters: `name` with a name filter, else `full` or
- * `files`. Kept for `vitestByScope` until the timeline keeps the scope itself (wave 2.6).
+ * A scope's name in the grade's earlier counters: `name` with a name or skip filter, `full` for
+ * the whole suite with nothing excluded, else `files`. Kept for `vitestByScope` until the
+ * timeline keeps the scope itself (wave 2.6).
  */
 export function scopeLabel(scope) {
-  if (scope.names?.length) return "name";
-  return scope.full ? "full" : "files";
+  if (scope.names?.length || scope.skip?.length || scope.only) return "name";
+  return scope.full && !scope.exclude?.length && !scope.projects?.length && !scope.shard
+    ? "full"
+    : "files";
 }
 
 /** Paths a command writes: redirections, `tee`, `sed -i`, `perl -i`, `apply_patch` bodies. */

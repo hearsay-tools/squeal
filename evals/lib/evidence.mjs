@@ -4,12 +4,18 @@
 //
 // A timeline is an array of steps in the order the agent saw them:
 //   { k: "edit", path }
-//   { k: "run", runner, informational, scope, completed, exit }
+//   { k: "run", runner, informational, scope, completed, exit, failed }
 //   { k: "squeal", from: "push" | "pull", revision, pending, stale, unknown, slow, daemon,
-//     failures, verdict, files, failing }
+//     known, checks, failures, verdict, files, failing }
+// A squeal step's `checks` are the checks it named, each with its own provenance (review wave
+// 2.6, B2 and S2): `{ check, file, to, from, observed, validity }`, or `{ to, count }` for a
+// collapsed list. The rules read them, so a regrade re-derives `files`, `failures` and `verdict`.
 //   { k: "sleep", s }
 //   { k: "claim" }, where the final message was; its word is the cell's `claim`
-// It keeps no other free text: paths, counts and words only.
+// It keeps no other free text: paths, check names, counts and words only.
+import { covers, selectsFile, vitestFiles } from "./selection.mjs";
+
+export { covers, relTestPath, selects } from "./selection.mjs";
 
 /** Squeal saying no daemon validates (the T4 knob's state). */
 export const NO_DAEMON =
@@ -22,8 +28,9 @@ const count = (re, text) => {
 
 /**
  * The evidence one Squeal text carries, as a `squeal` step, or `null` for a text with none (the
- * primer alone, an explanation). `failures` is the known-failure count before it: a status or a
- * registration lists them all, a delivery only the checks that changed.
+ * primer alone, an explanation). `failures` is what was known failing before it, a count or a
+ * `failingAfter` state: a status or a registration lists every known failure, a delivery only
+ * the checks that changed.
  */
 export function squealEvidence(text, from, failures = 0) {
   const t = String(text ?? "");
@@ -39,17 +46,6 @@ export function squealEvidence(text, from, failures = 0) {
           tier,
         );
   const listed = /^Known failures: (\d+)/m.exec(t);
-  const known = listed
-    ? Number(listed[1])
-    : Math.max(
-        0,
-        failures +
-          (t.match(/^FAIL {2}\S/gm)?.length ?? 0) -
-          count(/^PASS {2}(\d+) checks? recovered/m, t) -
-          (t.match(/^PASS {2}(?!\d+ checks? recovered)\S/gm)?.length ?? 0) -
-          count(/^RESOLVED {2}(\d+) checks?/m, t) -
-          (t.match(/^RESOLVED {2}(?!\d+ checks?)\S/gm)?.length ?? 0),
-      );
   const step = {
     k: "squeal",
     from,
@@ -59,12 +55,70 @@ export function squealEvidence(text, from, failures = 0) {
     unknown: counts?.unknown ?? null,
     slow,
     daemon,
-    failures: known,
-    verdict: "unknown",
-    ...filesOf(t, from),
+    known: listed ? Number(listed[1]) : null,
+    checks: checksOf(t),
   };
-  step.verdict = !daemon ? "unknown" : known > 0 ? "fail" : clear(step) ? "pass" : "unknown";
-  return step;
+  const before = typeof failures === "number" ? { named: [], unnamed: failures } : failures;
+  return settled(step, failingAfter(before, step));
+}
+
+/** `step` with what it says: its current files, its known failures and its verdict. */
+function settled(step, after) {
+  const current = step.checks.filter((c) => currentCheck(step, c));
+  const failures = after.named.length + after.unnamed;
+  const verdict = !step.daemon
+    ? "unknown"
+    : failures > 0
+      ? "fail"
+      : clear(step)
+        ? "pass"
+        : "unknown";
+  return {
+    ...step,
+    failures,
+    verdict,
+    files: [...new Set(current.map((c) => c.file))],
+    failing: [...new Set(current.filter((c) => c.to === "fail").map((c) => c.file))],
+  };
+}
+
+/**
+ * The known failures after squeal step `s`, from those before it (`{ named, unnamed }`, check
+ * names and a count of failures not named). A status or registration lists them all; in a
+ * delivery a failing check is added once however often its failure changed, and a recovery or a
+ * retirement removes that same check once (review wave 2.6, S2).
+ */
+export function failingAfter(before, s) {
+  if (s.known !== null && s.known !== undefined) {
+    const named = [...new Set(s.checks.filter((c) => c.to === "fail").map((c) => c.check))];
+    return { named, unnamed: Math.max(0, s.known - named.length) };
+  }
+  const named = [...before.named];
+  let unnamed = before.unnamed;
+  const remove = (check) => {
+    const i = check === null ? -1 : named.indexOf(check);
+    if (i >= 0) named.splice(i, 1);
+    else if (unnamed > 0) unnamed--;
+    else if (check === null) named.shift();
+  };
+  for (const c of s.checks) {
+    if (c.to === "fail") {
+      if (!named.includes(c.check)) named.push(c.check);
+    } else for (let n = 0; n < (c.count ?? 1); n++) remove(c.check ?? null);
+  }
+  return { named, unnamed };
+}
+
+/**
+ * Whether check `c` of squeal step `s` is current at the step's revision: its own line says no
+ * older revision, no pending revision and no stale result (review wave 2.6, B2). A status lists
+ * a known failure as current in words; a delivered check is current when its run was at the
+ * delivery's revision.
+ */
+export function currentCheck(s, c) {
+  if (c.check === undefined || c.validity !== "current") return false;
+  if (s.from === "pull") return c.stated === true;
+  return c.observed === null || c.observed === s.revision;
 }
 
 /** Pending, stale and unknown counts in a delivered header or a status, or `null` for none. */
@@ -91,26 +145,54 @@ function countsOf(t) {
   return { pending, stale, unknown };
 }
 
-/** A check's test file, as `formatCheck` names it: `path > test` or `path (file-level)`. */
-const CHECK = /^\s*(?:FAIL|PASS|RESOLVED) {2}(?:\[[^\]]*\] )?(\S+?)(?: > | \(|$)/m;
+/** A check as `formatCheck` names it, `[project] path > test` or `path (file-level)`: its file. */
+const FILE = /^(?:\[[^\]]*\] )?(\S+?)(?: > | \(|$)/;
+/** A collapsed list of recoveries or retirements: `PASS  6 checks recovered (FAIL -> PASS)`. */
+const COLLAPSED = /^(\d+) checks? (?:recovered|no longer reported)/;
 
 /**
- * `files`, the test files whose checks the text names as current at its revision: every check a
- * delivery says changed, and the known failures a status lists as current; `failing`, those of
- * them named failing.
+ * Each check the text names, with its own provenance (`squeal status`, a registration or a
+ * delivery, as `formatDelta` and `formatStatus` word them): `{ check, file, to, from, observed,
+ * validity }`, `to` `fail`, `pass` or `resolved`, `from` the outcome it changed from (`null`
+ * when first observed), `observed` the revision its result is from (`null` when unstated) and
+ * `validity` `current`, `pending`, `stale` or `unknown`; `stated` when a status says `current`.
  */
-function filesOf(t, from) {
-  const files = new Set();
-  const failing = new Set();
-  const blocks = t.split(/\n(?=\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2})/);
-  for (const b of blocks) {
-    const m = CHECK.exec(b);
-    if (!m) continue;
-    if (from === "pull" && !/observed at revision \d+, current\b/.test(b)) continue;
-    files.add(m[1]);
-    if (/^\s*FAIL/.test(b)) failing.add(m[1]);
+function checksOf(t) {
+  const checks = [];
+  for (const b of t.split(/\n(?=\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2})/)) {
+    const head = /^\s*(FAIL|PASS|RESOLVED) {2}(.+)$/m.exec(b);
+    if (!head) continue;
+    const to = head[1].toLowerCase();
+    const name = head[2].trim();
+    const collapsed = COLLAPSED.exec(name);
+    if (collapsed && to !== "fail") {
+      checks.push({ to, count: Number(collapsed[1]) });
+      continue;
+    }
+    const body = b.slice(head.index + head[0].length);
+    const change = /^\s*(?:first observed: FAIL|(\w+) -> (?:FAIL|PASS|no longer))/m.exec(body);
+    const observed = /\bat revision (\d+)/.exec(body);
+    const stated = /observed at revision \d+, (\w+)/.exec(body)?.[1];
+    const validity =
+      stated ??
+      (/\brevision \d+ pending\b|^\s*pending, observed/m.test(body)
+        ? "pending"
+        : /^\s*stale\b|, stale\b/m.test(body)
+          ? "stale"
+          : /^\s*unknown, observed/m.test(body)
+            ? "unknown"
+            : "current");
+    checks.push({
+      check: name,
+      file: FILE.exec(name)?.[1] ?? name,
+      to,
+      from: change ? (change[1]?.toLowerCase() ?? null) : null,
+      observed: observed ? Number(observed[1]) : null,
+      validity,
+      ...(stated === undefined ? {} : { stated: true }),
+    });
   }
-  return { files: [...files], failing: [...failing] };
+  return checks;
 }
 
 /**
@@ -118,34 +200,70 @@ function filesOf(t, from) {
  * each Squeal text (`{ from, text }`) reduced to its evidence.
  */
 export function retainedOf(seen) {
-  let failures = 0;
   const steps = [];
   for (const { step } of seen.sort((a, b) => a.t - b.t || a.phase - b.phase || a.i - b.i)) {
-    if (step.k !== undefined) {
-      steps.push(step);
-      continue;
+    if (step.k !== undefined) steps.push(step);
+    else {
+      const e = squealEvidence(step.text, step.from);
+      if (e !== null) steps.push(e);
     }
-    const e = squealEvidence(step.text, step.from, failures);
-    if (e === null) continue;
-    failures = e.failures;
-    steps.push(e);
   }
-  return steps;
+  return replayed(steps);
+}
+
+/**
+ * Timeline `tl` with each squeal step's files, known failures and verdict derived again from its
+ * checks, in order; a step without `checks` keeps what it recorded.
+ */
+export function replayed(tl) {
+  let failing = { named: [], unnamed: 0 };
+  return tl.map((s) => {
+    if (s.k !== "squeal") return s;
+    if (!Array.isArray(s.checks)) {
+      failing = { named: [], unnamed: s.failures ?? 0 };
+      return s;
+    }
+    failing = failingAfter(failing, s);
+    return settled(s, failing);
+  });
 }
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 
 /**
  * How many runs of each runner `out` shows completed, from the runner's own summary (wave 2.6
- * contract): Vitest's `Test Files` line, node:test's `# tests` with at least one test. No tests
- * found and a runner that failed to start print neither.
+ * contract): Vitest's `Test Files` line or JSON report with a file passed or failed, node:test's
+ * `tests` count with a test that was not skipped. No tests found, a runner that failed to start
+ * and a summary of only skipped tests (review wave 2.6, B3) show none.
  */
 export function completedRuns(out) {
   const text = String(out ?? "").replace(ANSI, "");
-  return {
-    vitest: text.match(/^[ \t]*Test Files\s|"numTotalTestSuites"/gm)?.length ?? 0,
-    "node:test": text.match(/^(?:# tests|\u2139 tests) [1-9]/gm)?.length ?? 0,
-  };
+  const vitest =
+    (text.match(/^[ \t]*Test Files\s.*\b\d+ (?:passed|failed)\b/gm)?.length ?? 0) +
+    [...text.matchAll(/"numTotalTestSuites"[^}]*/g)].filter(
+      ([r]) =>
+        num(r, "numPassedTests") + num(r, "numFailedTests") + num(r, "numFailedTestSuites") > 0,
+    ).length;
+  const nodeTest = text.split(/^(?=(?:# |\u2139 )tests \d+)/m).filter((b) => {
+    const n = (k) => Number(new RegExp(`^(?:# |\u2139 )${k} (\\d+)`, "m").exec(b)?.[1] ?? 0);
+    return /^(?:# |\u2139 )tests \d+/.test(b) && n("tests") - n("skipped") - n("todo") > 0;
+  }).length;
+  return { vitest, "node:test": nodeTest };
+}
+
+const num = (text, key) => Number(new RegExp(`"${key}":\\s*(\\d+)`).exec(text)?.[1] ?? 0);
+
+/**
+ * The checks a Vitest run's output names failed, in its `Failed Tests` section: what an own run
+ * saw fail, kept so T2's red step can tell its check from the calendar flake (review 006-18 S1).
+ */
+export function failedChecks(out) {
+  const text = String(out ?? "").replace(ANSI, "");
+  const failed = new Set();
+  for (const section of text.split(/^\s*⎯+ Failed Tests \d+ ⎯+\s*$/m).slice(1))
+    for (const m of section.split(/^\s*Test Files\s/m)[0].matchAll(/^ ?FAIL {2}(\S.*?)\s*$/gm))
+      if (m[1].includes(" > ")) failed.add(m[1]);
+  return [...failed];
 }
 
 /** Nothing pending, stale or unknown, the slow tier included, with a daemon validating. */
@@ -172,63 +290,24 @@ const atEdit = (tl, j, e) => {
   return j > e && s.revision !== null && (e < 0 || s.revision > floor(tl, e));
 };
 
-/** Normalized test path: relative to the worktree, without `./` or a trailing slash. */
-export function relTestPath(p) {
-  const s = String(p);
-  if (/\/work\//.test(s)) return s.replace(/^.*?\/work\//, "").replace(/\/+$/, "");
-  if (s.startsWith("/")) return null;
-  return s.replace(/^(?:\.\/)+/, "").replace(/\/+$/, "");
-}
-
-const globRe = (g) =>
-  new RegExp(
-    `^${g
-      .split(/\*\*\/?/)
-      .map((part) =>
-        part
-          .replace(/[.+^${}()|\\]/g, "\\$&")
-          .replace(/\*/g, "[^/]*")
-          .replace(/\?/g, "[^/]"),
-      )
-      .join(".*")}$`,
-  );
-
 /**
- * Whether path `p` of a `runner`'s scope selects test file `f`: the file itself, a directory
- * above it, a glob matching it, or for Vitest a filter its path contains.
+ * The Vitest runs whose scope Squeal had answered current after the last edit before them: every
+ * test file the run selects, by Vitest's rule, was named current at that revision, or nothing
+ * was outstanding (review wave 2.6, B2).
  */
-export function selects(p, f, runner) {
-  const q = relTestPath(p);
-  if (q === null) return false;
-  if (q === "" || q === "." || q === f || f.startsWith(`${q}/`)) return true;
-  if (/[*?[]/.test(q)) return globRe(q).test(f);
-  return runner === "vitest" && f.includes(q);
-}
-
-/**
- * Whether `scope` (006-16's contract: `{ full: true }` or `{ full: false, paths, names }`) runs
- * every test of one of `files`. A name filter is never the full suite and selects no path of its
- * own (the coordinator, 2026-10-11).
- */
-export function covers(scope, files, runner) {
-  if (typeof scope !== "object" || scope === null) return false;
-  const paths = scope.paths ?? [];
-  if (scope.full && !(scope.names?.length > 0)) return true;
-  return files.some((f) => paths.some((p) => selects(p, f, runner)));
-}
-
-/** The Vitest runs whose scope Squeal had answered current after the last edit before them. */
-export function answeredRuns(tl) {
+export function answeredRuns(timeline) {
+  const tl = replayed(timeline);
+  const files = vitestFiles(tl);
   return tl.filter((r, i) => {
     if (r.k !== "run" || r.runner !== "vitest" || r.informational) return false;
     const e = lastEditBefore(tl, i);
-    const paths = r.scope?.full === false ? (r.scope.paths ?? []).map(relTestPath) : [];
+    const selected = files.filter((f) => selectsFile(r.scope, f, "vitest"));
     return tl.some(
       (s, j) =>
         s.k === "squeal" &&
         j < i &&
         atEdit(tl, j, e) &&
-        (clear(s) || (paths.length > 0 && paths.every((p) => p !== null && s.files.includes(p)))),
+        (clear(s) || (selected.length > 0 && selected.every((f) => s.files.includes(f)))),
     );
   }).length;
 }
@@ -274,30 +353,37 @@ export function currentBeforeClaim(tl, claim) {
  * A `pass` claim only when the latest evidence the agent saw said `pass` at its last edit's
  * revision; `null` without a claim.
  */
-export function claimedOnEvidence(tl, claim) {
+export function claimedOnEvidence(timeline, claim) {
   if (claim === null || claim === undefined) return null;
   if (claim !== "pass") return true;
+  const tl = replayed(timeline);
   const a = atClaim(tl);
   return a.current && tl[a.j].verdict === "pass";
 }
 
 /**
- * T2's red step (D4, review 006-13 S1; context, not scored): whether a failure of `test` was seen
- * before the first edit matching `fix`, through Squeal and through a completed own run.
+ * T2's red step (D4, review 006-13 S1; context, not scored): whether a failure of the check
+ * `check` names (a case-insensitive pattern; any check without one) in test file `test` was seen
+ * before the first edit matching `fix`, through Squeal and in an own run's failed checks. Seeing
+ * the file fail is not enough: the calendar flake fails in the same file (review 006-18 S1).
  */
-export function redStep(tl, { test, fix }) {
+export function redStep(timeline, { test, check = "", fix }) {
+  const tl = replayed(timeline);
   const re = new RegExp(fix);
+  const named = new RegExp(check, "i");
   const first = tl.findIndex((s) => s.k === "edit" && re.test(s.path));
   const before = first < 0 ? tl : tl.slice(0, first);
   return {
-    squeal: before.some((s) => s.k === "squeal" && s.failing.includes(test)),
+    squeal: before.some(
+      (s) =>
+        s.k === "squeal" &&
+        (s.checks ?? []).some((c) => c.to === "fail" && c.file === test && named.test(c.check)),
+    ),
     ownRun: before.some(
       (r) =>
         r.k === "run" &&
         r.completed &&
-        r.exit !== 0 &&
-        r.exit !== null &&
-        covers(r.scope, [test], r.runner),
+        (r.failed ?? []).some((c) => c.startsWith(`${test} > `) && named.test(c)),
     ),
   };
 }

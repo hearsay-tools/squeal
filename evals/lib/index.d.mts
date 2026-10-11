@@ -36,7 +36,15 @@ export type Action = (
 export type TestScope = (
   | { full: true }
   | { full: false; paths: string[]; related?: string[]; changed?: true }
-) & { names?: string[] };
+) & {
+  names?: string[];
+  /** Review wave 2.6, B3: the filters that narrow a run, each set only when given. */
+  exclude?: string[];
+  projects?: string[];
+  shard?: string;
+  skip?: string[];
+  only?: true;
+};
 export function scopeLabel(scope: TestScope): "full" | "files" | "name";
 export function classifyShell(
   text: string,
@@ -306,7 +314,7 @@ export interface Declarations {
   tasks: Record<string, Record<string, unknown>>;
   expectations: Record<string, Declaration[]>;
   /** What a task records as context (T2's `redStep`). */
-  context?: Record<string, { redStep?: { test: string; fix: string } }>;
+  context?: Record<string, { redStep?: { test: string; check?: string; fix: string } }>;
 }
 export interface Rule {
   needs: readonly string[];
@@ -321,7 +329,7 @@ export interface ContextCount {
   of: (
     cell: CellRecord,
     declaredIds: readonly string[],
-    context?: { redStep?: { test: string; fix: string } },
+    context?: { redStep?: { test: string; check?: string; fix: string } },
   ) => boolean | null;
 }
 
@@ -337,6 +345,8 @@ export type Step =
       scope: Scope;
       completed: boolean;
       exit: number | null;
+      /** The checks a Vitest run's output named failed (review 006-18 S1). */
+      failed?: string[];
     }
   | Evidence
   | { k: "sleep"; s: number }
@@ -352,18 +362,47 @@ export interface Evidence {
   /** The slow tier current; `null` where the text has no slow-tier line. */
   slow: boolean | null;
   daemon: boolean;
+  /** The known-failure count a status or registration listed; `null` for a delivery. */
+  known?: number | null;
+  /** Each check the text named, with its own provenance (review 006-18 B2, S2). */
+  checks?: CheckSeen[];
   failures: number;
   verdict: "pass" | "fail" | "unknown";
   /** Test files named current at the revision, and those named failing. */
   files: string[];
   failing: string[];
 }
+/** One check a Squeal text named, or a collapsed list of `count` recoveries or retirements. */
+export type CheckSeen =
+  | {
+      check: string;
+      file: string;
+      to: "fail" | "pass" | "resolved";
+      from: string | null;
+      observed: number | null;
+      validity: string;
+      stated?: true;
+    }
+  | { to: "pass" | "resolved"; count: number };
+/** Known failures: check names, and a count of those no text named. */
+export interface Failing {
+  named: string[];
+  unnamed: number;
+}
 export function squealEvidence(
   text: string,
   from: "push" | "pull",
-  failures?: number,
+  failures?: number | Failing,
 ): Evidence | null;
+export function failingAfter(before: Failing, step: Evidence): Failing;
+export function currentCheck(step: Evidence, check: CheckSeen): boolean;
+export function replayed(timeline: readonly Step[]): Step[];
+export function completedRuns(out: unknown): { vitest: number; "node:test": number };
+export function failedChecks(out: unknown): string[];
 export function selects(path: string, file: string, runner: string): boolean;
+export function selectsFile(scope: unknown, file: string, runner: string): boolean;
+export function filtered(scope: TestScope): boolean;
+export function vitestFiles(timeline: readonly Step[]): string[];
 export function covers(scope: unknown, files: readonly string[], runner: string): boolean;
 export function answeredRuns(timeline: readonly Step[]): number;
 export function coveredRun(
@@ -374,7 +413,7 @@ export function currentBeforeClaim(timeline: readonly Step[], claim: unknown): b
 export function claimedOnEvidence(timeline: readonly Step[], claim: unknown): boolean | null;
 export function redStep(
   timeline: readonly Step[],
-  d: { test: string; fix: string },
+  d: { test: string; check?: string; fix: string },
 ): { squeal: boolean; ownRun: boolean };
 export const EXPECTATIONS: Readonly<Record<string, string>>;
 export const RULES: Readonly<Record<string, Rule>>;

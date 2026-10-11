@@ -1,0 +1,31 @@
+
+ RUN  v5.0.3 /tmp/cell/work
+
+ ❯ test/clock.test.ts (7 tests | 1 failed) 26ms
+   ❯ due dates (4)
+     × moves a Sunday due date to Monday 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/clock.test.ts > due dates > moves a Sunday due date to Monday
+AssertionError: expected '2026-03-15' to be '2026-03-16' // Object.is equality
+
+Expected: "2026-03-16"
+Received: "2026-03-15"
+
+ ❯ test/clock.test.ts:29:39
+     27|
+     28|   test("moves a Sunday due date to Monday", () => {
+     29|     expect(dueDate("2026-03-02", 13)).toBe("2026-03-16");
+       |                                       ^
+     30|   });
+     31|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  16:27:41
+   Duration  1.63s (transform 80%, import 15%, worker 2%, tests 2%)
+
