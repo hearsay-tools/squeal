@@ -1,13 +1,14 @@
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
-import type {
-  CheckKey,
-  DaemonRecord,
-  PendingPhase,
-  RevisionNumber,
-  Store,
-  TestFileRef,
+import {
+  type CheckKey,
+  type DaemonRecord,
+  daemonIncarnation,
+  type PendingPhase,
+  type RevisionNumber,
+  type Store,
+  type TestFileRef,
 } from "../../src/core/types/index.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
@@ -33,6 +34,11 @@ const LIVE: DaemonRecord = {
   heartbeatIntervalMs: 5_000,
   squealVersion: "0.0.0-test",
 };
+
+/** The live daemon's incarnation: the writer its commits name (task 001-268). */
+export const INCARNATION = daemonIncarnation(LIVE);
+/** Its commits' moves. */
+export const BY_LIVE = { writer: INCARNATION };
 
 /**
  * A worktree at revision 4, the edit's, with `pending` test files queued and
@@ -77,7 +83,7 @@ export function repoWith(
   return { repo, store };
 }
 
-/** `path`'s row, written as the daemon's commit writes it: in its re-key moves too (001-265). */
+/** `path`'s row, written as the daemon's commit writes it: with its re-key moves (001-268). */
 export function key(store: Store, worktreeId: string, path: string, pending: PendingPhase | null) {
   const row = {
     worktreeId,
@@ -88,10 +94,7 @@ export function key(store: Store, worktreeId: string, path: string, pending: Pen
   };
   store.transaction(() => {
     store.testFileKeys.upsertMany([row]);
-    recordMoves(store, worktreeId, [], [], 4 as RevisionNumber, NOW, {
-      written: [row],
-      unrecorded: [],
-    });
+    recordMoves(store, worktreeId, [], [], 4 as RevisionNumber, NOW, BY_LIVE);
   });
 }
 
@@ -137,7 +140,7 @@ export function answering(
   const state: SyncState = current ?? {
     state: "synced",
     revision: 4 as RevisionNumber,
-    moves: rekeyed !== null,
+    incarnation: rekeyed === null ? null : INCARNATION,
   };
   const sync = (): DaemonSync => {
     asked.push(true);
@@ -147,10 +150,10 @@ export function answering(
       if (recorded) return;
       store.transaction(() => {
         const opened = marks.map(({ id, revision }) => ({ id, open: revision, moved: revision }));
-        recordMoves(store, worktreeId, opened, [], 4 as RevisionNumber, NOW);
+        recordMoves(store, worktreeId, opened, [], 4 as RevisionNumber, NOW, BY_LIVE);
         const resolved = marks.filter((mark) => mark.resolved);
         const closed = resolved.map(({ id }) => ({ id, open: null, moved: null }));
-        recordMoves(store, worktreeId, closed, [], 4 as RevisionNumber, NOW);
+        recordMoves(store, worktreeId, closed, [], 4 as RevisionNumber, NOW, BY_LIVE);
       });
       recorded = true;
     }, 0);
@@ -166,7 +169,9 @@ export function answering(
 /** `path`'s moves had their result, as a commit records it. */
 export function resolveMoves(store: Store, worktreeId: string, path: string) {
   const mark = { id: testFileId(ref(path)), open: null, moved: null };
-  store.transaction(() => recordMoves(store, worktreeId, [mark], [], 4 as RevisionNumber, NOW));
+  store.transaction(() =>
+    recordMoves(store, worktreeId, [mark], [], 4 as RevisionNumber, NOW, BY_LIVE),
+  );
 }
 
 export const options = (sync: ReturnType<typeof answering>["sync"], timeoutMs = 5_000) => ({

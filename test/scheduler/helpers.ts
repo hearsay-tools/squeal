@@ -33,6 +33,7 @@ import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
 import { RecordingSink } from "./recording-sink.js";
+import { HARNESS_INCARNATION } from "./store-wait.js";
 
 const fixtures = resolve(import.meta.dirname, "../fixtures/scheduler");
 /** Inside the repository, so fixture copies resolve `vitest` from its `node_modules`. Git-ignored. */
@@ -225,6 +226,8 @@ export interface HarnessOptions {
   readonly runnerPartMs?: number;
   /** `SchedulerOptions.now`: the clock the store's re-key moves are stamped with (task 001-258). */
   readonly now?: () => number;
+  /** `SchedulerOptions.incarnation`; default `HARNESS_INCARNATION`, the daemon `liveDaemon` registers. */
+  readonly incarnation?: string;
 }
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
@@ -314,6 +317,7 @@ export async function openHarness(
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.now === undefined ? {} : { now: options.now }),
+    incarnation: options.incarnation ?? HARNESS_INCARNATION,
   });
   cleanups.push(async () => {
     await scheduler.close();

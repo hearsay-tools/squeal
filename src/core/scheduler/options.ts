@@ -40,6 +40,12 @@ export interface SchedulerOptions {
    */
   readonly runnerPartMs?: number;
   /**
+   * The daemon's incarnation (`daemonIncarnation`), which each commit names
+   * as the writer of the store's re-key moves (task 001-268). Absent: none,
+   * and no wait trusts the moves.
+   */
+  readonly incarnation?: string;
+  /**
    * The full extra-file list whenever it grows. Called while a batch is being
    * handled: hand it to `ChangeFeed.setExtraFiles` without awaiting, because
    * the feed delivers the next batch only after this one.

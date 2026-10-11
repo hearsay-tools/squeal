@@ -5,13 +5,13 @@ import {
   MOVES_GRACE_MS,
   MOVES_RETENTION_MS,
   movesSeq,
-  movesVouch,
+  movesTrusted,
   recordMoves,
-  unrecordedRows,
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import type { RekeyedMark } from "../../src/core/scheduler/rekeyed-record.js";
 import {
   type CheckKey,
+  daemonIncarnation,
   type RevisionNumber,
   refinedMetaKey,
   type Store,
@@ -26,33 +26,54 @@ import { FILE, freshStore, WT } from "../state/helpers.js";
 
 const ID = testFileId(FILE);
 const T0 = 1_000_000;
+const VERSION = "0.0.0-test";
+/** The registered daemon's incarnation, which answered the wait's sync. */
+const LIVE = daemonIncarnation({ squealVersion: VERSION, startedAt: 1 });
+
+/** Registers the daemon started at `startedAt`. */
+function register(s: Store, startedAt: number) {
+  s.worktrees.setDaemon(WT, {
+    socketPath: "/run/squeal.sock" as never,
+    startedAt,
+    heartbeatAt: T0,
+    heartbeatIntervalMs: 60_000,
+    squealVersion: VERSION,
+  });
+}
 
 function store(): Store {
   const s = freshStore();
+  s.worktrees.upsert({
+    id: WT,
+    root: "/repo" as never,
+    commonDir: "/repo/.git" as never,
+    isMain: true,
+    registeredAt: 1,
+    daemon: null,
+  });
+  register(s, 1);
   s.testFileKeys.upsertMany([
     { worktreeId: WT, testFile: FILE, key: "k" as CheckKey, revision: 1, pending: null },
   ]);
   return s;
 }
 
-/** A commit of the ledger that wrote the worktree's rows as they are. */
+/** A commit of the registered daemon's ledger, or of `writer`'s. */
 const commit = (
   s: Store,
   marks: RekeyedMark[],
   revision: number,
   at = T0,
   removed: string[] = [],
+  writer: string | null = LIVE,
 ) =>
   s.transaction(() =>
-    recordMoves(s, WT, marks, removed, revision as RevisionNumber, at, {
-      written: s.testFileKeys.list(WT),
-      unrecorded: [],
-    }),
+    recordMoves(s, WT, marks, removed, revision as RevisionNumber, at, { writer }),
   );
 const open = (revision: number): RekeyedMark => ({ id: ID, open: revision, moved: revision });
 const resolved = (moved: number | null = null): RekeyedMark => ({ id: ID, open: null, moved });
-const answer = (s: Store, upTo: number, sinceSeq: number) =>
-  answerMoves(s, WT, upTo as RevisionNumber, sinceSeq);
+const answer = (s: Store, upTo: number, sinceSeq: number, incarnation: string | null = LIVE) =>
+  answerMoves(s, WT, upTo as RevisionNumber, sinceSeq, incarnation);
 
 describe("the store's re-key moves (task 001-258)", () => {
   it("is written at the first commit, and its sequence moves only when it changes", () => {
@@ -193,62 +214,74 @@ describe("the store's re-key moves (task 001-258)", () => {
     expect(movesSeq(s, WT)).toBe(1);
   });
 
-  // Review wave 13ac, B1 (task 001-265): a daemon before 001-258 moves a key and writes no move.
-  describe("a row the record's writer did not write", () => {
-    const moveUnrecorded = (s: Store, key: string, revision: number) =>
-      s.testFileKeys.upsertMany([
-        { worktreeId: WT, testFile: FILE, key: key as CheckKey, revision, pending: "queued" },
-      ]);
-
-    it("leaves a wait nothing to trust, whatever the record says", () => {
+  // Reviews wave 13ac and 13ad, B1 (tasks 001-265, 001-268): who wrote the record, and who runs now.
+  describe("the writer's incarnation", () => {
+    it("is trusted only while it wrote the record last and is the registered daemon", () => {
       const s = store();
-      commit(s, [], 1);
+      commit(s, [open(1)], 1);
       const start = movesSeq(s, WT) ?? 0;
-      expect(movesVouch(s, WT, start, s.testFileKeys.list(WT))).toBe(true);
-      moveUnrecorded(s, "k2", 2);
-      s.meta.set(refinedMetaKey(WT), "2");
-      expect(movesVouch(s, WT, start, s.testFileKeys.list(WT))).toBe(false);
-      expect(answer(s, 2, start)).toEqual({ state: "incomplete" });
-      // A move back to the recorded key at a later revision is a move too.
-      moveUnrecorded(s, "k", 3);
-      expect(movesVouch(s, WT, start, s.testFileKeys.list(WT))).toBe(false);
+      expect(movesTrusted(s, WT, start, LIVE)).toBe(true);
+      // A sync from a daemon that names none, or from another one.
+      expect(movesTrusted(s, WT, start, null)).toBe(false);
+      expect(answer(s, 1, start, "0.0.0-test@2")).toEqual({ state: "incomplete" });
+      // Another daemon registers: the rows may be as they were, the record is not its.
+      register(s, 2);
+      expect(movesTrusted(s, WT, start, LIVE)).toBe(false);
+      expect(answer(s, 1, start)).toEqual({ state: "incomplete" });
+      // Gone, and back: a registration is an incarnation, never a name.
+      s.worktrees.setDaemon(WT, null);
+      expect(movesTrusted(s, WT, start, LIVE)).toBe(false);
+      register(s, 1);
+      expect(movesTrusted(s, WT, start, LIVE)).toBe(true);
     });
 
-    it("is not vouched for by a record from before the task", () => {
+    it("is not trusted once another writer, or one that names none, wrote the record", () => {
       const s = store();
+      commit(s, [open(1)], 1);
+      const start = movesSeq(s, WT) ?? 0;
+      commit(s, [], 1, T0, [], "0.0.0-test@2");
+      expect(answer(s, 1, start)).toEqual({ state: "incomplete" });
+      commit(s, [], 1);
+      expect(answer(s, 1, start)).toMatchObject({ state: "answered" });
+      commit(s, [], 1, T0, [], null);
+      expect(answer(s, 1, start)).toEqual({ state: "incomplete" });
+      // A daemon of task 001-258 or 001-265 rewrites the record without the writer.
       commit(s, [], 1);
       const row = JSON.parse(s.meta.get(`rekeyed-moves.${WT}`) ?? "{}");
-      delete row.keys;
+      delete row.writer;
       s.meta.set(`rekeyed-moves.${WT}`, JSON.stringify(row));
-      expect(answer(s, 1, movesSeq(s, WT) ?? 0)).toEqual({ state: "incomplete" });
-      expect(unrecordedRows(s, WT)).toHaveLength(1);
+      expect(answer(s, 1, start)).toEqual({ state: "incomplete" });
     });
 
-    it("is taken in by a ledger's first commit: a pending one as open, and as lost history", () => {
+    it("takes in every pending row at a ledger's first commit, its moves lost before", () => {
       const s = store();
       commit(s, [], 1);
       const before = movesSeq(s, WT) ?? 0;
-      moveUnrecorded(s, "k2", 2);
-      const unrecorded = unrecordedRows(s, WT);
-      expect(unrecorded).toHaveLength(1);
+      // An older daemon moved the key away and back, and left the file queued: rows as recorded.
+      s.testFileKeys.upsertMany([
+        { worktreeId: WT, testFile: FILE, key: "k" as CheckKey, revision: 1, pending: "queued" },
+      ]);
+      const rows = s.testFileKeys.list(WT);
       s.transaction(() =>
-        recordMoves(s, WT, [], [], 2 as RevisionNumber, T0, { written: [], unrecorded }),
+        recordMoves(s, WT, [], [], 1 as RevisionNumber, T0, { writer: LIVE, before: rows }),
       );
-      expect(unrecordedRows(s, WT)).toEqual([]);
       // A wait from before falls back; a later one holds for the file.
-      expect(answer(s, 2, before)).toEqual({ state: "incomplete" });
-      expect(answer(s, 2, movesSeq(s, WT) ?? 0)).toEqual({
+      expect(answer(s, 1, before)).toEqual({ state: "incomplete" });
+      expect(answer(s, 1, movesSeq(s, WT) ?? 0)).toEqual({
         state: "answered",
-        rekeyed: [{ testFile: FILE, revision: 2 }],
+        rekeyed: [{ testFile: FILE, revision: 1 }],
       });
     });
 
-    it("is taken in with no move when it is not pending", () => {
+    it("takes in no move for a row that is not pending, and still drops the history", () => {
       const s = store();
-      const unrecorded = unrecordedRows(s, WT);
+      commit(s, [], 1);
+      const before = movesSeq(s, WT) ?? 0;
+      const rows = s.testFileKeys.list(WT);
       s.transaction(() =>
-        recordMoves(s, WT, [], [], 1 as RevisionNumber, T0, { written: [], unrecorded }),
+        recordMoves(s, WT, [], [], 1 as RevisionNumber, T0, { writer: LIVE, before: rows }),
       );
+      expect(answer(s, 1, before)).toEqual({ state: "incomplete" });
       expect(answer(s, 1, movesSeq(s, WT) ?? 0)).toEqual({ state: "answered", rekeyed: [] });
     });
   });

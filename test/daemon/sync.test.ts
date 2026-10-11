@@ -79,7 +79,13 @@ describe("the sync request (lessons, defect 30)", () => {
     store({ revision: 7 as RevisionNumber });
     await settle();
     const answer = handle({ type: "sync-status", requestId: id });
-    expect(answer).toMatchObject({ revision: 7, error: null, moves: true });
+    // The incarnation its registration names, which its ledger names the moves' writer (001-268).
+    expect(answer).toMatchObject({
+      revision: 7,
+      error: null,
+      moves: true,
+      incarnation: "0.0.0-test@1",
+    });
     // An older CLI that asked with `after` takes its path for a daemon before task 001-186.
     expect(answer).not.toHaveProperty("rekeyed");
   });

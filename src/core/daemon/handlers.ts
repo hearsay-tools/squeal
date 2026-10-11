@@ -4,6 +4,7 @@ import {
   type CheckpointRecord,
   type DaemonPhase,
   type DaemonResponse,
+  daemonIncarnation,
   type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
   type RevisionNumber,
@@ -106,6 +107,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     revision: state.revision,
     error: state.error,
     moves: true,
+    incarnation: daemonIncarnation(context),
   });
 
   return (request): DaemonResponse => {

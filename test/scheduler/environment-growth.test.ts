@@ -34,6 +34,7 @@ import {
   twoWorktrees,
 } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
+import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
 
 /*
  * Task 003-43: a run whose preload loaded an environment file its key lacked
@@ -47,7 +48,13 @@ const TEST = "nt/test/a.test.mjs";
 
 /** The open moves at `revision` the store's record names (task 001-258). */
 function rekeyedAt(store: Store, worktreeId: string, revision: RevisionNumber) {
-  const answer = answerMoves(store, worktreeId, revision, Number.MAX_SAFE_INTEGER);
+  const answer = answerMoves(
+    store,
+    worktreeId,
+    revision,
+    Number.MAX_SAFE_INTEGER,
+    HARNESS_INCARNATION,
+  );
   if (answer.state !== "answered") return answer.state;
   return answer.rekeyed.filter((file) => file.revision === revision);
 }
@@ -118,7 +125,9 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,
       head: () => readHead(repo.main),
+      incarnation: HARNESS_INCARNATION,
     });
+    liveDaemon(store, worktreeId, repo.main, repo.commonDir);
     onTestFinished(async () => {
       await scheduler.close();
       await adapter.close();

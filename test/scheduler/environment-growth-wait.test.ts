@@ -21,7 +21,7 @@ import { git } from "../hash/git-repo.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome, PRELOAD_SRC, PRELOADED } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
-import { captureSync } from "./store-wait.js";
+import { captureSync, HARNESS_DAEMON, HARNESS_INCARNATION } from "./store-wait.js";
 
 /*
  * Review wave 4 (003), B1: a run that grew its environment re-keys its file
@@ -70,11 +70,10 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
       isMain: true,
       registeredAt: 1,
       daemon: {
+        ...HARNESS_DAEMON,
         socketPath: "/tmp/squeal-test.sock",
-        startedAt: Date.now(),
         heartbeatAt: Date.now(),
         heartbeatIntervalMs: 600_000,
-        squealVersion: "0.0.0-test",
       },
     });
 
@@ -124,6 +123,7 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,
       head: () => readHead(root),
+      incarnation: HARNESS_INCARNATION,
     });
     onTestFinished(async () => {
       for (const held of [firstReport, refinement, rerun]) held.open();

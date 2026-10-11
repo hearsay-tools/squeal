@@ -10,7 +10,7 @@ import {
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
-import { captureSync, liveDaemon } from "./store-wait.js";
+import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
 
 /*
  * Review wave-13r B2 (task 001-226): abandoned sync requests kept retention
@@ -54,7 +54,9 @@ describe("the store's re-key moves hold nothing per wait (review wave-13r B2)", 
       const raw = () => h.store.meta.get(rekeyedMovesMetaKey(h.worktreeId));
       const commit = () =>
         h.store.transaction(() =>
-          recordMoves(h.store, h.worktreeId, [], [], h.scheduler.status().revision, clock()),
+          recordMoves(h.store, h.worktreeId, [], [], h.scheduler.status().revision, clock(), {
+            writer: HARNESS_INCARNATION,
+          }),
         );
       // A math edit that resolves, then a strings edit whose runner part stalls.
       h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
@@ -83,14 +85,16 @@ describe("the store's re-key moves hold nothing per wait (review wave-13r B2)", 
       commit();
       expect(JSON.parse(raw() ?? "{}").caughtUpAt).toEqual(expect.any(Number));
       // Within the grace nothing goes; an hour and the grace past the catch-up, everything resolved does.
+      // The ledger's first commit dropped what came before it (task 001-268).
+      const adopted = JSON.parse(before ?? "{}").dropped;
       shift = MOVES_GRACE_MS - 1_000;
       commit();
-      expect(JSON.parse(raw() ?? "{}").dropped).toBe(0);
+      expect(JSON.parse(raw() ?? "{}").dropped).toBe(adopted);
       shift = MOVES_RETENTION_MS + MOVES_GRACE_MS + 1;
       commit();
       const after = JSON.parse(raw() ?? "{}");
       expect(after.files).toEqual({});
-      expect(after.dropped).toBeGreaterThan(0);
+      expect(after.dropped).toBeGreaterThan(adopted);
     },
   );
 });
@@ -108,6 +112,7 @@ describe("a wait behind an unbounded run --all retry (spec 001 D5, task 001-228)
       });
       await h.scheduler.start();
       await h.scheduler.idle();
+      liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       // From now on `environment` never answers: a wedged runner.
       h.runner.failing.clear();
       let environmentCalls = 0;
@@ -138,7 +143,7 @@ describe("a wait behind an unbounded run --all retry (spec 001 D5, task 001-228)
       await expect.poll(() => environmentCalls, { timeout: 30_000 }).toBe(2);
       // The store answers now, before the retry ends.
       const answer = h.store.transaction(() =>
-        answerMoves(h.store, h.worktreeId, revision, sinceSeq),
+        answerMoves(h.store, h.worktreeId, revision, sinceSeq, HARNESS_INCARNATION),
       );
       expect(answer.state).toBe("answered");
       expect(environmentCalls).toBe(2);

@@ -317,7 +317,7 @@ function handSync() {
 const synced = (revision: number): SyncState => ({
   state: "synced",
   revision: revision as RevisionNumber,
-  moves: false,
+  incarnation: null,
 });
 
 /*
