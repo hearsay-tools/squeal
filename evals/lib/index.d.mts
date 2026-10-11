@@ -128,6 +128,10 @@ export interface Grade {
   truth: Truth | { error: string } | null;
   squealEnd: SquealEnd | null;
   claimTrue: boolean | "hedged" | null;
+  /** `pass` while ground truth fails; `null` where `claimTrue` is. */
+  falsePass: boolean | null;
+  /** `fail` while ground truth passes; `null` where `claimTrue` is. */
+  falseFail: boolean | null;
   claimMatchesSqueal: boolean | null;
   timeline: {
     runs: Run[];

@@ -97,8 +97,8 @@ describe("trendLines", () => {
     expect(first?.runs[0]?.flags).toEqual([]);
     expect(second?.runs[0]?.flags).toEqual([]); // 2/12 sleeping against 0/12 in another line: no flag
     expect(second?.runs[1]?.flags.map((f) => f.behaviour).sort()).toEqual([
-      "claimFalse",
       "claimTrue",
+      "falsePass",
       "sleep",
     ]);
   });
@@ -113,13 +113,13 @@ describe("trendLines", () => {
     );
   });
 
-  it("writes the break, the flag and the false claim by cell into TREND.md", () => {
+  it("writes the break, the flag and the false pass by cell into TREND.md", () => {
     const md = trendMarkdown(runs);
     expect(md).toContain(`## Trend line ${evals.fingerprint}`);
     expect(md).toContain("**Break:** the conditions changed (fixture)");
     expect(md).toContain("| `sleep` | lower | 0/12 (0%) |");
     expect(md).toContain("| `sleep` | lower | 2/12 (17%) | 6/12 (50%) ⚑ |");
     expect(md).toContain("- ⚑ claude claude-haiku-5-5: `sleep` from 2/12 (17%) to 6/12 (50%)");
-    expect(md).toContain("- false claim: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1`");
+    expect(md).toContain("- false pass: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1`");
   });
 });
