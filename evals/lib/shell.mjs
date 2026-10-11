@@ -82,7 +82,10 @@ function strip(words) {
   for (;;) {
     const w = words[i];
     if (w === undefined) return [];
-    if (/^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(w) || KEYWORDS_ALSO.has(w)) i++;
+    if (w === "command") {
+      i = afterCommand(words, i);
+      if (i < 0) return [];
+    } else if (/^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(w) || KEYWORDS_ALSO.has(w)) i++;
     else if (w === "env" || w === "nice") {
       i++;
       while (/^-|^[A-Za-z_]\w*=/.test(words[i] ?? "")) i++;
@@ -92,6 +95,17 @@ function strip(words) {
       i++; // the duration
     } else return words.slice(i);
   }
+}
+
+/**
+ * The index of the command `command` at `words[i]` runs, past its options (006-12), or -1 for
+ * `command -v` or `-V`, which only look a name up and run nothing.
+ */
+function afterCommand(words, i) {
+  let lookup = false;
+  for (i++; /^-[pvV]+$/.test(words[i] ?? ""); i++) lookup ||= /[vV]/.test(words[i]);
+  if (words[i] === "--") i++;
+  return lookup ? -1 : i;
 }
 
 /** Marks the text's last list established when the call's exit code proves every part of it ran. */
@@ -134,7 +148,9 @@ function ends(words) {
   let i = 0;
   const skip = (w) =>
     /^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(w) || (KEYWORDS_ALSO.has(w) && w !== "exec");
-  while (words[i] !== undefined && skip(words[i])) i++;
+  while (words[i] !== undefined && skip(words[i]))
+    i = words[i] === "command" ? afterCommand(words, i) : i + 1;
+  if (i < 0) return false;
   if (words[i] === "exit") return true;
   return words[i] === "exec" && words.slice(i + 1).some((w) => !w.startsWith("-"));
 }
