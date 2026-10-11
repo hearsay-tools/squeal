@@ -106,6 +106,10 @@ function worktreeMetaKey(row, worktreeId) {
 
 // src/core/types/daemon.ts
 var DAEMON_SOCKET_TIMEOUT_MS = 100;
+function daemonIncarnation(daemon) {
+  if (daemon?.token === void 0) return null;
+  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
+}
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
@@ -195,8 +199,17 @@ function toNote(item) {
   const { at: at2, revision, text } = item;
   if (typeof at2 !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  const stopped = stoppedOf(item.stopped);
-  return [stopped === void 0 ? { at: at2, revision, text } : { at: at2, revision, text, stopped }];
+  const { stopped: rawStopped, exitOf } = item;
+  const stopped = stoppedOf(rawStopped);
+  return [
+    {
+      at: at2,
+      revision,
+      text,
+      ...stopped === void 0 ? {} : { stopped },
+      ...typeof exitOf === "string" ? { exitOf } : {}
+    }
+  ];
 }
 function stoppedOf(value) {
   if (typeof value !== "object" || value === null) return void 0;
@@ -3270,7 +3283,8 @@ function withDeath(store, worktree, live) {
   const record = worktree?.daemon ?? null;
   if (live.state !== "down" || worktree === null || record === null) return live;
   const { id } = worktree;
-  if (readDaemonNotes(store, id).some((note) => note.at >= record.heartbeatAt)) return live;
+  const self = daemonIncarnation(record);
+  if (self !== null && readDaemonNotes(store, id).some((note) => note.exitOf === self)) return live;
   if (!daemonGone(worktree)) return live;
   const runs = store.runs.inFlight(id, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
   return { ...live, died: { runs } };
@@ -4315,7 +4329,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.120";
+  if (true) return "0.1.121";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

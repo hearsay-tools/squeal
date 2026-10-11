@@ -2604,8 +2604,17 @@ function toNote(item) {
   const { at: at2, revision, text: text2 } = item;
   if (typeof at2 !== "number" || typeof text2 !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  const stopped = stoppedOf(item.stopped);
-  return [stopped === void 0 ? { at: at2, revision, text: text2 } : { at: at2, revision, text: text2, stopped }];
+  const { stopped: rawStopped, exitOf } = item;
+  const stopped = stoppedOf(rawStopped);
+  return [
+    {
+      at: at2,
+      revision,
+      text: text2,
+      ...stopped === void 0 ? {} : { stopped },
+      ...typeof exitOf === "string" ? { exitOf } : {}
+    }
+  ];
 }
 function stoppedOf(value) {
   if (typeof value !== "object" || value === null) return void 0;
@@ -5466,7 +5475,8 @@ function withDeath(store, worktree, live) {
   const record = worktree?.daemon ?? null;
   if (live.state !== "down" || worktree === null || record === null) return live;
   const { id: id2 } = worktree;
-  if (readDaemonNotes(store, id2).some((note) => note.at >= record.heartbeatAt)) return live;
+  const self = daemonIncarnation(record);
+  if (self !== null && readDaemonNotes(store, id2).some((note) => note.exitOf === self)) return live;
   if (!daemonGone(worktree)) return live;
   const runs = store.runs.inFlight(id2, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
   return { ...live, died: { runs } };
@@ -5499,6 +5509,7 @@ var init_died = __esm({
     init_notes();
     init_run_log();
     init_store3();
+    init_types();
     DIED_FILES_SHOWN = 5;
     DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
   }
@@ -15815,13 +15826,12 @@ var init_sources = __esm({
        */
       #moved = [];
       /**
-       * Task 001-264: the stamp of each module cached when the runner part was
-       * about to drop transforms during a run, and the stamps it was in. A
-       * transform dropped while the bytes it read are still on disk logs nothing
-       * in `#moved`, and the run's own check no longer finds it cached; it
-       * compares these with the disk instead.
+       * Task 001-264: each read of a module cached when the runner part was about
+       * to drop transforms during a run. A transform dropped while the bytes it
+       * read are still on disk logs nothing in `#moved`, and the run's own check
+       * no longer finds it cached; it compares these with the disk instead.
        */
-      #held = /* @__PURE__ */ new Map();
+      #held = [];
       /**
        * Review wave-13 B2: a plugin passed to `createVitest` reaches the root
        * server and the inline projects sharing it, not a project with its own
@@ -15847,9 +15857,10 @@ var init_sources = __esm({
         }
       }
       /**
-       * Task 001-264: keeps the stamp of every cached module for the next run's
-       * check, before the runner part drops transforms a run in flight may have
-       * read. That check compares each one, if read since the run began, with
+       * Task 001-264: keeps the stamp of every cached module, and of each
+       * declared input of a cached virtual module (review wave-13af B2), for the
+       * next run's check, before the runner part drops transforms a run in flight
+       * may have read. That check compares each one, if read since the run began, with
        * the disk as it does a cached module's stamp, and lets them go.
        */
       hold(vitest) {
@@ -15857,9 +15868,25 @@ var init_sources = __esm({
         for (const environment of environments(vitest)) {
           const reads = this.#containers.get(environment.pluginContainer);
           if (!reads) continue;
-          for (const id2 of cachedModules(environment, this.paths).keys()) {
+          for (const [id2, file] of cachedModules(environment, this.paths)) {
             const stamp2 = reads.stamps.get(id2);
-            if (stamp2) this.#held.set(stamp2, { stamps: reads.stamps, key: id2 });
+            if (stamp2)
+              this.#held.push({ stamps: reads.stamps, key: id2, file, stamp: stamp2, loadedAt: stamp2.loadedAt });
+          }
+          for (const [id2, files2] of virtualInputs(environment, this.paths)) {
+            const load = reads.virtual.get(id2);
+            if (!load) continue;
+            const { inputs: stamps, loadedAt } = load;
+            for (const file of files2) {
+              this.#held.push({
+                stamps,
+                key: file,
+                file,
+                stamp: stamps.get(file),
+                loadedAt,
+                after: loadedAt
+              });
+            }
           }
         }
       }
@@ -15916,11 +15943,13 @@ var init_sources = __esm({
         }
         if (loadedSince !== void 0) {
           const checked = new Set(checks.map(({ stamps, key: key2 }) => stamps.get(key2)));
-          for (const [held2, { stamps, key: key2 }] of this.#held) {
-            if (held2.loadedAt >= since && !checked.has(held2))
-              checks.push({ stamps, key: key2, file: held2.file, held: held2 });
+          for (const { stamps, key: key2, file, stamp: stamp2, loadedAt, after } of this.#held) {
+            const held2 = stamp2 ?? stamps.get(key2);
+            if (loadedAt < since || held2 && checked.has(held2)) continue;
+            checked.add(held2);
+            checks.push(held2 ? { stamps, key: key2, file, held: held2 } : { stamps, key: key2, file, after });
           }
-          this.#held.clear();
+          this.#held = [];
         }
         const stats = /* @__PURE__ */ new Map();
         const hashes = /* @__PURE__ */ new Map();
@@ -34239,7 +34268,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.120";
+  if (true) return "0.1.121";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37578,6 +37607,14 @@ var Daemon = class {
       });
     });
   }
+  /** Its registration's incarnation (`daemonIncarnation`). */
+  #incarnation() {
+    return daemonIncarnation({
+      squealVersion: this.#version,
+      startedAt: this.#startedAt,
+      token: this.#token
+    });
+  }
   /** Runner, sink and loop. The heavy modules load here, after the socket is up. */
   async #run() {
     const { root, worktreeId, store, commonDir } = this.opened;
@@ -37663,11 +37700,7 @@ var Daemon = class {
         reloadPolicy: (changes) => changes.some((change2) => change2.path === POLICY_FILE) ? this.#reloadPolicy() : null,
         squealVersion: this.#version,
         // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
-        incarnation: daemonIncarnation({
-          squealVersion: this.#version,
-          startedAt: this.#startedAt,
-          token: this.#token
-        }),
+        incarnation: this.#incarnation(),
         ...this.#predecessor === void 0 ? {} : { predecessor: this.#predecessor },
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
@@ -37758,11 +37791,19 @@ var Daemon = class {
       this.#log(`could not record the optimizer note: ${String(error)}`);
     }
   }
-  /** `stopped`, a stop's processes, goes beside the text for status to fold by (task 001-255). */
-  #note(text2, stopped) {
+  /**
+   * `stopped`, a stop's processes, goes beside the text for status to fold by
+   * (task 001-255); `exitOf`, this daemon's incarnation, on its shutdown's
+   * note, so status tells that it left from a death (review wave-13af B1).
+   */
+  #note(text2, stopped, exitOf) {
     this.#log(text2);
     const revision = this.#loop?.scheduler.status().revision ?? null;
-    const note = stopped === void 0 ? { text: text2 } : { text: text2, stopped };
+    const note = {
+      text: text2,
+      ...stopped === void 0 ? {} : { stopped },
+      ...exitOf === void 0 ? {} : { exitOf }
+    };
     writeNote(
       this.opened.store,
       this.opened.worktreeId,
@@ -37784,7 +37825,7 @@ var Daemon = class {
     this.#exit ??= (async () => {
       this.#setPhase("stopping");
       this.#stopTimers();
-      this.#note(text2);
+      this.#note(text2, void 0, this.#incarnation());
       await this.#starting.catch(() => {
       });
       const { store, worktreeId, lock: lock2 } = this.opened;
