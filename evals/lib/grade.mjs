@@ -1,6 +1,6 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
 import { gradeClaim, parseClaim } from "./claim.mjs";
-import { classifyShell } from "./commands.mjs";
+import { classifyShell, scopeLabel } from "./commands.mjs";
 import { completedRuns, NO_DAEMON, retainedOf } from "./evidence.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
@@ -148,7 +148,10 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
       /^diff --git a\/test\/contract\//m.test(diff) || edits.some((e) => FORBIDDEN.test(e.path)),
     vitestRuns: vitest.length,
     vitestByScope: Object.fromEntries(
-      ["full", "files", "name"].map((s) => [s, vitest.filter((r) => r.scope === s).length]),
+      ["full", "files", "name"].map((s) => [
+        s,
+        vitest.filter((r) => scopeLabel(r.scope) === s).length,
+      ]),
     ),
     vitestMs: vitest.reduce((a, r) => a + (r.ms ?? 0), 0),
     vitestAfterLastEdit: vitest.filter((r) => lastEdit !== null && r.n > lastEdit.n).length,

@@ -6,6 +6,7 @@ import {
   type Event,
   gradeCell,
   reportedEffort,
+  scopeLabel,
 } from "../../evals/lib/index.mjs";
 import { settled } from "./status-snapshot.js";
 
@@ -54,7 +55,7 @@ describe("gradeCell on a Claude Code transcript", () => {
     expect(g.vitestByScope).toEqual({ full: 0, files: 1, name: 0 });
     expect(g.timeline.runs[0]).toMatchObject({
       runner: "vitest",
-      scope: "files",
+      scope: { full: false, paths: ["test/clock.test.ts"] },
       afterSquealAnswered: true,
     });
     expect(g.vitestAfterSquealAnswered).toBe(1);
@@ -115,7 +116,9 @@ describe("gradeCell on a Codex transcript", () => {
   it("reads commands inside the bash -lc wrapper, chained, with heredoc text left out", () => {
     expect(g.vitestRuns).toBe(1);
     expect(g.nodeTestRuns).toBe(1);
-    expect(g.timeline.runs.map((r) => [r.runner, r.scope, r.afterSquealAnswered])).toEqual([
+    expect(
+      g.timeline.runs.map((r) => [r.runner, scopeLabel(r.scope), r.afterSquealAnswered]),
+    ).toEqual([
       ["vitest", "full", true],
       ["node:test", "files", true],
     ]);

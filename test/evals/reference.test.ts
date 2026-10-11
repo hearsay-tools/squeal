@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type CellRecord,
   CONTEXT,
@@ -22,10 +22,6 @@ import {
   session,
   waitAt,
 } from "./reference-sessions.js";
-
-vi.mock("../../evals/lib/commands.mjs", async (actual) =>
-  (await import("./evidence-contract.js")).withContract(await actual()),
-);
 
 // Spec 006 D4 (amended 2026-10-11) and Testing: per task, a session of the right moves meets
 // every expectation the task declares, and each known mistake misses the expectations it names.

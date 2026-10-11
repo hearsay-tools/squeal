@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { conditionsOf, declarations, expectationsOf } from "../../evals/lib/index.mjs";
 import {
   CLAIM,
@@ -16,10 +16,6 @@ import {
   waitAt,
   waitTimeout,
 } from "./reference-sessions.js";
-
-vi.mock("../../evals/lib/commands.mjs", async (actual) =>
-  (await import("./evidence-contract.js")).withContract(await actual()),
-);
 
 // Review 006-13 (reviews/wave-2.5.md) B1, B2, B3 (the grade half) and B5: each reproduction
 // and its positive counterpart, as reference sessions graded end to end on both harnesses.
