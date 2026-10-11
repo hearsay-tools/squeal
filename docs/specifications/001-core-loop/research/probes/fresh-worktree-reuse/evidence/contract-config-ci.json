@@ -1,0 +1,113 @@
+{
+ "allowOnly": false,
+ "api": {
+  "allowExec": true,
+  "allowWrite": true
+ },
+ "browser": {
+  "detailsPanelPosition": "right",
+  "fileParallelism": true,
+  "headless": true,
+  "isolate": true,
+  "locators": {
+   "exact": false,
+   "testIdAttribute": "data-testid"
+  },
+  "providerOptions": {},
+  "screenshotFailures": true,
+  "trace": "off",
+  "trackUnhandledErrors": true,
+  "ui": false,
+  "viewport": {
+   "height": 896,
+   "width": 414
+  }
+ },
+ "clearMocks": false,
+ "coverage": {
+  "enabled": false,
+  "provider": "v8",
+  "reportsDirectory": "./coverage"
+ },
+ "defines": {},
+ "deps": {
+  "moduleDirectories": [
+   "/node_modules/"
+  ],
+  "optimizer": {
+   "client": {
+    "enabled": false
+   },
+   "ssr": {
+    "enabled": false
+   }
+  },
+  "web": {
+   "transformAssets": true,
+   "transformCss": true,
+   "transformGlobPattern": []
+  }
+ },
+ "detectAsyncLeaks": false,
+ "disableConsoleIntercept": false,
+ "env": {
+  "BASE_URL": "/",
+  "DEV": true,
+  "MODE": "test",
+  "PROD": false
+ },
+ "expect": {},
+ "experimental": {
+  "fsModuleCache": false,
+  "importDurations": {
+   "failOnDanger": false,
+   "limit": 0,
+   "print": false,
+   "thresholds": {
+    "danger": 500,
+    "warn": 100
+   }
+  },
+  "nodeLoader": true,
+  "viteModuleRunner": true
+ },
+ "fakeTimers": {
+  "loopLimit": 10000,
+  "shouldClearNativeTimers": true
+ },
+ "globalSetup": [],
+ "globals": false,
+ "hookTimeout": 10000,
+ "includeTaskLocation": true,
+ "inspector": {
+  "enabled": false,
+  "waitForDebugger": false
+ },
+ "isAgent": true,
+ "isolate": true,
+ "maxConcurrency": 5,
+ "mockReset": false,
+ "mode": "test",
+ "name": "contract",
+ "pool": "forks",
+ "restoreMocks": false,
+ "root": "packages/contract",
+ "sequence": {
+  "hooks": "stack"
+ },
+ "serializedDefines": "",
+ "setupFiles": [],
+ "slowTestThreshold": 300,
+ "snapshotOptions": {
+  "expand": false,
+  "snapshotFormat": {},
+  "updateSnapshot": "none"
+ },
+ "snapshotSerializers": [],
+ "strictTags": true,
+ "tags": [],
+ "testTimeout": 5000,
+ "unstubEnvs": false,
+ "unstubGlobals": false,
+ "watch": false
+}
