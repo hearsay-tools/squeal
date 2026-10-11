@@ -110,7 +110,7 @@ I removed the lines and `notes.md` before committing. The handoff write is a sec
 2. A small fix row, for the coordinator to weigh. When a worktree's recorded daemon is gone without its stopping note, status and the next hook should say so: "the daemon ended without shutting down at about <last heartbeat>, while run <id> ran <files>; a test that signals its own process group (`kill(0, ...)`) or a SIGKILL does this". The runs table already holds the unfinished run and its files. That turns the next defect 16 into a named file at once.
 3. Not now: moving Vitest workers out of the daemon's group. Vitest's fork options have no `detached`. Isolation would need a runner host process in its own group, or a custom pool. That is a D12 redesign, out of proportion to one cezar test bug.
 
-## Draft issue for cezar (for the human; not filed)
+## Issue for cezar (filed 2026-10-11 by the human's ok as hearsay-tools/cezarion#953)
 
 > **Title:** Test cleanups that read a pid file can SIGKILL the whole test run (`Number("") === 0` → `process.kill(0, "SIGKILL")`)
 >
