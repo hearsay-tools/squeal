@@ -7,7 +7,7 @@ import {
   daemonSuite,
   type FixtureRepo,
   ping,
-  readNotes,
+  readNoteRecords,
   SLOW,
   spawnCli,
   waitFor,
@@ -74,7 +74,7 @@ import(${JSON.stringify(escaped)}).then(async ({ EscapedChildren }) => {
   const leaves = "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 600000)'], { stdio: 'ignore' }).unref()";
   const parent = spawn(process.execPath, ["-e", leaves], { stdio: "ignore" });
   await new Promise((done) => parent.on("exit", done));
-  console.log(await children.afterRun("", since, since));
+  console.log((await children.afterRun("", since, since))?.text ?? null);
 });
 `;
 }
@@ -130,7 +130,11 @@ describe.runIf(process.platform === "linux")(
         10_000,
         "both sleepers gone after the tier",
       );
-      const note = readNotes(repo).find((text) => text.includes("a test left running")) ?? "";
+      const record = readNoteRecords(repo).find(({ text }) => text.includes("a test left running"));
+      const note = record?.text ?? "";
+      // Task 001-255: beside the line, both processes as data for status to fold by.
+      expect(record?.stopped?.what).toBe("a test left running after its tier");
+      expect(record?.stopped?.commands).toHaveLength(2);
       // Task 001-212: each with its parent, its age and the signal that ended it.
       const entry = (pid: number | undefined, ended: string) =>
         new RegExp(
@@ -165,11 +169,15 @@ describe.runIf(process.platform === "linux")(
       expect(await stop.exited).toEqual({ code: 0, signal: null });
       expect(stop.stdout()).toMatch(/^Squeal daemon stopped for /);
       await waitFor(() => child !== undefined && !isAlive(child), 5_000, "the setup's child gone");
-      expect(readNotes(repo)).toContainEqual(
-        expect.stringMatching(
+      expect(readNoteRecords(repo)).toContainEqual({
+        text: expect.stringMatching(
           /^stopped 1 process the runners left running when the daemon exited: /,
         ),
-      );
+        stopped: {
+          what: "the runners left running when the daemon exited",
+          commands: [expect.any(String)],
+        },
+      });
     });
 
     it("leaves the rest of a pipeline it leads alone, and stops its orphan there", () => {

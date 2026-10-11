@@ -101,7 +101,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
         return completed(testFiles);
       }),
       children,
-      (text) => notes.push(text),
+      ({ text }) => notes.push(text),
     );
     expect(runner.lane?.(SHORT)).toBe("node-test");
 
@@ -158,7 +158,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
         return completed(testFiles);
       }),
       sweeper,
-      (text) => notes.push(text),
+      ({ text }) => notes.push(text),
     );
     onTestFinished(() => {
       pass();
@@ -295,7 +295,7 @@ describe.runIf(process.platform === "linux")(
           return completed(testFiles);
         }),
         children,
-        (text) => notes.push(text),
+        ({ text }) => notes.push(text),
       );
       onTestFinished(() => release());
       return { runner, notes, release, running: () => running };
@@ -374,7 +374,7 @@ describe.runIf(process.platform === "linux")(
           return completed(testFiles);
         }),
         children,
-        (text) => notes.push(text),
+        ({ text }) => notes.push(text),
       );
       await runner.run([SHORT], options("only-run"));
       expect(notes).toHaveLength(1);

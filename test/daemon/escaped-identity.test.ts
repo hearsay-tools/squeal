@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  describe as note,
+  describe as describeStop,
   type ProcessEntry,
   type ProcessTable,
   terminate,
@@ -12,6 +12,9 @@ import {
  * process table of the test's own changes identities at chosen moments, so
  * no host pid is churned.
  */
+
+/** A stop's note's line. */
+const note = (...args: Parameters<typeof describeStop>) => describeStop(...args)?.text;
 
 const entry = (pid: number, start: number, ppid = 1): ProcessEntry => ({
   pid,
@@ -111,9 +114,11 @@ describe("what a stop's note says of each process (task 001-212)", () => {
     expect(stopped).toEqual([
       { pid: 10, args: "node 10", ppid: 5, parent: "node 5", ageSeconds: 4.2, killed: false },
     ]);
-    expect(note(stopped, "a test left running after its tier")).toBe(
-      "stopped 1 process a test left running after its tier: 10 node 10 (parent 5 node 5, 4.2 s old, SIGTERM)",
-    );
+    expect(describeStop(stopped, "a test left running after its tier")).toEqual({
+      text: "stopped 1 process a test left running after its tier: 10 node 10 (parent 5 node 5, 4.2 s old, SIGTERM)",
+      // Beside the line, its processes as data (task 001-255).
+      stopped: { what: "a test left running after its tier", commands: ["node 10"] },
+    });
     const [one] = stopped;
     if (one === undefined) throw new Error("nothing stopped");
     expect(note([{ ...one, run: "one of runs r1, r2" }], "a test left running")).toBe(

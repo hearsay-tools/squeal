@@ -3,6 +3,7 @@ import {
   type DaemonNote,
   MAX_PERSISTED_NOTES,
   notesMetaKey,
+  type StoppedProcesses,
   type Store,
   type WorktreeId,
 } from "./types/index.js";
@@ -59,5 +60,14 @@ function toNote(item: unknown): DaemonNote[] {
   const { at, revision, text } = item as Record<string, unknown>;
   if (typeof at !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  return [{ at, revision, text }];
+  const stopped = stoppedOf((item as Record<string, unknown>).stopped);
+  return [stopped === undefined ? { at, revision, text } : { at, revision, text, stopped }];
+}
+
+/** A note's processes (task 001-255); a malformed field is dropped, so the note stays unfolded. */
+function stoppedOf(value: unknown): StoppedProcesses | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const { what, commands } = value as Record<string, unknown>;
+  if (typeof what !== "string" || !Array.isArray(commands)) return undefined;
+  return commands.every((c) => typeof c === "string") ? { what, commands } : undefined;
 }

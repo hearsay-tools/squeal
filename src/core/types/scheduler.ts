@@ -34,6 +34,20 @@ export interface DaemonNote {
   /** The worktree's revision when the note was written; `null` before the scheduler started. */
   readonly revision: RevisionNumber | null;
   readonly text: string;
+  /**
+   * A stop's processes, written beside `text` by the daemon so status folds
+   * notes by command without parsing the text (task 001-255). Absent on any
+   * other note and on one an older daemon wrote, which stays unfolded.
+   */
+  readonly stopped?: StoppedProcesses;
+}
+
+/** The processes one stop stopped (`describe` in `src/core/daemon/terminate.ts`). */
+export interface StoppedProcesses {
+  /** What the stop was for, such as `a test left running after its tier`. */
+  readonly what: string;
+  /** Each process's command line, as the note's text names it. */
+  readonly commands: readonly string[];
 }
 
 /** Notes kept per worktree; older ones are dropped. */

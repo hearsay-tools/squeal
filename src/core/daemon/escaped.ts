@@ -13,6 +13,7 @@ import {
   describe,
   GRACE_MS,
   type ProcessEntry,
+  type StopNote,
   type Stopped,
   statOf,
   TICKS_PER_SECOND,
@@ -101,7 +102,7 @@ export class EscapedChildren {
     alone: number | null = null,
     runId: string | null = null,
     overlapped: readonly string[] = runId === null ? [] : [runId],
-  ): Promise<string | null> {
+  ): Promise<StopNote | null> {
     const own = runId === null ? undefined : `run ${runId}`;
     const shared = runsText(overlapped);
     const stopped = (await this.#stop({ lane, since, alone })).map(({ found, stopped }) => {
@@ -115,7 +116,7 @@ export class EscapedChildren {
    * At exit, once the runners closed: every carrier of any lane, and every
    * other member of the group, a global setup's child among them.
    */
-  async atExit(): Promise<string | null> {
+  async atExit(): Promise<StopNote | null> {
     const stopped = (await this.#stop(null)).map(({ stopped }) => stopped);
     return describe(stopped, "the runners left running when the daemon exited");
   }
@@ -271,7 +272,7 @@ export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | 
 export function afterEachRun(
   runner: RunnerAdapter,
   children: RunSweeper,
-  note: (text: string) => void,
+  note: (stop: StopNote) => void,
 ): RunnerAdapter {
   let inFlight = 0;
   let first = 0;
@@ -312,10 +313,10 @@ export function afterEachRun(
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
         const runs = [...overlapped];
-        const text = await children
+        const stop = await children
           .afterRun(at, since, alone, options.runId, runs)
           .catch(() => null);
-        if (text !== null) note(text);
+        if (stop !== null) note(stop);
       }
     },
     close: () => runner.close(),

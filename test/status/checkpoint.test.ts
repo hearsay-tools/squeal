@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { describe as describeStop } from "../../src/core/daemon/terminate.js";
 import { appendNote } from "../../src/core/notes.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import {
@@ -6,6 +7,7 @@ import {
   checkpointMetaKey,
   type StatusResult,
   type StatusSnapshot,
+  type StoppedProcesses,
   type Store,
 } from "../../src/core/types/index.js";
 import { appendRevisions, type FakeRepo, fakeRepo, seedStore } from "./helpers.js";
@@ -143,24 +145,35 @@ describe("status names the checkpoint in progress (task 001-217)", () => {
 describe("status folds stopped-process notes by command (task 001-222)", () => {
   const STOPPED = (pid: number, command: string) =>
     `${pid} ${command} (parent 1 node daemon, 4.2 s old, SIGTERM, run r${pid})`;
+  const TIER = "a test left running after its tier";
+  const EXIT = "the runners left running when the daemon exited";
+
+  /** A note as the daemon writes it (task 001-255): `describe`'s text and its processes. */
+  function stopNote(store: Store, repo: FakeRepo, at: number, what: string, commands: string[]) {
+    const stopped = commands.map((args, i) => ({
+      pid: 11 + i,
+      args,
+      ppid: 1,
+      parent: "node daemon",
+      ageSeconds: 4.2,
+      killed: false,
+      run: `run r${11 + i}`,
+    }));
+    const note = describeStop(stopped, what);
+    if (note === null) throw new Error("nothing stopped");
+    appendNote(store, repo.mainId, { at: NOW - at, revision: 4, ...note });
+  }
 
   function seedNotes(repo: FakeRepo, store: Store) {
     worktree(repo, store, true);
-    const note = (at: number, text: string) =>
-      appendNote(store, repo.mainId, { at: NOW - at, revision: 4, text });
-    note(
-      5_000,
-      `stopped 2 processes a test left running after its tier: ${STOPPED(11, "node a.mjs")}; ${STOPPED(12, "sleep 100")}`,
-    );
-    note(4_000, "runner failure: vitest.config.ts: Unexpected token");
-    note(
-      3_000,
-      `stopped 1 process a test left running after its tier: ${STOPPED(13, "node a.mjs")}`,
-    );
-    note(
-      2_000,
-      `stopped 1 process the runners left running when the daemon exited: ${STOPPED(14, "node b.mjs")}`,
-    );
+    stopNote(store, repo, 5_000, TIER, ["node a.mjs", "sleep 100"]);
+    appendNote(store, repo.mainId, {
+      at: NOW - 4_000,
+      revision: 4,
+      text: "runner failure: vitest.config.ts: Unexpected token",
+    });
+    stopNote(store, repo, 3_000, TIER, ["node a.mjs"]);
+    stopNote(store, repo, 2_000, EXIT, ["node b.mjs"]);
   }
 
   it("counts each kind by command in one line, keeping other notes and a single note as they are", () => {
@@ -172,11 +185,53 @@ describe("status folds stopped-process notes by command (task 001-222)", () => {
     expect(notes).toEqual([
       "Notes:",
       "  2026-10-10T11:59:56.000Z, revision 4: runner failure: vitest.config.ts: Unexpected token",
-      `  2026-10-10T11:59:58.000Z, revision 4: stopped 1 process the runners left running when the daemon exited: ${STOPPED(14, "node b.mjs")}`,
-      "  stopped 3 processes a test left running after its tier, in 2 notes since 2026-10-10T11:59:55.000Z: " +
+      `  2026-10-10T11:59:58.000Z, revision 4: stopped 1 process ${EXIT}: ${STOPPED(11, "node b.mjs")}`,
+      `  stopped 3 processes ${TIER}, in 2 notes since 2026-10-10T11:59:55.000Z: ` +
         "2 × node a.mjs; 1 × sleep 100 (`squeal status --notes` lists each)",
       "",
     ]);
+  });
+
+  it("folds a command line holding `; ` and ` (` under that command (task 001-255)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    worktree(repo, store, true);
+    const shell = 'sh -c "a; b (c)"';
+    stopNote(store, repo, 3_000, TIER, [shell]);
+    stopNote(store, repo, 2_000, TIER, [shell, "node a.mjs"]);
+    const text = formatStatus(status(repo), NOW);
+    expect(text).toContain(
+      `stopped 3 processes ${TIER}, in 2 notes since 2026-10-10T11:59:57.000Z: ` +
+        `2 × ${shell}; 1 × node a.mjs (`,
+    );
+  });
+
+  it("leaves an older daemon's note, prose only, unfolded (task 001-255)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    worktree(repo, store, true);
+    const prose = `stopped 1 process ${TIER}: ${STOPPED(13, "node a.mjs")}`;
+    for (const at of [3_000, 2_000]) {
+      appendNote(store, repo.mainId, { at: NOW - at, revision: 4, text: prose });
+    }
+    const text = formatStatus(status(repo), NOW);
+    expect(text).toContain(`  2026-10-10T11:59:57.000Z, revision 4: ${prose}\n`);
+    expect(text).toContain(`  2026-10-10T11:59:58.000Z, revision 4: ${prose}\n`);
+    expect(text).not.toContain("lists each");
+  });
+
+  it("leaves a note whose processes are malformed unfolded (task 001-255)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    worktree(repo, store, true);
+    const text = `stopped 1 process ${TIER}: ${STOPPED(13, "node a.mjs")}`;
+    const malformed = { what: TIER, commands: [13] } as unknown as StoppedProcesses;
+    for (const at of [3_000, 2_000]) {
+      appendNote(store, repo.mainId, { at: NOW - at, revision: 4, text, stopped: malformed });
+    }
+    const out = formatStatus(status(repo), NOW);
+    expect(out).toContain(`  2026-10-10T11:59:57.000Z, revision 4: ${text}\n`);
+    expect(out).not.toContain("lists each");
   });
 
   it("lists every note in full with --notes", () => {
@@ -184,8 +239,10 @@ describe("status folds stopped-process notes by command (task 001-222)", () => {
     const store = seedStore(repo);
     seedNotes(repo, store);
     const text = formatStatus(status(repo), NOW, "squeal", { allNotes: true });
-    expect(text).toContain(STOPPED(12, "sleep 100"));
-    expect(text).toContain(STOPPED(13, "node a.mjs"));
+    expect(text).toContain(
+      `stopped 2 processes ${TIER}: ${STOPPED(11, "node a.mjs")}; ${STOPPED(12, "sleep 100")}`,
+    );
+    expect(text).toContain(`stopped 1 process ${TIER}: ${STOPPED(11, "node a.mjs")}`);
     expect(text).not.toContain("lists each");
   });
 });

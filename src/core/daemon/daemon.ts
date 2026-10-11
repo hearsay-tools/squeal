@@ -12,6 +12,7 @@ import type {
   Policy,
   RevisionNumber,
   RunnerAdapter,
+  StoppedProcesses,
   SyncAnswer,
   WorktreeId,
 } from "../types/index.js";
@@ -362,7 +363,7 @@ class Daemon {
           ...nodeTestRunners,
         ]),
         this.#children,
-        (text) => this.#note(text),
+        ({ text, stopped }) => this.#note(text, stopped),
       );
       this.#vitest = vitestRunner;
       this.#runner = runner;
@@ -510,13 +511,15 @@ class Daemon {
     }
   }
 
-  #note(text: string): void {
+  /** `stopped`, a stop's processes, goes beside the text for status to fold by (task 001-255). */
+  #note(text: string, stopped?: StoppedProcesses): void {
     this.#log(text);
     const revision = this.#loop?.scheduler.status().revision ?? null;
+    const note = stopped === undefined ? { text } : { text, stopped };
     writeNote(
       this.opened.store,
       this.opened.worktreeId,
-      { at: this.#now(), revision, text },
+      { at: this.#now(), revision, ...note },
       () => {},
     );
   }
@@ -540,8 +543,8 @@ class Daemon {
       await this.#step("loop.close", () => this.#loop?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
-        const text = await this.#children.atExit();
-        if (text !== null) this.#note(text);
+        const stop = await this.#children.atExit();
+        if (stop !== null) this.#note(stop.text, stop.stopped);
       });
       await this.#step("temp dir removal", async () => {
         await this.opened.leftovers;
