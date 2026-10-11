@@ -8,7 +8,7 @@ The brief offered two repairs: bind the sync answer to a daemon incarnation, or 
 
 The incarnation binding alone misses one succession: an older daemon moves keys, then a newer one replaces it and answers the sync. That is the plugin upgrade path. The answering daemon is unchanged for the whole wait, but its record lacks the older daemon's moves. A refined-revision token misses another: an older writer moves a key at a revision whose refinement it never advances (a content re-key, or same-revision growth).
 
-So the record keeps, per test file, `[row revision, key digest]` as its writer last wrote the row (`Moves.keys`, a sha256 prefix, 16 base64url characters). Every key change goes through `Ledger.commit`. `store-results.ts` and `releaseRunning` change only `pending`, which the check does not compare.
+So the record keeps, per test file, `[row revision, key digest]` as its writer last wrote the row (`Moves.keys`, `moves-keys.ts`; the digest is a sha256 prefix, 16 base64url characters). Every key change goes through `Ledger.commit`. `store-results.ts` and `releaseRunning` change only `pending`, which the check does not compare.
 
 - **Reader** (`movesVouch`, and inside `answerMoves`): the record vouches only when every `test_file_keys` row matches its mark. The wait checks this before it builds the window (`answerMoves` returns `incomplete`). It checks again at every poll after the window is built, and on a mismatch it drops the window and takes the broad fallback for the rest of the wait. A record without `keys` (0.1.113, 0.1.114) vouches for nothing.
 - **Writer** (`unrecordedRows`, `recordMoves`'s `rows`): a ledger's first commit reads the rows the record does not vouch for, before it writes any row. A pending one becomes a move open at its row's revision. Every one gets its mark. `dropped` is set to that commit's sequence, so a wait that started before it falls back. After that commit the record vouches again, so the fallback lasts only until the newer daemon's first commit.
@@ -37,7 +37,8 @@ The wire, the schema (V1) and the sync answer are unchanged. `keys` is an additi
 
 ## Seam map
 
-- `src/core/scheduler/rekeyed-moves.ts`: `Moves.keys`, `keyMark`, `vouches`, `unrecordedRows`, `movesVouch`; `recordMoves`'s optional `rows`.
+- `src/core/scheduler/moves-keys.ts`: the marks (`readKeyMarks`, `marksVouch`, `markRows`).
+- `src/core/scheduler/rekeyed-moves.ts`: `Moves.keys`, `unrecordedRows`, `movesVouch`; `recordMoves`'s optional `rows`.
 - `src/core/scheduler/ledger.ts`: `#adopted`; `commit` reads `unrecordedRows` before its upsert and passes `{written: rows, unrecorded}`.
 - `src/cli/status-wait.ts`: the per-poll `movesVouch` after the window.
 - Test fixtures that write rows by hand must record them as the ledger does: `test/cli/status-wait-fixture.ts`'s `key()` does, and `rekeyed-moves.test.ts`'s `commit` passes the worktree's rows as written.
