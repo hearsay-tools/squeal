@@ -20,7 +20,7 @@
     "t1-thousands": [
       {
         "id": "no-rerun-answered",
-        "moment": "while Squeal validates",
+        "moment": "while Squeal validates: every test file the run selects by Vitest's rule was named current at the last edit's revision, by its own line",
         "rule": "no-run-of-answered-scope"
       },
       {
@@ -47,12 +47,12 @@
     "t2-weekend": [
       {
         "id": "no-rerun-answered",
-        "moment": "while Squeal validates",
+        "moment": "while Squeal validates: every test file the run selects by Vitest's rule was named current at the last edit's revision, by its own line",
         "rule": "no-run-of-answered-scope"
       },
       {
         "id": "own-run-uncovered",
-        "moment": "where Squeal cannot answer: node:test, after the last change under scripts/",
+        "moment": "where Squeal cannot answer: a completed node:test run of the changelog test after the last change under scripts/, with no name, skip or only filter",
         "rule": "completed-run-covers",
         "runner": "node:test",
         "files": ["scripts/changelog.test.mjs"],
@@ -77,7 +77,7 @@
     "t3-tax": [
       {
         "id": "no-rerun-answered",
-        "moment": "while Squeal validates",
+        "moment": "while Squeal validates: every test file the run selects by Vitest's rule was named current at the last edit's revision, by its own line",
         "rule": "no-run-of-answered-scope"
       },
       {
@@ -104,7 +104,7 @@
     "t4-contract": [
       {
         "id": "own-run-uncovered",
-        "moment": "where Squeal cannot answer: Vitest, no daemon validates, after the last edit",
+        "moment": "where Squeal cannot answer: a completed Vitest run selecting the contract test after the last edit, no daemon validating, with nothing excluded and no name, project or shard filter",
         "rule": "completed-run-covers",
         "runner": "vitest",
         "files": ["test/contract/invoice-json.test.ts"],
