@@ -183,8 +183,9 @@ function modelSection(line, m) {
   ];
   const cell = (r, get, flagged = false) =>
     r.models.includes(m) ? `${pct(get(r.scores[m]))}${flagged ? " ⚑" : ""}` : "not run";
+  // A row no run of the model scores (every session not graded, or none where it applied) is left out.
   const ids = Object.keys(EXPECTATIONS).filter((id) =>
-    runs.some((r) => r.scores[m]?.expectations[id] !== undefined),
+    runs.some((r) => r.scores[m]?.expectations[id]),
   );
   const tasks = [...new Set(runs.flatMap((r) => Object.keys(r.scores[m]?.byTask ?? {})))].sort();
   const out = [`### ${m}, effort ${line.conditions.effort}`, "", ...head("Expectation")];
@@ -206,7 +207,7 @@ function modelSection(line, m) {
   out.push("", ...head("Per task"));
   for (const t of tasks) {
     const declared = [...new Set(runs.flatMap((r) => Object.keys(r.scores[m]?.byTask[t] ?? {})))];
-    for (const id of declared)
+    for (const id of declared.filter((x) => runs.some((r) => r.scores[m]?.byTask[t]?.[x])))
       out.push(
         `| ${t} \`${id}\` | ${runs.map((r) => cell(r, (s) => s.byTask[t]?.[id] ?? null)).join(" | ")} |`,
       );
