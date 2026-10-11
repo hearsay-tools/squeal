@@ -18,6 +18,18 @@ interface Stamp {
   readonly loadedAt: EpochMs;
 }
 
+/** A read `hold` kept for a run's check after it ends (task 001-264). */
+interface Held {
+  readonly stamps: Map<string, Stamp>;
+  readonly key: string;
+  readonly file: AbsolutePath;
+  /** What was read, if stamped by `hold`'s time. */
+  readonly stamp: Stamp | undefined;
+  readonly loadedAt: EpochMs;
+  /** A virtual module's load: a declared input is stamped after it, as in `stale`. */
+  readonly after?: EpochMs;
+}
+
 /** The bytes on disk and when they were hashed. */
 interface Hashed {
   readonly stat: FileStat;
@@ -78,13 +90,12 @@ export class SourceStamps {
    */
   #moved: { readonly file: AbsolutePath; readonly loadedAt: EpochMs }[] = [];
   /**
-   * Task 001-264: the stamp of each module cached when the runner part was
-   * about to drop transforms during a run, and the stamps it was in. A
-   * transform dropped while the bytes it read are still on disk logs nothing
-   * in `#moved`, and the run's own check no longer finds it cached; it
-   * compares these with the disk instead.
+   * Task 001-264: each read of a module cached when the runner part was about
+   * to drop transforms during a run. A transform dropped while the bytes it
+   * read are still on disk logs nothing in `#moved`, and the run's own check
+   * no longer finds it cached; it compares these with the disk instead.
    */
-  #held = new Map<Stamp, { readonly stamps: Map<string, Stamp>; readonly key: string }>();
+  #held: Held[] = [];
 
   constructor(
     readonly paths: WorktreePaths,
@@ -117,9 +128,10 @@ export class SourceStamps {
   }
 
   /**
-   * Task 001-264: keeps the stamp of every cached module for the next run's
-   * check, before the runner part drops transforms a run in flight may have
-   * read. That check compares each one, if read since the run began, with
+   * Task 001-264: keeps the stamp of every cached module, and of each
+   * declared input of a cached virtual module (review wave-13af B2), for the
+   * next run's check, before the runner part drops transforms a run in flight
+   * may have read. That check compares each one, if read since the run began, with
    * the disk as it does a cached module's stamp, and lets them go.
    */
   hold(vitest: Vitest): void {
@@ -127,9 +139,27 @@ export class SourceStamps {
     for (const environment of environments(vitest)) {
       const reads = this.#containers.get(environment.pluginContainer);
       if (!reads) continue;
-      for (const id of cachedModules(environment, this.paths).keys()) {
+      for (const [id, file] of cachedModules(environment, this.paths)) {
         const stamp = reads.stamps.get(id);
-        if (stamp) this.#held.set(stamp, { stamps: reads.stamps, key: id });
+        if (stamp)
+          this.#held.push({ stamps: reads.stamps, key: id, file, stamp, loadedAt: stamp.loadedAt });
+      }
+      // Review wave-13af B2: a virtual module's declared inputs, whose stamps
+      // are in its load's own map, taken there by a later check if not yet.
+      for (const [id, files] of virtualInputs(environment, this.paths)) {
+        const load = reads.virtual.get(id);
+        if (!load) continue;
+        const { inputs: stamps, loadedAt } = load;
+        for (const file of files) {
+          this.#held.push({
+            stamps,
+            key: file,
+            file,
+            stamp: stamps.get(file),
+            loadedAt,
+            after: loadedAt,
+          });
+        }
       }
     }
   }
@@ -197,11 +227,14 @@ export class SourceStamps {
     }
     if (loadedSince !== undefined) {
       const checked = new Set(checks.map(({ stamps, key }) => stamps.get(key)));
-      for (const [held, { stamps, key }] of this.#held) {
-        if (held.loadedAt >= since && !checked.has(held))
-          checks.push({ stamps, key, file: held.file, held });
+      for (const { stamps, key, file, stamp, loadedAt, after } of this.#held) {
+        // A virtual input with no stamp at `hold` takes the one the check before the drop took.
+        const held = stamp ?? stamps.get(key);
+        if (loadedAt < since || (held && checked.has(held))) continue;
+        checked.add(held);
+        checks.push(held ? { stamps, key, file, held } : { stamps, key, file, after });
       }
-      this.#held.clear();
+      this.#held = [];
     }
     // One stat and at most one hash per file, however many modules read it.
     const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
