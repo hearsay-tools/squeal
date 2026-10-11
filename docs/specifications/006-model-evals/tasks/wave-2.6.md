@@ -5,7 +5,7 @@ Two workers on disjoint files, then a re-review (the second round on 006-12 and 
 **The contract between the two rows**, in `evals/lib/commands.mjs`. 006-16 writes it, 006-17 reads it. Each classified test action carries:
 - `runner` (`vitest` or `node:test`);
 - `informational`: true for `--help`, `--version`, listing or a watch-only invocation, which never counts as a run;
-- `scope`: `{ full: true }` for the whole suite of that runner, or `{ full: false, paths: [...] }` with the test paths and globs it selects, as written. An npm script resolves to the command it runs.
+- `scope`: `{ full: true }` for the whole suite of that runner, or `{ full: false, paths: [...] }` with the test paths and globs it selects, as written. An npm script resolves to the command it runs. `names: [...]` adds `-t`, `--testNamePattern` or `--test-name-pattern` filters. A name-filtered run is not full coverage, and it covers no path it does not select (agreed during the wave, 2026-10-11). `scopeLabel(scope)` returns the old `full`, `files` or `name` string, which `grade.mjs` stores until 006-17 keeps the scope object in the timeline.
 
 Whether the run completed is the grader's call, from the runner's own summary in the output: `Test Files` for Vitest, `# tests` for node:test. "No tests found" and a runner that fails to start are not completed. A lookup command (`command -v`, `-V`, `-pv`) yields no test action, but its redirections are writes.
 
