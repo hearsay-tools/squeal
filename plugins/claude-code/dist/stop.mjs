@@ -73,10 +73,40 @@ function isRecord(value) {
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
+// src/core/types/store.ts
+var WORKTREE_META_ROWS = {
+  turn: { prefix: "turn:", owner: "delivery/turn" },
+  edits: { prefix: "edits:", owner: "delivery/edits" },
+  harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
+  departed: { prefix: "departed:", owner: "delivery/expiry" },
+  consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
+  registered: { prefix: "revision-registered:", owner: "delivery/registered" },
+  registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
+  livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
+  revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+  notes: { prefix: "notes.", owner: "types/scheduler" },
+  refined: { prefix: "refined.", owner: "types/scheduler" },
+  awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
+  checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+  daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+  slowTier: { prefix: "slow-tier:", owner: "slow/state" },
+  slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
+  failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
+  reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
+  rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
+  rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
+  optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" }
+};
+function worktreeMetaKey(row, worktreeId) {
+  return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
+}
+
 // src/core/types/daemon.ts
 var DAEMON_SOCKET_TIMEOUT_MS = 100;
 function bootstrappedMetaKey(worktreeId) {
-  return `daemon-bootstrapped:${worktreeId}`;
+  return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
 
 // src/core/types/delivery.ts
@@ -105,13 +135,13 @@ var DEFAULT_POLICY = {
 // src/core/types/scheduler.ts
 var MAX_PERSISTED_NOTES = 20;
 function notesMetaKey(worktreeId) {
-  return `notes.${worktreeId}`;
+  return worktreeMetaKey("notes", worktreeId);
 }
 function refinedMetaKey(worktreeId) {
-  return `refined.${worktreeId}`;
+  return worktreeMetaKey("refined", worktreeId);
 }
 function awaitingInstallMetaKey(worktreeId) {
-  return `awaiting-install.${worktreeId}`;
+  return worktreeMetaKey("awaitingInstall", worktreeId);
 }
 function parseAwaitingInstall(raw) {
   if (raw === "true") return [];
@@ -124,7 +154,7 @@ function parseAwaitingInstall(raw) {
   }
 }
 function checkpointMetaKey(worktreeId) {
-  return `checkpoint.${worktreeId}`;
+  return worktreeMetaKey("checkpoint", worktreeId);
 }
 function parseCheckpointProgress(raw) {
   if (raw === null || !raw.startsWith("{")) return null;
@@ -527,12 +557,14 @@ function testFileOf(check) {
 }
 
 // src/core/state/baseline.ts
-var metaKey = (worktreeId) => `state.baseline-findings.${worktreeId}`;
+function baselineMetaKey(worktreeId) {
+  return worktreeMetaKey("baselineFindings", worktreeId);
+}
 function entry(check, fingerprint) {
   return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
 }
 function read(store, worktreeId) {
-  const raw = store.meta.get(metaKey(worktreeId));
+  const raw = store.meta.get(baselineMetaKey(worktreeId));
   return raw === null ? null : JSON.parse(raw);
 }
 function baselineFindings(store, worktreeId) {
@@ -574,7 +606,7 @@ function flakyText(note) {
 
 // src/core/state/optimizer-note.ts
 function optimizerOffMetaKey(worktreeId) {
-  return `optimizer-off.${worktreeId}`;
+  return worktreeMetaKey("optimizerOff", worktreeId);
 }
 function readOptimizerOff(store, worktreeId) {
   const text = store.meta.get(optimizerOffMetaKey(worktreeId));
@@ -653,7 +685,7 @@ function covers(covered, path) {
 
 // src/core/slow/state.ts
 function slowTierMetaKey(worktreeId) {
-  return `slow-tier:${worktreeId}`;
+  return worktreeMetaKey("slowTier", worktreeId);
 }
 function readSlowActivity(store, worktreeId) {
   const raw = store.meta.get(slowTierMetaKey(worktreeId));
@@ -686,7 +718,7 @@ function toActivity(value) {
   return null;
 }
 function slowArtifactsMetaKey(worktreeId) {
-  return `slow-artifacts:${worktreeId}`;
+  return worktreeMetaKey("slowArtifacts", worktreeId);
 }
 function readSlowArtifacts(store, worktreeId) {
   const raw = store.meta.get(slowArtifactsMetaKey(worktreeId));
@@ -704,7 +736,7 @@ function readSlowArtifacts(store, worktreeId) {
   }
 }
 function failureKeysMetaKey(worktreeId) {
-  return `failure-keys:${worktreeId}`;
+  return worktreeMetaKey("failureKeys", worktreeId);
 }
 function readFailureKeys(store, worktreeId) {
   const raw = store.meta.get(failureKeysMetaKey(worktreeId));
@@ -878,7 +910,7 @@ function liveActivity(store, worktreeId, keys, isSlow) {
   return { kind: "running", path, ...paths, since, lastDurationMs };
 }
 function consumerInTurn(store, worktreeId) {
-  const turns = readAll(store, `turn:${worktreeId}`);
+  const turns = readAll(store, worktreeMetaKey("turn", worktreeId));
   return store.consumers.list(worktreeId).some((record) => {
     const turn = turns[slot(record.consumer)];
     return isRecord(turn) && turn.turn === "in-turn";
@@ -1101,7 +1133,7 @@ function collapse(head, changed, stillFailing) {
 
 // src/core/delivery/consumer-version.ts
 function versionMetaKey(worktreeId) {
-  return `consumer-version:${worktreeId}`;
+  return worktreeMetaKey("consumerVersion", worktreeId);
 }
 function recordVersion(store, consumer, version) {
   writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
@@ -2378,21 +2410,6 @@ var WORKTREE_SCOPED_TABLES = [
   "consumer_views",
   "consumers"
 ];
-var WORKTREE_META_PREFIXES = [
-  "edits:",
-  "checkpoint.",
-  "rekeyed.",
-  "rekeyed-moves."
-];
-var EDIT_KEYS_PREFIX = "edit-keys:";
-function editKeysOf(key, worktreeId) {
-  try {
-    const owner = JSON.parse(key.slice(EDIT_KEYS_PREFIX.length));
-    return Array.isArray(owner) && owner[0] === worktreeId;
-  } catch {
-    return false;
-  }
-}
 function createWorktreeRepo(conn) {
   return {
     get: (id) => {
@@ -2451,17 +2468,8 @@ function createWorktreeRepo(conn) {
         for (const table of WORKTREE_SCOPED_TABLES) {
           conn.run(`DELETE FROM ${table} WHERE worktree_id = ?`, id);
         }
-        for (const prefix of WORKTREE_META_PREFIXES) {
-          conn.run("DELETE FROM meta WHERE key = ?", `${prefix}${id}`);
-        }
-        const snapshots = conn.all(
-          "SELECT key FROM meta WHERE substr(key, 1, ?) = ?",
-          EDIT_KEYS_PREFIX.length,
-          EDIT_KEYS_PREFIX
-        );
-        for (const row of snapshots) {
-          const key = str(row, "key");
-          if (editKeysOf(key, id)) conn.run("DELETE FROM meta WHERE key = ?", key);
+        for (const row of Object.keys(WORKTREE_META_ROWS)) {
+          conn.run("DELETE FROM meta WHERE key = ?", worktreeMetaKey(row, id));
         }
       });
     }
@@ -2654,10 +2662,10 @@ function moveAside(database, at2) {
 
 // src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
-  return `revision-registered:${worktreeId}`;
+  return worktreeMetaKey("registered", worktreeId);
 }
 function parkedMetaKey(worktreeId) {
-  return `revision-registered-left:${worktreeId}`;
+  return worktreeMetaKey("registeredLeft", worktreeId);
 }
 var isNumber2 = (value) => typeof value === "number";
 var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber2);
@@ -2950,7 +2958,7 @@ function planDelta(input) {
 
 // src/core/scheduler/rekeyed-record.ts
 function rekeyedMetaKey(worktreeId) {
-  return `rekeyed.${worktreeId}`;
+  return worktreeMetaKey("rekeyed", worktreeId);
 }
 var isRevision = (value) => typeof value === "number" && Number.isInteger(value);
 function readRekeyed(store, worktreeId) {
@@ -2989,7 +2997,7 @@ function pruneRekeyed(store, worktreeId, upTo) {
 
 // src/core/delivery/edits.ts
 function editsMetaKey(worktreeId) {
-  return `edits:${worktreeId}`;
+  return worktreeMetaKey("edits", worktreeId);
 }
 function readState(store, consumer) {
   const value = readSlot(store, editsMetaKey(consumer.worktreeId), consumer);
@@ -3007,8 +3015,6 @@ function editsSaid(store, consumer) {
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
-  const legacy = `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
-  if (store.meta.get(legacy) !== null) store.meta.delete(legacy);
   prune2(store, consumer.worktreeId);
 }
 function prune2(store, worktreeId) {
@@ -3138,7 +3144,7 @@ function pidNamespace() {
   }
 }
 function harnessMetaKey(worktreeId) {
-  return `harness-process:${worktreeId}`;
+  return worktreeMetaKey("harnessProcess", worktreeId);
 }
 function recordHarness(store, consumer, harness) {
   writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
@@ -3354,7 +3360,7 @@ function changedSince(store, worktreeId, revision, since) {
 }
 var DAEMON_START_GRACE_MS = 1e4;
 function livenessMetaKey(worktreeId) {
-  return `liveness-told:${worktreeId}`;
+  return worktreeMetaKey("livenessTold", worktreeId);
 }
 function toldLiveness(store, consumer) {
   const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
@@ -3382,7 +3388,7 @@ function livenessChange(store, consumer, at2) {
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
 function revisionMetaKey(worktreeId) {
-  return `revision-told:${worktreeId}`;
+  return worktreeMetaKey("revisionTold", worktreeId);
 }
 function toldRevision(store, consumer) {
   const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
@@ -3394,7 +3400,7 @@ function tellRevision(store, consumer, revision) {
 
 // src/core/delivery/turn.ts
 function turnMetaKey(worktreeId) {
-  return `turn:${worktreeId}`;
+  return worktreeMetaKey("turn", worktreeId);
 }
 var START_IDLE = { turn: "idle", testFiles: [], newTestFiles: false };
 var IN_TURN = { turn: "in-turn" };
@@ -3477,7 +3483,7 @@ function drop(store, consumer, at2) {
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
 }
 function departedMetaKey(worktreeId) {
-  return `departed:${worktreeId}`;
+  return worktreeMetaKey("departed", worktreeId);
 }
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
@@ -4155,7 +4161,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.113";
+  if (true) return "0.1.114";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
