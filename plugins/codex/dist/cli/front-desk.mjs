@@ -13,7 +13,8 @@ var PAYLOAD_SCHEMA_VERSION = 1;
 
 // src/core/types/daemon.ts
 function daemonIncarnation(daemon) {
-  return daemon === null ? null : `${daemon.squealVersion}@${daemon.startedAt}`;
+  if (daemon?.token === void 0) return null;
+  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
 // src/core/types/store-records.ts
@@ -328,6 +329,7 @@ function bind(identity) {
     root: identity.root,
     squealVersion: identity.squealVersion,
     startedAt: identity.startedAt,
+    token: identity.token,
     phase: () => phase,
     requestFullSuite: (force) => new Promise((resolve, reject) => {
       const id = randomUUID2();

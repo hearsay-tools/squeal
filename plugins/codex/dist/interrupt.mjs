@@ -20,6 +20,7 @@ var WORKTREE_META_ROWS = {
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+  daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -1109,6 +1110,9 @@ function storePaths(commonDir) {
     locksDir: join3(dir, "locks")
   };
 }
+function lockFileFor(commonDir, worktreeId) {
+  return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+}
 
 // src/core/store/schema.ts
 var V1 = `
@@ -1796,7 +1800,13 @@ function createRunRepo(conn) {
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
       return row === null ? null : toRun(row);
-    }
+    },
+    inFlight: (worktreeId, startedSince) => conn.all(
+      `SELECT * FROM runs WHERE worktree_id = ? AND end_state IS NULL AND started_at >= ?
+           ORDER BY started_at, rowid`,
+      worktreeId,
+      startedSince
+    ).map(toRun)
   };
 }
 function toRun(row) {
@@ -2264,7 +2274,36 @@ var WORKTREE_SCOPED_TABLES = [
   "consumer_views",
   "consumers"
 ];
+var tokenKey = (id) => worktreeMetaKey("daemonToken", id);
 function createWorktreeRepo(conn) {
+  const tokenOf = (id, startedAt, version) => {
+    const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
+    let value = null;
+    try {
+      value = raw === null ? null : JSON.parse(str(raw, "value"));
+    } catch {
+      return void 0;
+    }
+    return isRecord(value) && value.startedAt === startedAt && value.squealVersion === version && typeof value.token === "string" ? value.token : void 0;
+  };
+  const writeToken = (id, d) => {
+    if (d.token === void 0) {
+      conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
+      return;
+    }
+    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    conn.run(
+      "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      tokenKey(id),
+      JSON.stringify(value)
+    );
+  };
+  const toRecord = (row) => {
+    const record = fromRow(row);
+    const d = record.daemon;
+    const token = d === null ? void 0 : tokenOf(record.id, d.startedAt, d.squealVersion);
+    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, token } };
+  };
   return {
     get: (id) => {
       const row = conn.get("SELECT * FROM worktrees WHERE id = ?", id);
@@ -2294,9 +2333,11 @@ function createWorktreeRepo(conn) {
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null
       );
+      if (d !== null) writeToken(record.id, d);
     },
     // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
-    // the start time and version too, the identity `lastDaemon` reads (task 001-268); with no
+    // the start time and version too, and the token row, the identity `lastDaemon` reads (tasks
+    // 001-268, 001-270); with no
     // socket every other read finds no daemon.
     setDaemon: (id, d) => {
       conn.run(
@@ -2312,6 +2353,7 @@ function createWorktreeRepo(conn) {
         d?.squealVersion ?? null,
         id
       );
+      if (d !== null) writeToken(id, d);
     },
     heartbeat: (id, at) => {
       conn.run(
@@ -2327,7 +2369,9 @@ function createWorktreeRepo(conn) {
       );
       const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
       if (row === null || startedAt === null) return null;
-      return { startedAt, squealVersion: strOrNull(row, "daemon_version") };
+      const squealVersion2 = strOrNull(row, "daemon_version");
+      const token = tokenOf(id, startedAt, squealVersion2);
+      return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
     },
     remove: (id) => {
       conn.transaction(() => {
@@ -2342,7 +2386,7 @@ function createWorktreeRepo(conn) {
     }
   };
 }
-function toRecord(row) {
+function fromRow(row) {
   const socketPath = strOrNull(row, "daemon_socket");
   const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {
@@ -2987,6 +3031,80 @@ function recordHarness(store, consumer, harness) {
   writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
 }
 
+// src/core/status/died.ts
+import { existsSync as existsSync4 } from "node:fs";
+
+// src/core/daemon/lock.ts
+import { mkdirSync as mkdirSync2 } from "node:fs";
+import { dirname as dirname2 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+function acquireDaemonLock(path) {
+  const db = lockDatabase(path);
+  let lock;
+  try {
+    lock = tryLock(db);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  if (lock === null) db.close();
+  return lock;
+}
+function lockDatabase(path) {
+  mkdirSync2(dirname2(path), { recursive: true });
+  const db = new DatabaseSync3(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  return db;
+}
+function tryLock(db) {
+  try {
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    if (isBusy(error)) return null;
+    throw error;
+  }
+  let held = true;
+  return {
+    release() {
+      if (!held) return;
+      held = false;
+      try {
+        db.exec("ROLLBACK");
+      } finally {
+        db.close();
+      }
+    }
+  };
+}
+
+// src/core/status/died.ts
+function withDeath(store, worktree, live) {
+  const record = worktree?.daemon ?? null;
+  if (live.state !== "down" || worktree === null || record === null) return live;
+  const { id } = worktree;
+  if (readDaemonNotes(store, id).some((note) => note.at >= record.heartbeatAt)) return live;
+  if (!daemonGone(worktree)) return live;
+  const runs = store.runs.inFlight(id, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
+  return { ...live, died: { runs } };
+}
+function daemonGone(worktree) {
+  const path = lockFileFor(worktree.commonDir, worktree.id);
+  if (!existsSync4(path)) return false;
+  try {
+    const lock = acquireDaemonLock(path);
+    lock?.release();
+    return lock !== null;
+  } catch {
+    return false;
+  }
+}
+
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync4 } from "node:fs";
 import { join as join6 } from "node:path";
@@ -3064,7 +3182,11 @@ function snapshot(store, worktreeId, root, now) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+  const daemon = withDeath(
+    store,
+    worktree,
+    liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+  );
   const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -3180,9 +3302,11 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
+  const worktree = store.worktrees.get(worktreeId);
   return {
     ...header,
-    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
+    // Task 001-263: a daemon that died without its stop note is named, as status names it.
+    daemon: withDeath(store, worktree, worktreeLiveness(worktree, now)),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
@@ -3546,20 +3670,20 @@ var VITEST_ONLY = {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname2, join as join7 } from "node:path";
+import { dirname as dirname3, join as join7 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.119";
+  if (true) return "0.1.120";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
-  let dir = dirname2(fileURLToPath(module));
+  let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
     const version = readVersion(join7(dir, "package.json"));
     if (version !== null) return version;
-    const parent = dirname2(dir);
+    const parent = dirname3(dir);
     if (parent === dir) return null;
     dir = parent;
   }
@@ -3717,7 +3841,7 @@ function slowSentence(command, naming) {
 var PRIMER = primer();
 
 // src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/harness/codex/handlers.ts
 var interrupt = (input, location2, deps) => withContext(input, location2, deps, async (context) => {
