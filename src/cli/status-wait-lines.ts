@@ -1,7 +1,7 @@
 import { runnerPartText } from "../core/state/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, StatusSnapshot } from "../core/types/index.js";
-import type { StatusWait, StatusWaitEdit } from "./status-wait.js";
+import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 
 /** A wait that ended with a snapshot. */
 export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
@@ -11,10 +11,20 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
  * (`StatusWaitEdit`), what it held for and what else is pending.
  */
 export function waitLine(wait: EndedWait, command = "squeal"): string {
+  const line = ownLine(wait, command);
+  return wait.slow === undefined || wait.outcome === "no-daemon"
+    ? line
+    : `${line}${slowText(wait.slow)}`;
+}
+
+function ownLine(wait: EndedWait, command: string): string {
   const { outcome, transitions, edit, result: snapshot } = wait;
   const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
   const at = `at revision ${snapshot.revision}`;
-  const running = outcome === "quiet" ? checkpointText(snapshot, command) : "";
+  const running =
+    outcome === "quiet"
+      ? `${checkpointText(snapshot, command)}${wait.slow === undefined ? slowTierText(snapshot, command) : ""}`
+      : "";
   if (edit !== undefined && outcome !== "no-daemon") {
     return `${editLine(edit, wait, at, after)}${running}`;
   }
@@ -64,6 +74,33 @@ function checkpointText(snapshot: StatusSnapshot, command: string): string {
   return (
     `; ${what} is still running (${checkpoint.done} of ${plural(checkpoint.total, "test file")} done), ` +
     `which this wait does not hold for: \`${command} run --all --wait\` waits for it`
+  );
+}
+
+/**
+ * Task 001-282: what `run --slow --wait` held for, the slow files its
+ * request queued, and those of them still pending, by path.
+ */
+function slowText(slow: StatusWaitSlow): string {
+  if (slow.held === 0) return "";
+  const queued = `${plural(slow.held, "slow file")} run --slow queued`;
+  if (slow.pending.length === 0) {
+    return `; the ${queued} ${slow.held === 1 ? "has its result" : "have their results"}`;
+  }
+  return `; ${slow.pending.length} of the ${queued} pending: ${slow.pending.join(", ")}`;
+}
+
+/**
+ * Task 001-282: a quiet `status --wait` says the slow files it did not wait
+ * for, those not current (spec 004 D9), and the command that does.
+ */
+function slowTierText(snapshot: StatusSnapshot, command: string): string {
+  const tier = snapshot.slowTier;
+  const open = tier === undefined ? 0 : tier.pending + tier.notRun;
+  if (open === 0) return "";
+  return (
+    `; ${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current, ` +
+    `which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${open === 1 ? "it" : "them"}`
   );
 }
 
