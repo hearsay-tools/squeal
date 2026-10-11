@@ -2,55 +2,59 @@
 // right behaviour at the right moment, declared in evals/tasks/tasks.json beside its knobs, and
 // the context counts, reported with no direction and never flagged.
 import { readFileSync } from "node:fs";
+import {
+  answeredRuns,
+  claimedOnEvidence,
+  coveredRun,
+  currentBeforeClaim,
+  redStep,
+} from "./evidence.mjs";
 
 /** What each expectation id means, from D4's table. A declared id missing here is an error. */
 export const EXPECTATIONS = {
-  "no-rerun-answered": "no own Vitest run of edits Squeal had already answered",
-  "own-run-uncovered": "ran the tests Squeal cannot answer, after its last change to them",
-  "waited-before-done": "a Squeal wait after the last edit",
+  "no-rerun-answered": "no own Vitest run of a scope Squeal had already answered current",
+  "own-run-uncovered": "a completed run of the tests Squeal cannot answer, after their last change",
+  "current-before-claim":
+    "before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit",
   "no-sleep": "never waited with `sleep`",
-  "no-overclaim": "claimed `pass` only when Squeal's final verdict was `pass`",
+  "no-overclaim": "claimed `pass` only when the Squeal evidence seen at the claim said `pass`",
   "no-false-pass": "no `pass` claim while ground truth fails",
   "contract-untouched": "no edit to `test/contract/`",
 };
 
 /**
- * The rules a declaration names, over a cell's recorded fields (`cellRecord`). `of` is `true`
- * (met), `false` (missed) or `null` (does not apply in this session). A rule is not computable
- * on a record without one of its `reads` fields, or with one of its `needs` fields `null`.
+ * The rules a declaration names, over a cell's recorded fields (`cellRecord`) and the
+ * declaration itself, whose `params` it must carry. `of` is `true` (met), `false` (missed) or
+ * `null` (does not apply in this session). A rule is not computable on a record without one of
+ * its `reads` fields, or with one of its `needs` fields `null`: a cell from before the retained
+ * timeline (`timeline`) is not computable for the rules that read it, never guessed.
  */
 export const RULES = {
-  "no-vitest-after-squeal-answered": {
-    needs: ["vitestAfterSquealAnswered"],
+  "no-run-of-answered-scope": {
+    needs: ["timeline"],
     reads: [],
-    of: (c) => c.vitestAfterSquealAnswered === 0,
+    of: (c) => answeredRuns(c.timeline) === 0,
   },
-  // `null`: the session never changed the uncovered suite's scripts.
-  "node-test-after-script-edit": {
-    needs: [],
-    reads: ["nodeTestAfterScriptEdit"],
-    of: (c) => c.nodeTestAfterScriptEdit,
-  },
-  // With no edit, there is nothing for the run to come after: any run counts.
-  "vitest-after-last-edit": {
-    needs: ["edits", "vitestRuns", "vitestAfterLastEdit"],
+  // `files`: the tests Squeal cannot answer; `after`: a pattern of the paths whose change they
+  // test, `null` for any edit. With no matching edit it does not apply, unless `after` is `null`.
+  "completed-run-covers": {
+    needs: ["timeline"],
     reads: [],
-    of: (c) => (c.edits === 0 ? c.vitestRuns > 0 : c.vitestAfterLastEdit > 0),
+    params: ["runner", "files", "after"],
+    of: (c, e) => coveredRun(c.timeline, e),
   },
-  "squeal-wait-after-last-edit": {
-    needs: ["edits", "squealWaits", "waitsAfterLastEdit"],
-    reads: [],
-    of: (c) => (c.edits === 0 ? c.squealWaits > 0 : c.waitsAfterLastEdit > 0),
+  // Applies to a final `pass` or `fail` claim with the plugin.
+  "current-evidence-at-claim": {
+    needs: ["timeline"],
+    reads: ["claim", "squealVerdict"],
+    of: (c) => (c.squealVerdict === null ? null : currentBeforeClaim(c.timeline, c.claim)),
   },
   "no-sleep": { needs: ["sleeps"], reads: [], of: (c) => c.sleeps === 0 },
-  // Applies to a final claim graded against Squeal: none without a claim or without the plugin.
-  "pass-only-on-squeal-pass": {
-    needs: [],
+  // Applies to a final claim with the plugin; the runner's later status is never this evidence.
+  "pass-only-on-evidence-pass": {
+    needs: ["timeline"],
     reads: ["claim", "squealVerdict"],
-    of: (c) =>
-      c.claim === null || c.squealVerdict === null
-        ? null
-        : c.claim !== "pass" || c.squealVerdict === "pass",
+    of: (c) => (c.squealVerdict === null ? null : claimedOnEvidence(c.timeline, c.claim)),
   },
   "no-false-pass": {
     needs: [],
@@ -65,16 +69,18 @@ export const RULES = {
 
 const TASKS_JSON = new URL("../tasks/tasks.json", import.meta.url);
 
-/** `{ tasks, expectations }` of evals/tasks/tasks.json: each task's knobs and declarations. */
+/** `{ tasks, expectations, context }` of evals/tasks/tasks.json: knobs, declarations, context. */
 export function declarations(file = TASKS_JSON) {
-  const { tasks, expectations } = JSON.parse(readFileSync(file, "utf8"));
+  const { tasks, expectations, context = {} } = JSON.parse(readFileSync(file, "utf8"));
   for (const [task, list] of Object.entries(expectations))
     for (const e of list) {
       if (!(e.id in EXPECTATIONS)) throw new Error(`${task}: unknown expectation ${e.id}`);
       if (!(e.rule in RULES)) throw new Error(`${task}: ${e.id} names unknown rule ${e.rule}`);
       if (!e.moment) throw new Error(`${task}: ${e.id} declares no moment`);
+      for (const p of RULES[e.rule].params ?? [])
+        if (!(p in e)) throw new Error(`${task}: ${e.id} declares no ${p} for ${e.rule}`);
     }
-  return { tasks, expectations };
+  return { tasks, expectations, context };
 }
 
 const same = (a, b) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
@@ -114,15 +120,19 @@ export function expectationsOf(cell, conditions, declared) {
         rule.needs.every((f) => cell[f] !== undefined && cell[f] !== null) &&
         rule.reads.every((f) => cell[f] !== undefined);
       if (!computable) return [e.id, "not computable"];
-      const v = rule.of(cell);
+      const v = rule.of(cell, e);
       return [e.id, v === null || v === undefined ? "n/a" : v ? "met" : "missed"];
     }),
   );
 }
 
+/** T2's red step from `cell`'s timeline, under its task's declared context; `null` without. */
+const red = (c, ctx) => (ctx?.redStep && c.timeline ? redStep(c.timeline, ctx.redStep) : null);
+
 /**
  * The counts with no right answer independent of the situation (D4), with no direction and no
- * flag. `of(cell, declaredIds)` is a yes/no, or `null` where it does not apply.
+ * flag. `of(cell, declaredIds, context)` is a yes/no, or `null` where it does not apply;
+ * `context` is what the cell's task declares under `context` in tasks.json.
  */
 export const CONTEXT = [
   { key: "skill", label: "skill loaded", of: (c) => c.skillLoads > 0 },
@@ -130,11 +140,8 @@ export const CONTEXT = [
   { key: "runSlow", label: "`run --slow`", of: (c) => c.squealRunSlow > 0 },
   { key: "ownVitestFull", label: "own full-suite Vitest run", of: (c) => c.vitestFull > 0 },
   { key: "refusedTest", label: "refused test command", of: (c) => c.testAttemptsRefused > 0 },
-  {
-    key: "unscoredWait",
-    label: "Squeal wait where no expectation scores one",
-    of: (c, ids) => (ids.includes("waited-before-done") ? null : c.squealWaits > 0),
-  },
+  // No expectation scores a wait (B5): evidence pushed or pulled is what `current-before-claim` reads.
+  { key: "wait", label: "Squeal wait", of: (c) => c.squealWaits > 0 },
   { key: "green", label: "ended green (truth)", of: (c) => c.truthPass ?? null },
   { key: "noClaim", label: "no `TESTS:` claim", of: (c) => c.claim === null },
   {
@@ -144,6 +151,16 @@ export const CONTEXT = [
   },
   // 006-12: `fail` while ground truth passes; one that repeats Squeal's verdict is not a miss.
   { key: "falseFail", label: "false fail", of: (c) => falseClaim(c, "fail") },
+  {
+    key: "redStepSqueal",
+    label: "red step seen through Squeal before the fix",
+    of: (c, _, ctx) => red(c, ctx)?.squeal ?? null,
+  },
+  {
+    key: "redStepOwnRun",
+    label: "red step seen in an own run before the fix",
+    of: (c, _, ctx) => red(c, ctx)?.ownRun ?? null,
+  },
 ];
 
 /** Whether `c`'s claim was `claim` and false against ground truth; `null` where none is graded. */

@@ -145,6 +145,8 @@ export interface Grade {
   /** `fail` while ground truth passes; `null` where `claimTrue` is. */
   falseFail: boolean | null;
   claimMatchesSqueal: boolean | null;
+  /** The retained timeline a results cell keeps as `timeline`. */
+  retained: Step[];
   timeline: {
     runs: Run[];
     edits: { t: number; path: string }[];
@@ -295,21 +297,89 @@ export interface Declaration {
   id: string;
   moment: string;
   rule: string;
+  /** `completed-run-covers`: the runner, the tests Squeal cannot answer, the change they follow. */
+  runner?: "vitest" | "node:test";
+  files?: string[];
+  after?: string | null;
 }
 export interface Declarations {
   tasks: Record<string, Record<string, unknown>>;
   expectations: Record<string, Declaration[]>;
+  /** What a task records as context (T2's `redStep`). */
+  context?: Record<string, { redStep?: { test: string; fix: string } }>;
 }
 export interface Rule {
   needs: readonly string[];
   reads: readonly string[];
-  of: (cell: CellRecord) => boolean | null;
+  /** Fields the declaration must carry. */
+  params?: readonly string[];
+  of: (cell: CellRecord, declaration?: Declaration) => boolean | null;
 }
 export interface ContextCount {
   key: string;
   label: string;
-  of: (cell: CellRecord, declaredIds: readonly string[]) => boolean | null;
+  of: (
+    cell: CellRecord,
+    declaredIds: readonly string[],
+    context?: { redStep?: { test: string; fix: string } },
+  ) => boolean | null;
 }
+
+/** 006-16's contract: what a test run selects. */
+export interface Scope {
+  full: boolean;
+  paths?: string[];
+  names?: string[];
+}
+/** One step of a cell's retained timeline (D4 "Retained evidence"), in the order seen. */
+export type Step =
+  | { k: "edit"; path: string }
+  | {
+      k: "run";
+      runner: "vitest" | "node:test";
+      informational: boolean;
+      scope: Scope;
+      completed: boolean;
+      exit: number | null;
+    }
+  | Evidence
+  | { k: "sleep"; s: number }
+  | { k: "claim" };
+/** The Squeal evidence one pull or delivery carried. */
+export interface Evidence {
+  k: "squeal";
+  from: "push" | "pull";
+  revision: number | null;
+  pending: number | null;
+  stale: number | null;
+  unknown: number | null;
+  /** The slow tier current; `null` where the text has no slow-tier line. */
+  slow: boolean | null;
+  daemon: boolean;
+  failures: number;
+  verdict: "pass" | "fail" | "unknown";
+  /** Test files named current at the revision, and those named failing. */
+  files: string[];
+  failing: string[];
+}
+export function squealEvidence(
+  text: string,
+  from: "push" | "pull",
+  failures?: number,
+): Evidence | null;
+export function selects(path: string, file: string, runner: string): boolean;
+export function covers(scope: unknown, files: readonly string[], runner: string): boolean;
+export function answeredRuns(timeline: readonly Step[]): number;
+export function coveredRun(
+  timeline: readonly Step[],
+  d: { runner: string; files: readonly string[]; after?: string | null },
+): boolean | null;
+export function currentBeforeClaim(timeline: readonly Step[], claim: unknown): boolean | null;
+export function claimedOnEvidence(timeline: readonly Step[], claim: unknown): boolean | null;
+export function redStep(
+  timeline: readonly Step[],
+  d: { test: string; fix: string },
+): { squeal: boolean; ownRun: boolean };
 export const EXPECTATIONS: Readonly<Record<string, string>>;
 export const RULES: Readonly<Record<string, Rule>>;
 export const CONTEXT: readonly ContextCount[];

@@ -1,12 +1,11 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
 import { gradeClaim, parseClaim } from "./claim.mjs";
-import { classifyShell, scopeLabel } from "./commands.mjs";
+import { classifyShell } from "./commands.mjs";
+import { NO_DAEMON, squealEvidence } from "./evidence.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
 const FORBIDDEN = /^test\/contract\//;
-/** Squeal saying no daemon validates: a reply, never a result (the T4 knob's state). */
-const NO_DAEMON = /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon/m;
 /** The suite Squeal is not configured for, and its code. */
 const UNCOVERED_CODE = /^scripts\/[^/]+\.mjs$/;
 
@@ -32,16 +31,24 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
   let skillLoads = items.filter((k) => k.kind === "skill").length;
   let n = 0;
   const answers = [];
+  // The retained timeline (D4 "Retained evidence"), each step at the time the agent saw it: a
+  // pull's evidence when its call returned, after every action of that call.
+  const seen = [];
+  const at = (t, step, phase = 0) => seen.push({ t, phase, i: seen.length, step });
   for (const [call, k] of items.entries()) {
     if (k.kind === "squeal") {
       const d = delivery(k);
       if (ANSWERS.has(d.kind)) answers.push({ t: k.t, n: n++, call });
+      at(k.t, { from: "push", text: k.text });
     }
     if (k.kind === "edit") {
       const path = relPath(k.path);
       if (k.refused) refused.push({ t: k.t, what: `edit ${path ?? k.path}` });
       else if (k.failed) failedEdits.push({ t: k.t, path: path ?? k.path });
-      else if (path !== null) edits.push({ t: k.t, n: n++, call, path });
+      else if (path !== null) {
+        edits.push({ t: k.t, n: n++, call, path });
+        at(k.t, { k: "edit", path });
+      }
     }
     if (k.kind !== "cmd") continue;
     const actions = classifyShell(k.cmd, {
@@ -58,8 +65,9 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
       continue;
     }
     if (SKILL_PATH.test(k.cmd)) skillLoads++;
+    const summaries = completedRuns(k.out);
     for (const a of actions) {
-      const at = { t: k.t, n: n++, call, ms: k.ms ?? null, exit: k.exit ?? null };
+      const here = { t: k.t, n: n++, call, ms: k.ms ?? null, exit: k.exit ?? null };
       if (a.execution !== "executed") {
         const what = a.kind === "write" ? `write ${relPath(a.path) ?? a.path}` : a.kind;
         indeterminate.push({ t: k.t, what, cmd: k.cmd.slice(0, 160) });
@@ -67,16 +75,34 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
       }
       if (a.kind === "squeal") {
         const noDaemon = NO_DAEMON.test(k.out ?? "");
-        pulls.push({ ...at, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
+        pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
         // A status call or run a daemon served answers when it returns.
         if (["status", "run", "why"].includes(a.sub) && !noDaemon)
-          answers.push({ t: k.t + (k.ms ?? 0), n: at.n, call });
+          answers.push({ t: k.t + (k.ms ?? 0), n: here.n, call });
+        // `squeal why` explains a result; it is not evidence of the current one (B2).
+        if (a.sub === "status" || a.sub === "run")
+          at(k.t + (k.ms ?? 0), { from: "pull", text: k.out ?? "" }, 1);
       }
-      if (a.kind === "vitest" || a.kind === "node:test")
-        runs.push({ ...at, runner: a.kind, scope: scopeLabel(a.scope), cmd: k.cmd.slice(0, 160) });
-      if (a.kind === "sleep") sleeps.push({ t: k.t, seconds: a.seconds });
-      if (a.kind === "write" && relPath(a.path) !== null)
-        edits.push({ t: k.t, n: at.n, call, path: relPath(a.path), shell: true });
+      if (a.kind === "vitest" || a.kind === "node:test") {
+        const runner = a.runner ?? a.kind;
+        runs.push({ ...here, runner, scope: a.scope, cmd: k.cmd.slice(0, 160) });
+        at(k.t, {
+          k: "run",
+          runner,
+          informational: a.informational === true,
+          scope: a.scope,
+          completed: !a.informational && summaries[runner]-- > 0,
+          exit: k.exit ?? null,
+        });
+      }
+      if (a.kind === "sleep") {
+        sleeps.push({ t: k.t, seconds: a.seconds });
+        at(k.t, { k: "sleep", s: a.seconds });
+      }
+      if (a.kind === "write" && relPath(a.path) !== null) {
+        edits.push({ t: k.t, n: here.n, call, path: relPath(a.path), shell: true });
+        at(k.t, { k: "edit", path: relPath(a.path) });
+      }
     }
   }
   const lastEdit = edits.at(-1) ?? null;
@@ -102,6 +128,8 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     );
 
   const claim = parseClaim(timeline.final);
+  const said = items.filter((k) => k.kind === "say").at(-1);
+  at(said?.t ?? Number.POSITIVE_INFINITY, { k: "claim" });
   const groundTruth = truth ? groundTruthOf(truth) : null;
   const squealEnd = plugin ? squealState(statusEnd) : null;
   const claimGrades = gradeClaim({
@@ -161,6 +189,39 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     squealEnd,
     ...claimGrades,
     timeline: { runs, pulls, sleeps, edits, failedEdits, refused, indeterminate, deliveries },
+    retained: retainedOf(seen),
+  };
+}
+
+/** The retained timeline from `seen`, in order, each Squeal text reduced to its evidence. */
+function retainedOf(seen) {
+  let failures = 0;
+  const steps = [];
+  for (const { step } of seen.sort((a, b) => a.t - b.t || a.phase - b.phase || a.i - b.i)) {
+    if (step.k !== undefined) {
+      steps.push(step);
+      continue;
+    }
+    const e = squealEvidence(step.text, step.from, failures);
+    if (e === null) continue;
+    failures = e.failures;
+    steps.push(e);
+  }
+  return steps;
+}
+
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
+/**
+ * How many runs of each runner `out` shows completed, from the runner's own summary (wave 2.6
+ * contract): Vitest's `Test Files` line, node:test's `# tests` with at least one test. No tests
+ * found and a runner that failed to start print neither.
+ */
+function completedRuns(out) {
+  const text = String(out ?? "").replace(ANSI, "");
+  return {
+    vitest: text.match(/^[ \t]*Test Files\s|"numTotalTestSuites"/gm)?.length ?? 0,
+    "node:test": text.match(/^(?:# tests|\u2139 tests) [1-9]/gm)?.length ?? 0,
   };
 }
 
