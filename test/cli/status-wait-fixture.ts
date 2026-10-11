@@ -77,16 +77,22 @@ export function repoWith(
   return { repo, store };
 }
 
+/** `path`'s row, written as the daemon's commit writes it: in its re-key moves too (001-265). */
 export function key(store: Store, worktreeId: string, path: string, pending: PendingPhase | null) {
-  store.testFileKeys.upsertMany([
-    {
-      worktreeId,
-      testFile: ref(path),
-      key: `key-${path}-${pending ?? "done"}` as CheckKey,
-      revision: 4 as RevisionNumber,
-      pending,
-    },
-  ]);
+  const row = {
+    worktreeId,
+    testFile: ref(path),
+    key: `key-${path}-${pending ?? "done"}` as CheckKey,
+    revision: 4 as RevisionNumber,
+    pending,
+  };
+  store.transaction(() => {
+    store.testFileKeys.upsertMany([row]);
+    recordMoves(store, worktreeId, [], [], 4 as RevisionNumber, NOW, {
+      written: [row],
+      unrecorded: [],
+    });
+  });
 }
 
 /** The file's run ended with the outcome it had: no transition. */
