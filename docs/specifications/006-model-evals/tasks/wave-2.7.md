@@ -24,3 +24,15 @@ Use /reviewer. Range `0730b6a6^..c43062d9`, 006-19's four commits on main. Limit
 - S2: two different failing checks in one file, a changed failure then a different failure.
 
 New findings count only in the changed lines. Synthetic probes only, no real subject sessions. Check in a scratch copy created at the reviewed SHA, never by building in your worktree. Never run or import `evals/bin/run-baseline.mjs`. Findings go to `../reviews/wave-2.7.md`.
+
+## 006-22 narrow review of the coordinator's fail-closed fix
+
+Use /reviewer. Asked for by the human on 2026-10-11, before the next baseline. Range `038fdd04^..038fdd04`: the coordinator's fix for B3 and S2 of `../reviews/wave-2.7.md`. Spec: `../spec.md` D4, the `own-run-uncovered` and `no-overclaim` rows as amended that day.
+
+Limited to the fix's two rules and their nearest variants:
+
+- **Unresolvable exclusions** (`evals/lib/selection.mjs`, `filtered` and `UNRESOLVED_GLOB`). Check that an exclusion the matcher cannot resolve earns no coverage, whatever it would exclude. Check that a resolvable one keeps its credit only when the run really still runs the affected tests. For variants, compare against Vitest 5.0.3's actual exclusion semantics: a resolvable glob that still hides the contract, `--exclude` given several times, an exclusion in a `vitest.config` passed with `--config`, and a glob character the pattern misses.
+- **Uncertain overflow counts** (`evals/lib/squeal-text.mjs` `failingAfter`, `evals/lib/evidence.mjs` `claimedOnEvidence` and `replayed`, `evals/lib/behaviours.mjs`). Check that a `pass` claim on uncertain evidence is `not computable` and never `met`, and that a named failing check still makes it `missed`. Check that a status or registration restores an exact count, and that an overflow with nothing failing before it stays exact. For variants: an overflow of PASS entries, uncertainty carried across a delivery with no overflow, and a regrade of a cell whose timeline was written before this fix.
+- **Does the fix only ever turn an answer into `not computable` or `missed`, never into `met`?**
+
+New findings count only in the changed lines. Synthetic probes only, no real subject sessions. Check in a scratch copy created at `038fdd04` (pass the SHA), never by building in your worktree. Never run or import `evals/bin/run-baseline.mjs`. Findings go to `../reviews/wave-2.8.md`.
