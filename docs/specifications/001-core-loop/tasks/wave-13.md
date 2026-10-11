@@ -915,3 +915,20 @@ Use /worker. Shape: defect. The board row is the brief, with `research/slow-clai
 ## 001-286 review of wave 13ak
 
 Use /reviewer on gpt-6.1-sol, after both land. Output `reviews/wave-13ak.md`. Does the nudge ever start a slow tier the policy forbids, or starve the fast lane? Can `run --slow --wait` or `status --wait` still return quiet while a slow file it owns is running, or wait forever? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-287 repair of wave 13ak
+
+Use /worker. Shape: repair. From `reviews/wave-13ak.md` (001-286) B1, B2 and S1, under the human's standing rule: the coordinator fixes first-round blockers and re-reviews them (001-288). Read the review's probes and fix paragraphs first.
+
+Outcome:
+- B1: `Scheduler.nudge` (and `SlowTier.nudge`) does nothing until the scheduler has started. The front desk's message and request callbacks catch and log any error, so none can throw out and end the daemon.
+- B2: the wait holds the slow files it recorded at its first read by their own `test_file_keys` rows. A held file counts as having its result only when its row does, whatever the live policy says later.
+- S1: slow news is counted and named as the held slow files', not attributed to the edit window's test files.
+
+Own: `src/core/scheduler/scheduler.ts` and `slow-tier.ts` (`nudge`), `src/core/daemon/front-desk.ts` and `desk.ts` (callback guards), `src/cli/status-wait.ts`, `status-wait-slow.ts` and `status-wait-lines.ts`, and tests under `test/scheduler/`, `test/daemon/` and `test/cli/`. The coordinator re-pins `KEY_FORMAT_VERSION` 8 (unreleased) and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+Done when: the review's three probes pass as tests and are red before; a nudge after start still plans the slow tier at once; a normal `run --slow --wait` still holds and then returns; lint, typecheck and the full suite are green.
+
+## 001-288 re-review of wave 13ak
+
+Use /reviewer on gpt-6.1-sol, after 001-287 lands. Output `reviews/wave-13al.md`. Second round on `reviews/wave-13ak.md` B1, B2 and S1: can any front-desk message still throw out? Can any change to the policy, a key or a row make a held wait return quiet while its file runs, or never return? Is slow news named correctly? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
