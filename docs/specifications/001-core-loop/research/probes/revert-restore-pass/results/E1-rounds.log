@@ -1,0 +1,42 @@
+2026-10-11T08:43:12+02:00 integ round 1 start load 10.20 28.03 26.50
+2026-10-11T08:44:04+02:00 integ round 1 end exit 0 load 8.83 24.67 25.44  Test Files 22 passed (22)
+2026-10-11T08:44:07+02:00 integ2 round 1 start load 8.83 24.67 25.44
+2026-10-11T08:44:41+02:00 integ2 round 1 end exit 0 load 11.15 23.51 25.03  Test Files 22 passed (22)
+2026-10-11T08:44:41+02:00 integ2 round 2 start load 11.15 23.51 25.03
+2026-10-11T08:45:15+02:00 integ2 round 2 end exit 0 load 13.21 22.69 24.70  Test Files 22 passed (22)
+2026-10-11T08:45:15+02:00 integ2 round 3 start load 13.21 22.69 24.70
+2026-10-11T08:45:53+02:00 integ2 round 3 end exit 0 load 10.82 20.91 24.01  Test Files 22 passed (22)
+2026-10-11T08:45:53+02:00 integ2 round 4 start load 10.82 20.91 24.01
+2026-10-11T08:46:27+02:00 integ2 round 4 end exit 0 load 8.66 19.44 23.42  Test Files 22 passed (22)
+2026-10-11T08:46:27+02:00 integ2 round 5 start load 8.66 19.44 23.42
+2026-10-11T08:47:01+02:00 integ2 round 5 end exit 0 load 10.09 18.54 22.97  Test Files 22 passed (22)
+2026-10-11T08:47:01+02:00 integ2 round 6 start load 10.09 18.54 22.97
+2026-10-11T08:47:34+02:00 integ2 round 6 end exit 0 load 8.83 17.29 22.39  Test Files 22 passed (22)
+2026-10-11T08:47:34+02:00 integ2 round 7 start load 8.83 17.29 22.39
+2026-10-11T08:48:08+02:00 integ2 round 7 end exit 0 load 9.41 16.62 22.00  Test Files 22 passed (22)
+2026-10-11T08:48:08+02:00 integ2 round 8 start load 9.41 16.62 22.00
+2026-10-11T08:48:41+02:00 integ2 round 8 end exit 0 load 10.52 16.05 21.61  Test Files 22 passed (22)
+2026-10-11T08:48:41+02:00 integ2 round 9 start load 10.52 16.05 21.61
+2026-10-11T08:49:15+02:00 integ2 round 9 end exit 0 load 9.21 15.11 21.09  Test Files 22 passed (22)
+2026-10-11T08:49:15+02:00 integ2 round 10 start load 9.21 15.11 21.09
+2026-10-11T08:49:54+02:00 integ2 round 10 end exit 0 load 8.70 14.25 20.54  Test Files 22 passed (22)
+2026-10-11T08:49:54+02:00 integ2 round 11 start load 8.70 14.25 20.54
+2026-10-11T08:50:27+02:00 integ2 round 11 end exit 0 load 10.11 14.14 20.31  Test Files 22 passed (22)
+2026-10-11T08:50:27+02:00 integ2 round 12 start load 10.11 14.14 20.31
+2026-10-11T08:51:01+02:00 integ2 round 12 end exit 0 load 9.80 13.67 19.93  Test Files 1 failed | 22 passed (23)
+2026-10-11T08:51:01+02:00 integ2 round 13 start load 9.80 13.67 19.93
+2026-10-11T08:51:39+02:00 integ2 round 13 end exit 0 load 12.28 13.72 19.67  Test Files 1 failed | 22 passed (23)
+2026-10-11T08:51:39+02:00 integ2 round 14 start load 12.28 13.72 19.67
+2026-10-11T08:52:17+02:00 integ2 round 14 end exit 0 load 21.55 15.67 20.09  Test Files 22 passed (22)
+2026-10-11T08:52:17+02:00 integ2 round 15 start load 21.55 15.67 20.09
+2026-10-11T08:52:52+02:00 integ2 round 15 end exit 0 load 16.21 15.03 19.72  Test Files 22 passed (22)
+2026-10-11T08:52:52+02:00 integ2 round 16 start load 16.21 15.03 19.72
+2026-10-11T08:53:34+02:00 integ2 round 16 end exit 0 load 14.45 14.84 19.44  Test Files 22 passed (22)
+2026-10-11T08:53:34+02:00 integ2 round 17 start load 14.45 14.84 19.44
+2026-10-11T08:54:12+02:00 integ2 round 17 end exit 0 load 13.93 14.71 19.23  Test Files 22 passed (22)
+2026-10-11T08:54:12+02:00 integ2 round 18 start load 13.93 14.71 19.23
+2026-10-11T08:54:45+02:00 integ2 round 18 end exit 0 load 11.04 13.91 18.79  Test Files 22 passed (22)
+2026-10-11T08:54:45+02:00 integ2 round 19 start load 11.04 13.91 18.79
+2026-10-11T08:55:24+02:00 integ2 round 19 end exit 0 load 9.69 13.26 18.37  Test Files 22 passed (22)
+2026-10-11T08:55:24+02:00 integ2 round 20 start load 9.69 13.26 18.37
+2026-10-11T08:55:58+02:00 integ2 round 20 end exit 0 load 8.89 12.71 18.02  Test Files 22 passed (22)

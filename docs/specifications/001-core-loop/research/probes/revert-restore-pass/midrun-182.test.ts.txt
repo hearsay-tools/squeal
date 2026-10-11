@@ -1,0 +1,56 @@
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { openFixture, outcomes, ref, SLOW } from "./helpers.js";
+
+/*
+ * Throwaway probe (001-182): a run loads reverted bytes by a computed import,
+ * a runner-part `invalidate` of that file lands while the reverted bytes are
+ * still on disk, then the file is restored before the run ends. Does the run's
+ * own check (001-146) still drop it?
+ */
+
+const NEW = 'export const which = "new";\n';
+const OLD = 'export const which = "old";\n';
+
+const held = (markers: string) =>
+  [
+    'import { existsSync, readFileSync, writeFileSync } from "node:fs";',
+    'import { expect, it } from "vitest";',
+    'it("loads the module while it is reverted", async () => {',
+    '  const file = new URL("../src/mod.ts", import.meta.url);',
+    '  const restored = readFileSync(file, "utf8");',
+    `  writeFileSync(file, ${JSON.stringify(OLD)});`,
+    '  const target = "../src/mod" + ".ts";',
+    "  const { which } = await import(/* @vite-ignore */ target);",
+    `  writeFileSync(${JSON.stringify(join(markers, "loaded"))}, which);`,
+    `  while (!existsSync(${JSON.stringify(join(markers, "go"))})) await new Promise((r) => setTimeout(r, 10));`,
+    "  writeFileSync(file, restored);",
+    '  expect(which).toBe("new");',
+    "});",
+    "",
+  ].join("\n");
+
+async function waitFor(path: string): Promise<void> {
+  for (let i = 0; i < 2000 && !existsSync(path); i++) await new Promise((r) => setTimeout(r, 10));
+}
+
+describe("probe 001-182: a mid-run invalidate of bytes the run read", SLOW, () => {
+  it.each([{ midRun: true }, { midRun: false }])("midRun $midRun", async ({ midRun }) => {
+    const markers = mkdtempSync("/tmp/sq-midrun-");
+    const fx = await openFixture("basic", {
+      "src/mod.ts": NEW,
+      "test/held.test.ts": held(markers),
+    });
+    const file = ref("test/held.test.ts");
+    const running = fx.adapter.run([file], fx.runOptions());
+    await waitFor(join(markers, "loaded"));
+    // A revision named src/mod.ts while it held the reverted bytes; its runner part lands now.
+    if (midRun) await fx.adapter.invalidate([{ path: "src/mod.ts", kind: "change" }]);
+    writeFileSync(join(markers, "go"), "");
+    const report = await running;
+    console.log(JSON.stringify({ midRun, completed: report.completedFiles, outcomes: outcomes(report), failure: report.failure }));
+    // What 001-146 promises: a run that loaded bytes no longer on disk is not completed.
+    expect(report.completedFiles).toEqual([]);
+  });
+});

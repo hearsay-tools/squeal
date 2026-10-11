@@ -1,0 +1,8 @@
+import { appendFileSync } from "node:fs";
+
+/** Throwaway (001-182 probe): one JSON line per event when SQ_PROBE_LOG names a file. */
+export function plog(ev: string, data: Record<string, unknown> = {}): void {
+  const file = process.env.SQ_PROBE_LOG;
+  if (!file) return;
+  appendFileSync(file, `${JSON.stringify({ t: Date.now(), ev, ...data })}\n`);
+}

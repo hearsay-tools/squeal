@@ -1,0 +1,4 @@
+repetitions 85 by (attempts, bad): {(1, False): 85}
+load range 8.7 20.5
+armed runs 85 kept 0 in-window invalidations 0 window ms max 23
+late mod.ts revisions at or below the next attempt's at: 0 []

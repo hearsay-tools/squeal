@@ -1,0 +1,48 @@
+{"t":1791701135672,"ev":"stale","loadedSince":null,"mods":[],"checks":[],"pending":[]}
+{"t":1791701135675,"ev":"run-start","files":["test/reverting.test.ts"],"loadedSince":1791701135675,"runId":"983fc4cd-9a21-4381-beb9-c078572e1a10"}
+{"t":1791701135686,"ev":"batch","trigger":"interval","paths":[],"touched":[],"revision":null}
+{"t":1791701135825,"ev":"stale","loadedSince":1791701135675,"mods":[],"checks":[],"pending":[]}
+{"t":1791701135827,"ev":"run-end","runId":"983fc4cd-9a21-4381-beb9-c078572e1a10","loadedSince":1791701135675,"ran":[],"unsure":[],"heard":[],"end":"completed","builtCompleted":["test/reverting.test.ts"],"completed":["test/reverting.test.ts"],"observed":[{"f":"test/reverting.test.ts","paths":["test/__snapshots__/reverting.test.ts.snap"]}],"failure":null}
+{"t":1791701135848,"ev":"fly","runId":"983fc4cd-9a21-4381-beb9-c078572e1a10","revision":0,"files":[{"path":"test/reverting.test.ts","key":"3a12b6f9e8501a3cadefbe5b83dbed26e67d5fc4d49b49382c18ab65b4f10074","cur":"3a12b6f9e8501a3cadefbe5b83dbed26e67d5fc4d49b49382c18ab65b4f10074","inputs":["test/__snapshots__/reverting.test.ts.snap","test/reverting.test.ts","vitest.config.ts"]}],"ranCompleted":["test/reverting.test.ts"],"ranFailure":null,"changed":[],"touchedInputs":[],"observedTouched":[],"observedChanged":[],"growth":[],"completed":["test/reverting.test.ts"],"duringRun":[]}
+{"t":1791701136062,"ev":"batch","trigger":"watch","paths":["test/reverting.test.ts"],"touched":[],"revision":1}
+{"t":1791701136063,"ev":"invalidate","paths":[{"path":"test/reverting.test.ts","kind":"change"}],"running":false}
+{"t":1791701136064,"ev":"stale","loadedSince":null,"mods":[],"checks":[],"pending":[]}
+{"t":1791701136075,"ev":"stale","loadedSince":null,"mods":[],"checks":[],"pending":[]}
+{"t":1791701136075,"ev":"run-start","files":["test/reverting.test.ts"],"loadedSince":1791701136075,"runId":"b9fa23b5-56e7-447a-959d-4e5404b8663d"}
+{"t":1791701136216,"ev":"armed","attempt":1}
+{"t":1791701136220,"ev":"stamp","id":"<fixture>/src/mod.ts","loadedAt":1791701136220,"hash":"74ee262edf6e1b70373ee8da34a83be89f363fb5","stat":{"mtimeMs":1791701136215.3408,"ctimeMs":1791701136215.3408,"size":28,"inode":2921619}}
+{"t":1791701136336,"ev":"batch","trigger":"watch","paths":["src/mod.ts"],"touched":[],"revision":2}
+{"t":1791701136337,"ev":"invalidate","paths":[{"path":"src/mod.ts","kind":"change"}],"running":true}
+{"t":1791701136338,"ev":"stale","loadedSince":null,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":true,"inv":null}],"checks":[{"file":"<fixture>/src/mod.ts","key":"<fixture>/src/mod.ts","stamp":1791701136220,"moved":null}],"pending":[]}
+{"t":1791701136339,"ev":"stale","loadedSince":null,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":false,"inv":"HARD_INVALIDATED"}],"checks":[],"pending":[]}
+{"t":1791701137726,"ev":"restored","which":"old","restored":"export const which = \"new\";\n"}
+{"t":1791701137730,"ev":"stale","loadedSince":1791701136075,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":false,"inv":"HARD_INVALIDATED"}],"checks":[],"pending":[]}
+{"t":1791701137730,"ev":"run-end","runId":"b9fa23b5-56e7-447a-959d-4e5404b8663d","loadedSince":1791701136075,"ran":[],"unsure":[],"heard":[],"end":"completed","builtCompleted":["test/reverting.test.ts"],"completed":["test/reverting.test.ts"],"observed":[{"f":"test/reverting.test.ts","paths":["test/__snapshots__/reverting.test.ts.snap"]}],"failure":null}
+{"t":1791701137748,"ev":"fly","runId":"b9fa23b5-56e7-447a-959d-4e5404b8663d","revision":1,"files":[{"path":"test/reverting.test.ts","key":"c66d33ffe4a4880ba04fdfbe0ff6e37a06e394bca509c6ef0729a4b420ca00f3","cur":"c66d33ffe4a4880ba04fdfbe0ff6e37a06e394bca509c6ef0729a4b420ca00f3","inputs":["test/__snapshots__/reverting.test.ts.snap","test/reverting.test.ts","vitest.config.ts"]}],"ranCompleted":["test/reverting.test.ts"],"ranFailure":null,"changed":[],"touchedInputs":[],"observedTouched":[],"observedChanged":[],"growth":[],"completed":["test/reverting.test.ts"],"duringRun":["src/mod.ts"]}
+{"t":1791701137761,"ev":"attempt","attempt":1,"at":0,"loaded":"old","planted":false,"load":[12.11,21.83,24.37]}
+{"t":1791701137883,"ev":"batch","trigger":"watch","paths":["src/mod.ts","test/reverting.test.ts"],"touched":[],"revision":3}
+{"t":1791701137883,"ev":"invalidate","paths":[{"path":"src/mod.ts","kind":"change"},{"path":"test/reverting.test.ts","kind":"change"}],"running":false}
+{"t":1791701137884,"ev":"stale","loadedSince":null,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":false,"inv":"HARD_INVALIDATED"}],"checks":[],"pending":[]}
+{"t":1791701137890,"ev":"stale","loadedSince":null,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":false,"inv":"HARD_INVALIDATED"}],"checks":[],"pending":[]}
+{"t":1791701137890,"ev":"run-start","files":["test/reverting.test.ts"],"loadedSince":1791701137890,"runId":"d02c1f66-9d4b-4439-9a9f-ecc6737bc237"}
+{"t":1791701138193,"ev":"armed","attempt":2}
+{"t":1791701138195,"ev":"stamp","id":"<fixture>/src/mod.ts","loadedAt":1791701138194,"hash":"74ee262edf6e1b70373ee8da34a83be89f363fb5","stat":{"mtimeMs":1791701138192.3584,"ctimeMs":1791701138192.3584,"size":28,"inode":2921619}}
+{"t":1791701138198,"ev":"restored","which":"old","restored":"export const which = \"new\";\n"}
+{"t":1791701138207,"ev":"stale","loadedSince":1791701137890,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":true,"inv":null}],"checks":[{"file":"<fixture>/src/mod.ts","key":"<fixture>/src/mod.ts","stamp":1791701138194,"moved":1791701138194}],"pending":[]}
+{"t":1791701138208,"ev":"run-end","runId":"d02c1f66-9d4b-4439-9a9f-ecc6737bc237","loadedSince":1791701137890,"ran":["<fixture>/src/mod.ts"],"unsure":[],"heard":[],"end":"completed","builtCompleted":["test/reverting.test.ts"],"completed":[],"observed":[{"f":"test/reverting.test.ts","paths":["test/__snapshots__/reverting.test.ts.snap"]}],"failure":"vitest adapter: src/mod.ts changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)"}
+{"t":1791701138221,"ev":"fly","runId":"d02c1f66-9d4b-4439-9a9f-ecc6737bc237","revision":3,"files":[{"path":"test/reverting.test.ts","key":"a0a794d1740257031c4366b1cb5f8b88fcd50418366d4cb6b328b8161d3b0fa3","cur":"a0a794d1740257031c4366b1cb5f8b88fcd50418366d4cb6b328b8161d3b0fa3","inputs":["test/__snapshots__/reverting.test.ts.snap","test/reverting.test.ts","vitest.config.ts"]}],"ranCompleted":[],"ranFailure":"vitest: vitest adapter: src/mod.ts changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)","changed":[],"touchedInputs":[],"observedTouched":[],"observedChanged":[],"growth":[],"completed":[],"duringRun":[]}
+{"t":1791701138302,"ev":"batch","trigger":"watch","paths":[],"touched":["src/mod.ts"],"revision":null}
+{"t":1791701138302,"ev":"invalidate","paths":[{"path":"src/mod.ts","kind":"touch"}],"running":false}
+{"t":1791701138371,"ev":"attempt","attempt":2,"at":2,"loaded":"old","planted":false,"load":[12.11,21.83,24.37]}
+{"t":1791701138495,"ev":"batch","trigger":"watch","paths":["test/reverting.test.ts"],"touched":[],"revision":4}
+{"t":1791701138495,"ev":"invalidate","paths":[{"path":"test/reverting.test.ts","kind":"change"}],"running":false}
+{"t":1791701138496,"ev":"stale","loadedSince":null,"mods":[],"checks":[],"pending":[]}
+{"t":1791701138505,"ev":"stale","loadedSince":null,"mods":[],"checks":[],"pending":[]}
+{"t":1791701138505,"ev":"run-start","files":["test/reverting.test.ts"],"loadedSince":1791701138505,"runId":"398b7ab8-0df4-455f-b071-4da803b87f13"}
+{"t":1791701138639,"ev":"armed","attempt":3}
+{"t":1791701138641,"ev":"stamp","id":"<fixture>/src/mod.ts","loadedAt":1791701138640,"hash":"74ee262edf6e1b70373ee8da34a83be89f363fb5","stat":{"mtimeMs":1791701138638.3625,"ctimeMs":1791701138638.3625,"size":28,"inode":2921619}}
+{"t":1791701138643,"ev":"restored","which":"old","restored":"export const which = \"new\";\n"}
+{"t":1791701138649,"ev":"stale","loadedSince":1791701138505,"mods":[{"env":"ssr","id":"<fixture>/src/mod.ts","attached":true,"tr":true,"inv":null}],"checks":[{"file":"<fixture>/src/mod.ts","key":"<fixture>/src/mod.ts","stamp":1791701138640,"moved":1791701138640}],"pending":[]}
+{"t":1791701138649,"ev":"run-end","runId":"398b7ab8-0df4-455f-b071-4da803b87f13","loadedSince":1791701138505,"ran":["<fixture>/src/mod.ts"],"unsure":[],"heard":[],"end":"completed","builtCompleted":["test/reverting.test.ts"],"completed":[],"observed":[{"f":"test/reverting.test.ts","paths":["test/__snapshots__/reverting.test.ts.snap"]}],"failure":"vitest adapter: src/mod.ts changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)"}
+{"t":1791701138660,"ev":"fly","runId":"398b7ab8-0df4-455f-b071-4da803b87f13","revision":4,"files":[{"path":"test/reverting.test.ts","key":"6748f18c2f7660a8680e02bb4ddd372b7932d7c5de709417dcfd6b0460529232","cur":"6748f18c2f7660a8680e02bb4ddd372b7932d7c5de709417dcfd6b0460529232","inputs":["test/__snapshots__/reverting.test.ts.snap","test/reverting.test.ts","vitest.config.ts"]}],"ranCompleted":[],"ranFailure":"vitest: vitest adapter: src/mod.ts changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)","changed":[],"touchedInputs":[],"observedTouched":[],"observedChanged":[],"growth":[],"completed":[],"duringRun":[]}
+{"t":1791701138677,"ev":"attempt","attempt":3,"at":3,"loaded":"old","planted":true,"load":[11.7,21.59,24.28]}

@@ -1,0 +1,134 @@
+{
+ "id": "2026-10-11T06-45-34-243Z-00e8b6de",
+ "planted": true,
+ "state": [
+  "unknown unknown",
+  "unknown unknown"
+ ],
+ "loadStart": [
+  12.11,
+  21.83,
+  24.37
+ ],
+ "loadEnd": [
+  11.7,
+  21.59,
+  24.28
+ ],
+ "revisions": [
+  {
+   "number": 1,
+   "created_at": 1791701136060,
+   "trigger": "watch",
+   "changes": "[{\"path\":\"test/reverting.test.ts\",\"oldHash\":\"ce30c4295269c30e57cf2b63ed3d162e040eea9b\",\"newHash\":\"89ecbbf709b1fff60e73085c037dd90b1896854f\"}]"
+  },
+  {
+   "number": 2,
+   "created_at": 1791701136336,
+   "trigger": "watch",
+   "changes": "[{\"path\":\"src/mod.ts\",\"oldHash\":\"9f31f655b35b1e437db2a820a3c14d7eb63696c5\",\"newHash\":\"878d4b622653cd4a488d17453ce71d9864a8c6fd\"}]"
+  },
+  {
+   "number": 3,
+   "created_at": 1791701137882,
+   "trigger": "watch",
+   "changes": "[{\"path\":\"src/mod.ts\",\"oldHash\":\"878d4b622653cd4a488d17453ce71d9864a8c6fd\",\"newHash\":\"9f31f655b35b1e437db2a820a3c14d7eb63696c5\"},{\"path\":\"test/reverting.test.ts\",\"oldHash\":\"89ecbbf709b1fff60e73085c037dd90b1896854f\",\"newHash\":\"50224ad5c7eed30817210ec8f369bde1c3b8e555\"}]"
+  },
+  {
+   "number": 4,
+   "created_at": 1791701138494,
+   "trigger": "watch",
+   "changes": "[{\"path\":\"test/reverting.test.ts\",\"oldHash\":\"50224ad5c7eed30817210ec8f369bde1c3b8e555\",\"newHash\":\"79fa3e0855cc473c2c0a75c835a3fb87faf2e34a\"}]"
+  }
+ ],
+ "runs": [
+  {
+   "id": "983fc4cd-9a21-4381-beb9-c078572e1a10",
+   "revision": 0,
+   "test_files": "[{\"project\":\"\",\"path\":\"test/reverting.test.ts\"}]",
+   "started_at": 1791701135659,
+   "ended_at": 1791701135849,
+   "end_state": "completed"
+  },
+  {
+   "id": "b9fa23b5-56e7-447a-959d-4e5404b8663d",
+   "revision": 1,
+   "test_files": "[{\"project\":\"\",\"path\":\"test/reverting.test.ts\"}]",
+   "started_at": 1791701136073,
+   "ended_at": 1791701137748,
+   "end_state": "completed"
+  },
+  {
+   "id": "d02c1f66-9d4b-4439-9a9f-ecc6737bc237",
+   "revision": 3,
+   "test_files": "[{\"project\":\"\",\"path\":\"test/reverting.test.ts\"}]",
+   "started_at": 1791701137889,
+   "ended_at": 1791701138221,
+   "end_state": "completed"
+  },
+  {
+   "id": "398b7ab8-0df4-455f-b071-4da803b87f13",
+   "revision": 4,
+   "test_files": "[{\"project\":\"\",\"path\":\"test/reverting.test.ts\"}]",
+   "started_at": 1791701138504,
+   "ended_at": 1791701138660,
+   "end_state": "completed"
+  }
+ ],
+ "results": [
+  {
+   "test_path": "test/reverting.test.ts",
+   "full_name": "reverts the module while it loads it",
+   "key": "3a12b6f9e8501a3cadefbe5b83dbed26e67d5fc4d49b49382c18ab65b4f10074",
+   "outcome": "pass",
+   "run_id": "983fc4cd-9a21-4381-beb9-c078572e1a10",
+   "revision": 0,
+   "recorded_at": 1791701135848
+  },
+  {
+   "test_path": "test/reverting.test.ts",
+   "full_name": "",
+   "key": "3a12b6f9e8501a3cadefbe5b83dbed26e67d5fc4d49b49382c18ab65b4f10074",
+   "outcome": "pass",
+   "run_id": "983fc4cd-9a21-4381-beb9-c078572e1a10",
+   "revision": 0,
+   "recorded_at": 1791701135848
+  },
+  {
+   "test_path": "test/reverting.test.ts",
+   "full_name": "reverts the module while it loads it",
+   "key": "c66d33ffe4a4880ba04fdfbe0ff6e37a06e394bca509c6ef0729a4b420ca00f3",
+   "outcome": "pass",
+   "run_id": "b9fa23b5-56e7-447a-959d-4e5404b8663d",
+   "revision": 1,
+   "recorded_at": 1791701137748
+  },
+  {
+   "test_path": "test/reverting.test.ts",
+   "full_name": "",
+   "key": "c66d33ffe4a4880ba04fdfbe0ff6e37a06e394bca509c6ef0729a4b420ca00f3",
+   "outcome": "pass",
+   "run_id": "b9fa23b5-56e7-447a-959d-4e5404b8663d",
+   "revision": 1,
+   "recorded_at": 1791701137748
+  }
+ ],
+ "known": [
+  {
+   "test_path": "test/reverting.test.ts",
+   "full_name": "reverts the module while it loads it",
+   "validity": "unknown",
+   "outcome": "unknown",
+   "observed_at": 4,
+   "summary": "vitest: vitest adapter: src/mod.ts changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)"
+  },
+  {
+   "test_path": "test/reverting.test.ts",
+   "full_name": "",
+   "validity": "unknown",
+   "outcome": "unknown",
+   "observed_at": 4,
+   "summary": "vitest: vitest adapter: src/mod.ts changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)"
+  }
+ ]
+}

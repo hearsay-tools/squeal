@@ -1,0 +1,5 @@
+repetitions 2 by (attempts, bad): {(3, False): 1, (1, False): 1}
+load range 9.53 12.11
+armed runs 4 kept 1 in-window invalidations 1 window ms max 1506
+{"id": "2026-10-11T06-45-34-243Z-00e8b6de", "attempts": 3, "split": 2, "state": ["unknown unknown", "unknown unknown"], "bad": false, "load": 12.11, "armed": [{"t": 1791701136216, "attempt": 1, "run": "b9fa23b5-56e7-447a-959d-4e5404b8663d", "inwindow": 1, "stamp": 1791701136220, "restored": 1791701137726, "kept": true, "ran": 0, "heard": []}, {"t": 1791701138193, "attempt": 2, "run": "d02c1f66-9d4b-4439-9a9f-ecc6737bc237", "inwindow": 0, "stamp": 1791701138195, "restored": 1791701138198, "kept": false, "ran": 1, "heard": []}, {"t": 1791701138639, "attempt": 3, "run": "398b7ab8-0df4-455f-b071-4da803b87f13", "inwindow": 0, "stamp": 1791701138641, "restored": 1791701138643, "kept": false, "ran": 1, "heard": []}]}
+late mod.ts revisions at or below the next attempt's at: 0 []
