@@ -146,4 +146,19 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
     expect(first).toEqual(["gh.mjs", "main.mjs"]);
     expect(run()).toEqual(first);
   });
+
+  it("records the worktree's .git entry and nothing under it (task 001-262)", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { readFileSync, readdirSync, statSync } from "node:fs";',
+        'statSync(".git");',
+        'readFileSync(".git/HEAD");',
+        'readdirSync(".git/refs");',
+      ].join("\n"),
+      ".git/HEAD": "ref: refs/heads/main\n",
+      ".git/refs/heads/main": "",
+    });
+    expect(seen.paths).toEqual([".git", "main.mjs"]);
+    expect(seen.listed).toEqual([]);
+  });
 });

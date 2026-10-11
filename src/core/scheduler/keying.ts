@@ -10,6 +10,7 @@ import {
   type DeclaredInputs,
   type DependencyKeys,
   environmentHash,
+  gitEntryByKind,
   ignoredInputs,
   inputGlobs,
   isInstalledPath,
@@ -137,11 +138,13 @@ export class WorktreeKeys {
       (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
     );
     this.#observed = new ObservedSets(options.store);
-    this.index = new KeyIndex((path) => {
-      const directory = listedDirectory(path);
-      if (directory !== null) return this.#listings.hashOf(directory);
-      return this.#dropped.has(path) ? undefined : this.cache.hashOf(path);
-    });
+    this.index = new KeyIndex(
+      gitEntryByKind(options.root, (path) => {
+        const directory = listedDirectory(path);
+        if (directory !== null) return this.#listings.hashOf(directory);
+        return this.#dropped.has(path) ? undefined : this.cache.hashOf(path);
+      }),
+    );
   }
 
   /**
