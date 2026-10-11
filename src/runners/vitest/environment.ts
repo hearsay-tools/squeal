@@ -50,14 +50,24 @@ export function projectEnvironment(
  * `sequence.seed` is dropped: Vitest draws it from the clock on every start.
  * Keys sorted, absolute paths relativized to the worktree root. The env the
  * recorder added (`injected`) is left out, and so is its `--require` ahead of
- * a project's own `NODE_OPTIONS` (task 001-132).
+ * a project's own `NODE_OPTIONS` (task 001-132). So are `disableColors`
+ * (Vitest 5) and `isAgent` (Vitest 4): std-env's agent detection, which
+ * workers read only to turn colours off; keyed, they made the launching
+ * harness re-key every check (task 001-260). What `CI` sets stays keyed:
+ * `allowOnly` and `browser.*` change outcomes.
  */
 export function canonicalConfig(
   project: TestProject,
   paths: WorktreePaths,
   injected: Readonly<Record<string, string>> = {},
 ): string {
-  const { sequence, env, ...config } = project.serializedConfig;
+  const {
+    sequence,
+    env,
+    disableColors: _colors,
+    isAgent: _agent,
+    ...config
+  } = project.serializedConfig as typeof project.serializedConfig & { isAgent?: unknown };
   const { seed: _seed, ...stableSequence } = sequence;
   return JSON.stringify(
     canonicalize(
