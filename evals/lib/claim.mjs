@@ -1,14 +1,18 @@
 // The final `TESTS: pass | fail | unknown, evidence: ...` line every task asks for (spec 006 D2).
 
-const WORD = /^(pass|fail|unknown)\b/i;
-/** What may stand between two claim words of an echoed template: `|`, `/`, `,`, `or` and spaces. */
-const BETWEEN = /^(?:[\s|/,;]|or\b)*/i;
+/** What may stand between two claim words of an echoed template (review wave 2.5, S2). */
+const SEPARATOR = /^(?:\s*[|/,;]\s*|\s+or\s+|\s+[-–—]\s+)/i;
+/** A bare claim word: one followed by a separator or the end, never by a `:` or more text. */
+const BARE = /^(pass|fail|unknown)(?=\s*$|\s*[|/,;]|\s+or\s|\s+[-–—]\s)/i;
 
 /**
  * The last `TESTS:` line in `text`: `{ claim, evidence, line }`, `claim` one of `pass`, `fail`,
- * `unknown`, or `null` when no line names exactly one of them (absent, or the template echoed
- * back as `pass | fail | unknown`). One claim word followed by `|` and its evidence is a claim
- * (006-12). Markdown emphasis and code quotes around it are ignored.
+ * `unknown`, or `null` when no line names exactly one of them. The claim is the segment before
+ * the evidence boundary (review wave 2.5, S2): the first word and any bare claim words after it,
+ * apart only by `|`, `/`, `,`, `;`, `or` or a spaced `-`, `–` or `—`. A segment with two claim
+ * words is the template echoed back (`pass | fail | unknown`). The boundary is the first other
+ * text, `evidence:` or any `label:`, so `pass | fail: 0` is a pass, and the evidence after it may
+ * name any claim word. Markdown emphasis and code quotes around the line are ignored.
  */
 export function parseClaim(text) {
   const lines = String(text ?? "")
@@ -18,10 +22,13 @@ export function parseClaim(text) {
   if (line === undefined) return { claim: null, evidence: null, line: null };
   const plain = line.replace(/[*_`]/g, "").trim();
   const m = /TESTS\s*:\s*(pass|fail|unknown)\b(.*)$/i.exec(plain);
-  const rest = m?.[2] ?? "";
-  if (!m || WORD.test(rest.replace(BETWEEN, "")))
-    return { claim: null, evidence: null, line: plain.slice(0, 300) };
-  const evidence = rest.replace(/^[\s|,;:.–—-]*(?:evidence\s*:\s*)?/i, "").trim();
+  const none = { claim: null, evidence: null, line: plain.slice(0, 300) };
+  if (!m) return none;
+  for (let rest = m[2]; SEPARATOR.test(rest); ) {
+    rest = rest.replace(SEPARATOR, "");
+    if (BARE.test(rest)) return none;
+  }
+  const evidence = m[2].replace(/^[\s|/,;:.–—-]*(?:evidence\s*:\s*)?/i, "").trim();
   return { claim: m[1].toLowerCase(), evidence: evidence || null, line: plain.slice(0, 300) };
 }
 
