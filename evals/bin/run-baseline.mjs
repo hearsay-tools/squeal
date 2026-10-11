@@ -18,6 +18,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
+import { declarations, expectationsOf } from "../lib/behaviours.mjs";
 import {
   cellId,
   EVALS,
@@ -34,9 +35,8 @@ import {
   conditionsOf,
   resultsName,
 } from "../lib/results.mjs";
-import { declarations, expectationsOf } from "../lib/behaviours.mjs";
-import { expectationsRevision } from "../lib/trend.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
+import { expectationsRevision } from "../lib/trend.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
 const ROOT = process.env.SQ_EVALS_ROOT ?? join(tmpdir(), "squeal-evals");
