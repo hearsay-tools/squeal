@@ -89,7 +89,7 @@ export type SlowNext = SlowRun | "again" | null;
  * threshold), holding a permit per file. The pump runs and records it as any
  * tier (D4: the stability check discards and re-queues). A pass ends when no
  * slow file is pending. Waiting for a trigger or the slot arms a timer that
- * pumps again.
+ * pumps again; a silent Stop's nudge pumps at once (`nudge`, task 001-281).
  */
 export class SlowTier {
   /** A `run --slow` request is open until no slow file is pending. */
