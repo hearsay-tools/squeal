@@ -834,3 +834,23 @@ Done when: the review's two probes pass as tests and are red before; the control
 ## 001-273 re-review of wave 13af
 
 Use /reviewer on gpt-6.1-sol, after 001-272 lands. Output `reviews/wave-13ag.md`. Second round on `reviews/wave-13af.md` B1, B2 and S1: can any note or exit path still hide a real death, or name a clean stop as one? Can any module kind's read bytes still escape the run's end check after a mid-run invalidate? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
+
+## 001-274 the shutdown marker outlives the capped notes
+
+Use /worker. Shape: repair. Decided by the human (2026-10-11). The board row and `reviews/wave-13ag.md` B1 are the brief; read that review's startup-churn probe and its controls first.
+
+Outcome: `#shutdown` writes its incarnation as a `daemon-exit:<worktree>` meta row, beside or instead of the `exitOf` note marker. The next registration clears it. `withDeath` reads the row, so no number of later notes can evict it. Add the row to the meta-row registry (`WORKTREE_META_ROWS` in `src/core/types/store.ts`) so worktree removal prunes it. Keep these readings:
+- an ordinary-note SIGKILL reads as dead;
+- a wrong incarnation is isolated;
+- the held-lock SIGSTOP case;
+- clean exits, step-down, and the tokenless older-release behaviour.
+
+Drop `exitOf` if the row makes it redundant. D7's "known limit" sentence becomes a statement of the guarantee.
+
+Own: `src/core/daemon/daemon.ts` (`#shutdown`, `#register`), `src/core/status/died.ts`, `src/core/types/store.ts` (one registry entry), `src/core/types/scheduler.ts` and `src/core/notes.ts` only to remove `exitOf` if redundant, tests under `test/daemon/` and `test/status/`, D7 and `status.md`. The coordinator re-pins `KEY_FORMAT_VERSION` 7 (6 shipped in 0.1.121) and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+Done when: the review's startup-churn probe reads as down, not dead, and is red before; its no-churn control and every reading above still hold; worktree removal leaves no `daemon-exit:` row; lint, typecheck and the full suite are green.
+
+## 001-275 review of the shutdown marker
+
+Use /reviewer on gpt-6.1-sol, after 001-274 lands. Output `reviews/wave-13ah.md`. Can any exit path, note churn or succession still make a clean stop read as a death, or hide a real death? Is the new row cleared and pruned on every path? Re-run `reviews/wave-13ag.md`'s probes and the earlier death and succession probes. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
