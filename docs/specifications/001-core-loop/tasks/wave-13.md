@@ -868,3 +868,21 @@ Done when: the review's failed-socket start leaves no row, red before; a registe
 ## 001-277 re-review of the shutdown marker
 
 Use /reviewer on gpt-6.1-sol, after 001-276 lands. Output `reviews/wave-13ai.md`. Second round on `reviews/wave-13ah.md` B1: can any exit path, before or after registration, still leave a `daemon-exit:` row no prune reaches, or drop one a registered daemon needs? Re-run the 13ah and 13ag probes. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
+
+## 001-278 a prune of a running daemon's worktree leaves no exit mark
+
+Use /worker. Shape: repair. Decided by the human (2026-10-12): before the next release. The board row and `reviews/wave-13ai.md` N1 are the brief; read that review's prune-before-stop probe first (it reproduces at be1aad84 and at 0.1.123).
+
+Outcome: no `daemon-exit:<worktree>` row survives for a worktree whose row is gone. Pick the smaller safe fix:
+- `#markExit` writes only while this daemon's worktree row still exists, checked in the same transaction as the write, so a daemon whose row was pruned while it ran writes nothing;
+- or `store.prune` and worktree removal also drop any `daemon-exit:` row with no worktree row.
+
+The first keeps the meta-row registry as the single list; the second also cleans rows an older release may have left. Say in the notes which you chose and why. Keep every reading 001-274 and 001-276 proved: a registered daemon's stop and step-down mark and read as down; the startup-churn case reads as down; an ordinary-note SIGKILL reads as dead; a start that fails before registering writes nothing.
+
+Own: `src/core/daemon/daemon.ts` (`#markExit`), `src/core/store/` (prune or worktree removal) if you take the second fix, and tests under `test/daemon/` and `test/store/`. The coordinator re-pins `KEY_FORMAT_VERSION` 7 (unreleased) and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset.
+
+Done when: the review's prune-before-stop probe leaves no `daemon-exit:` row, red before; every reading above still holds; lint, typecheck and the full suite are green.
+
+## 001-279 review of the orphan exit mark
+
+Use /reviewer on gpt-6.1-sol, after 001-278 lands. Output `reviews/wave-13aj.md`. Can any order of prune, removal, stop, step-down, crash or restart still leave a `daemon-exit:` row no prune reaches, or drop one a registered daemon needs? Re-run the 13ai, 13ah and 13ag probes and the death and succession probes. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
