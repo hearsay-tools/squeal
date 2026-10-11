@@ -77,6 +77,8 @@ export function cellRecord(g) {
     // judge's identity; `null` for a cell never judged, whose judged four are not computable.
     transcript: g.transcript ?? null,
     judge: g.judge ?? null,
+    // The frozen parser's grade of the judged four, kept beside the judge's (D9).
+    parser: g.parser ?? null,
   };
 }
 

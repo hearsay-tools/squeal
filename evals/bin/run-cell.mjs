@@ -17,7 +17,9 @@
 //   cells/<commit>/<run>/<id>/home, codex, tmp   HOME, CODEX_HOME and TMPDIR; removed at the end
 //   cells/<commit>/<run>/<id>/work   the fixture, committed at a fixed date, warmed unless --cold
 //   cells/<commit>/<run>/<id>/out    events.jsonl, load.tsv, truth.json, status-end.json, diff,
-//                                    store copy, grade.json, scratch.json
+//                                    store copy, grade.json (with the judge's verdicts, D9),
+//                                    scratch.json
+//   cells/<commit>/<run>/<id>/squeal-judge-*  each judge call's scratch HOME; removed after it
 // Whatever happens, setup exception, timeout or SIGTERM, the teardown runs: the session's process
 // group and every daemon the cell started are stopped, any process still naming the cell is
 // killed, the scratch is removed and the retained evidence is scanned, every secret in it
@@ -34,7 +36,10 @@ import {
 } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import { declarations } from "../lib/behaviours.mjs";
+import { calibratedIdentity, judgeRecord } from "../lib/calibration.mjs";
 import { daemonPids, stopDaemons, stopLeftovers } from "../lib/daemon.mjs";
+import { claudeRunner, identityKey } from "../lib/judge.mjs";
 import {
   buildFixture,
   cellArgs,
@@ -45,6 +50,7 @@ import {
   resolveCommit,
   runId,
 } from "../lib/prepare.mjs";
+import { cellRecord } from "../lib/results.mjs";
 import {
   cellEnv,
   clearScratch,
@@ -283,7 +289,44 @@ async function lifecycle() {
   writeFileSync(join(OUT, "meta.json"), JSON.stringify(meta, null, 2));
   const g = spawnSync("node", [join(EVALS, "bin/grade.mjs"), OUT], { encoding: "utf8" });
   if (g.status !== 0) log(`grade failed: ${g.stderr}`);
-  else log(`graded: ${g.stdout.trim().split("\n").at(-1)}`);
+  else {
+    log(`graded: ${g.stdout.trim().split("\n").at(-1)}`);
+    await judge();
+  }
+}
+
+/**
+ * Spec 006 D9: the cell's transcript, redacted, and the calibrated judge's verdicts on the four
+ * judged expectations, written into grade.json beside the parser's. With no calibrated identity
+ * for this Claude Code and rubric, or a judge that fails, they stay not computable.
+ */
+async function judge() {
+  const file = join(OUT, "grade.json");
+  const grade = JSON.parse(readFileSync(file, "utf8"));
+  grade.transcript = (grade.transcript ?? []).map((s) =>
+    redact(s, secrets).replaceAll(CELL, "<cell>"),
+  );
+  writeFileSync(file, JSON.stringify(grade, null, 2));
+  try {
+    const declared = declarations();
+    const runner = claudeRunner({ base: CELL });
+    const identity = await calibratedIdentity({ dir: join(EVALS, "results"), declared, runner });
+    if (identity === null) {
+      log(
+        "judge: no calibrated identity for this Claude Code and rubric; the four stay not computable",
+      );
+      return;
+    }
+    const conditions = { tasks: { [task]: { knobs } } };
+    const judged = await judgeRecord(cellRecord(grade), { identity, runner, declared, conditions });
+    writeFileSync(file, JSON.stringify({ ...grade, ...judged }, null, 2));
+    const said = Object.entries(judged.judge.verdicts).map(([id, v]) => `${id} ${v.grade}`);
+    log(
+      `judged by ${identityKey(identity)}: ${said.join(", ") || "nothing judged"}${judged.judge.error ? `; error: ${judged.judge.error}` : ""}`,
+    );
+  } catch (e) {
+    log(`judge failed: ${e?.message ?? e}`);
+  }
 }
 
 // ---------- the teardown, on every path: processes, daemons, scratch, evidence ----------
