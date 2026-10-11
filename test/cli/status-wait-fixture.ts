@@ -33,6 +33,7 @@ const LIVE: DaemonRecord = {
   heartbeatAt: NOW - 1_000,
   heartbeatIntervalMs: 5_000,
   squealVersion: "0.0.0-test",
+  token: "live",
 };
 
 /** The live daemon's incarnation: the writer its commits name (task 001-268). */

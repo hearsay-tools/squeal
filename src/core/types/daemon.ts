@@ -196,22 +196,23 @@ export interface SyncResponse {
   readonly incarnation?: string;
 }
 
+/** What names a daemon's incarnation (`daemonIncarnation`). */
+export type DaemonIdentity = Pick<DaemonRecord, "squealVersion" | "startedAt" | "token">;
+
 /**
- * A daemon's incarnation as its registration row names it: the version and
- * the start time of the daemon that registered (`DaemonRecord`); `null`
- * with none registered. Two daemons of one worktree never run at once, so
- * a successor registers another.
+ * A daemon's incarnation as its registration row names it: the version, the
+ * start time and the start token of the daemon that registered
+ * (`DaemonRecord`); `null` with none registered, or with no token (a
+ * release before task 001-270), which no wait trusts. Two daemons of one
+ * worktree never run at once, so a successor registers another, and its
+ * random token tells the two apart even at one start time (a clock set
+ * back, review wave 13ae).
  */
-export function daemonIncarnation(
-  daemon: Pick<DaemonRecord, "squealVersion" | "startedAt">,
-): string;
-export function daemonIncarnation(
-  daemon: Pick<DaemonRecord, "squealVersion" | "startedAt"> | null,
-): string | null;
-export function daemonIncarnation(
-  daemon: Pick<DaemonRecord, "squealVersion" | "startedAt"> | null,
-): string | null {
-  return daemon === null ? null : `${daemon.squealVersion}@${daemon.startedAt}`;
+export function daemonIncarnation(daemon: DaemonIdentity & { readonly token: string }): string;
+export function daemonIncarnation(daemon: DaemonIdentity | null): string | null;
+export function daemonIncarnation(daemon: DaemonIdentity | null): string | null {
+  if (daemon?.token === undefined) return null;
+  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
 /**
@@ -219,15 +220,20 @@ export function daemonIncarnation(
  * read before this one replaces it (task 001-268, as decided by the human):
  * `null` when the worktree has no row, so none ever registered; `undefined`
  * when its identity cannot be read (a release whose clean exit cleared it,
- * or no version), and a ledger's first commit then takes in what was left.
+ * no version, or no start token), and a ledger's first commit then takes in
+ * what was left.
  */
 export function predecessorIncarnation(
   hasRow: boolean,
-  last: { readonly startedAt: EpochMs; readonly squealVersion: string | null } | null,
+  last: {
+    readonly startedAt: EpochMs;
+    readonly squealVersion: string | null;
+    readonly token?: string;
+  } | null,
 ): string | null | undefined {
   if (!hasRow) return null;
   if (last === null || last.squealVersion === null) return undefined;
-  return daemonIncarnation({ startedAt: last.startedAt, squealVersion: last.squealVersion });
+  return daemonIncarnation({ ...last, squealVersion: last.squealVersion }) ?? undefined;
 }
 
 /** What a daemon's sync pass left: its revision. */

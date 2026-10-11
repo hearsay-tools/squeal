@@ -1,4 +1,7 @@
+import { isRecord } from "../../fs/index.js";
 import {
+  type DaemonRecord,
+  type EpochMs,
   WORKTREE_META_ROWS,
   type WorktreeMetaRow,
   type WorktreeRecord,
@@ -24,7 +27,53 @@ export const WORKTREE_SCOPED_TABLES = [
   "consumers",
 ] as const;
 
+/*
+ * Task 001-270: a daemon's start token (`DaemonRecord.token`) is a `meta`
+ * row beside its registration, written with it, with the start time and the
+ * version it was drawn with. Schema V1 stays: a release before the token
+ * writes no row and leaves one it finds, so a token counts only while the
+ * registration's start time and version are its own; that release's daemon
+ * reads as having none.
+ */
+
+const tokenKey = (id: string) => worktreeMetaKey("daemonToken", id);
+
 export function createWorktreeRepo(conn: Connection): WorktreeRepo {
+  /** `id`'s token, when it was drawn by the daemon registered at `startedAt` with `version`. */
+  const tokenOf = (id: string, startedAt: EpochMs, version: string | null): string | undefined => {
+    const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
+    let value: unknown = null;
+    try {
+      value = raw === null ? null : JSON.parse(str(raw, "value"));
+    } catch {
+      return undefined;
+    }
+    return isRecord(value) &&
+      value.startedAt === startedAt &&
+      value.squealVersion === version &&
+      typeof value.token === "string"
+      ? value.token
+      : undefined;
+  };
+  /** With a registration: its token, or none, so an earlier token never names it. */
+  const writeToken = (id: string, d: DaemonRecord) => {
+    if (d.token === undefined) {
+      conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
+      return;
+    }
+    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    conn.run(
+      "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      tokenKey(id),
+      JSON.stringify(value),
+    );
+  };
+  const toRecord = (row: Row): WorktreeRecord => {
+    const record = fromRow(row);
+    const d = record.daemon;
+    const token = d === null ? undefined : tokenOf(record.id, d.startedAt, d.squealVersion);
+    return token === undefined || d === null ? record : { ...record, daemon: { ...d, token } };
+  };
   return {
     get: (id) => {
       const row = conn.get("SELECT * FROM worktrees WHERE id = ?", id);
@@ -54,9 +103,11 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
         d?.heartbeatIntervalMs ?? null,
         d?.squealVersion ?? null,
       );
+      if (d !== null) writeToken(record.id, d);
     },
     // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
-    // the start time and version too, the identity `lastDaemon` reads (task 001-268); with no
+    // the start time and version too, and the token row, the identity `lastDaemon` reads (tasks
+    // 001-268, 001-270); with no
     // socket every other read finds no daemon.
     setDaemon: (id, d) => {
       conn.run(
@@ -72,6 +123,7 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
         d?.squealVersion ?? null,
         id,
       );
+      if (d !== null) writeToken(id, d);
     },
     heartbeat: (id, at) => {
       conn.run(
@@ -87,7 +139,9 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
       );
       const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
       if (row === null || startedAt === null) return null;
-      return { startedAt, squealVersion: strOrNull(row, "daemon_version") };
+      const squealVersion = strOrNull(row, "daemon_version");
+      const token = tokenOf(id, startedAt, squealVersion);
+      return { startedAt, squealVersion, ...(token === undefined ? {} : { token }) };
     },
     remove: (id) => {
       conn.transaction(() => {
@@ -104,7 +158,7 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
   };
 }
 
-function toRecord(row: Row): WorktreeRecord {
+function fromRow(row: Row): WorktreeRecord {
   const socketPath = strOrNull(row, "daemon_socket");
   const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
   return {

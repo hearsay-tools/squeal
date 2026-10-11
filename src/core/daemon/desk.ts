@@ -199,6 +199,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       root: identity.root,
       squealVersion: identity.squealVersion,
       startedAt: identity.startedAt,
+      token: identity.token,
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,

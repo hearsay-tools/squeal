@@ -42,6 +42,13 @@ export interface DaemonRecord {
   readonly heartbeatAt: EpochMs;
   readonly heartbeatIntervalMs: number;
   readonly squealVersion: string;
+  /**
+   * A random token the daemon drew at its start, which with the version and
+   * the start time makes its incarnation (`daemonIncarnation`) unique without
+   * trusting the clock (task 001-270). Absent from a release before it, whose
+   * incarnation cannot be read.
+   */
+  readonly token?: string;
 }
 
 /**

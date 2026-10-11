@@ -16,7 +16,7 @@ import {
  */
 
 /** The daemon a harness's scheduler runs in: its commits name it the writer of the moves. */
-export const HARNESS_DAEMON = { startedAt: 1_000, squealVersion: "0.0.0-test" };
+export const HARNESS_DAEMON = { startedAt: 1_000, squealVersion: "0.0.0-test", token: "harness" };
 export const HARNESS_INCARNATION = daemonIncarnation(HARNESS_DAEMON);
 
 /**

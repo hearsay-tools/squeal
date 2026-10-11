@@ -25,7 +25,7 @@ import { check, FILE, freshStore, result, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /** `liveDaemon`'s incarnation: the writer of its ledger's moves (task 001-268). */
-const INCARNATION = daemonIncarnation({ squealVersion: "0.0.0-test", startedAt: 1 });
+const INCARNATION = daemonIncarnation({ squealVersion: "0.0.0-test", startedAt: 1, token: "live" });
 
 /*
  * Review wave 13v, B1 (task 001-240): the first result at an edit's key

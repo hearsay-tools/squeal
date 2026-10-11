@@ -29,6 +29,7 @@ function handler(
     root: "/" as never,
     squealVersion: "0.0.0-test",
     startedAt: 1 as never,
+    token: "t",
     phase: () => phase,
     requestFullSuite: () => new Promise(() => {}),
     ...(requestSlowSuite === null ? {} : { requestSlowSuite }),
@@ -144,6 +145,7 @@ describe("run-slow through the front desk", () => {
         root: "/",
         squealVersion: "0.0.0-test",
         startedAt: 1 as never,
+        token: "t",
       },
       {
         onActivity: () => {},

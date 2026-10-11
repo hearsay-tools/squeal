@@ -36,6 +36,7 @@ function handler(
     root: "/" as never,
     squealVersion: "0.0.0-test",
     startedAt: 1 as never,
+    token: "t",
     phase: () => phase,
     requestFullSuite: () => new Promise(() => {}),
     ...(requestSync === null ? {} : { requestSync }),
@@ -84,7 +85,7 @@ describe("the sync request (lessons, defect 30)", () => {
       revision: 7,
       error: null,
       moves: true,
-      incarnation: "0.0.0-test@1",
+      incarnation: "0.0.0-test@1#t",
     });
     // An older CLI that asked with `after` takes its path for a daemon before task 001-186.
     expect(answer).not.toHaveProperty("rekeyed");
@@ -163,6 +164,7 @@ describe("sync through the front desk", () => {
         root: "/",
         squealVersion: "0.0.0-test",
         startedAt: 1 as never,
+        token: "t",
       },
       {
         onActivity: () => {},

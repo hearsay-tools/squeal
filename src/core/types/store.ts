@@ -38,12 +38,15 @@ export interface WorktreeRepo {
   heartbeat(id: WorktreeId, at: EpochMs): void;
   /**
    * The identity of the daemon that registered last, running or not: its
-   * start time and version, which a clean exit keeps (D10). `null` with no
-   * row, or with no start time (a release whose exit cleared it).
+   * start time, version and start token (`DaemonRecord.token`), which a
+   * clean exit keeps (D10). `null` with no row, or with no start time (a
+   * release whose exit cleared it).
    */
-  lastDaemon(
-    id: WorktreeId,
-  ): { readonly startedAt: EpochMs; readonly squealVersion: string | null } | null;
+  lastDaemon(id: WorktreeId): {
+    readonly startedAt: EpochMs;
+    readonly squealVersion: string | null;
+    readonly token?: string;
+  } | null;
   /** Spec 001 D8: drop "everything owned by removed worktrees". */
   remove(id: WorktreeId): void;
 }
@@ -230,6 +233,7 @@ export const WORKTREE_META_ROWS = {
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+  daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
