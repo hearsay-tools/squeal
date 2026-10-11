@@ -26,6 +26,9 @@ const SQUEAL_TEXT = /SQUEAL|Squeal|squeal/;
 /** Output lines a runner's summary or a failure is made of: kept whole. */
 const SUMMARY =
   /Test Files|^\s*Tests\s|^\s*Duration|^# (?:tests|suites|pass|fail|cancelled|skipped|todo)\b|^\s*(?:✓|✗|×|❯|↓|FAIL|PASS)\s|\.(?:test|spec)\.[cm]?[jt]sx?\b|^not ok|^ok \d|[Nn]o test files found|[Ff]ilter|[Ee]xclud|[Ee]rror|^Exit code/;
+/** Squeal's evidence: a header, counts, a check and its change, a tier or checkpoint line. Kept whole. */
+const SQUEAL_EVIDENCE =
+  /^\s*(?:SQUEAL ·|Revision\b|Known failures|Affected checks|Full-suite checkpoint|Slow tier|Test files without checks|Returned |Checkpoint |Daemon:|Not shown:|Not validated)|^\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2}|->|observed at revision|seen by Squeal|checks recovered|still failing|\b(?:current|pending|stale|unknown)\b.*\brevision \d+/;
 const LINE_CAP = 400;
 const HEAD = 3;
 const TAIL = 3;
@@ -34,23 +37,28 @@ const WHOLE_CAP = 8000;
 /** A path inside the cell's work tree, relative to it. */
 const rel = (p) => String(p).replace(/^.*?\/work\//, "");
 
-/** Command output for the judge: Squeal's text whole, runner summary lines whole, the rest trimmed. */
+/**
+ * Command output for the judge (D9). Squeal's text is kept whole up to `WHOLE_CAP` characters;
+ * beyond it, every evidence line (`SQUEAL_EVIDENCE`) is still kept whole and only the rest is
+ * trimmed (review 006-24, S1). Other output keeps its runner summary lines whole and trims the
+ * rest, capping incidental lines at `LINE_CAP`. Every cut says how much it cut.
+ */
 export function trimOutput(out, whole) {
   const text = String(out ?? "").replace(/\s+$/, "");
-  if (whole)
-    return text.length > WHOLE_CAP
-      ? `${text.slice(0, WHOLE_CAP)}\n[… ${text.length - WHOLE_CAP} characters trimmed]`
-      : text;
+  if (whole && text.length <= WHOLE_CAP) return text;
+  const evidence = whole ? SQUEAL_EVIDENCE : SUMMARY;
   const lines = text.split("\n");
   const kept = [];
   let skipped = 0;
   lines.forEach((line, i) => {
-    if (i < HEAD || i >= lines.length - TAIL || SUMMARY.test(line)) {
+    const keep = evidence.test(line);
+    if (keep || i < HEAD || i >= lines.length - TAIL) {
       if (skipped) kept.push(`[… ${skipped} lines trimmed]`);
       skipped = 0;
-      kept.push(line.length > LINE_CAP ? `${line.slice(0, LINE_CAP)} [… trimmed]` : line);
+      kept.push(keep || line.length <= LINE_CAP ? line : `${line.slice(0, LINE_CAP)} [… trimmed]`);
     } else skipped++;
   });
+  if (skipped) kept.push(`[… ${skipped} lines trimmed]`);
   return kept.join("\n");
 }
 
@@ -179,6 +187,7 @@ export function claudeRunner({
   return ({ args, input = "" }) => {
     if (parent.VITEST && command === "claude")
       throw new Error("the Vitest suite never calls a model: pass a fake runner");
+    mkdirSync(base, { recursive: true }); // a fresh eval root (review 006-24, B1)
     const scratch = mkdtempSync(join(base, "squeal-judge-"));
     for (const d of ["home", "tmp", "codex", "cwd"]) mkdirSync(join(scratch, d));
     return new Promise((resolve) => {
