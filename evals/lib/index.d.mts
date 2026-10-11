@@ -107,7 +107,7 @@ export interface SquealEnd {
 export interface Run {
   t: number;
   runner: "vitest" | "node:test";
-  scope: "full" | "files" | "name";
+  scope: TestScope;
   afterSquealAnswered: boolean;
   cmd: string;
 }
@@ -325,12 +325,8 @@ export interface ContextCount {
   ) => boolean | null;
 }
 
-/** 006-16's contract: what a test run selects. */
-export interface Scope {
-  full: boolean;
-  paths?: string[];
-  names?: string[];
-}
+/** What a test run selects: 006-16's `TestScope`. */
+export type Scope = TestScope;
 /** One step of a cell's retained timeline (D4 "Retained evidence"), in the order seen. */
 export type Step =
   | { k: "edit"; path: string }

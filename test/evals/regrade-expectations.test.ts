@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   type CellRecord,
   conditionsOf,
@@ -10,10 +10,6 @@ import {
   expectationsRevision,
 } from "../../evals/lib/index.mjs";
 import { CLAIM, session, WAIT } from "./reference-sessions.js";
-
-vi.mock("../../evals/lib/commands.mjs", async (actual) =>
-  (await import("./evidence-contract.js")).withContract(await actual()),
-);
 
 // 006-14: `evals/bin/regrade.mjs` grades every committed cell's expectations from its kept
 // fields, records the expectations revision, and names what it could not grade: a task whose
