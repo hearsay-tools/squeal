@@ -18,7 +18,7 @@ Use /worker. Shape: repair. Read `../reviews/wave-2.6.md` first, then `../spec.m
 
 ## 006-20 narrow review of wave 2.7
 
-Use /reviewer. Range `27d1ec45^..4557936e` (006-19's four commits; on main as the commits ending at the one before `c43062d9`'s docs). Limited to B2, B3, S1 and S2 of `../reviews/wave-2.6.md`, by the human's decision. Re-run each reproduction and positive, then the nearest variants:
+Use /reviewer. Range `0730b6a6^..c43062d9`, 006-19's four commits on main. Limited to B2, B3, S1 and S2 of `../reviews/wave-2.6.md`, by the human's decision. Re-run each reproduction and positive, then the nearest variants:
 - B2: a delivery with a stale entry, a recovery at an older revision, a `-t` selector against a delivered file;
 - B3: `--exclude` with an overlapping include, a `-t` matching every test, `--project`, a node:test `--test-name-pattern`;
 - S2: two different failing checks in one file, a changed failure then a different failure.
