@@ -42,4 +42,4 @@ Use /reviewer. Review the design and the evidence, not parsing:
 - Does the calibration file show the gate met, both times?
 - Are disagreements with the parser listed and not hidden?
 
-Spot-check five judge verdicts against their transcripts yourself. Probes may make at most 10 judge calls, in a scratch `HOME`. No subject sessions. Never run or import `evals/bin/run-baseline.mjs`. Findings go to `../reviews/wave-3.md`.
+Is the rubric change between the failed (`c15eba47`) and passing (`ecc9d69f`) Haiku calibrations a real correction of the rule, or a fit to the one failing reference session? Check D9's calibration-per-run rule as specified (`run-baseline.mjs` wiring follows 006-23 as row 006-25). Spot-check five judge verdicts against their transcripts yourself. Probes may make at most 10 judge calls, in a scratch `HOME`. No subject sessions. Never run or import `evals/bin/run-baseline.mjs`. Findings go to `../reviews/wave-3.md`.
