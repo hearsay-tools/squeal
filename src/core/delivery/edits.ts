@@ -11,6 +11,7 @@ import {
   type Store,
   type TestFileKeyRecord,
   type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { changedAfter, registration } from "./registered.js";
 import { readAll, readSlot, writeSlot } from "./slots.js";
@@ -36,7 +37,7 @@ import { readAll, readSlot, writeSlot } from "./slots.js";
 
 /** `meta` key of the consumers' edit state: the revision their edits count from, and whether 001-224 was said. */
 export function editsMetaKey(worktreeId: WorktreeId): string {
-  return `edits:${worktreeId}`;
+  return worktreeMetaKey("edits", worktreeId);
 }
 
 interface EditState {
@@ -78,9 +79,6 @@ export function editsSaid(store: Store, consumer: Consumer): boolean {
 /** Drops `consumer`'s edit state. Call inside the unregistration's transaction. */
 export function forgetEdits(store: Store, consumer: Consumer): void {
   writeState(store, consumer, null);
-  // The key snapshot squeal 0.1.100 to 0.1.102 kept per consumer.
-  const legacy = `edit-keys:${JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])}`;
-  if (store.meta.get(legacy) !== null) store.meta.delete(legacy);
   prune(store, consumer.worktreeId);
 }
 

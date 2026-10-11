@@ -1,5 +1,6 @@
 import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { TestFileRef } from "./keys.js";
+import { worktreeMetaKey } from "./store.js";
 import type { CheckpointKind, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
@@ -55,7 +56,7 @@ export const MAX_PERSISTED_NOTES = 20;
 
 /** `meta` key of a worktree's persisted notes. */
 export function notesMetaKey(worktreeId: WorktreeId): string {
-  return `notes.${worktreeId}`;
+  return worktreeMetaKey("notes", worktreeId);
 }
 
 /**
@@ -71,7 +72,7 @@ export function notesMetaKey(worktreeId: WorktreeId): string {
  * needed and a store without the key reads as nothing pending.
  */
 export function refinedMetaKey(worktreeId: WorktreeId): string {
-  return `refined.${worktreeId}`;
+  return worktreeMetaKey("refined", worktreeId);
 }
 
 /**
@@ -84,7 +85,7 @@ export function refinedMetaKey(worktreeId: WorktreeId): string {
  * headers, status and hooks read it here (`parseAwaitingInstall`).
  */
 export function awaitingInstallMetaKey(worktreeId: WorktreeId): string {
-  return `awaiting-install.${worktreeId}`;
+  return worktreeMetaKey("awaitingInstall", worktreeId);
 }
 
 /** The `awaitingInstallMetaKey` value of a wait for `workspaces` (none named: `"true"`). */
@@ -112,7 +113,7 @@ export function parseAwaitingInstall(raw: string | null): readonly string[] | nu
  * explicit checkpoint ended and the next daemon resumes it (task 001-219).
  */
 export function checkpointMetaKey(worktreeId: WorktreeId): string {
-  return `checkpoint.${worktreeId}`;
+  return worktreeMetaKey("checkpoint", worktreeId);
 }
 
 /** The open checkpoint of a worktree, as `checkpointMetaKey` holds it. */

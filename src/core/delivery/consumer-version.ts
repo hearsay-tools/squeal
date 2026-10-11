@@ -1,4 +1,4 @@
-import type { Consumer, Store, WorktreeId } from "../types/index.js";
+import { type Consumer, type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
 import { readAll, slot, writeSlot } from "./slots.js";
 
 /*
@@ -13,7 +13,7 @@ import { readAll, slot, writeSlot } from "./slots.js";
 
 /** `meta` key of a worktree's recorded consumer versions. */
 export function versionMetaKey(worktreeId: WorktreeId): string {
-  return `consumer-version:${worktreeId}`;
+  return worktreeMetaKey("consumerVersion", worktreeId);
 }
 
 /** Records the version `consumer` registered with; `null` forgets it. Call inside a transaction. */

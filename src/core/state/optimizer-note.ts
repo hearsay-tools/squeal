@@ -1,4 +1,4 @@
-import type { Store, WorktreeId } from "../types/index.js";
+import { type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
 
 /*
  * Spec 001 D4 (task 001-176): Squeal runs every Vitest instance without the
@@ -25,7 +25,7 @@ export function optimizerOffNote(projects: readonly string[]): string {
 
 /** `meta` key of the note for the newest Vitest instance's config; empty when it turns nothing on. */
 export function optimizerOffMetaKey(worktreeId: WorktreeId): string {
-  return `optimizer-off.${worktreeId}`;
+  return worktreeMetaKey("optimizerOff", worktreeId);
 }
 
 /** Records what the config of the instance just started turns on: `projects`, maybe none. */

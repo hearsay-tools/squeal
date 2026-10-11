@@ -1,5 +1,10 @@
 import { isRecord } from "../fs/index.js";
-import type { RevisionNumber, Store, WorktreeId } from "../types/index.js";
+import {
+  type RevisionNumber,
+  type Store,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /*
  * Review wave 13u, B1 (task 001-238): the scheduler's record of the files
@@ -21,7 +26,7 @@ import type { RevisionNumber, Store, WorktreeId } from "../types/index.js";
 
 /** `meta` key of a worktree's re-key record. */
 export function rekeyedMetaKey(worktreeId: WorktreeId): string {
-  return `rekeyed.${worktreeId}`;
+  return worktreeMetaKey("rekeyed", worktreeId);
 }
 
 /** One test file's entry: its unresolved re-key revision and its latest. */

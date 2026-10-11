@@ -1,6 +1,12 @@
 import { readFileSync, readlinkSync } from "node:fs";
 import { isRecord } from "../fs/index.js";
-import type { Consumer, HarnessProcess, Store, WorktreeId } from "../types/index.js";
+import {
+  type Consumer,
+  type HarnessProcess,
+  type Store,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 import { readAll, slot, writeSlot } from "./slots.js";
 
 /*
@@ -73,7 +79,7 @@ export function harnessGone(harness: HarnessProcess, namespace: string | null): 
 
 /** `meta` key of a worktree's recorded harness processes. */
 export function harnessMetaKey(worktreeId: WorktreeId): string {
-  return `harness-process:${worktreeId}`;
+  return worktreeMetaKey("harnessProcess", worktreeId);
 }
 
 /** Records the process `consumer` registered from; `null` forgets it. Call inside a transaction. */

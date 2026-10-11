@@ -196,8 +196,48 @@ export interface ViewRepo {
 export interface MetaRepo {
   get(key: string): string | null;
   set(key: string, value: string): void;
-  /** Removes the row; a missing key is a no-op (task 001-223: a consumer's key snapshot). */
+  /** Removes the row; a missing key is a no-op. */
   delete(key: string): void;
+}
+
+/**
+ * Every `meta` row named `<prefix><worktreeId>`, by row: its prefix and the
+ * module under `src/core` that reads and writes it (task 001-254). A row
+ * belongs to its worktree and goes with it (`WorktreeRepo.remove`). Rows
+ * shared across worktrees, such as `flaky-checks` or a node:test
+ * observation's, are not listed.
+ */
+export const WORKTREE_META_ROWS = {
+  turn: { prefix: "turn:", owner: "delivery/turn" },
+  edits: { prefix: "edits:", owner: "delivery/edits" },
+  harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
+  departed: { prefix: "departed:", owner: "delivery/expiry" },
+  consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
+  registered: { prefix: "revision-registered:", owner: "delivery/registered" },
+  registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
+  livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
+  revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+  notes: { prefix: "notes.", owner: "types/scheduler" },
+  refined: { prefix: "refined.", owner: "types/scheduler" },
+  awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
+  checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+  daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+  slowTier: { prefix: "slow-tier:", owner: "slow/state" },
+  slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
+  failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
+  reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
+  rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
+  rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
+  optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+} as const;
+
+export type WorktreeMetaRow = keyof typeof WORKTREE_META_ROWS;
+
+/** The `meta` key of `worktreeId`'s `row`. */
+export function worktreeMetaKey(row: WorktreeMetaRow, worktreeId: WorktreeId): string {
+  return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
 }
 
 /** What pruning removed. Spec 001 D8 "Pruning". */

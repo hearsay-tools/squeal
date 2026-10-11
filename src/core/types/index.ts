@@ -9,6 +9,6 @@ export * from "./runner.js";
 export * from "./scheduler.js";
 export * from "./state.js";
 export type * from "./status.js";
-export type * from "./store.js";
+export * from "./store.js";
 export * from "./store-records.js";
 export * from "./watcher.js";

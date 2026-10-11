@@ -1,4 +1,10 @@
-import type { CheckKey, SlowTierActivity, Store, WorktreeId } from "../types/index.js";
+import {
+  type CheckKey,
+  type SlowTierActivity,
+  type Store,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /*
  * Spec 004 D8: what the slow tier of a worktree is doing, published by its
@@ -14,7 +20,7 @@ import type { CheckKey, SlowTierActivity, Store, WorktreeId } from "../types/ind
 
 /** `meta` key of a worktree's published slow-tier activity. */
 export function slowTierMetaKey(worktreeId: WorktreeId): string {
-  return `slow-tier:${worktreeId}`;
+  return worktreeMetaKey("slowTier", worktreeId);
 }
 
 /** Publishes `activity`; `null` clears it. Writes only a change. */
@@ -66,7 +72,7 @@ function toActivity(value: unknown): SlowTierActivity | null {
 
 /** `meta` key of a worktree's slow runs' declared artifacts, by key. */
 export function slowArtifactsMetaKey(worktreeId: WorktreeId): string {
-  return `slow-artifacts:${worktreeId}`;
+  return worktreeMetaKey("slowArtifacts", worktreeId);
 }
 
 /** The newest keys whose declared artifact a worktree keeps; an older one reads as unknown. */
@@ -141,7 +147,7 @@ export function forgetSlowArtifacts(
 
 /** `meta` key of the keys a worktree's failing states' results were stored under. */
 export function failureKeysMetaKey(worktreeId: WorktreeId): string {
-  return `failure-keys:${worktreeId}`;
+  return worktreeMetaKey("failureKeys", worktreeId);
 }
 
 /** The newest failing checks whose key a worktree keeps; an older one reads as unknown. */
