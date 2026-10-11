@@ -1,0 +1,9 @@
+{
+  "description": "001-280 Q5, the end-of-turn message as it ships: stop.requireSlowSuite true (spec 004 D7), so a Stop with slow files not current blocks once and names `run --slow`. That command's wait does not hold for slow files and a second Stop never blocks, so this measures today's message, not a fixed one.",
+  "plugin": true,
+  "policy": {
+    "stop": {
+      "requireSlowSuite": true
+    }
+  }
+}

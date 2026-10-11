@@ -1,0 +1,12 @@
+{
+  "description": "001-280 Q2, cause test 1: the primer names Squeal's skill by its file, so every harness loads it the same way (Read or cat; the eval's Claude Code allow-list has no Skill tool). The skill's text is unchanged, so a difference from p0 is the skill's effect, not new advice.",
+  "plugin": true,
+  "patch": [
+    {
+      "files": "plugins/*/dist/**/*.mjs",
+      "find": "\"Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.\",",
+      "replace": "\"Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.\",\n      `Before you run tests or say the task is done, read Squeal's skill: ${decodeURIComponent(new URL(\"../skills/squeal/SKILL.md\", import.meta.url).pathname)}.`,",
+      "min": 13
+    }
+  ]
+}
