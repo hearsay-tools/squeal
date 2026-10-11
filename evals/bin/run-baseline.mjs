@@ -34,6 +34,8 @@ import {
   conditionsOf,
   resultsName,
 } from "../lib/results.mjs";
+import { declarations, expectationsOf } from "../lib/behaviours.mjs";
+import { expectationsRevision } from "../lib/trend.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
@@ -197,6 +199,11 @@ const results = {
   failed,
   cells: grades.map(cellRecord),
 };
+// Graded under the current expectations at write time (spec 006 D4), as regrade.mjs would.
+const declared = declarations();
+results.expectationsRevision = expectationsRevision(declared);
+for (const cell of results.cells)
+  cell.expectations = expectationsOf(cell, results.conditions, declared);
 const text = `${JSON.stringify(results, null, 1)}\n`;
 const realCodex = join(process.env.HOME, ".codex/config.toml");
 assertNoSecrets(
