@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CellRecord,
+  claimedOnEvidence,
   conditionsOf,
   declarations,
   expectationsOf,
@@ -155,3 +156,24 @@ for (const harness of ["codex", "claude"] as const)
       });
     });
   });
+
+// Review 006-22 (reviews/wave-2.8.md) B6: the uncertainty guard read the evidence before checking
+// there was any, so a `pass` claim with no Squeal step before it threw; it is a miss.
+describe("review 006-22 B6: a pass claim with no Squeal evidence before it", () => {
+  it("is a miss, not a crash", () => {
+    const tl = [{ k: "edit", path: "src/money.ts" }, { k: "claim" }] as unknown as Seen[];
+    expect(claimedOnEvidence(tl, "pass")).toBe(false);
+    expect(claimedOnEvidence(tl, "fail")).toBe(true);
+    expect(claimedOnEvidence([], "pass")).toBe(false);
+  });
+
+  for (const harness of ["codex", "claude"] as const)
+    it(`grades no-overclaim missed end to end, ${harness}`, () => {
+      const c = session("t1-thousands", [{ edit: "src/money.ts" }, CLAIM("pass")], {
+        truthPass: true,
+        status: "pass",
+        harness,
+      });
+      expect(grade(c)?.["no-overclaim"]).toBe("missed");
+    });
+});
