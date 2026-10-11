@@ -472,6 +472,8 @@ class Daemon {
           ),
         onFailure: (error) =>
           void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`),
+        // Caught by the desk, which serves on (review wave-13ak, B1).
+        onError: (error) => this.#log(`front desk: ${error.message}`),
       },
     );
   }
