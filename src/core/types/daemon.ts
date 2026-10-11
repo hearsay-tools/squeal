@@ -337,3 +337,14 @@ export interface DaemonExit {
 export function bootstrappedMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
+
+/**
+ * `meta` key of the incarnation (`daemonIncarnation`) whose shutdown began,
+ * written first by its exit path and cleared by the next registration, which
+ * status reads to tell a kill while it shut down from a death (`withDeath`,
+ * task 001-274). Outside the capped notes, so no number of later notes
+ * evicts it (review wave-13ag B1).
+ */
+export function daemonExitMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("daemonExit", worktreeId);
+}

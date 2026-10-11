@@ -19,6 +19,7 @@ import type {
 import {
   bootstrappedMetaKey,
   DEFAULT_POLICY,
+  daemonExitMetaKey,
   daemonIncarnation,
   predecessorIncarnation,
   SLOW_LANE_PREFIX,
@@ -264,7 +265,9 @@ class Daemon {
    * Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the
    * socket and a heartbeat. A predecessor's `running` rows become `queued`
    * first: with this heartbeat they would read as live claims until the
-   * baseline rewrites them (D10 as amended, task 001-205).
+   * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
+   * shutdown mark goes, unless this daemon's own shutdown already began
+   * (task 001-274).
    */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
@@ -273,6 +276,7 @@ class Daemon {
       // Before this registration replaces it: whose rows this daemon's ledger finds (001-268).
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id));
       store.testFileKeys.releaseRunning(id);
+      if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
       store.worktrees.upsert({
         id,
         root,
@@ -547,6 +551,7 @@ class Daemon {
     this.#exit ??= (async () => {
       this.#setPhase("stopping");
       this.#stopTimers();
+      this.#markExit();
       this.#note(text, undefined, this.#incarnation());
       await this.#starting.catch(() => {});
       const { store, worktreeId, lock } = this.opened;
@@ -569,6 +574,19 @@ class Daemon {
       return result;
     })();
     return this.#exit;
+  }
+
+  /**
+   * Its shutdown's mark, before anything it awaits, which status reads to tell
+   * a kill from here on from a death (`withDeath`, task 001-274). A store
+   * that cannot take it costs the log line, as a note's does.
+   */
+  #markExit(): void {
+    try {
+      this.opened.store.meta.set(daemonExitMetaKey(this.opened.worktreeId), this.#incarnation());
+    } catch (error) {
+      this.#log(`could not mark the shutdown: ${message(error)}`);
+    }
   }
 
   async #step(name: string, fn: () => unknown): Promise<void> {
