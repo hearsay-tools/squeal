@@ -186,11 +186,18 @@ export const pids = (f: FakeRoot, name: "daemons" | "harness"): number[] =>
     ? readFileSync(join(f.log, name), "utf8").split("\n").filter(Boolean).map(Number)
     : [];
 
+/** A process that exists and is not a zombie: a killed process waits as one until it is reaped. */
 export const alive = (pid: number) => {
   try {
     process.kill(pid, 0);
-    return true;
   } catch {
     return false;
+  }
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    const state = stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0];
+    return state !== "Z" && state !== "X";
+  } catch {
+    return true;
   }
 };

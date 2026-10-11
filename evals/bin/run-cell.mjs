@@ -290,7 +290,7 @@ async function lifecycle() {
 let teardown = null;
 const tearDown = (why) => {
   teardown ??= (async () => {
-    killRunning("SIGKILL");
+    await killRunning("SIGKILL");
     delete env.SQUEAL_CLI;
     if (plugin && daemonPids(WORK).length) await stopDaemon(why);
     await stopCellLeftovers();

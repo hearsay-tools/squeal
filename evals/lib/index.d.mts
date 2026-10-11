@@ -207,7 +207,8 @@ export function runBounded(input: {
   onStderr?: (chunk: Buffer) => void;
   log: (line: string) => void;
 }): Promise<Completion>;
-export function killRunning(signal?: string): void;
+export function killRunning(signal?: string, waitMs?: number): Promise<void>;
+export function groupLive(pgid: number | undefined): boolean;
 /** `out/truth.json`, the contract between the runner and the grader (006 wave 1.5). */
 export interface TruthRecord {
   vitest: Completion;

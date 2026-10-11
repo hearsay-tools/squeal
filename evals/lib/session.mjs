@@ -2,7 +2,7 @@
 // JSON line timestamped, the load average every 5 s, in a process group a deadline can end;
 // then the ground truth's two commands, bounded the same way.
 import { spawn } from "node:child_process";
-import { appendFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 
@@ -95,7 +95,7 @@ export function runBounded({
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const group = { kill: (sig) => signalGroup(child.pid, sig) };
+    const group = { pgid: child.pid, kill: (sig) => signalGroup(child.pid, sig) };
     const done = (r) => {
       if (settled) return;
       settled = true;
@@ -142,9 +142,47 @@ function signalGroup(pid, sig) {
   }
 }
 
-/** Sends `signal` to every process group `runBounded` is still waiting for: a runner's teardown. */
-export function killRunning(signal = "SIGKILL") {
-  for (const g of running) g.kill(signal);
+/**
+ * Sends `signal` to every process group `runBounded` is still waiting for, then waits up to
+ * `waitMs` until none of them has a live process left: a runner's teardown. A killed process
+ * stays visible for a moment after the signal, and a zombie until it is reaped; only a process
+ * that is not a zombie counts as live.
+ */
+export async function killRunning(signal = "SIGKILL", waitMs = 5_000) {
+  const groups = [...running];
+  for (const g of groups) g.kill(signal);
+  const deadline = Date.now() + waitMs;
+  while (groups.some((g) => groupLive(g.pgid)) && Date.now() < deadline)
+    await new Promise((r) => setTimeout(r, 50));
+}
+
+/** Whether process group `pgid` has a process that is not a zombie; without `/proc`, any process. */
+export function groupLive(pgid) {
+  if (pgid === undefined) return false;
+  let entries;
+  try {
+    entries = readdirSync("/proc");
+  } catch {
+    try {
+      process.kill(-pgid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  for (const e of entries) {
+    if (!/^\d+$/.test(e)) continue;
+    let stat;
+    try {
+      stat = readFileSync(`/proc/${e}/stat`, "utf8");
+    } catch {
+      continue;
+    }
+    // After the command's closing parenthesis: state, ppid, pgrp, ...
+    const [state, , pgrp] = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+    if (Number(pgrp) === pgid && state !== "Z" && state !== "X") return true;
+  }
+  return false;
 }
 
 /**
