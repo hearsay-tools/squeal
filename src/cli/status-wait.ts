@@ -222,7 +222,10 @@ export async function waitForStatus(
             pending,
             otherTransitions: split.other,
           };
-        } else if (current.state === "pending" || (current.state === "synced" && !syncing.fallback)) {
+        } else if (
+          current.state === "pending" ||
+          (current.state === "synced" && !syncing.fallback)
+        ) {
           // Which files are the edit's is not known yet: no check's news is the edit's.
           transitions = 0;
           quiet = false;

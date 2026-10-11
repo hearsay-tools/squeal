@@ -9,7 +9,6 @@ import {
   type FullSuiteRequest,
   isSlowLane,
   type RelativePath,
-  type RevisionNumber,
   type Scheduler,
   type SchedulerStatus,
   type SlowSuiteRequest,
@@ -144,7 +143,7 @@ class TierScheduler implements Scheduler {
         runsDir: options.runsDir,
         describe: options.describeFailure ?? describeFailure,
         head: options.head,
-        // Read at each call, as `rekeyedOnceRefined` reads it: the discharge timer and its holds share it.
+        // Read at each call: a commit stamps the store's re-key moves with it (`recordMoves`).
         now: options.now ?? (() => Date.now()),
         note: (message) => this.#note(message),
         rerunCap: options.rerunCap ?? RERUN_CAP,

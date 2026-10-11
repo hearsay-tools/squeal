@@ -10,7 +10,6 @@ import type {
   DaemonPhase,
   EpochMs,
   Policy,
-  RevisionNumber,
   RunnerAdapter,
   StoppedProcesses,
   SyncAnswer,
