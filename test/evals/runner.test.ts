@@ -151,6 +151,27 @@ describe("patchPlugins", () => {
     expect(readFileSync(join(d, "codex/dist/hooks/a.mjs"), "utf8")).toContain("yourself!");
   });
 
+  it("patches one named file in each plugin outside its bundles", () => {
+    const d = plugins();
+    for (const p of ["claude-code", "codex"]) {
+      mkdirSync(join(d, p, "skills/squeal"), { recursive: true });
+      writeFileSync(join(d, p, "skills/squeal/SKILL.md"), "description: Use when testing.");
+    }
+    const applied = patchPlugins(d, {
+      patch: [
+        {
+          files: "plugins/*/skills/squeal/SKILL.md",
+          find: "when testing.",
+          replace: "in any task.",
+          min: 2,
+        },
+      ],
+    });
+    expect(applied).toEqual([{ find: "when testing.", count: 2 }]);
+    expect(readFileSync(join(d, "codex/skills/squeal/SKILL.md"), "utf8")).toContain("any task");
+    expect(readFileSync(join(d, "codex/dist/hooks/a.mjs"), "utf8")).toContain("yourself.");
+  });
+
   it("fails loudly when a patch matches fewer times than its minimum", () => {
     const d = plugins();
     expect(() =>
