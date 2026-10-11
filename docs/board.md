@@ -384,7 +384,7 @@ Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 | 001-276 a daemon that never registered writes no exit mark | done (0.1.123; `#markExit` writes only after `#register` committed; a shutdown that began before registration is marked by `#register` itself) | `reviews/wave-13ah.md` B1; first round, fixed by the coordinator. | A start that fails before `#register` (an unusable socket directory) leaves no `daemon-exit:` row, red before; a registered daemon's stop still marks; worktree removal and prune leave no row. |
 | 001-277 re-review of the shutdown marker | done (PASS 0.1.123, `reviews/wave-13ai.md`; B1 closed, the four forced stop-before-register cases pass; stop timings unchanged; N1 is 001-278) | Second round on `reviews/wave-13ah.md`. | `reviews/wave-13ai.md` committed. |
 | 001-278 a prune of a running daemon's worktree leaves no exit mark | done (0.1.124; `#markExit` writes only while this worktree's row exists, in one transaction; no prune sweep) | `reviews/wave-13ai.md` N1, pre-existing (reproduced at be1aad84): remove a linked worktree's root, prune its row while its daemon still runs, then stop the daemon, and its `daemon-exit:` row is written for a worktree no prune will visit again. | A daemon whose worktree row is gone writes no exit mark (or the prune also drops orphaned `daemon-exit:` rows); the review's probe leaves no row. |
-| 001-279 review of the orphan exit mark | running (gpt-6.1-sol) | After 001-278. | `reviews/wave-13aj.md` committed. |
+| 001-279 review of the orphan exit mark | done (PASS 0.1.124, `reviews/wave-13aj.md`; no findings; older orphan marks are not swept, an accepted limit of the chosen fix) | After 001-278. | `reviews/wave-13aj.md` committed. |
 
 ## Feature 002: Codex adapter
 
