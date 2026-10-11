@@ -1,0 +1,5 @@
+{
+  "description": "No plugin in the harness; the repository still has squeal.config.json and the D4 block (the collaborator without Squeal).",
+  "plugin": false,
+  "instructions": "<!-- squeal:begin v1 (managed by Squeal setup; edits inside are replaced) -->\n## Tests\n\nSqueal runs the Vitest tests after each edit. Before you say the work is done, run `squeal status --wait 60000` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running Vitest. If you have seen no SQUEAL message in this session, run `npx vitest run` instead. Where this file's verification steps name a test command, they take precedence.\n<!-- squeal:end -->\n"
+}

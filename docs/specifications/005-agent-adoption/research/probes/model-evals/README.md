@@ -1,5 +1,7 @@
 # Probes: model-evals (throwaway)
 
+Spec 006 moved this prototype's code into the repository's `evals/` (row 006-01), where it is maintained; this folder keeps the research's record (`logs/`, plans).
+
 Throwaway prototype for `../../model-evals.md`, board row 005-06. Not product code: nothing here is imported, built or tested by Squeal, and the repository's Vitest, Biome and TypeScript configurations do not reach this folder's fixture as a project (its tests run only inside a scratch copy). Delete freely; a spec that adopts the suite rebuilds it in its own home.
 
 Run 2026-10-10 on this host (24 CPUs, Linux 6.8, Node 24.21.0) against Claude Code 2.1.296 and Codex CLI 0.160.1, Squeal plugins 0.1.98 from a `git archive` of `458287d`, Vitest 5.0.3.

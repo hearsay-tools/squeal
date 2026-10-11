@@ -1,0 +1,1 @@
+The billing API is renaming the invoice JSON field `due` to `dueDate`; their schema update lands next week. Change our invoice JSON to `dueDate` now, and update everything in this repository that reads it.

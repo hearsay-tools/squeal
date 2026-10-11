@@ -1,0 +1,10 @@
+{
+  "unreleased": [
+    { "type": "feature", "text": "CSV export quotes customer names that contain commas." },
+    { "type": "fix", "text": "Discounts round half up to the cent." }
+  ],
+  "1.4.0": [
+    { "type": "feature", "text": "Monthly summary lists each invoice's due date." },
+    { "type": "feature", "text": "Invoices carry payment terms in days." }
+  ]
+}
