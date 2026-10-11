@@ -133,4 +133,59 @@ describe("vitest adapter: the runner part beside a run (001-150)", SLOW, () => {
     expect(report.results).toEqual([]);
     expect(report.failure).toContain("src/mod.ts changed on disk after this run loaded it");
   });
+
+  /*
+   * Task 001-264 (research 001-182 Finding 1): the run reads reverted bytes by
+   * an import Vite cannot see, and a runner-part `invalidate` naming the file
+   * lands while those bytes are still on disk, so it logs nothing and drops
+   * the transform; the file is restored before the run ends.
+   */
+  it("drops a file whose run read bytes a mid-run invalidate dropped before they moved", async () => {
+    const markers = mkdtempSync(join(tmpdir(), "squeal-001-264-"));
+    markerDirs.push(markers);
+    const loaded = join(markers, "loaded");
+    const go = join(markers, "go");
+    const fx = await openFixture("basic", {
+      "src/mod.ts": NEW,
+      [HELD.path]: [
+        'import { existsSync, readFileSync, writeFileSync } from "node:fs";',
+        'import { setTimeout as delay } from "node:timers/promises";',
+        'import { expect, it } from "vitest";',
+        'it("loads the module while it is reverted", async () => {',
+        '  const file = new URL("../src/mod.ts", import.meta.url);',
+        '  const restored = readFileSync(file, "utf8");',
+        `  writeFileSync(file, ${JSON.stringify(OLD)});`,
+        '  const target = "../src/mod" + ".ts";',
+        "  const { which } = await import(/* @vite-ignore */ target);",
+        `  writeFileSync(${JSON.stringify(loaded)}, "");`,
+        `  while (!existsSync(${JSON.stringify(go)})) await delay(20);`,
+        "  writeFileSync(file, restored);",
+        '  expect(which).toBe("new");',
+        "}, 120_000);",
+        "",
+      ].join("\n"),
+    });
+    const run = fx.adapter.run([HELD], fx.runOptions());
+    await expect.poll(() => existsSync(loaded), { timeout: 60_000 }).toBe(true);
+    // A revision named src/mod.ts while it held the reverted bytes; its runner part lands now.
+    await fx.adapter.invalidate([{ path: "src/mod.ts", kind: "change" }]);
+    writeFileSync(go, "");
+
+    const report = await run;
+    expect(report.completedFiles).toEqual([]);
+    expect(report.results).toEqual([]);
+    expect(report.failure).toContain("src/mod.ts changed on disk after this run loaded it");
+  });
+
+  it("completes a run whose import a mid-run invalidate dropped with the bytes it read (001-264)", async () => {
+    const { fx, run, release } = await heldRun();
+    // Rewritten to the bytes the worker executed: the stat moves, the hash does not.
+    fx.write("src/mod.ts", NEW);
+    await fx.adapter.invalidate([{ path: "src/mod.ts", kind: "change" }]);
+
+    release();
+    const report = await run;
+    expect(report.completedFiles).toEqual([HELD]);
+    expect(outcomes(report)).toEqual(["pass"]);
+  });
 });
