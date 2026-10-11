@@ -153,8 +153,9 @@ async function judge(data) {
 }
 
 // Every file is regraded before any is written, so a refusal leaves them all as they were.
+// The judge's calibration files (D9) live beside the results and are not regraded.
 const runs = readdirSync(dir)
-  .filter((f) => f.endsWith(".json"))
+  .filter((f) => f.endsWith(".json") && !f.startsWith("judge-calibration-"))
   .map((f) => {
     const data = JSON.parse(readFileSync(join(dir, f), "utf8"));
     const changed = [];
