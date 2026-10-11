@@ -91,7 +91,8 @@ function countsOf(t) {
   return { pending, stale, unknown };
 }
 
-const CHECK = /^\s*(?:FAIL|PASS|RESOLVED) {2}(?:\[[^\]]*\] )?(\S+?) > /;
+/** A check's test file, as `formatCheck` names it: `path > test` or `path (file-level)`. */
+const CHECK = /^\s*(?:FAIL|PASS|RESOLVED) {2}(?:\[[^\]]*\] )?(\S+?)(?: > | \(|$)/m;
 
 /**
  * `files`, the test files whose checks the text names as current at its revision: every check a

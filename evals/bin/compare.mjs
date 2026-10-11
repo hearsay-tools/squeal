@@ -47,7 +47,7 @@ const rows = [
   })),
   ...CONTEXT.map((x) => ({
     label: `${x.label} (context)`,
-    rate: (g) => rate(of(g).map(({ c }) => x.of(c, ids(c)))),
+    rate: (g) => rate(of(g).map(({ c }) => x.of(c, ids(c), declared.context?.[c.task]))),
     scored: false,
   })),
 ];
