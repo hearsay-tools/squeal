@@ -1,7 +1,7 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell } from "./commands.mjs";
-import { NO_DAEMON, squealEvidence } from "./evidence.mjs";
+import { completedRuns, NO_DAEMON, retainedOf } from "./evidence.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
@@ -190,38 +190,6 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     ...claimGrades,
     timeline: { runs, pulls, sleeps, edits, failedEdits, refused, indeterminate, deliveries },
     retained: retainedOf(seen),
-  };
-}
-
-/** The retained timeline from `seen`, in order, each Squeal text reduced to its evidence. */
-function retainedOf(seen) {
-  let failures = 0;
-  const steps = [];
-  for (const { step } of seen.sort((a, b) => a.t - b.t || a.phase - b.phase || a.i - b.i)) {
-    if (step.k !== undefined) {
-      steps.push(step);
-      continue;
-    }
-    const e = squealEvidence(step.text, step.from, failures);
-    if (e === null) continue;
-    failures = e.failures;
-    steps.push(e);
-  }
-  return steps;
-}
-
-const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
-
-/**
- * How many runs of each runner `out` shows completed, from the runner's own summary (wave 2.6
- * contract): Vitest's `Test Files` line, node:test's `# tests` with at least one test. No tests
- * found and a runner that failed to start print neither.
- */
-function completedRuns(out) {
-  const text = String(out ?? "").replace(ANSI, "");
-  return {
-    vitest: text.match(/^[ \t]*Test Files\s|"numTotalTestSuites"/gm)?.length ?? 0,
-    "node:test": text.match(/^(?:# tests|\u2139 tests) [1-9]/gm)?.length ?? 0,
   };
 }
 
