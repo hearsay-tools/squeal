@@ -1,7 +1,12 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { planDelta, readHeader, worktreeLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
-import { answerMoves, type MovesAnswer, movesSeq } from "../core/scheduler/rekeyed-moves.js";
+import {
+  answerMoves,
+  type MovesAnswer,
+  movesSeq,
+  movesVouch,
+} from "../core/scheduler/rekeyed-moves.js";
 import { isPending } from "../core/state/index.js";
 import {
   buildSnapshot,
@@ -145,8 +150,10 @@ export type StatusWait =
  * ones not yet seen through (`lastHeard`, `editWindow`). Then quiet is none
  * of those files pending, slow ones aside, whatever else runs, and news is
  * a transition of one of their checks; until the moves are read, neither.
- * A daemon that records no moves (one before the task) or cannot sync, and
- * moves a prune dropped since the start, leave the wait as before: nothing
+ * A daemon that records no moves (one before the task) or cannot sync,
+ * moves a prune dropped since the start, and a key the record's writer did
+ * not write, read before the window or at any read after it (another
+ * daemon's, review wave 13ac, B1), leave the wait as before: nothing
  * pending at all, and any check's news.
  */
 export async function waitForStatus(
@@ -167,7 +174,7 @@ export async function waitForStatus(
     heard?: RevisionNumber;
     /** The moves' commit with the start view: a move resolved after it is the wait's (001-258). */
     sinceSeq?: number;
-    window?: EditWindow;
+    window?: EditWindow | undefined;
     /** The moves cannot name the window: the wait takes the no-files path. */
     fallback?: boolean;
   } = {};
@@ -202,8 +209,14 @@ export async function waitForStatus(
           }
           syncing.fallback = answer.state === "incomplete";
         }
+        let keys = syncing.window === undefined ? [] : store.testFileKeys.list(id);
+        if (syncing.window !== undefined && !movesVouch(store, id, syncing.sinceSeq ?? 0, keys)) {
+          // Another writer moved a key since the window was read: it names no files now (13ac B1).
+          syncing.window = undefined;
+          syncing.fallback = true;
+          keys = [];
+        }
         const window = syncing.window;
-        const keys = window === undefined ? [] : store.testFileKeys.list(id);
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id), now());
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.

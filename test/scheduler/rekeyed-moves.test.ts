@@ -5,7 +5,9 @@ import {
   MOVES_GRACE_MS,
   MOVES_RETENTION_MS,
   movesSeq,
+  movesVouch,
   recordMoves,
+  unrecordedRows,
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import type { RekeyedMark } from "../../src/core/scheduler/rekeyed-record.js";
 import {
@@ -33,13 +35,20 @@ function store(): Store {
   return s;
 }
 
+/** A commit of the ledger that wrote the worktree's rows as they are. */
 const commit = (
   s: Store,
   marks: RekeyedMark[],
   revision: number,
   at = T0,
   removed: string[] = [],
-) => s.transaction(() => recordMoves(s, WT, marks, removed, revision as RevisionNumber, at));
+) =>
+  s.transaction(() =>
+    recordMoves(s, WT, marks, removed, revision as RevisionNumber, at, {
+      written: s.testFileKeys.list(WT),
+      unrecorded: [],
+    }),
+  );
 const open = (revision: number): RekeyedMark => ({ id: ID, open: revision, moved: revision });
 const resolved = (moved: number | null = null): RekeyedMark => ({ id: ID, open: null, moved });
 const answer = (s: Store, upTo: number, sinceSeq: number) =>
@@ -182,5 +191,65 @@ describe("the store's re-key moves (task 001-258)", () => {
     expect(answer(s, 1, 0)).toEqual({ state: "incomplete" });
     commit(s, [open(1)], 1);
     expect(movesSeq(s, WT)).toBe(1);
+  });
+
+  // Review wave 13ac, B1 (task 001-265): a daemon before 001-258 moves a key and writes no move.
+  describe("a row the record's writer did not write", () => {
+    const moveUnrecorded = (s: Store, key: string, revision: number) =>
+      s.testFileKeys.upsertMany([
+        { worktreeId: WT, testFile: FILE, key: key as CheckKey, revision, pending: "queued" },
+      ]);
+
+    it("leaves a wait nothing to trust, whatever the record says", () => {
+      const s = store();
+      commit(s, [], 1);
+      const start = movesSeq(s, WT) ?? 0;
+      expect(movesVouch(s, WT, start, s.testFileKeys.list(WT))).toBe(true);
+      moveUnrecorded(s, "k2", 2);
+      s.meta.set(refinedMetaKey(WT), "2");
+      expect(movesVouch(s, WT, start, s.testFileKeys.list(WT))).toBe(false);
+      expect(answer(s, 2, start)).toEqual({ state: "incomplete" });
+      // A move back to the recorded key at a later revision is a move too.
+      moveUnrecorded(s, "k", 3);
+      expect(movesVouch(s, WT, start, s.testFileKeys.list(WT))).toBe(false);
+    });
+
+    it("is not vouched for by a record from before the task", () => {
+      const s = store();
+      commit(s, [], 1);
+      const row = JSON.parse(s.meta.get(`rekeyed-moves.${WT}`) ?? "{}");
+      delete row.keys;
+      s.meta.set(`rekeyed-moves.${WT}`, JSON.stringify(row));
+      expect(answer(s, 1, movesSeq(s, WT) ?? 0)).toEqual({ state: "incomplete" });
+      expect(unrecordedRows(s, WT)).toHaveLength(1);
+    });
+
+    it("is taken in by a ledger's first commit: a pending one as open, and as lost history", () => {
+      const s = store();
+      commit(s, [], 1);
+      const before = movesSeq(s, WT) ?? 0;
+      moveUnrecorded(s, "k2", 2);
+      const unrecorded = unrecordedRows(s, WT);
+      expect(unrecorded).toHaveLength(1);
+      s.transaction(() =>
+        recordMoves(s, WT, [], [], 2 as RevisionNumber, T0, { written: [], unrecorded }),
+      );
+      expect(unrecordedRows(s, WT)).toEqual([]);
+      // A wait from before falls back; a later one holds for the file.
+      expect(answer(s, 2, before)).toEqual({ state: "incomplete" });
+      expect(answer(s, 2, movesSeq(s, WT) ?? 0)).toEqual({
+        state: "answered",
+        rekeyed: [{ testFile: FILE, revision: 2 }],
+      });
+    });
+
+    it("is taken in with no move when it is not pending", () => {
+      const s = store();
+      const unrecorded = unrecordedRows(s, WT);
+      s.transaction(() =>
+        recordMoves(s, WT, [], [], 1 as RevisionNumber, T0, { written: [], unrecorded }),
+      );
+      expect(answer(s, 1, movesSeq(s, WT) ?? 0)).toEqual({ state: "answered", rekeyed: [] });
+    });
   });
 });

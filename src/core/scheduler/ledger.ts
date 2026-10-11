@@ -25,7 +25,7 @@ import {
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
-import { recordMoves } from "./rekeyed-moves.js";
+import { recordMoves, unrecordedRows } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
 import { slowView } from "./slow.js";
@@ -105,6 +105,8 @@ export class Ledger {
    * 001-258).
    */
   readonly #rekeyed = new Map<string, RevisionNumber | null>();
+  /** A commit took in the rows of the store's writers before this ledger (`unrecordedRows`). */
+  #adopted = false;
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
@@ -416,12 +418,17 @@ export class Ledger {
     this.#retired = [];
 
     store.transaction(() => {
+      // Before this ledger's first row: what an earlier writer moved unrecorded (review wave 13ac, B1).
+      const unrecorded = this.#adopted ? [] : unrecordedRows(store, worktreeId);
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
       const removedIds = removed.map(testFileId);
       recordRekeyed(store, worktreeId, rekeyed, removedIds);
       // Before this commit's refined revision: refinement caught up only by an earlier commit.
-      recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now());
+      recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
+        written: rows,
+        unrecorded,
+      });
       for (const { results, checkpointId } of mergeApplied(applied)) {
         sink.applyResults(worktreeId, revision, results, { checkpointId });
       }
@@ -438,6 +445,7 @@ export class Ledger {
         store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
       }
     });
+    this.#adopted = true;
   }
 
   #byCheckpoint(rows: readonly TestFileKeyRecord[]): Map<string | null, TestFileRef[]> {
