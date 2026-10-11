@@ -20,6 +20,7 @@ export {
   calibratedIdentity,
   calibrationName,
   declaredConditions,
+  ensureCalibrated,
   JUDGE_MODELS,
   judgeRecord,
 } from "./calibration.mjs";
