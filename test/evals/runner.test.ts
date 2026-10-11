@@ -117,6 +117,7 @@ describe("sessionCommand", () => {
     ]);
     expect(cargs).toContain("--plugin-dir");
     expect(CLAUDE_ALLOWED_TOOLS).toContain("Bash(node:*)");
+    expect(CLAUDE_ALLOWED_TOOLS).toContain("Skill");
     const [codex, xargs] = sessionCommand({
       harness: "codex",
       prompt: "p",

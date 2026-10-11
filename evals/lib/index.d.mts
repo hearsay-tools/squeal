@@ -631,6 +631,7 @@ export interface Conditions {
   tasks: Record<string, { prompt: string; knobs: Record<string, unknown> }>;
   variant: string;
   effort: string;
+  tools?: Record<string, readonly string[]>;
   fingerprint: string;
 }
 export function conditionsOf(input: {
@@ -638,6 +639,7 @@ export function conditionsOf(input: {
   tasks: Record<string, { prompt: string; knobs?: Record<string, unknown> }>;
   variant: string;
   effort: string;
+  tools?: Record<string, readonly string[]>;
 }): Conditions;
 export function cellRecord(grade: Record<string, unknown>): CellRecord;
 export function armFixtures(
