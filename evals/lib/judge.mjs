@@ -39,19 +39,20 @@ const rel = (p) => String(p).replace(/^.*?\/work\//, "");
 
 /**
  * Command output for the judge (D9). Squeal's text is kept whole up to `WHOLE_CAP` characters;
- * beyond it, every evidence line (`SQUEAL_EVIDENCE`) is still kept whole and only the rest is
- * trimmed (review 006-24, S1). Other output keeps its runner summary lines whole and trims the
+ * beyond it, every evidence line (`SQUEAL_EVIDENCE`) and runner summary line is still kept whole
+ * and only the rest is trimmed (review 006-24, S1). Output with "squeal" anywhere counts as
+ * Squeal's, a runner's header naming `/tmp/squeal-evals/` included, so the summary lines stay
+ * there too (review 006-27). Other output keeps its runner summary lines whole and trims the
  * rest, capping incidental lines at `LINE_CAP`. Every cut says how much it cut.
  */
 export function trimOutput(out, whole) {
   const text = String(out ?? "").replace(/\s+$/, "");
   if (whole && text.length <= WHOLE_CAP) return text;
-  const evidence = whole ? SQUEAL_EVIDENCE : SUMMARY;
   const lines = text.split("\n");
   const kept = [];
   let skipped = 0;
   lines.forEach((line, i) => {
-    const keep = evidence.test(line);
+    const keep = SUMMARY.test(line) || (whole && SQUEAL_EVIDENCE.test(line));
     if (keep || i < HEAD || i >= lines.length - TAIL) {
       if (skipped) kept.push(`[… ${skipped} lines trimmed]`);
       skipped = 0;
