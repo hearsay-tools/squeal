@@ -7,6 +7,11 @@ Two workers on disjoint files. Read `../reviews/wave-1.md` first; each finding n
 - `out/truth.json`: `{"vitest": C, "nodeTest": C & {"files": <count>}}`, where `C` is `{"exit": <number|null>, "signal": <string|null>, "timedOut": <bool>, "spawnError": <string|null>}`. The Vitest JSON report stays in `out/truth.vitest.json`. `truth.txt` is no longer written.
 - `out/status-end.json`: the pinned CLI's `squeal status --json` output, verbatim. `status-end.txt` stays, for reading by eye.
 
+Edge cases, settled during the wave (2026-10-11):
+- A `nodeTest` with `files: 0` has every other field null or false. The fixture always ships a node:test file, so this means the suite is gone: truth unavailable.
+- A command that could not start has `exit: null` and `spawnError` set: truth unavailable.
+- `status-end.json` is written only when the plugin is on. Under a variant that removes the plugin, Squeal's state is not applicable and the claim is graded against ground truth alone. With the plugin on, a missing or unparsable file means Squeal's state is unavailable.
+
 A cell without these files (the 005-07 import) has no truth for the grader. The import's committed grades stand as they are.
 
 Both rows may add export lines to `evals/lib/index.mjs` and `index.d.mts`. On a conflict, the coordinator keeps both sides. Each row puts its tests in new files under `test/evals/`, and changes only the tests that cover its own files.
