@@ -86,7 +86,7 @@ describe.runIf(process.platform === "linux")(
           .find((line) => line.startsWith("Daemon: "));
         expect(daemonLine).toMatch(
           new RegExp(
-            `^Daemon: died without shutting down at about \\S+, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts.*\\. A SIGKILL, or a test that signals its own process group`,
+            `^Daemon: no daemon running since \\S+; it died without shutting down, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts.*\\. A SIGKILL, or a test that signals its own process group`,
           ),
         );
 
@@ -103,7 +103,7 @@ describe.runIf(process.platform === "linux")(
         );
         expect(context(out)).toMatch(
           new RegExp(
-            ` The last daemon died without shutting down at about \\S+, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts`,
+            `; results are as of revision \\d+\\. The last daemon died without shutting down, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts`,
           ),
         );
       } finally {

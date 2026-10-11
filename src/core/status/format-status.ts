@@ -209,12 +209,13 @@ function daemonLine(s: StatusSnapshot, now: EpochMs): string {
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
   }
+  const down =
+    s.daemon.since === null
+      ? "Daemon: no daemon running"
+      : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
   // Task 001-263: a daemon that died without its stop note is named, with what it was running.
-  if (s.daemon.died !== undefined) {
-    return `Daemon: ${deathText(s.daemon.died, s.daemon.since)}. ${DEATH_CAUSE}`;
-  }
-  if (s.daemon.since === null) return "Daemon: no daemon running";
-  return `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
+  if (s.daemon.died === undefined) return down;
+  return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
 }
 
 export function shortCommit(commit: CommitSha): string {

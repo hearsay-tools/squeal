@@ -155,19 +155,16 @@ function livenessSentence(daemon: DaemonLiveness | undefined, revision: number):
   if (daemon === undefined || daemon.state === "alive") return "";
   // Task 001-263: the daemon that died without its stop note, and what it was running.
   const died =
-    daemon.died === undefined
-      ? ""
-      : ` The last daemon ${deathText(daemon.died, daemon.since)}. ${DEATH_CAUSE}`;
+    daemon.died === undefined ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
   // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
   if (daemon.startingSince !== undefined) {
-    return `${died} A daemon is starting; results are as of revision ${revision}.`;
+    return ` A daemon is starting; results are as of revision ${revision}.${died}`;
   }
-  if (died !== "") return `${died} Results are as of revision ${revision}.`;
   const since =
     daemon.since === null
       ? "No daemon is running"
       : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return ` ${since}; results are as of revision ${revision}.`;
+  return ` ${since}; results are as of revision ${revision}.${died}`;
 }
 
 /**
