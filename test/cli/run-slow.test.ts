@@ -1,13 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
-import { createServer, type Server } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import { squealRepo } from "../harness/helpers.js";
+import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 
 const saved = { ...process.env };
 let runtimeDir: string;
-const servers: Server[] = [];
 
 beforeEach(() => {
   // Socket paths are limited to 108 bytes; the test temp dir can be longer.
@@ -16,33 +15,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const s of servers.splice(0)) s.close();
+  closeFakeDaemons();
   rmSync(runtimeDir, { recursive: true, force: true });
   process.env = { ...saved };
 });
-
-type Answer = Record<string, unknown>;
-
-/**
- * A stand-in daemon. `answers` maps a request type to its answers in order;
- * the last one repeats. Resolves to the request types it got, in order.
- */
-function fakeDaemon(path: string, answers: Record<string, Answer[]>): Promise<string[]> {
-  const seen: string[] = [];
-  return new Promise((resolve) => {
-    const server = createServer((socket) => {
-      socket.once("data", (data) => {
-        const request = JSON.parse(data.toString()) as { type: string };
-        seen.push(request.type);
-        const queue = answers[request.type] ?? [{ ok: true, type: request.type }];
-        const answer = (queue.length > 1 ? queue.shift() : queue[0]) as Answer;
-        socket.end(`${JSON.stringify({ schemaVersion: 1, ...answer })}\n`);
-      });
-    });
-    servers.push(server);
-    server.listen(path, () => resolve(seen));
-  });
-}
 
 function slow(requested: { revision: number; queued: number } | null, error: string | null = null) {
   return { ok: true, type: "run-slow", requestId: "s1", requested, error };

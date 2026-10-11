@@ -14,8 +14,9 @@ const POLL_MS = 100;
 /**
  * `squeal run --slow [--wait <ms>]`: the slow tier's explicit trigger (spec
  * 004 D2), requested over the daemon socket. Prints what the scheduler
- * queued; with `--wait`, then waits as `status --wait` does and prints its
- * answer. Exit code 0 when requested, 1 when no daemon runs, the daemon has
+ * queued; with `--wait`, then waits as `status --wait` does, and also for
+ * the slow files it queued to have their results (task 001-282), and prints
+ * its answer. Exit code 0 when requested, 1 when no daemon runs, the daemon has
  * no slow tier or the request failed, 2 on a usage error.
  */
 export async function runSlowCommand(
@@ -45,7 +46,7 @@ export async function runSlowCommand(
       ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.\n`
       : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.\n`,
   );
-  return wait.waitMs === null ? 0 : statusWaitCommand(wait.waitMs, false, io);
+  return wait.waitMs === null ? 0 : statusWaitCommand(wait.waitMs, false, io, queued > 0);
 }
 
 /**

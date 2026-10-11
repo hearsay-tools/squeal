@@ -19,6 +19,7 @@ import type {
   DeltaEntry,
   EpochMs,
   KnownState,
+  RelativePath,
   RevisionNumber,
   StatusResult,
   StatusSnapshot,
@@ -37,6 +38,7 @@ import {
   windowRefined,
 } from "./status-wait-edit.js";
 import { waitLine } from "./status-wait-lines.js";
+import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 
 /** How often `status --wait` reads the store. */
 export const STATUS_WAIT_POLL_MS = 250;
@@ -65,6 +67,13 @@ export interface StatusWaitOptions {
   readonly session?: string | null;
   /** Default `syncDaemon`; tests replace it. */
   readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
+  /**
+   * `run --slow --wait` (task 001-282): also hold for the slow files pending
+   * at the first read, the ones the request queued, until each has a result;
+   * their checks' transitions are news. Default `false`: slow files never
+   * hold a wait (spec 004 D9, as Stop).
+   */
+  readonly holdSlow?: boolean;
 }
 
 /**
@@ -102,6 +111,12 @@ export interface StatusWaitEdit {
   readonly otherTransitions: number;
 }
 
+/** The slow files a `run --slow --wait` held for (`holdSlow`), and those still pending by path. */
+export interface StatusWaitSlow {
+  readonly held: number;
+  readonly pending: readonly RelativePath[];
+}
+
 export type StatusWait =
   | {
       readonly outcome: StatusWaitOutcome;
@@ -112,6 +127,7 @@ export type StatusWait =
        */
       readonly transitions: number;
       readonly edit?: StatusWaitEdit;
+      readonly slow?: StatusWaitSlow;
       readonly result: StatusSnapshot;
     }
   | {
@@ -157,6 +173,9 @@ export type StatusWait =
  * write last or a daemon registered since, read before the window or at any
  * read after it (`movesTrusted`, review waves 13ac and 13ad, B1), leave the
  * wait as before: nothing pending at all, and any check's news.
+ *
+ * With `holdSlow` (task 001-282), quiet also needs every slow file pending
+ * at the first read to have its result, and their transitions are news.
  */
 export async function waitForStatus(
   cwd: AbsolutePath,
@@ -181,6 +200,8 @@ export async function waitForStatus(
     windowSeq?: number | null;
     /** The moves cannot name the window: the wait takes the no-files path. */
     fallback?: boolean;
+    /** With `holdSlow`: the slow files pending at the first read. */
+    slow?: HeldSlow;
   } = {};
   try {
     for (;;) {
@@ -227,7 +248,12 @@ export async function waitForStatus(
           if (syncing.fallback) syncing.window = undefined;
         }
         const window = syncing.window;
-        const keys = window === undefined ? [] : store.testFileKeys.list(id);
+        const keys =
+          window === undefined && options.holdSlow !== true ? [] : store.testFileKeys.list(id);
+        if (options.holdSlow === true) syncing.slow ??= pendingSlow(store, id, states, keys);
+        const held = syncing.slow;
+        const slowLeft =
+          held === undefined ? [] : heldSlowLeft(held, pendingSlow(store, id, states, keys));
         const settled = final || elapsed() >= settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id), now());
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
@@ -237,14 +263,15 @@ export async function waitForStatus(
         if (window !== undefined) {
           const split = splitNews(window, news);
           const pending = heldPending(window, keys);
-          transitions = split.own;
+          const slowNews = held === undefined ? 0 : heldSlowNews(held, news, window.ids);
+          transitions = split.own + slowNews;
           quiet =
             header.revision >= window.revision && windowRefined(window, header) && pending === 0;
           edit = {
             since: window.since,
             testFiles: window.ids.size,
             pending,
-            otherTransitions: split.other,
+            otherTransitions: split.other - slowNews,
           };
         } else if (
           current.state === "pending" ||
@@ -257,6 +284,7 @@ export async function waitForStatus(
           transitions = news.length;
           quiet = isSynced(current, header.revision, settled) && !isPending(header);
         }
+        quiet &&= slowLeft.length === 0;
         const outcome: StatusWaitOutcome | null =
           transitions > 0
             ? "news"
@@ -269,7 +297,8 @@ export async function waitForStatus(
                   : null;
         if (outcome === null) return null;
         const result = buildSnapshot(store, root, now());
-        return { outcome, transitions, ...(edit === undefined ? {} : { edit }), result };
+        const slow = held === undefined ? {} : { slow: { held: held.size, pending: slowLeft } };
+        return { outcome, transitions, ...(edit === undefined ? {} : { edit }), ...slow, result };
       });
       if (read !== null && "available" in read) {
         if (start === null || final) {
@@ -319,17 +348,24 @@ function newsOf(
  * or timeout; 1 when status is unavailable. The line saying why the wait
  * ended comes first in the human rendering and goes to stderr with `--json`,
  * where stdout is the snapshot payload plus a `wait` field
- * (`StatusWaitPayload`) with the same outcome.
+ * (`StatusWaitPayload`) with the same outcome. `holdSlow` is
+ * `run --slow --wait`'s (`StatusWaitOptions`).
  */
 export async function statusWaitCommand(
   timeoutMs: number,
   json: boolean,
   io: CliIo,
+  holdSlow = false,
 ): Promise<number> {
   const now = io.now ?? Date.now;
   const env = io.env ?? process.env;
   const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
-  const wait = await waitForStatus(io.cwd ?? process.cwd(), { timeoutMs, now, session });
+  const wait = await waitForStatus(io.cwd ?? process.cwd(), {
+    timeoutMs,
+    now,
+    session,
+    holdSlow,
+  });
   const result: StatusResult = wait.result;
   if (wait.outcome === "unavailable") {
     io.stdout(json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
