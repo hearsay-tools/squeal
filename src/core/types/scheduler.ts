@@ -221,6 +221,12 @@ export interface Scheduler {
    */
   requestSlowSuite(): Promise<SlowSuiteRequest>;
   /**
+   * A hook's nudge (task 001-281): a silent Stop ended a turn, so slow files
+   * waiting for their consumers to go idle are planned now instead of at the
+   * slow tier's recheck. Starts nothing a trigger does not allow.
+   */
+  nudge(): void;
+  /**
    * Spec 003 D3, task 003-26: another worktree grew the shared observed
    * paths. Queues a runner-only refinement, which stores no revision: the
    * runner reports the test files and projects the growth re-keys, and their
