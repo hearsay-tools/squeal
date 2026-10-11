@@ -255,13 +255,45 @@ function notCompleted(c, name) {
   return null;
 }
 
+/** The statuses of a test that ran to its end, or was skipped or left as todo. */
+const COMPLETED = new Set(["passed", "failed", "skipped", "todo"]);
+const isCount = (n) => Number.isInteger(n) && n >= 0;
+
+/**
+ * Why `vitest` is not a report to read; `null` when it is (review wave 1.5, SF1). Every file is
+ * named, `passed` or `failed`, and lists its tests, each completed; a passed file has a test and
+ * none failed. The test counts are present and match the tests, a suite count is a count, and
+ * `success` is a boolean no failure contradicts.
+ */
 function invalidReport(vitest) {
   const files = vitest?.testResults;
   if (!Array.isArray(files) || files.length === 0) return "no Vitest report with test files";
-  const valid = files.every(
-    (f) => typeof f?.name === "string" && Array.isArray(f.assertionResults),
-  );
-  return valid ? null : "the Vitest report is not valid";
+  const fileValid = (f) =>
+    typeof f?.name === "string" &&
+    (f.status === "passed" || f.status === "failed") &&
+    Array.isArray(f.assertionResults) &&
+    f.assertionResults.every((a) => COMPLETED.has(a?.status)) &&
+    (f.status === "failed" ||
+      (f.assertionResults.length > 0 && f.assertionResults.every((a) => a.status !== "failed")));
+  if (!files.every(fileValid)) return "the Vitest report has a malformed or unfinished test file";
+  const tests = files.flatMap((f) => f.assertionResults);
+  const n = (status) => tests.filter((a) => a.status === status).length;
+  const counts = {
+    numTotalTests: tests.length,
+    numPassedTests: n("passed"),
+    numFailedTests: n("failed"),
+    numPendingTests: n("skipped"),
+    numTodoTests: n("todo"),
+  };
+  if (Object.entries(counts).some(([k, v]) => !isCount(vitest[k]) || vitest[k] !== v))
+    return "the Vitest report's test counts do not match its tests";
+  const suites = ["numTotalTestSuites", "numPassedTestSuites", "numFailedTestSuites"];
+  if ([...suites, "numPendingTestSuites"].some((k) => k in vitest && !isCount(vitest[k])))
+    return "the Vitest report's suite counts are not counts";
+  const failed = files.some((f) => f.status === "failed") || vitest.numFailedTestSuites > 0;
+  if (typeof vitest.success !== "boolean" || (vitest.success && failed))
+    return "the Vitest report's success does not match its tests";
+  return null;
 }
 
 /**
@@ -287,6 +319,18 @@ export function squealState(raw) {
   const fields = [s.counts, s.testFilesWithoutChecks, s.breakdown?.currentByOutcome, s.daemon];
   if (!Array.isArray(s.knownFailures) || fields.some((f) => typeof f !== "object" || f === null))
     return unsupported("status lacks the fields of the current-state contract");
+  // Review wave 1.5, SF2: every count the verdict reads is one, or the status is unsupported.
+  const read = [
+    s.counts.pending,
+    s.counts.stale,
+    s.counts.unknown,
+    s.testFilesWithoutChecks.pending,
+    s.testFilesWithoutChecks.unknown,
+    s.breakdown.currentByOutcome.unknown,
+  ];
+  if (s.slowTier !== undefined && s.slowTier !== null)
+    read.push(s.slowTier.testFiles, s.slowTier.current);
+  if (!read.every(isCount)) return unsupported("status counts are missing or not counts");
 
   const daemon = s.daemon.state === "alive";
   const pending = s.counts.pending + s.testFilesWithoutChecks.pending;
