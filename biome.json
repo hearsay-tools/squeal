@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!docs", "!test/fixtures", "!evals/ledgerline"]
+    "includes": ["**", "!docs", "!test/fixtures", "!evals/ledgerline", "!evals/results"]
   },
   "formatter": {
     "enabled": true,

@@ -165,3 +165,57 @@ export function patchPlugins(
   pluginsDir: string,
   variant: { patch?: readonly Patch[] },
 ): { find: string; count: number }[];
+
+export interface Rate {
+  k: number;
+  n: number;
+}
+export interface Behaviour {
+  key: string;
+  label: string;
+  better: "higher" | "lower" | null;
+  of: (cell: CellRecord) => boolean | null;
+}
+export const BEHAVIOURS: readonly Behaviour[];
+export function rate(cells: readonly CellRecord[], behaviour: Behaviour): Rate | null;
+export function dropped(
+  behaviour: Behaviour,
+  before: Rate | null,
+  now: Rate | null,
+  points?: number,
+): boolean;
+
+export type CellRecord = { id: string; harness: string; model: string; [key: string]: unknown };
+export interface Conditions {
+  fixture: string | null;
+  tasks: Record<string, { prompt: string; knobs: Record<string, unknown> }>;
+  variant: string;
+  effort: string;
+  fingerprint: string;
+}
+export function conditionsOf(input: {
+  fixture: string | null;
+  tasks: Record<string, { prompt: string; knobs?: Record<string, unknown> }>;
+  variant: string;
+  effort: string;
+}): Conditions;
+export function cellRecord(grade: Record<string, unknown>): CellRecord;
+
+export interface ResultsFile {
+  kind: "baseline" | "variant";
+  date: string;
+  squealVersion: string;
+  commit: string;
+  conditions: Conditions;
+  models?: { harness: string; model: string; status: "served" | "missing"; standIn?: string }[];
+  cells: CellRecord[];
+}
+export interface TrendLine {
+  fingerprint: string;
+  runs: {
+    name: string;
+    flags: { model: string; behaviour: string; before: Rate | null; now: Rate | null }[];
+  }[];
+}
+export function trendLines(runs: readonly { name: string; data: ResultsFile }[]): TrendLine[];
+export function trendMarkdown(runs: readonly { name: string; data: ResultsFile }[]): string;
