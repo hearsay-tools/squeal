@@ -9,6 +9,7 @@ import {
   currentBeforeClaim,
   redStep,
 } from "./evidence.mjs";
+import { JUDGED } from "./judge.mjs";
 
 /** What each expectation id means, from D4's table. A declared id missing here is an error. */
 export const EXPECTATIONS = {
@@ -107,12 +108,13 @@ export function notGraded(cell, conditions, declared) {
 }
 
 /**
- * Each expectation `cell`'s task declares, as `met`, `missed`, `n/a` (it does not apply in this
- * session) or `not computable` (the record lacks a field its rule needs, or its rule says the
- * evidence cannot decide); `null` where the cell
- * is not graded under expectations (`notGraded`).
+ * The frozen parser's grade (spec 006 D4 "Who grades what"): each expectation `cell`'s task
+ * declares, as `met`, `missed`, `n/a` (it does not apply in this session) or `not computable`
+ * (the record lacks a field its rule needs, or its rule says the evidence cannot decide); `null`
+ * where the cell is not graded under expectations (`notGraded`). For the four the judge grades it
+ * is the cross-check, kept as `parser`, not the grade of record.
  */
-export function expectationsOf(cell, conditions, declared) {
+export function parserExpectationsOf(cell, conditions, declared) {
   if (notGraded(cell, conditions, declared) !== null) return null;
   return Object.fromEntries(
     declared.expectations[cell.task].map((e) => {
@@ -126,6 +128,55 @@ export function expectationsOf(cell, conditions, declared) {
       return [e.id, v === null || v === undefined ? "n/a" : v ? "met" : "missed"];
     }),
   );
+}
+
+/** The judged expectations whose moment is the final claim: `n/a` with no claim or no Squeal. */
+const AT_CLAIM = new Set(["current-before-claim", "no-overclaim"]);
+
+/**
+ * The grade of record (D4 "Who grades what"): the parser's for the mechanical expectations, and
+ * for the four in `JUDGED` the judge's checked grade from `cell.judge` (D9). The claim line is
+ * mechanical, so a claim expectation with no claim, or without the plugin, is `n/a`. A cell with
+ * no judge verdict for one of the four is `not computable` for it, never the parser's guess.
+ */
+export function expectationsOf(cell, conditions, declared) {
+  const parser = parserExpectationsOf(cell, conditions, declared);
+  if (parser === null) return null;
+  return Object.fromEntries(
+    Object.entries(parser).map(([id, v]) => {
+      if (!JUDGED.includes(id)) return [id, v];
+      if (AT_CLAIM.has(id) && (cell.claim === null || cell.squealVerdict === null))
+        return [id, "n/a"];
+      return [id, cell.judge?.verdicts?.[id]?.grade ?? "not computable"];
+    }),
+  );
+}
+
+/** The parser's grade of the judged expectations `cell` declares, its cross-check; `null` without. */
+export function parserOf(cell, conditions, declared) {
+  const parser = parserExpectationsOf(cell, conditions, declared);
+  if (parser === null) return null;
+  return Object.fromEntries(Object.entries(parser).filter(([id]) => JUDGED.includes(id)));
+}
+
+/**
+ * Where the judge's grade of record and the parser's cross-check differ, for a person to read
+ * (D9): `[{ id, judge, parser, reason, steps }]`, never resolved. A judged expectation the judge
+ * has no verdict for is not a disagreement.
+ */
+export function disagreements(cell, conditions, declared) {
+  const grades = expectationsOf(cell, conditions, declared);
+  const parser = parserOf(cell, conditions, declared);
+  if (grades === null || parser === null) return [];
+  return Object.entries(parser)
+    .filter(([id, p]) => cell.judge?.verdicts?.[id] && grades[id] !== p)
+    .map(([id, p]) => ({
+      id,
+      judge: grades[id],
+      parser: p,
+      reason: cell.judge.verdicts[id].reason,
+      steps: cell.judge.verdicts[id].steps,
+    }));
 }
 
 /** T2's red step from `cell`'s timeline, under its task's declared context; `null` without. */

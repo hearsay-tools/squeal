@@ -3,12 +3,15 @@
 export {
   CONTEXT,
   declarations,
+  disagreements,
   dropped,
   EXPECTATIONS,
   expectationsOf,
   falseClaim,
   metRate,
   notGraded,
+  parserExpectationsOf,
+  parserOf,
   RULES,
   rate,
 } from "./behaviours.mjs";
@@ -31,8 +34,28 @@ export {
   squealEvidence,
 } from "./evidence.mjs";
 export { gradeCell, groundTruthOf, squealState } from "./grade.mjs";
+export {
+  claudeRunner,
+  claudeVersion,
+  gradeOf,
+  identityKey,
+  JUDGE,
+  JUDGED,
+  judgeArgs,
+  judgeCell,
+  judgeEnv,
+  judgeIdentity,
+  judgeInput,
+  rubricRevision,
+  schemaOf,
+  situationOf,
+  transcriptHash,
+  transcriptOf,
+  trimOutput,
+} from "./judge.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
 export { armFixtures, cellRecord, conditionsOf, resultsName } from "./results.mjs";
+export { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 export {
   cellEnv,
   clearScratch,
