@@ -55,7 +55,7 @@ Do not run `npm run build` in your worktree.
 
 ## 006-13 review of wave 2.5
 
-Use /reviewer. Covers 006-12 (its four items) and 006-14 (expectations), and, for the first time in this spec, the design of the score, not only whether counts match transcripts.
+Use /reviewer. Range `991bd75^..8480c73`: 006-12's seven commits, 006-14's three, and the coordinator's follow-ups `da98e30` (`run-baseline.mjs` grades expectations at write time), `3584fc9` (the `evals/bin` import guard) and `8480c73`. Covers 006-12 (its four items) and 006-14 (expectations), and, for the first time in this spec, the design of the score, not only whether counts match transcripts.
 
 - For each task and each expectation D4 declares: is it the right behaviour at that moment for that situation, and does the fixture and knob make the situation real? Is anything the right move that no expectation scores, or scored where it is not the right move?
 - Does a reference session doing the right thing meet everything, and does each known mistake miss exactly its expectation?
