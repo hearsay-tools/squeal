@@ -1,0 +1,3 @@
+{"timestamp": "2025-10-09T08:53:20.000Z", "type": "turn_context", "payload": {"effort": "medium"}}
+{"timestamp": "2025-10-09T08:53:20.300Z", "type": "response_item", "payload": {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": "SQUEAL \u00b7 registered at revision 0\nSqueal runs this repository's Vitest tests in the background after each edit."}]}}
+{"timestamp": "2025-10-09T08:53:23.500Z", "type": "response_item", "payload": {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": "SQUEAL \u00b7 1 check changed at revision 1\nFAIL  test/report.test.ts > monthly summary > formats totals"}]}}
