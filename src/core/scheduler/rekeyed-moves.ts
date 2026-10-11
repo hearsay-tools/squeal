@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import {
@@ -11,6 +10,7 @@ import {
   type WorktreeId,
   worktreeMetaKey,
 } from "../types/index.js";
+import { type KeyMarks, markRows, marksVouch, readKeyMarks } from "./moves-keys.js";
 import type { RekeyedMark } from "./rekeyed-record.js";
 
 /*
@@ -37,7 +37,7 @@ import type { RekeyedMark } from "./rekeyed-record.js";
  * any time, before a wait's refinement or after its window. So the record
  * also keeps, per test file, the revision and key its writer last wrote
  * (`keys`), and vouches for the moves only while every `test_file_keys` row
- * still has them (`vouches`): a row another writer wrote makes a wait fall
+ * still has them (`movesVouch`): a row another writer wrote makes a wait fall
  * back, in the same read it would trust the record in. A ledger's first
  * commit takes such rows in (`unrecordedRows`): a pending one as a move
  * open at its row's revision, and every one as lost history (`dropped`), so
@@ -77,15 +77,12 @@ interface Moves {
   /** By `testFileId`. */
   files: Record<string, FileMoves>;
   /**
-   * By `testFileId`: the revision and the key digest (`keyMark`) of the
-   * file's `test_file_keys` row as this record's writer last wrote it;
-   * `null` in a record before task 001-265, which vouches for no row.
+   * The file's `test_file_keys` row as this record's writer last wrote it
+   * (`moves-keys.ts`); `null` in a record before task 001-265, which
+   * vouches for no row.
    */
-  keys: Record<string, KeyMark> | null;
+  keys: KeyMarks | null;
 }
-
-/** A row's revision and its key's digest, `null` for an unkeyed file. */
-type KeyMark = [RevisionNumber, string | null];
 
 /** The rows one commit writes, and those its ledger found no record vouches for (`recordMoves`). */
 export interface MovesRows {
@@ -94,11 +91,6 @@ export interface MovesRows {
 }
 
 const NO_ROWS: MovesRows = { written: [], unrecorded: [] };
-
-function keyMark(row: TestFileKeyRecord): KeyMark {
-  const key = row.key === null ? null : createHash("sha256").update(row.key).digest("base64url");
-  return [row.revision, key === null ? null : key.slice(0, 16)];
-}
 
 const isInt = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value);
@@ -129,28 +121,13 @@ function readMoves(store: Store, worktreeId: WorktreeId): Moves | null {
     files[id] = { open: asPair(entry.open), resolved };
   }
   const caughtUpAt = isInt(value.caughtUpAt) ? value.caughtUpAt : null;
-  return { seq: value.seq, caughtUpAt, dropped: value.dropped, files, keys: readKeys(value.keys) };
-}
-
-function readKeys(value: unknown): Record<string, KeyMark> | null {
-  if (!isRecord(value)) return null;
-  const keys: Record<string, KeyMark> = {};
-  for (const [id, mark] of Object.entries(value)) {
-    if (!Array.isArray(mark) || !isInt(mark[0])) continue;
-    keys[id] = [mark[0], typeof mark[1] === "string" ? mark[1] : null];
-  }
-  return keys;
-}
-
-/** Whether `moves` names every row as its writer last wrote it. */
-function vouches(moves: Moves, rows: readonly TestFileKeyRecord[]): boolean {
-  const { keys } = moves;
-  if (keys === null) return false;
-  return rows.every((row) => {
-    const mark = keys[testFileId(row.testFile)];
-    const [revision, key] = keyMark(row);
-    return mark !== undefined && mark[0] === revision && mark[1] === key;
-  });
+  return {
+    seq: value.seq,
+    caughtUpAt,
+    dropped: value.dropped,
+    files,
+    keys: readKeyMarks(value.keys),
+  };
 }
 
 /**
@@ -161,7 +138,7 @@ function vouches(moves: Moves, rows: readonly TestFileKeyRecord[]): boolean {
 export function unrecordedRows(store: Store, worktreeId: WorktreeId): readonly TestFileKeyRecord[] {
   const moves = readMoves(store, worktreeId);
   const rows = store.testFileKeys.list(worktreeId);
-  return moves === null ? rows : rows.filter((row) => !vouches(moves, [row]));
+  return moves === null ? rows : rows.filter((row) => !marksVouch(moves.keys, [row]));
 }
 
 /**
@@ -176,7 +153,7 @@ export function movesVouch(
   rows: readonly TestFileKeyRecord[],
 ): boolean {
   const moves = readMoves(store, worktreeId);
-  return moves !== null && moves.dropped <= sinceSeq && vouches(moves, rows);
+  return moves !== null && moves.dropped <= sinceSeq && marksVouch(moves.keys, rows);
 }
 
 /** The record's commit sequence, which a wait reads with its start view; `null` with no record. */
@@ -234,13 +211,7 @@ export function recordMoves(
     apply(moves, { id, open: row.revision, moved: row.revision }, seq, now);
   }
   for (const mark of marks) changed = apply(moves, mark, seq, now) || changed;
-  for (const row of [...unrecorded, ...rows.written]) {
-    const id = testFileId(row.testFile);
-    const mark = keyMark(row);
-    if (keys[id]?.[0] === mark[0] && keys[id]?.[1] === mark[1]) continue;
-    keys[id] = mark;
-    changed = true;
-  }
+  changed = markRows(keys, [...unrecorded, ...rows.written]) || changed;
   const refined = refinedRevision(store, worktreeId);
   const caughtUpAt = refined === null || refined >= revision ? (moves.caughtUpAt ?? now) : null;
   if (caughtUpAt !== moves.caughtUpAt) {
@@ -323,7 +294,7 @@ export function answerMoves(
   if (refined !== null && refined < upTo) return { state: "refining" };
   const moves = readMoves(store, worktreeId);
   const rows = store.testFileKeys.list(worktreeId);
-  if (moves === null || moves.dropped > sinceSeq || !vouches(moves, rows)) {
+  if (moves === null || moves.dropped > sinceSeq || !marksVouch(moves.keys, rows)) {
     return { state: "incomplete" };
   }
   const refs = new Map(rows.map((row) => [testFileId(row.testFile), row.testFile]));
