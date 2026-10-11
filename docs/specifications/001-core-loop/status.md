@@ -190,6 +190,7 @@ Started: 2026-10-02
 - 2026-10-12, human: 001-278 (the pre-existing prune-before-stop orphan) runs before the next hub release, which then carries 0.1.123 and 001-278.
 - 2026-10-12, release: squeal--v0.1.124 (37e71759) on the hub (`hearsay-tools/marketplace` 37b5cec), KEY_FORMAT_VERSION 7 shipped; covered by reviews wave-13ah to 13aj; eval baseline run 20261011T203431Z-d0d96d with three expectation flags, judged chance spread by the 006 coordinator's transcript check, released by the human's decision. A later change to the guarded sources bumps to 8.
 - 2026-10-12, human: agents claiming while the slow tier is pending in headless sessions (006's finding) is 001's, research first (001-280), including why Claude Code sessions never load the Squeal skill.
+- 2026-10-12, human (`research/slow-claims.md`): run 001-281 (Stop nudges the slow tier) and 001-282 (`run --slow --wait` waits for its slow files) now; 001-283 also rewrites the skill's description to name the whole task, tested by a `skill-desc` variant with the Skill tool allowed in the eval; the 004 D9 amendment for one-shot sessions (001-284, 001-285) is decided after the variants run.
 
 ## Research
 

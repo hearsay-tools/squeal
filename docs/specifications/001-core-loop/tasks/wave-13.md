@@ -899,3 +899,19 @@ Questions:
 5. Recommend a fix, any mix of a headless Stop wait, an end-of-turn message and primer or skill text, as board rows in the board's column shape, each with a one-worker scope.
 
 Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME. Scratch HOME variables are not isolation. Measure the Stop wait with Squeal's own test harness or a scratch repository and daemon you create and remove. Output `research/slow-claims.md`, and commit it with any variant files. Do not edit `docs/board.md`.
+
+## Wave 13ak (2026-10-12, decided by the human)
+
+Two workers, disjoint ownership, then one review (001-286). The board rows and `research/slow-claims.md` are the briefs. Each worker: do not edit `docs/board.md`, do not commit `dist`, and run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. `KEY_FORMAT_VERSION` 7 shipped in 0.1.124, so the coordinator bumps to 8 at the first guarded-source landing. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+## 001-281 the slow tier starts when a consumer goes idle
+
+Use /worker. Shape: slice. The board row is the brief, with `research/slow-claims.md` section 4. Today a silent Stop marks the session idle but nudges nothing, so the slow tier waits up to `SLOW_RECHECK_MS` (15 s) before it starts. Own `src/harness/shared/stop.ts`, the daemon's request handler for the nudge (`src/core/daemon/handlers.ts` and its desk message, as additive), `src/core/scheduler/slow-tier.ts`, and tests under `test/harness/`, `test/scheduler/` and `test/daemon/`. Do not touch `src/cli/` (001-282 owns it). Done when the row's done-when holds; a silent Stop with slow files pending starts the slow tier within about a second, red before.
+
+## 001-282 `run --slow --wait` waits for the slow files it queued
+
+Use /worker. Shape: defect. The board row is the brief, with `research/slow-claims.md` section 2. Today it, and `status --wait`, return "on quiet" in 0.5 s while the queued slow file is still running. Own `src/cli/run-slow.ts`, `src/cli/status-wait*.ts`, the skill's `references/commands.md` in both plugins, and tests under `test/cli/`. Do not touch `stop.ts` or `slow-tier.ts` (001-281 owns them). Done when the row's done-when holds; `run --slow --wait` against a running slow file holds until its result, red before; `Returned on timeout` names the slow files still running.
+
+## 001-286 review of wave 13ak
+
+Use /reviewer on gpt-6.1-sol, after both land. Output `reviews/wave-13ak.md`. Does the nudge ever start a slow tier the policy forbids, or starve the fast lane? Can `run --slow --wait` or `status --wait` still return quiet while a slow file it owns is running, or wait forever? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.

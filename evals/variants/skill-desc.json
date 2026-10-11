@@ -1,0 +1,12 @@
+{
+  "description": "001-280 / 001-283, the human's proposal (2026-10-12): the skill's description names the whole task (any code change in a Squeal repository) instead of the step of running tests, so Claude Code's task-level rule offers it. The skill's text is otherwise unchanged. For Claude, the arm needs the Skill tool allowed (the 006 runner's --allowedTools has none); that is agreed with the 006 coordinator before this runs.",
+  "plugin": true,
+  "patch": [
+    {
+      "files": "plugins/*/skills/squeal/SKILL.md",
+      "find": "description: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the Vitest tests, and the node:test tests where squeal.config.json lists nodeTest projects; this says how to read its reports and when to wait for one.",
+      "replace": "description: Use in any task that changes code in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear): how to tell whether your change broke something, when to wait for results, and what to run before you say the task is done, including the slow tier. Squeal already runs the Vitest tests, and the node:test tests where squeal.config.json lists nodeTest projects.",
+      "min": 2
+    }
+  ]
+}
