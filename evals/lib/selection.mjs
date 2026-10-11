@@ -64,8 +64,9 @@ export function selects(p, f, runner) {
 
 /**
  * Whether `scope` narrows the tests it runs within the files it selects, or by a rule the
- * grader cannot resolve: a name or skip filter, `--test-only`, a project or a shard. Failing
- * closed (review wave 2.6, B3), such a run runs no affected test file in full.
+ * grader cannot resolve: a name or skip filter, `--test-only`, a project, a shard, or an
+ * exclusion `globRe` does not resolve (braces, classes, extglobs, negation; review wave 2.7, B3).
+ * Failing closed (review wave 2.6, B3), such a run runs no affected test file in full.
  */
 export const filtered = (scope) =>
   !!(
@@ -73,8 +74,12 @@ export const filtered = (scope) =>
     scope.skip?.length ||
     scope.only ||
     scope.projects?.length ||
-    scope.shard
+    scope.shard ||
+    (scope.exclude ?? []).some((x) => UNRESOLVED_GLOB.test(x))
   );
+
+/** Glob syntax `globRe` does not resolve: braces, classes, extglobs and negation. */
+const UNRESOLVED_GLOB = /[{}[\]!()@+]/;
 
 /**
  * Whether `scope` (`{ full: true }` or `{ full: false, paths }`, with `exclude`) selects test

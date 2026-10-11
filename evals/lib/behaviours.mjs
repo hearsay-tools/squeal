@@ -108,7 +108,8 @@ export function notGraded(cell, conditions, declared) {
 
 /**
  * Each expectation `cell`'s task declares, as `met`, `missed`, `n/a` (it does not apply in this
- * session) or `not computable` (the record lacks a field its rule needs); `null` where the cell
+ * session) or `not computable` (the record lacks a field its rule needs, or its rule says the
+ * evidence cannot decide); `null` where the cell
  * is not graded under expectations (`notGraded`).
  */
 export function expectationsOf(cell, conditions, declared) {
@@ -121,6 +122,7 @@ export function expectationsOf(cell, conditions, declared) {
         rule.reads.every((f) => cell[f] !== undefined);
       if (!computable) return [e.id, "not computable"];
       const v = rule.of(cell, e);
+      if (v === "not computable") return [e.id, v];
       return [e.id, v === null || v === undefined ? "n/a" : v ? "met" : "missed"];
     }),
   );

@@ -61,6 +61,7 @@ export function settled(step, after) {
   return {
     ...step,
     failures,
+    ...(after.uncertain ? { uncertain: true } : {}),
     verdict,
     files: [...new Set(current.map((c) => c.file))],
     failing: [...new Set(current.filter((c) => c.to === "fail").map((c) => c.file))],
@@ -68,31 +69,38 @@ export function settled(step, after) {
 }
 
 /**
- * The known failures after squeal step `s`, from those before it (`{ named, unnamed }`, check
- * names and a count of failures not named). A status or registration lists them all; in a
- * delivery a failing check is added once however often its failure changed, and a recovery or a
- * retirement removes that same check once (review wave 2.6, S2).
+ * The known failures after squeal step `s`, from those before it (`{ named, unnamed,
+ * uncertain }`, check names, a count of failures not named, and whether that count may be
+ * wrong). A status or registration lists them all; in a delivery a failing check is added once
+ * however often its failure changed, and a recovery or a retirement removes that same check once
+ * (review wave 2.6, S2). An overflow's hidden FAIL count cannot say which hidden checks were
+ * failing already, so once failures were known before it the count is uncertain until a status
+ * or a registration lists them again (review wave 2.7, S2).
  */
 export function failingAfter(before, s) {
   if (s.known !== null && s.known !== undefined) {
     const named = [...new Set(s.checks.filter((c) => c.to === "fail").map((c) => c.check))];
-    return { named, unnamed: Math.max(0, s.known - named.length) };
+    return { named, unnamed: Math.max(0, s.known - named.length), uncertain: false };
   }
   const named = [...before.named];
   let unnamed = before.unnamed;
+  let uncertain = before.uncertain === true;
   const remove = (check) => {
     const i = check === null ? -1 : named.indexOf(check);
     if (i >= 0) named.splice(i, 1);
     else if (unnamed > 0) unnamed--;
     else if (check === null) named.shift();
   };
+  const knownBefore = named.length + unnamed > 0;
   for (const c of s.checks) {
-    if (c.to === "fail" && c.check === undefined) unnamed += c.count;
-    else if (c.to === "fail") {
+    if (c.to === "fail" && c.check === undefined) {
+      unnamed += c.count;
+      if (knownBefore) uncertain = true;
+    } else if (c.to === "fail") {
       if (!named.includes(c.check)) named.push(c.check);
     } else for (let n = 0; n < (c.count ?? 1); n++) remove(c.check ?? null);
   }
-  return { named, unnamed };
+  return { named, unnamed, uncertain };
 }
 
 /**
