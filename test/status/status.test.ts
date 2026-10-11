@@ -537,6 +537,8 @@ describe("readStatus", () => {
       },
     });
     store.worktrees.setDaemon(repo.mainId, null);
+    // A clean exit keeps the daemon's identity (task 001-268); it is no daemon all the same.
+    expect(store.worktrees.lastDaemon(repo.mainId)).not.toBeNull();
 
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 

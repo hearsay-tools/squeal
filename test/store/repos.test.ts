@@ -34,8 +34,15 @@ describe("worktrees", () => {
     expect(store.worktrees.get("wt-1")?.daemon).toBeNull();
     // Review wave 4.5, N5: status says since when no daemon runs.
     expect(store.worktrees.get("wt-1")?.lastHeartbeatAt).toBe(99);
+    // Task 001-268: and the row keeps who it was, for the next daemon's first commit.
+    expect(store.worktrees.lastDaemon("wt-1")).toEqual({
+      startedAt: daemon.startedAt,
+      squealVersion: "0.0.0",
+    });
+    expect(store.worktrees.lastDaemon("wt-none")).toBeNull();
     store.worktrees.upsert(record);
     expect(store.worktrees.get("wt-1")).toEqual(record);
+    expect(store.worktrees.lastDaemon("wt-1")).toBeNull();
 
     store.worktrees.upsert(worktree("wt-2", "/repo/other"));
     expect(store.worktrees.list().map((w) => w.id)).toEqual(["wt-1", "wt-2"]);

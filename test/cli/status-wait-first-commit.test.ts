@@ -65,6 +65,18 @@ describe("status --wait across a daemon's first commit (task 001-268)", () => {
     expect(wait).toMatchObject({ edit: { testFiles: 1, pending: 0 } });
   });
 
+  it("returns on its own files after the newer daemon before it exited cleanly", async () => {
+    const w = await worktree(4);
+    const first = await newerDaemon(w, 1);
+    first.commit([row(A, "a-0", null)], [], true);
+    await first.close();
+    // Its record cleared on exit, which keeps its identity in the row.
+    w.store.worktrees.setDaemon(w.id, null);
+    const wait = await waitOver(w, await newerDaemon(w, 3));
+    expect(wait.outcome).toBe("quiet");
+    expect(wait).toMatchObject({ edit: { testFiles: 1, pending: 0 } });
+  });
+
   // Control: after a registration the moves' writer is not, the wait falls back.
   it("falls back when the daemon registered before did not write the moves", async () => {
     const w = await worktree(4);
