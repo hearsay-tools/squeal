@@ -436,6 +436,111 @@ export function expectationsOf(
   declared: Declarations,
 ): Record<string, ExpectationGrade> | null;
 export function falseClaim(cell: CellRecord, claim: "pass" | "fail"): boolean | null;
+/** The frozen parser's grade; for the four the judge grades, the cross-check (D4, D9). */
+export function parserExpectationsOf(
+  cell: CellRecord,
+  conditions: Pick<Conditions, "tasks"> | undefined,
+  declared: Declarations,
+): Record<string, ExpectationGrade> | null;
+export function parserOf(
+  cell: CellRecord,
+  conditions: Pick<Conditions, "tasks"> | undefined,
+  declared: Declarations,
+): Record<string, ExpectationGrade> | null;
+export interface Disagreement {
+  id: string;
+  judge: ExpectationGrade;
+  parser: ExpectationGrade;
+  reason: string;
+  steps: unknown;
+}
+export function disagreements(
+  cell: CellRecord,
+  conditions: Pick<Conditions, "tasks"> | undefined,
+  declared: Declarations,
+): Disagreement[];
+
+// ---------- the judge (spec 006 D9) ----------
+export type JudgeVerdict = "met" | "missed" | "n/a" | "cannot tell";
+export interface JudgeIdentity {
+  model: string;
+  effort: string;
+  claudeCode: string;
+  rubric: string;
+}
+export interface JudgedVerdict {
+  verdict: JudgeVerdict | null;
+  steps: unknown;
+  reason: string;
+  grade: ExpectationGrade;
+}
+export interface CellJudge {
+  identity: JudgeIdentity;
+  transcriptHash: string;
+  verdicts: Record<string, JudgedVerdict>;
+  cost: number | null;
+  served?: string[];
+  error?: string;
+  cached?: boolean;
+}
+export interface RunnerResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+}
+export type JudgeRunner = (call: { args: string[]; input?: string }) => Promise<RunnerResult>;
+export const JUDGED: readonly string[];
+export const JUDGE: { model: string; effort: string };
+export const SYSTEM: string;
+export const RUBRIC: Readonly<Record<string, string>>;
+export function rubricOf(task: string, declared: Declarations): string;
+export function trimOutput(out: string | undefined, whole: boolean): string;
+export function transcriptOf(timeline: Timeline): string[];
+export function judgeInput(input: {
+  task: string;
+  situation: string;
+  claim: string | null;
+  transcript: readonly string[];
+}): string;
+export function situationOf(knobs?: Record<string, unknown>): string;
+export function schemaOf(ids: readonly string[]): Record<string, unknown>;
+export function judgeArgs(input: {
+  model: string;
+  effort: string;
+  system: string;
+  schema: Record<string, unknown>;
+}): string[];
+export function judgeEnv(
+  parent: Record<string, string | undefined>,
+  scratch: string,
+): Record<string, string>;
+export function claudeRunner(options?: {
+  base?: string;
+  parent?: Record<string, string | undefined>;
+  command?: string;
+  prefix?: string[];
+  timeoutMs?: number;
+}): JudgeRunner;
+export function claudeVersion(runner: JudgeRunner): Promise<string>;
+export function rubricRevision(declared: Declarations): string;
+export function judgeIdentity(input: {
+  model: string;
+  effort: string;
+  claudeCode: string;
+  declared: Declarations;
+}): JudgeIdentity;
+export function identityKey(identity: JudgeIdentity): string;
+export function gradeOf(verdict: unknown, steps: number): ExpectationGrade;
+export function transcriptHash(task: string, transcript: readonly string[]): string;
+export function judgeCell(input: {
+  task: string;
+  transcript: readonly string[];
+  claim: string | null;
+  declared: Declarations;
+  identity: JudgeIdentity;
+  runner: JudgeRunner;
+  cache?: CellJudge | null | undefined;
+}): Promise<CellJudge>;
 export function rate(values: readonly (boolean | null | undefined)[]): Rate | null;
 export function metRate(
   grades: readonly (Record<string, ExpectationGrade> | null)[],

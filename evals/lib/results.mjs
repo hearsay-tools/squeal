@@ -1,5 +1,6 @@
 // A baseline run's results file (spec 006 D6): the commit, the versions, the conditions and
-// every cell's grade, compact. Committed, so it holds no transcript text beyond the claim line.
+// every cell's grade, compact. Committed, so the only transcript text it holds is the claim line
+// and the judge's numbered, trimmed transcript (D9), redacted before the judge reads it.
 import { createHash } from "node:crypto";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
@@ -72,6 +73,10 @@ export function cellRecord(g) {
     leftovers: g.leftovers ?? 0,
     // D4 "Retained evidence": what the timeline rules read, so a later rule regrades from it.
     timeline: g.retained ?? null,
+    // D9: the transcript the judge read and its verdicts, cached by the transcript's hash and the
+    // judge's identity; `null` for a cell never judged, whose judged four are not computable.
+    transcript: g.transcript ?? null,
+    judge: g.judge ?? null,
   };
 }
 

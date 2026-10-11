@@ -2,6 +2,7 @@
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell, scopeLabel } from "./commands.mjs";
 import { completedRuns, failedChecks, NO_DAEMON, retainedOf } from "./evidence.mjs";
+import { transcriptOf } from "./judge.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
@@ -194,6 +195,8 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     ...claimGrades,
     timeline: { runs, pulls, sleeps, edits, failedEdits, refused, indeterminate, deliveries },
     retained: retainedOf(seen),
+    // D9: the numbered, trimmed transcript the judge reads; the run redacts it before keeping it.
+    transcript: transcriptOf(timeline),
   };
 }
 
