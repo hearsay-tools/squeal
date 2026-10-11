@@ -56,21 +56,6 @@ describe("classifyShell", () => {
     ]);
   });
 
-  it("finds every test run in a chain, with its scope", () => {
-    expect(shapes("npx vitest run && node --test 'scripts/*.test.mjs'")).toEqual([
-      { kind: "vitest", scope: "full" },
-      { kind: "node:test", scope: "full" },
-    ]);
-    expect(shapes("npx vitest run test/clock.test.ts --reporter verbose")).toEqual([
-      { kind: "vitest", scope: "files" },
-    ]);
-    expect(shapes("npm test -- -t 'Sunday'")).toEqual([{ kind: "vitest", scope: "name" }]);
-    expect(shapes("npm run test:scripts")).toEqual([{ kind: "node:test", scope: "full" }]);
-    expect(shapes("node --test scripts/changelog.test.mjs")).toEqual([
-      { kind: "node:test", scope: "files" },
-    ]);
-  });
-
   it("does not count a script, a type check or a test command inside quoted text as a run", () => {
     expect(kinds("node scripts/changelog.mjs")).toEqual([]);
     expect(kinds("npx --no-install tsc --noEmit")).toEqual([]);

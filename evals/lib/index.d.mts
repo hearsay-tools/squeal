@@ -22,10 +22,22 @@ export function simpleCommands(text: string, options?: { exit?: number | null })
 export type Execution = "executed" | "refused" | "indeterminate";
 export type Action = (
   | { kind: "squeal"; sub: string; wait: boolean; all: boolean; slow: boolean }
-  | { kind: "vitest" | "node:test"; scope: "full" | "files" | "name" }
+  | {
+      kind: "vitest" | "node:test";
+      runner: "vitest" | "node:test";
+      /** Help, version, listing or watch-only: never a run. */
+      informational: boolean;
+      scope: TestScope;
+    }
   | { kind: "sleep"; seconds: number }
   | { kind: "write"; path: string }
 ) & { execution: Execution };
+/** What a test command selects, as written (wave 2.6's contract). */
+export type TestScope = (
+  | { full: true }
+  | { full: false; paths: string[]; related?: string[]; changed?: true }
+) & { names?: string[] };
+export function scopeLabel(scope: TestScope): "full" | "files" | "name";
 export function classifyShell(
   text: string,
   options?: { exit?: number | null; output?: string; refused?: boolean },
