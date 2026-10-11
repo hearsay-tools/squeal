@@ -1,0 +1,14 @@
+{
+  "name": "ledgerline",
+  "version": "1.4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:scripts": "node --test 'scripts/*.test.mjs'",
+    "changelog": "node scripts/changelog.mjs"
+  },
+  "devDependencies": {
+    "vitest": "5.0.3"
+  }
+}
