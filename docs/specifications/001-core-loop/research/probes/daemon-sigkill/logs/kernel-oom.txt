@@ -1,0 +1,20 @@
+sudo -n grep -ciE 'oom|killed process' /var/log/kern.log.1: 0
+/var/log/kern.log.2.gz out of memory|killed process|oom-kill: 0
+/var/log/kern.log.3.gz out of memory|killed process|oom-kill: 0
+/var/log/kern.log.4.gz out of memory|killed process|oom-kill: 0
+kern.log.1 first: 2026-10-04T00:01:43.249316+02:00 last: 2026-10-10T22:07:23.710308+02:00
+kernel lines on 2026-10-09 per hour (local):
+      5 2026-10-09T00
+      1 2026-10-09T12
+      1 2026-10-09T13
+      3 2026-10-09T14
+      3 2026-10-09T15
+      1 2026-10-09T17
+      1 2026-10-09T18
+      1 2026-10-09T22
+syslog.1 17:25-17:30 local, without gpg-agent:
+2026-10-09T17:25:01.802872+02:00 apptension-host CRON[104661]: (root) CMD (command -v debian-sa1 > /dev/null && debian-sa1 1 1)
+2026-10-09T17:30:01.920377+02:00 apptension-host systemd[1]: Starting sysstat-collect.service - system activity accounting tool...
+2026-10-09T17:30:02.288040+02:00 apptension-host systemd[1]: sysstat-collect.service: Deactivated successfully.
+2026-10-09T17:30:02.291046+02:00 apptension-host systemd[1]: Finished sysstat-collect.service - system activity accounting tool.
+/proc/vmstat: oom_kill 0

@@ -1,0 +1,19 @@
+start 05:17:37.195121469 cwd=/home/agent/projects/squeal/.ai/cezar/worktrees/94e1b872-8985-4812-8d59-cd32c780d328
+stopped by the 30-min tool limit; test lines done: 4008
+count kill traced SIGINT 5
+count kill traced SIGKILL 31
+count kill traced SIGTERM 1413
+count kill unseen group SIGKILL 197
+count kill unseen group SIGTERM 1800
+count kill unseen pid SIGKILL 212
+count kill unseen pid SIGSTOP 20
+count kill unseen pid SIGTERM 60
+count tgkill traced SIGINT 6
+count tgkill traced SIGPIPE 3
+count tgkill traced SIGTERM 1422
+count tgkill traced SIGURG 66787
+count tgkill unseen pid SIGPIPE 2
+count tgkill unseen pid SIGPWR 1250
+count tgkill unseen pid SIGTERM 51
+count tgkill unseen pid SIGURG 40281
+own group / leader lines: 0

@@ -1,0 +1,21 @@
+cezar c07b0bfc, taskset -c 0-2, --maxWorkers 12, server project, from this cezar worktree
+start 06:24:39.302522153 cwd=/home/agent/projects/squeal/.ai/cezar/worktrees/94e1b872-8985-4812-8d59-cd32c780d328
+exit 143 06:31:54.331706572
+(exit 143: I stopped the run with SIGTERM to its group after the guard hit)
+test lines done: 1650
+runnable processes on CPUs 0-2, sampled at 06:24:48 and 06:26:24: 10 7 9 10 9 / 10 8 8
+ ❯ |server| src/autosave-timeout.test.ts (13 tests | 4 failed) 26569ms
+     ✓ terminates resistant status, reports failure and preserves files  1573ms
+     ✓ terminates resistant add, reports failure and preserves files  1496ms
+     × terminates resistant config, reports failure and preserves files 2745ms
+     × terminates resistant commit, reports failure and preserves files 4281ms
+     × does not claim a save or commit after status fails 3806ms
+     ✓ does not claim a save or commit after add fails  1024ms
+     ✓ does not claim a save or commit after config fails  1469ms
+     ✓ preserves a pre-existing agent while saving its worktree  726ms
+     ✓ serializes overlapping autosaves without losing later work  1115ms
+     × terminates descendants after the Git leader exits with closed pipes 1553ms
+     ✓ waits for a detached descendant after leader exit (stalled=false)  2420ms
+     ✓ waits for a detached descendant after leader exit (stalled=true)  2744ms
+     ✓ keeps the save pending when termination cannot be proven  1591ms
+guard hits: 1 (run3.guard.ndjson)

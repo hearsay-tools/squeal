@@ -1,0 +1,3 @@
+05:40:06.172 daemon pid 977622 for /tmp/sq180-mini-94e1b872
+squeal daemon: serving /tmp/sq180-mini-94e1b872 on /run/user/1001/squeal-9568ceb7427d54a8.sock
+05:40:06.878 daemon exit code=null signal=SIGKILL

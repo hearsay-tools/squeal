@@ -1,0 +1,4 @@
+cezar 1fb4b5b3 done 2026-10-09T11:42:13.824Z deadline=15:34:11.954 {"status":"done","startedAt":"2026-10-09T11:42:24.337Z","finishedAt":"2026-10-09T11:43:05.268Z","durationMs":40925}
+mvp-unveiled-july26 9ce5ca97 cancelled 2026-10-09T12:46:36.760Z finishedAt=15:29:58.762 {"status":"failed","startedAt":"2026-10-09T12:46:41.695Z","finishedAt":"2026-10-09T12:46:42.615Z","durationMs":918,"error":"`npm ci` exited 1"}
+squeal 87218933 waiting 2026-10-06T21:06:06.753Z createdAt=15:21:51.560 createdAt=15:23:38.246 createdAt=15:28:23.350 createdAt=15:34:03.030 createdAt=15:35:48.875 createdAt=15:20:07.867 deliveredAt=15:20:07.981 consumedAt=15:20:09.243 
+squeal 49978180 waiting 2026-10-09T14:06:35.769Z startedAt=15:29:39.906 

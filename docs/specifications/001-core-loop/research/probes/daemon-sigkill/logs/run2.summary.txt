@@ -1,0 +1,6 @@
+start 05:50:58.666712995 cwd=/home/agent/projects/squeal/.ai/cezar/worktrees/94e1b872-8985-4812-8d59-cd32c780d328
+exit 1 06:03:43.235506036
+ Test Files  11 failed | 408 passed (419)
+      Tests  28 failed | 9154 passed | 2 skipped (9184)
+   Duration  763.44s (transform 48.34s, setup 18.11s, import 268.28s, tests 7227.18s, environment 62ms)
+guard hits: 0

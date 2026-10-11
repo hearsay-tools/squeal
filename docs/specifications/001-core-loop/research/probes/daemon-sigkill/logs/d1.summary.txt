@@ -1,0 +1,11 @@
+start 06:15:03.471797094 cwd=/home/agent/projects/squeal/.ai/cezar/worktrees/94e1b872-8985-4812-8d59-cd32c780d328
+Stop requested; the daemon for /tmp/sq180-cz-94e1b872 is finishing the tier in flight
+end 06:23:15.825611679
+06:15:03.527 daemon pid 2049158 for /tmp/sq180-cz-94e1b872
+squeal daemon: serving /tmp/sq180-cz-94e1b872 on /run/user/1001/squeal-9ade71f6e945b33b.sock
+squeal daemon: node-test project "test:unit": 3 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/unit/cursor-hang-stdin.test.ts, packages/cezar/test/unit/test-env-launcher.test.ts, packages/cezar/test/unit/web-typecheck.test.ts
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: stopped 2 processes a test left running after its tier: 2097117 /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/sq180-cz-94e1b872/packages/cezar/src/preview/__fixtures__/fake-... (parent 1017 /usr/lib/systemd/systemd --user, 7 min 21 s old, SIGTERM, run 8bfcdf0f-8d2d-48ea-a779-e7f43e8804d6); 2097122 /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/sq180-cz-94e1b872/packag
+squeal daemon: daemon stopped: squeal stop
+06:23:15.816 daemon exit code=0 signal=null
+max load/cpu: 06:15:53 load/cpu=0.53
