@@ -377,7 +377,14 @@ function toNote(item) {
   const { at: at2, revision, text } = item;
   if (typeof at2 !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  return [{ at: at2, revision, text }];
+  const stopped = stoppedOf(item.stopped);
+  return [stopped === void 0 ? { at: at2, revision, text } : { at: at2, revision, text, stopped }];
+}
+function stoppedOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { what, commands } = value;
+  if (typeof what !== "string" || !Array.isArray(commands)) return void 0;
+  return commands.every((c) => typeof c === "string") ? { what, commands } : void 0;
 }
 
 // src/core/daemon/policy-node-test.ts
@@ -4021,7 +4028,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.111";
+  if (true) return "0.1.112";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
