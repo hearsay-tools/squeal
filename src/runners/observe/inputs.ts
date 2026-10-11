@@ -13,8 +13,9 @@ import type { RecordedFile } from "./read.js";
  * What each of `completed` was observed to read (spec 001 D3, D4), from the
  * recorder's files: project paths outside `node_modules`, a path the run
  * wrote left out, a directory that was only stat'ed or opened left out (its
- * content is no file to hash), and a listed directory kept as a listing, a
- * recursive one among `recursive` too.
+ * content is no file to hash) except the worktree's `.git`, keyed by kind,
+ * and a listed directory kept as a listing, a recursive one among
+ * `recursive` too.
  * Files of two projects at one path share their observations: the recorder
  * attributes by path.
  */
@@ -24,6 +25,7 @@ export function observedInputs(
   paths: WorktreePaths,
 ): ObservedInputs[] {
   const out: ObservedInputs[] = [];
+  const git = paths.toAbsolute(".git");
   const directories = new Map<AbsolutePath, boolean>();
   const isDirectory = (abs: AbsolutePath) => {
     let known = directories.get(abs);
@@ -45,7 +47,8 @@ export function observedInputs(
       }
       return [...kept].sort(compare);
     };
-    const read = relative(entry.paths, (abs) => !isDirectory(abs));
+    // The worktree's `.git` keys by its kind, a directory too (task 001-262).
+    const read = relative(entry.paths, (abs) => abs === git || !isDirectory(abs));
     const listed = relative(entry.listed, () => true);
     const recursive = relative(entry.recursive, () => true);
     if (read.length > 0 || listed.length > 0) {

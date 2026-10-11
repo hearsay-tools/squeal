@@ -1,8 +1,12 @@
 import { createHash } from "node:crypto";
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type {
+  AbsolutePath,
   FileChange,
   FileHash,
+  HashSource,
   ProjectName,
   RelativePath,
   Store,
@@ -42,6 +46,29 @@ export function ancestorListings(path: RelativePath): RelativePath[] {
     out.push(listingPath(path.slice(0, at)));
   }
   return out;
+}
+
+/** The worktree's own git entry, a key input by its kind (`gitEntryByKind`). */
+export const GIT_ENTRY: RelativePath = ".git";
+
+/**
+ * `hashOf` with the worktree's own `.git` hashed by its kind (task 001-262):
+ * a file or a directory, `null` when absent. A linked worktree's `.git` file
+ * names the worktree, as the root path does, which no key holds; by its bytes
+ * a test file that reads it would never inherit across worktrees. Untracked
+ * while `hashOf` does not track it, so the stability check has its entry;
+ * the kind is read when asked, since the watcher never sees `.git` change.
+ * Nothing under `.git/` is observed (the recorder skips it).
+ */
+export function gitEntryByKind(root: AbsolutePath, hashOf: HashSource): HashSource {
+  return (path) => {
+    const hash = hashOf(path);
+    if (path !== GIT_ENTRY || hash === undefined) return hash;
+    const entry = statSync(join(root, path), { throwIfNoEntry: false });
+    if (entry === undefined) return null;
+    const kind = entry.isDirectory() ? "directory" : "file";
+    return createHash("sha1").update(`.git ${kind}`).digest("hex");
+  };
 }
 
 /**

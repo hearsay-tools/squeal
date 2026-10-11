@@ -1,4 +1,4 @@
-import { listedDirectory, listingPath, testFileId } from "../keys/index.js";
+import { GIT_ENTRY, listedDirectory, listingPath, testFileId } from "../keys/index.js";
 import type { RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
@@ -34,7 +34,7 @@ export interface ObservedGrowth {
  * named in status). Every file path is hashed into the stat cache, so the
  * keys `recordTier` computes have no untracked path; a path hashed only now,
  * after its read and after run `run` (`WorktreeKeys.beginRun`) began, is
- * `firstSeen`. Empty while policy `observe.runtimeInputs`
+ * `firstSeen`, except `.git`, which keys by its kind. Empty while policy `observe.runtimeInputs`
  * is off.
  */
 export async function observedGrowth(
@@ -79,8 +79,12 @@ export async function observedGrowth(
   }
   await keys.track(tracked);
   for (const { testFile, add, growth } of grown) {
+    // `.git` keys by its kind, read with the key, not by the bytes hashed now (task 001-262).
     const firstSeen = growth.filter(
-      (path) => listedDirectory(path) === null && keys.firstHashedDuringRun(path, run),
+      (path) =>
+        listedDirectory(path) === null &&
+        path !== GIT_ENTRY &&
+        keys.firstHashedDuringRun(path, run),
     );
     out.set(testFileId(testFile), { add, growth, firstSeen });
   }

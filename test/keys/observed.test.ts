@@ -1,7 +1,11 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ancestorListings,
   assembleClosure,
+  gitEntryByKind,
   Listings,
   listedDirectory,
   listingPath,
@@ -48,6 +52,41 @@ describe("observed sets", () => {
     const store = open(fakeCommonDir());
     store.transaction(() => store.meta.set(observedMetaKey("p"), "{not json"));
     expect(new ObservedSets(store).of(ref("t.test.ts"))).toEqual([]);
+  });
+});
+
+describe("the worktree's .git entry (task 001-262)", () => {
+  it("hashes by kind, file, directory or absent, never by its bytes; other paths pass through", () => {
+    const roots = ["a", "b", "c", "d"].map(() => mkdtempSync(join(tmpdir(), "squeal-git-entry-")));
+    try {
+      const [a, b, c] = roots as [string, string, string, string];
+      writeFileSync(join(a, ".git"), "gitdir: /repo/.git/worktrees/a\n");
+      writeFileSync(join(b, ".git"), "gitdir: /repo/.git/worktrees/b\n");
+      mkdirSync(join(c, ".git"));
+      // the stat cache's view: each file's bytes, a directory as no file
+      const cached = [a, b, c, null].map((root, i) =>
+        root === a || root === b ? `bytes-${i}` : null,
+      );
+      const hashes = roots.map((root, i) =>
+        gitEntryByKind(root, (path) => {
+          if (path === "x.ts") return "x-hash";
+          return path === ".git" ? cached[i] : undefined;
+        }),
+      );
+      const git = hashes.map((hashOf) => hashOf(".git"));
+      expect(git[0]).toBe(git[1]);
+      expect(git[0]).toEqual(expect.any(String));
+      expect(git[2]).toEqual(expect.any(String));
+      expect(git[2]).not.toBe(git[0]);
+      expect(git[3]).toBeNull();
+      expect(hashes[0]?.("x.ts")).toBe("x-hash");
+      // untracked until the stat cache holds it
+      expect(gitEntryByKind(a, () => undefined)(".git")).toBeUndefined();
+      expect(hashes[0]?.(".git/HEAD")).toBeUndefined();
+      expect(hashes[0]?.("sub/.git")).toBeUndefined();
+    } finally {
+      for (const root of roots) rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

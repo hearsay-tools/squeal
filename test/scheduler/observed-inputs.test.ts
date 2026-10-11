@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/types/index.js";
+import { git } from "../hash/git-repo.js";
 import {
   addWorktree,
   createRepo,
@@ -21,6 +22,7 @@ import {
  */
 const RUNTIME = "test/runtime.test.ts";
 const PLAIN = "test/plain.test.ts";
+const GIT = "test/git.test.ts";
 const POOLS = ["forks", "threads"] as const;
 const at = (path: string, project: string): TestFileRef => ({ project, path });
 /** Appends a line to `path`: its content changes, what it does does not. */
@@ -130,6 +132,46 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     // Its gitignored build output is absent here: the new fail is re-run once (task 001-171).
     expect(ranProjects(third, RUNTIME, 0)).toEqual(["forks", "forks", "threads", "threads"]);
     expect(ranProjects(third, PLAIN, 0)).toEqual([]);
+  });
+
+  it("keys .git by kind: a file reading it inherits across linked worktrees (task 001-262)", async () => {
+    const repo = createRepo("observed");
+    writeFileSync(
+      join(repo.main, "test/git.test.ts"),
+      [
+        'import { readFileSync, statSync } from "node:fs";',
+        'import { expect, it } from "vitest";',
+        'const entry = new URL("../.git", import.meta.url);',
+        'it("reads .git", () => {',
+        '  if (statSync(entry).isFile()) expect(readFileSync(entry, "utf8")).toMatch(/^gitdir: /);',
+        "});",
+      ].join("\n"),
+    );
+    git(repo.main, ["add", "-A"]);
+    git(repo.main, ["commit", "-qm", "git reader"]);
+    const { h, store } = await observing(repo);
+    const reader = at(GIT, "forks");
+    expect(ranProjects(h, GIT, 0)).toEqual(["forks", "threads"]);
+    // the main checkout's `.git` is a directory, and its readers hold it too
+    expect(store.testFiles.get(reader)?.closure.paths).toContain(".git");
+    const linked = async (name: string) => {
+      const harness = await openHarness(
+        addWorktree(repo.main, repo.dir, name),
+        store,
+        repo.commonDir,
+        {
+          observe: true,
+        },
+      );
+      await harness.scheduler.start();
+      await harness.scheduler.idle();
+      return harness;
+    };
+    const first = await linked("first");
+    expect(ranProjects(first, GIT, 0)).toEqual(["forks", "threads"]);
+    const second = await linked("second");
+    expect(ranProjects(second, GIT, 0)).toEqual([]);
+    expect(validities(second, reader).every((v) => v === "current")).toBe(true);
   });
 
   it("observe.runtimeInputs false keys as before, and switching it back restores those keys", async () => {
