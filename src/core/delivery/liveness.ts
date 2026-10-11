@@ -1,6 +1,7 @@
 import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
+import { withDeath } from "../status/died.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import {
   type Consumer,
@@ -64,9 +65,11 @@ export function readLiveHeader(
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path),
   );
+  const worktree = store.worktrees.get(worktreeId);
   return {
     ...header,
-    daemon: worktreeLiveness(store.worktrees.get(worktreeId), now),
+    // Task 001-263: a daemon that died without its stop note is named, as status names it.
+    daemon: withDeath(store, worktree, worktreeLiveness(worktree, now)),
     changedPaths: [...changes.keys()],
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
   };

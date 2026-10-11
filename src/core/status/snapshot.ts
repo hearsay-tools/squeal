@@ -22,6 +22,7 @@ import {
   type TestFileKeyRecord,
   type WorktreeId,
 } from "../types/index.js";
+import { withDeath } from "./died.js";
 import { readGitHead } from "./git-head.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 
@@ -99,7 +100,11 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
-  const daemon = liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+  const daemon = withDeath(
+    store,
+    worktree,
+    liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+  );
   // Nothing observes the files without a daemon, so the last revision's flag may be old news (D7).
   const observed = daemon.state === "alive" ? revision : null;
 
