@@ -142,7 +142,7 @@ One JSON file per variant in `evals/variants/`, applied to a copy of the pinned 
 1. Resolved 2026-10-10: the host's model proxy serves `claude-haiku-5-5` again (verified by the coordinator; 005-07 ran on it).
 2. Resolved 2026-10-10 by the human: no Opus in the baseline.
 3. The Claude Code allow-list for subject sessions: 005-06's list (from 001's dogfooding) refused `node scripts/changelog.mjs` once, which confounds the uncovered-suite behaviour. Default: add `Bash(node:*)`. Owner: 006-01.
-4. Whether the 25-point flag is the right threshold, after two runs. Owner: 006-04.
+4. Whether the 25-point flag is the right threshold, after two runs. Owner: 006-04. The human, 2026-10-11: the two judged runs are 006-29 (0.1.123) and the 0.1.124 release baseline, both regraded after 006-30; the coordinator proposes a threshold from their spread and the human sets it (006-31).
 5. Resolved 2026-10-11 by the human: a hybrid judge (D4 "Who grades what", D9), run through Claude Code. The original proposal was: if the fail-closed rules leave too much not computable, or another review finds the next unparsed shell or glob form, classify each recorded test command with a small model judge instead (Claude Code Haiku 5.5, pinned effort). It would answer whether the command runs tests, which test files and filters it selects, and whether it writes files. Its answers are cached by command text, so a regrade stays repeatable, and the deterministic parser stays the first pass. Proposed by the human 2026-10-11, held until the fail-closed rules are tried. Owner: the human.
 
 ## References
