@@ -22,6 +22,11 @@ const completion = (vitest = done(0), nodeTest = { ...done(0), files: 1 }): Trut
 });
 const report = (failed: string[] = [], extra: Record<string, unknown> = {}) => ({
   success: failed.length === 0,
+  numTotalTests: 1 + failed.length,
+  numPassedTests: 1,
+  numFailedTests: failed.length,
+  numPendingTests: 0,
+  numTodoTests: 0,
   ...extra,
   testResults: [
     {
